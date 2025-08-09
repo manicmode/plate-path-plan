@@ -148,9 +148,9 @@ class SoundManager {
     if (this.mobileEnv.isNative) {
       try {
         // Configure native audio for ambient/non-interrupting playback
-        console.log('🔊 Configuring native audio for ambient playback');
+        
         await AudioConfig.configureAmbientAudio();
-        console.log('✅ Native audio configured for ambient playback');
+        
       } catch (error) {
         console.warn('❌ Native audio configuration failed:', error);
       }
@@ -170,7 +170,7 @@ class SoundManager {
    */
   private setupUserInteractionListener(): void {
     const handleFirstInteraction = async (event: Event) => {
-      console.log('🔊 First user interaction detected, initializing audio system');
+      
       
       // CRITICAL: Create AudioContext inside trusted user gesture event (iOS Safari requirement)
       if (!this.audioContext) {
@@ -186,11 +186,11 @@ class SoundManager {
             // Add state change listener for monitoring
             this.audioContext.onstatechange = () => {
               if (this.audioContext?.state === 'suspended' && this.mobileEnv.isMobile) {
-                console.log('⚠️ AudioContext suspended on mobile');
+                
               }
             };
             
-            console.log('✅ AudioContext created with interactive latency hint for non-interrupting playback');
+            
           } else {
             console.warn('❌ AudioContext not available in this browser');
           }
@@ -241,22 +241,22 @@ class SoundManager {
    */
   private async performInitialization(): Promise<void> {
     try {
-      console.log('🔄 Starting audio system initialization...');
+      
       
       // AudioContext is now created in user interaction handler only
       // Skip AudioContext creation here to comply with iOS Safari PWA requirements
       if (!this.audioContext) {
-        console.log('⚠️ AudioContext not created yet - waiting for user interaction');
+        
       } else {
-        console.log(`🔊 AudioContext already exists - state: ${this.audioContext.state}`);
+        
       }
 
       // Preload sounds after initialization
       await this.preloadSounds();
-      console.log('🔊 Audio system initialization complete');
+      
     } catch (error) {
       console.warn('❌ Audio system initialization failed:', error);
-      console.log(`📱 Failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
+      
     }
   }
 
@@ -289,7 +289,7 @@ class SoundManager {
 
       try {
         await Promise.allSettled(preloadPromises);
-        console.log('Native sound preloading completed');
+        
       } catch (error) {
         console.warn('Some native sounds failed to preload:', error);
       }
@@ -301,7 +301,7 @@ class SoundManager {
 
       try {
         await Promise.allSettled(preloadPromises);
-        console.log('Web sound preloading completed');
+        
       } catch (error) {
         console.warn('Some web sounds failed to preload:', error);
       }
@@ -320,7 +320,7 @@ class SoundManager {
         isUrl: false,
         volume: config.volume || 0.7
       });
-      console.log(`✅ Preloaded native sound: ${key}`);
+      
     } catch (error) {
       console.warn(`Failed to preload native sound: ${key}`, error);
     }
@@ -334,7 +334,7 @@ class SoundManager {
       return this.audioCache[key];
     }
 
-    console.log(`🔊 Attempting to load sound "${key}" from:`, config.url);
+    
 
     return new Promise((resolve, reject) => {
       const audio = new Audio();
@@ -342,7 +342,7 @@ class SoundManager {
       audio.preload = 'auto';
       audio.crossOrigin = 'anonymous';
       
-      console.log(`🎚️ Volume set to:`, audio.volume);
+      
       
       // Configure for ambient/non-interrupting playback
       // This prevents the audio from requesting audio focus on mobile web
@@ -368,17 +368,17 @@ class SoundManager {
       };
 
       audio.oncanplaythrough = () => {
-        console.log(`✅ Can play through: ${key} from ${config.url}`);
+        
         this.audioCache[key] = audio;
         resolve(audio);
       };
 
       audio.onplay = () => {
-        console.log(`🎵 Playback started for: ${key}`);
+        
       };
       
       audio.addEventListener('canplaythrough', () => {
-        console.log(`✅ Successfully loaded sound: ${key} from ${config.url}`);
+        
         if (!this.audioCache[key]) {
           this.audioCache[key] = audio;
           resolve(audio);
@@ -391,7 +391,7 @@ class SoundManager {
       });
 
       audio.src = config.url;
-      console.log(`🔄 Audio src set for "${key}":`, audio.src);
+      
     });
   }
 
@@ -399,23 +399,23 @@ class SoundManager {
    * Play a sound by key with ambient/non-interrupting audio settings
    */
   async play(soundKey: string): Promise<void> {
-    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}, isNative: ${this.mobileEnv.isNative}`);
+    
     
     if (!this.isEnabled) {
-      console.log('🔊 SoundManager: Sound disabled');
+      
       return;
     }
 
     // Check for reduced motion preference
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      console.log('🔊 SoundManager: Reduced motion preference detected, skipping sound');
+      
       return;
     }
 
     // Wait for user interaction on mobile
     if (!this.hasUserInteracted) {
-      console.log(`🔊 Waiting for user interaction before playing: ${soundKey}`);
+      
       return;
     }
 
@@ -436,7 +436,7 @@ class SoundManager {
     } catch (error: any) {
       // Handle autoplay restrictions and other errors gracefully
       if (error.name === 'NotAllowedError') {
-        console.log(`🔊 Sound play blocked by browser policy: ${soundKey}`);
+        
       } else {
         console.warn(`🔊 Sound play failed: ${soundKey}`, error);
       }
@@ -454,7 +454,7 @@ class SoundManager {
         // Note: NativeAudio plugin handles audio session configuration for ambient playback
         // This ensures it doesn't interrupt music from other apps
       });
-      console.log(`🔊 Successfully played native sound: ${soundKey}`);
+      
     } catch (error) {
       console.warn(`❌ Native sound play failed: ${soundKey}`, error);
       // Fallback to web audio if native fails
@@ -466,7 +466,7 @@ class SoundManager {
    * Play sound using web audio with ambient settings (doesn't interrupt background audio)
    */
   private async playWebSound(soundKey: string, config: SoundConfig): Promise<void> {
-    console.log(`🔊 playWebSound called for "${soundKey}" with config:`, config);
+    
     
     // Ensure audio system is initialized
     if (!this.initializationPromise) {
@@ -479,17 +479,17 @@ class SoundManager {
     
     // Load sound if not cached
     if (!audio) {
-      console.log(`🔄 Sound "${soundKey}" not in cache, loading now...`);
+      
       audio = await this.loadSound(soundKey, config);
     } else {
-      console.log(`✅ Sound "${soundKey}" found in cache`);
+      
     }
 
     // Reset audio to beginning
     audio.currentTime = 0;
     
-    console.log(`🎚️ Final volume check for "${soundKey}":`, audio.volume);
-    console.log(`🔊 Attempting to play startup sound from:`, audio.src);
+    
+    
     
     // Configure audio for ambient playback (critical for not interrupting background audio)
     if (this.mobileEnv.isMobile) {

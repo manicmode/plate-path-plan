@@ -33,7 +33,6 @@ export const useXPSystem = () => {
       // Route nutrition-related awards through the canonical wrapper to enforce base_xp & cooldowns
       if (activityType === 'nutrition' || activityType === 'hydration' || activityType === 'supplement') {
         // TEMP one-time debug (remove after test)
-        console.debug('[XP] calling award-nutrition-xp', { hasSessionUserId: !!user?.id, userIdSample: String(user?.id || '') });
         const { error } = await supabase.functions.invoke('award-nutrition-xp', {
           body: {
             activityType: activityType,
@@ -96,7 +95,7 @@ export const useXPSystem = () => {
 
     try {
       // TEMP one-time debug (remove after test)
-      console.debug('[XP] calling award-nutrition-xp', { hasSessionUserId: !!user?.id, userIdSample: String(user?.id || '') });
+      
       const { error } = await supabase.functions.invoke('award-nutrition-xp', {
         body: {
           activityType: activityType,

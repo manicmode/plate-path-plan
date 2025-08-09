@@ -49,7 +49,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     // Play startup sound with slight delay to sync with logo appearance
     const soundTimer = setTimeout(() => {
       playStartupChime().catch(error => {
-        console.log('🔊 Startup chime could not play (autoplay restriction):', error);
+        
       });
     }, 100); // Small delay to sync with logo animation start
 

@@ -42,7 +42,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   useEffect(() => {
     // Initialize sound system when user logs in
     if (user) {
-      console.log('🔊 User logged in, preparing sound system');
+      
       // The sound system will initialize on first user interaction
     }
   }, [user]);
@@ -59,14 +59,14 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   };
 
   const playSound = async (soundKey: string) => {
-    console.log(`🔊 SoundContext: Playing sound "${soundKey}", enabled: ${isEnabled}`);
+    
     if (!isEnabled) {
-      console.log('🔊 SoundContext: Sound disabled by user preference');
+      
       return;
     }
     try {
       await soundManager.play(soundKey);
-      console.log(`🔊 SoundContext: Successfully played "${soundKey}"`);
+      
     } catch (error) {
       console.warn('🔊 SoundContext: Sound playback failed:', error);
     }

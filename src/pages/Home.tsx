@@ -174,7 +174,7 @@ const Home = () => {
   useEffect(() => {
     // Only attempt to play startup chime if sound is enabled
     if (!isEnabled) {
-      console.log('🔊 Startup chime skipped - sound disabled');
+      
       return;
     }
 
@@ -184,7 +184,7 @@ const Home = () => {
     const hasPlayedToday = localStorage.getItem(lastPlayedKey) === 'true';
     
     if (hasPlayedToday) {
-      console.log('🔊 Startup chime skipped - already played today');
+      
       return;
     }
 
@@ -193,12 +193,12 @@ const Home = () => {
       try {
         // Small delay to ensure full render completion
         setTimeout(async () => {
-          console.log('🔊 Attempting to play startup chime...');
+          
           await playStartupChime();
           
           // Mark as played today to prevent duplicates
           localStorage.setItem(lastPlayedKey, 'true');
-          console.log('🔊 Startup chime played successfully');
+          
         }, 300);
       } catch (error) {
         console.warn('🔊 Startup chime failed to play:', error);
