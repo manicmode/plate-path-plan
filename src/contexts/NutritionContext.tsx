@@ -93,6 +93,7 @@ interface NutritionContextType {
   currentCoachCta: string | null;
   addCoachCta: (message: string) => void;
   clearCoachCta: () => void;
+  lastCoachCtaEnqueueId: number;
 }
 
 const NutritionContext = createContext<NutritionContextType | undefined>(undefined);
@@ -197,6 +198,8 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   // Coach CTA state
   const [coachCtaQueue, setCoachCtaQueue] = useState<string[]>([]);
   const [currentCoachCta, setCurrentCoachCta] = useState<string | null>(null);
+  const enqueueCounterRef = useRef<number>(0);
+  const [lastCoachCtaEnqueueId, setLastCoachCtaEnqueueId] = useState<number>(0);
 
   // Real weekly data loading - removed mock data generation
   useEffect(() => {
