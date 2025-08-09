@@ -157,9 +157,9 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard" style={{ animationDelay: '100ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard mx-auto w-full max-w-[360px]" style={{ animationDelay: '100ms' }}>
       <div className={`IdentitySummary ${isEditing ? 'isHidden' : ''}`}>
-        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} px-4`}>
           <div className="flex flex-col items-center space-y-4">
             {/* Name and Info Section */}
             <div className="text-center space-y-2">
@@ -203,7 +203,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
         </CardHeader>
       </div>
 
-      <div className={`IdentityEditorOverlay ${!isEditing ? 'isHidden' : ''}`}>
+      <div className={`IdentityEditorOverlay ${!isEditing ? 'isHidden' : ''} px-4 pb-4`}>
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
