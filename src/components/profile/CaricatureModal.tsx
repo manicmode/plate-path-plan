@@ -158,10 +158,7 @@ export const CaricatureModal = ({
     }
 
     // Enhanced debounce: Prevent multiple clicks during generation
-    if (isGenerating) {
-      console.log('🚫 Generation already in progress, ignoring duplicate click');
       return;
-    }
 
     // Check monthly limit properly - count generations in the current calendar month
     const now = new Date();
@@ -182,7 +179,7 @@ export const CaricatureModal = ({
       return;
     }
 
-    console.log('🎨 Starting caricature generation with image:', uploadedImage);
+    
     setIsGenerating(true);
     
     try {
@@ -190,14 +187,6 @@ export const CaricatureModal = ({
         body: { imageUrl: uploadedImage }
       });
 
-      console.log('📡 Supabase function response:', { data, error });
-      console.log('🔍 Response analysis:', {
-        hasError: !!error,
-        hasData: !!data,
-        dataSuccess: data?.success,
-        dataError: data?.error,
-        dataErrorType: data?.errorType
-      });
 
       // Handle Supabase function errors with improved parsing
       if (error) {
@@ -207,7 +196,7 @@ export const CaricatureModal = ({
         if (error.constructor.name === 'FunctionsHttpError') {
           try {
             const details = await error.response?.json?.();
-            console.log("🎨 Avatar error details:", details);
+            
             
             if (details?.errorType === "limit_reached") {
               toast({
@@ -240,7 +229,7 @@ export const CaricatureModal = ({
 
       // Handle successful response
       if (data?.caricatureUrls && Array.isArray(data.caricatureUrls) && data.caricatureUrls.length === 3) {
-        console.log('✅ Successfully generated 3 variants:', data.caricatureUrls);
+        
         setVariants(data.caricatureUrls);
         setStep('variants');
         onGenerationCountUpdate(generationCount + 1);
@@ -292,7 +281,7 @@ export const CaricatureModal = ({
         variant: "destructive",
       });
     } finally {
-      console.log('🔄 Resetting generation state');
+      
       setIsGenerating(false);
     }
   };

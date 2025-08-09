@@ -21,12 +21,7 @@ import { MoodCheckinSettings } from '@/components/mood/MoodCheckinSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
-import { BackfillTargetsButton } from '@/components/profile/BackfillTargetsButton';
-import { MoodLogTester } from '@/components/mood/MoodLogTester';
-import { DailyTargetsTestSuite } from '@/components/debug/DailyTargetsTestSuite';
-import { NutritionTargetsTestComponent } from '@/components/debug/NutritionTargetsTestComponent';
-import { TargetsTestButton } from '@/components/debug/TargetsTestButton';
-import { ReminderManagement } from '@/components/reminder/ReminderManagement';
+
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
@@ -37,15 +32,11 @@ import { FollowStatsCard } from '@/components/social/FollowStatsCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
-import { SoundTestComponent } from '@/components/debug/SoundTestComponent';
-
-// Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
   try {
-    console.log('Saving preferences to localStorage:', preferences);
     localStorage.setItem('user_preferences', JSON.stringify(preferences));
   } catch (error) {
-    console.error('Failed to save preferences:', error);
+    // silent
   }
 };
 
@@ -103,7 +94,6 @@ const ProfileContent = () => {
   // Save tracker preferences whenever selectedTrackers changes
   useEffect(() => {
     if (isEditing && formData.selectedTrackers) {
-      console.log('FormData selectedTrackers changed:', formData.selectedTrackers);
       saveUserPreferences({ selectedTrackers: formData.selectedTrackers });
     }
   }, [formData.selectedTrackers, isEditing]);
@@ -142,8 +132,6 @@ const ProfileContent = () => {
     }
   }, [location]);
 
-  const handleSave = async () => {
-    console.log('Saving profile with trackers:', formData.selectedTrackers);
     
     // Update profile in Supabase
     if (user?.id) {
@@ -232,7 +220,6 @@ const ProfileContent = () => {
   const toggleTracker = (trackerId: string) => {
     const isUserSelected = userSelectedTrackers.includes(trackerId);
     
-    console.log('toggleTracker called:', trackerId, 'user selected:', isUserSelected);
     
     let newUserSelectedTrackers;
     if (isUserSelected) {
@@ -246,8 +233,6 @@ const ProfileContent = () => {
     // Auto-fill to ensure exactly 3 trackers
     const autoFilledTrackers = getAutoFilledTrackers(newUserSelectedTrackers);
     
-    console.log('New user selected:', newUserSelectedTrackers);
-    console.log('Auto-filled result:', autoFilledTrackers);
     
     setUserSelectedTrackers(newUserSelectedTrackers);
     setFormData(prev => ({
@@ -367,21 +352,6 @@ const ProfileContent = () => {
         onEditToggle={() => setIsEditing(!isEditing)}
       />
 
-      {/* Admin: Backfill Targets for All Users */}
-      {user?.email === 'ashkan_e2000@yahoo.com' && (
-        <div className="space-y-4">
-          <BackfillTargetsButton />
-          <TargetsTestButton />
-          <DailyTargetsTestSuite />
-          <NutritionTargetsTestComponent />
-          
-          {/* Mood Logging Test Component */}
-          <MoodLogTester />
-          
-          {/* Sound System Test Component */}
-          <SoundTestComponent />
-        </div>
-      )}
 
       {/* Tracker Selection */}
       <TrackerSelection 

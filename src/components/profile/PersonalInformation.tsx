@@ -90,7 +90,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     }
 
     setIsSaving(true);
-    console.log('💾 Saving username to database:', username);
+    
     
     try {
       const { data, error } = await supabase
@@ -113,7 +113,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
         return;
       }
 
-      console.log('✅ Username saved successfully:', data);
+      
 
       // Update form data to keep parent in sync
       onFormDataChange({ first_name: username.trim() });

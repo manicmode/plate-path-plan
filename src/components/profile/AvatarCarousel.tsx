@@ -35,14 +35,6 @@ export const AvatarCarousel = ({
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // Debug logging
-  console.log('AvatarCarousel Debug:', {
-    isOpen,
-    caricatureHistory: caricatureHistory?.length || 0,
-    currentAvatarUrl,
-    currentIndex,
-    isReady
-  });
 
   // Get all historical avatars with generation dates
   const getAllHistoricalAvatars = () => {
@@ -71,16 +63,11 @@ export const AvatarCarousel = ({
   // Set initial index to current avatar when modal opens
   useEffect(() => {
     if (isOpen && allAvatars.length > 0) {
-      console.log('Setting up carousel with avatars:', allAvatars.length);
+      
       
       if (currentAvatarUrl) {
         const foundIndex = allAvatars.findIndex(avatar => avatar.url === currentAvatarUrl);
         if (foundIndex !== -1) {
-          console.log('Found current avatar at index:', foundIndex);
-          setCurrentIndex(foundIndex);
-        } else {
-          console.log('Current avatar not found in history, using index 0');
-          setCurrentIndex(0);
         }
       } else {
         setCurrentIndex(0);
@@ -100,10 +87,8 @@ export const AvatarCarousel = ({
     }
     if (!isReady || allAvatars.length === 0) return;
     
-    console.log('Previous clicked, current index:', currentIndex);
     setCurrentIndex((prev) => {
       const newIndex = prev > 0 ? prev - 1 : allAvatars.length - 1;
-      console.log('Moving to index:', newIndex);
       return newIndex;
     });
   }, [isReady, allAvatars.length, currentIndex]);
@@ -115,10 +100,8 @@ export const AvatarCarousel = ({
     }
     if (!isReady || allAvatars.length === 0) return;
     
-    console.log('Next clicked, current index:', currentIndex);
     setCurrentIndex((prev) => {
       const newIndex = prev < allAvatars.length - 1 ? prev + 1 : 0;
-      console.log('Moving to index:', newIndex);
       return newIndex;
     });
   }, [isReady, allAvatars.length, currentIndex]);
@@ -213,7 +196,6 @@ export const AvatarCarousel = ({
   };
 
   if (!isOpen || allAvatars.length === 0) {
-    console.log('Carousel not showing:', { isOpen, avatarCount: allAvatars.length });
     return null;
   }
 

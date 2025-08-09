@@ -33,16 +33,16 @@ export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEdi
     if (!isEditing) return;
     
     const isUserSelected = userSelectedTrackers.includes(trackerId);
-    console.log('Toggling tracker:', trackerId, 'user selected:', isUserSelected);
+    
     
     if (isUserSelected) {
       // Remove tracker - auto-fill will handle ensuring 3 total
       onToggleTracker(trackerId);
-      console.log('Removed tracker:', trackerId);
+      
     } else {
       // Add tracker - auto-fill will handle max 3 limit
       onToggleTracker(trackerId);
-      console.log('Added tracker:', trackerId);
+      
     }
   };
 
