@@ -14,7 +14,9 @@ export const CoachCtaDemo = () => {
   const { playAIThought } = useSound();
 
   const handleCtaClick = (ctaType: string, ctaText: string) => {
-    console.debug(`[CoachCtaDemo Click] Type: ${ctaType}, Text: "${ctaText}", Timestamp: ${new Date().toISOString()}`);
+    if (import.meta.env.DEV) {
+      console.log(`[CoachCtaDemo Click] Type: ${ctaType}, Text: "${ctaText}", Timestamp: ${new Date().toISOString()}`);
+    }
     // Play AI thought beep immediately on user click
     void playAIThought();
     sendCoachMessage(ctaText);
