@@ -1,7 +1,8 @@
 type Unsub = () => void;
 
 function getScrollEl(): Element & { scrollTop: number; scrollLeft: number; scrollTo?: (opts: any) => void } {
-  return (document.scrollingElement || document.documentElement) as any;
+  const el = document.getElementById("AppScrollRoot");
+  return (el as any) || (document.scrollingElement || document.documentElement) as any;
 }
 
 export function withStabilizedViewport<T>(fn: () => T): T {

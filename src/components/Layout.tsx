@@ -116,17 +116,20 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Main Content with adjusted padding for explore page */}
-      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        shouldShowNavigation ? (
+      <main
+        id="AppScrollRoot"
+        className={`AppScrollRoot max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
+          shouldShowNavigation ? (
+            isExplorePage 
+              ? 'pb-20' // Reduced padding for explore page
+              : (isMobile ? 'pb-40' : 'pb-60')
+          ) : 'pb-8'
+        } ${
           isExplorePage 
-            ? 'pb-20' // Reduced padding for explore page
-            : (isMobile ? 'pb-40' : 'pb-60')
-        ) : 'pb-8'
-      } ${
-        isExplorePage 
-          ? 'h-[calc(100vh-160px)]' // Precise height for explore page
-          : 'min-h-[calc(100vh-140px)]'
-      }`}>
+            ? 'h-[calc(100vh-160px)]' // Precise height for explore page
+            : 'min-h-[calc(100vh-140px)]'
+        }`}
+      >
         {children}
       </main>
 

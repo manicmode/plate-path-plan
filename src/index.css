@@ -1395,6 +1395,7 @@
 
 /* Profile-specific stability helpers */
 @layer utilities {
+  .AppScrollRoot { overflow: auto; overscroll-behavior: contain; will-change: scroll-position; }
   .ProfilePageRoot { overflow-anchor: none; overscroll-behavior: contain; }
   .ProfileCard { min-height: 56px; }
 }
