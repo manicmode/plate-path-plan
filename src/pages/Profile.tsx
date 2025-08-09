@@ -10,7 +10,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import ProfileHeader from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { DietaryGoals } from '@/components/profile/DietaryGoals';
