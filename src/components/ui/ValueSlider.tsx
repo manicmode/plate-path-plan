@@ -29,6 +29,22 @@ export default function ValueSlider({
     try { (navigator as any).vibrate?.(10); } catch {}
   };
 
+  // requestAnimationFrame-based smoothing during drag
+  const frame = React.useRef<number | null>(null);
+  const nextVal = React.useRef<number | null>(null);
+  const setSmooth = React.useCallback((v: number) => {
+    nextVal.current = v;
+    if (frame.current !== null) return;
+    frame.current = requestAnimationFrame(() => {
+      if (nextVal.current != null) setLocal(nextVal.current);
+      frame.current = null;
+    });
+  }, []);
+
+  React.useEffect(() => () => {
+    if (frame.current) cancelAnimationFrame(frame.current);
+  }, []);
+
   return (
     <div className={`value-slider ${className ?? ''}`}>
       <Slider
@@ -36,7 +52,10 @@ export default function ValueSlider({
         max={max}
         step={step}
         value={[local]}
-        onValueChange={([v]) => { setLocal(v); setDragging(true); }}
+        onPointerDown={(e: any) => {
+          try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch {}
+        }}
+        onValueChange={([v]) => { setSmooth(v); setDragging(true); }}
         onValueCommit={commit}
         aria-label={ariaLabel}
         className="mood-slider"

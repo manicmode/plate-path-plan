@@ -8,6 +8,9 @@ import { Heart, Zap, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
+import { energyEmojiFromScore, EnergyMode } from '@/utils/energy';
+import EmojiPicker from '@/components/checkin/EmojiPicker';
+import { Popover } from '@/components/ui/popover';
 
 const MOOD_EMOJIS = ['😢', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩', '🥳', '😍'];
 const WELLNESS_EMOJIS = ['🤒', '😷', '😴', '😐', '🙂', '😊', '💪', '✨', '🌟', '🚀'];
@@ -25,6 +28,10 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingLog, setExistingLog] = useState<any>(null);
+  const [energyEmojiOverride, setEnergyEmojiOverride] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const energyMode: EnergyMode = energyEmojiOverride ? 'override' : 'auto';
+  const energyEmoji = energyEmojiOverride ?? energyEmojiFromScore(energy);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -55,6 +62,8 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
         setEnergy(data.energy || 5);
         setWellness(data.wellness || 5);
         setNotes(data.journal_text || '');
+        // No schema for energy emoji yet; default to auto
+        setEnergyEmojiOverride(null);
       }
     } catch (error) {
       console.error('Error loading mood log:', error);
@@ -75,6 +84,16 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
         energy: energy,
         wellness: wellness,
         journal_text: notes.trim() || null,
+      };
+
+      // Client analytics payload including energy emoji + mode (no schema change)
+      const clientPayload = {
+        user_id: user.id,
+        date: today,
+        mood,
+        energy: { score: energy, emoji: energyEmoji, mode: energyMode },
+        wellness,
+        notes: notes.trim() || null,
       };
 
       const { error } = await supabase
@@ -153,12 +172,29 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                   <span aria-hidden className="ml-2 text-muted-foreground">{energy}/10</span>
                 </span>
               </div>
-              <ValueSlider 
-                value={energy} 
-                onChange={setEnergy} 
-                ariaLabel="Energy" 
-                className="mb-6" 
-              />
+              <div className="space-y-3">
+                <div className="text-center">
+                  <EmojiPicker
+                    open={pickerOpen}
+                    onOpenChange={setPickerOpen}
+                    onSelect={(e) => setEnergyEmojiOverride(e)}
+                    onAuto={() => setEnergyEmojiOverride(null)}
+                    currentEmoji={energyEmoji}
+                  />
+                  {energyMode === 'override' && (
+                    <span className="ml-1 align-top text-xs text-muted-foreground" aria-hidden>•</span>
+                  )}
+                  <span className="sr-only">
+                    <button aria-label={`Energy emoji, ${energyMode === 'auto' ? `Auto (${energyEmoji})` : `Override (${energyEmoji})`}`} />
+                  </span>
+                </div>
+                <ValueSlider 
+                  value={energy} 
+                  onChange={setEnergy} 
+                  ariaLabel="Energy" 
+                  className="mb-6" 
+                />
+              </div>
             </CardContent>
           </Card>
 
