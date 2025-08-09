@@ -144,24 +144,6 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     return aiValue || formFallback || 'Not set';
   };
 
-  const getSourceLabel = (field: string, aiValue: any) => {
-    if (isManualOverride && manualTargets?.[field] !== undefined) {
-      return 'Manual override';
-    }
-    return aiValue ? 'From daily targets' : null;
-  };
-
-  const renderValue = (val: any, unit?: string) => {
-    const isNum = typeof val === 'number' && Number.isFinite(val);
-    if (!isNum) return <span>Not set</span>;
-    return (
-      <span className="inline-flex items-baseline gap-1">
-        <span className="min-w-[3ch] text-right">{val}</span>
-        {unit ? <span className="text-sm text-muted-foreground">{unit}</span> : null}
-      </span>
-    );
-  };
-
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '200ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
@@ -209,291 +191,270 @@ withStabilizedViewport(() => onEditToggle());
             )}
           </div>
         )}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Calories</Label>
+        <div className="flex flex-col">
+          {/* Calories */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Calories</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.calories || ''}
                   onChange={(e) => handleInputChange('calories', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="5000"
                 />
-                {errors.calories && (
-                  <div className="text-xs text-red-500">{errors.calories}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-emerald-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-emerald-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>
                   {getDisplayValue('calories', dailyTargets?.calories, formData.targetCalories)}
-                </div>
-                {getSourceLabel('calories', dailyTargets?.calories) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('calories', dailyTargets?.calories)}</div>
-                )}
-              </>
+                </span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Protein (g)</Label>
+          {errors.calories && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.calories}</div>
+          )}
+
+          {/* Protein */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Protein</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.protein || ''}
                   onChange={(e) => handleInputChange('protein', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="300"
                 />
-                {errors.protein && (
-                  <div className="text-xs text-red-500">{errors.protein}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-blue-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('protein', dailyTargets?.protein, formData.targetProtein), 'g')}
-                </div>
-                {getSourceLabel('protein', dailyTargets?.protein) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('protein', dailyTargets?.protein)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-blue-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('protein', dailyTargets?.protein, formData.targetProtein)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Carbs (g)</Label>
+          {errors.protein && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.protein}</div>
+          )}
+
+          {/* Carbs */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Carbs</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.carbs || ''}
                   onChange={(e) => handleInputChange('carbs', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="1000"
                 />
-                {errors.carbs && (
-                  <div className="text-xs text-red-500">{errors.carbs}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-green-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('carbs', dailyTargets?.carbs, formData.targetCarbs), 'g')}
-                </div>
-                {getSourceLabel('carbs', dailyTargets?.carbs) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('carbs', dailyTargets?.carbs)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-green-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('carbs', dailyTargets?.carbs, formData.targetCarbs)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Fat (g)</Label>
+          {errors.carbs && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.carbs}</div>
+          )}
+
+          {/* Fat */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fat</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.fat || ''}
                   onChange={(e) => handleInputChange('fat', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="300"
                 />
-                {errors.fat && (
-                  <div className="text-xs text-red-500">{errors.fat}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-yellow-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('fat', dailyTargets?.fat, formData.targetFat), 'g')}
-                </div>
-                {getSourceLabel('fat', dailyTargets?.fat) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('fat', dailyTargets?.fat)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-yellow-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('fat', dailyTargets?.fat, formData.targetFat)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Fiber (g)</Label>
+          {errors.fat && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.fat}</div>
+          )}
+
+          {/* Fiber */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fiber</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.fiber || ''}
                   onChange={(e) => handleInputChange('fiber', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="100"
                 />
-                {errors.fiber && (
-                  <div className="text-xs text-red-500">{errors.fiber}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-orange-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('fiber', dailyTargets?.fiber), 'g')}
-                </div>
-                {getSourceLabel('fiber', dailyTargets?.fiber) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('fiber', dailyTargets?.fiber)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-orange-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('fiber', dailyTargets?.fiber)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sugar (g)</Label>
+          {errors.fiber && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.fiber}</div>
+          )}
+
+          {/* Sugar */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sugar</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.sugar || ''}
                   onChange={(e) => handleInputChange('sugar', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="200"
                 />
-                {errors.sugar && (
-                  <div className="text-xs text-red-500">{errors.sugar}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-pink-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('sugar', dailyTargets?.sugar), 'g')}
-                </div>
-                {getSourceLabel('sugar', dailyTargets?.sugar) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('sugar', dailyTargets?.sugar)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-pink-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('sugar', dailyTargets?.sugar)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sodium (mg)</Label>
+          {errors.sugar && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.sugar}</div>
+          )}
+
+          {/* Sodium */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sodium</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.sodium || ''}
                   onChange={(e) => handleInputChange('sodium', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="5000"
                 />
-                {errors.sodium && (
-                  <div className="text-xs text-red-500">{errors.sodium}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-red-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('sodium', dailyTargets?.sodium), 'mg')}
-                </div>
-                {getSourceLabel('sodium', dailyTargets?.sodium) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('sodium', dailyTargets?.sodium)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-red-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('sodium', dailyTargets?.sodium)}</span>
+                <span className="text-xs text-muted-foreground">mg</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sat Fat (g)</Label>
+          {errors.sodium && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.sodium}</div>
+          )}
+
+          {/* Sat Fat */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sat Fat</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.saturated_fat || ''}
                   onChange={(e) => handleInputChange('saturated_fat', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="100"
                 />
-                {errors.saturated_fat && (
-                  <div className="text-xs text-red-500">{errors.saturated_fat}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-purple-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('saturated_fat', dailyTargets?.saturated_fat), 'g')}
-                </div>
-                {getSourceLabel('saturated_fat', dailyTargets?.saturated_fat) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('saturated_fat', dailyTargets?.saturated_fat)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-purple-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('saturated_fat', dailyTargets?.saturated_fat)}</span>
+                <span className="text-xs text-muted-foreground">g</span>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Hydration (ml)</Label>
+          {errors.saturated_fat && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.saturated_fat}</div>
+          )}
+
+          {/* Hydration */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Hydration</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.hydration_ml || ''}
                   onChange={(e) => handleInputChange('hydration_ml', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="8000"
                 />
-                {errors.hydration_ml && (
-                  <div className="text-xs text-red-500">{errors.hydration_ml}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-cyan-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {isManualOverride && manualTargets?.hydration_ml
-                    ? renderValue(manualTargets.hydration_ml, 'ml')
-                    : dailyTargets?.hydration_ml
-                      ? renderValue(Math.round(dailyTargets.hydration_ml / 240), 'glasses')
-                      : renderValue(formData.targetHydration || ('Not set' as any), 'glasses')
-                  }
-                </div>
-                {getSourceLabel('hydration_ml', dailyTargets?.hydration_ml) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('hydration_ml', dailyTargets?.hydration_ml)}</div>
+              <div className="flex items-baseline gap-1 justify-end">
+                {isManualOverride && manualTargets?.hydration_ml ? (
+                  <>
+                    <span className={`text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{manualTargets.hydration_ml}</span>
+                    <span className="text-xs text-muted-foreground">ml</span>
+                  </>
+                ) : dailyTargets?.hydration_ml ? (
+                  <>
+                    <span className={`text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{Math.round(dailyTargets.hydration_ml / 240)}</span>
+                    <span className="text-xs text-muted-foreground">glasses</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={`text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{formData.targetHydration || 'Not set'}</span>
+                    <span className="text-xs text-muted-foreground">glasses</span>
+                  </>
                 )}
-              </>
+              </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Supplements</Label>
+          {errors.hydration_ml && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.hydration_ml}</div>
+          )}
+
+          {/* Supplements */}
+          <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
+            <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Supplements</div>
             {isEditing && isManualOverride ? (
-              <div className="space-y-1">
+              <div className="flex items-center justify-end gap-2">
                 <Input
                   type="number"
                   value={manualTargets?.supplement_count || ''}
                   onChange={(e) => handleInputChange('supplement_count', e.target.value)}
-                  className="h-8"
+                  className="h-8 w-24 text-right"
                   min="0"
                   max="20"
                 />
-                {errors.supplement_count && (
-                  <div className="text-xs text-red-500">{errors.supplement_count}</div>
-                )}
               </div>
             ) : (
-              <>
-                <div className={`text-2xl font-bold text-indigo-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {renderValue(getDisplayValue('supplement_count', dailyTargets?.supplement_count, formData.targetSupplements))}
-                </div>
-                {getSourceLabel('supplement_count', dailyTargets?.supplement_count) && (
-                  <div className="text-xs text-muted-foreground">{getSourceLabel('supplement_count', dailyTargets?.supplement_count)}</div>
-                )}
-              </>
+              <div className="flex items-baseline gap-1 justify-end">
+                <span className={`text-2xl font-bold text-indigo-600 min-w-[2ch] text-right ${isMobile ? 'text-lg' : 'text-2xl'}`}>{getDisplayValue('supplement_count', dailyTargets?.supplement_count, formData.targetSupplements)}</span>
+              </div>
             )}
           </div>
+          {errors.supplement_count && (
+            <div className="col-span-2 text-xs text-red-500 mt-1">{errors.supplement_count}</div>
+          )}
         </div>
       </CardContent>
     </Card>
