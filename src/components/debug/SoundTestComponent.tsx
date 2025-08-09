@@ -153,7 +153,7 @@ export const SoundTestComponent: React.FC = () => {
                   <div className="text-xs text-muted-foreground">{sound.description}</div>
                 </div>
                 <Button
-                  onClick={sound.action}
+                  onClick={() => void sound.action()}
                   variant="outline"
                   size="sm"
                   disabled={!isEnabled}

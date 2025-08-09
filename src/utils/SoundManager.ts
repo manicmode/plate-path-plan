@@ -629,7 +629,17 @@ class SoundManager {
 export const soundManager = new SoundManager();
 
 // Convenience functions for common sound triggers
-export const playAIThought = () => soundManager.play('ai_thought');
+export function playAIThought(): Promise<void>;
+export function playAIThought(playbackRate: number): Promise<void>;
+export function playAIThought(options: { playbackRate?: number; detune?: number }): Promise<void>;
+export function playAIThought(arg?: number | { playbackRate?: number; detune?: number }): Promise<void> {
+  const opts =
+    typeof arg === 'number'
+      ? { playbackRate: arg }
+      : { playbackRate: arg?.playbackRate ?? 1.0, detune: arg?.detune };
+  // Forward to SoundManager; detune is accepted here for compatibility even if ignored by current implementation
+  return soundManager.play('ai_thought', opts as any);
+}
 export const playBodyScanCapture = () => soundManager.play('body_scan_camera');
 export const playChallengeWin = () => soundManager.play('challenge_win');
 export const playFoodLogConfirm = () => soundManager.play('food_log_confirm');
