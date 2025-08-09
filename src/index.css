@@ -1398,6 +1398,7 @@
   .AppScrollRoot { overflow: auto; overscroll-behavior: contain; will-change: scroll-position; }
   .ProfilePageRoot { overflow-anchor: none; overscroll-behavior: contain; }
   .ProfileCard { min-height: 56px; }
+  .ProfileHeader { backface-visibility: hidden; transform: translateZ(0); will-change: opacity, transform; contain: paint; }
 
   /* Identity card overlay to prevent layout shift */
   .IdentityCard { position: relative; overflow: hidden; min-height: 220px; height: 220px; }
