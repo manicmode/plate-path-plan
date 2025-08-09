@@ -29,6 +29,7 @@ import { AvatarHeroCard } from '@/components/profile/AvatarHeroCard';
 import { HealthGoalSettings } from '@/components/profile/HealthGoalSettings';
 import { ContactSync } from '@/components/profile/ContactSync';
 import { FollowStatsCard } from '@/components/social/FollowStatsCard';
+import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
@@ -132,7 +133,7 @@ const ProfileContent = () => {
     }
   }, [location]);
 
-    
+  const handleSave = async () => {
     // Update profile in Supabase
     if (user?.id) {
       try {
@@ -144,27 +145,18 @@ const ProfileContent = () => {
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
-        
         if (error) {
           console.error('Error updating profile:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save profile changes.",
-            variant: "destructive"
-          });
+          toast({ title: 'Error', description: 'Failed to save profile changes.', variant: 'destructive' });
           return;
         }
-      } catch (error) {
-        console.error('Error updating profile:', error);
-        toast({
-          title: "Error", 
-          description: "Failed to save profile changes.",
-          variant: "destructive"
-        });
+      } catch (err) {
+        console.error('Error updating profile:', err);
+        toast({ title: 'Error', description: 'Failed to save profile changes.', variant: 'destructive' });
         return;
       }
     }
-    
+
     updateProfile({
       first_name: formData.first_name,
       last_name: formData.last_name,
@@ -174,18 +166,14 @@ const ProfileContent = () => {
       targetFat: Number(formData.targetFat),
       targetHydration: Number(formData.targetHydration),
       targetSupplements: Number(formData.targetSupplements),
-      allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
+      allergies: formData.allergies.split(',').map(a => a.trim()).filter(Boolean),
       dietaryGoals: formData.dietaryGoals,
     });
-    
-    // Update selected trackers - this will trigger localStorage and user state updates
+
     await updateSelectedTrackers(formData.selectedTrackers);
-    
+
     setIsEditing(false);
-    toast({
-      title: "Profile Updated!",
-      description: "Changes will appear on the home page.",
-    });
+    toast({ title: 'Profile Updated!', description: 'Changes will appear on the home page.' });
   };
 
   const handleCancel = () => {
