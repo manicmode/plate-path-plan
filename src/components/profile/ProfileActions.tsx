@@ -32,16 +32,7 @@ export const ProfileActions = ({ isEditing, onSave, onCancel }: ProfileActionsPr
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          
-          // Store current scroll position
-          const currentScrollY = window.scrollY;
-          
-          onCancel();
-          
-          // Restore scroll position after DOM update
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-          });
+          lockViewportDuring(() => onCancel());
         }}
         className={`${isMobile ? 'w-full h-12' : ''} glass-button border-0`}
         style={{ touchAction: 'manipulation' }}

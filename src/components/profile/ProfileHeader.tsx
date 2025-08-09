@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface User {
   name?: string;
@@ -51,7 +52,7 @@ export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderPr
       </div>
       <Button
         variant={isEditing ? "default" : "outline"}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY); }}
+        onClick={() => lockViewportDuring(() => onEditToggle())}
         size={isMobile ? "sm" : "default"}
         className={isMobile ? 'px-3' : ''}
       >
