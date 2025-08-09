@@ -29,11 +29,9 @@ export const useXPSystem = () => {
     }
 
     try {
-      console.info(`🎯 Awarding ${amount + bonusXP} XP for: ${reason}`);
-
+      
       // Route nutrition-related awards through the canonical wrapper to enforce base_xp & cooldowns
       if (activityType === 'nutrition' || activityType === 'hydration' || activityType === 'supplement') {
-        console.info('[XP] Routing via award_nutrition_xp to prevent rogue base_xp');
         const { error } = await supabase.rpc('award_nutrition_xp', {
           p_user_id: user.id,
           p_activity_type: activityType,
@@ -124,8 +122,6 @@ export const useXPSystem = () => {
     if (!user?.id) return false;
 
     try {
-      console.info(`🧘 Awarding recovery XP for ${recoveryType} session (${durationMinutes}min)`);
-      
       const { error } = await supabase.rpc('award_recovery_xp', {
         p_user_id: user.id,
         p_recovery_type: recoveryType,

@@ -1371,10 +1371,12 @@ const Home = () => {
         <LevelProgressBar />
       </div>
 
-      {/* XP System Demo Card */}
-      <div className="px-4 sm:px-6 mb-6">
-        <XPDemoCard />
-      </div>
+      {/* XP System Demo Card (dev only) */}
+      {!import.meta.env.PROD && (
+        <div className="px-4 sm:px-6 mb-6">
+          <XPDemoCard />
+        </div>
+      )}
 
       {/* Daily Check-In Home Tab */}
       <div className="px-2 sm:px-4 mb-3">
