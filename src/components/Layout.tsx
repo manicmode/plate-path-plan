@@ -117,8 +117,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content with adjusted padding for explore page */}
       <main
-        id="AppScrollRoot"
-        className={`AppScrollRoot max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
+        className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
           shouldShowNavigation ? (
             isExplorePage 
               ? 'pb-20' // Reduced padding for explore page

@@ -62,9 +62,6 @@ export function withStabilizedViewport<T>(fn: () => T): T {
   doc.style.overflow = "hidden";
   body.style.overflow = "hidden";
 
-  if (import.meta.env.DEV) {
-    console.log("[Viewport Stabilizer] before", window.scrollX, window.scrollY);
-  }
 
   const result = fn();
 
@@ -78,9 +75,6 @@ export function withStabilizedViewport<T>(fn: () => T): T {
       restoreNow();
       state.unsubs.forEach((u) => u());
 
-      if (import.meta.env.DEV) {
-        console.log("[Viewport Stabilizer] after", window.scrollX, window.scrollY);
-      }
     });
   });
 

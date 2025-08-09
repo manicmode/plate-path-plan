@@ -1,0 +1,6 @@
+/* Profile-only scroll container to isolate scroll stabilization */
+.AppScrollRoot {
+  overflow: auto;
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
