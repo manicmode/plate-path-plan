@@ -4932,7 +4932,9 @@ export type Database = {
         Returns: undefined
       }
       apply_daily_cap: {
-        Args: { p_user_id: string; p_total_award: number; p_client_tz?: string }
+        Args:
+          | { p_user_id: string; p_proposed_xp: number }
+          | { p_user_id: string; p_total_award: number; p_client_tz?: string }
         Returns: number
       }
       assign_monthly_recovery_rankings: {
