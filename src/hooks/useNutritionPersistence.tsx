@@ -83,12 +83,18 @@ export const useNutritionPersistence = () => {
 
       console.log('🔍 Full insert data object:', insertData);
 
+      if (import.meta.env.DEV) {
+        console.log('[DEV][useNutritionPersistence.saveFood] nutrition_logs.insert payload', insertData);
+      }
+
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert(insertData)
         .select();
 
-      console.log('🔍 Supabase insert result:', { data, error });
+      if (import.meta.env.DEV) {
+        console.log('[DEV][useNutritionPersistence.saveFood] nutrition_logs.insert result', { data, error });
+      }
       
       if (error) {
         console.error('🚨 Database insert error details:', {
@@ -97,6 +103,10 @@ export const useNutritionPersistence = () => {
           hint: error.hint,
           code: error.code
         });
+        if (import.meta.env.DEV) {
+          console.log('[DEV][useNutritionPersistence.saveFood] insert error raw', error);
+          console.log('[DEV][useNutritionPersistence.saveFood] error status', { status: (error as any)?.status, statusText: (error as any)?.statusText });
+        }
         throw error;
       }
       console.log('✅ Food saved to database successfully:', food.name);

@@ -1594,23 +1594,29 @@ const CameraPage = () => {
         });
 
         // Persist to Supabase nutrition_logs table
+        const payload = {
+          user_id: user?.id,
+          food_name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          fiber: food.fiber,
+          sugar: food.sugar,
+          sodium: food.sodium,
+          confidence: food.confidence,
+          serving_size: food.serving,
+          source: inputSource === 'voice' ? 'voice' : inputSource === 'manual' ? 'manual' : 'vision_api',
+          image_url: selectedImage || null,
+        };
+
+        if (import.meta.env.DEV) {
+          console.log('[DEV][Camera.handleConfirmRecognizedFoods] nutrition_logs.insert payload', payload);
+        }
+
         const { data, error } = await supabase
           .from('nutrition_logs')
-          .insert({
-            user_id: user?.id,
-            food_name: food.name,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            sugar: food.sugar,
-            sodium: food.sodium,
-            confidence: food.confidence,
-            serving_size: food.serving,
-            source: inputSource === 'voice' ? 'voice' : inputSource === 'manual' ? 'manual' : 'vision_api',
-            image_url: selectedImage || null,
-          })
+          .insert(payload)
           .select();
 
         if (error) {

@@ -18,12 +18,25 @@ export const MealScoringTestComponent = () => {
   const loadRecentMeals = async () => {
     if (!user) return;
     
-    const { data } = await supabase
+    if (import.meta.env.DEV) {
+      console.log('[DEV][MealScoringTestComponent.loadRecentMeals] Query nutrition_logs select', {
+        select: 'id, food_name, created_at',
+        filters: { user_id: user.id },
+        order: { created_at: 'desc' },
+        limit: 5,
+      });
+    }
+    
+    const { data, error } = await supabase
       .from('nutrition_logs')
       .select('id, food_name, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(5);
+    
+    if (import.meta.env.DEV) {
+      console.log('[DEV][MealScoringTestComponent.loadRecentMeals] Result', { count: data?.length || 0, error });
+    }
     
     setRecentMeals(data || []);
   };
@@ -48,28 +61,38 @@ export const MealScoringTestComponent = () => {
     
     setIsLoading(true);
     try {
+      const payload = {
+        user_id: user.id,
+        food_name: 'Test Meal - Ultra Processed Snack',
+        calories: 250,
+        protein: 3,
+        carbs: 35,
+        fat: 12,
+        fiber: 1,
+        sugar: 18,
+        sodium: 420,
+        processing_level: 'ultra-processed',
+        ingredient_analysis: {
+          artificial_sweeteners: true,
+          high_sodium: true,
+          preservatives: true,
+          flagged_ingredients: ['artificial colors', 'high fructose corn syrup']
+        }
+      };
+
+      if (import.meta.env.DEV) {
+        console.log('[DEV][MealScoringTestComponent.createTestMeal] nutrition_logs.insert payload', payload);
+      }
+
       const { data, error } = await supabase
         .from('nutrition_logs')
-        .insert({
-          user_id: user.id,
-          food_name: 'Test Meal - Ultra Processed Snack',
-          calories: 250,
-          protein: 3,
-          carbs: 35,
-          fat: 12,
-          fiber: 1,
-          sugar: 18,
-          sodium: 420,
-          processing_level: 'ultra-processed',
-          ingredient_analysis: {
-            artificial_sweeteners: true,
-            high_sodium: true,
-            preservatives: true,
-            flagged_ingredients: ['artificial colors', 'high fructose corn syrup']
-          }
-        })
+        .insert(payload)
         .select()
         .single();
+
+      if (import.meta.env.DEV) {
+        console.log('[DEV][MealScoringTestComponent.createTestMeal] insert result', { data, error });
+      }
 
       if (error) throw error;
       
