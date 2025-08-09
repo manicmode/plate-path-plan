@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   /* Add breathing room from the top and respect safe areas */
-  padding-top: calc(env(safe-area-inset-top) + 16px);
+  padding-top: calc(env(safe-area-inset-top) + 24px);
   /* Keep a small bottom padding while respecting the home indicator */
   padding-bottom: calc(env(safe-area-inset-bottom) + 6px);
 }
@@ -16,7 +16,7 @@
   display: grid;
   grid-auto-rows: min-content;
   row-gap: 10px; /* was 16–20 */
-  padding-block: 8px; /* was 16–24 */
+  padding-block: 12px 6px; /* top more, bottom tighter */
   padding-inline: 12px;
 }
 
@@ -55,12 +55,12 @@
 
 /* Make slider thumbs larger and easier to grab (scoped to Check-In) */
 .checkin-slider [role="slider"] {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 .checkin-slider [role="slider"]::after {
   /* Increase invisible hit area for touch */
-  inset: -16px !important;
+  inset: -18px !important;
 }
 
 /* Notes area */
@@ -82,11 +82,11 @@
   .checkin-notes { min-height: 52px; }
   .checkin-footer { padding-block: 8px; }
   .checkin-content { row-gap: 8px; }
-  .checkin-modal { padding-top: calc(env(safe-area-inset-top) + 12px); }
+  .checkin-modal { padding-top: calc(env(safe-area-inset-top) + 16px); }
 }
 
 /* Allow content scroll on very small heights but keep footer visible */
 @media (max-height: 640px) {
   .checkin-content { overflow: auto; }
-  .checkin-modal { padding-top: calc(env(safe-area-inset-top) + 8px); }
+  .checkin-modal { padding-top: calc(env(safe-area-inset-top) + 12px); }
 }
