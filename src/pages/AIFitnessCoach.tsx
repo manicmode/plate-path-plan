@@ -589,6 +589,8 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                 key={chip.id}
                 variant="outline"
                 onClick={() => { 
+                  window.dispatchEvent(new Event('coach:scrollToChat'));
+                  if (chatCardRef.current) scrollToAlignTop(chatCardRef.current);
                   console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'exercise', chipId: chip.id, usingContext: useMyData }));
                   handlePromptClick(chip.message);
                 }}

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { scrollToAlignTop } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -45,9 +46,18 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     }
   }, [messages]);
 
+  // Align chat to top on chip taps or programmatic requests
+  useEffect(() => {
+    const cb = () => scrollToAlignTop(chatContainerRef.current, { reassertDelayMs: 140 });
+    window.addEventListener('coach:scrollToChat', cb as any);
+    return () => window.removeEventListener('coach:scrollToChat', cb as any);
+  }, []);
+
   // Listen for programmatic sends from SkillPanel/CommandBar
   useEffect(() => {
     const handler = (e: Event) => {
+      // Ensure chat is aligned before sending
+      scrollToAlignTop(chatContainerRef.current, { reassertDelayMs: 140 });
       const raw = (e as CustomEvent).detail as any;
       let text = '' as string;
       let chipId: string | undefined = undefined;
@@ -157,7 +167,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   };
 
   return (
-    <Card className="glass-card border-0 rounded-3xl">
+    <Card ref={chatContainerRef} className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <div className="flex items-center justify-between">
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
