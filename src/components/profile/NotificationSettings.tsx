@@ -15,6 +15,7 @@ import { useSleepNudges } from '@/hooks/useSleepNudges';
 import { useThermotherapyNudges } from '@/hooks/useThermotherapyNudges';
 import { toast } from 'sonner';
 import SectionCollapsible from '@/components/ui/SectionCollapsible';
+import SubCollapsible from '@/components/ui/SubCollapsible';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
@@ -28,8 +29,8 @@ export const NotificationSettings = () => {
   const { nudgePreferences: thermotherapyNudgePreferences, updateNudgePreferences: updateThermotherapyNudgePreferences } = useThermotherapyNudges();
 
   const params = new URLSearchParams(window.location.search);
-  const deepOpen = params.get("open") === "notifications" || window.location.hash === "#notifications";
-
+  const openMain = params.get("open") === "notifications" || window.location.hash.startsWith("#notifications");
+  const subKey = (window.location.hash.split(":")[1] || params.get("sub")) ?? "";
   const smartCoachNotifications = [
     { 
       key: 'mealReminders', 
@@ -240,9 +241,10 @@ export const NotificationSettings = () => {
           </div>
         )}
 
-        <SectionCollapsible startOpen={deepOpen} storageKey="profile.smartNotifications.open" className="rounded-2xl" title="Smart Notifications">
-          {/* Smart Coach Notifications */}
-        <div className="space-y-4">
+        <SectionCollapsible title="Smart Notifications" startOpen={openMain} storageKey="profile.notifications.main" className="rounded-2xl">
+          <div className="space-y-3">
+        <SubCollapsible title="Smart Coach Notifications" startOpen={openMain && subKey === 'smartCoach'} storageKey="profile.notifications.smartCoach">
+          <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <Brain className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-600`} />
             <span>Smart Coach Notifications</span>
@@ -269,9 +271,11 @@ export const NotificationSettings = () => {
             ))}
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Meditation Nudges */}
-        <div className="space-y-4">
+        <SubCollapsible title="Meditation Nudges" startOpen={openMain && subKey === 'meditation'} storageKey="profile.notifications.meditation">
+          <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <span className="text-lg">🧘</span>
             <span>Meditation Nudges</span>
@@ -298,9 +302,11 @@ export const NotificationSettings = () => {
             ))}
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Sleep Nudges */}
-        <div className="bg-gradient-to-r from-slate-800/40 to-blue-900/40 p-6 rounded-lg border border-white/20 backdrop-blur-sm">
+        <SubCollapsible title="Sleep Optimization" startOpen={openMain && subKey === 'sleep'} storageKey="profile.notifications.sleep">
+          <div className="bg-gradient-to-r from-slate-800/40 to-blue-900/40 p-6 rounded-lg border border-white/20 backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-r from-slate-600 via-blue-700 to-indigo-800 rounded-lg flex items-center justify-center">
               <Moon className="h-5 w-5 text-white" />
@@ -335,9 +341,11 @@ export const NotificationSettings = () => {
             </div>
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Thermotherapy Nudges */}
-        <div className="bg-gradient-to-r from-blue-900/20 to-red-900/20 p-6 rounded-lg border border-orange-500/30">
+        <SubCollapsible title="Cold & Heat Therapy" startOpen={openMain && subKey === 'thermal'} storageKey="profile.notifications.thermal">
+          <div className="bg-gradient-to-r from-blue-900/20 to-red-900/20 p-6 rounded-lg border border-orange-500/30">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-red-600 rounded-lg flex items-center justify-center">
               🔥❄️
@@ -372,9 +380,11 @@ export const NotificationSettings = () => {
             </div>
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Breathing Nudges */}
-        <div className="space-y-4">
+        <SubCollapsible title="Breathing Nudges" startOpen={openMain && subKey === 'breathing'} storageKey="profile.notifications.breathing">
+          <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <Wind className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-cyan-600`} />
             <span>Breathing Nudges</span>
@@ -416,9 +426,11 @@ export const NotificationSettings = () => {
             </div>
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Yoga Nudges */}
-        <div className="space-y-4">
+        <SubCollapsible title="Yoga Nudges" startOpen={openMain && subKey === 'yoga'} storageKey="profile.notifications.yoga">
+          <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <span className="text-lg">🧘‍♀️</span>
             <span>Yoga Nudges</span>
@@ -477,9 +489,11 @@ export const NotificationSettings = () => {
             </div>
           </div>
         </div>
+        </SubCollapsible>
 
         {/* General Notification Types */}
-        <div className="space-y-4">
+        <SubCollapsible title="General Notifications" startOpen={openMain && subKey === 'general'} storageKey="profile.notifications.general">
+          <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
             General Notifications
           </h4>
@@ -502,9 +516,11 @@ export const NotificationSettings = () => {
             ))}
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Frequency Settings */}
-        <div className="space-y-3">
+        <SubCollapsible title="Frequency" startOpen={openMain && subKey === 'frequency'} storageKey="profile.notifications.frequency">
+          <div className="space-y-3">
           <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
             Frequency
           </h4>
@@ -518,9 +534,11 @@ export const NotificationSettings = () => {
             </SelectContent>
           </Select>
         </div>
+        </SubCollapsible>
 
         {/* Sound Effects */}
-        <div className="space-y-3">
+        <SubCollapsible title="Sound Effects" startOpen={openMain && subKey === 'sounds'} storageKey="profile.notifications.sounds">
+          <div className="space-y-3">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <Volume2 className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-600`} />
             <span>Sound Effects</span>
@@ -540,9 +558,11 @@ export const NotificationSettings = () => {
             />
           </div>
         </div>
+        </SubCollapsible>
 
         {/* Quiet Hours */}
-        <div className="space-y-3">
+        <SubCollapsible title="Quiet Hours" startOpen={openMain && subKey === 'quietHours'} storageKey="profile.notifications.quietHours">
+          <div className="space-y-3">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <Clock className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
             <span>Quiet Hours</span>
@@ -592,6 +612,8 @@ export const NotificationSettings = () => {
           <p className={`text-gray-500 dark:text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>
             No notifications will be sent during these hours
           </p>
+        </div>
+        </SubCollapsible>
         </div>
       </SectionCollapsible>
       </CardContent>
