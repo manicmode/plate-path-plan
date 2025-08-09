@@ -30,6 +30,27 @@ export const useXPSystem = () => {
 
     try {
       console.info(`🎯 Awarding ${amount + bonusXP} XP for: ${reason}`);
+
+      // Route nutrition-related awards through the canonical wrapper to enforce base_xp & cooldowns
+      if (activityType === 'nutrition' || activityType === 'hydration' || activityType === 'supplement') {
+        console.info('[XP] Routing via award_nutrition_xp to prevent rogue base_xp');
+        const { error } = await supabase.rpc('award_nutrition_xp', {
+          p_user_id: user.id,
+          p_activity_type: activityType,
+          p_activity_id: activityId || null
+        });
+
+        if (error) {
+          console.error('Nutrition XP Award Error (routed):', error);
+          return false;
+        }
+
+        // Trigger level check for potential level-up (if available)
+        if (triggerLevelCheck) {
+          await triggerLevelCheck();
+        }
+        return true;
+      }
       
       const { error } = await supabase.rpc('add_user_xp', {
         p_user_id: user.id,

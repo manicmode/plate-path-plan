@@ -42,6 +42,9 @@ serve(async (req) => {
 
     // Parse request body
     const { user_id, activity_type, activity_id } = await req.json()
+    console.log('[XP] nutrition_wrapper invoke', JSON.stringify({
+      source: 'nutrition_wrapper', user_id, activity_type, activity_id, ts: Date.now()
+    }))
 
     if (!user_id || !activity_type) {
       return new Response(
