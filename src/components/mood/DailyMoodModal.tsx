@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { energyEmojiFromScore, EnergyMode } from '@/utils/energy';
 import EmojiPicker from '@/components/checkin/EmojiPicker';
-import { Popover } from '@/components/ui/popover';
+import '@/styles/checkin.css';
 
 const MOOD_EMOJIS = ['😢', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩', '🥳', '😍'];
 const WELLNESS_EMOJIS = ['🤒', '😷', '😴', '😐', '🙂', '😊', '💪', '✨', '🌟', '🚀'];
@@ -30,6 +30,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
   const [existingLog, setExistingLog] = useState<any>(null);
   const [energyEmojiOverride, setEnergyEmojiOverride] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [notesRows, setNotesRows] = useState(2);
   const energyMode: EnergyMode = energyEmojiOverride ? 'override' : 'auto';
   const energyEmoji = energyEmojiOverride ?? energyEmojiFromScore(energy);
 
@@ -128,7 +129,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="mood-modal max-w-md mx-auto rounded-3xl border-0 bg-gradient-to-br from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
+      <DialogContent className="checkin-modal mood-modal max-w-md mx-auto rounded-3xl border-0 bg-gradient-to-br from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent">
             {existingLog ? 'Update Your Daily Check-In' : 'Daily Mood & Wellness Check-In'}

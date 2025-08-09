@@ -1,0 +1,75 @@
+/* Daily Check-In modal compact layout */
+.checkin-modal {
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.checkin-content {
+  flex: 1;
+  overflow: hidden; /* target zero scroll */
+  display: grid;
+  grid-auto-rows: min-content;
+  row-gap: 10px; /* was 16–20 */
+  padding-block: 8px; /* was 16–24 */
+  padding-inline: 12px;
+}
+
+/* Compact card footprint */
+.checkin-card.compact .checkin-inner {
+  padding: 12px 14px !important; /* was ~16–20 */
+}
+.checkin-card.compact .checkin-title {
+  line-height: 1.1;
+}
+
+/* Emoji sizing */
+.checkin-modal .checkin-emoji {
+  display: inline-block;
+  font-size: clamp(28px, 3.6vw, 32px);
+  line-height: 1;
+}
+/* Energy emoji picker trigger */
+.checkin-modal .checkin-emoji-button,
+.checkin-modal .checkin-emoji-button button {
+  font-size: clamp(28px, 3.6vw, 32px);
+  line-height: 1;
+}
+
+/* Slider vertical margins and bubble size */
+.checkin-slider .mood-slider {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  touch-action: none; /* prevent page scroll stealing gestures */
+}
+.checkin-modal .value-bubble span {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+/* Notes area */
+.checkin-notes {
+  min-height: 56px; /* ~2 rows */
+}
+
+/* Footer buttons area */
+.checkin-footer {
+  padding: 8px 12px;
+  display: grid;
+  grid-auto-rows: min-content;
+  row-gap: 6px; /* compact gap */
+}
+
+/* Tighter for short viewports */
+@media (max-height: 740px) {
+  .checkin-card.compact .checkin-inner { padding: 10px 12px !important; }
+  .checkin-notes { min-height: 52px; }
+  .checkin-footer { padding-block: 8px; }
+  .checkin-content { row-gap: 8px; }
+}
+
+/* Allow content scroll on very small heights but keep footer visible */
+@media (max-height: 640px) {
+  .checkin-content { overflow: auto; }
+}
