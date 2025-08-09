@@ -36,7 +36,8 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   const [useMyData, setUseMyData] = useState(true);
   const [isContextLoading, setIsContextLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   // 🎮 Coach Gamification System
   const { trackInteraction } = useCoachInteractions();
 
