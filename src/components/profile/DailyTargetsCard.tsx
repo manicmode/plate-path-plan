@@ -237,104 +237,110 @@ export const DailyTargetsCard = () => {
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-1">
-          {targets.calories && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Calories</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-primary min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.calories)}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+          {/* Column 1 */}
+          <div className="flex flex-col">
+            {targets.calories && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Calories</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-primary min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.calories)}</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.protein && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Protein</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-blue-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.protein)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+            {targets.protein && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Protein</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-blue-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.protein)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.carbs && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Carbs</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-green-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.carbs)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+            {targets.carbs && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Carbs</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-green-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.carbs)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.fat && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fat</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-yellow-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fat)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+            {targets.fat && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fat</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-yellow-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fat)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.fiber && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fiber</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-orange-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fiber)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+            {targets.fiber && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fiber</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-orange-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fiber)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {targets.sugar && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sugar</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-pink-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sugar)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+          {/* Column 2 */}
+          <div className="flex flex-col">
+            {targets.sugar && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sugar</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-pink-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sugar)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.sodium && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sodium</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-red-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sodium)}</span>
-                <span className="text-xs text-muted-foreground">mg</span>
+            {targets.sodium && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sodium</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-red-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sodium)}</span>
+                  <span className="text-xs text-muted-foreground">mg</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.saturated_fat && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sat Fat</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-purple-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.saturated_fat)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
+            {targets.saturated_fat && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sat Fat</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-purple-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.saturated_fat)}</span>
+                  <span className="text-xs text-muted-foreground">g</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.hydration_ml && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Hydration</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.hydration_ml / 240)}</span>
-                <span className="text-xs text-muted-foreground">glasses</span>
+            {targets.hydration_ml && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Hydration</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.hydration_ml / 240)}</span>
+                  <span className="text-xs text-muted-foreground">glasses</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {targets.supplement_count && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Supplements</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold min-w-[2ch] text-right">{targets.supplement_count}</span>
+            {targets.supplement_count && (
+              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+                <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Supplements</div>
+                <div className="flex items-baseline gap-1 justify-end">
+                  <span className="text-2xl font-bold min-w-[2ch] text-right">{targets.supplement_count}</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="text-xs text-muted-foreground text-center">
