@@ -29,10 +29,55 @@ export const DailyTargetsCard = () => {
   const { user } = useAuth();
   const { generateDailyTargets, ensureUserHasTargets, isGenerating } = useDailyTargetsGeneration();
   const [targets, setTargets] = useState<DailyTarget | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [hasError, setHasError] = useState(false);
   const loadingRef = useRef(false);
+
+  // Top-level helpers and data binding for profile targets
+  const t = profile ?? {};
+
+  const asNumber = (v: unknown) => {
+    if (v === null || v === undefined) return null;
+    const n = typeof v === "string" ? Number(v) : (v as number);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const items = [
+    { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
+    { key: "protein",   label: "Protein (g)",   value: asNumber(t.targetProtein),     unit: "",         color: "text-sky-400" },
+    { key: "carbs",     label: "Carbs (g)",     value: asNumber(t.targetCarbs),       unit: "",         color: "text-green-400" },
+    { key: "fat",       label: "Fat (g)",       value: asNumber(t.targetFat),         unit: "",         color: "text-amber-400" },
+    { key: "fiber",     label: "Fiber (g)",     value: asNumber(t.targetFiber),       unit: "",         color: "text-orange-400" },
+
+    { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
+    { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
+    { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
+    { key: "hydration", label: "Hydration",     value: asNumber(t.targetHydration),   unit: "glasses",  color: "text-cyan-400" },
+    { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
+  ];
+
+  const colA = items.slice(0, 5);
+  const colB = items.slice(5);
+
+  const fmt = (v: number | null) => (v === null ? "Not set" : Intl.NumberFormat().format(v));
+
+  // Dev-only log (remove after verifying)
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DailyTargetsCard] profile targets", {
+      targetCalories: t.targetCalories,
+      targetProtein: t.targetProtein,
+      targetCarbs: t.targetCarbs,
+      targetFat: t.targetFat,
+      targetFiber: t.targetFiber,
+      targetSugar: t.targetSugar,
+      targetSodium: t.targetSodium,
+      targetSatFat: t.targetSatFat,
+      targetHydration: t.targetHydration,
+      targetSupplements: t.targetSupplements,
+    });
+  }
 
   const loadTargets = async () => {
     if (!user?.id || loadingRef.current) return;
@@ -42,14 +87,15 @@ export const DailyTargetsCard = () => {
     setHasError(false);
     
     try {
-      // Check user profile completion
-      const { data: profile } = await supabase
+      // Load user profile with target fields
+      const { data: profileData } = await supabase
         .from('user_profiles')
-        .select('onboarding_completed, age, gender, weight, activity_level')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      setHasProfile(!!profile?.onboarding_completed);
+      setHasProfile(!!profileData?.onboarding_completed);
+      setProfile(profileData || null);
 
       // Get today's targets
       const today = new Date().toISOString().split('T')[0];
@@ -69,7 +115,7 @@ export const DailyTargetsCard = () => {
       setTargets(todayTargets);
 
       // If no targets exist and user has completed profile, try to generate them
-      if (!todayTargets && profile?.onboarding_completed) {
+      if (!todayTargets && profileData?.onboarding_completed) {
         console.log('No targets found for completed profile, attempting to generate...');
         try {
           await ensureUserHasTargets();
@@ -236,108 +282,30 @@ export const DailyTargetsCard = () => {
           )}
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-1">
-          {targets.calories && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Calories</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-primary min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.calories)}</span>
-              </div>
-            </div>
-          )}
-
-          {targets.protein && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Protein</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-blue-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.protein)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.carbs && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Carbs</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-green-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.carbs)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.fat && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fat</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-yellow-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fat)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.fiber && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fiber</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-orange-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fiber)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.sugar && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sugar</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-pink-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sugar)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.sodium && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sodium</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-red-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sodium)}</span>
-                <span className="text-xs text-muted-foreground">mg</span>
-              </div>
-            </div>
-          )}
-
-          {targets.saturated_fat && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sat Fat</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-purple-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.saturated_fat)}</span>
-                <span className="text-xs text-muted-foreground">g</span>
-              </div>
-            </div>
-          )}
-
-          {targets.hydration_ml && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Hydration</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.hydration_ml / 240)}</span>
-                <span className="text-xs text-muted-foreground">glasses</span>
-              </div>
-            </div>
-          )}
-
-          {targets.supplement_count && (
-            <div className="grid grid-cols-[1fr_auto] items-center py-1.5 border-t first:border-t-0 border-border/50">
-              <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Supplements</div>
-              <div className="flex items-baseline gap-1 justify-end">
-                <span className="text-2xl font-bold min-w-[2ch] text-right">{targets.supplement_count}</span>
-              </div>
-            </div>
-          )}
+      <CardContent className="p-4 md:p-5">
+        <div className="mt-3 grid grid-cols-2 gap-x-10 gap-y-2">
+          {[colA, colB].map((col, ci) => (
+            <ul key={ci} className="space-y-1">
+              {col.map(({ key, label, value, unit, color }) => (
+                <li key={key} className="flex items-center justify-between h-6">
+                  <span className="text-[13px] leading-[1.1] text-white/80 whitespace-nowrap truncate pr-3">
+                    {label}
+                  </span>
+                  <span className="inline-flex items-baseline gap-1 tabular-nums">
+                    <span className={`font-semibold ${color} text-[15px] leading-[1.1] min-w-[3ch] text-right`}>
+                      {fmt(value)}
+                    </span>
+                    <span className="text-white/60 text-[12px] leading-[1.1]">
+                      {value === null || !unit ? '' : unit}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ))}
         </div>
 
-        <div className="text-xs text-muted-foreground text-center">
+        <div className="text-xs text-muted-foreground text-center mt-2">
           Last calculated: {new Date(targets.calculated_at).toLocaleDateString()}
         </div>
       </CardContent>
