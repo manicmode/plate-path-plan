@@ -57,7 +57,7 @@ export const useAutomaticToxinDetection = () => {
         }
       )
       .subscribe((status) => {
-        console.log('Nutrition log subscription status:', status);
+        
       });
 
     return () => {

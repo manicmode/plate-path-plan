@@ -112,7 +112,7 @@ interface NutritionProviderProps {
 
 export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const today = getLocalDateString();
-  console.log(`🏠 NutritionProvider initializing with local date: ${today}`);
+  
   
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();

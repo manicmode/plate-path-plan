@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCoachCta } from '@/hooks/useCoachCta';
 import { MessageSquare, CheckCircle, AlertTriangle, Droplets, Utensils, Target } from 'lucide-react';
+import { useSound } from '@/hooks/useSound';
 
 /**
  * Demo component to test Coach CTA functionality
@@ -10,6 +11,14 @@ import { MessageSquare, CheckCircle, AlertTriangle, Droplets, Utensils, Target }
 export const CoachCtaDemo = () => {
   const { sendCoachMessage, getQueueInfo, clearCurrentMessage } = useCoachCta();
   const queueInfo = getQueueInfo();
+  const { playAIThought } = useSound();
+
+  const handleCtaClick = (ctaType: string, ctaText: string) => {
+    console.debug(`[CoachCtaDemo Click] Type: ${ctaType}, Text: "${ctaText}", Timestamp: ${new Date().toISOString()}`);
+    // Play AI thought beep immediately on user click
+    void playAIThought();
+    sendCoachMessage(ctaText);
+  };
 
   const demoMessages = [
     {
@@ -74,10 +83,7 @@ export const CoachCtaDemo = () => {
               key={index}
               variant="outline"
               className="justify-start h-auto p-3"
-              onClick={() => {
-                console.debug('[CoachCtaDemo] Click', { type: demo.label, text: demo.message, timestamp: new Date().toISOString() });
-                sendCoachMessage(demo.message);
-              }}
+              onClick={() => handleCtaClick(demo.label, demo.message)}
             >
               <demo.icon className={`h-4 w-4 mr-2 ${demo.color}`} />
               <div className="text-left">

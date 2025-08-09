@@ -12,7 +12,7 @@ export const getLocalDateString = (date?: Date): string => {
   const day = String(targetDate.getDate()).padStart(2, '0');
   
   const localDateString = `${year}-${month}-${day}`;
-  console.log(`🗓️ Local date string: ${localDateString}`);
+  
   return localDateString;
 };
 
