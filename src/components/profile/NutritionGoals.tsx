@@ -151,6 +151,17 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     return aiValue ? 'From daily targets' : null;
   };
 
+  const renderValue = (val: any, unit?: string) => {
+    const isNum = typeof val === 'number' && Number.isFinite(val);
+    if (!isNum) return <span>Not set</span>;
+    return (
+      <span className="inline-flex items-baseline gap-1">
+        <span className="min-w-[3ch] text-right">{val}</span>
+        {unit ? <span className="text-sm text-muted-foreground">{unit}</span> : null}
+      </span>
+    );
+  };
+
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '200ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
@@ -200,7 +211,7 @@ withStabilizedViewport(() => onEditToggle());
         )}
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Calories</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Calories</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -228,7 +239,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Protein (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Protein (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -246,7 +257,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-blue-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('protein', dailyTargets?.protein, formData.targetProtein)}g
+                  {renderValue(getDisplayValue('protein', dailyTargets?.protein, formData.targetProtein), 'g')}
                 </div>
                 {getSourceLabel('protein', dailyTargets?.protein) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('protein', dailyTargets?.protein)}</div>
@@ -256,7 +267,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Carbs (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Carbs (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -274,7 +285,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-green-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('carbs', dailyTargets?.carbs, formData.targetCarbs)}g
+                  {renderValue(getDisplayValue('carbs', dailyTargets?.carbs, formData.targetCarbs), 'g')}
                 </div>
                 {getSourceLabel('carbs', dailyTargets?.carbs) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('carbs', dailyTargets?.carbs)}</div>
@@ -284,7 +295,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Fat (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Fat (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -302,7 +313,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-yellow-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('fat', dailyTargets?.fat, formData.targetFat)}g
+                  {renderValue(getDisplayValue('fat', dailyTargets?.fat, formData.targetFat), 'g')}
                 </div>
                 {getSourceLabel('fat', dailyTargets?.fat) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('fat', dailyTargets?.fat)}</div>
@@ -312,7 +323,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Fiber (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Fiber (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -330,7 +341,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-orange-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('fiber', dailyTargets?.fiber)}g
+                  {renderValue(getDisplayValue('fiber', dailyTargets?.fiber), 'g')}
                 </div>
                 {getSourceLabel('fiber', dailyTargets?.fiber) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('fiber', dailyTargets?.fiber)}</div>
@@ -340,7 +351,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sugar (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sugar (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -358,7 +369,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-pink-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('sugar', dailyTargets?.sugar)}g
+                  {renderValue(getDisplayValue('sugar', dailyTargets?.sugar), 'g')}
                 </div>
                 {getSourceLabel('sugar', dailyTargets?.sugar) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('sugar', dailyTargets?.sugar)}</div>
@@ -368,7 +379,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sodium (mg)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sodium (mg)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -386,7 +397,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-red-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('sodium', dailyTargets?.sodium)}mg
+                  {renderValue(getDisplayValue('sodium', dailyTargets?.sodium), 'mg')}
                 </div>
                 {getSourceLabel('sodium', dailyTargets?.sodium) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('sodium', dailyTargets?.sodium)}</div>
@@ -396,7 +407,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sat Fat (g)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Sat Fat (g)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -414,7 +425,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-purple-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('saturated_fat', dailyTargets?.saturated_fat)}g
+                  {renderValue(getDisplayValue('saturated_fat', dailyTargets?.saturated_fat), 'g')}
                 </div>
                 {getSourceLabel('saturated_fat', dailyTargets?.saturated_fat) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('saturated_fat', dailyTargets?.saturated_fat)}</div>
@@ -424,7 +435,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Hydration (ml)</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Hydration (ml)</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -442,11 +453,11 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-cyan-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {isManualOverride && manualTargets?.hydration_ml 
-                    ? `${manualTargets.hydration_ml}ml`
-                    : dailyTargets?.hydration_ml 
-                      ? `${Math.round(dailyTargets.hydration_ml / 240)} glasses`
-                      : (formData.targetHydration ? `${formData.targetHydration} glasses` : 'Not set')
+                  {isManualOverride && manualTargets?.hydration_ml
+                    ? renderValue(manualTargets.hydration_ml, 'ml')
+                    : dailyTargets?.hydration_ml
+                      ? renderValue(Math.round(dailyTargets.hydration_ml / 240), 'glasses')
+                      : renderValue(formData.targetHydration || ('Not set' as any), 'glasses')
                   }
                 </div>
                 {getSourceLabel('hydration_ml', dailyTargets?.hydration_ml) && (
@@ -457,7 +468,7 @@ withStabilizedViewport(() => onEditToggle());
           </div>
           
           <div className="space-y-2">
-            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Supplements</Label>
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Supplements</Label>
             {isEditing && isManualOverride ? (
               <div className="space-y-1">
                 <Input
@@ -475,7 +486,7 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-indigo-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {getDisplayValue('supplement_count', dailyTargets?.supplement_count, formData.targetSupplements)}
+                  {renderValue(getDisplayValue('supplement_count', dailyTargets?.supplement_count, formData.targetSupplements))}
                 </div>
                 {getSourceLabel('supplement_count', dailyTargets?.supplement_count) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('supplement_count', dailyTargets?.supplement_count)}</div>
