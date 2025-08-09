@@ -43,7 +43,7 @@ import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBa
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { MoodCheckinBanner } from '@/components/mood/MoodCheckinBanner';
-import { DailyCheckinButton } from '@/components/mood/DailyCheckinButton';
+import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
@@ -1169,21 +1169,16 @@ const Home = () => {
           <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
             {/* Action Buttons - Upper Right Corner */}
             <div className="absolute top-4 right-4 flex flex-col gap-2">
-              <DailyCheckinButton 
-                variant="secondary" 
-                size="sm" 
-                className="text-xs px-3 py-2"
-              />
               <button
                 onClick={() => setShowExerciseForm(true)}
-                className="action-button-full log-workout-button text-xs px-3 py-2"
+                className="action-button-compact log-workout-button"
               >
                 <Plus className="h-3 w-3" />
                 {isMobile ? 'Workout' : 'Log Workout'}
               </button>
               <button
                 onClick={() => setShowExerciseReminder(true)}
-                className="action-button-full set-reminder-button text-xs px-3 py-2"
+                className="action-button-compact set-reminder-button"
               >
                 <Clock className="h-3 w-3" />
                 {isMobile ? 'Remind' : 'Log Exercise Reminder'}
@@ -1379,6 +1374,11 @@ const Home = () => {
       {/* XP System Demo Card */}
       <div className="px-4 sm:px-6 mb-6">
         <XPDemoCard />
+      </div>
+
+      {/* Daily Check-In Home Tab */}
+      <div className="px-2 sm:px-4 mb-3">
+        <HomeDailyCheckInTab />
       </div>
 
       {/* Tomorrow's Mood Forecast */}

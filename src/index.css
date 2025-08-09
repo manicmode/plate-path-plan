@@ -961,6 +961,20 @@
     backdrop-filter: blur(10px);
   }
 
+  /* Compact variant for small quick actions to prevent overlap */
+  .action-button-compact {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+  }
+
   .log-workout-button {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(251, 146, 60, 0.8) 100%);
     color: white;

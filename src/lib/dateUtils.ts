@@ -68,3 +68,21 @@ export const getTodayLocalBounds = (): { start: string; end: string } => {
   const today = getTodayLocalDateString();
   return getLocalDayBounds(today);
 };
+
+/**
+ * Formats a date for the Home Daily Check-In tab as: EEE, MMM dd
+ * Uses the provided locale or falls back to the browser locale, then en-US
+ */
+export const formatHomeCheckInDate = (date: Date, locale?: string): string => {
+  const loc = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US') || 'en-US';
+  const formatter = new Intl.DateTimeFormat(loc, {
+    weekday: 'short',
+    month: 'short',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(date);
+  const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+  const month = parts.find(p => p.type === 'month')?.value || '';
+  const day = parts.find(p => p.type === 'day')?.value || '';
+  return `${weekday}, ${month} ${day}`;
+};
