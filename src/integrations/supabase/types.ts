@@ -4392,6 +4392,57 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_config: {
+        Row: {
+          action_hydration_log: number
+          action_meal_log: number
+          action_recovery_log: number
+          action_workout_logged: number
+          created_at: string
+          curve_base: number
+          curve_exp: number
+          curve_min_next: number
+          daily_post_cap_multiplier: number
+          daily_reset_hour: number
+          daily_soft_cap: number
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          action_hydration_log?: number
+          action_meal_log?: number
+          action_recovery_log?: number
+          action_workout_logged?: number
+          created_at?: string
+          curve_base?: number
+          curve_exp?: number
+          curve_min_next?: number
+          daily_post_cap_multiplier?: number
+          daily_reset_hour?: number
+          daily_soft_cap?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          action_hydration_log?: number
+          action_meal_log?: number
+          action_recovery_log?: number
+          action_workout_logged?: number
+          created_at?: string
+          curve_base?: number
+          curve_exp?: number
+          curve_min_next?: number
+          daily_post_cap_multiplier?: number
+          daily_reset_hour?: number
+          daily_soft_cap?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       yearly_exercise_reports: {
         Row: {
           created_at: string
@@ -4880,6 +4931,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_daily_cap: {
+        Args: { p_user_id: string; p_total_award: number; p_client_tz?: string }
+        Returns: number
+      }
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
         Returns: undefined
@@ -5117,6 +5172,13 @@ export type Database = {
           top_exercise_categories: string[]
         }[]
       }
+      get_xp_reset_window: {
+        Args: { p_user_id: string; p_client_tz?: string }
+        Returns: {
+          start_utc: string
+          end_utc: string
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
@@ -5216,6 +5278,14 @@ export type Database = {
       validate_security_event: {
         Args: { event_data: Json }
         Returns: boolean
+      }
+      xp_cumulative_for_level: {
+        Args: { level_in: number }
+        Returns: number
+      }
+      xp_required_for_level: {
+        Args: { level_in: number }
+        Returns: number
       }
     }
     Enums: {
