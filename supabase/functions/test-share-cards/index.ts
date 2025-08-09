@@ -25,47 +25,65 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const body = (await req.json().catch(() => ({}))) as Partial<TestBody>;
-    const owner_user_id = body.owner_user_id?.trim();
-    if (!owner_user_id) {
-      return new Response(JSON.stringify({ error: 'owner_user_id is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Dev guard
+    const ENV = Deno.env.get('ENV') || 'dev';
+    if (ENV !== 'dev') {
+      return new Response('Not available', { status: 403, headers: corsHeaders });
     }
+
+    // Shared secret guard
+    const secret = Deno.env.get('TEST_FN_SECRET') ?? '';
+    const provided = req.headers.get('x-test-secret') ?? '';
+    if (!secret || provided !== secret) {
+      return new Response('Forbidden', { status: 403, headers: corsHeaders });
+    }
+
+    const url = new URL(req.url);
+
+    const body = (await req.json().catch(() => ({}))) as Partial<TestBody>;
 
     const template = body.template || 'win_basic';
     const size = body.size || 'og';
     const image_url = body.image_url || 'https://example.com/test.png';
     const hash = body.hash || 'abc123';
-    const cleanup = body.cleanup !== false; // default true
+
+    // cleanup: defaults to true; can be overridden by ?cleanup=false
+    const cleanupParam = url.searchParams.get('cleanup');
+    const cleanup = cleanupParam ? cleanupParam !== 'false' : body.cleanup !== false;
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!SUPABASE_URL || !SERVICE_ROLE) {
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return new Response(JSON.stringify({ error: 'Missing Supabase env vars' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    // Authenticated client with caller's JWT
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
     });
 
+    // Require signed-in user
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !authData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const owner_user_id = authData.user.id;
+
     // Before snapshot
-    const { data: beforeProfile, error: beforeErr } = await supabase
+    const { data: beforeProfile } = await supabase
       .from('user_profiles')
       .select('shares_count, updated_at')
       .eq('user_id', owner_user_id)
       .single();
 
-    if (beforeErr) {
-      console.error('beforeErr', beforeErr);
-    }
-
-    // Upsert with ON CONFLICT (owner_user_id, hash, size) DO NOTHING behavior
-    // Using upsert with ignoreDuplicates to avoid raising an error on duplicates
+    // Upsert with ON CONFLICT (owner_user_id, hash, size) DO NOTHING
     const { error: upsertErr } = await supabase
       .from('share_cards')
       .upsert(
@@ -75,7 +93,7 @@ Deno.serve(async (req: Request) => {
           size,
           image_url,
           hash,
-          is_public: true,
+          is_public: false, // keep test data private
         },
         { onConflict: 'owner_user_id,hash,size', ignoreDuplicates: true, returning: 'representation' }
       );
@@ -89,62 +107,46 @@ Deno.serve(async (req: Request) => {
     }
 
     // After snapshot
-    const { data: afterProfile, error: afterErr } = await supabase
+    const { data: afterProfile } = await supabase
       .from('user_profiles')
       .select('shares_count, updated_at')
       .eq('user_id', owner_user_id)
       .single();
 
-    if (afterErr) {
-      console.error('afterErr', afterErr);
-    }
-
     // Count rows for (owner_user_id, hash, size)
-    const { count, error: countErr } = await supabase
+    const { count } = await supabase
       .from('share_cards')
       .select('*', { count: 'exact', head: true })
       .eq('owner_user_id', owner_user_id)
       .eq('hash', hash)
       .eq('size', size);
 
-    if (countErr) {
-      console.error('countErr', countErr);
-    }
-
     let afterCleanup: { shares_count: number | null; updated_at: string | null; count: number | null } | null = null;
 
     if (cleanup) {
       // Delete the test row
-      const { error: delErr } = await supabase
+      await supabase
         .from('share_cards')
         .delete()
         .eq('owner_user_id', owner_user_id)
         .eq('hash', hash)
         .eq('size', size);
-      if (delErr) {
-        console.error('delErr', delErr);
-      }
 
       // Decrement shares_count deterministically
       const current = (afterProfile?.shares_count ?? 0) as number;
       const decremented = Math.max(current - 1, 0);
       const nowIso = new Date().toISOString();
-      const { error: decErr } = await supabase
+      await supabase
         .from('user_profiles')
         .update({ shares_count: decremented, updated_at: nowIso })
         .eq('user_id', owner_user_id);
-      if (decErr) {
-        console.error('decErr', decErr);
-      }
 
-      const { data: postCleanup, error: postCleanupErr } = await supabase
+      const { data: postCleanup } = await supabase
         .from('user_profiles')
         .select('shares_count, updated_at')
         .eq('user_id', owner_user_id)
         .single();
-      if (postCleanupErr) {
-        console.error('postCleanupErr', postCleanupErr);
-      }
+
       const { count: postCleanupCount } = await supabase
         .from('share_cards')
         .select('*', { count: 'exact', head: true })

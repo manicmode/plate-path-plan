@@ -47,4 +47,4 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.test-share-cards]
-verify_jwt = false
+verify_jwt = true

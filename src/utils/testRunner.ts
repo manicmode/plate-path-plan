@@ -5,9 +5,19 @@ import { supabase } from '@/integrations/supabase/client';
 async function runShareCardsIndexTest() {
   try {
     console.log('🧪 Running share_cards unique index + trigger test...');
+
+    // Ensure user is signed in before invoking the function
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      console.warn('⚠️ Skipping test-share-cards: no authenticated user in DEV. Please sign in and refresh.');
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke('test-share-cards', {
+      headers: {
+        'x-test-secret': 'dev-test-secret', // Must match TEST_FN_SECRET set in Supabase Edge Function secrets
+      },
       body: {
-        owner_user_id: '8589c22a-00f5-4e42-a197-fe0dbd87a5d8',
         template: 'win_basic',
         size: 'og',
         image_url: 'https://example.com/test.png',
