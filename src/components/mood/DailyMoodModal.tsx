@@ -8,12 +8,10 @@ import { Heart, Zap, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
-import { energyEmojiFromScore, EnergyMode } from '@/utils/energy';
+import { EnergyMode } from '@/utils/energy';
+import { ENERGY_MAP, MOOD_MAP, WELLNESS_MAP, emojiFromScore } from '@/utils/feelings';
 import EmojiPicker from '@/components/checkin/EmojiPicker';
 import '@/styles/checkin.css';
-
-const MOOD_EMOJIS = ['😢', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩', '🥳', '😍'];
-const WELLNESS_EMOJIS = ['🤒', '😷', '😴', '😐', '🙂', '😊', '💪', '✨', '🌟', '🚀'];
 
 interface DailyMoodModalProps {
   isOpen: boolean;
@@ -28,11 +26,27 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingLog, setExistingLog] = useState<any>(null);
+  
+  // Emoji override modes
+  const [moodEmojiOverride, setMoodEmojiOverride] = useState<string | null>(null);
   const [energyEmojiOverride, setEnergyEmojiOverride] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [wellnessEmojiOverride, setWellnessEmojiOverride] = useState<string | null>(null);
+
+  // Picker open states
+  const [moodPickerOpen, setMoodPickerOpen] = useState(false);
+  const [energyPickerOpen, setEnergyPickerOpen] = useState(false);
+  const [wellnessPickerOpen, setWellnessPickerOpen] = useState(false);
+
   const [notesRows, setNotesRows] = useState(2);
+
+  // Modes and current emojis
+  const moodMode: EnergyMode = moodEmojiOverride ? 'override' : 'auto';
   const energyMode: EnergyMode = energyEmojiOverride ? 'override' : 'auto';
-  const energyEmoji = energyEmojiOverride ?? energyEmojiFromScore(energy);
+  const wellnessMode: EnergyMode = wellnessEmojiOverride ? 'override' : 'auto';
+
+  const moodEmoji = moodEmojiOverride ?? emojiFromScore(MOOD_MAP, mood);
+  const energyEmoji = energyEmojiOverride ?? emojiFromScore(ENERGY_MAP, energy);
+  const wellnessEmoji = wellnessEmojiOverride ?? emojiFromScore(WELLNESS_MAP, wellness);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -87,13 +101,13 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
         journal_text: notes.trim() || null,
       };
 
-      // Client analytics payload including energy emoji + mode (no schema change)
+      // Client analytics payload including emoji + mode (no schema change)
       const clientPayload = {
         user_id: user.id,
         date: today,
-        mood,
+        mood: { score: mood, emoji: moodEmoji, mode: moodMode },
         energy: { score: energy, emoji: energyEmoji, mode: energyMode },
-        wellness,
+        wellness: { score: wellness, emoji: wellnessEmoji, mode: wellnessMode },
         notes: notes.trim() || null,
       };
 
@@ -115,6 +129,9 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
       setWellness(5);
       setNotes('');
       setExistingLog(null);
+      setMoodEmojiOverride(null);
+      setEnergyEmojiOverride(null);
+      setWellnessEmojiOverride(null);
       onClose();
 
       // Trigger banner refresh by dispatching a custom event
@@ -130,7 +147,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="checkin-modal mood-modal max-w-md mx-auto rounded-3xl border-0 bg-gradient-to-br from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
-        <DialogHeader>
+        <DialogHeader className="checkin-modal-header">
           <DialogTitle className="text-center text-xl font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent">
             {existingLog ? 'Update Your Daily Check-In' : 'Daily Mood & Wellness Check-In'}
           </DialogTitle>
@@ -150,7 +167,20 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
               </div>
               <div className="space-y-2">
                 <div className="text-center">
-                  <span className="checkin-emoji">{MOOD_EMOJIS[mood - 1]}</span>
+                  <EmojiPicker
+                    open={moodPickerOpen}
+                    onOpenChange={setMoodPickerOpen}
+                    items={MOOD_MAP}
+                    onSelectItem={(item) => { setMood(item.value); setMoodEmojiOverride(item.emoji); }}
+                    onAuto={() => setMoodEmojiOverride(null)}
+                    currentEmoji={moodEmoji}
+                    className="checkin-emoji-button"
+                    ariaLabel="Pick mood emoji"
+                    title="Pick mood"
+                  />
+                  {moodMode === 'override' && (
+                    <span className="ml-1 align-top text-xs text-muted-foreground" aria-hidden>•</span>
+                  )}
                 </div>
                 <ValueSlider
                   value={mood}
@@ -176,12 +206,15 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
               <div className="space-y-2">
                 <div className="text-center">
                   <EmojiPicker
-                    open={pickerOpen}
-                    onOpenChange={setPickerOpen}
-                    onSelect={(e) => setEnergyEmojiOverride(e)}
+                    open={energyPickerOpen}
+                    onOpenChange={setEnergyPickerOpen}
+                    items={ENERGY_MAP}
+                    onSelectItem={(item) => { setEnergy(item.value); setEnergyEmojiOverride(item.emoji); }}
                     onAuto={() => setEnergyEmojiOverride(null)}
                     currentEmoji={energyEmoji}
                     className="checkin-emoji-button"
+                    ariaLabel="Pick energy emoji"
+                    title="Pick energy"
                   />
                   {energyMode === 'override' && (
                     <span className="ml-1 align-top text-xs text-muted-foreground" aria-hidden>•</span>

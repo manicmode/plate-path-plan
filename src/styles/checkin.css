@@ -14,9 +14,9 @@
   flex: 1;
   overflow: hidden; /* target zero scroll */
   display: grid;
-  grid-auto-rows: min-content;
-  row-gap: 10px; /* was 16–20 */
-  padding-block: 12px 6px; /* top more, bottom tighter */
+  grid-template-rows: repeat(3, minmax(0, 1fr)) auto; /* 3 cards + notes */
+  row-gap: 12px; /* adds breathing room */
+  padding-block: 10px; /* give a bit more bottom space */
   padding-inline: 12px;
 }
 
@@ -28,13 +28,20 @@
   line-height: 1.1;
 }
 
+/* Header breathing room */
+.checkin-modal-header {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
+  padding-bottom: 6px;
+  min-height: 48px;
+}
+
 /* Emoji sizing */
 .checkin-modal .checkin-emoji {
   display: inline-block;
   font-size: clamp(28px, 3.6vw, 32px);
   line-height: 1;
 }
-/* Energy emoji picker trigger */
+/* Emoji picker trigger */
 .checkin-modal .checkin-emoji-button,
 .checkin-modal .checkin-emoji-button button,
 .checkin-modal .checkin-emoji-button span {
@@ -66,11 +73,14 @@
 /* Notes area */
 .checkin-notes {
   min-height: 56px; /* ~2 rows */
+  margin-top: 6px; /* tiny top margin */
 }
 
 /* Footer buttons area */
 .checkin-footer {
-  padding: 8px 12px;
+  padding-top: 8px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  padding-inline: 12px;
   display: grid;
   grid-auto-rows: min-content;
   row-gap: 6px; /* compact gap */
@@ -81,8 +91,8 @@
   .checkin-card.compact .checkin-inner { padding: 10px 12px !important; }
   .checkin-notes { min-height: 52px; }
   .checkin-footer { padding-block: 8px; }
-  .checkin-content { row-gap: 8px; }
-  .checkin-modal { padding-top: calc(env(safe-area-inset-top) + 16px); }
+  .checkin-content { row-gap: 10px; }
+  .checkin-modal-header { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
 }
 
 /* Allow content scroll on very small heights but keep footer visible */
