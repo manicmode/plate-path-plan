@@ -89,9 +89,13 @@ export default function AIFitnessCoach() {
 
   // Align chat to top on chip taps or programmatic requests
   useEffect(() => {
-    const cb = () => scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
-    window.addEventListener('coach:scrollToChat', cb as any);
-    return () => window.removeEventListener('coach:scrollToChat', cb as any);
+    const onScrollRequest = () => scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
+    window.addEventListener('coach:scrollToChat', onScrollRequest as any);
+    window.addEventListener('exercise-chat:send', onScrollRequest as any);
+    return () => {
+      window.removeEventListener('coach:scrollToChat', onScrollRequest as any);
+      window.removeEventListener('exercise-chat:send', onScrollRequest as any);
+    };
   }, []);
 
   // Check nudge content availability
@@ -187,6 +191,11 @@ export default function AIFitnessCoach() {
       setTimeout(() => setShowPraiseMessage(null), 8000);
     }
     
+    // Request scroll alignment and dispatch send event
+    window.dispatchEvent(new Event('coach:scrollToChat'));
+    window.dispatchEvent(new CustomEvent('exercise-chat:send', { detail: { chipId: 'skill-panel', text: promptMessage } }));
+    setTimeout(() => window.dispatchEvent(new Event('coach:scrollToChat')), 120);
+
     handleSendMessage(promptMessage);
   };
 
@@ -590,7 +599,9 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                 variant="outline"
                 onClick={() => { 
                   window.dispatchEvent(new Event('coach:scrollToChat'));
-                  if (chatCardRef.current) scrollToAlignTop(chatCardRef.current);
+                  if (chatCardRef.current) scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
+                  window.dispatchEvent(new CustomEvent('exercise-chat:send', { detail: { chipId: chip.id, text: chip.message } }));
+                  setTimeout(() => window.dispatchEvent(new Event('coach:scrollToChat')), 120);
                   console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'exercise', chipId: chip.id, usingContext: useMyData }));
                   handlePromptClick(chip.message);
                 }}
