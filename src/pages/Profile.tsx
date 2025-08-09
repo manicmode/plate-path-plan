@@ -262,16 +262,9 @@ const ProfileContent = () => {
     setShowOnboarding(true);
   };
 
-  if (showOnboarding || showHealthSettings) {
-    return (
-      <OnboardingScreen 
-        onComplete={handleOnboardingComplete} 
-      />
-    );
-  }
 
   return (
-    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''} ProfilePageRoot`}>
+    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''} ProfilePageRoot ${editingSection ? 'isEditing' : ''}`}>
       {/* Page Title - At the very top */}
       <div className="text-center">
         <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
@@ -280,7 +273,8 @@ const ProfileContent = () => {
 
       {/* Avatar Hero Card */}
       <AvatarHeroCard user={user} />
-
+        {!(showOnboarding || showHealthSettings) ? (
+          <>
       {/* Personal Information - Moved directly below avatar */}
       <PersonalInformation 
         formData={formData}
@@ -370,7 +364,13 @@ const ProfileContent = () => {
       />
 
       {/* Logout */}
-      <LogoutSection onLogout={logout} />
+        <LogoutSection onLogout={logout} />
+          </>
+        ) : (
+          <OnboardingScreen 
+            onComplete={handleOnboardingComplete} 
+          />
+        )}
     </div>
   );
 };

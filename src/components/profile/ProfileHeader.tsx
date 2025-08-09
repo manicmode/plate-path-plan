@@ -26,7 +26,7 @@ const dietaryGoalOptions = [
   { id: 'general_health', label: 'General Health' },
 ];
 
-export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderProps) => {
+export const ProfileHeader = memo(function ProfileHeader({ user, isEditing, onEditToggle }: ProfileHeaderProps) {
   const isMobile = useIsMobile();
 
   return (
@@ -61,4 +61,4 @@ export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderPr
       </Button>
     </div>
   );
-};
+});
