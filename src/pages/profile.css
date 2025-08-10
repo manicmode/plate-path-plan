@@ -6,9 +6,12 @@
 }
 
 /* Accent border for Identity card using semantic theme tokens */
+:root {
+  --profile-accent: 270 72% 55%; /* Purple HSL for profile borders */
+}
 .IdentityCard--accentBorder {
   border-width: 2px !important;
-  border-color: hsl(var(--primary)) !important; /* uses themed HSL color */
+  border-color: hsl(var(--profile-accent)) !important;
   border-style: solid;
   border-radius: 1.5rem; /* match rounded-3xl */
 }
