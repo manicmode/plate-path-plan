@@ -6,6 +6,7 @@ import { validateUuidInput, cleanupInvalidUuids } from '@/lib/uuidValidationMidd
 import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 import type { RegistrationResult } from './types';
 import { getSignUpRedirect } from '@/utils/authRedirect';
+import { isDev } from '@/utils/dev';
 
 export const loginUser = async (email: string, password: string) => {
   try {
@@ -162,6 +163,10 @@ export const registerUser = async (email: string, password: string, name?: strin
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const emailRedirectTo = getSignUpRedirect();
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.warn('signUp redirect_to:', emailRedirectTo);
+    }
     console.log('📧 Calling Supabase signUp with redirect URL:', emailRedirectTo);
     
     const { data, error } = await supabase.auth.signUp({
