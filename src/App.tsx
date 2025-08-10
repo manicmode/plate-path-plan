@@ -31,6 +31,8 @@ import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
 
+import OnboardingGate from '@/routes/OnboardingGate';
+
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -41,6 +43,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const CoachMain = lazy(() => import('@/pages/CoachMain'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
+const Onboarding = lazy(() => import('@/pages/Onboarding'));
 
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
@@ -139,12 +142,18 @@ function AppContent() {
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-            <Routes>
-              {/* Fullscreen pages without Layout */}
-              <Route path="/s/:shareId" element={<PublicShare />} />
-              <Route path="/shared-routine" element={<SharedRoutine />} />
+            <OnboardingGate>
+              <Routes>
+                {/* Fullscreen pages without Layout */}
+                <Route path="/s/:shareId" element={<PublicShare />} />
+                <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/onboarding" element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              } />
               <Route path="/recovery-player" element={
                 <ProtectedRoute>
                   <RecoveryPlayer />
@@ -393,7 +402,8 @@ function AppContent() {
                 </Layout>
               } />
             </Routes>
-          </Suspense>
+          </OnboardingGate>
+        </Suspense>
           
           <DailyMoodModal 
             isOpen={showMoodModal} 
