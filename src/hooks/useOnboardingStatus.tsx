@@ -106,16 +106,51 @@ export const useOnboardingStatus = () => {
     }
     
     try {
-      // Update local state immediately to prevent re-rendering
+      // Optimistic local state to prevent flicker
       console.log('[DEBUG] markOnboardingComplete: Updating local state immediately');
       setIsOnboardingComplete(true);
       setShowReminder(false);
-      
-      // Also update localStorage as backup
       const cacheKey = `onboarding_complete_${user.id}`;
       localStorage.setItem(cacheKey, 'true');
-      
-      console.log('[DEBUG] markOnboardingComplete: Updating database for user:', user.id);
+
+      // 1) Load minimal profile fields to determine if defaults are needed
+      let profile: any = null;
+      try {
+        const { data, error: fetchErr } = await supabase
+          .from('user_profiles')
+          .select('activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (fetchErr) {
+          console.warn('[ONB] load profile failed', fetchErr);
+        } else {
+          profile = data;
+        }
+      } catch (e) {
+        console.warn('[ONB] load profile exception', e);
+      }
+
+      // 2) Build and apply defaults patch only for missing values
+      const patch: Record<string, any> = {};
+      let applied = false;
+      const isMissing = (v: any) => v === null || v === undefined || v === '';
+
+      if (!profile || isMissing(profile?.activity_level)) { patch.activity_level = 'light'; applied = true; }
+      if (!profile || isMissing(profile?.meal_frequency)) { patch.meal_frequency = 3; applied = true; }
+      if (!profile || isMissing(profile?.fasting_schedule)) { patch.fasting_schedule = 'none'; applied = true; }
+      if (!profile || profile?.food_allergies == null) { patch.food_allergies = {}; applied = true; }
+      if (!profile || isMissing(profile?.hydration_target_ml)) { patch.hydration_target_ml = 2500; applied = true; }
+
+      if (applied) {
+        patch.onboarding_defaults_applied = true;
+        const { error: updErr } = await supabase
+          .from('user_profiles')
+          .update(patch)
+          .eq('user_id', user.id);
+        if (updErr) console.warn('[ONB] apply defaults failed', updErr);
+      }
+
+      // 3) Finalize onboarding flags
       const { error } = await supabase
         .from('user_profiles')
         .update({ 
@@ -135,7 +170,7 @@ export const useOnboardingStatus = () => {
       
       console.log('[DEBUG] markOnboardingComplete: Database update successful');
       
-      // Generate daily nutrition targets after onboarding completion
+      // 4) Generate daily nutrition targets after onboarding completion
       try {
         console.log('[DEBUG] markOnboardingComplete: Generating daily nutrition targets...');
         const { data, error: targetsError } = await supabase.functions.invoke('calculate-daily-targets', {

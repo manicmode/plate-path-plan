@@ -3523,6 +3523,7 @@ export type Database = {
           height_feet: number | null
           height_inches: number | null
           height_unit: string | null
+          hydration_target_ml: number | null
           id: string
           last_caricature_generation: string | null
           last_hydration_log_date: string | null
@@ -3537,6 +3538,7 @@ export type Database = {
           meal_frequency: number | null
           medications: string[] | null
           onboarding_completed: boolean | null
+          onboarding_defaults_applied: boolean
           onboarding_skipped: boolean | null
           phone: string | null
           priority_micronutrients: string[] | null
@@ -3612,6 +3614,7 @@ export type Database = {
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
+          hydration_target_ml?: number | null
           id?: string
           last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
@@ -3626,6 +3629,7 @@ export type Database = {
           meal_frequency?: number | null
           medications?: string[] | null
           onboarding_completed?: boolean | null
+          onboarding_defaults_applied?: boolean
           onboarding_skipped?: boolean | null
           phone?: string | null
           priority_micronutrients?: string[] | null
@@ -3701,6 +3705,7 @@ export type Database = {
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
+          hydration_target_ml?: number | null
           id?: string
           last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
@@ -3715,6 +3720,7 @@ export type Database = {
           meal_frequency?: number | null
           medications?: string[] | null
           onboarding_completed?: boolean | null
+          onboarding_defaults_applied?: boolean
           onboarding_skipped?: boolean | null
           phone?: string | null
           priority_micronutrients?: string[] | null
