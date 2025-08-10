@@ -221,6 +221,11 @@ export const useOnboardingStatus = () => {
     }
   };
 
+  // Optimistic local setter for onboardingSkipped (used by soft-skip)
+  const setOnboardingSkippedLocal = (value: boolean) => {
+    setOnboardingSkipped(value);
+  };
+
   return {
     isOnboardingComplete,
     isLoading,
@@ -229,5 +234,6 @@ export const useOnboardingStatus = () => {
     dismissReminder,
     markOnboardingComplete,
     forceRefresh,
+    setOnboardingSkippedLocal,
   };
 };
