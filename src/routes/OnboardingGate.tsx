@@ -9,7 +9,7 @@ interface OnboardingGateProps {
 
 export default function OnboardingGate({ children }: OnboardingGateProps) {
   const { isAuthenticated } = useAuth();
-  const { isOnboardingComplete, isLoading, onboardingSkipped } = useOnboardingStatus();
+  const { isOnboardingComplete, isLoading } = useOnboardingStatus();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,20 +20,12 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     if (isLoading) return;
 
     const pathname = location.pathname || '';
-
-    // Compute temporary local bypass window
-    const BYPASS_MS = 4_000;
-    const ts = Number(localStorage.getItem('voyage_onboarding_bypass_ts') || 0);
-    const winTs = (window as any).__voyageOnboardingBypass || 0;
-    const bypassActive = Date.now() - Math.max(ts, winTs) < BYPASS_MS;
-
     const onHome = pathname === '/home';
 
-    // Soft gate: redirect only when not completed and not explicitly skipped and no active bypass
     if (
+      isAuthenticated &&
+      !isLoading &&
       isOnboardingComplete === false &&
-      onboardingSkipped !== true &&
-      !bypassActive &&
       !pathname.startsWith('/onboarding') &&
       !onHome
     ) {
@@ -42,17 +34,15 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
         state: { from: pathname + (location.search || '') },
       });
     }
-  }, [isAuthenticated, isLoading, isOnboardingComplete, onboardingSkipped, location.pathname, location.search, navigate]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    isOnboardingComplete,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
-  // Clear bypass once onboarding is complete or explicitly skipped
-  useEffect(() => {
-    if (isOnboardingComplete || onboardingSkipped) {
-      try {
-        localStorage.removeItem('voyage_onboarding_bypass_ts');
-        (window as any).__voyageOnboardingBypass = 0;
-      } catch {}
-    }
-  }, [isOnboardingComplete, onboardingSkipped]);
 
   return <>{children}</>;
 }
