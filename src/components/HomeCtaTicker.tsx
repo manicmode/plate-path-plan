@@ -4,6 +4,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
+import { isDev } from '@/utils/dev';
 
 interface CtaMessage {
   id: string;
@@ -259,6 +260,8 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const progress = getTodaysProgress();
 
   const lastEnqueueIdRef = useRef<number>(0);
+  const lastBeepAtRef = useRef<number>(0);
+  const beepCountRef = useRef<number>(0);
 
   const [showCta, setShowCta] = useState(false);
   const [currentCtaMessage, setCurrentCtaMessage] = useState<string>('');
@@ -371,6 +374,45 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
 
     loadUserProfile();
   }, [user?.id]);
+
+  // Play AI thought only when a new coach CTA is enqueued
+  useEffect(() => {
+    if (!lastCoachCtaEnqueueId || lastCoachCtaEnqueueId === lastEnqueueIdRef.current) return;
+
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const sinceLast = now - (lastBeepAtRef.current || 0);
+
+    // If tab is hidden, skip and mark processed to avoid delayed beeps on return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.info('[AI-THOUGHT]', { action: 'skip-hidden', enqueueId: lastCoachCtaEnqueueId, sinceLastMs: Math.round(sinceLast) });
+      }
+      lastEnqueueIdRef.current = lastCoachCtaEnqueueId;
+      return;
+    }
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.info('[AI-THOUGHT]', { action: 'enqueue-detect', enqueueId: lastCoachCtaEnqueueId, sinceLastMs: Math.round(sinceLast) });
+      if (sinceLast < 450) {
+        // eslint-disable-next-line no-console
+        console.info('[AI-THOUGHT]', { action: 'throttle-window', ms: Math.round(sinceLast) });
+      }
+    }
+
+    // One beep per enqueue id
+    lastBeepAtRef.current = now;
+    beepCountRef.current += 1;
+    lastEnqueueIdRef.current = lastCoachCtaEnqueueId;
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    playAIThought();
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.info('[AI-THOUGHT]', { action: 'enqueue-play', enqueueId: lastCoachCtaEnqueueId, beepCount: beepCountRef.current });
+    }
+  }, [lastCoachCtaEnqueueId, playAIThought]);
 
   // Helper functions for date/season calculations
   const getCurrentSeason = (date: Date): 'winter' | 'spring' | 'summer' | 'fall' => {
