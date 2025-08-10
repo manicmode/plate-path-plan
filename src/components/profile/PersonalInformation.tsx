@@ -1,5 +1,5 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,8 @@ const dietaryGoalOptions = [
   { id: 'endurance', label: 'Endurance Training' },
   { id: 'general_health', label: 'General Health' },
 ];
+
+const CONTENT_W = "max-w-[380px] md:max-w-[420px]";
 
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
@@ -157,11 +159,11 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard" style={{ animationDelay: '100ms' }}>
-      <div className={`IdentitySummary ${isEditing ? 'isHidden' : ''}`}>
-        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-          <div className="flex flex-col items-center space-y-4">
-            {/* Name and Info Section */}
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms' }} data-testid="identity-card-root">
+      {/* VIEW (summary) */}
+      {!isEditing && (
+        <CardContent className="px-0 pb-4 pt-3">
+          <div className={`mx-auto w-full ${CONTENT_W} px-4 text-center`}>
             <div className="text-center space-y-2">
               <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-foreground`}>
                 {displayName}
@@ -169,7 +171,6 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               <p className={`text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
                 {user?.email}
               </p>
-              {/* Dietary Goals */}
               {user?.dietaryGoals && user.dietaryGoals.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1 sm:gap-2 mt-3">
                   {user.dietaryGoals.slice(0, isMobile ? 2 : 5).map(goal => (
@@ -184,7 +185,6 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               )}
             </div>
 
-            {/* Edit Button */}
             <Button
               variant={isEditing ? "default" : "outline"}
               onClick={(e) => {
@@ -193,46 +193,50 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
                 withStabilizedViewport(() => onEditToggle());
               }}
               size={isMobile ? "sm" : "default"}
-              className="w-fit"
+              className="w-fit mx-auto mt-3"
               style={{ touchAction: 'manipulation' }}
             >
               <Settings className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${isMobile ? '' : 'mr-2'}`} />
               {!isMobile && (isEditing ? 'Cancel' : 'Edit Profile')}
             </Button>
           </div>
-        </CardHeader>
-      </div>
+        </CardContent>
+      )}
 
-      <div className={`IdentityEditorOverlay ${!isEditing ? 'isHidden' : ''}`}>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
-            <Input
-              id="username"
-              ref={inputRef}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-              placeholder="Enter username"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSave();
-                }
-              }}
-            />
+      {/* EDIT (overlay or inline — keep your logic) */}
+      {isEditing && (
+        <div className="IdentityEditorOverlay absolute inset-0 flex justify-center items-start">
+          <div className={`mx-auto w-full ${CONTENT_W} px-4 py-4`}>
+            <form onSubmit={handleSave}>
+              <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
+              <Input
+                id="username"
+                ref={inputRef}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'} mt-2`}
+                placeholder="Enter username"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSave();
+                  }
+                }}
+              />
+
+              <Button
+                type="submit"
+                disabled={isSaving || !username.trim()}
+                className={`w-full ${isMobile ? 'h-10' : 'h-12'} mt-3`}
+                size={isMobile ? "sm" : "default"}
+              >
+                <Save className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </form>
           </div>
-          <Button
-            type="submit"
-            disabled={isSaving || !username.trim()}
-            className={`w-full ${isMobile ? 'h-10' : 'h-12'}`}
-            size={isMobile ? "sm" : "default"}
-          >
-            <Save className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </form>
-      </div>
+        </div>
+      )}
     </Card>
   );
 };
