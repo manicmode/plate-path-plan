@@ -10,7 +10,7 @@ import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
 import { useXPSystem } from '@/hooks/useXPSystem';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { audit } from '@/utils/soundAudit';
+
 
 interface FoodItem {
   id: string;
@@ -450,7 +450,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     if (added) {
       enqueueCounterRef.current += 1;
       setLastCoachCtaEnqueueId(enqueueCounterRef.current);
-      audit('cta_enqueued', { enqueueId: enqueueCounterRef.current, source: 'unknown', messagePreview: String(message).slice(0, 80) });
+      
     }
   }, [currentCoachCta]);
 

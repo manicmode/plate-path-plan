@@ -19,7 +19,7 @@ import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
-import { audit } from '@/utils/soundAudit';
+
 
 interface FoodItem {
   id?: string;
@@ -310,7 +310,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       
       // Play food log confirmation sound
       SoundGate.markConfirm();
-      audit('confirm_chime', { actionId: 'unknown' });
+      
       playFoodLogConfirm().catch(error => {
         console.warn('🔊 Food log sound failed:', error);
       });

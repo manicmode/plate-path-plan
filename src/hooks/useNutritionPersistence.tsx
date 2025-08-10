@@ -8,7 +8,7 @@ import { useMealScoring } from './useMealScoring';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { FLAGS } from '@/constants/flags';
 import { isDev } from '@/utils/dev';
-import { audit } from '@/utils/soundAudit';
+
 
 interface FoodItem {
   id: string;
@@ -91,14 +91,14 @@ export const useNutritionPersistence = () => {
           },
         });
       }
-audit('meal_insert_attempt', { actionId: 'unknown', food: insertData?.food_name, calories: insertData?.calories });
+
       const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert(insertData)
         .select();
       const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
-      audit('meal_insert_result', { actionId: 'unknown', status: error ? 'error' : 'success', ids: Array.isArray(data) ? data.map((d:any)=>d.id) : [], ms: Math.round(t1 - t0), error: (error as any)?.message });
+      
 
       if (isDev) {
         // eslint-disable-next-line no-console
