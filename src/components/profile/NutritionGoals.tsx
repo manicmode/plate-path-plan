@@ -131,9 +131,6 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
 
       if (error) throw error;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[NutritionGoals save] upsert payload', upsertPayload);
-      }
 
       // Immediately refresh local view state so values update without reload
       const localUpdate: any = {

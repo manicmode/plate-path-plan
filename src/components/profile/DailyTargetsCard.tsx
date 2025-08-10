@@ -63,21 +63,6 @@ export const DailyTargetsCard = () => {
 
   const fmt = (v: number | null) => (v === null ? "Not set" : Intl.NumberFormat().format(v));
 
-  // Dev-only log (remove after verifying)
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[DailyTargetsCard] profile targets", {
-      targetCalories: t.targetCalories,
-      targetProtein: t.targetProtein,
-      targetCarbs: t.targetCarbs,
-      targetFat: t.targetFat,
-      targetFiber: t.targetFiber,
-      targetSugar: t.targetSugar,
-      targetSodium: t.targetSodium,
-      targetSatFat: t.targetSatFat,
-      targetHydration: t.targetHydration,
-      targetSupplements: t.targetSupplements,
-    });
-  }
 
   const loadTargets = async () => {
     if (!user?.id || loadingRef.current) return;
@@ -116,7 +101,7 @@ export const DailyTargetsCard = () => {
 
       // If no targets exist and user has completed profile, try to generate them
       if (!todayTargets && profileData?.onboarding_completed) {
-        console.log('No targets found for completed profile, attempting to generate...');
+        
         try {
           await ensureUserHasTargets();
           // Reload after generation attempt

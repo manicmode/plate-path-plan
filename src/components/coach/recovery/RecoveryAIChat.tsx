@@ -74,7 +74,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
       }
       if (!text) return;
       if (chipId) {
-        console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'recovery', chipId, usingContext: useMyData }));
+        
       }
       sendMessage(text);
     };

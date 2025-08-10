@@ -264,7 +264,7 @@ const Home = () => {
         .maybeSingle();
       
       if (data && !error) {
-        console.log('📊 Loaded daily targets for Home:', data);
+        
         setDailyTargets({
           calories: data.calories,
           protein: data.protein,
@@ -291,18 +291,6 @@ const Home = () => {
   const actualHydration = realHydrationToday || 0;
   const hydrationPercentage = Math.min((actualHydration / hydrationGoal) * 100, 100);
   
-  // Debug hydration calculation
-  useEffect(() => {
-    if (!hydrationLoading) {
-      console.log('💧 Hydration Debug:', {
-        realHydrationToday,
-        actualHydration,
-        hydrationGoal,
-        hydrationPercentage,
-        calculation: `${actualHydration} / ${hydrationGoal} * 100 = ${(actualHydration / hydrationGoal) * 100}`
-      });
-    }
-  }, [realHydrationToday, actualHydration, hydrationGoal, hydrationPercentage, hydrationLoading]);
 
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
@@ -345,7 +333,7 @@ const Home = () => {
     
     // Calories celebration
     if (isGoalFullyAchieved(currentCalories, totalCalories) && !hasShownCelebrationToday('calories')) {
-      console.log('🎉 Calories goal achieved:', { current: currentCalories, target: totalCalories });
+      
       setCelebrationType('Calories Goal Smashed! 🔥');
       setShowCelebration(true);
       markCelebrationShown('calories');
@@ -354,7 +342,7 @@ const Home = () => {
     
     // Hydration celebration - using real hydration data
     else if (isGoalFullyAchieved(actualHydration, hydrationGoal, hydrationLoading) && !hasShownCelebrationToday('hydration')) {
-      console.log('🎉 Hydration goal achieved:', { current: actualHydration, target: hydrationGoal });
+      
       setCelebrationType('Hydration Goal Achieved! 💧');
       setShowCelebration(true);
       markCelebrationShown('hydration');
@@ -363,7 +351,7 @@ const Home = () => {
     
     // Supplements celebration
     else if (isGoalFullyAchieved(progress.supplements, supplementGoal) && !hasShownCelebrationToday('supplements')) {
-      console.log('🎉 Supplements goal achieved:', { current: progress.supplements, target: supplementGoal });
+      
       setCelebrationType('Supplements Complete! 💊');
       setShowCelebration(true);
       markCelebrationShown('supplements');
@@ -372,7 +360,7 @@ const Home = () => {
     
     // Protein celebration
     else if (isGoalFullyAchieved(progress.protein, dailyTargets.protein || user?.targetProtein || 150) && !hasShownCelebrationToday('protein')) {
-      console.log('🎉 Protein goal achieved:', { current: progress.protein, target: dailyTargets.protein || user?.targetProtein || 150 });
+      
       setCelebrationType('Protein Goal Crushed! 💪');
       setShowCelebration(true);
       markCelebrationShown('protein');
@@ -381,7 +369,7 @@ const Home = () => {
     
     // Carbs celebration
     else if (isGoalFullyAchieved(progress.carbs, dailyTargets.carbs || user?.targetCarbs || 200) && !hasShownCelebrationToday('carbs')) {
-      console.log('🎉 Carbs goal achieved:', { current: progress.carbs, target: dailyTargets.carbs || user?.targetCarbs || 200 });
+      
       setCelebrationType('Carbs Target Hit! 🍞');
       setShowCelebration(true);
       markCelebrationShown('carbs');
@@ -390,7 +378,7 @@ const Home = () => {
     
     // Fat celebration
     else if (isGoalFullyAchieved(progress.fat, dailyTargets.fat || user?.targetFat || 65) && !hasShownCelebrationToday('fat')) {
-      console.log('🎉 Fat goal achieved:', { current: progress.fat, target: dailyTargets.fat || user?.targetFat || 65 });
+      
       setCelebrationType('Fat Goal Achieved! 🥑');
       setShowCelebration(true);
       markCelebrationShown('fat');
@@ -399,7 +387,7 @@ const Home = () => {
     
     // Fiber celebration
     else if (isGoalFullyAchieved((progress as any).fiber || 0, dailyTargets.fiber || 25) && !hasShownCelebrationToday('fiber')) {
-      console.log('🎉 Fiber goal achieved:', { current: (progress as any).fiber || 0, target: dailyTargets.fiber || 25 });
+      
       setCelebrationType('Fiber Target Reached! 🌾');
       setShowCelebration(true);
       markCelebrationShown('fiber');
@@ -408,7 +396,7 @@ const Home = () => {
     
     // Saturated Fat celebration
     else if (isGoalFullyAchieved((progress as any).saturated_fat || 0, dailyTargets.saturated_fat || 20) && !hasShownCelebrationToday('saturated_fat')) {
-      console.log('🎉 Saturated Fat goal achieved:', { current: (progress as any).saturated_fat || 0, target: dailyTargets.saturated_fat || 20 });
+      
       setCelebrationType('Sat Fat Goal Met! 🧈');
       setShowCelebration(true);
       markCelebrationShown('saturated_fat');
@@ -417,7 +405,7 @@ const Home = () => {
     
     // Steps celebration
     else if (isGoalFullyAchieved(exerciseSummary.todaySteps, stepsGoal) && !hasShownCelebrationToday('steps')) {
-      console.log('🎉 Steps goal achieved:', { current: exerciseSummary.todaySteps, target: stepsGoal });
+      
       setCelebrationType('Step Goal Crushed! 👟');
       setShowCelebration(true);
       markCelebrationShown('steps');
@@ -426,7 +414,7 @@ const Home = () => {
     
     // Exercise Calories celebration (300 kcal target)
     else if (isGoalFullyAchieved(exerciseSummary.todayCalories, 300) && !hasShownCelebrationToday('exercise_calories')) {
-      console.log('🎉 Exercise calories goal achieved:', { current: exerciseSummary.todayCalories, target: 300 });
+      
       setCelebrationType('Workout Goal Achieved! 🏋️');
       setShowCelebration(true);
       markCelebrationShown('exercise_calories');
@@ -768,7 +756,7 @@ const Home = () => {
 
   // Real food selection handler - opens confirmation card for ALL food selections
   const handleFoodSelect = (foodItem: any) => {
-    console.log('Food selected:', foodItem);
+    
     
     // Show confirmation card for all food selections
     setSelectedFood({
@@ -798,17 +786,15 @@ const Home = () => {
     });
 
     // Play food log confirmation sound with proper debugging and error handling
-    console.log('🔊 [Home] Attempting to play food log confirmation sound');
-    console.log('🔊 [Home] Sound enabled:', isEnabled);
     
     // Defer sound playback to ensure it plays after UI renders
     setTimeout(() => {
       try {
-        console.log('🔊 [Home] playFoodLogConfirm triggered');
+        
         playFoodLogConfirm().catch(error => {
           console.warn('🔊 [Home] Food log sound failed:', error);
           if (error.name === 'NotAllowedError') {
-            console.log('🔊 [Home] Audio blocked by browser - user interaction required');
+            
           }
         });
       } catch (error) {
@@ -851,7 +837,7 @@ const Home = () => {
 
   // Emergency recovery handler
   const handleEmergencyRecovery = () => {
-    console.log('Emergency recovery triggered');
+    
     retry();
     // Force a page refresh as last resort
     setTimeout(() => {
@@ -1076,7 +1062,7 @@ const Home = () => {
       {/* SmartLog AI Predictions - Separate section with custom spacing */}
       <div className="mt-16 mb-6 sm:mb-8 px-2 sm:px-4">
         <SmartLogAI onFoodSelect={(food) => {
-          console.log('AI predicted food selected:', food);
+          
           
           // Create food item with estimated nutritional values for the confirmation modal
           const foodItem = {

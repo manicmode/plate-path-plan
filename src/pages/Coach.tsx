@@ -95,7 +95,7 @@ Take a breath... let's explore your nutrition journey together with care and int
         setSavedRecipes(optimizedRecipes);
         
         if (recipes.length > optimizedRecipes.length) {
-          console.log(`Optimized recipes for mobile: ${recipes.length} -> ${optimizedRecipes.length}`);
+          
         }
       } catch (error) {
         handleError(error as Error, 'Loading saved recipes');
@@ -684,7 +684,7 @@ setMessages(prev => {
                 onClick={() => { 
                   window.dispatchEvent(new Event('coach:scrollToChat'));
                   if (chatCardRef.current) scrollToAlignTop(chatCardRef.current);
-                  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'nutrition', chipId: chip.id, usingContext: useMyData }));
+                  
                   handleQuickQuestion(chip.message);
                 }}
                 className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}

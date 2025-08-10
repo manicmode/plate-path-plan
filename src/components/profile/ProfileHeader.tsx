@@ -29,12 +29,6 @@ const dietaryGoalOptions = [
 function ProfileHeader({ user, isEditing, onEditToggle }: ProfileHeaderProps) {
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production") console.count("[ProfileHeader] mounted");
-    return () => {
-      if (process.env.NODE_ENV !== "production") console.log("[ProfileHeader] unmounted");
-    };
-  }, []);
 
   return (
     <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'}`}>

@@ -117,9 +117,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   React.useEffect(() => {
     if (flaggedIngredients.length > 0 && currentFoodItem) {
       // Mock coach message callback for demo
-      const handleCoachMessage = (message: any) => {
-        console.log('Coach response triggered for flagged ingredients:', message);
-      };
+      const handleCoachMessage = (message: any) => {};
       
       triggerCoachResponseForIngredients(flaggedIngredients, handleCoachMessage);
     }
@@ -195,7 +193,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     
     setIsEvaluatingQuality(true);
     try {
-      console.log('Evaluating meal quality for nutrition log:', nutritionLogId);
+      
       
       const { data, error } = await supabase.functions.invoke('evaluate-meal-quality', {
         body: { nutrition_log_id: nutritionLogId }
@@ -206,7 +204,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         return;
       }
 
-      console.log('Meal quality evaluation result:', data);
+      
       setQualityData(data);
       
       // Show toast if score is particularly good or concerning
@@ -276,7 +274,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const handleConfirm = async () => {
     // Prevent double-processing
     if (isConfirming || isProcessingFood) {
-      console.log('⚠️ Already processing, ignoring duplicate confirm request');
+      
       return;
     }
     
@@ -284,7 +282,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     setIsConfirming(true);
     
     try {
-      console.log('🍽️ Starting food confirmation process');
+      
       
       // Add 10-second timeout wrapper around onConfirm
       const confirmPromise = new Promise<void>((resolve, reject) => {
@@ -309,7 +307,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Play food log confirmation sound
-      console.log('🔊 Attempting to play food log confirmation sound');
+      
       playFoodLogConfirm().catch(error => {
         console.warn('🔊 Food log sound failed:', error);
       });

@@ -626,7 +626,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                   if (chatCardRef.current) scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
                   window.dispatchEvent(new CustomEvent('exercise-chat:send', { detail: { chipId: chip.id, text: chip.message } }));
                   setTimeout(() => window.dispatchEvent(new Event('coach:scrollToChat')), 120);
-                  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'exercise', chipId: chip.id, usingContext: useMyData }));
+                  
                   handlePromptClick(chip.message);
                 }}
                 className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"

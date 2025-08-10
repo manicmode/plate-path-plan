@@ -322,7 +322,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
       playNote(783.99, now + 0.2, 0.4); // G5
       
     } catch (error) {
-      console.log('Audio not supported or blocked:', error);
+      console.warn('Audio not supported or blocked:', error);
     }
   };
 
@@ -335,7 +335,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
         // Celebratory vibration pattern: short-long-short
         navigator.vibrate([100, 50, 200, 50, 100]);
       } catch (error) {
-        console.log('Vibration not supported:', error);
+        console.warn('Vibration not supported:', error);
       }
     }
   };
