@@ -3483,7 +3483,7 @@ export type Database = {
           exercise_frequency: string | null
           exercise_types: string[] | null
           fasting_schedule: string | null
-          first_name: string | null
+          first_name: string
           followers_count: number | null
           following_count: number | null
           food_allergies: Json | null
@@ -3499,7 +3499,7 @@ export type Database = {
           id: string
           last_caricature_generation: string | null
           last_hydration_log_date: string | null
-          last_name: string | null
+          last_name: string
           last_nutrition_log_date: string | null
           last_profile_update: string | null
           last_supplement_log_date: string | null
@@ -3519,7 +3519,7 @@ export type Database = {
           reminder_frequency: string | null
           selected_avatar_variant: number | null
           selected_badge_title: string | null
-          selected_trackers: string[] | null
+          selected_trackers: string[]
           shares_count: number
           show_onboarding_reminder: boolean | null
           snacking_patterns: string | null
@@ -3572,7 +3572,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
-          first_name?: string | null
+          first_name?: string
           followers_count?: number | null
           following_count?: number | null
           food_allergies?: Json | null
@@ -3588,7 +3588,7 @@ export type Database = {
           id?: string
           last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
-          last_name?: string | null
+          last_name?: string
           last_nutrition_log_date?: string | null
           last_profile_update?: string | null
           last_supplement_log_date?: string | null
@@ -3608,7 +3608,7 @@ export type Database = {
           reminder_frequency?: string | null
           selected_avatar_variant?: number | null
           selected_badge_title?: string | null
-          selected_trackers?: string[] | null
+          selected_trackers?: string[]
           shares_count?: number
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
@@ -3661,7 +3661,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
-          first_name?: string | null
+          first_name?: string
           followers_count?: number | null
           following_count?: number | null
           food_allergies?: Json | null
@@ -3677,7 +3677,7 @@ export type Database = {
           id?: string
           last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
-          last_name?: string | null
+          last_name?: string
           last_nutrition_log_date?: string | null
           last_profile_update?: string | null
           last_supplement_log_date?: string | null
@@ -3697,7 +3697,7 @@ export type Database = {
           reminder_frequency?: string | null
           selected_avatar_variant?: number | null
           selected_badge_title?: string | null
-          selected_trackers?: string[] | null
+          selected_trackers?: string[]
           shares_count?: number
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
