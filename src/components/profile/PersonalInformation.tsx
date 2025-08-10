@@ -56,9 +56,6 @@ const CONTENT_W = "max-w-[380px] md:max-w-[420px]";
 
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[IDENTITY CARD] render -> PersonalInformation.tsx");
-  }
   const { toast } = useToast();
   const { refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
@@ -162,11 +159,11 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms', outline: process.env.NODE_ENV !== 'production' ? '2px solid magenta' : undefined }} data-testid="identity-card-root" data-source="PersonalInformation.tsx">
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms' }} data-testid="identity-card-root">
       {/* VIEW (summary) */}
       {!isEditing && (
         <CardContent className="px-0 pb-4 pt-3">
-          <div className={`mx-auto w-full ${CONTENT_W} px-4 text-center`}>
+          <div className={`IdentityInner mx-auto w-full ${CONTENT_W} px-4 text-center`}>
             <div className="text-center space-y-2">
               <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-foreground`}>
                 {displayName}
@@ -209,7 +206,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* EDIT (overlay or inline — keep your logic) */}
       {isEditing && (
         <div className="IdentityEditorOverlay absolute inset-0 flex justify-center items-start">
-          <div className={`mx-auto w-full ${CONTENT_W} px-4 py-4`}>
+          <div className={`IdentityInner mx-auto w-full ${CONTENT_W} px-4 py-4`}>
             <form onSubmit={handleSave}>
               <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
               <Input

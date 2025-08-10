@@ -1405,4 +1405,9 @@
   .IdentityEditorOverlay { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; pointer-events: auto; background: radial-gradient(120% 120% at 50% 0%, hsl(var(--background) / 0.04), hsl(var(--foreground) / 0.18)); }
   .IdentitySummary.isHidden { opacity: 0; pointer-events: none; }
   .IdentityEditorOverlay.isHidden { opacity: 0; pointer-events: none; transform: translateY(6px); }
+
+  /* Force narrow, centered inner width for Identity content */
+  .IdentityInner { max-width: 380px; }
+  @media (min-width: 768px) { .IdentityInner { max-width: 420px; } }
 }
+
