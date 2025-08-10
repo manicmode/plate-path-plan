@@ -858,28 +858,30 @@ const ExerciseHub = () => {
       <ExerciseGoalsInitializer />
       
       {/* Header */}
-      <div className="sticky top-0 z-60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b h-[var(--app-header-height)] flex items-center px-4">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center">
-          {/* Left Column - Back Button */}
-          <div className="flex justify-start">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleBackClick}
-              className="rounded-full"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+      <div className="sticky top-0 z-60">
+        <div className="h-[var(--app-header-height,64px)] min-h-[var(--app-header-height,64px)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center px-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center">
+            {/* Left Column - Back Button */}
+            <div className="flex justify-start">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBackClick}
+                className="rounded-full"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Center Column - Title */}
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-2xl">🏋️</span>
+              <h1 className="text-xl font-bold whitespace-nowrap">Exercise & Recovery</h1>
+            </div>
+            
+            {/* Right Column - Empty for balance */}
+            <div></div>
           </div>
-          
-          {/* Center Column - Title */}
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl">🏋️</span>
-            <h1 className="text-xl font-bold whitespace-nowrap">Exercise & Recovery</h1>
-          </div>
-          
-          {/* Right Column - Empty for balance */}
-          <div></div>
         </div>
       </div>
 

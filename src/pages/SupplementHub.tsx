@@ -1433,19 +1433,21 @@ const SupplementHub = () => {
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       <div className="max-w-md mx-auto space-y-6">
         {/* Header */}
-        <div className="sticky top-0 z-60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b h-[var(--app-header-height)] flex items-center px-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/explore')}
-              className="rounded-full"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🌟</span>
-              <h1 className="text-xl font-bold">Supplement Hub</h1>
+        <div className="sticky top-0 z-60">
+          <div className="h-[var(--app-header-height,64px)] min-h-[var(--app-header-height,64px)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center px-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/explore')}
+                className="rounded-full"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🌟</span>
+                <h1 className="text-xl font-bold">Supplement Hub</h1>
+              </div>
             </div>
           </div>
         </div>
