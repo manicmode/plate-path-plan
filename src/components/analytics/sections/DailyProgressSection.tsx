@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { Flame, Zap, Droplets, Activity, Wheat, Leaf } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 
 interface DailyProgressSectionProps {
@@ -11,6 +12,8 @@ interface DailyProgressSectionProps {
 
 export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressSectionProps) => {
   const { user } = useAuth();
+  const { todayTotal } = useRealHydrationData();
+  const hydrationTargetMl = ((user as any)?.targetHydration ? (user as any).targetHydration : 8) * 250;
 
   const [isOpen, setIsOpen] = useState(false);
   const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
@@ -68,9 +71,9 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         onClick={() => openChart('fiber', 'Fiber', '#8B5CF6')}
       />
       <DailyProgressCard
-        title="Water"
-        value={progress.water || 0}
-        target={2000}
+        title="Hydration"
+        value={todayTotal || 0}
+        target={hydrationTargetMl}
         unit="ml"
         icon={<Droplets className="h-6 w-6" />}
         color="#06B6D4"
