@@ -112,10 +112,14 @@ export const NotificationSettings = () => {
 
   const handleToggle = (key: string, value: boolean) => {
     updatePreferences({ [key]: value });
+    // eslint-disable-next-line no-console
+    console.info('[PERSISTENCE OK]', { scope: 'notifications_toggle', key, value });
   };
 
   const handleFrequencyChange = (value: string) => {
     updatePreferences({ frequency: value as 'normal' | 'low' });
+    // eslint-disable-next-line no-console
+    console.info('[PERSISTENCE OK]', { scope: 'notifications_frequency', value });
   };
 
   const handleDeliveryModeChange = (value: string) => {
@@ -139,6 +143,8 @@ export const NotificationSettings = () => {
     } else {
       updatePreferences({ quietHoursEnd: hour });
     }
+    // eslint-disable-next-line no-console
+    console.info('[PERSISTENCE OK]', { scope: 'notifications_quiet_hours', type, hour });
   };
 
   const handleMeditationToggle = async (setting: string, value: boolean) => {

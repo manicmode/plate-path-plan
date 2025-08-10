@@ -148,6 +148,8 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
       };
       onFormDataChange?.(localUpdate);
       onEditToggle?.();
+      // eslint-disable-next-line no-console
+      console.info('[PERSISTENCE OK]', { scope: 'manual_targets', isEnabled: isManualOverride, targets: manualTargets, userId: user?.id });
       toast.success('Manual targets saved successfully!');
     } catch (error) {
       console.error('Error saving manual targets:', error);

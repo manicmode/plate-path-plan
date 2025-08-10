@@ -139,6 +139,9 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       // Exit edit mode
       onEditToggle();
 
+      // eslint-disable-next-line no-console
+      console.info('[PERSISTENCE OK]', { scope: 'username', value: username.trim(), userId: user.id });
+
       toast({
         title: "Success!",
         description: "Username updated successfully.",
