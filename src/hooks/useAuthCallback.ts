@@ -12,6 +12,7 @@ export const useAuthCallback = () => {
     const handleAuthCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const urlHash = new URLSearchParams(window.location.hash.substring(1));
+      const authType = urlHash.get('type') || urlParams.get('type');
       
       // Check for Supabase auth parameters in URL
       const hasAuthParams = 
@@ -68,7 +69,31 @@ export const useAuthCallback = () => {
         
         await waitForAuth();
         
-        // Navigate to home using React Router
+        // If this is a signup confirmation callback, route to onboarding if needed
+        if (authType === 'signup') {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.id) {
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('onboarding_completed')
+                .eq('user_id', user.id)
+                .single();
+              if (profile?.onboarding_completed) {
+                console.log('📍 Signup callback: onboarding complete → /home');
+                navigate('/home', { replace: true });
+              } else {
+                console.log('📍 Signup callback: onboarding pending → /onboarding');
+                navigate('/onboarding', { replace: true });
+              }
+              return;
+            }
+          } catch (e) {
+            console.warn('Failed to check onboarding status, defaulting to /home', e);
+          }
+        }
+
+        // Default: Navigate to home using React Router
         console.log('📍 Navigating to /home');
         navigate('/home', { replace: true });
         
