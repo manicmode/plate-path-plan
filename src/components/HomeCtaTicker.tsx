@@ -387,7 +387,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
 
     // Global debounce across all CTAs to ensure one beep per user action
-    const SUPPRESS_WINDOW_MS = 1200;
+    const SUPPRESS_WINDOW_MS = 3000;
     const now = Date.now();
     if (now - (lastBeepAtRef.current || 0) < SUPPRESS_WINDOW_MS) {
       return;
