@@ -34,6 +34,7 @@ import { useDeferredHydrationData } from '@/hooks/useDeferredHydrationData';
 import { useDeferredDailyScore } from '@/hooks/useDeferredDailyScore';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useSound } from '@/hooks/useSound';
+import { SoundGate } from '@/lib/soundGate';
 import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
 import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
@@ -791,6 +792,7 @@ const Home = () => {
     setTimeout(() => {
       try {
         
+        SoundGate.markConfirm();
         playFoodLogConfirm().catch(error => {
           console.warn('🔊 [Home] Food log sound failed:', error);
           if (error.name === 'NotAllowedError') {

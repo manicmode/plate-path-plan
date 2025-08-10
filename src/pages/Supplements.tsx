@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
+import { SoundGate } from '@/lib/soundGate';
 
 const Supplements = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -65,6 +66,7 @@ const Supplements = () => {
     });
     
     // Play success sound
+    SoundGate.markConfirm();
     playFoodLogConfirm();
     
     toast({
@@ -99,6 +101,7 @@ const Supplements = () => {
     });
 
     // Play success sound
+    SoundGate.markConfirm();
     playFoodLogConfirm();
 
     toast({

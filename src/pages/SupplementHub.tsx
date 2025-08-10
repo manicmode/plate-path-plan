@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
+import { SoundGate } from '@/lib/soundGate';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -1305,6 +1306,7 @@ const SupplementHub = () => {
     });
 
     // Play success sound
+    SoundGate.markConfirm();
     playFoodLogConfirm();
 
     toast({

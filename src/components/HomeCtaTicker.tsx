@@ -4,7 +4,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
-
+import { SoundGate } from '@/lib/soundGate';
 
 interface CtaMessage {
   id: string;
@@ -390,6 +390,10 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     const SUPPRESS_WINDOW_MS = 3000;
     const now = Date.now();
     if (now - (lastBeepAtRef.current || 0) < SUPPRESS_WINDOW_MS) {
+      return;
+    }
+
+    if (SoundGate.shouldSuppressAIThought(3000)) {
       return;
     }
 

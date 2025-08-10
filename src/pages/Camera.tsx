@@ -12,6 +12,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
 import { useSound } from '@/hooks/useSound';
+import { SoundGate } from '@/lib/soundGate';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
@@ -1632,6 +1633,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       }
 
       // Play success sound
+      SoundGate.markConfirm();
       playFoodLogConfirm();
       
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
@@ -1644,6 +1646,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       }
 
       // Play success sound
+      SoundGate.markConfirm();
       playFoodLogConfirm();
       
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
@@ -2134,6 +2137,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       setIsProcessingFood(false); // Reset processing state when completely done
       
       // Play success sound only once at the very end
+      SoundGate.markConfirm();
       playFoodLogConfirm();
       
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);

@@ -17,6 +17,7 @@ import { ManualIngredientEntry } from './camera/ManualIngredientEntry';
 import { useIngredientAlert } from '@/hooks/useIngredientAlert';
 import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
 import { useSound } from '@/hooks/useSound';
+import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FoodItem {
@@ -307,7 +308,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Play food log confirmation sound
-      
+      SoundGate.markConfirm();
       playFoodLogConfirm().catch(error => {
         console.warn('🔊 Food log sound failed:', error);
       });
