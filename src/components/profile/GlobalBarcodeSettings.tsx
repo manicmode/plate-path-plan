@@ -13,9 +13,13 @@ interface GlobalBarcodeSettingsProps {
 }
 
 export const GlobalBarcodeSettings = ({ isEditing, onEditToggle }: GlobalBarcodeSettingsProps) => {
-  const [globalSearchEnabled, setGlobalSearchEnabled] = useState(() => {
-    return safeGetJSON('global_barcode_search', true);
-  });
+const [globalSearchEnabled, setGlobalSearchEnabled] = useState(() => {
+  return safeGetJSON('global_barcode_search', false);
+});
+/**
+ * NOTE: This toggle is for future rollout only.
+ * The Camera runtime currently ignores it (hardcoded OFF).
+ */
 
   const handleToggle = (enabled: boolean) => {
     setGlobalSearchEnabled(enabled);

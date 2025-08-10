@@ -13,24 +13,16 @@ export const APP_VERSION = {
   }
 };
 
-export const FEATURES = {
-  GPT5_BACKEND: true,
-  SMART_FOOD_ANALYZER: true,
-  VISION_DETECTION: true,
-  VOICE_LOGGING: true
-};
+// Legacy flags removed. Use src/constants/flags.ts for feature flags.
+console.log('🚀 App Version:', APP_VERSION.FULL);
 
-console.log('🚀 App Version:', APP_VERSION.FULL, 'Features:', FEATURES);
-
-// Expose globally for verification
+// Expose version globally for verification
 declare global {
   interface Window {
     APP_VERSION: typeof APP_VERSION;
-    FEATURES: typeof FEATURES;
   }
 }
 
 if (typeof window !== 'undefined') {
   window.APP_VERSION = APP_VERSION;
-  window.FEATURES = FEATURES;
 }

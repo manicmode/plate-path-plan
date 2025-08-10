@@ -882,9 +882,10 @@ const CameraPage = () => {
         throw new Error('Invalid barcode format. Please check the barcode number.');
       }
 
-      // Get global search setting (defaults to true for best user experience)
-      const enableGlobalSearch = safeGetJSON('global_barcode_search', true);
-      console.log('Global search enabled:', enableGlobalSearch);
+// Global barcode search is intentionally forced OFF for now.
+// Runtime is hardcoded to false; the profile toggle is ignored until rollout.
+const enableGlobalSearch = false;
+console.log('Global search enabled:', enableGlobalSearch);
 
       console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
       

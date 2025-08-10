@@ -6,6 +6,7 @@ import { useNutritionDeduplication } from './useNutritionDeduplication';
 import { safeSetJSON } from '@/lib/safeStorage';
 import { useMealScoring } from './useMealScoring';
 import { getLocalDateString } from '@/lib/dateUtils';
+import { FLAGS } from '@/constants/flags';
 
 interface FoodItem {
   id: string;
@@ -101,7 +102,7 @@ export const useNutritionPersistence = () => {
         addToRecentlySaved(savedId);
         
         // Award nutrition XP (with feature flag)
-        if (process.env.NEXT_PUBLIC_ENABLE_XP === 'true') {
+        if (FLAGS.ENABLE_XP) {
           try {
             const { error: xpError } = await supabase.functions.invoke('award-nutrition-xp', {
               body: { 
