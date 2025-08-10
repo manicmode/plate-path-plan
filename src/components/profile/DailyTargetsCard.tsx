@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useDailyTargetsGeneration } from '@/hooks/useDailyTargetsGeneration';
 import { toast } from 'sonner';
-import { mlToGlasses, DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
+import { DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 interface DailyTarget {
   id: string;
@@ -49,7 +49,9 @@ const glassSizeMl = DEFAULT_GLASS_SIZE_ML;
 const hydrationTargetMlDisplay =
   targets?.hydration_ml != null
     ? Math.round(targets.hydration_ml)
-    : ((asNumber(t.targetHydration) ?? 0) * glassSizeMl);
+    : (asNumber(t.targetHydration) != null
+        ? Math.round((asNumber(t.targetHydration) as number) * glassSizeMl)
+        : null);
 
 const items = [
   { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
@@ -61,7 +63,7 @@ const items = [
   { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
   { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
   { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
-  { key: "hydration", label: "Hydration",     value: hydrationTargetMlDisplay,       unit: "ml",      color: "text-cyan-400" },
+  { key: "hydration", label: "Hydration (ml)",     value: hydrationTargetMlDisplay,       unit: "",      color: "text-cyan-400" },
   { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
 ];
 
@@ -290,11 +292,6 @@ const items = [
                     <span className="text-white/60 text-[12px] leading-[1.1]">
                       {value === null || !unit ? '' : unit}
                     </span>
-                    {key === 'hydration' && (
-                      <span className="text-white/50 text-[11px] leading-[1.1] ml-1">
-                        ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
-                      </span>
-                    )}
                   </span>
                 </li>
               ))}

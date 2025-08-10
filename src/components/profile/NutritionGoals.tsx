@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { withStabilizedViewport } from '@/utils/scrollStabilizer';
-import { mlToGlasses, DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
+import { DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 interface NutritionGoalsProps {
   formData: {
@@ -229,7 +229,7 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     { key: "sugar",     label: "Sugar (g)",     value: source.get("Sugar"),       unit: "",         color: "text-rose-400" },
     { key: "sodium",    label: "Sodium (mg)",   value: source.get("Sodium"),      unit: "",         color: "text-red-400" },
     { key: "satFat",    label: "Sat Fat (g)",   value: source.get("SatFat"),      unit: "",         color: "text-violet-400" },
-    { key: "hydration", label: "Hydration",     value: hydrationTargetMlDisplay,   unit: "ml",       color: "text-cyan-400" },
+    { key: "hydration", label: "Hydration (ml)", value: hydrationTargetMlDisplay,   unit: "",         color: "text-cyan-400" },
     { key: "supps",     label: "Supplements",   value: source.get("Supplements"), unit: "",         color: "text-indigo-400" },
   ];
   const colA = items.slice(0, 5);
@@ -298,11 +298,6 @@ withStabilizedViewport(() => onEditToggle());
                         <span className="text-white/60 text-[12px] leading-[1.1]">
                           {value === null || !unit ? "" : unit}
                         </span>
-                        {key === 'hydration' && (
-                          <span className="text-white/50 text-[11px] leading-[1.1] ml-1">
-                            ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
-                          </span>
-                        )}
                       </span>
                   </li>
                 ))}
@@ -560,11 +555,6 @@ withStabilizedViewport(() => onEditToggle());
                     hydrationTargetMlDisplay != null ? 'ml' : undefined
                   )}
                 </div>
-                {hydrationTargetMlDisplay != null && (
-                  <div className="text-xs text-muted-foreground">
-                    ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
-                  </div>
-                )}
                 {getSourceLabel('hydration_ml', dailyTargets?.hydration_ml) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('hydration_ml', dailyTargets?.hydration_ml)}</div>
                 )}
