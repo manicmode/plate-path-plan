@@ -3,6 +3,9 @@ import { soundManager } from '@/utils/SoundManager';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 
+// Self-debounce for confirm chime to avoid double plays from near-simultaneous calls
+let __lastConfirmPlayedAt = 0;
+
 interface SoundContextType {
   isEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
@@ -91,7 +94,12 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   const playAIThought = (options?: { playbackRate?: number }) => playSound('ai_thought', options);
   const playBodyScanCapture = () => playSound('body_scan_camera');
   const playChallengeWin = () => playSound('challenge_win');
-  const playFoodLogConfirm = () => playSound('food_log_confirm');
+  const playFoodLogConfirm = async () => {
+    const now = Date.now();
+    if (now - __lastConfirmPlayedAt < 500) return;
+    __lastConfirmPlayedAt = now;
+    await playSound('food_log_confirm');
+  };
   const playFriendAdded = () => playSound('friend_added');
   const playGoalHit = () => playSound('goal_hit');
   const playHealthScanCapture = () => playSound('health_scan_capture');
