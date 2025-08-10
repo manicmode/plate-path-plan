@@ -25,5 +25,20 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
     },
+  },
+  // ---- Noisy console guard for critical routes ----
+  {
+    files: [
+      "src/pages/Home.tsx",
+      "src/pages/Coach.tsx",
+      "src/pages/AIFitnessCoach.tsx",
+      "src/components/coach/recovery/RecoveryAIChat.tsx",
+      "src/components/FoodConfirmationCard.tsx",
+      "src/components/HomeCtaTicker.tsx",
+      "src/components/profile/**/*",
+    ],
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+    },
   }
 );
