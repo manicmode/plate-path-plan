@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { audit, newActionId } from '@/utils/soundAudit';
+import { SoundGate } from '@/lib/soundGate';
 
 interface FoodPrediction {
   name: string;
@@ -179,6 +180,9 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
     const actionId = newActionId('SL');
     const source = activeTab === 'smart' ? 'AI' : activeTab === 'recent' ? 'RECENTS' : 'SAVED';
     audit('smartlog_tile_tap', { source, itemId: food?.name, actionId });
+    // Mark sound gate immediately to suppress AI-thought beep
+    SoundGate.markConfirm();
+    audit('smartlog_gate_marked', {});
     // Call onFoodSelect to open FoodConfirmation modal instead of instant-log
     onFoodSelect?.(food);
   };
