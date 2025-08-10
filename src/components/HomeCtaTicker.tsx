@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 import { SoundGate } from '@/lib/soundGate';
+import { audit } from '@/utils/soundAudit';
 
 interface CtaMessage {
   id: string;
@@ -384,19 +385,26 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     lastEnqueueIdRef.current = lastCoachCtaEnqueueId;
 
     // If tab is hidden, skip sound entirely
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      audit('ai_thought_skip_hidden', { enqueueId: lastCoachCtaEnqueueId });
+      return;
+    }
 
     // Global debounce across all CTAs to ensure one beep per user action
     const SUPPRESS_WINDOW_MS = 3000;
     const now = Date.now();
-    if (now - (lastBeepAtRef.current || 0) < SUPPRESS_WINDOW_MS) {
+    const since = now - (lastBeepAtRef.current || 0);
+    if (since < SUPPRESS_WINDOW_MS) {
+      audit('ai_thought_suppressed_debounce', { enqueueId: lastCoachCtaEnqueueId, msSince: since, window: SUPPRESS_WINDOW_MS });
       return;
     }
 
     if (SoundGate.shouldSuppressAIThought(3000)) {
+      audit('ai_thought_suppressed_gate', { enqueueId: lastCoachCtaEnqueueId });
       return;
     }
 
+    audit('ai_thought_play', { enqueueId: lastCoachCtaEnqueueId });
     // Play once
     lastBeepAtRef.current = now;
     // eslint-disable-next-line @typescript-eslint/no-floating-promises

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { audit, newActionId } from '@/utils/soundAudit';
 
 interface FoodPrediction {
   name: string;
@@ -175,6 +176,9 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
 
   const handleFoodLog = (food: FoodPrediction) => {
     console.log('SmartLog tile clicked:', food);
+    const actionId = newActionId('SL');
+    const source = activeTab === 'smart' ? 'AI' : activeTab === 'recent' ? 'RECENTS' : 'SAVED';
+    audit('smartlog_tile_tap', { source, itemId: food?.name, actionId });
     // Call onFoodSelect to open FoodConfirmation modal instead of instant-log
     onFoodSelect?.(food);
   };
