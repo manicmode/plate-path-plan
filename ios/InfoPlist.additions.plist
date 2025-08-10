@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Usage Descriptions -->
+    <key>NSCameraUsageDescription</key>
+    <string>Voyage uses your camera to scan foods and barcodes.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Voyage uses your microphone for speak-to-log.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Voyage saves photos you capture for food logging.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Voyage lets you pick photos for food logging.</string>
+
+    <!-- App Bound Domains for WKWebView (required for robust cookie/window.open behavior) -->
+    <key>WKAppBoundDomains</key>
+    <array>
+      <string>uzoiiijqtahohfafqirm.supabase.co</string>
+      <string>api.openfoodfacts.org</string>
+      <string>world.openfoodfacts.org</string>
+      <string>www.googleapis.com</string>
+      <string>www.gstatic.com</string>
+      <string>myvoyage.fit</string>
+    </array>
+
+    <!-- Custom URL Scheme for deep links / magic links fallback -->
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>fit.myvoyage.app</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>myvoyage</string>
+        </array>
+      </dict>
+    </array>
+
+    <!-- Explicitly disallow arbitrary loads (HTTPS only) -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <false/>
+    </dict>
+  </dict>
+</plist>
