@@ -1346,14 +1346,14 @@ const Home = () => {
         )}
       </div>
 
-      {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
-      <div className="-mt-12">
-        <HomeAIInsights />
-      </div>
-
-      {/* Level & XP Progress Bar */}
+      {/* Level & XP Progress Bar (moved directly under Today's Performance) */}
       <div className="px-4 sm:px-6 -mt-4 mb-6">
         <LevelProgressBar />
+      </div>
+
+      {/* Enhanced AI Insights Window */}
+      <div className="-mt-12">
+        <HomeAIInsights />
       </div>
 
 
