@@ -615,7 +615,7 @@ const GuidedMeditation = () => {
   const MeditationPlayback = () => (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Button
@@ -781,7 +781,7 @@ const GuidedMeditation = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Button
