@@ -7,6 +7,7 @@ import { safeSetJSON } from '@/lib/safeStorage';
 import { useMealScoring } from './useMealScoring';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { FLAGS } from '@/constants/flags';
+import { isDev } from '@/utils/dev';
 
 interface FoodItem {
   id: string;
@@ -74,13 +75,42 @@ export const useNutritionPersistence = () => {
         created_at: food.timestamp.toISOString()
       };
 
-      
-
-
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.info("[MEAL-PERSIST]", {
+          fn: "saveFood",
+          action: "insert nutrition_logs",
+          payload: {
+            userIdTail: user?.id ? String(user.id).slice(-6) : "anon",
+            food_name: insertData.food_name,
+            calories: insertData.calories,
+            protein: insertData.protein,
+            carbs: insertData.carbs,
+            fat: insertData.fat,
+          },
+        });
+      }
+      const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert(insertData)
         .select();
+      const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.info("[MEAL-PERSIST]", {
+          fn: "saveFood",
+          action: "insert result",
+          status: error ? "error" : "success",
+          ms: Math.round(t1 - t0),
+          ids: Array.isArray(data) ? data.map((d: any) => d.id) : [],
+          error: error
+            ? { message: (error as any).message, details: (error as any).details, hint: (error as any).hint, code: (error as any).code }
+            : undefined,
+        });
+      }
+
 
       
       if (error) {
@@ -211,6 +241,10 @@ export const useNutritionPersistence = () => {
       const existing = JSON.parse(localStorage.getItem(localKey) || '{"foods":[]}');
       existing.foods.push(food);
       safeSetJSON(localKey, existing);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.info('[MEAL-PERSIST]', { fn: 'saveFood', action: 'fallback to local store', food_name: food.name, userIdTail: user?.id ? String(user.id).slice(-6) : 'anon' });
+      }
       return null;
     }
   }, [user, scoreMealAfterInsert]);
