@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/auth';
 import { CircularProgress } from '@/components/analytics/ui/CircularProgress';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
-
+import { useNutrition } from '@/contexts/NutritionContext';
 interface ActivityExerciseSectionProps {
   stepsData: any[];
   exerciseCaloriesData: any[];
@@ -19,8 +19,8 @@ interface ActivityExerciseSectionProps {
 
 export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weeklyAverage, progress }: ActivityExerciseSectionProps) => {
   const { user } = useAuth();
-  // Convert targetHydration (glasses) to ml
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+  const { getHydrationGoal } = useNutrition();
+  const hydrationTargetMl = getHydrationGoal();
 
   const [isOpen, setIsOpen] = useState(false);
   const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);

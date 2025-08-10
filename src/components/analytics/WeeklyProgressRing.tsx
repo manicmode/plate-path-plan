@@ -9,7 +9,7 @@ interface WeeklyProgressRingProps {
 }
 
 export const WeeklyProgressRing = ({ size = 180, strokeWidth = 12 }: WeeklyProgressRingProps) => {
-  const { weeklyData } = useNutrition();
+  const { weeklyData, getHydrationGoal } = useNutrition();
   const { user } = useAuth();
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [showSparkles, setShowSparkles] = useState(false);
@@ -21,7 +21,7 @@ export const WeeklyProgressRing = ({ size = 180, strokeWidth = 12 }: WeeklyProgr
     const loggedDays = weeklyData.filter(day => day.foods.length > 0).length;
     const loggingScore = (loggedDays / 7) * 0.4; // 40% weight
     
-    const hydrationDays = weeklyData.filter(day => day.totalHydration >= (user?.targetHydration || 2000)).length;
+    const hydrationDays = weeklyData.filter(day => day.totalHydration >= getHydrationGoal()).length;
     const hydrationScore = (hydrationDays / 7) * 0.3; // 30% weight
     
     const avgCalories = weeklyData.reduce((sum, day) => sum + day.totalCalories, 0) / weeklyData.length;

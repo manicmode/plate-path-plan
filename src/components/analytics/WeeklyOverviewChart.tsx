@@ -11,14 +11,14 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 type MetricType = 'calories' | 'protein' | 'carbs' | 'fat' | 'hydration' | 'steps' | 'exercise';
 
 export const WeeklyOverviewChart = () => {
-  const { weeklyData } = useNutrition();
+  const { weeklyData, getHydrationGoal } = useNutrition();
   const { user } = useAuth();
   const { dailyData, isLoading } = useRealNutritionHistory();
   const { weeklyChartData: exerciseWeeklyData, isLoading: exerciseLoading } = useRealExerciseData('7d');
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('calories');
 
-  // Convert targetHydration (glasses) to ml for hydration metric
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+  // Hydration target (ml) from NutritionContext
+  const hydrationTargetMl = getHydrationGoal();
 
   const metricOptions = [
     { value: 'calories', label: 'Calories', color: '#3B82F6', target: user?.targetCalories || 2000 },

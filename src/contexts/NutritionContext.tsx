@@ -10,6 +10,7 @@ import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
 import { useXPSystem } from '@/hooks/useXPSystem';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 
 interface FoodItem {
@@ -420,9 +421,12 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
 
   // Use proper ml conversion from user profile or daily targets
   const getHydrationGoal = () => {
-    if (dailyTargets.hydration_ml) return dailyTargets.hydration_ml;
-    // Convert targetHydration (glasses) to ml
-    return (user?.targetHydration || 8) * 250;
+    const mlFromDailyTargets = dailyTargets?.hydration_ml;
+    if (typeof mlFromDailyTargets === 'number' && !Number.isNaN(mlFromDailyTargets)) {
+      return mlFromDailyTargets; // already ml
+    }
+    const glasses = user?.targetHydration ?? 8;
+    return glasses * DEFAULT_GLASS_SIZE_ML; // 240 ml per glass fallback
   };
   
   const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default

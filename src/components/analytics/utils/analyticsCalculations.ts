@@ -7,7 +7,7 @@ import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useRealToxinData } from '@/hooks/useRealToxinData';
 
 export const useAnalyticsCalculations = () => {
-  const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
+  const { currentDay, weeklyData, getTodaysProgress, getHydrationGoal } = useNutrition();
   const { user } = useAuth();
   const { dailyData, weeklyData: realWeeklyData, isLoading } = useRealNutritionHistory();
   const { summary: exerciseSummary, weeklyChartData: exerciseWeeklyData } = useRealExerciseData('7d');
@@ -15,8 +15,8 @@ export const useAnalyticsCalculations = () => {
   
   const progress = getTodaysProgress();
   
-  // Convert targetHydration (glasses) to ml
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+  // Hydration target in ml via NutritionContext
+  const hydrationTargetMl = getHydrationGoal();
   
   // Memoize weekly averages using real data when available
   const weeklyAverage = useMemo(() => {

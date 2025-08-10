@@ -3,6 +3,7 @@ import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { Flame, Zap, Droplets, Activity, Wheat, Leaf } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
+import { useNutrition } from '@/contexts/NutritionContext';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 
 interface DailyProgressSectionProps {
@@ -12,8 +13,8 @@ interface DailyProgressSectionProps {
 
 export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressSectionProps) => {
   const { user } = useAuth();
-  
-  const hydrationTargetMl = ((user as any)?.targetHydration ? (user as any).targetHydration : 8) * 250;
+  const { getHydrationGoal } = useNutrition();
+  const hydrationTargetMl = getHydrationGoal();
 
   const [isOpen, setIsOpen] = useState(false);
   const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);

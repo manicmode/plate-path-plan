@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Zap, Droplets } from 'lucide-react';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
+import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
 
 interface MacrosHydrationSectionProps {
@@ -14,9 +15,10 @@ interface MacrosHydrationSectionProps {
 
 export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationSectionProps) => {
   const { user } = useAuth();
+  const { getHydrationGoal } = useNutrition();
   
-  // Convert targetHydration (glasses) to ml
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+  // Hydration target in ml via NutritionContext
+  const hydrationTargetMl = getHydrationGoal();
 
   return (
     <div>
