@@ -858,7 +858,7 @@ const ExerciseHub = () => {
       <ExerciseGoalsInitializer />
       
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="sticky top-0 z-60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b h-[var(--app-header-height)] flex items-center px-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center">
           {/* Left Column - Back Button */}
           <div className="flex justify-start">

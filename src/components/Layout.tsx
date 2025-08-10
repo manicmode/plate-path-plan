@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ const Layout = ({ children }: LayoutProps) => {
   const isMobile = useIsMobile();
   const { isChatModalOpen } = useChatModal();
   const [isNavigating, setIsNavigating] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { path: '/home', icon: Home, label: 'Home' },
@@ -73,6 +74,17 @@ const Layout = ({ children }: LayoutProps) => {
     setIsNavigating(false);
   }, [location.pathname]);
 
+  // Expose app header height as a CSS variable for page headers
+  useEffect(() => {
+    const setVar = () => {
+      const h = headerRef.current?.offsetHeight || 64; // fallback 64px
+      document.documentElement.style.setProperty("--app-header-height", `${h}px`);
+    };
+    setVar();
+    window.addEventListener("resize", setVar);
+    return () => window.removeEventListener("resize", setVar);
+  }, []);
+
   // Show only header for unauthenticated users on non-auth pages
   const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
 
@@ -83,7 +95,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen gradient-main transition-all duration-300">
       {/* Enhanced Header with better spacing */}
       <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+        <div ref={headerRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
               <img 
