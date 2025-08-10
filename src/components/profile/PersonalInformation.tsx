@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
 import { Settings, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,13 +44,6 @@ interface PersonalInformationProps {
   onEditToggle: () => void;
 }
 
-const dietaryGoalOptions = [
-  { id: 'weight_loss', label: 'Weight Loss' },
-  { id: 'muscle_gain', label: 'Muscle Gain' },
-  { id: 'maintenance', label: 'Weight Maintenance' },
-  { id: 'endurance', label: 'Endurance Training' },
-  { id: 'general_health', label: 'General Health' },
-];
 
 const CONTENT_W = "max-w-[380px] md:max-w-[420px]";
 
@@ -162,43 +155,28 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms' }} data-testid="identity-card-root">
       {/* VIEW (summary) */}
       {!isEditing && (
-        <CardContent className="px-0 pb-4 pt-3">
+        <CardContent className="px-0 pt-2 pb-3">
           <div className={`IdentityInner mx-auto w-full ${CONTENT_W} px-4 text-center`}>
-            <div className="text-center space-y-2">
-              <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-foreground`}>
-                {displayName}
-              </h2>
-              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <h3 className="text-[18px] font-semibold leading-tight">{displayName}</h3>
+
+            <div className="mt-1 flex items-center justify-center gap-2">
+              <p className="text-muted-foreground text-[13px] leading-tight">
                 {user?.email}
               </p>
-              {user?.dietaryGoals && user.dietaryGoals.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-1 sm:gap-2 mt-3">
-                  {user.dietaryGoals.slice(0, isMobile ? 2 : 5).map(goal => (
-                    <Badge key={goal} variant="secondary" className={`${isMobile ? 'text-xs' : 'text-sm'}`}>
-                      {dietaryGoalOptions.find(opt => opt.id === goal)?.label || goal}
-                    </Badge>
-                  ))}
-                  {isMobile && user.dietaryGoals.length > 2 && (
-                    <Badge variant="outline" className="text-xs">+{user.dietaryGoals.length - 2}</Badge>
-                  )}
-                </div>
-              )}
+              <button
+                type="button"
+                aria-label="Edit profile"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  withStabilizedViewport(() => onEditToggle());
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground/10 hover:bg-foreground/15 transition"
+                style={{ touchAction: 'manipulation' }}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
             </div>
-
-            <Button
-              variant={isEditing ? "default" : "outline"}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                withStabilizedViewport(() => onEditToggle());
-              }}
-              size={isMobile ? "sm" : "default"}
-              className="w-fit mx-auto mt-3"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <Settings className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${isMobile ? '' : 'mr-2'}`} />
-              {!isMobile && (isEditing ? 'Cancel' : 'Edit Profile')}
-            </Button>
           </div>
         </CardContent>
       )}
@@ -206,7 +184,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* EDIT (overlay or inline — keep your logic) */}
       {isEditing && (
         <div className="IdentityEditorOverlay absolute inset-0 flex justify-center items-start">
-          <div className={`IdentityInner mx-auto w-full ${CONTENT_W} px-4 py-4`}>
+          <div className={`IdentityInner mx-auto w-full ${CONTENT_W} px-4 py-3`}>
             <form onSubmit={handleSave}>
               <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
               <Input
