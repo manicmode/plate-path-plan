@@ -2786,6 +2786,33 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_error_logs: {
+        Row: {
+          err: string | null
+          id: number
+          meta: Json | null
+          step: string | null
+          ts: string | null
+          user_id: string | null
+        }
+        Insert: {
+          err?: string | null
+          id?: number
+          meta?: Json | null
+          step?: string | null
+          ts?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          err?: string | null
+          id?: number
+          meta?: Json | null
+          step?: string | null
+          ts?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sleep_nudge_preferences: {
         Row: {
           created_at: string
