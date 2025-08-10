@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useDailyTargetsGeneration } from '@/hooks/useDailyTargetsGeneration';
 import { toast } from 'sonner';
+import { mlToGlasses, DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 interface DailyTarget {
   id: string;
@@ -44,19 +45,25 @@ export const DailyTargetsCard = () => {
     return Number.isFinite(n) ? n : null;
   };
 
-  const items = [
-    { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
-    { key: "protein",   label: "Protein (g)",   value: asNumber(t.targetProtein),     unit: "",         color: "text-sky-400" },
-    { key: "carbs",     label: "Carbs (g)",     value: asNumber(t.targetCarbs),       unit: "",         color: "text-green-400" },
-    { key: "fat",       label: "Fat (g)",       value: asNumber(t.targetFat),         unit: "",         color: "text-amber-400" },
-    { key: "fiber",     label: "Fiber (g)",     value: asNumber(t.targetFiber),       unit: "",         color: "text-orange-400" },
+const glassSizeMl = DEFAULT_GLASS_SIZE_ML;
+const hydrationTargetMlDisplay =
+  targets?.hydration_ml != null
+    ? Math.round(targets.hydration_ml)
+    : ((asNumber(t.targetHydration) ?? 0) * glassSizeMl);
 
-    { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
-    { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
-    { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
-    { key: "hydration", label: "Hydration",     value: asNumber(t.targetHydration),   unit: "glasses",  color: "text-cyan-400" },
-    { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
-  ];
+const items = [
+  { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
+  { key: "protein",   label: "Protein (g)",   value: asNumber(t.targetProtein),     unit: "",         color: "text-sky-400" },
+  { key: "carbs",     label: "Carbs (g)",     value: asNumber(t.targetCarbs),       unit: "",         color: "text-green-400" },
+  { key: "fat",       label: "Fat (g)",       value: asNumber(t.targetFat),         unit: "",         color: "text-amber-400" },
+  { key: "fiber",     label: "Fiber (g)",     value: asNumber(t.targetFiber),       unit: "",         color: "text-orange-400" },
+
+  { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
+  { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
+  { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
+  { key: "hydration", label: "Hydration",     value: hydrationTargetMlDisplay,       unit: "ml",      color: "text-cyan-400" },
+  { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
+];
 
   const colA = items.slice(0, 5);
   const colB = items.slice(5);
@@ -283,6 +290,11 @@ export const DailyTargetsCard = () => {
                     <span className="text-white/60 text-[12px] leading-[1.1]">
                       {value === null || !unit ? '' : unit}
                     </span>
+                    {key === 'hydration' && (
+                      <span className="text-white/50 text-[11px] leading-[1.1] ml-1">
+                        ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
+                      </span>
+                    )}
                   </span>
                 </li>
               ))}
