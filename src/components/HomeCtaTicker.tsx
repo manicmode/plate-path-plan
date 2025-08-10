@@ -574,6 +574,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
 
   // Initialize CTA check
   useEffect(() => {
+    let chimeTimer: number | undefined;
     const checkForCta = () => {
       // HIGHEST PRIORITY: Coach CTA overrides everything
       if (currentCoachCta) {
@@ -599,12 +600,14 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
         setCurrentCtaId(validCta.id);
         setShowCta(true);
         
-        // Trigger celebratory effects for ultra-special CTAs
-        setTimeout(() => {
+        // Trigger celebratory effects for ultra-special CTAs and schedule reminder chime
+        chimeTimer = window.setTimeout(() => {
           triggerCelebratoryEffects(validCta.id);
           
-          // Play reminder chime for standard CTAs
+          // Play reminder chime for standard CTAs unless recently confirmed/tapped
           if (!isUltraSpecialCta(validCta.id)) {
+            if (SoundGate.shouldSuppressAIThought(3000)) return;
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             playReminderChime();
           }
         }, 500); // Small delay to let animation start
@@ -623,7 +626,10 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
 
     // Small delay to let other components load and user profile to load
     const timer = setTimeout(checkForCta, 2000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (chimeTimer) clearTimeout(chimeTimer);
+    };
   }, [user, currentDay, userProfile, currentCoachCta]); // Added currentCoachCta to dependencies
 
   // Track page visits for triggers
