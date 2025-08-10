@@ -7,7 +7,7 @@
 
 /* Accent border for Identity card using semantic theme tokens */
 :root {
-  --profile-accent: 270 72% 55%; /* Purple HSL for profile borders */
+  --profile-accent: 270 91% 65%; /* Matches avatar hero purple (tailwind purple-500) */
 }
 .IdentityCard--accentBorder {
   border-width: 2px !important;
