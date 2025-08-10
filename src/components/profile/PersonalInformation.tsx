@@ -56,6 +56,9 @@ const CONTENT_W = "max-w-[380px] md:max-w-[420px]";
 
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[IDENTITY CARD] render -> PersonalInformation.tsx");
+  }
   const { toast } = useToast();
   const { refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
@@ -159,7 +162,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms' }} data-testid="identity-card-root">
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard relative" style={{ animationDelay: '100ms', outline: process.env.NODE_ENV !== 'production' ? '2px solid magenta' : undefined }} data-testid="identity-card-root" data-source="PersonalInformation.tsx">
       {/* VIEW (summary) */}
       {!isEditing && (
         <CardContent className="px-0 pb-4 pt-3">
