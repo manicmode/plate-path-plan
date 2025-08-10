@@ -3,16 +3,11 @@ import { OnboardingFlow } from './OnboardingFlow';
 
 interface OnboardingScreenProps {
   onComplete: () => void;
+  onSkip: () => void;
 }
 
-export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
-  const handleSkip = () => {
-    // When user skips, we still call onComplete to continue to the app
-    // but the database will be marked as skipped with reminder enabled
-    onComplete();
-  };
-
+export const OnboardingScreen = ({ onComplete, onSkip }: OnboardingScreenProps) => {
   return (
-    <OnboardingFlow onComplete={onComplete} onSkip={handleSkip} />
+    <OnboardingFlow onComplete={onComplete} onSkip={onSkip} />
   );
 };

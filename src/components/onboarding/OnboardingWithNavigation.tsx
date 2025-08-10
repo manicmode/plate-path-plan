@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { OnboardingScreen } from './OnboardingScreen';
+import { useAuth } from '@/contexts/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OnboardingWithNavigationProps {
   onComplete: () => Promise<void>;
@@ -7,6 +9,7 @@ interface OnboardingWithNavigationProps {
 
 export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigationProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleComplete = async () => {
     console.log('[DEBUG] OnboardingWithNavigation: Starting completion process...');
@@ -21,5 +24,26 @@ export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigatio
     }
   };
 
-  return <OnboardingScreen onComplete={handleComplete} />;
+  const handleSkip = async () => {
+    console.log('[DEBUG] OnboardingWithNavigation: Starting skip process...');
+    try {
+      if (user) {
+        await supabase
+          .from('user_profiles')
+          .upsert({
+            user_id: user.id,
+            onboarding_completed: false,
+            onboarding_skipped: true,
+            show_onboarding_reminder: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+      }
+    } catch (error) {
+      console.error('[DEBUG] OnboardingWithNavigation: Error during skip:', error);
+    } finally {
+      navigate('/home', { replace: true });
+    }
+  };
+
+  return <OnboardingScreen onComplete={handleComplete} onSkip={handleSkip} />;
 }

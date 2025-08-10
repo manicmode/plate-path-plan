@@ -9,7 +9,7 @@ interface OnboardingGateProps {
 
 export default function OnboardingGate({ children }: OnboardingGateProps) {
   const { isAuthenticated } = useAuth();
-  const { isOnboardingComplete, isLoading } = useOnboardingStatus();
+  const { isOnboardingComplete, isLoading, onboardingSkipped } = useOnboardingStatus();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,14 +21,14 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
 
     const pathname = location.pathname || '';
 
-    // If onboarding is incomplete, redirect to /onboarding from anywhere except onboarding itself
-    if (isOnboardingComplete === false && !pathname.startsWith('/onboarding')) {
+    // Soft gate: redirect only when not completed and not explicitly skipped
+    if (isOnboardingComplete === false && onboardingSkipped !== true && !pathname.startsWith('/onboarding')) {
       navigate('/onboarding', {
         replace: true,
         state: { from: pathname + (location.search || '') },
       });
     }
-  }, [isAuthenticated, isLoading, isOnboardingComplete, location.pathname, location.search, navigate]);
+  }, [isAuthenticated, isLoading, isOnboardingComplete, onboardingSkipped, location.pathname, location.search, navigate]);
 
   return <>{children}</>;
 }

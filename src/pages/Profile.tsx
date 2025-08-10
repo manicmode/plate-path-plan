@@ -350,7 +350,8 @@ const ProfileContent = () => {
           </>
         ) : (
           <OnboardingScreen 
-            onComplete={handleOnboardingComplete} 
+            onComplete={handleOnboardingComplete}
+            onSkip={() => setShowOnboarding(false)}
           />
         )}
       </div>

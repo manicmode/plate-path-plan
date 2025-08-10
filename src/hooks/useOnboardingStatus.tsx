@@ -8,6 +8,7 @@ export const useOnboardingStatus = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReminder, setShowReminder] = useState(false);
+  const [onboardingSkipped, setOnboardingSkipped] = useState<boolean>(false);
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
@@ -15,6 +16,7 @@ export const useOnboardingStatus = () => {
         setIsOnboardingComplete(null);
         setIsLoading(false);
         setShowReminder(false);
+        setOnboardingSkipped(false);
         return;
       }
 
@@ -44,10 +46,12 @@ export const useOnboardingStatus = () => {
           console.error('Error checking onboarding status:', error);
           setIsOnboardingComplete(false);
           setShowReminder(false);
+          setOnboardingSkipped(false);
         } else if (!data) {
           console.log('No profile found, assuming onboarding not complete');
           setIsOnboardingComplete(false);
           setShowReminder(false);
+          setOnboardingSkipped(false);
         } else {
           const isComplete = data.onboarding_completed || false;
           const wasSkipped = data.onboarding_skipped || false;
@@ -69,6 +73,7 @@ export const useOnboardingStatus = () => {
         console.error('Error in onboarding status check:', error);
         setIsOnboardingComplete(false);
         setShowReminder(false);
+        setOnboardingSkipped(false);
       } finally {
         setIsLoading(false);
       }
@@ -166,6 +171,7 @@ export const useOnboardingStatus = () => {
         console.log('Found cached onboarding completion status during refresh');
         setIsOnboardingComplete(true);
         setShowReminder(false);
+        setOnboardingSkipped(false);
         setIsLoading(false);
         return;
       }
@@ -182,10 +188,12 @@ export const useOnboardingStatus = () => {
         console.error('Error checking onboarding status:', error);
         setIsOnboardingComplete(false);
         setShowReminder(false);
+        setOnboardingSkipped(false);
       } else if (!data) {
         console.log('No profile found, assuming onboarding not complete');
         setIsOnboardingComplete(false);
         setShowReminder(false);
+        setOnboardingSkipped(false);
       } else {
         const isComplete = data.onboarding_completed || false;
         const wasSkipped = data.onboarding_skipped || false;
@@ -207,6 +215,7 @@ export const useOnboardingStatus = () => {
       console.error('Error in onboarding status check:', error);
       setIsOnboardingComplete(false);
       setShowReminder(false);
+      setOnboardingSkipped(false);
     } finally {
       setIsLoading(false);
     }
@@ -216,6 +225,7 @@ export const useOnboardingStatus = () => {
     isOnboardingComplete,
     isLoading,
     showReminder,
+    onboardingSkipped,
     dismissReminder,
     markOnboardingComplete,
     forceRefresh,
