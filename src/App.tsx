@@ -34,6 +34,7 @@ import { ClientSecurityValidator } from '@/components/security/ClientSecurityVal
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const Index = lazy(() => import('@/pages/Index'));
 const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
@@ -143,6 +144,7 @@ function AppContent() {
               <Route path="/s/:shareId" element={<PublicShare />} />
               <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/recovery-player" element={
                 <ProtectedRoute>
                   <RecoveryPlayer />

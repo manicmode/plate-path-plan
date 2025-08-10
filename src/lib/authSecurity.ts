@@ -1,6 +1,7 @@
 import { validateEmail, validatePassword } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, SECURITY_EVENTS } from './securityLogger';
+import { getSignUpRedirect } from '@/utils/authRedirect';
 
 // Security configuration for authentication
 export const authSecurityConfig = {
@@ -127,13 +128,13 @@ export const secureSignUp = async (email: string, password: string, additionalDa
   }
 
   try {
-    const redirectUrl = getSecureRedirectUrl();
+    const emailRedirectTo = getSignUpRedirect();
     
     const { data, error } = await supabase.auth.signUp({
       email: email.toLowerCase().trim(),
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: emailRedirectTo,
         data: additionalData
       }
     });

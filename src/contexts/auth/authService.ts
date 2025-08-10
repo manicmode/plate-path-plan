@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { validateUuidInput, cleanupInvalidUuids } from '@/lib/uuidValidationMiddleware';
 import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 import type { RegistrationResult } from './types';
+import { getSignUpRedirect } from '@/utils/authRedirect';
 
 export const loginUser = async (email: string, password: string) => {
   try {
@@ -160,7 +161,7 @@ export const registerUser = async (email: string, password: string, name?: strin
     // Add another small delay
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    const emailRedirectTo = getEmailRedirectURL();
+    const emailRedirectTo = getSignUpRedirect();
     console.log('📧 Calling Supabase signUp with redirect URL:', emailRedirectTo);
     
     const { data, error } = await supabase.auth.signUp({
@@ -290,7 +291,7 @@ export const resendEmailConfirmation = async (email: string) => {
   try {
     console.log('📧 Resending email confirmation for:', email);
     
-    const emailRedirectTo = getEmailRedirectURL();
+    const emailRedirectTo = getSignUpRedirect();
     console.log('📧 Resending with redirect URL:', emailRedirectTo);
     
     const { error } = await supabase.auth.resend({
