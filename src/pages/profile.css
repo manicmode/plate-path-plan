@@ -4,3 +4,11 @@
   overscroll-behavior: contain;
   will-change: scroll-position;
 }
+
+/* Accent border for Identity card using semantic theme tokens */
+.IdentityCard--accentBorder {
+  border-width: 2px !important;
+  border-color: hsl(var(--primary)) !important; /* uses themed HSL color */
+  border-style: solid;
+  border-radius: 1.5rem; /* match rounded-3xl */
+}

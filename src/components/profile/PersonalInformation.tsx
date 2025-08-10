@@ -157,7 +157,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard IdentityCard" style={{ animationDelay: '100ms' }}>
+    <Card className="animate-slide-up glass-card rounded-3xl ProfileCard IdentityCard IdentityCard--accentBorder" style={{ animationDelay: '100ms' }}>
       <div className={`IdentitySummary ${isEditing ? 'isHidden' : ''}`}>
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <div className="flex flex-col items-center space-y-4">
