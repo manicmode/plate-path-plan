@@ -17,6 +17,8 @@ export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigatio
     console.log('[DEBUG] OnboardingWithNavigation: Starting completion process...');
     try {
       await onComplete();
+      // Analytics (optional)
+      try { (window as any).analytics?.track?.('onboarding_completed'); } catch {}
       console.log('[DEBUG] OnboardingWithNavigation: onComplete finished, navigating to /home...');
       // Force navigation with replace to prevent back navigation to onboarding
       navigate('/home', { replace: true });
@@ -60,6 +62,8 @@ export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigatio
             },
             { onConflict: 'user_id' }
           );
+        // Analytics (optional)
+        try { (window as any).analytics?.track?.('onboarding_skipped'); } catch {}
         // Kick a refetch, but don't block navigation on it
         forceRefresh?.().catch((err) => console.warn('[DEBUG] OnboardingWithNavigation: forceRefresh error', err));
       }

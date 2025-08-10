@@ -22,28 +22,21 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     const pathname = location.pathname || '';
 
     // Compute temporary local bypass window
-    const BYPASS_MS = 10_000;
+    const BYPASS_MS = 4_000;
     const ts = Number(localStorage.getItem('voyage_onboarding_bypass_ts') || 0);
     const winTs = (window as any).__voyageOnboardingBypass || 0;
     const bypassActive = Date.now() - Math.max(ts, winTs) < BYPASS_MS;
 
-    console.log('[ONBOARD] Gate check', {
-      isAuthenticated,
-      isLoading,
-      isOnboardingComplete,
-      onboardingSkipped,
-      bypassActive,
-      pathname,
-    });
+    const onHome = pathname === '/home';
 
     // Soft gate: redirect only when not completed and not explicitly skipped and no active bypass
     if (
       isOnboardingComplete === false &&
       onboardingSkipped !== true &&
       !bypassActive &&
-      !pathname.startsWith('/onboarding')
+      !pathname.startsWith('/onboarding') &&
+      !onHome
     ) {
-      console.log('[ONBOARD] Redirecting to /onboarding');
       navigate('/onboarding', {
         replace: true,
         state: { from: pathname + (location.search || '') },
@@ -57,7 +50,6 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
       try {
         localStorage.removeItem('voyage_onboarding_bypass_ts');
         (window as any).__voyageOnboardingBypass = 0;
-        console.log('[ONBOARD] Cleared onboarding bypass');
       } catch {}
     }
   }, [isOnboardingComplete, onboardingSkipped]);
