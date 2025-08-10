@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { withStabilizedViewport } from '@/utils/scrollStabilizer';
+import { mlToGlasses, DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 interface NutritionGoalsProps {
   formData: {
@@ -208,6 +209,17 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     },
   };
 
+  const glassSizeMl = DEFAULT_GLASS_SIZE_ML;
+  const hydrationTargetMlDisplay = (
+    isManualOverride && manualTargets?.hydration_ml != null
+      ? Math.round(manualTargets.hydration_ml)
+      : (dailyTargets?.hydration_ml != null
+          ? Math.round(dailyTargets.hydration_ml)
+          : (formData?.targetHydration != null
+              ? Math.round(Number(formData.targetHydration) * glassSizeMl)
+              : null))
+  );
+
   const items = [
     { key: "calories",  label: "Calories",      value: source.get("Calories"),    unit: "",         color: "text-emerald-400" },
     { key: "protein",   label: "Protein (g)",   value: source.get("Protein"),     unit: "",         color: "text-sky-400" },
@@ -217,7 +229,7 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     { key: "sugar",     label: "Sugar (g)",     value: source.get("Sugar"),       unit: "",         color: "text-rose-400" },
     { key: "sodium",    label: "Sodium (mg)",   value: source.get("Sodium"),      unit: "",         color: "text-red-400" },
     { key: "satFat",    label: "Sat Fat (g)",   value: source.get("SatFat"),      unit: "",         color: "text-violet-400" },
-    { key: "hydration", label: "Hydration",     value: source.get("Hydration"),   unit: "glasses",  color: "text-cyan-400" },
+    { key: "hydration", label: "Hydration",     value: hydrationTargetMlDisplay,   unit: "ml",       color: "text-cyan-400" },
     { key: "supps",     label: "Supplements",   value: source.get("Supplements"), unit: "",         color: "text-indigo-400" },
   ];
   const colA = items.slice(0, 5);
@@ -279,14 +291,19 @@ withStabilizedViewport(() => onEditToggle());
                     <span className="text-[13px] leading-[1.1] text-white/80 whitespace-nowrap truncate pr-3">
                       {label}
                     </span>
-                    <span className="inline-flex items-baseline gap-1 tabular-nums">
-                      <span className={`font-semibold ${color} text-[15px] leading-[1.1] min-w-[3ch] text-right`}>
-                        {fmt(value)}
+                      <span className="inline-flex items-baseline gap-1 tabular-nums">
+                        <span className={`font-semibold ${color} text-[15px] leading-[1.1] min-w-[3ch] text-right`}>
+                          {fmt(value)}
+                        </span>
+                        <span className="text-white/60 text-[12px] leading-[1.1]">
+                          {value === null || !unit ? "" : unit}
+                        </span>
+                        {key === 'hydration' && (
+                          <span className="text-white/50 text-[11px] leading-[1.1] ml-1">
+                            ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
+                          </span>
+                        )}
                       </span>
-                      <span className="text-white/60 text-[12px] leading-[1.1]">
-                        {value === null || !unit ? "" : unit}
-                      </span>
-                    </span>
                   </li>
                 ))}
               </ul>
@@ -538,13 +555,16 @@ withStabilizedViewport(() => onEditToggle());
             ) : (
               <>
                 <div className={`text-2xl font-bold text-cyan-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                  {isManualOverride && manualTargets?.hydration_ml
-                    ? renderValue(manualTargets.hydration_ml, 'ml')
-                    : dailyTargets?.hydration_ml
-                      ? renderValue(Math.round(dailyTargets.hydration_ml / 240), 'glasses')
-                      : renderValue(formData.targetHydration || ('Not set' as any), 'glasses')
-                  }
+                  {renderValue(
+                    hydrationTargetMlDisplay ?? ('Not set' as any),
+                    hydrationTargetMlDisplay != null ? 'ml' : undefined
+                  )}
                 </div>
+                {hydrationTargetMlDisplay != null && (
+                  <div className="text-xs text-muted-foreground">
+                    ≈ {mlToGlasses(hydrationTargetMlDisplay, glassSizeMl)} glasses
+                  </div>
+                )}
                 {getSourceLabel('hydration_ml', dailyTargets?.hydration_ml) && (
                   <div className="text-xs text-muted-foreground">{getSourceLabel('hydration_ml', dailyTargets?.hydration_ml)}</div>
                 )}
