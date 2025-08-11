@@ -83,6 +83,24 @@ export async function createChallenge(params: {
     .single();
 
   if (error) return { error: normalizeError(error) };
+
+  // Auto-join creator as owner
+  const { error: memberError } = await supabase
+    .from("challenge_members")
+    .insert({
+      challenge_id: data.id,
+      user_id: userId!,
+      role: "owner",
+      status: "joined",
+    })
+    .select("*")
+    .single();
+
+  // Ignore duplicate key errors (already joined)
+  if (memberError && !memberError.message?.includes("duplicate")) {
+    return { error: normalizeError(memberError) };
+  }
+
   return { data: data as Challenge };
 }
 
