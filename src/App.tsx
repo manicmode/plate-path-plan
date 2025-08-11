@@ -33,7 +33,7 @@ import { ClientSecurityValidator } from '@/components/security/ClientSecurityVal
 import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
 import OnboardingGate from '@/routes/OnboardingGate';
-import DebugOverlay from '@/dev/DebugOverlay';
+
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -439,7 +439,7 @@ function App() {
                       <LevelUpProvider>
                         <WorkoutCompletionProvider>
                           <AppContent />
-                          <DebugOverlay />
+                          
                           <WorkoutCompletionModal />
                         </WorkoutCompletionProvider>
                       </LevelUpProvider>

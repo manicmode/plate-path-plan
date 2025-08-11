@@ -47,6 +47,12 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
 import SafeSection, { EmptyState } from '@/components/common/SafeSection';
 import HomeLayout from '@/components/home/HomeLayout';
+import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
+import { ActivityExerciseSection } from '@/components/analytics/sections/ActivityExerciseSection';
+import { MacrosHydrationSection } from '@/components/analytics/sections/MacrosHydrationSection';
+import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
+import { WeeklyProgressRing } from '@/components/analytics/WeeklyProgressRing';
+import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -101,7 +107,8 @@ const Home = () => {
   
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { toast } = useToast();
+const { toast } = useToast();
+  const { weeklyAverage, stepsData, exerciseCaloriesData, macroData } = useAnalyticsCalculations();
   const { playGoalHit, playFoodLogConfirm, playStartupChime, isEnabled } = useSound();
   
   // State for daily nutrition targets
@@ -863,111 +870,15 @@ const Home = () => {
     (todayScore ?? 0) > 0
   );
 
-  // ---- SAFE LOCALS (additions to avoid TS/undefined crashes) ----
-  const safeOpenInsights: (arg: any) => void =
-    (globalThis as any).openInsights ?? (() => {});
-
-  const safeExerciseSummary =
-    (globalThis as any).exerciseSummary ?? { todaySteps: 0, todayCalories: 0, todayDuration: 0 };
-
-  const safeStepsGoal  = (globalThis as any).stepsGoal ?? 0;
-  const safeStepsPct   = (globalThis as any).stepsPercentage ?? 0;
 
   return (
-    <HomeLayout>
+<HomeLayout>
       <div className="space-y-12 sm:space-y-16 animate-fade-in">
-        {/* Minimal known-good content so Home never blanks */}
-        <div className="rounded-xl border border-white/10 p-4">
-          <div className="text-sm opacity-70">Home is loading…</div>
-        </div>
-
-        {/* Steps & Exercise (safe locals used) */}
-        <div className="grid grid-cols-2 gap-3 items-stretch mt-8">
-          {/* Steps */}
-          <Card
-            className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => safeOpenInsights({ type: 'steps', name: 'Steps', color: '#3B82F6' })}
-            style={{ background: 'var(--activity-steps-gradient)', boxShadow: 'var(--activity-steps-glow)' }}
-          >
-            <CardContent className="p-4 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <Footprints className="h-5 w-5 text-white/90" />
-                  <span className="text-sm font-medium text-white/80">Steps</span>
-                </div>
-                <div className="animate-bounce text-xl">👟</div>
-              </div>
-
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-white mb-1">
-                    {safeExerciseSummary.todaySteps.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-white/70">
-                    Goal: {safeStepsGoal.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.round(safeStepsPct)}%</span>
-                    <span>Complete</span>
-                  </div>
-                  <div className="w-full bg-white/20 rounded-full h-1.5">
-                    <div
-                      className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min(safeStepsPct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Exercise */}
-          <Card
-            className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => safeOpenInsights({ type: 'exercise', name: 'Exercise', color: '#EF4444' })}
-            style={{ background: 'var(--activity-exercise-gradient)', boxShadow: 'var(--activity-exercise-glow)' }}
-          >
-            <CardContent className="p-4 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <Dumbbell className="h-5 w-5 text-white/90" />
-                  <span className="text-sm font-medium text-white/80">Exercise</span>
-                </div>
-                <div className="animate-bounce text-xl">🏋️</div>
-              </div>
-
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-white mb-1">
-                    {safeExerciseSummary.todayCalories}
-                  </div>
-                  <div className="text-sm text-white/70">calories burned</div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-sm text-white/80">
-                    <span>
-                      {Math.floor(safeExerciseSummary.todayDuration / 60)}h{' '}
-                      {safeExerciseSummary.todayDuration % 60}m
-                    </span>
-                    <span>Duration</span>
-                  </div>
-                  <div className="w-full bg-white/20 rounded-full h-1.5">
-                    <div
-                      className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${Math.min(((safeExerciseSummary.todayDuration / 60) * 100), 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <SafeSection><DailyProgressSection progress={progress ?? {}} weeklyAverage={weeklyAverage ?? { steps: 0, exerciseMinutes: 0 }} /></SafeSection>
+        <SafeSection><ActivityExerciseSection stepsData={stepsData ?? []} exerciseCaloriesData={exerciseCaloriesData ?? []} weeklyAverage={weeklyAverage ?? { steps: 0, exerciseMinutes: 0 }} progress={progress ?? { hydration: 0 }} /></SafeSection>
+        <SafeSection><MacrosHydrationSection macroData={macroData ?? []} progress={progress ?? { calories: 0, hydration: 0 }} /></SafeSection>
+        <SafeSection><WeeklyOverviewChart /></SafeSection>
+        <SafeSection><WeeklyProgressRing /></SafeSection>
       </div>
     </HomeLayout>
   );
