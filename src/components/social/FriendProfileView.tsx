@@ -38,11 +38,7 @@ const mockGoalData = [
   { name: 'Remaining', value: 25, color: '#F3F4F6' },
 ];
 
-const mockChallenges = [
-  { id: 1, name: '7-Day Hydration Challenge', status: 'active', progress: 85, participants: 12 },
-  { id: 2, name: 'Protein Power Week', status: 'completed', progress: 100, participants: 8 },
-  { id: 3, name: 'Mindful Eating', status: 'active', progress: 60, participants: 15 },
-];
+const mockChallenges: any[] = [];
 
 export const FriendProfileView = ({ friend, onBack }: FriendProfileViewProps) => {
   return (
@@ -182,30 +178,36 @@ export const FriendProfileView = ({ friend, onBack }: FriendProfileViewProps) =>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockChallenges.map((challenge) => (
-                  <div key={challenge.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{challenge.name}</h4>
-                      <Badge 
-                        variant={challenge.status === 'completed' ? 'default' : 'secondary'}
-                      >
-                        {challenge.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${challenge.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{challenge.progress}%</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {challenge.participants} participants
-                    </div>
+                {mockChallenges.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active challenges
                   </div>
-                ))}
+                ) : (
+                  mockChallenges.map((challenge) => (
+                    <div key={challenge.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{challenge.name}</h4>
+                        <Badge 
+                          variant={challenge.status === 'completed' ? 'default' : 'secondary'}
+                        >
+                          {challenge.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${challenge.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{challenge.progress}%</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {challenge.participants} participants
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
