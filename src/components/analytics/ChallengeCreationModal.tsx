@@ -30,19 +30,19 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { createChallenge } from '@/lib/challenges';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChallengeCreationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  friends: Array<{ id: number; nickname: string; avatar: string }>;
+  onChallengeCreated?: () => void; // Callback to refresh challenges list
 }
 
 export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   open,
   onOpenChange,
-  friends
+  onChallengeCreated
 }) => {
   const [step, setStep] = useState(1);
   const [challengeName, setChallengeName] = useState('');
@@ -51,10 +51,9 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [duration, setDuration] = useState<string>('7');
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [challengeType, setChallengeType] = useState<'public' | 'private'>('public');
-  const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
+  const [isCreating, setIsCreating] = useState(false);
   
-  const { createChallenge } = useChallenge();
   const { toast } = useToast();
 
   const goalOptions = [
@@ -62,24 +61,28 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       value: 'no-sugar', 
       label: '🍯 No Sugar Challenge', 
       description: 'Avoid added sugars and sweets',
+      emoji: '🍯',
       icon: <Candy className="h-5 w-5" />
     },
     { 
       value: 'log-meals', 
       label: '📝 Log 3 Meals Daily', 
       description: 'Track breakfast, lunch & dinner',
+      emoji: '📝',
       icon: <Utensils className="h-5 w-5" />
     },
     { 
       value: 'drink-water', 
       label: '💧 8 Glasses of Water', 
       description: 'Stay hydrated throughout the day',
+      emoji: '💧',
       icon: <Droplets className="h-5 w-5" />
     },
     { 
       value: 'eat-veggies', 
       label: '🥬 Eat Veggies Daily', 
       description: 'Include vegetables in every meal',
+      emoji: '🥬',
       icon: <Apple className="h-5 w-5" />
     },
     
@@ -88,30 +91,35 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       value: 'daily-meditation', 
       label: '🧘‍♂️ Daily Meditation', 
       description: 'Meditate for 10 minutes daily',
+      emoji: '🧘',
       icon: <Target className="h-5 w-5" />
     },
     { 
       value: 'breathing-practice', 
       label: '🫁 Breathing Practice', 
       description: 'Practice breathing exercises daily',
+      emoji: '🫁',
       icon: <Target className="h-5 w-5" />
     },
     { 
       value: 'yoga-flow', 
       label: '🧘‍♀️ Daily Yoga', 
       description: 'Complete a yoga session daily',
+      emoji: '🧘‍♀️',
       icon: <Target className="h-5 w-5" />
     },
     { 
       value: 'sleep-prep', 
       label: '🌙 Sleep Preparation', 
       description: 'Complete sleep prep routine',
+      emoji: '🌙',
       icon: <Target className="h-5 w-5" />
     },
     { 
       value: 'thermotherapy', 
       label: '🔥❄️ Thermotherapy', 
       description: 'Hot & cold therapy sessions',
+      emoji: '🔥',
       icon: <Target className="h-5 w-5" />
     },
     
@@ -119,6 +127,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       value: 'custom', 
       label: '✨ Custom Goal', 
       description: 'Create your own challenge',
+      emoji: '🎯',
       icon: <Target className="h-5 w-5" />
     },
   ];
@@ -131,7 +140,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
     { value: 'custom', label: 'Custom', description: 'Pick your own dates' },
   ];
 
-  const handleCreateChallenge = () => {
+  const handleCreateChallenge = async () => {
     if (!challengeName.trim()) {
       toast({
         title: "Missing Information",
@@ -159,61 +168,73 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       return;
     }
 
-    const startDate = new Date();
-    let endDate: Date;
+    setIsCreating(true);
 
-    if (duration === 'custom' && customEndDate) {
-      endDate = customEndDate;
-    } else {
-      const days = parseInt(duration);
-      endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    try {
+      const selectedGoal = goalOptions.find(option => option.value === goalType);
+      const goalEmoji = selectedGoal?.emoji || '🎯';
+      
+      const title = goalType === 'custom' ? customGoal : `${goalEmoji} ${selectedGoal?.label}`;
+      const description = goalType === 'custom' 
+        ? customGoal 
+        : selectedGoal?.description || 'Join this challenge to build healthy habits';
+
+      // Calculate duration in days
+      let durationDays = 7; // default
+      if (duration === 'custom' && customEndDate) {
+        const diffTime = customEndDate.getTime() - new Date().getTime();
+        durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      } else {
+        durationDays = parseInt(duration);
+      }
+
+      const { data, error } = await createChallenge({
+        title,
+        description,
+        visibility: challengeType,
+        durationDays,
+        coverEmoji: goalEmoji,
+        category: goalType === 'custom' ? 'general' : goalType,
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Challenge Created! 🎉",
+        description: `"${title}" is now live and ready for participants!`,
+      });
+
+      // Reset form
+      setStep(1);
+      setChallengeName('');
+      setGoalType('');
+      setCustomGoal('');
+      setDuration('7');
+      setCustomEndDate(undefined);
+      setChallengeType('public');
+      setMaxParticipants('10');
+
+      // Close modal and refresh challenges list
+      onOpenChange(false);
+      onChallengeCreated?.();
+
+    } catch (err) {
+      console.error('Challenge creation error:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create challenge. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
-
-    const newChallenge = {
-      name: challengeName,
-      type: challengeType,
-      creatorId: 'current-user-id',
-      creatorName: 'Current User 👤',
-      goalType: goalType as any,
-      customGoal: goalType === 'custom' ? customGoal : undefined,
-      startDate,
-      endDate,
-      participants: ['current-user-id'],
-      participantDetails: {
-        'current-user-id': { name: 'Current User 👤', avatar: '👤' }
-      },
-      progress: {
-        'current-user-id': 0
-      },
-      maxParticipants: challengeType === 'public' ? parseInt(maxParticipants) : undefined,
-      inviteCode: challengeType === 'private' ? `PRIV${Math.random().toString(36).substr(2, 6).toUpperCase()}` : undefined,
-    };
-
-    createChallenge(newChallenge);
-    
-    toast({
-      title: "Challenge Created! 🎉",
-      description: `"${challengeName}" is now live and ready for participants!`,
-    });
-
-    // Reset form
-    setStep(1);
-    setChallengeName('');
-    setGoalType('');
-    setCustomGoal('');
-    setDuration('7');
-    setChallengeType('public');
-    setSelectedFriends([]);
-    setCustomEndDate(undefined);
-    onOpenChange(false);
-  };
-
-  const toggleFriend = (friendId: number) => {
-    setSelectedFriends(prev => 
-      prev.includes(friendId) 
-        ? prev.filter(id => id !== friendId)
-        : [...prev, friendId]
-    );
   };
 
   const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
@@ -456,79 +477,44 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
               </div>
             )}
 
-            {/* Step 4: Invitations (for private) or Summary */}
+            {/* Step 4: Summary */}
             {step === 4 && (
               <div className="space-y-4">
                 <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    {challengeType === 'private' ? 'Invite Friends' : 'Challenge Summary'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {challengeType === 'private' 
-                      ? 'Select friends to join your private challenge'
-                      : 'Review your challenge details before creating'
-                    }
-                  </p>
+                  <h3 className="text-lg font-semibold mb-2">Challenge Summary</h3>
+                  <p className="text-sm text-muted-foreground">Review your challenge details before creating</p>
                 </div>
 
-                {challengeType === 'private' ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-2 max-h-48 overflow-y-auto">
-                      {friends.map((friend) => (
-                        <Card 
-                          key={friend.id}
-                          className={cn(
-                            "p-3 cursor-pointer transition-all",
-                            selectedFriends.includes(friend.id) && "border-primary bg-primary/5"
-                          )}
-                          onClick={() => toggleFriend(friend.id)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="text-2xl">{friend.avatar}</div>
-                            <div className="flex-1 font-medium">{friend.nickname}</div>
-                            {selectedFriends.includes(friend.id) && (
-                              <Badge variant="default">Invited</Badge>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
+                <Card className="p-4 bg-muted/30">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Challenge Name:</span>
+                      <span>{challengeName}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Selected: {selectedFriends.length} friends
-                    </p>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="font-medium">Goal:</span>
+                      <span>{goalOptions.find(g => g.value === goalType)?.label}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="font-medium">Duration:</span>
+                      <span>
+                        {duration === 'custom' 
+                          ? `Until ${customEndDate ? format(customEndDate, "MMM d") : 'TBD'}`
+                          : `${duration} day${duration !== '1' ? 's' : ''}`
+                        }
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="font-medium">Type:</span>
+                      <Badge variant={challengeType === 'public' ? 'default' : 'secondary'}>
+                        {challengeType === 'public' ? '🌍 Public' : '🔒 Private'}
+                      </Badge>
+                    </div>
                   </div>
-                ) : (
-                  <Card className="p-4 bg-muted/30">
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Challenge Name:</span>
-                        <span>{challengeName}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="font-medium">Goal:</span>
-                        <span>{goalOptions.find(g => g.value === goalType)?.label}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="font-medium">Duration:</span>
-                        <span>
-                          {duration === 'custom' 
-                            ? `Until ${customEndDate ? format(customEndDate, "MMM d") : 'TBD'}`
-                            : `${duration} day${duration !== '1' ? 's' : ''}`
-                          }
-                        </span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="font-medium">Type:</span>
-                        <Badge variant={challengeType === 'public' ? 'default' : 'secondary'}>
-                          {challengeType === 'public' ? '🌍 Public' : '🔒 Private'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Card>
-                )}
+                </Card>
               </div>
             )}
           </div>
@@ -563,10 +549,11 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
             ) : (
               <Button 
                 onClick={handleCreateChallenge}
+                disabled={isCreating}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Create Challenge
+                {isCreating ? 'Creating...' : 'Create Challenge'}
               </Button>
             )}
           </div>

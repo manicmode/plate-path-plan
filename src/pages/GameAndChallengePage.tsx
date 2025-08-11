@@ -1061,7 +1061,10 @@ function GameAndChallengeContent() {
           <ChallengeCreationModal
             open={showChallengeModal}
             onOpenChange={setShowChallengeModal}
-            friends={optimizedFriends}
+            onChallengeCreated={() => {
+              // Refresh challenges data when a new challenge is created
+              console.log('Challenge created, refreshing data');
+            }}
           />
 
           <MicroChallengeCreationModal

@@ -8,7 +8,13 @@ import { PublicChallengeCard } from '@/components/analytics/PublicChallengeCard'
 
 import { useAuth } from '@/contexts/auth';
 
-export const ExerciseChallenges: React.FC = () => {
+interface ExerciseChallengesProps {
+  onChallengeCreated?: () => void;
+}
+
+export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ 
+  onChallengeCreated 
+}) => {
   const {
     challenges: publicChallenges,
     loading,
