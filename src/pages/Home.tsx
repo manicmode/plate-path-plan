@@ -1272,24 +1272,25 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {exerciseSummary.todaySteps.toLocaleString()}
+                    {(exerciseSummary?.todaySteps ?? 0).toLocaleString()}
                   </div>
                   <div className="text-sm text-white/70">
-                    Goal: {stepsGoal.toLocaleString()}
+                    Goal: {(stepsGoal ?? 0).toLocaleString()}
                   </div>
                 </div>
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.round(stepsPercentage)}%</span>
+                    <span>{Math.round(Math.max(0, Math.min(100, stepsPercentage ?? 0)))}%</span>
                     <span>Complete</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-1.5">
                     <div 
                       className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
+                      style={{ width: `${Math.max(0, Math.min(100, (stepsPercentage ?? 0)))}%` }}
                     ></div>
                   </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1315,7 +1316,7 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {exerciseSummary.todayCalories}
+                    {exerciseSummary?.todayCalories ?? 0}
                   </div>
                   <div className="text-sm text-white/70">
                     calories burned
@@ -1324,18 +1325,21 @@ const Home = () => {
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.floor(exerciseSummary.todayDuration / 60)}h {exerciseSummary.todayDuration % 60}m</span>
+                    <span>{Math.floor((exerciseSummary?.todayDuration ?? 0) / 60)}h {(exerciseSummary?.todayDuration ?? 0) % 60}m</span>
                     <span>Duration</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-1.5">
                     <div 
                       className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min((exerciseSummary.todayDuration / 60) * 100, 100)}%` }}
-                    ></div>
+                      style={{ width: `${Math.min(((exerciseSummary?.todayDuration ?? 0) / 60) * 100, 100)}%` }}
+                    />
                   </div>
                 </div>
+              </div>
             </CardContent>
-
+          </Card>
+        </div>
+      
       {/* Daily Performance Score Card - Featured prominently */}
       <div className="px-2 sm:px-4 mt-8">
         <SafeSection>
