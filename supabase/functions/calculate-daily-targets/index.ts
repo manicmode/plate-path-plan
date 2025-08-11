@@ -43,15 +43,47 @@ Deno.serve(async (req) => {
 
   try {
     // Authenticate user
+    const url = new URL(req.url);
+    console.log('[targets] request', { method: req.method, path: url.pathname, search: url.search });
+
     const { user } = await getUser(req);
     if (!user) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response(
+        JSON.stringify({ error: 'unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const { targetDate, testProfile } = await req.json();
+    // Parse payload safely
+    let payload: any = {};
+    try {
+      payload = await req.json();
+    } catch {
+      payload = {};
+    }
+
+    const targetDate = payload?.targetDate;
+    const testProfile = payload?.testProfile;
+
+    // Basic payload validation
+    if (targetDate && typeof targetDate !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'bad_request', reason: 'targetDate must be a string (YYYY-MM-DD)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (testProfile && typeof testProfile !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'bad_request', reason: 'testProfile must be an object when provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Use authenticated user ID instead of trusting client
-    const userId = user.id
+    const userId = user.id;
+    console.log('[targets] auth', { userId, email: (user as any)?.email || null, targetDate: targetDate || null, hasTestProfile: !!testProfile });
+
+    // Initialize Supabase client
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -75,10 +107,16 @@ Deno.serve(async (req) => {
         .eq('user_id', userId)
         .single();
 
-      if (profileError || !dbProfile) {
-        console.error('Profile fetch error:', profileError);
+      if (profileError) {
+        console.error('[targets] profile db_error', profileError);
         return new Response(
-          JSON.stringify({ error: 'User profile not found' }),
+          JSON.stringify({ error: 'db_error', table: 'user_profiles', code: (profileError as any).code || null, hint: (profileError as any).hint || null }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!dbProfile) {
+        return new Response(
+          JSON.stringify({ error: 'not_found', resource: 'user_profiles' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -112,8 +150,8 @@ Deno.serve(async (req) => {
       console.error(`Missing required profile data: ${missingFields.join(', ')}`);
       return new Response(
         JSON.stringify({ 
-          error: `Missing required profile data: ${missingFields.join(', ')}`,
-          profile: profile 
+          error: 'bad_request',
+          reason: `missing required profile data: ${missingFields.join(', ')}`
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -155,9 +193,9 @@ Deno.serve(async (req) => {
       .single();
 
     if (saveError) {
-      console.error('Save targets error:', saveError);
+      console.error('Save targets db_error:', saveError);
       return new Response(
-        JSON.stringify({ error: 'Failed to save nutrition targets' }),
+        JSON.stringify({ error: 'db_error', table: 'daily_nutrition_targets', code: (saveError as any).code || null, hint: (saveError as any).hint || null }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -166,9 +204,8 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        targets: savedTargets,
-        message: 'Daily nutrition targets calculated and saved successfully'
+        ok: true,
+        targets: savedTargets
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
