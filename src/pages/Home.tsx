@@ -85,9 +85,23 @@ const Home = () => {
 
   // Home mount safety
   useEffect(() => {
+    (window as any).__homeMounted = true;
+    requestAnimationFrame(() => {
+      (window as any).__homePainted = true;
+    });
+
+    // make sure no splash overlay blocks painting
+    document.body.classList.remove('splash-visible');
+    const splash = document.getElementById('SplashRoot');
+    if (splash) splash.style.display = 'none';
+
+    // Clear any watchdog timers
+    const timers = (window as any).__voyageTimers || [];
+    timers.forEach((t: any) => clearTimeout(t));
+    (window as any).__voyageTimers = [];
+
     // Ensure we're not hidden by any splash/scroll state
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
-    document.body.classList.remove('splash-visible');
   }, []);
   
   // Set up deferred loading for different priority data

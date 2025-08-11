@@ -70,6 +70,16 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       
       // Tag that we're coming from onboarding
       try { sessionStorage.setItem('__voyagePostOnboarding', '1'); } catch {}
+
+      const watchdog = window.setTimeout(() => {
+        if (!(window as any).__homePainted) {
+          console.warn('[WATCHDOG] Home did not paint in time — forcing hard reload');
+          window.location.replace('/home'); // fall back to full page load
+        }
+      }, 1500);
+
+      (window as any).__voyageTimers = (window as any).__voyageTimers || [];
+      (window as any).__voyageTimers.push(watchdog);
       
       // Preload the route chunk to avoid Suspense blank
       await Promise.race([preloadHome(), new Promise(r => setTimeout(r, 300))]);
