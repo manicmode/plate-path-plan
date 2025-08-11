@@ -54,7 +54,6 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
         title: 'Onboarding finished with defaults',
         description: `We’ll fill these later: ${missing.join(', ')}`,
       });
-      console.info('[DEBUG] OnboardingComplete: proceeding with defaults; missing fields', { missing });
     }
 
     try {

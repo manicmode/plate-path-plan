@@ -147,7 +147,6 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
         .maybeSingle();
       
       if (data && !error) {
-        console.log('🎯 Loaded daily targets for NutritionContext:', data);
         setDailyTargets({
           hydration_ml: data.hydration_ml,
           supplement_count: data.supplement_count

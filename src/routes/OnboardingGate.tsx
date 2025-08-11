@@ -62,11 +62,6 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
   }
 
   const effectiveCompleted = optimisticActive ? true : completed;
-  try {
-    if ((import.meta as any)?.env?.MODE !== 'production') {
-      console.info('[GATE]', { path: pathname, isAuthenticated, loading, completed, bypassed });
-    }
-  } catch {}
 
 
   useEffect(() => {
