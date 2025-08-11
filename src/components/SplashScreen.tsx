@@ -74,6 +74,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   useEffect(() => {
     if (!isVisible) return;
     const t = setTimeout(() => {
+      try { if (typeof window !== 'undefined') sessionStorage.setItem('splash_forced', '1'); } catch {}
       try { onComplete(); } catch {}
     }, 3000);
     return () => clearTimeout(t);

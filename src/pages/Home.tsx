@@ -889,6 +889,13 @@ const Home = () => {
     );
   }
 
+  const hasAnyContent = Boolean(
+    progress.calories > 0 ||
+    actualHydration > 0 ||
+    progress.supplements > 0 ||
+    (exerciseSummary?.todaySteps ?? 0) > 0 ||
+    (todayScore ?? 0) > 0
+  );
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       {/* Mood Check-in Banner */}
@@ -1818,6 +1825,19 @@ const Home = () => {
         onClose={() => setIsComingSoonOpen(false)}
         feature="Influencers"
       />
+
+      {/* Minimal hard fallback if children render nothing (dev guard) */}
+      <div id="home-hard-fallback" style={{
+        position: 'fixed',
+        left: 16, right: 16, top: 72, bottom: 88,
+        display: hasAnyContent ? 'none' : 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none'
+      }}>
+        <div style={{ opacity: 0.6, fontSize: 14 }}>
+          Loading your dashboard… (fallback)
+        </div>
+      </div>
     </div>
   );
 };
