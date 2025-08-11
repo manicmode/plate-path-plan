@@ -64,9 +64,7 @@ import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
-import { MyChallengesFeed } from '@/components/analytics/MyChallengesFeed';
-import { PublicChallengesFeed } from '@/components/analytics/PublicChallengesFeed';
-import { PrivateChallengesFeed } from '@/components/analytics/PrivateChallengesFeed';
+import { ChallengesTabs } from '@/components/challenges/ChallengesTabs';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 // Types
@@ -155,52 +153,7 @@ function GameAndChallengePageTabs() {
 
       {/* Main Content */}
       <div className="container mx-auto px-2 sm:px-4 py-6">
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="active" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              {!isMobile && "Active"}
-            </TabsTrigger>
-            <TabsTrigger value="public" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              {!isMobile && "Public"}
-            </TabsTrigger>
-            <TabsTrigger value="private" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              {!isMobile && "Private"}
-            </TabsTrigger>
-            <TabsTrigger value="hall-of-fame" className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              {!isMobile && "Hall of Fame"}
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="active" className="mt-0">
-              <ErrorBoundary>
-                <MyChallengesFeed />
-              </ErrorBoundary>
-            </TabsContent>
-
-            <TabsContent value="public" className="mt-0">
-              <ErrorBoundary>
-                <PublicChallengesFeed />
-              </ErrorBoundary>
-            </TabsContent>
-
-            <TabsContent value="private" className="mt-0">
-              <ErrorBoundary>
-                <PrivateChallengesFeed />
-              </ErrorBoundary>
-            </TabsContent>
-
-            <TabsContent value="hall-of-fame" className="mt-0">
-              <ErrorBoundary>
-                <HallOfFame champions={[]} />
-              </ErrorBoundary>
-            </TabsContent>
-          </div>
-        </Tabs>
+        <ChallengesTabs />
       </div>
     </div>
   );
