@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -84,6 +84,19 @@ export function GameAndChallengePageShell() {
   const { user } = useAuth(); // ok to read, no other custom hooks
   console.log('[Bisect] Shell mounted, uid:', user?.id ?? null);
   return <div style={{padding:24}}>SHELL OK</div>;
+}
+
+// Minimal page with just ChallengesFeed for bisection testing
+export function GameAndChallengePage_Min() {
+  console.log("[Bisect] Min page mounted");
+  return (
+    <div style={{ padding: 16 }}>
+      <h2 style={{ color: "white", marginBottom: 12 }}>Challenges</h2>
+      <Suspense fallback={<div style={{color:"white"}}>Loading…</div>}>
+        <ChallengesFeed />
+      </Suspense>
+    </div>
+  );
 }
 
 export default function GameAndChallengePage() {
