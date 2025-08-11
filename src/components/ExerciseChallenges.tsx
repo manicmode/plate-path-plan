@@ -123,6 +123,10 @@ export const ExerciseChallenges: React.FC = () => {
         )}
       </div>
 
+      {/* Debug Info - temporary */}
+      <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+        Debug: items: {publicChallenges.length}, error: {error?.message || "none"}, user: {user?.id || "none"}
+      </div>
     </div>
   );
 };
