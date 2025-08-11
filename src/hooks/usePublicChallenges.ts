@@ -30,6 +30,7 @@ export const usePublicChallenges = () => {
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [userParticipations, setUserParticipations] = useState<UserChallengeParticipation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [celebrationShown, setCelebrationShown] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
@@ -37,21 +38,34 @@ export const usePublicChallenges = () => {
 
   const fetchChallenges = async () => {
     try {
+      setError(null);
       // Use the challenges_with_counts view for efficient querying with computed end_at
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
-        .from('challenges_with_counts')
-        .select('*')
-        .eq('visibility', 'public')
-        .gt('end_at', new Date().toISOString()) // Only active challenges
-        .order('created_at', { ascending: false });
+        .from("challenges_with_counts")
+        .select("*")
+        .eq("visibility", "public")
+        .gt("end_at", nowIso) // Only active challenges - use ISO, not "now()"
+        .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        setError(error);
+        console.error('Error fetching challenges:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load challenges: " + error.message,
+          variant: "destructive",
+        });
+        return;
+      }
       
       setChallenges((data || []).map(challenge => ({
         ...challenge,
         participant_count: challenge.participants || 0
       })));
-    } catch (error) {
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
       console.error('Error fetching challenges:', error);
       toast({
         title: "Error",
@@ -279,6 +293,7 @@ export const usePublicChallenges = () => {
     newChallenges,
     userParticipations,
     loading,
+    error,
     joinChallenge,
     updateProgress,
     leaveChallenge,

@@ -6,14 +6,19 @@ import { Sparkles, Target } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from '@/components/analytics/PublicChallengeCard';
 
+import { useAuth } from '@/contexts/auth';
+
 export const ExerciseChallenges: React.FC = () => {
   const {
     challenges: publicChallenges,
     loading,
+    error,
     joinChallenge,
     isUserParticipating,
     refreshData
   } = usePublicChallenges();
+  
+  const { user } = useAuth();
   
   const handleJoinChallenge = async (challengeId: string): Promise<boolean> => {
     const success = await joinChallenge(challengeId);
@@ -24,10 +29,16 @@ export const ExerciseChallenges: React.FC = () => {
   };
 
   
+  // Debug logging - console.log when publicChallenges changes
+  React.useEffect(() => {
+    console.log("publicChallenges", publicChallenges);
+  }, [publicChallenges]);
+
   // Debug logging
   console.log('Active Challenges Debug:', {
     publicChallenges,
     loading,
+    error,
     challengesLength: publicChallenges.length
   });
 
