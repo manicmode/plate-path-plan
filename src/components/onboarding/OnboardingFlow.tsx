@@ -111,6 +111,13 @@ export interface OnboardingData {
   deficiencyConcerns: string[];
 }
 
+type CurrentSupplement = {
+  id: string;
+  name: string;
+  dose?: string;
+  timing?: string; // e.g. "AM" | "PM" | "With meals"
+};
+
 interface OnboardingFlowProps {
   onComplete: () => void;
   onSkip: () => void;
@@ -262,6 +269,25 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
       console.log('[DEBUG] Nutrition Targets:', nutritionTargets);
 
+      // Build current_supplements as array for future dose/timing support
+      const currentSupplementsMap = formData.currentSupplements || {};
+      const currentSupplementsArray: CurrentSupplement[] = Object.keys(currentSupplementsMap)
+        .filter(k => !!k?.trim())
+        .map(k => {
+          const id = k.trim();
+          const name = id;
+          return { id, name };
+        });
+      // Dedupe and stable sort
+      const seen = new Set<string>();
+      const normalizedSupplements = currentSupplementsArray
+        .filter(s => {
+          if (seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
       const profileData = {
         user_id: user.id,
         // Basic info
@@ -302,7 +328,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         eating_window: formData.eatingWindow || null,
         
         // Supplements
-        current_supplements: Object.keys(formData.currentSupplements).length > 0 ? formData.currentSupplements : null,
+        current_supplements: normalizedSupplements.length ? normalizedSupplements : null,
         supplement_goals: formData.supplementGoals.length > 0 ? formData.supplementGoals : null,
         deficiency_concerns: formData.deficiencyConcerns.length > 0 ? formData.deficiencyConcerns : null,
         
