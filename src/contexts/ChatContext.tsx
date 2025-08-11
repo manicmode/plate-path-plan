@@ -146,19 +146,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         .from('challenge_messages')
         .select('*')
         .eq('challenge_id', challengeId)
-        .order('timestamp', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
       const formattedMessages: ChatMessage[] = data?.map(msg => ({
-        id: msg.id,
+        id: msg.id.toString(), // Convert bigint to string
         challengeId: msg.challenge_id,
         userId: msg.user_id,
-        username: msg.username,
-        text: msg.text,
-        emoji: msg.emoji,
-        timestamp: msg.timestamp,
-        taggedUsers: msg.tagged_users || [],
+        username: 'User', // We'll need to get this from user profiles
+        text: msg.content,
+        timestamp: msg.created_at,
         reactions: {}
       })) || [];
 
@@ -220,11 +218,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         .insert({
           challenge_id: challengeId,
           user_id: user.id,
-          username: message.username,
-          text: message.text,
-          emoji: message.emoji,
-          tagged_users: taggedUsers || [],
-          timestamp: message.timestamp
+          content: text?.trim() || emoji || ''
         });
 
       if (error) throw error;
