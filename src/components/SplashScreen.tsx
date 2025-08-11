@@ -70,67 +70,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // SplashScreen safety - ensure it hides after max time
   useEffect(() => {
     if (!isVisible) return;
-    const t = setTimeout(() => {
-      console.log('💫 Force completing splash (1500ms timeout)');
+    let done = false;
+    const safeComplete = () => { if (done) return; done = true; onComplete(); };
+
+    const max = setTimeout(() => {
       document.body.classList.remove('splash-visible');
-      try { if (typeof window !== 'undefined') sessionStorage.setItem('splash_forced', '1'); } catch {}
-      try { onComplete(); } catch {}
-    }, 1500);
-    return () => clearTimeout(t);
+      safeComplete();
+    }, 2000);
+
+    return () => { done = true; clearTimeout(max); };
   }, [isVisible, onComplete]);
-
-
-  // Enhanced completion logic - extended duration for better UX
-  useEffect(() => {
-    if (!isVisible) return;
-    
-    const timer = setTimeout(() => {
-      console.log('💫 Splash timer triggered:', { 
-        homeDataReady, 
-        isMobile,
-        timestamp: new Date().toISOString() 
-      });
-      
-      // Only complete splash when home data is ready too
-      if (homeDataReady) {
-        console.log('💫 Completing splash (data ready)');
-        // Add extra buffer to ensure smooth transition
-        setTimeout(() => {
-          onComplete();
-        }, 1000);
-      } else {
-        // If home data isn't ready yet, check every 100ms
-        console.log('💫 Waiting for home data to be ready...');
-        const readyCheck = setInterval(() => {
-          if (homeDataReady) {
-            console.log('💫 Home data ready, completing splash');
-            clearInterval(readyCheck);
-            // Add buffer for smooth transition
-            setTimeout(() => {
-              onComplete();
-            }, 1000);
-          }
-        }, 100);
-        
-        // Force complete after max time to avoid infinite loading
-        const forceTimer = setTimeout(() => {
-          console.log('💫 Force completing splash (timeout)');
-          clearInterval(readyCheck);
-          onComplete();
-        }, 5000); // Reduced from 3500ms to 5000ms for mobile
-        
-        return () => {
-          clearInterval(readyCheck);
-          clearTimeout(forceTimer);
-        };
-      }
-    }, 5000); // Reduced from 6.5s to 5s for mobile for faster startup
-
-    return () => clearTimeout(timer);
-  }, [isVisible, onComplete, homeDataReady]);
 
   return (
     <AnimatePresence>

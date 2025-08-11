@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2 } from 'lucide-react';
@@ -7,7 +6,6 @@ import { SavingScreen } from '@/components/SavingScreen';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import { preloadHome } from '@/utils/preload';
 
 interface OnboardingCompleteProps {
   onComplete: () => void;
@@ -32,77 +30,42 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
   }
 
   const handleLetsGo = async () => {
-    // 1) Optional: gather missing fields to warn, but DO NOT block
-    const missing: string[] = [];
-    if (formData) {
-      const requiredFields = [
-        { field: 'age', name: 'Age' },
-        { field: 'gender', name: 'Gender' },
-        { field: 'weight', name: 'Weight' },
-        { field: 'mainHealthGoal', name: 'Health Goal' },
-        { field: 'activityLevel', name: 'Activity Level' }
-      ];
-      requiredFields.forEach(({ field, name }) => {
-        const val = formData[field as keyof typeof formData];
-        if (!val || (typeof val === 'string' && val.trim() === '')) {
-          missing.push(name);
-        }
-      });
-    }
-
-    if (missing.length) {
-      toast?.({
-        title: 'Onboarding finished with defaults',
-        description: `We’ll fill these later: ${missing.join(', ')}`,
-      });
-    }
-
     setIsFinalizing(true);
+
     try {
-      sessionStorage.setItem('onb_finalizing', '1');
-      sessionStorage.setItem('onb_finalizing_at', String(Date.now()));
+      // Set flags FIRST (before any await)
+      try {
+        sessionStorage.setItem('__voyagePostOnboarding', '1');
+        sessionStorage.setItem('__voyagePostOnboarding_time', String(Date.now()));
+      } catch {}
 
-      if (typeof onComplete === 'function') {
-        await onComplete();
-      } else {
-        await markOnboardingComplete();
-      }
-      
-      // Tag that we're coming from onboarding
-      try { sessionStorage.setItem('__voyagePostOnboarding', '1'); } catch {}
-
-      const watchdog = window.setTimeout(() => {
-        if (!(window as any).__homePainted) {
-          console.warn('[WATCHDOG] Home did not paint in time — forcing hard reload');
-          window.location.replace('/home'); // fall back to full page load
-        }
-      }, 1500);
-
-      (window as any).__voyageTimers = (window as any).__voyageTimers || [];
-      (window as any).__voyageTimers.push(watchdog);
-      
-      // Preload the route chunk to avoid Suspense blank
-      await Promise.race([preloadHome(), new Promise(r => setTimeout(r, 300))]);
-    } catch (e) {
-      
-    } finally {
-      // Make sure the page is at the top and splash can't block
-      try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+      // Ensure no splash/overlay can block next screen
       document.body.classList.remove('splash-visible');
+      const splash = document.getElementById('SplashRoot');
+      if (splash) splash.style.display = 'none';
 
-      navigate('/home', { replace: true });
+      // Preload Home chunk (best effort, cap at 500ms)
+      try {
+        await Promise.race([import('@/pages/Home'), new Promise(r => setTimeout(r, 500))]);
+      } catch {}
 
-      // Force-paint safety after navigate
-      requestAnimationFrame(() => document.body.classList.remove('splash-visible'));
-      setTimeout(() => {
-        // Force reflow & repaint in edge cases
-        document.documentElement.style.transform = 'translateZ(0)';
-        setTimeout(() => (document.documentElement.style.transform = ''), 0);
-      }, 100);
+      // Persist completion
+      if (typeof onComplete === 'function') await onComplete();
+      else await markOnboardingComplete();
 
-      // Belt & suspenders: retry once after router settles
-      setTimeout(() => navigate('/home', { replace: true }), 800);
-      setIsFinalizing(false);
+      // Optimistic mark
+      try {
+        sessionStorage.setItem('onb_completed_optimistic', '1');
+        sessionStorage.setItem('onb_completed_optimistic_at', String(Date.now()));
+      } catch {}
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+      // Navigate via microtask (more deterministic than setTimeout)
+      queueMicrotask(() => navigate('/home', { replace: true }));
+    } catch (err) {
+      console.error('[NAV] error', err);
+      queueMicrotask(() => navigate('/home', { replace: true }));
     }
   };
 

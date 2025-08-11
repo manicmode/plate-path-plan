@@ -1,32 +1,16 @@
-import React, { useEffect } from 'react';
-import { isDebug } from '@/utils/debugFlag';
-
-// Non-lazy import
+import { useEffect } from 'react';
 import Home from '@/pages/Home';
-// Lazy import for normal navigations
-const LazyHome = React.lazy(() => import('@/pages/Home'));
 
 export default function HomeRouteWrapper() {
-  const fromOnboarding =
-    typeof window !== 'undefined' &&
-    sessionStorage.getItem('__voyagePostOnboarding') === '1';
-
   useEffect(() => {
-    if (fromOnboarding) {
-      // consume the flag so future visits use lazy as usual
+    try {
       sessionStorage.removeItem('__voyagePostOnboarding');
-    }
-  }, [fromOnboarding]);
+      sessionStorage.removeItem('__voyagePostOnboarding_time');
+    } catch {}
+    document.body.classList.remove('splash-visible');
+    const splash = document.getElementById('SplashRoot');
+    if (splash) splash.style.display = 'none';
+  }, []);
 
-  if (fromOnboarding) {
-    
-    return <Home />;
-  }
-
-  
-  return (
-    <React.Suspense fallback={isDebug() ? <div style={{padding:16}}>Loading…</div> : null}>
-      <LazyHome />
-    </React.Suspense>
-  );
+  return <Home />; // immediate render, no lazy, no null
 }

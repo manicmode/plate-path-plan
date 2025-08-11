@@ -1,110 +1,45 @@
-import { ReactNode, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-interface OnboardingGateProps {
-  children: ReactNode;
-}
+const BYPASSED = ['/onboarding','/auth','/reset-password','/magic-link','/verify','/privacy','/terms','/s/','/shared-routine'];
+const isBypassedRoute = (p: string) => !!p && BYPASSED.some(x => p.startsWith(x));
 
-const isBypassedRoute = (pathname: string) => {
-  if (!pathname) return false;
-  return (
-    pathname.startsWith('/onboarding') ||
-    pathname === '/auth' ||
-    pathname.startsWith('/auth/') ||
-    pathname === '/reset-password' ||
-    pathname === '/magic-link' ||
-    pathname === '/verify' ||
-    pathname === '/privacy' ||
-    pathname === '/terms'
-  );
-};
-
-const GateLoading = () => (
-  <div className="p-4">
-    <Skeleton className="h-5 w-28" />
-  </div>
-);
-
-export default function OnboardingGate({ children }: OnboardingGateProps) {
+export default function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { isOnboardingComplete, isLoading: onboardingLoading } = useOnboardingStatus();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const hasRedirectedRef = useRef(false);
+  const { isOnboardingComplete, isLoading: obLoading } = useOnboardingStatus();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const redirected = useRef(false);
+  const [ready, setReady] = useState(false);
 
-  const pathname = location.pathname || '';
-  const loading = Boolean(authLoading || onboardingLoading);
-  const completed = isOnboardingComplete === true;
-  const bypassed = isBypassedRoute(pathname);
-  const isFinalizing = typeof window !== 'undefined' && sessionStorage.getItem('onb_finalizing') === '1';
-  const isBrowser = typeof window !== 'undefined';
-  const opt = isBrowser ? {
-    optimistic: sessionStorage.getItem('onb_completed_optimistic') === '1',
-    ts: Number(sessionStorage.getItem('onb_completed_optimistic_at') || '0'),
-  } : { optimistic: false, ts: 0 };
-  const OPT_MAX_MS = 10_000; // 10s safety (edge fn returns defaults fast)
-  const optimisticActive = opt.optimistic && (Date.now() - opt.ts) < OPT_MAX_MS;
-
-  // Auto-clear stale flags
-  if (isBrowser && opt.optimistic && !optimisticActive) {
-    sessionStorage.removeItem('onb_completed_optimistic');
-    sessionStorage.removeItem('onb_completed_optimistic_at');
-  }
-  if (isBrowser && isFinalizing) {
-    const startedAt = Number(sessionStorage.getItem('onb_finalizing_at') || '0');
-    if (startedAt && (Date.now() - startedAt) > 30_000) {
-      sessionStorage.removeItem('onb_finalizing');
-      sessionStorage.removeItem('onb_finalizing_at');
-    }
-  }
-
-  const effectiveCompleted = optimisticActive ? true : completed;
-
+  const loading = authLoading || obLoading;
+  const bypass = isBypassedRoute(loc.pathname || '');
+  const flagsComplete = (() => {
+    try {
+      return sessionStorage.getItem('__voyagePostOnboarding') === '1' ||
+             sessionStorage.getItem('onb_completed_optimistic') === '1';
+    } catch { return false; }
+  })();
+  const effectiveComplete = !!isOnboardingComplete || flagsComplete;
 
   useEffect(() => {
-    if (loading || !isAuthenticated) return;
-    
-    
-    if (isOnboardingComplete === false && !isBypassedRoute(pathname)) {
-      navigate('/onboarding', { replace: true });
+    if (!loading && !ready) setReady(true);
+    if (loading || !isAuthenticated || redirected.current) return;
+
+    if (!effectiveComplete && !bypass) {
+      redirected.current = true;
+      nav('/onboarding', { replace: true });
+      return;
     }
-    
-    if (isOnboardingComplete === true && pathname.startsWith('/onboarding')) {
-      navigate('/home', { replace: true });
+    if (effectiveComplete && (loc.pathname || '').startsWith('/onboarding')) {
+      redirected.current = true;
+      nav('/home', { replace: true });
+      return;
     }
-  }, [loading, isAuthenticated, isOnboardingComplete, pathname, navigate]);
+  }, [loading, ready, isAuthenticated, effectiveComplete, bypass, loc.pathname, nav]);
 
-  // Clear optimistic flag once DB confirms completion
-  useEffect(() => {
-    if (completed === true && optimisticActive) {
-      sessionStorage.removeItem('onb_completed_optimistic');
-      sessionStorage.removeItem('onb_completed_optimistic_at');
-    }
-  }, [completed, optimisticActive]);
-
-
-  if (loading) {
-    return <GateLoading />;
-  }
-
-  // If onboarding is finalizing, hold here to prevent redirects
-  if (isFinalizing) {
-    return <GateLoading />;
-  }
-
-  // Let unauthenticated users through
-  if (!isAuthenticated) {
-    return <>{children}</>;
-  }
-
-  if (effectiveCompleted || bypassed) {
-    return <>{children}</>;
-  }
-
-  // Not completed and not bypassed - effect will redirect
-  return <GateLoading />;
+  if (loading && !ready) return <div className="p-4"><div className="h-5 w-28 animate-pulse rounded bg-muted" /></div>;
+  return <>{children}</>;
 }
-

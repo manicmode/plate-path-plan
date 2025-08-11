@@ -83,25 +83,21 @@ const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
 
-  // Home mount safety
   useEffect(() => {
-    (window as any).__homeMounted = true;
-    requestAnimationFrame(() => {
-      (window as any).__homePainted = true;
-    });
-
-    // make sure no splash overlay blocks painting
     document.body.classList.remove('splash-visible');
     const splash = document.getElementById('SplashRoot');
     if (splash) splash.style.display = 'none';
 
-    // Clear any watchdog timers
-    const timers = (window as any).__voyageTimers || [];
-    timers.forEach((t: any) => clearTimeout(t));
-    (window as any).__voyageTimers = [];
+    // Make sure the page is visible
+    document.documentElement.style.visibility = 'visible';
+    document.body.style.visibility = 'visible';
 
-    // Ensure we're not hidden by any splash/scroll state
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    // Mark paint
+    requestAnimationFrame(() => {
+      (window as any).__homePainted = true;
+    });
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
   
   // Set up deferred loading for different priority data
@@ -917,7 +913,7 @@ const Home = () => {
   }
 
   return (
-    <div className="space-y-12 sm:space-y-16 animate-fade-in">
+    <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in">
       {/* Mood Check-in Banner */}
       <MoodCheckinBanner />
       
