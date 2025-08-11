@@ -103,14 +103,12 @@ export function GameAndChallengePage_Min() {
     <div style={{ padding: 16 }}>
       <h2 style={{ color: "white", marginBottom: 12 }}>Challenges</h2>
       <button onClick={() => setShowCreate(true)}>+ Create Challenge</button>
-      {showCreate && (
-        <ChallengeCreationModal
-          open
-          onOpenChange={(open) => setShowCreate(open)}
-          defaultVisibility="public"
-          onChallengeCreated={handleCreated}
-        />
-      )}
+      <ChallengeCreationModal
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        defaultVisibility="public"
+        onChallengeCreated={handleCreated}
+      />
       <Suspense fallback={<div style={{color:"white"}}>Loading…</div>}>
         <ChallengesFeed key={nudge} />
       </Suspense>

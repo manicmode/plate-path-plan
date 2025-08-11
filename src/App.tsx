@@ -428,7 +428,7 @@ function AppContent() {
           />
           
           {/* Global Mystery Gift Box - Always Floating */}
-          <MysteryBox />
+          <MysteryBoxSafe />
           
           <Toaster />
         </>
@@ -436,6 +436,10 @@ function AppContent() {
     </>
   );
 }
+
+// Temporary stubs for hook-order isolation
+const WorkoutCompletionProviderSafe: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
+const MysteryBoxSafe: React.FC = () => null;
 
 function App() {
   return (
@@ -449,11 +453,11 @@ function App() {
                   <ChatModalProvider>
                     <RewardsProvider>
                       <LevelUpProvider>
-                        <WorkoutCompletionProvider>
+                        <WorkoutCompletionProviderSafe>
                           <AppContent />
                           
                           <WorkoutCompletionModal />
-                        </WorkoutCompletionProvider>
+                        </WorkoutCompletionProviderSafe>
                       </LevelUpProvider>
                     </RewardsProvider>
                   </ChatModalProvider>
