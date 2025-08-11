@@ -64,7 +64,7 @@ const YogaPage = lazy(() => import('@/pages/recovery/YogaPage'));
 const RecoveryAnalytics = lazy(() => import('@/pages/RecoveryAnalytics'));
 const RecoveryAnalyticsPage = lazy(() => import('@/pages/RecoveryAnalyticsPage'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
-const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
+const GameAndChallengePageShell = lazy(() => import('@/pages/GameAndChallengePage').then(module => ({ default: module.GameAndChallengePageShell })));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
 const Hydration = lazy(() => import('@/pages/Hydration'));
@@ -269,7 +269,7 @@ function AppContent() {
                     } />
                     <Route path="/game-and-challenge" element={
                       <ProtectedRoute>
-                        <RouteSentinel />
+                        <GameAndChallengePageShell />
                       </ProtectedRoute>
                     } />
                     <Route path="/supplement-hub" element={

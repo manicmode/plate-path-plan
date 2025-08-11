@@ -79,6 +79,13 @@ interface ChatMessage {
 
 // All mock data removed - now using real data from Supabase
 
+// Minimal shell for bisection testing
+export function GameAndChallengePageShell() {
+  const { user } = useAuth(); // ok to read, no other custom hooks
+  console.log('[Bisect] Shell mounted, uid:', user?.id ?? null);
+  return <div style={{padding:24}}>SHELL OK</div>;
+}
+
 export default function GameAndChallengePage() {
   return (
     <RewardsProvider>
