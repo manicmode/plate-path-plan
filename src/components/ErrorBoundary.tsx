@@ -213,6 +213,14 @@ class ErrorBoundary extends Component<Props, State> {
                 <div className="text-red-500 dark:text-red-500 mt-1 font-mono text-xs">
                   {this.state.error.stack?.split('\n').slice(0, 2).join('\n')}
                 </div>
+                {this.state.errorInfo?.componentStack && (
+                  <div className="mt-2">
+                    <div className="font-bold text-red-700 dark:text-red-300 mb-1">Component Stack:</div>
+                    <div className="text-red-500 dark:text-red-500 font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                      {this.state.errorInfo.componentStack}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
