@@ -1,3 +1,4 @@
+// 🔒 UI-LOCK: Do not change Home UI without approval. Restore tag: home-restore-2025-08-10
 import { useAuth } from '@/contexts/auth';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthRecovery } from '@/hooks/useAuthRecovery';
