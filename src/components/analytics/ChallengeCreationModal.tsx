@@ -224,6 +224,16 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
         return;
       }
 
+      if (!data?.id) {
+        console.error('[CreateChallenge] no ID returned');
+        toast({
+          title: "Error", 
+          description: 'Challenge creation failed - no ID returned',
+          variant: "destructive",
+        });
+        return;
+      }
+
       console.log('[CreateChallenge] success', data);
       toast({
         title: "Challenge Created! 🎉",

@@ -55,44 +55,53 @@ async function getUserId(): Promise<{ userId?: string; error?: string }> {
 }
 
 /** Create a challenge (owner = current user) */
-export async function createChallenge(params: {
+export async function createChallenge(payload: {
   title: string;
-  description?: string;
-  visibility?: ChallengeVisibility;
-  durationDays?: number;
-  coverEmoji?: string;
-  category?: string;
-  inviteCode?: string;
-}): Promise<{ data?: Challenge; error?: string }> {
-  console.log('[createChallenge] start', params);
-  
-  // Fetch current user session and check auth
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  const uid = sessionData?.session?.user?.id;
-  
-  if (sessionError || !uid) {
-    return { data: null, error: 'Not authenticated' };
-  }
+  description?: string | null;
+  visibility: 'public' | 'private';
+  durationDays: number;
+  coverEmoji?: string | null;
+}) {
+  const { data: session } = await supabase.auth.getSession();
+  const uid = session?.session?.user?.id;
+  if (!uid) return { data: null, error: 'Not authenticated' };
+
+  const id = crypto.randomUUID();
 
   const insert = {
-    title: params.title,
-    description: params.description,
-    visibility: params.visibility, // 'public' | 'private'
-    duration_days: params.durationDays,
-    cover_emoji: params.coverEmoji,
+    id,
+    title: payload.title,
+    description: payload.description ?? null,
+    visibility: payload.visibility,
+    duration_days: payload.durationDays,
+    cover_emoji: payload.coverEmoji ?? null,
     owner_user_id: uid,
   };
 
-  const { data, error } = await supabase.from('challenges').insert(insert).select().single();
-  if (error) return { data: null, error: error.message };
+  console.log('[createChallenge] start', insert);
 
-  // auto-join owner (ignore duplicate errors)
-  const memberInsert = await supabase.from('challenge_members').insert({
-    challenge_id: data.id, user_id: uid, role: 'owner', status: 'joined',
-  });
-  // Ignore any membership errors (like duplicates)
+  const { error: insErr } = await supabase
+    .from('challenges')
+    .insert(insert, { returning: 'minimal' }); // ← no RETURNING, no SELECT, no policy recursion
 
-  return { data, error: null };
+  if (insErr) {
+    console.error('[createChallenge] insert error', insErr);
+    return { data: null, error: insErr.message };
+  }
+
+  // best-effort owner auto-join
+  try {
+    await supabase.from('challenge_members').insert({
+      challenge_id: id,
+      user_id: uid,
+      role: 'owner',
+      status: 'joined',
+    }, { returning: 'minimal' });
+  } catch (e) {
+    console.warn('[createChallenge] owner auto-join warning', e);
+  }
+
+  return { data: { id }, error: null };
 }
 
 /** Join a public challenge as the current user */
