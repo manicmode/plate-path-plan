@@ -123,7 +123,7 @@ export const useOnboardingStatus = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         if (fetchErr) {
-          console.warn('[ONB] load profile failed', fetchErr);
+          console.warn('[ONB] load profile failed', { error: fetchErr });
         } else {
           profile = data;
         }
@@ -181,6 +181,12 @@ export const useOnboardingStatus = () => {
       
       console.log('[DEBUG] markOnboardingComplete: Database update successful');
       
+      // Set optimistic completion flags for gate to prevent flicker
+      try {
+        sessionStorage.setItem('onb_completed_optimistic', '1');
+        sessionStorage.setItem('onb_completed_optimistic_at', String(Date.now()));
+      } catch {}
+      
       // 4) Generate daily nutrition targets after onboarding completion
       try {
         console.log('[DEBUG] markOnboardingComplete: Generating daily nutrition targets...');
@@ -189,12 +195,14 @@ export const useOnboardingStatus = () => {
         });
         
         if (targetsError) {
-          console.error('[DEBUG] markOnboardingComplete: Error generating targets:', targetsError);
+          console.warn('[DEBUG] markOnboardingComplete: Error generating targets', {
+            error: targetsError,
+          });
         } else {
           console.log('[DEBUG] markOnboardingComplete: Daily nutrition targets generated successfully:', data);
         }
       } catch (targetsError) {
-        console.error('[DEBUG] markOnboardingComplete: Error invoking targets function:', targetsError);
+        console.warn('[DEBUG] markOnboardingComplete: Error invoking targets function', targetsError);
       }
       
     } catch (error) {

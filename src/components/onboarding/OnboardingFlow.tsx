@@ -425,6 +425,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
     try {
       setIsFinalizing(true);
       sessionStorage.setItem('onb_finalizing', '1'); // gate guard
+      sessionStorage.setItem('onb_finalizing_at', String(Date.now()));
       await markOnboardingComplete(); // applies defaults + sets onboarding_completed=true + calculate-daily-targets
       navigate('/home', { replace: true });
     } catch (e) {
@@ -433,6 +434,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       navigate('/onboarding', { replace: true });
     } finally {
       sessionStorage.removeItem('onb_finalizing');
+      sessionStorage.removeItem('onb_finalizing_at');
       setIsFinalizing(false);
     }
   };

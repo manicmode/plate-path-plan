@@ -40,6 +40,28 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
   const completed = isOnboardingComplete === true;
   const bypassed = isBypassedRoute(pathname);
   const isFinalizing = typeof window !== 'undefined' && sessionStorage.getItem('onb_finalizing') === '1';
+  const isBrowser = typeof window !== 'undefined';
+  const opt = isBrowser ? {
+    optimistic: sessionStorage.getItem('onb_completed_optimistic') === '1',
+    ts: Number(sessionStorage.getItem('onb_completed_optimistic_at') || '0'),
+  } : { optimistic: false, ts: 0 };
+  const OPT_MAX_MS = 30_000; // 30s safety
+  const optimisticActive = opt.optimistic && (Date.now() - opt.ts) < OPT_MAX_MS;
+
+  // Auto-clear stale flags
+  if (isBrowser && opt.optimistic && !optimisticActive) {
+    sessionStorage.removeItem('onb_completed_optimistic');
+    sessionStorage.removeItem('onb_completed_optimistic_at');
+  }
+  if (isBrowser && isFinalizing) {
+    const startedAt = Number(sessionStorage.getItem('onb_finalizing_at') || '0');
+    if (startedAt && (Date.now() - startedAt) > 30_000) {
+      sessionStorage.removeItem('onb_finalizing');
+      sessionStorage.removeItem('onb_finalizing_at');
+    }
+  }
+
+  const effectiveCompleted = optimisticActive ? true : completed;
   try {
     if ((import.meta as any)?.env?.MODE !== 'production') {
       console.info('[GATE]', { path: pathname, isAuthenticated, loading, completed, bypassed });
@@ -53,14 +75,22 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     if (loading) return;
     if (isFinalizing) return;
 
-    if (!completed && !bypassed) {
+    if (!effectiveCompleted && !bypassed) {
       hasRedirectedRef.current = true;
       navigate('/onboarding', {
         replace: true,
         state: { from: pathname + (location.search || '') },
       });
     }
-  }, [isAuthenticated, loading, isFinalizing, completed, bypassed, pathname, location.search, navigate]);
+  }, [isAuthenticated, loading, isFinalizing, completed, optimisticActive, effectiveCompleted, bypassed, pathname, location.search, navigate]);
+
+  // Clear optimistic flag once DB confirms completion
+  useEffect(() => {
+    if (completed === true && optimisticActive) {
+      sessionStorage.removeItem('onb_completed_optimistic');
+      sessionStorage.removeItem('onb_completed_optimistic_at');
+    }
+  }, [completed, optimisticActive]);
 
 
   if (loading) {
@@ -77,7 +107,7 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     return <>{children}</>;
   }
 
-  if (completed || bypassed) {
+  if (effectiveCompleted || bypassed) {
     return <>{children}</>;
   }
 
