@@ -40,7 +40,8 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Lock
+  Lock,
+  Globe
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
@@ -52,7 +53,7 @@ import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 
-import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesBrowse';
+import { ChallengesFeed } from '@/components/analytics/ChallengesFeed';
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
@@ -108,6 +109,7 @@ function GameAndChallengeContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [challengeModalVisibility, setChallengeModalVisibility] = useState<'public' | 'private'>('public');
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -450,7 +452,10 @@ function GameAndChallengeContent() {
                   
                   {/* Create Challenge Button */}
                   <Button 
-                    onClick={() => setShowChallengeModal(true)}
+                    onClick={() => {
+                      setChallengeModalVisibility('public');
+                      setShowChallengeModal(true);
+                    }}
                     className={cn(
                       "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg",
                       isMobile ? "h-8 px-3 text-xs w-full" : ""
@@ -703,7 +708,10 @@ function GameAndChallengeContent() {
                       
                       {/* Create Challenge Button */}
                       <Button 
-                        onClick={() => setShowChallengeModal(true)}
+                        onClick={() => {
+                          setChallengeModalVisibility('public');
+                          setShowChallengeModal(true);
+                        }}
                         className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full"
                         size="sm"
                       >
@@ -823,7 +831,41 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
-                <PublicChallengesBrowse challengeMode={challengeMode} />
+                {/* Mobile Challenge Action Buttons */}
+                {isMobile && (
+                  <div className="mb-6 grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => {
+                        // Scroll to challenges feed if already visible, or it's a no-op since we're already there
+                        const challengeSection = document.querySelector('[data-challenge-feed]');
+                        if (challengeSection) {
+                          challengeSection.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Browse Public
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setChallengeModalVisibility('private');
+                        setShowChallengeModal(true);
+                      }}
+                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      <Lock className="h-4 w-4" />
+                      Create Private
+                    </Button>
+                  </div>
+                )}
+                <div data-challenge-feed>
+                  <ChallengesFeed onCreate={() => {
+                    setChallengeModalVisibility('public');
+                    setShowChallengeModal(true);
+                  }} />
+                </div>
               </TabsContent>
 
               <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
@@ -1061,6 +1103,7 @@ function GameAndChallengeContent() {
           <ChallengeCreationModal
             open={showChallengeModal}
             onOpenChange={setShowChallengeModal}
+            defaultVisibility={challengeModalVisibility}
             onChallengeCreated={() => {
               // Refresh challenges data when a new challenge is created
               console.log('Challenge created, refreshing data');

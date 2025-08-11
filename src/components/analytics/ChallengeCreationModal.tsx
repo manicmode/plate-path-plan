@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,12 +37,14 @@ interface ChallengeCreationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChallengeCreated?: () => void; // Callback to refresh challenges list
+  defaultVisibility?: 'public' | 'private';
 }
 
 export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   open,
   onOpenChange,
-  onChallengeCreated
+  onChallengeCreated,
+  defaultVisibility = 'public'
 }) => {
   const [step, setStep] = useState(1);
   const [challengeName, setChallengeName] = useState('');
@@ -50,11 +52,18 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [customGoal, setCustomGoal] = useState('');
   const [duration, setDuration] = useState<string>('7');
   const [customEndDate, setCustomEndDate] = useState<Date>();
-  const [challengeType, setChallengeType] = useState<'public' | 'private'>('public');
+  const [challengeType, setChallengeType] = useState<'public' | 'private'>(defaultVisibility);
   const [maxParticipants, setMaxParticipants] = useState('10');
   const [isCreating, setIsCreating] = useState(false);
   
   const { toast } = useToast();
+
+  // Reset form when modal opens or defaultVisibility changes
+  useEffect(() => {
+    if (open) {
+      setChallengeType(defaultVisibility);
+    }
+  }, [open, defaultVisibility]);
 
   const goalOptions = [
     { 
@@ -218,7 +227,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       setCustomGoal('');
       setDuration('7');
       setCustomEndDate(undefined);
-      setChallengeType('public');
+      setChallengeType(defaultVisibility);
       setMaxParticipants('10');
 
       // Close modal and refresh challenges list
