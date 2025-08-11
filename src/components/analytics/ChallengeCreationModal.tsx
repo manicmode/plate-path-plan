@@ -184,29 +184,34 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       const goalEmoji = selectedGoal?.emoji || '🎯';
       
       const title = goalType === 'custom' ? customGoal : `${goalEmoji} ${selectedGoal?.label}`;
-      const description = goalType === 'custom' 
+      const desc = goalType === 'custom' 
         ? customGoal 
         : selectedGoal?.description || 'Join this challenge to build healthy habits';
 
       // Calculate duration in days
-      let durationDays = 7; // default
+      let days = 7; // default
       if (duration === 'custom' && customEndDate) {
         const diffTime = customEndDate.getTime() - new Date().getTime();
-        durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       } else {
-        durationDays = parseInt(duration);
+        days = parseInt(duration);
       }
 
-      const { data, error } = await createChallenge({
-        title,
-        description,
-        visibility: challengeType,
-        durationDays,
-        coverEmoji: goalEmoji,
+      // Normalize fields before calling helper
+      const vis: "public" | "private" = challengeType === "private" ? "private" : "public";
+      const payload = {
+        title: title.trim(),
+        description: desc?.trim() || undefined,
+        visibility: vis,
+        durationDays: Number.isFinite(Number(days)) ? Number(days) : 7,
+        coverEmoji: goalEmoji || undefined,
         category: goalType === 'custom' ? 'general' : goalType,
-      });
+      };
 
+      const { data, error } = await createChallenge(payload);
+      
       if (error) {
+        console.error("createChallenge error:", error, payload);
         toast({
           title: "Error",
           description: error,
@@ -215,6 +220,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
         return;
       }
 
+      console.log("createChallenge success:", data);
       toast({
         title: "Challenge Created! 🎉",
         description: `"${title}" is now live and ready for participants!`,
@@ -234,11 +240,11 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       onOpenChange(false);
       onChallengeCreated?.();
 
-    } catch (err) {
-      console.error('Challenge creation error:', err);
+    } catch (e) {
+      console.error("createChallenge threw:", e);
       toast({
         title: "Error",
-        description: "Failed to create challenge. Please try again.",
+        description: String((e as any)?.message ?? e),
         variant: "destructive",
       });
     } finally {
@@ -562,12 +568,17 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                {isCreating ? 'Creating...' : 'Create Challenge'}
-              </Button>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+                 {isCreating ? 'Creating...' : 'Create Challenge'}
+               </Button>
+             )}
+           </div>
+         </div>
+
+         {/* Debug Info - temporary */}
+         <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+           Debug: challengeType: {challengeType}, computed vis: {challengeType === "private" ? "private" : "public"}, days: {duration === 'custom' && customEndDate ? Math.ceil((customEndDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : parseInt(duration) || 7}
+         </div>
+       </DialogContent>
+     </Dialog>
+   );
 };
