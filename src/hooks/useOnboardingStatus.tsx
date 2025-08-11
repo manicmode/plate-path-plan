@@ -122,11 +122,22 @@ export const useOnboardingStatus = () => {
           .from('user_profiles')
           .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
 
+        const cols = [
+          'user_id',
+          'onboarding_completed',
+          'activity_level',
+          'meal_frequency',
+          'fasting_schedule',
+          'food_allergies',
+          'hydration_target_ml',
+          'target_hydration_glasses'
+        ].join(',');
+        
         const { data: prof, error: fetchErr, status: fetchStatus } = await supabase
           .from('user_profiles')
-          .select('user_id, onboarding_completed, activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml, target_hydration_glasses')
+          .select(cols)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         if (fetchErr) {
           console.warn('[ONB] load profile failed', { status: fetchStatus, error: fetchErr });
         } else {
