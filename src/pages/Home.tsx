@@ -46,7 +46,7 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
 import SafeSection, { EmptyState } from '@/components/common/SafeSection';
-// import HomeLayout from '@/components/home/HomeLayout'; // temporarily unused wrapper
+import HomeLayout from '@/components/home/HomeLayout';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -874,7 +874,7 @@ const Home = () => {
   const safeStepsPct   = (globalThis as any).stepsPercentage ?? 0;
 
   return (
-    <div className="min-h-screen">
+    <HomeLayout>
       <div className="space-y-12 sm:space-y-16 animate-fade-in">
         {/* Minimal known-good content so Home never blanks */}
         <div className="rounded-xl border border-white/10 p-4">
@@ -969,7 +969,7 @@ const Home = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </HomeLayout>
   );
 };
 
