@@ -254,9 +254,3 @@ export async function runLoggingSmokeTests(): Promise<void> {
     console.warn('⚠️ Some smoke tests failed - check results above');
   }
 }
-
-// Development-only global export
-if (import.meta.env.DEV) {
-  (window as any).runLoggingSmokeTests = runLoggingSmokeTests;
-  console.log('🧪 Smoke tests available: window.runLoggingSmokeTests()');
-}

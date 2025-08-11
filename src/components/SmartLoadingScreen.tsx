@@ -25,27 +25,11 @@ export const SmartLoadingScreen: React.FC<SmartLoadingScreenProps> = ({ children
     };
 
     if (checkReady()) {
-      console.log('✅ SmartLoadingScreen: Components ready', {
-        authLoading,
-        hasSession: !!session,
-        hasUser: !!user,
-        theme,
-        timestamp: new Date().toISOString()
-      });
-      
       setIsReady(true);
       // Add small delay to prevent flash and allow smooth transition
       setTimeout(() => {
         setShowContent(true);
       }, 150);
-    } else {
-      console.log('🔄 SmartLoadingScreen: Still waiting...', {
-        authLoading,
-        hasSession: !!session,
-        hasUser: !!user,
-        theme,
-        timestamp: new Date().toISOString()
-      });
     }
 
     // Add timeout protection to prevent infinite loading

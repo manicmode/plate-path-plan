@@ -34,13 +34,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   // Start preloading home data immediately when splash becomes visible
   const { isReady: homeDataReady } = useDeferredHomeDataLoading();
 
-  console.log('💫 SplashScreen render:', { 
-    isVisible, 
-    homeDataReady, 
-    isMobile,
-    theme,
-    timestamp: new Date().toISOString() 
-  });
 
   // Play startup chime when splash becomes visible (only on cold start)
   useEffect(() => {

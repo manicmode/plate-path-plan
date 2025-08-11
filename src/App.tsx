@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { isDebug } from '@/utils/debugFlag';
+
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -123,12 +123,6 @@ function AppContent() {
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-  // Enable debug mode in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      (window as any).__VOYAGE_DEBUG = true;
-    }
-  }, []);
 
 
   // Prefetch critical components after app has loaded
@@ -153,7 +147,7 @@ function AppContent() {
         <>
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
-          <Suspense fallback={isDebug() ? <div style={{padding:16}}>Loading…</div> : <SmartLoadingScreen><div /></SmartLoadingScreen>}>
+          <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <OnboardingGate>
               <Routes>
                 {/* Fullscreen pages without Layout */}

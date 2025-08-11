@@ -24,12 +24,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   isVisible = false, 
   debugInfo 
 }) => {
-  // Check if debug logging is enabled (dev mode only)
-  const isDebugEnabled = typeof window !== 'undefined' && 
-    (window as any).__VOYAGE_DEBUG_LOGGING !== false &&
-    (process.env.NODE_ENV === 'development' || (window as any).__VOYAGE_DEBUG_LOGGING === true);
-  
-  if (!isVisible || !isDebugEnabled || !debugInfo) {
+  if (!isVisible || !debugInfo) {
     return null;
   }
 

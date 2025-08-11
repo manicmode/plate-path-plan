@@ -868,12 +868,8 @@ const Home = () => {
     }, 5000);
   };
 
-  // Show loading state with recovery options - debug-only skeleton
+  // Show loading state with recovery options
   if (authLoading && !hasTimedOut) {
-    const { isDebug } = require('@/utils/debugFlag');
-    if (isDebug()) {
-      return <div id="home-skeleton" data-state="loading" style={{padding: 24}}>Loading your day… (auth loading)</div>;
-    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4">
