@@ -6,8 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface DatabaseClient {
-  from: (table: string) => any;
+// Helpers for defaults
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const DEFAULTS = {
+  activity_level: 'light',
+  meal_frequency: 3,
+  fasting_schedule: 'none',
+  hydration_ml: 2500,
+  glass_ml: 240,
+};
+
+function resolveHydration(profile: any) {
+  const g = Number(profile?.target_hydration_glasses);
+  if (Number.isFinite(g) && g > 0) return clamp(g * DEFAULTS.glass_ml, 800, 6000);
+  const ml = Number(profile?.hydration_target_ml);
+  if (Number.isFinite(ml) && ml > 0) return clamp(ml, 800, 6000);
+  return DEFAULTS.hydration_ml;
 }
 
 // Helper function to get authenticated user
@@ -100,28 +114,17 @@ Deno.serve(async (req) => {
       profile = testProfile;
       console.log('Using test profile for calculations');
     } else {
-      // Get user profile data from database
+      // Get user profile data from database (tolerate missing)
       const { data: dbProfile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        console.error('[targets] profile db_error', profileError);
-        return new Response(
-          JSON.stringify({ error: 'db_error', table: 'user_profiles', code: (profileError as any).code || null, hint: (profileError as any).hint || null }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.warn('[targets] profile fetch error (continuing with defaults)', profileError);
       }
-      if (!dbProfile) {
-        return new Response(
-          JSON.stringify({ error: 'not_found', resource: 'user_profiles' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      profile = dbProfile;
+      profile = dbProfile || {};
     }
 
     // Ensure arrays are not null - this fixes the forEach error
@@ -142,23 +145,29 @@ Deno.serve(async (req) => {
       diet_styles: profile.diet_styles
     });
 
-    // Validate required profile data
-    const requiredFields = ['age', 'gender', 'weight', 'activity_level'];
-    const missingFields = requiredFields.filter(field => !profile[field]);
-    
-    if (missingFields.length > 0) {
-      console.error(`Missing required profile data: ${missingFields.join(', ')}`);
-      return new Response(
-        JSON.stringify({ 
-          error: 'bad_request',
-          reason: `missing required profile data: ${missingFields.join(', ')}`
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Build safe defaults (no 400s for missing fields)
+    const base = profile || {};
+    const activity = base.activity_level || DEFAULTS.activity_level;
+    const mealFrequency = Number(base.meal_frequency) || DEFAULTS.meal_frequency;
+    const fasting = base.fasting_schedule || DEFAULTS.fasting_schedule;
+    const hydrationMl = resolveHydration(base);
 
-    // Calculate nutrition targets using the same logic as frontend
-    const nutritionTargets = calculateNutritionTargets(profile);
+    const normalizedProfile = {
+      ...base,
+      age: Number(base.age) || 30,
+      gender: base.gender || 'male',
+      weight: Number(base.weight) || 75,
+      height_cm: Number(base.height_cm) || (base.height_feet && base.height_inches ? (base.height_feet * 12 + base.height_inches) * 2.54 : 175),
+      activity_level: activity,
+      health_conditions: base.health_conditions || [],
+      diet_styles: base.diet_styles || [],
+      weight_goal_type: base.weight_goal_type || 'maintain',
+    };
+
+    console.info('[targets] using defaults', { activity, mealFrequency, fasting, hydrationMl });
+
+    // Calculate nutrition targets using normalized profile
+    const nutritionTargets = calculateNutritionTargets(normalizedProfile);
     
     console.log('Calculated targets:', nutritionTargets);
 
@@ -177,7 +186,7 @@ Deno.serve(async (req) => {
       sugar: nutritionTargets.sugar,
       sodium: nutritionTargets.sodium,
       saturated_fat: nutritionTargets.saturatedFat,
-      hydration_ml: nutritionTargets.hydrationMl,
+      hydration_ml: hydrationMl,
       supplement_count: nutritionTargets.supplementCount,
       supplement_recommendations: nutritionTargets.supplementRecommendations,
       priority_micronutrients: nutritionTargets.priorityMicronutrients,
@@ -205,7 +214,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         ok: true,
-        targets: savedTargets
+        targets: { ...savedTargets, hydration_ml: hydrationMl, activity, meal_frequency: mealFrequency, fasting }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
