@@ -64,6 +64,10 @@ import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
+import { MyChallengesFeed } from '@/components/analytics/MyChallengesFeed';
+import { PublicChallengesFeed } from '@/components/analytics/PublicChallengesFeed';
+import { PrivateChallengesFeed } from '@/components/analytics/PrivateChallengesFeed';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 // Types
 interface ChatMessage {
@@ -121,10 +125,84 @@ export default function GameAndChallengePage() {
     <RewardsProvider>
       <ChatProvider>
         <ChallengeProvider>
-          <GameAndChallengeContent />
+          <GameAndChallengePageTabs />
         </ChallengeProvider>
       </ChatProvider>
     </RewardsProvider>
+  );
+}
+
+function GameAndChallengePageTabs() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+              Challenges
+            </h1>
+            <div className="w-10"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-2 sm:px-4 py-6">
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              {!isMobile && "Active"}
+            </TabsTrigger>
+            <TabsTrigger value="public" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              {!isMobile && "Public"}
+            </TabsTrigger>
+            <TabsTrigger value="private" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              {!isMobile && "Private"}
+            </TabsTrigger>
+            <TabsTrigger value="hall-of-fame" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              {!isMobile && "Hall of Fame"}
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="mt-6">
+            <TabsContent value="active" className="mt-0">
+              <ErrorBoundary>
+                <MyChallengesFeed />
+              </ErrorBoundary>
+            </TabsContent>
+
+            <TabsContent value="public" className="mt-0">
+              <ErrorBoundary>
+                <PublicChallengesFeed />
+              </ErrorBoundary>
+            </TabsContent>
+
+            <TabsContent value="private" className="mt-0">
+              <ErrorBoundary>
+                <PrivateChallengesFeed />
+              </ErrorBoundary>
+            </TabsContent>
+
+            <TabsContent value="hall-of-fame" className="mt-0">
+              <ErrorBoundary>
+                <HallOfFame champions={[]} />
+              </ErrorBoundary>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -6,32 +6,26 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.props.onError?.(error, errorInfo);
   }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null });
-  };
 
   render() {
     if (this.state.hasError) {
@@ -40,45 +34,33 @@ export class ErrorBoundary extends React.Component<Props, State> {
       }
 
       return (
-        <Card className="w-full shadow-lg bg-card border border-destructive/20">
+        <Card className="max-w-md mx-auto mt-8">
           <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
               Something went wrong
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              We encountered an error while loading this section. Please try refreshing or contact support if the problem persists.
+            <p className="text-sm text-muted-foreground">
+              An unexpected error occurred. You can try refreshing the page or contact support if the problem persists.
             </p>
-            <div className="flex gap-2">
-              <Button 
-                onClick={this.handleRetry}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Try Again
-              </Button>
-              <Button 
-                onClick={() => window.location.reload()}
-                variant="default"
-                size="sm"
-              >
-                Refresh Page
-              </Button>
-            </div>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-medium">Error Details</summary>
-                <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
-                  {this.state.error.message}
-                  {'\n'}
-                  {this.state.error.stack}
+            {this.state.error && (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">Error details</summary>
+                <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
+                  {this.state.error.toString()}
                 </pre>
               </details>
             )}
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="w-full"
+              variant="outline"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reload Page
+            </Button>
           </CardContent>
         </Card>
       );
@@ -87,15 +69,3 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return this.props.children;
   }
 }
-
-// Hook version for functional components
-export const withErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>,
-  fallback?: ReactNode
-) => {
-  return (props: P) => (
-    <ErrorBoundary fallback={fallback}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-};

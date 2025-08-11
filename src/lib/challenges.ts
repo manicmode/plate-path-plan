@@ -115,12 +115,13 @@ export async function joinPublicChallenge(challengeId: string): Promise<{ data?:
 
   const { data, error } = await supabase
     .from("challenge_members")
-    .insert({
+    .upsert({
       challenge_id: challengeId,
       user_id: userId!,
       role: "member",
       status: "joined",
-    })
+      joined_at: new Date().toISOString(),
+    }, { onConflict: 'challenge_id,user_id', ignoreDuplicates: true })
     .select("*")
     .single();
 
@@ -281,7 +282,7 @@ export async function leaveChallenge(challengeId: string): Promise<{ data?: bool
 
   const { error } = await supabase
     .from("challenge_members")
-    .update({ status: "left" })
+    .delete()
     .eq("challenge_id", challengeId)
     .eq("user_id", userId!);
 
