@@ -76,6 +76,7 @@ export const usePublicChallenges = () => {
   };
 
   const fetchUserParticipations = async () => {
+    // Guard against missing user, but don't throw
     if (!user) return;
 
     try {
@@ -224,9 +225,8 @@ export const usePublicChallenges = () => {
     const loadData = async () => {
       setLoading(true);
       await fetchChallenges();
-      if (user) {
-        await fetchUserParticipations();
-      }
+      // Always call fetchUserParticipations, but it will guard internally
+      await fetchUserParticipations();
       setLoading(false);
     };
 
@@ -256,9 +256,8 @@ export const usePublicChallenges = () => {
         },
         () => {
           fetchChallenges();
-          if (user) {
-            fetchUserParticipations();
-          }
+          // Always call, but it guards internally
+          fetchUserParticipations();
         }
       )
       .subscribe();

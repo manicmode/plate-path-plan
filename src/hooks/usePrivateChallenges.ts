@@ -60,6 +60,7 @@ export const usePrivateChallenges = () => {
   const { playChallengeWin } = useSound();
 
   const fetchPrivateChallenges = async () => {
+    // Guard against missing user, but don't throw
     if (!user) return;
     
     try {
@@ -81,6 +82,7 @@ export const usePrivateChallenges = () => {
   };
 
   const fetchUserPrivateParticipations = async () => {
+    // Guard against missing user, but don't throw
     if (!user) return;
 
     try {
@@ -97,6 +99,7 @@ export const usePrivateChallenges = () => {
   };
 
   const fetchPendingInvitations = async () => {
+    // Guard against missing user, but don't throw
     if (!user) return;
 
     try {
@@ -358,19 +361,18 @@ export const usePrivateChallenges = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      if (user) {
-        await Promise.all([
-          fetchPrivateChallenges(),
-          fetchUserPrivateParticipations(),
-          fetchPendingInvitations()
-        ]);
-      }
+      // Always fetch data, but conditionally execute based on user
+      await Promise.all([
+        fetchPrivateChallenges(),
+        fetchUserPrivateParticipations(),
+        fetchPendingInvitations()
+      ]);
       setLoading(false);
     };
 
     loadData();
 
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions - always subscribe but conditionally execute
     const privateChallengesChannel = supabase
       .channel('private-challenges-changes')
       .on(
