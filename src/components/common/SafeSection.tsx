@@ -4,7 +4,7 @@ export function EmptyState({ message = 'No data yet' }: { message?: string }) {
   return <div className="text-sm opacity-60 p-3">{message}</div>;
 }
 
-class SectionBoundary extends Component<{ fallback?: ReactNode }, { hasError: boolean }> {
+class SectionBoundary extends Component<React.PropsWithChildren<{ fallback?: ReactNode }>, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(err: any) { console.warn('[SafeSection] caught', err); }
