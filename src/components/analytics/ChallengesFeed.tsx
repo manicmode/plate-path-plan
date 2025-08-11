@@ -19,6 +19,8 @@ export const ChallengesFeed: React.FC<ChallengesFeedProps> = ({
   onCreate,
   showJoinByCode = true 
 }) => {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] ChallengesFeed");
+  
   const {
     challenges: publicChallenges,
     loading,

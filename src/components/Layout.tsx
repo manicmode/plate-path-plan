@@ -15,6 +15,8 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] Layout");
+  
   // CSS custom properties for bottom nav
   useEffect(() => {
     document.documentElement.style.setProperty('--tabbar-height', '72px');

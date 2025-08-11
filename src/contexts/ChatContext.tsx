@@ -59,6 +59,8 @@ const MAX_MESSAGE_LENGTH = 140;
 const mockChats: { [challengeId: string]: ChallengeChat } = {};
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] ChatProvider");
+  
   const [chats, setChats] = useState<{ [challengeId: string]: ChallengeChat }>({});
   const [lastEmojiTimes, setLastEmojiTimes] = useState<{ [challengeId: string]: number }>({});
   const { user } = useAuth();

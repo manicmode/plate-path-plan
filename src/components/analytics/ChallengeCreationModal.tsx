@@ -46,6 +46,8 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   onChallengeCreated,
   defaultVisibility = 'public'
 }) => {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] ChallengeCreationModal");
+  
   const [step, setStep] = useState(1);
   const [challengeName, setChallengeName] = useState('');
   const [goalType, setGoalType] = useState<string>('');

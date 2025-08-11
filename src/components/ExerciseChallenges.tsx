@@ -8,5 +8,7 @@ interface ExerciseChallengesProps {
 export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ 
   onChallengeCreated 
 }) => {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] ExerciseChallenges");
+  
   return <ChallengesFeed onCreate={onChallengeCreated} />;
 };

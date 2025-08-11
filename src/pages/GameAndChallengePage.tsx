@@ -92,6 +92,8 @@ export default function GameAndChallengePage() {
 }
 
 function GameAndChallengeContent() {
+  if (import.meta.env.DEV) console.log("[hooks-order-ok] GameAndChallengeContent");
+  
   const { challenges, quickChallenges, joinChallenge } = usePublicChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
