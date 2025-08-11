@@ -46,6 +46,7 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
 import SafeSection, { EmptyState } from '@/components/common/SafeSection';
+import HomeLayout from '@/components/home/HomeLayout';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -300,6 +301,15 @@ const Home = () => {
   // Exercise goals
   const stepsGoal = 10000;
   const stepsPercentage = Math.min((exerciseSummary.todaySteps / stepsGoal) * 100, 100);
+
+  const safeOpenInsights: (arg: any) => void =
+    (globalThis as any).openInsights ?? openInsights ?? (() => {});
+
+  const safeExerciseSummary =
+    (globalThis as any).exerciseSummary ?? exerciseSummary ?? { todaySteps: 0, todayCalories: 0, todayDuration: 0 };
+
+  const safeStepsGoal = (globalThis as any).stepsGoal ?? stepsGoal ?? 0;
+  const safeStepsPct  = (globalThis as any).stepsPercentage ?? stepsPercentage ?? 0;
 
   // Unified goal validation function
   const isGoalFullyAchieved = (current: number, target: number, isLoading: boolean = false) => {
@@ -898,7 +908,40 @@ const Home = () => {
     (todayScore ?? 0) > 0
   );
   return (
-    <div className="space-y-12 sm:space-y-16 animate-fade-in">
+    <HomeLayout>
+      <div className="space-y-12 sm:space-y-16 animate-fade-in">
+      {authLoading && !hasTimedOut ? (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
+        </div>
+      ) : authLoading && hasTimedOut && showRecovery ? (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center space-y-4 max-w-md">
+            <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto" />
+            <h2 className="text-xl font-semibold text-foreground">Taking longer than usual</h2>
+            <p className="text-muted-foreground">
+              The app seems to be taking longer to load than expected.
+            </p>
+            <div className="space-y-2">
+              <Button onClick={handleEmergencyRecovery} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.reload()} 
+                className="w-full"
+              >
+                Refresh Page
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Mood Check-in Banner */}
       <MoodCheckinBanner />
       
@@ -1254,7 +1297,7 @@ const Home = () => {
           {/* Steps Tracker Card - Mobile Optimized */}
           <Card 
             className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => openInsights({ type: 'steps', name: 'Steps', color: '#3B82F6' })}
+            onClick={() => safeOpenInsights({ type: 'steps', name: 'Steps', color: '#3B82F6' })}
             style={{
               background: 'var(--activity-steps-gradient)',
               boxShadow: 'var(--activity-steps-glow)'
@@ -1272,22 +1315,22 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {(exerciseSummary?.todaySteps ?? 0).toLocaleString()}
+                    {(safeExerciseSummary.todaySteps ?? 0).toLocaleString()}
                   </div>
                   <div className="text-sm text-white/70">
-                    Goal: {(stepsGoal ?? 0).toLocaleString()}
+                    Goal: {(safeStepsGoal ?? 0).toLocaleString()}
                   </div>
                 </div>
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.round(Math.max(0, Math.min(100, stepsPercentage ?? 0)))}%</span>
+                    <span>{Math.round(Math.max(0, Math.min(100, safeStepsPct ?? 0)))}%</span>
                     <span>Complete</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-1.5">
                     <div 
                       className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.max(0, Math.min(100, (stepsPercentage ?? 0)))}%` }}
+                      style={{ width: `${Math.max(0, Math.min(100, (safeStepsPct ?? 0)))}%` }}
                     ></div>
                   </div>
                 </div>
@@ -1298,7 +1341,7 @@ const Home = () => {
           {/* Exercise Card - Mobile Optimized */}
           <Card 
             className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => openInsights({ type: 'exercise', name: 'Exercise', color: '#EF4444' })}
+            onClick={() => safeOpenInsights({ type: 'exercise', name: 'Exercise', color: '#EF4444' })}
             style={{
               background: 'var(--activity-exercise-gradient)',
               boxShadow: 'var(--activity-exercise-glow)'
@@ -1316,7 +1359,7 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {exerciseSummary?.todayCalories ?? 0}
+                    {safeExerciseSummary.todayCalories ?? 0}
                   </div>
                   <div className="text-sm text-white/70">
                     calories burned
@@ -1325,13 +1368,13 @@ const Home = () => {
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.floor((exerciseSummary?.todayDuration ?? 0) / 60)}h {(exerciseSummary?.todayDuration ?? 0) % 60}m</span>
+                    <span>{Math.floor((safeExerciseSummary?.todayDuration ?? 0) / 60)}h {(safeExerciseSummary?.todayDuration ?? 0) % 60}m</span>
                     <span>Duration</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-1.5">
                     <div 
                       className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min(((exerciseSummary?.todayDuration ?? 0) / 60) * 100, 100)}%` }}
+                      style={{ width: `${Math.min(((safeExerciseSummary?.todayDuration ?? 0) / 60) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1839,6 +1882,7 @@ const Home = () => {
         </div>
       </div>
     </div>
+    </HomeLayout>
   );
 };
 
