@@ -16,6 +16,9 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
   const { getHydrationGoal } = useNutrition();
   const hydrationTargetMl = getHydrationGoal();
 
+  // Safe defaults
+  const safe = progress ?? {} as any;
+
   const [isOpen, setIsOpen] = useState(false);
   const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
 
@@ -28,7 +31,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
     <div className="grid grid-cols-3 gap-4">
       <DailyProgressCard
         title="Calories"
-        value={progress.calories || 0}
+        value={Number(safe.calories) || 0}
         target={user?.targetCalories || 2000}
         unit="kcal"
         icon={<Flame className="h-6 w-6" />}
@@ -37,7 +40,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Protein"
-        value={progress.protein || 0}
+        value={Number(safe.protein) || 0}
         target={user?.targetProtein || 120}
         unit="g"
         icon={<Zap className="h-6 w-6" />}
@@ -46,7 +49,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Carbs"
-        value={progress.carbs || 0}
+        value={Number(safe.carbs) || 0}
         target={user?.targetCarbs || 250}
         unit="g"
         icon={<Wheat className="h-6 w-6" />}
@@ -55,7 +58,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Fat"
-        value={progress.fat || 0}
+        value={Number(safe.fat) || 0}
         target={user?.targetFat || 65}
         unit="g"
         icon={<Activity className="h-6 w-6" />}
@@ -64,7 +67,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Fiber"
-        value={progress.fiber || 0}
+        value={Number(safe.fiber) || 0}
         target={25}
         unit="g"
         icon={<Leaf className="h-6 w-6" />}
@@ -73,7 +76,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Hydration"
-        value={progress.hydration || 0}
+        value={Number(safe.hydration) || 0}
         target={hydrationTargetMl}
         unit="ml"
         icon={<Droplets className="h-6 w-6" />}

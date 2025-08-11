@@ -20,6 +20,10 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
   // Hydration target in ml via NutritionContext
   const hydrationTargetMl = getHydrationGoal();
 
+  // Safe defaults
+  const macros = Array.isArray(macroData) ? macroData : [];
+  const safeProgress = progress ?? { calories: 0, hydration: 0 } as any;
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
@@ -46,7 +50,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                 <div className="w-[200px] h-[200px]">
                   <PieChart width={200} height={200}>
                     <Pie
-                      data={macroData}
+                      data={macros}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -55,7 +59,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                       startAngle={90}
                       endAngle={-270}
                     >
-                      {macroData.map((entry, index) => (
+                      {macros.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -65,7 +69,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">
-                      {Math.round(progress.calories)}
+                      {Math.round(Number(safeProgress.calories) || 0)}
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-300">kcal today</div>
                   </div>
@@ -112,7 +116,11 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                     strokeWidth="10"
                     fill="none"
                     strokeDasharray={339.3}
-                    strokeDashoffset={339.3 - (progress.hydration / hydrationTargetMl) * 339.3}
+                    strokeDashoffset={(() => {
+                      const denom = hydrationTargetMl > 0 ? hydrationTargetMl : 1;
+                      const ratio = Math.min(1, Math.max(0, (Number(safeProgress.hydration) || 0) / denom));
+                      return 339.3 - ratio * 339.3;
+                    })()}
                     className="transition-all duration-[2s] ease-out"
                     strokeLinecap="round"
                   />
@@ -120,10 +128,13 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">
-                      {Math.round((progress.hydration / hydrationTargetMl) * 100)}%
+                      {Math.round(((() => {
+                        const denom = hydrationTargetMl > 0 ? hydrationTargetMl : 1;
+                        return ((Number(safeProgress.hydration) || 0) / denom) * 100;
+                      })()))}%
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-300">
-                      {progress.hydration}ml/{hydrationTargetMl}ml
+                      {Number(safeProgress.hydration) || 0}ml/{hydrationTargetMl}ml
                     </div>
                   </div>
                 </div>

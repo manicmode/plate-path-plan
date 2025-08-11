@@ -73,8 +73,8 @@ export default function Analytics() {
               subtitle="Today's nutrition progress and breakdown" 
             />
             <div className="space-y-6">
-              <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
-              <MacrosHydrationSection macroData={macroData} progress={progress} />
+              <DailyProgressSection progress={progress ?? {}} weeklyAverage={weeklyAverage ?? { steps: 0, exerciseMinutes: 0 }} />
+              <MacrosHydrationSection macroData={macroData ?? []} progress={progress ?? { calories: 0, hydration: 0 }} />
             </div>
           </div>
           

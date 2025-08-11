@@ -22,6 +22,12 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
   const { getHydrationGoal } = useNutrition();
   const hydrationTargetMl = getHydrationGoal();
 
+  // Safe defaults
+  const safeWeekly = weeklyAverage ?? { steps: 0, exerciseMinutes: 0 } as any;
+  const safeStepsData = Array.isArray(stepsData) ? stepsData : [];
+  const safeExerciseData = Array.isArray(exerciseCaloriesData) ? exerciseCaloriesData : [];
+  const safeProgress = progress ?? { hydration: 0 } as any;
+
   const [isOpen, setIsOpen] = useState(false);
   const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
 
@@ -35,7 +41,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
       <div className="grid grid-cols-3 gap-4 mb-6">
         <DailyProgressCard
           title="Steps"
-          value={Math.round(weeklyAverage.steps)}
+          value={Math.round(Number(safeWeekly.steps) || 0)}
           target={10000}
           unit="steps"
           icon={<Activity className="h-6 w-6" />}
@@ -44,7 +50,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
         />
         <DailyProgressCard
           title="Exercise"
-          value={Math.round(weeklyAverage.exerciseMinutes * 8)}
+          value={Math.round((Number(safeWeekly.exerciseMinutes) || 0) * 8)}
           target={500}
           unit="kcal"
           icon={<Flame className="h-6 w-6" />}
@@ -53,7 +59,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
         />
         <DailyProgressCard
           title="Hydration"
-          value={progress.hydration}
+          value={Number(safeProgress.hydration) || 0}
           target={hydrationTargetMl}
           unit="ml"
           icon={<Droplets className="h-6 w-6" />}

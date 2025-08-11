@@ -45,6 +45,7 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
+import SafeSection, { EmptyState } from '@/components/common/SafeSection';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1244,8 +1245,8 @@ const Home = () => {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Steps and Exercise Cards Container */}
@@ -1289,7 +1290,6 @@ const Home = () => {
                       style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
                     ></div>
                   </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -1334,23 +1334,19 @@ const Home = () => {
                     ></div>
                   </div>
                 </div>
-              </div>
             </CardContent>
-          </Card>
-        </div>
-      </div>
 
       {/* Daily Performance Score Card - Featured prominently */}
       <div className="px-2 sm:px-4 mt-8">
-        {!scoreLoading && scoreStats && (
+        <SafeSection>
           <DailyScoreCard 
-            score={todayScore || 0}
-            weeklyAverage={scoreStats.weeklyAverage}
-            streak={scoreStats.streak}
-            bestScore={scoreStats.bestScore}
+            score={Number(todayScore) || 0}
+            weeklyAverage={scoreStats?.weeklyAverage ?? 0}
+            streak={scoreStats?.streak ?? 0}
+            bestScore={scoreStats?.bestScore ?? 0}
             className="mb-6"
           />
-        )}
+        </SafeSection>
       </div>
 
       {/* Level & XP Progress Bar (moved directly under Today's Performance) */}

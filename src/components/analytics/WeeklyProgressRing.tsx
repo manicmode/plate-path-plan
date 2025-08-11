@@ -14,24 +14,20 @@ export const WeeklyProgressRing = ({ size = 180, strokeWidth = 12 }: WeeklyProgr
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [showSparkles, setShowSparkles] = useState(false);
 
-  // Calculate weekly score from multiple factors
+  // Calculate weekly score from multiple factors (safe defaults)
   const calculateWeeklyScore = () => {
-    if (!weeklyData.length) return 0;
-    
-    const loggedDays = weeklyData.filter(day => day.foods.length > 0).length;
+    const list = Array.isArray(weeklyData) ? weeklyData : [];
+    if (!list.length) return 0;
+    const loggedDays = list.filter(day => Array.isArray(day.foods) && day.foods.length > 0).length;
     const loggingScore = (loggedDays / 7) * 0.4; // 40% weight
-    
-    const hydrationDays = weeklyData.filter(day => day.totalHydration >= getHydrationGoal()).length;
+    const hydrationDays = list.filter(day => (day.totalHydration ?? 0) >= getHydrationGoal()).length;
     const hydrationScore = (hydrationDays / 7) * 0.3; // 30% weight
-    
-    const avgCalories = weeklyData.reduce((sum, day) => sum + day.totalCalories, 0) / weeklyData.length;
+    const avgCalories = list.reduce((sum, day) => sum + (day.totalCalories ?? 0), 0) / list.length;
     const targetCalories = user?.targetCalories || 2000;
     const calorieAccuracy = Math.max(0, 1 - Math.abs(avgCalories - targetCalories) / targetCalories);
     const calorieScore = calorieAccuracy * 0.2; // 20% weight
-    
     const activityScore = 0.1; // 10% placeholder for activity
-    
-    return Math.min(100, Math.round((loggingScore + hydrationScore + calorieScore + activityScore) * 100));
+    return Math.min(100, Math.max(0, Math.round((loggingScore + hydrationScore + calorieScore + activityScore) * 100)));
   };
 
   const weeklyScore = calculateWeeklyScore();
