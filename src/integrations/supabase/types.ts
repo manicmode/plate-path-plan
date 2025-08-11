@@ -640,41 +640,69 @@ export type Database = {
           },
         ]
       }
-      challenge_messages: {
+      challenge_members: {
         Row: {
           challenge_id: string
-          created_at: string
-          emoji: string | null
-          id: string
-          tagged_users: string[] | null
-          text: string | null
-          timestamp: string
+          joined_at: string
+          role: Database["public"]["Enums"]["member_role"]
+          status: Database["public"]["Enums"]["member_status"]
           user_id: string
-          username: string
         }
         Insert: {
           challenge_id: string
-          created_at?: string
-          emoji?: string | null
-          id?: string
-          tagged_users?: string[] | null
-          text?: string | null
-          timestamp?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          status?: Database["public"]["Enums"]["member_status"]
           user_id: string
-          username: string
         }
         Update: {
           challenge_id?: string
-          created_at?: string
-          emoji?: string | null
-          id?: string
-          tagged_users?: string[] | null
-          text?: string | null
-          timestamp?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          status?: Database["public"]["Enums"]["member_status"]
           user_id?: string
-          username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "challenge_members_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_messages: {
+        Row: {
+          challenge_id: string
+          content: string
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          content: string
+          created_at?: string
+          id?: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          content?: string
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_messages_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       challenge_progress_logs: {
         Row: {
@@ -763,6 +791,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      challenges: {
+        Row: {
+          category: string | null
+          cover_emoji: string | null
+          created_at: string
+          description: string | null
+          duration_days: number
+          id: string
+          invite_code: string | null
+          owner_user_id: string
+          title: string
+          visibility: Database["public"]["Enums"]["challenge_visibility"]
+        }
+        Insert: {
+          category?: string | null
+          cover_emoji?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          invite_code?: string | null
+          owner_user_id: string
+          title: string
+          visibility?: Database["public"]["Enums"]["challenge_visibility"]
+        }
+        Update: {
+          category?: string | null
+          cover_emoji?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          invite_code?: string | null
+          owner_user_id?: string
+          title?: string
+          visibility?: Database["public"]["Enums"]["challenge_visibility"]
+        }
+        Relationships: []
       }
       coach_interactions: {
         Row: {
@@ -5366,6 +5433,9 @@ export type Database = {
         | "user"
         | "recovery_challenge_participant"
         | "influencer"
+      challenge_visibility: "public" | "private"
+      member_role: "owner" | "member"
+      member_status: "joined" | "left" | "banned"
       suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
@@ -5501,6 +5571,9 @@ export const Constants = {
         "recovery_challenge_participant",
         "influencer",
       ],
+      challenge_visibility: ["public", "private"],
+      member_role: ["owner", "member"],
+      member_status: ["joined", "left", "banned"],
       suggestion_type: ["praise", "warning", "tip"],
     },
   },
