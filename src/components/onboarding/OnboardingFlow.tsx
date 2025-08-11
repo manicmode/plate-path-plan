@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -128,8 +130,11 @@ const TOTAL_SCREENS = 13;
 export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   const { user, refreshUser } = useAuth();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const { markOnboardingComplete } = useOnboardingStatus();
   const [currentScreen, setCurrentScreen] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [formData, setFormData] = useState<OnboardingData>({
     age: '',
     gender: '',
@@ -417,35 +422,18 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   };
 
   const handleSkipAll = async () => {
-    if (!user) {
-      toast.error('User not found. Please try logging in again.');
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: user.id,
-          onboarding_completed: false,
-          onboarding_skipped: true,
-          show_onboarding_reminder: true,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
-
-      if (error) {
-        console.error('Error updating profile:', error);
-        toast.error('Failed to skip onboarding. Please try again.');
-        return;
-      }
-
-      toast.success('Onboarding skipped. You can complete it anytime from your profile.');
-      onSkip();
-    } catch (error: any) {
-      console.error('Error skipping onboarding:', error);
-      toast.error('Something went wrong. Please try again.');
+      setIsFinalizing(true);
+      sessionStorage.setItem('onb_finalizing', '1'); // gate guard
+      await markOnboardingComplete(); // applies defaults + sets onboarding_completed=true + calculate-daily-targets
+      navigate('/home', { replace: true });
+    } catch (e) {
+      console.warn('[ONB] skip finalize failed', e);
+      // fallback: send to onboarding start to avoid blank
+      navigate('/onboarding', { replace: true });
+    } finally {
+      sessionStorage.removeItem('onb_finalizing');
+      setIsFinalizing(false);
     }
   };
 

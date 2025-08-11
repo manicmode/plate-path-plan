@@ -39,7 +39,7 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
   const loading = Boolean(authLoading || onboardingLoading);
   const completed = isOnboardingComplete === true;
   const bypassed = isBypassedRoute(pathname);
-
+  const isFinalizing = typeof window !== 'undefined' && sessionStorage.getItem('onb_finalizing') === '1';
   try {
     if ((import.meta as any)?.env?.MODE !== 'production') {
       console.info('[GATE]', { path: pathname, isAuthenticated, loading, completed, bypassed });
@@ -51,6 +51,7 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     if (hasRedirectedRef.current) return;
     if (!isAuthenticated) return;
     if (loading) return;
+    if (isFinalizing) return;
 
     if (!completed && !bypassed) {
       hasRedirectedRef.current = true;
@@ -59,10 +60,15 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
         state: { from: pathname + (location.search || '') },
       });
     }
-  }, [isAuthenticated, loading, completed, bypassed, pathname, location.search, navigate]);
+  }, [isAuthenticated, loading, isFinalizing, completed, bypassed, pathname, location.search, navigate]);
 
 
   if (loading) {
+    return <GateLoading />;
+  }
+
+  // If onboarding is finalizing, hold here to prevent redirects
+  if (isFinalizing) {
     return <GateLoading />;
   }
 
