@@ -29,20 +29,20 @@ const GateLoading = () => (
 );
 
 export default function OnboardingGate({ children }: OnboardingGateProps) {
-  const { isAuthenticated } = useAuth();
-  const { isOnboardingComplete, isLoading } = useOnboardingStatus();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isOnboardingComplete, isLoading: onboardingLoading } = useOnboardingStatus();
   const navigate = useNavigate();
   const location = useLocation();
   const hasRedirectedRef = useRef(false);
 
   const pathname = location.pathname || '';
-  const loading = isLoading;
+  const loading = Boolean(authLoading || onboardingLoading);
   const completed = isOnboardingComplete === true;
   const bypassed = isBypassedRoute(pathname);
 
   try {
     if ((import.meta as any)?.env?.MODE !== 'production') {
-      console.info('[GATE]', { path: pathname, loading, completed });
+      console.info('[GATE]', { path: pathname, isAuthenticated, loading, completed, bypassed });
     }
   } catch {}
 
@@ -64,6 +64,11 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
 
   if (loading) {
     return <GateLoading />;
+  }
+
+  // Let unauthenticated users through
+  if (!isAuthenticated) {
+    return <>{children}</>;
   }
 
   if (completed || bypassed) {
