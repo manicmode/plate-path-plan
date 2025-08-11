@@ -45,14 +45,6 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
-import SafeSection, { EmptyState } from '@/components/common/SafeSection';
-import HomeLayout from '@/components/home/HomeLayout';
-import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
-import { ActivityExerciseSection } from '@/components/analytics/sections/ActivityExerciseSection';
-import { MacrosHydrationSection } from '@/components/analytics/sections/MacrosHydrationSection';
-import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
-import { WeeklyProgressRing } from '@/components/analytics/WeeklyProgressRing';
-import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -107,8 +99,7 @@ const Home = () => {
   
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-const { toast } = useToast();
-  const { weeklyAverage, stepsData, exerciseCaloriesData, macroData } = useAnalyticsCalculations();
+  const { toast } = useToast();
   const { playGoalHit, playFoodLogConfirm, playStartupChime, isEnabled } = useSound();
   
   // State for daily nutrition targets
@@ -859,28 +850,975 @@ const { toast } = useToast();
   };
 
   // Show loading state with recovery options
+  if (authLoading && !hasTimedOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show recovery options if loading has timed out
-
-  const hasAnyContent = Boolean(
-    progress.calories > 0 ||
-    actualHydration > 0 ||
-    progress.supplements > 0 ||
-    (exerciseSummary?.todaySteps ?? 0) > 0 ||
-    (todayScore ?? 0) > 0
-  );
-
+  if (authLoading && hasTimedOut && showRecovery) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Taking longer than usual</h2>
+          <p className="text-muted-foreground">
+            The app seems to be taking longer to load than expected.
+          </p>
+          <div className="space-y-2">
+            <Button onClick={handleEmergencyRecovery} className="w-full">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()} 
+              className="w-full"
+            >
+              Refresh Page
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-<HomeLayout>
-      <div className="space-y-12 sm:space-y-16 animate-fade-in">
-        <SafeSection><DailyProgressSection progress={progress ?? {}} weeklyAverage={weeklyAverage ?? { steps: 0, exerciseMinutes: 0 }} /></SafeSection>
-        <SafeSection><ActivityExerciseSection stepsData={stepsData ?? []} exerciseCaloriesData={exerciseCaloriesData ?? []} weeklyAverage={weeklyAverage ?? { steps: 0, exerciseMinutes: 0 }} progress={progress ?? { hydration: 0 }} /></SafeSection>
-        <SafeSection><MacrosHydrationSection macroData={macroData ?? []} progress={progress ?? { calories: 0, hydration: 0 }} /></SafeSection>
-        <SafeSection><WeeklyOverviewChart /></SafeSection>
-        <SafeSection><WeeklyProgressRing /></SafeSection>
+    <div className="space-y-12 sm:space-y-16 animate-fade-in">
+      {/* Mood Check-in Banner */}
+      <MoodCheckinBanner />
+      
+      {/* Meditation Nudge Banner */}
+      <MeditationNudgeBanner />
+      
+      {/* Breathing Nudge Banner */}
+      <BreathingNudgeBanner />
+
+      {/* Celebration Popup */}
+      <CelebrationPopup 
+        show={showCelebration} 
+        message={celebrationMessage || celebrationType}
+        onClose={() => setShowCelebration(false)}
+      />
+
+      {/* Food Confirmation Card */}
+      <FoodConfirmationCard
+        isOpen={showConfirmationCard}
+        onClose={() => {
+          setShowConfirmationCard(false);
+          setSelectedFood(null);
+        }}
+        onConfirm={handleConfirmFood}
+        foodItem={selectedFood}
+      />
+
+      {/* Exercise Log Form */}
+      <ExerciseLogForm
+        isOpen={showExerciseForm}
+        onClose={() => setShowExerciseForm(false)}
+        onSubmit={handleExerciseLog}
+      />
+
+      {/* Exercise Reminder Form */}
+      <ExerciseReminderForm
+        isOpen={showExerciseReminder}
+        onClose={() => setShowExerciseReminder(false)}
+      />
+
+      {/* Enhanced Greeting Section */}
+      <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
+        <div className="inline-block">
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
+            {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
+          </h1>
+          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>
+            {user?.name?.split(' ')[0] || 'Superstar'}! 
+            <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
+          </h2>
+        </div>
+        <HomeCtaTicker className={`${isMobile ? 'text-lg' : 'text-xl'} train-slide motion-reduce:animate-none`} />
       </div>
-    </HomeLayout>
+
+      {/* Dynamic Tracker Cards based on user selection */}
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+        {displayedTrackers.map((tracker, index) => (
+          <div 
+            key={tracker.name}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            onClick={tracker.onClick}
+            title={getMotivationalMessage(tracker.percentage, tracker.name)}
+            style={{ 
+              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
+              position: 'relative',
+              zIndex: 20
+            }}
+          >
+            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
+            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
+              <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
+                <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
+                  <circle
+                    cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
+                    strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
+                    className="transition-all duration-2000 ease-out filter drop-shadow-lg"
+                  />
+                  <defs>
+                    <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
+                      {tracker.name === 'Calories' && (
+                        <>
+                          <stop offset="0%" stopColor="#FF6B35" />
+                          <stop offset="50%" stopColor="#F7931E" />
+                          <stop offset="100%" stopColor="#FF4500" />
+                        </>
+                      )}
+                      {tracker.name === 'Protein' && (
+                        <>
+                          <stop offset="0%" stopColor="#3B82F6" />
+                          <stop offset="50%" stopColor="#1E40AF" />
+                          <stop offset="100%" stopColor="#1E3A8A" />
+                        </>
+                      )}
+                      {tracker.name === 'Carbs' && (
+                        <>
+                          <stop offset="0%" stopColor="#FBBF24" />
+                          <stop offset="50%" stopColor="#F59E0B" />
+                          <stop offset="100%" stopColor="#D97706" />
+                        </>
+                      )}
+                      {tracker.name === 'Fat' && (
+                        <>
+                          <stop offset="0%" stopColor="#10B981" />
+                          <stop offset="50%" stopColor="#059669" />
+                          <stop offset="100%" stopColor="#047857" />
+                        </>
+                      )}
+                      {tracker.name === 'Hydration' && (
+                        <>
+                          <stop offset="0%" stopColor="#00D4FF" />
+                          <stop offset="50%" stopColor="#0099CC" />
+                          <stop offset="100%" stopColor="#006699" />
+                        </>
+                      )}
+                      {tracker.name === 'Supplements' && (
+                        <>
+                          <stop offset="0%" stopColor="#DA44BB" />
+                          <stop offset="50%" stopColor="#9333EA" />
+                          <stop offset="100%" stopColor="#7C3AED" />
+                        </>
+                      )}
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
+                  <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
+                    {Math.round(tracker.percentage)}%
+                  </span>
+                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
+                </div>
+              </div>
+              <div className="text-center">
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
+                  {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Enhanced Logging Actions Section with proper spacing */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        {/* Primary Action: Log Food - Full Width */}
+        <Card 
+          className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer"
+          onClick={() => navigate('/camera')}
+        >
+          <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
+            <div className="flex flex-col items-center space-y-4">
+              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-blue-500 to-sky-500 rounded-3xl flex items-center justify-center log-food-glow`}>
+                <Camera className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
+              </div>
+              <div className="space-y-2">
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                  Log Food
+                </h3>
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+                  Take photo or speak to log
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* SmartLog AI Predictions - Separate section with custom spacing */}
+      <div className="mt-16 mb-6 sm:mb-8 px-2 sm:px-4">
+        <SmartLogAI onFoodSelect={(food) => {
+          
+          
+          // Create food item with estimated nutritional values for the confirmation modal
+          const foodItem = {
+            name: food.name,
+            food_name: food.name,
+            calories: food.calories,
+            protein: Math.round(food.calories * 0.15 / 4), // 15% of calories from protein
+            carbs: Math.round(food.calories * 0.45 / 4), // 45% from carbs
+            fat: Math.round(food.calories * 0.35 / 9), // 35% from fat
+            fiber: Math.round(food.calories / 100), // Rough estimate
+            sugar: Math.round(food.calories * 0.1 / 4), // 10% from sugar
+            sodium: Math.round(food.calories * 0.5), // Rough estimate in mg
+            saturated_fat: Math.round(food.calories * 0.1 / 9), // 10% of fat calories
+            serving_size: '1 serving',
+            source: 'SmartLog AI',
+            quality_score: 70, // Default moderate score
+            confidence: 0.8,
+            // Add suggested meal time based on current time
+            suggestedMealTime: getCurrentMealTime(),
+            // Default portion size
+            portionPercentage: 100
+          };
+
+          // Open the confirmation modal instead of immediately logging
+          setSelectedFood(foodItem);
+          setShowConfirmationCard(true);
+        }} />
+      </div>
+
+      {/* Secondary Actions Section */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+
+        {/* Secondary Actions: Hydration & Supplements */}
+        <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
+          {/* Enhanced Hydration Action Card */}
+          <Card 
+            className={`modern-action-card hydration-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'}`}
+            onClick={() => navigate('/hydration')}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-full p-0">
+              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg hydration-action-glow flex-shrink-0`}>
+                  <Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                </div>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                    Hydration
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-tight`}>
+                    Track water intake
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Supplements Action Card */}
+          <Card 
+            className={`modern-action-card supplements-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'}`}
+            onClick={() => navigate('/supplements')}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-full p-0">
+              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg supplements-action-glow flex-shrink-0`}>
+                  <Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                </div>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                    Supplements
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-purple-100 leading-tight`}>
+                    Log vitamins & minerals
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Enhanced Net Calorie Card - Separate section with proper spacing */}
+      <div className="mt-16 px-2 sm:px-4">
+        <div>
+          <Card 
+            className={`modern-action-card net-calories-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500`}
+          >
+          <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
+            {/* Action Buttons - Upper Right Corner */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+              <button
+                onClick={() => setShowExerciseForm(true)}
+                className="action-button-compact log-workout-button"
+              >
+                <Plus className="h-3 w-3" />
+                {isMobile ? 'Workout' : 'Log Workout'}
+              </button>
+              <button
+                onClick={() => setShowExerciseReminder(true)}
+                className="action-button-compact set-reminder-button"
+              >
+                <Clock className="h-3 w-3" />
+                {isMobile ? 'Remind' : 'Log Exercise Reminder'}
+              </button>
+            </div>
+
+            {/* Header with icon and title */}
+            <div className="flex items-center space-x-3 mb-4 pr-24">
+              <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
+                <Target className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+              </div>
+              <div className="text-left">
+                <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                  Net Calories
+                </h4>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                  Daily Balance
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold`}>
+                  <span className={netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                    {netCalories > 0 ? '+' : ''}{netCalories}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400 text-lg ml-1">cal</span>
+                </div>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
+                  {netCalories >= 0 ? 'Deficit achieved!' : 'Need more exercise or less intake'}
+                </p>
+              </div>
+
+              {/* Enhanced Calorie Breakdown */}
+              <div className="net-calories-breakdown">
+                <div className="calorie-section consumed">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-blue-500 text-lg">🍽️</span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {currentCalories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Consumed
+                  </p>
+                </div>
+                
+                <div className="calorie-section burned">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-red-500 text-lg">🔥</span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {exerciseSummary.todayCalories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Burned
+                  </p>
+                </div>
+                
+                <div className="calorie-section remaining">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-green-500 text-lg">🎯</span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {totalCalories - currentCalories + exerciseSummary.todayCalories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Remaining
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        </div>
+
+        {/* Steps and Exercise Cards Container */}
+        <div className={`grid grid-cols-2 gap-3 items-stretch mt-8`}>
+          {/* Steps Tracker Card - Mobile Optimized */}
+          <Card 
+            className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
+            onClick={() => openInsights({ type: 'steps', name: 'Steps', color: '#3B82F6' })}
+            style={{
+              background: 'var(--activity-steps-gradient)',
+              boxShadow: 'var(--activity-steps-glow)'
+            }}
+          >
+            <CardContent className="p-4 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Footprints className="h-5 w-5 text-white/90" />
+                  <span className="text-sm font-medium text-white/80">Steps</span>
+                </div>
+                <div className="animate-bounce text-xl">👟</div>
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-white mb-1">
+                    {exerciseSummary.todaySteps.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-white/70">
+                    Goal: {stepsGoal.toLocaleString()}
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm text-white/80">
+                    <span>{Math.round(stepsPercentage)}%</span>
+                    <span>Complete</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-1.5">
+                    <div 
+                      className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Exercise Card - Mobile Optimized */}
+          <Card 
+            className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
+            onClick={() => openInsights({ type: 'exercise', name: 'Exercise', color: '#EF4444' })}
+            style={{
+              background: 'var(--activity-exercise-gradient)',
+              boxShadow: 'var(--activity-exercise-glow)'
+            }}
+          >
+            <CardContent className="p-4 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Dumbbell className="h-5 w-5 text-white/90" />
+                  <span className="text-sm font-medium text-white/80">Exercise</span>
+                </div>
+                <div className="animate-bounce text-xl">🏋️</div>
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-white mb-1">
+                    {exerciseSummary.todayCalories}
+                  </div>
+                  <div className="text-sm text-white/70">
+                    calories burned
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm text-white/80">
+                    <span>{Math.floor(exerciseSummary.todayDuration / 60)}h {exerciseSummary.todayDuration % 60}m</span>
+                    <span>Duration</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-1.5">
+                    <div 
+                      className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min((exerciseSummary.todayDuration / 60) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Daily Performance Score Card - Featured prominently */}
+      <div className="px-2 sm:px-4 mt-8">
+        {!scoreLoading && scoreStats && (
+          <DailyScoreCard 
+            score={todayScore || 0}
+            weeklyAverage={scoreStats.weeklyAverage}
+            streak={scoreStats.streak}
+            bestScore={scoreStats.bestScore}
+            className="mb-6"
+          />
+        )}
+      </div>
+
+      {/* Level & XP Progress Bar (moved directly under Today's Performance) */}
+      <div className="px-4 sm:px-6 -mt-4 mb-6">
+        <LevelProgressBar />
+      </div>
+
+      {/* Enhanced AI Insights Window */}
+      <div className="-mt-12">
+        <HomeAIInsights />
+      </div>
+
+
+      {/* Daily Check-In Home Tab */}
+      <div className="px-2 sm:px-4 mb-3">
+        <HomeDailyCheckInTab />
+      </div>
+
+      {/* Tomorrow's Mood Forecast */}
+      <div className="px-2 sm:px-4">
+        <MoodForecastCard />
+      </div>
+
+      {/* Decorative Separation Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-grow h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4 p-2 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-full border border-purple-200/30 dark:border-purple-400/30">
+          <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+        </div>
+        <div className="flex-grow h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Today's Nutrients Section - Collapsible */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8">
+        <Collapsible open={isNutrientsExpanded} onOpenChange={setIsNutrientsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <Zap className="h-6 w-6 text-orange-500" />
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Today's Nutrients
+                </h3>
+              </div>
+              {!isNutrientsExpanded && (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
+                {macroCards.map((macro, index) => {
+                  const percentage = Math.min((macro.current / macro.target) * 100, 100);
+                  const Icon = macro.icon;
+                  
+                  const getProgressColor = (name: string) => {
+                    switch (name) {
+                      case 'Calories':
+                        return 'from-emerald-400 to-emerald-600';
+                      case 'Protein':
+                        return 'from-cyan-400 to-blue-500 dark:from-cyan-300 dark:to-blue-400';
+                      case 'Carbs':
+                        return 'from-orange-400 to-orange-600';
+                      case 'Fat':
+                        return 'from-purple-400 to-purple-600';
+                      case 'Hydration':
+                        return 'from-cyan-400 to-blue-600';
+                      case 'Supplements':
+                        return 'from-purple-500 to-pink-600';
+                      case 'Fiber':
+                        return 'from-green-400 to-green-600';
+                      case 'Micronutrients':
+                        return 'from-indigo-400 to-indigo-600';
+                      default:
+                        return macro.color;
+                    }
+                  };
+                  
+                  return (
+                    <div key={macro.name} className="space-y-3">
+                      <Card
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 w-full cursor-pointer`}
+                        style={{ animationDelay: `${index * 100}ms` }}
+                        onClick={() => openInsights({ 
+                          type: macro.name.toLowerCase(), 
+                          name: macro.name, 
+                          color: getProgressColor(macro.name) 
+                        })}
+                      >
+                        <CardContent className="flex flex-col justify-center h-full p-0">
+                          <div className={`${isMobile ? 'p-4' : 'p-5'} text-center`}>
+                            <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>{macro.name}</h4>
+                            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold neon-text leading-tight`}>
+                              {macro.current.toFixed(0)}{macro.unit}
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              of {macro.target}{macro.unit}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {/* Progress bar outside and below the tile - shorter and centered */}
+                      <div className="flex justify-center">
+                        <div className={`${isMobile ? 'w-24' : 'w-32'} bg-gray-200 dark:bg-gray-700 rounded-full h-2`}>
+                          <div
+                            className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Micronutrients Section - Collapsible */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <Collapsible open={isMicronutrientsExpanded} onOpenChange={setIsMicronutrientsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <Atom className="h-6 w-6 text-indigo-500" />
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Micronutrients
+                </h3>
+              </div>
+              {!isMicronutrientsExpanded && (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
+                {micronutrientCards.map((micro, index) => {
+                  const percentage = Math.min((micro.current / micro.target) * 100, 100);
+                  const Icon = micro.icon;
+                  
+                  return (
+                    <div key={micro.name} className="space-y-3">
+                      <Card
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 w-full cursor-pointer`}
+                        style={{ animationDelay: `${index * 100}ms` }}
+                        onClick={() => openInsights({ 
+                          type: micro.name.toLowerCase(), 
+                          name: micro.name, 
+                          color: micro.color 
+                        })}
+                      >
+                        <CardContent className="flex flex-col justify-center h-full p-0">
+                          <div className={`${isMobile ? 'p-4' : 'p-5'} text-center`}>
+                            <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br ${micro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>{micro.name}</h4>
+                            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold neon-text leading-tight`}>
+                              {micro.current.toFixed(0)}{micro.unit}
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              of {micro.target}{micro.unit}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {/* Progress bar outside and below the tile - shorter and centered */}
+                      <div className="flex justify-center">
+                        <div className={`${isMobile ? 'w-24' : 'w-32'} bg-gray-200 dark:bg-gray-700 rounded-full h-2`}>
+                          <div
+                            className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <span className="text-lg">🚨</span>
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Toxins & Flags Section - Collapsible */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🧪</span>
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Toxins & Flags
+                </h3>
+              </div>
+              {!isToxinsExpanded && (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
+                {realToxinData.map((item, index) => {
+                  const isOverThreshold = item.current > item.threshold;
+                  
+                  return (
+                    <div key={item.name} className="space-y-3">
+                      <Card
+                        className={`modern-nutrient-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer ${
+                          isOverThreshold 
+                            ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                            : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                        }`}
+                        style={{ animationDelay: `${index * 100}ms` }}
+                        onClick={() => openInsights({ 
+                          type: item.name, 
+                          name: item.name, 
+                          color: isOverThreshold ? '#ef4444' : '#22c55e' 
+                        })}
+                      >
+                        <CardContent className="h-full p-0">
+                          <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col text-center justify-center`}>
+                            <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} ${item.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-lg`}>
+                              <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>{item.icon}</span>
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'} leading-tight mb-2`}>
+                              {item.name}
+                            </h4>
+                            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight mb-1 ${
+                              isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {item.current}
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              Limit: {item.threshold} {item.unit}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {/* Alert indicator outside and below the tile */}
+                      <div className="flex justify-center">
+                        <span className={`${isMobile ? 'text-lg' : 'text-xl'}`}>
+                          {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Explore Tiles Section */}
+      <div className="flex-1 flex flex-col px-2 sm:px-4">
+        <div className="flex-1 grid grid-cols-2 gap-4">
+          {(() => {
+            const exploreTiles = [
+              {
+                id: 'health-check',
+                title: 'Health Check',
+                emoji: '❤️',
+                color: 'from-red-500 via-rose-400 to-rose-500',
+                shadowColor: 'shadow-red-500/30',
+                glowColor: 'hover:shadow-red-400/50',
+                animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
+              },
+              {
+                id: 'game-challenge',
+                title: 'Game & Challenge',
+                emoji: '🏆',
+                color: 'from-yellow-500 via-orange-400 to-orange-500',
+                shadowColor: 'shadow-yellow-500/30',
+                glowColor: 'hover:shadow-yellow-400/50',
+                animatedGradient: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600',
+              },
+              {
+                id: 'supplement-hub',
+                title: 'Supplement Hub',
+                emoji: '🧪',
+                color: 'from-purple-500 via-purple-400 to-pink-500',
+                shadowColor: 'shadow-purple-500/30',
+                glowColor: 'hover:shadow-purple-400/50',
+                animatedGradient: 'bg-gradient-to-br from-purple-400 via-purple-500 to-pink-500',
+              },
+              {
+                id: 'exercise-hub',
+                title: 'Exercise & Recovery',
+                emoji: '💪',
+                color: 'from-blue-500 via-blue-400 to-blue-600',
+                shadowColor: 'shadow-blue-500/40',
+                glowColor: 'hover:shadow-blue-400/60',
+                animatedGradient: 'bg-gradient-to-br from-blue-400 via-blue-500 to-blue-700',
+              },
+              {
+                id: 'influencers',
+                title: 'Influencers',
+                emoji: '⭐️',
+                color: 'from-blue-600 via-cyan-400 to-cyan-600',
+                shadowColor: 'shadow-cyan-500/40',
+                glowColor: 'hover:shadow-cyan-400/60',
+                animatedGradient: 'bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-600',
+              },
+              {
+                id: 'my-reports',
+                title: 'My Reports',
+                emoji: '📄',
+                color: 'from-emerald-500 via-emerald-400 to-teal-600',
+                shadowColor: 'shadow-emerald-500/40',
+                glowColor: 'hover:shadow-emerald-400/60',
+                animatedGradient: 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-700',
+              },
+            ];
+
+            return exploreTiles.map((tile) => {
+              const handleTileClick = (tileId: string) => {
+                if (tileId === 'supplement-hub') {
+                  navigate('/supplement-hub');
+                } else if (tileId === 'health-check') {
+                  setIsHealthCheckOpen(true);
+                } else if (tileId === 'game-challenge') {
+                  navigate('/game-and-challenge');
+                } else if (tileId === 'influencers') {
+                  setIsComingSoonOpen(true);
+                } else if (tileId === 'exercise-hub') {
+                  navigate('/exercise-hub');
+                } else if (tileId === 'my-reports') {
+                  navigate('/my-reports');
+                }
+              };
+
+              return (
+              <Button
+                key={tile.id}
+                onClick={() => handleTileClick(tile.id)}
+                variant="ghost"
+                className={`
+                  group relative h-full min-h-[180px] p-6 rounded-3xl 
+                  transition-all duration-500 ease-out
+                  bg-gradient-to-br ${tile.color} 
+                  hover:scale-105 active:scale-95 active:rotate-1
+                  shadow-2xl ${tile.shadowColor} ${tile.glowColor} hover:shadow-3xl
+                  border-0 text-white hover:text-white
+                  flex flex-col items-center justify-center space-y-3
+                  backdrop-blur-sm overflow-hidden
+                  before:absolute before:inset-0 before:bg-gradient-to-br 
+                  before:from-white/20 before:to-transparent before:opacity-0 
+                  hover:before:opacity-100 before:transition-opacity before:duration-300
+                  after:absolute after:inset-0 after:bg-gradient-to-t
+                  after:from-black/5 after:to-transparent after:opacity-100
+                `}
+              >
+                {/* Large Emoji Icon */}
+                <div className={`${isMobile ? 'text-5xl' : 'text-6xl'} 
+                  group-hover:animate-bounce group-hover:scale-110 
+                  transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
+                  {tile.emoji}
+                </div>
+                {/* Clean Label */}
+                <span className={`${isMobile ? 'text-sm' : 'text-base'} 
+                  font-black text-center leading-tight text-white z-10 relative
+                  drop-shadow-2xl tracking-wide`}
+                  style={{ 
+                    textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
+                  }}>
+                  {tile.title}
+                </span>
+              </Button>
+            );
+            });
+          })()}
+        </div>
+      </div>
+
+      {/* Tracker Insights Popup */}
+      {selectedTracker && (
+        <TrackerInsightsPopup
+          isOpen={isInsightsOpen}
+          onClose={closeInsights}
+          trackerType={selectedTracker.type}
+          trackerName={selectedTracker.name}
+          trackerColor={selectedTracker.color}
+        />
+      )}
+
+      {/* Health Check Modal */}
+      <HealthCheckModal 
+        isOpen={isHealthCheckOpen} 
+        onClose={() => setIsHealthCheckOpen(false)} 
+      />
+      
+      
+      {/* Coming Soon Popup */}
+      <ComingSoonPopup 
+        isOpen={isComingSoonOpen} 
+        onClose={() => setIsComingSoonOpen(false)}
+        feature="Influencers"
+      />
+    </div>
   );
 };
 
