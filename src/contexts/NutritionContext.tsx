@@ -419,13 +419,26 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   };
 
   const getHydrationGoal = () => {
+    // First priority: user profile hydration targets
+    const hydrationGoalMl = user?.hydrationTargetMl ?? (user?.hydrationTargetGlasses ?? 8) * 250;
+    
+    // Second priority: daily targets
     const mlFromDailyTargets = dailyTargets?.hydration_ml;
     if (typeof mlFromDailyTargets === 'number' && !Number.isNaN(mlFromDailyTargets)) {
-      return Math.min(6000, Math.max(800, mlFromDailyTargets));
+      const finalGoal = Math.min(6000, Math.max(800, mlFromDailyTargets));
+      console.info('[UI]', { hydrationGoalMl: finalGoal, source: 'daily_targets', dailyTargetsValue: mlFromDailyTargets });
+      return finalGoal;
     }
-    const glasses = user?.targetHydration ?? 8;
-    const ml = glasses * DEFAULT_GLASS_SIZE_ML; // 240 ml per glass fallback
-    return Math.min(6000, Math.max(800, ml));
+    
+    const finalGoal = Math.min(6000, Math.max(800, hydrationGoalMl));
+    console.info('[UI]', { 
+      hydrationGoalMl: finalGoal, 
+      hydrationGoalGlasses: user?.hydrationTargetGlasses ?? Math.round(hydrationGoalMl / 250),
+      source: 'user_profile',
+      userTargetMl: user?.hydrationTargetMl,
+      userTargetGlasses: user?.hydrationTargetGlasses
+    });
+    return finalGoal;
   };
   
   const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default

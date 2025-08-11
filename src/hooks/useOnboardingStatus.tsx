@@ -177,7 +177,7 @@ export const useOnboardingStatus = () => {
         if (updErr) console.warn('[ONB] apply defaults failed', updErr);
       }
 
-      // 3) Finalize onboarding flags
+      // 3) Finalize onboarding flags (without overwriting hydration targets)
       const { error } = await supabase
         .from('user_profiles')
         .update({ 

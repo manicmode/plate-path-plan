@@ -5,9 +5,9 @@ import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 export const loadUserProfile = async (userId: string) => {
   try {
-    const { data, error } = await supabase
+    const { data: profile, error } = await supabase
       .from('user_profiles')
-      .select('*')
+      .select('id,user_id,display_name,hydration_target_ml,target_hydration_glasses,first_name,last_name,avatar_url,caricature_generation_count,caricature_history,avatar_variant_1,avatar_variant_2,avatar_variant_3,selected_avatar_variant,last_caricature_generation,main_health_goal,diet_styles,foods_to_avoid,activity_level,health_conditions,onboarding_completed,selected_trackers')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -16,7 +16,13 @@ export const loadUserProfile = async (userId: string) => {
       return null;
     }
 
-    return data;
+    // Add temporary logging to verify hydration targets
+    console.info('[PROFILE]', { 
+      hydration_target_ml: profile?.hydration_target_ml, 
+      target_hydration_glasses: profile?.target_hydration_glasses 
+    });
+
+    return profile;
   } catch (error) {
     console.error('Error in loadUserProfile:', error);
     return null;
@@ -76,6 +82,14 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
   const userTrackers = profile?.selected_trackers || ['calories', 'protein', 'supplements'];
   const autoFilledTrackers = getAutoFilledTrackers(userTrackers);
 
+  // Expose hydration targets from profile
+  const hydrationTargetMl = profile?.hydration_target_ml ?? null;
+  const hydrationTargetGlasses = profile?.target_hydration_glasses ?? null;
+  
+  // Only compute defaults if both are null
+  const glasses = hydrationTargetGlasses ?? 8;
+  const goalMl = hydrationTargetMl ?? glasses * 250;
+
   return {
     ...supabaseUser,
     name: profile?.first_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
@@ -93,7 +107,8 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
     targetProtein: 150,
     targetCarbs: 200,
     targetFat: 65,
-    targetHydration: 8,
+    targetHydration: glasses,
+    targetHydrationMl: goalMl,
     targetSupplements: 3,
     allergies: [],
     dietaryGoals: [],
@@ -104,6 +119,9 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
     activity_level: profile?.activity_level || undefined,
     health_conditions: profile?.health_conditions || [],
     onboardingCompleted: profile?.onboarding_completed || false,
+    // Add the raw hydration targets for nutrition context
+    hydrationTargetMl,
+    hydrationTargetGlasses,
   };
 };
 

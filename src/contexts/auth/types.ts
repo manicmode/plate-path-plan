@@ -18,7 +18,10 @@ export interface ExtendedUser extends User {
   targetCarbs?: number;
   targetFat?: number;
   targetHydration?: number;
+  targetHydrationMl?: number;
   targetSupplements?: number;
+  hydrationTargetMl?: number | null;
+  hydrationTargetGlasses?: number | null;
   allergies?: string[];
   dietaryGoals?: string[];
   selectedTrackers?: string[];
