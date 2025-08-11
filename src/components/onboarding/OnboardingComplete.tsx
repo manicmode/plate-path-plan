@@ -56,8 +56,8 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       });
     }
 
+    setIsFinalizing(true);
     try {
-      setIsFinalizing(true);
       sessionStorage.setItem('onb_finalizing', '1');
       sessionStorage.setItem('onb_finalizing_at', String(Date.now()));
 
@@ -66,14 +66,18 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       } else {
         await markOnboardingComplete();
       }
+    } catch (e) {
+      console.error('[ONB] markOnboardingComplete failed', e);
+    } finally {
+      // Make sure the page is at the top and splash can't block
+      try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+      document.body.classList.remove('splash-visible');
 
       navigate('/home', { replace: true });
-    } catch (e) {
-      console.warn('[DEBUG] OnboardingComplete: finalize failed', e);
-      navigate('/onboarding', { replace: true });
-    } finally {
+
+      // Belt & suspenders: retry once after router settles
+      setTimeout(() => navigate('/home', { replace: true }), 800);
       setIsFinalizing(false);
-      // leave onb_finalizing for the Gate to clear after navigation
     }
   };
 

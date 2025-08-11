@@ -81,6 +81,14 @@ const getCurrentMealTime = () => {
 const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
+
+  // Home mount safety
+  useEffect(() => {
+    console.info('[HOME] mounted');
+    // Ensure we're not hidden by any splash/scroll state
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    document.body.classList.remove('splash-visible');
+  }, []);
   
   // Set up deferred loading for different priority data
   const { shouldLoad: shouldLoadCritical } = useCriticalDataLoading();

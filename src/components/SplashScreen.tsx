@@ -70,13 +70,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // Defensive failsafe: auto-complete splash even if readiness gets stuck
+  // SplashScreen safety - ensure it hides after max time
   useEffect(() => {
     if (!isVisible) return;
     const t = setTimeout(() => {
+      console.log('💫 Force completing splash (1500ms timeout)');
       try { if (typeof window !== 'undefined') sessionStorage.setItem('splash_forced', '1'); } catch {}
       try { onComplete(); } catch {}
-    }, 3000);
+    }, 1500);
     return () => clearTimeout(t);
   }, [isVisible, onComplete]);
 

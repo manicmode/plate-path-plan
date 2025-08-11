@@ -65,19 +65,16 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
 
 
   useEffect(() => {
-    if (hasRedirectedRef.current) return;
-    if (!isAuthenticated) return;
-    if (loading) return;
-    if (isFinalizing) return;
-
-    if (!effectiveCompleted && !bypassed) {
-      hasRedirectedRef.current = true;
-      navigate('/onboarding', {
-        replace: true,
-        state: { from: pathname + (location.search || '') },
-      });
+    if (loading || !isAuthenticated) return;
+    
+    if (isOnboardingComplete === false && !isBypassedRoute(pathname)) {
+      navigate('/onboarding', { replace: true });
     }
-  }, [isAuthenticated, loading, isFinalizing, completed, optimisticActive, effectiveCompleted, bypassed, pathname, location.search, navigate]);
+    
+    if (isOnboardingComplete === true && pathname.startsWith('/onboarding')) {
+      navigate('/home', { replace: true });
+    }
+  }, [loading, isAuthenticated, isOnboardingComplete, pathname, navigate]);
 
   // Clear optimistic flag once DB confirms completion
   useEffect(() => {
