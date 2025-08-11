@@ -85,6 +85,7 @@ const Home = () => {
 
   // Home mount safety
   useEffect(() => {
+    (window as any).__homeMounted = true;
     console.info('[HOME] mounted');
     requestAnimationFrame(() => console.info('[HOME] first-paint'));
     // Ensure we're not hidden by any splash/scroll state

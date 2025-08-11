@@ -68,6 +68,9 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
         await markOnboardingComplete();
       }
       
+      // Tag that we're coming from onboarding
+      try { sessionStorage.setItem('__voyagePostOnboarding', '1'); } catch {}
+      
       // Preload the route chunk to avoid Suspense blank
       await Promise.race([preloadHome(), new Promise(r => setTimeout(r, 300))]);
     } catch (e) {

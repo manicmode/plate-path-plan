@@ -37,8 +37,8 @@ import AuthUrlHandler from '@/auth/AuthUrlHandler';
 import OnboardingGate from '@/routes/OnboardingGate';
 
 
-// Eager load critical components to reduce perceived loading time
-import Home from '@/pages/Home';
+// Route wrapper for Home that bypasses lazy loading post-onboarding
+import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const Index = lazy(() => import('@/pages/Index'));
@@ -194,7 +194,7 @@ function AppContent() {
                     <Route path="/" element={<Index />} />
                     <Route path="/home" element={
                       <ProtectedRoute>
-                        <Home />
+                        <HomeRouteWrapper />
                       </ProtectedRoute>
                     } />
                     <Route path="/camera" element={
