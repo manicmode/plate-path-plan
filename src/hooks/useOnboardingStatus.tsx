@@ -138,12 +138,12 @@ export const useOnboardingStatus = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         if (fetchErr) {
-          console.warn('[ONB] load profile failed', { status: fetchStatus, error: fetchErr });
+          
         } else {
           profile = prof;
         }
       } catch (e) {
-        console.warn('[ONB] load profile exception', e);
+        
       }
 
       // 2) Build and apply defaults patch only for missing values
@@ -171,7 +171,7 @@ export const useOnboardingStatus = () => {
           .from('user_profiles')
           .update(patch)
           .eq('user_id', user.id);
-        if (updErr) console.warn('[ONB] apply defaults failed', updErr);
+        
       }
 
       // 3) Finalize onboarding flags (without overwriting hydration targets)

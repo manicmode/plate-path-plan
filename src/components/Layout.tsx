@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useChatModal } from '@/contexts/ChatModalContext';
-import RouteDebugOverlay from '@/components/dev/RouteDebugOverlay';
+
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -72,14 +72,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   // Reset navigation state when location changes
   useEffect(() => {
-    console.info(`[ROUTER] location changed → ${location.pathname}`);
     setIsNavigating(false);
   }, [location.pathname]);
-
-  // Layout mount logging
-  useEffect(() => {
-    console.info('[LAYOUT] AppShell mounted');
-  }, []);
 
   // Expose app header height as a CSS variable for page headers
   useEffect(() => {
@@ -189,8 +183,6 @@ const Layout = ({ children }: LayoutProps) => {
         </nav>
       )}
       
-      {/* Debug overlay */}
-      <RouteDebugOverlay />
     </div>
   );
 };

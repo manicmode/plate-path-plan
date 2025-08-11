@@ -19,11 +19,11 @@ export default function HomeRouteWrapper() {
   }, [fromOnboarding]);
 
   if (fromOnboarding) {
-    console.info('[ROUTE] /home using NON-LAZY (post-onboarding)');
+    
     return <Home />;
   }
 
-  console.info('[ROUTE] /home using LAZY');
+  
   return (
     <React.Suspense fallback={isDebug() ? <div style={{padding:16}}>Loading…</div> : null}>
       <LazyHome />

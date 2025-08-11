@@ -429,7 +429,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       await markOnboardingComplete(); // applies defaults + sets onboarding_completed=true + calculate-daily-targets
       navigate('/home', { replace: true });
     } catch (e) {
-      console.warn('[ONB] skip finalize failed', e);
+      
       // fallback: send to onboarding start to avoid blank
       navigate('/onboarding', { replace: true });
     } finally {

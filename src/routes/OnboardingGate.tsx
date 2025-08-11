@@ -67,11 +67,6 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
   useEffect(() => {
     if (loading || !isAuthenticated) return;
     
-    console.info(`[GATE] isOnboardingComplete=${isOnboardingComplete} redirecting?`, {
-      pathname,
-      shouldRedirectToOnboarding: isOnboardingComplete === false && !isBypassedRoute(pathname),
-      shouldRedirectToHome: isOnboardingComplete === true && pathname.startsWith('/onboarding')
-    });
     
     if (isOnboardingComplete === false && !isBypassedRoute(pathname)) {
       navigate('/onboarding', { replace: true });

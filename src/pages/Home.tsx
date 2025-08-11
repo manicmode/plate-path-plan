@@ -1,5 +1,5 @@
 // 🔒 UI-LOCK: Do not change Home UI without approval. Restore tag: home-restore-2025-08-10
-console.info('[HOME] module evaluated');
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
@@ -85,9 +85,6 @@ const Home = () => {
 
   // Home mount safety
   useEffect(() => {
-    (window as any).__homeMounted = true;
-    console.info('[HOME] mounted');
-    requestAnimationFrame(() => console.info('[HOME] first-paint'));
     // Ensure we're not hidden by any splash/scroll state
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
     document.body.classList.remove('splash-visible');

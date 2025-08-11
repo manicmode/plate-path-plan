@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { isDebug } from '@/utils/debugFlag';
-import { RouterErrorBoundary } from '@/components/dev/RouterErrorBoundary';
+
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
@@ -436,8 +436,7 @@ function AppContent() {
 
 function App() {
   return (
-    <RouterErrorBoundary>
-      <BrowserRouter>
+    <BrowserRouter>
         <ErrorBoundary>
         <ThemeProvider>
           <SoundProvider>
@@ -462,7 +461,6 @@ function App() {
         </ThemeProvider>
       </ErrorBoundary>
     </BrowserRouter>
-  </RouterErrorBoundary>
   );
 }
 
