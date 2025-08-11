@@ -56,7 +56,7 @@ import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesB
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
@@ -91,7 +91,7 @@ export default function GameAndChallengePage() {
 }
 
 function GameAndChallengeContent() {
-  const { challenges, microChallenges, nudgeFriend } = useChallenge();
+  const { challenges, quickChallenges, joinChallenge } = usePublicChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -893,10 +893,30 @@ function GameAndChallengeContent() {
                     {challenges.length > 0 ? (
                       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {challenges.map((challenge) => (
-                          <ChallengeCard 
-                            key={challenge.id} 
-                            challenge={challenge} 
-                          />
+                          <Card key={challenge.id} className="border border-border bg-card hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-semibold text-lg">{challenge.title}</h3>
+                                <span className="text-lg">{challenge.cover_emoji || '🏆'}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-3">
+                                {challenge.description || 'Join this public challenge!'}
+                              </p>
+                              <Badge variant="secondary" className="mb-3">Public</Badge>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">
+                                  👥 {challenge.participant_count} participants
+                                </span>
+                                <Button
+                                  size="sm"
+                                  onClick={() => joinChallenge(challenge.id)}
+                                  className="text-xs"
+                                >
+                                  Join
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
                         ))}
                       </div>
                     ) : (
@@ -904,17 +924,10 @@ function GameAndChallengeContent() {
                         <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Target className="h-10 w-10 text-green-600" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
+                        <h3 className="text-xl font-semibold mb-2">No public challenges yet</h3>
                         <p className="text-muted-foreground mb-4">
-                          Be the first to create a challenge and inspire others to join!
+                          Create one to get started!
                         </p>
-                        <Button 
-                          onClick={() => setShowChallengeModal(true)}
-                          className="flex items-center gap-2"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Create First Challenge
-                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -941,14 +954,32 @@ function GameAndChallengeContent() {
                     </Button>
                   </div>
                   
-                  {microChallenges.length > 0 ? (
+                  {quickChallenges.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto pb-4">
-                      {microChallenges.map((challenge) => (
-                        <MicroChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge}
-                          onNudgeFriend={nudgeFriend}
-                        />
+                      {quickChallenges.map((challenge) => (
+                        <Card key={challenge.id} className="min-w-64 border border-border bg-card">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-lg">{challenge.cover_emoji || '⚡'}</span>
+                              <h3 className="font-semibold text-sm">{challenge.title}</h3>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {challenge.description || 'Quick challenge!'}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">
+                                👥 {challenge.participant_count}
+                              </span>
+                              <Button
+                                size="sm"
+                                onClick={() => joinChallenge(challenge.id)}
+                                className="text-xs h-7"
+                              >
+                                Join
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   ) : (

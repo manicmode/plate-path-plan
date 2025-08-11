@@ -37,43 +37,19 @@ export const usePublicChallenges = () => {
 
   const fetchChallenges = async () => {
     try {
-      // Fetch public challenges with participant counts
-      const { data: challengesData, error: challengesError } = await supabase
-        .from('challenges')
-        .select(`
-          id,
-          title,
-          description,
-          category,
-          visibility,
-          duration_days,
-          cover_emoji,
-          invite_code,
-          owner_user_id,
-          created_at
-        `)
+      // Use the challenges_with_counts view for efficient querying
+      const { data, error } = await supabase
+        .from('challenges_with_counts')
+        .select('*')
         .eq('visibility', 'public')
         .order('created_at', { ascending: false });
 
-      if (challengesError) throw challengesError;
-
-      // Get participant counts for each challenge
-      const challengesWithCounts = await Promise.all(
-        (challengesData || []).map(async (challenge) => {
-          const { count } = await supabase
-            .from('challenge_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('challenge_id', challenge.id)
-            .eq('status', 'joined');
-
-          return {
-            ...challenge,
-            participant_count: count || 0
-          };
-        })
-      );
-
-      setChallenges(challengesWithCounts);
+      if (error) throw error;
+      
+      setChallenges((data || []).map(challenge => ({
+        ...challenge,
+        participant_count: challenge.participants || 0
+      })));
     } catch (error) {
       console.error('Error fetching challenges:', error);
       toast({
@@ -241,7 +217,7 @@ export const usePublicChallenges = () => {
 
     loadData();
 
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions for challenges_with_counts view
     const challengesChannel = supabase
       .channel('public-challenges-changes')
       .on(

@@ -670,6 +670,13 @@ export type Database = {
             referencedRelation: "challenges"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "challenge_members_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges_with_counts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       challenge_messages: {
@@ -700,6 +707,13 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_messages_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges_with_counts"
             referencedColumns: ["id"]
           },
         ]
@@ -4914,6 +4928,22 @@ export type Database = {
           source_count: number | null
           steps: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      challenges_with_counts: {
+        Row: {
+          category: string | null
+          cover_emoji: string | null
+          created_at: string | null
+          description: string | null
+          duration_days: number | null
+          id: string | null
+          invite_code: string | null
+          owner_user_id: string | null
+          participants: number | null
+          title: string | null
+          visibility: Database["public"]["Enums"]["challenge_visibility"] | null
         }
         Relationships: []
       }
