@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_challenge_messages_orphans: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          emoji: string | null
+          id: string
+          tagged_users: string[] | null
+          text: string | null
+          timestamp: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          timestamp?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          timestamp?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       activity_steps: {
         Row: {
           created_at: string
