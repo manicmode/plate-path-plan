@@ -15,6 +15,10 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  // CSS custom properties for bottom nav
+  useEffect(() => {
+    document.documentElement.style.setProperty('--tabbar-height', '72px');
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -128,27 +132,32 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Content with adjusted padding for explore page */}
+      {/* Main Content with safe area padding for bottom nav */}
       <main
         className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
           shouldShowNavigation ? (
             isExplorePage 
               ? 'pb-20' // Reduced padding for explore page
-              : (isMobile ? 'pb-40' : 'pb-60')
+              : 'pb-[max(env(safe-area-inset-bottom),var(--tabbar-height))]'
           ) : 'pb-8'
         } ${
           isExplorePage 
             ? 'h-[calc(100vh-160px)]' // Precise height for explore page
             : 'min-h-[calc(100vh-140px)]'
         }`}
+        style={{
+          paddingBottom: shouldShowNavigation && !isExplorePage 
+            ? 'max(env(safe-area-inset-bottom), var(--tabbar-height))' 
+            : undefined
+        }}
       >
         {children}
       </main>
 
       {/* Enhanced Bottom Navigation - Only show for authenticated users and hide when chat modal is open */}
       {shouldShowNavigation && !isChatModalOpen && (
-        <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
-          <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
+        <nav className={`fixed bottom-0 left-0 right-0 z-50 ${isMobile ? 'p-3' : 'pb-6 px-6 flex justify-center'}`}>
+          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-t-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60`}>
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
                 const isActive = location.pathname === path;

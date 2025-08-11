@@ -167,37 +167,19 @@ console.log('🔍 Rendering app...', {
 root.render(
   <ErrorBoundary>
     <AuthProvider>
-      <ErrorBoundary fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center space-y-4">
-            <h2 className="text-xl font-bold">Loading Error</h2>
-            <p className="text-muted-foreground">Please refresh the page to continue.</p>
-            <button 
-              onClick={() => {
-                console.log('🔄 User clicked refresh button');
-                window.location.reload();
-              }} 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
-            >
-              Refresh Page
-            </button>
-          </div>
-        </div>
-      }>
-        <QueryClientProvider client={queryClient}>
-          <NutritionProvider>
-            <NotificationProvider>
-              {isMobile ? (
+      <QueryClientProvider client={queryClient}>
+        <NutritionProvider>
+          <NotificationProvider>
+            {isMobile ? (
+              <App />
+            ) : (
+              <StrictMode>
                 <App />
-              ) : (
-                <StrictMode>
-                  <App />
-                </StrictMode>
-              )}
-            </NotificationProvider>
-          </NutritionProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
+              </StrictMode>
+            )}
+          </NotificationProvider>
+        </NutritionProvider>
+      </QueryClientProvider>
     </AuthProvider>
   </ErrorBoundary>
 );
