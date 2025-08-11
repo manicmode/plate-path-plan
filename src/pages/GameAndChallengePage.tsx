@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -88,12 +88,31 @@ export function GameAndChallengePageShell() {
 
 // Minimal page with just ChallengesFeed for bisection testing
 export function GameAndChallengePage_Min() {
+  const [showCreate, setShowCreate] = useState(false);
+  const [nudge, setNudge] = useState(0);
+  
   console.log("[Bisect] Min page mounted");
+  
+  const handleCreated = useCallback(() => {
+    console.log("[Bisect] challenge created → refresh feed");
+    setNudge((n) => n + 1); // local state to bump a key on ChallengesFeed
+    setShowCreate(false);
+  }, []);
+
   return (
     <div style={{ padding: 16 }}>
       <h2 style={{ color: "white", marginBottom: 12 }}>Challenges</h2>
+      <button onClick={() => setShowCreate(true)}>+ Create Challenge</button>
+      {showCreate && (
+        <ChallengeCreationModal
+          open
+          onOpenChange={(open) => setShowCreate(open)}
+          defaultVisibility="public"
+          onChallengeCreated={handleCreated}
+        />
+      )}
       <Suspense fallback={<div style={{color:"white"}}>Loading…</div>}>
-        <ChallengesFeed />
+        <ChallengesFeed key={nudge} />
       </Suspense>
     </div>
   );
