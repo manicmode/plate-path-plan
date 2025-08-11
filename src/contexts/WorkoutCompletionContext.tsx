@@ -17,7 +17,15 @@ interface WorkoutCompletionContextType {
   hideCompletionModal: () => void;
 }
 
-const WorkoutCompletionContext = createContext<WorkoutCompletionContextType | undefined>(undefined);
+// A safe, no-op default that won't crash if provider is absent
+const defaultWorkoutCompletionCtx: WorkoutCompletionContextType = {
+  isModalOpen: false,
+  workoutData: null,
+  showCompletionModal: () => console.warn('[WorkoutCompletion] showCompletionModal called without provider'),
+  hideCompletionModal: () => console.warn('[WorkoutCompletion] hideCompletionModal called without provider'),
+};
+
+const WorkoutCompletionContext = createContext<WorkoutCompletionContextType | null>(null);
 
 export const WorkoutCompletionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,10 +53,7 @@ export const WorkoutCompletionProvider: React.FC<{ children: React.ReactNode }> 
   );
 };
 
-export const useWorkoutCompletion = () => {
+export const useWorkoutCompletion = (): WorkoutCompletionContextType => {
   const context = useContext(WorkoutCompletionContext);
-  if (context === undefined) {
-    throw new Error('useWorkoutCompletion must be used within a WorkoutCompletionProvider');
-  }
-  return context;
+  return context ?? defaultWorkoutCompletionCtx; // <-- no throw; returns safe defaults
 };
