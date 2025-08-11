@@ -23,6 +23,14 @@ export const ExerciseChallenges: React.FC = () => {
     return success;
   };
 
+  
+  // Debug logging
+  console.log('Active Challenges Debug:', {
+    publicChallenges,
+    loading,
+    challengesLength: publicChallenges.length
+  });
+
   const coachMessages = [
     "💪 Ready to crush your fitness goals today? Let's make it happen!",
     "🔥 I see you eyeing those challenges! Time to turn that motivation into ACTION!",
