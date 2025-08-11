@@ -30,6 +30,7 @@ import { useAuthCallback } from '@/hooks/useAuthCallback';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
+import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
 import OnboardingGate from '@/routes/OnboardingGate';
 
@@ -127,6 +128,7 @@ function AppContent() {
 
   return (
     <>
+      <AuthUrlHandler />
       {/* Cold Start Splash Screen - shows immediately with highest priority */}
       <SplashScreen 
         isVisible={isColdStart} 
