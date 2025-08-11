@@ -77,14 +77,14 @@ export function MicroChallengeCreationModal({ open, onOpenChange }: MicroChallen
       name: challengeName,
       type: 'micro' as const,
       creatorId: 'current-user-id',
-      creatorName: 'Maya 🌟',
+      creatorName: 'You',
       goalType: goalType as any,
       customGoal: goalType === 'custom' ? customGoal : undefined,
       startDate: new Date(),
       endDate: new Date(Date.now() + duration * 24 * 60 * 60 * 1000),
       participants: ['current-user-id', ...selectedFriends],
       participantDetails: {
-        'current-user-id': { name: 'Maya 🌟', avatar: '🌟' },
+        'current-user-id': { name: 'You', avatar: '👤' },
         ...mockFriends
           .filter(f => selectedFriends.includes(f.id))
           .reduce((acc, friend) => ({

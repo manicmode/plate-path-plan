@@ -26,7 +26,7 @@ export interface RecoveryLeaderboardUser {
 const mockRecoveryLeaderboard: RecoveryLeaderboardUser[] = [
   {
     id: "1",
-    nickname: "Zen Master Alex 🧘",
+    nickname: "Recovery Champion Alex 🧘",
     avatar: "🧘‍♂️",
     totalSessions: 156,
     longestStreak: 28,
@@ -140,7 +140,7 @@ const mockRecoveryLeaderboard: RecoveryLeaderboardUser[] = [
   },
   {
     id: "7",
-    nickname: "Mindful Maya 🌺",
+    nickname: "Mindful Friend 🌺",
     avatar: "🌺",
     totalSessions: 76,
     longestStreak: 12,

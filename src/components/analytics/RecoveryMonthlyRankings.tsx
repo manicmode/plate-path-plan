@@ -52,7 +52,7 @@ export const RecoveryMonthlyRankings: React.FC = () => {
   };
 
   const getFunTitle = (user: RecoveryLeaderboardUser) => {
-    if (user.rank === 1) return "🧘 Zen Master";
+    if (user.rank === 1) return "🧘 Recovery Champion";
     if (user.rank === 2) return "🌟 Recovery Star";
     if (user.rank === 3) return "🏅 Wellness Warrior";
     if (user.currentStreak >= 20) return "🔥 Streak Legend";

@@ -47,12 +47,12 @@ const mockFeedPosts: FeedPost[] = [
       { emoji: '💪', count: 2, userReacted: false }
     ],
     comments: [
-      { user: 'Maya', text: 'Amazing work! Keep it up! 💪', timestamp: new Date(Date.now() - 1000 * 60 * 10) }
+      { user: 'Friend', text: 'Amazing work! Keep it up! 💪', timestamp: new Date(Date.now() - 1000 * 60 * 10) }
     ]
   },
   {
     id: '2',
-    user: { name: 'Maya 🌟', avatar: '🌟' },
+    user: { name: 'Friend 🌟', avatar: '🌟' },
     type: 'meal',
     content: 'Logged a perfectly balanced breakfast: overnight oats with berries and almonds! 🥣✨',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago

@@ -196,7 +196,7 @@ function GameAndChallengeContent() {
     if (chatMessage.trim()) {
       const newMessage = {
         id: messages.length + 1,
-        user: "Maya 🌟",
+        user: "You 🌟",
         message: chatMessage,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         reactions: []
