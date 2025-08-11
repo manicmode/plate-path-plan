@@ -369,6 +369,54 @@ export const usePrivateChallenges = () => {
     };
 
     loadData();
+
+    // Set up real-time subscriptions
+    const privateChallengesChannel = supabase
+      .channel('private-challenges-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'private_challenges'
+        },
+        () => {
+          if (user) {
+            fetchPrivateChallenges();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'private_challenge_participations'
+        },
+        () => {
+          if (user) {
+            fetchUserPrivateParticipations();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'challenge_invitations'
+        },
+        () => {
+          if (user) {
+            fetchPendingInvitations();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(privateChallengesChannel);
+    };
   }, [user]);
 
   // Get user's participation for a specific challenge

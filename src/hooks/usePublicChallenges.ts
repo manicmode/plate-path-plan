@@ -7,42 +7,23 @@ import { useSound } from '@/hooks/useSound';
 export interface PublicChallenge {
   id: string;
   title: string;
-  description: string;
-  goal_description: string;
+  description: string | null;
+  category: string | null;
+  visibility: string;
   duration_days: number;
-  challenge_type: string;
-  difficulty_level: string;
-  category: string;
-  target_metric: string | null;
-  target_value: number | null;
-  target_unit: string | null;
-  badge_icon: string;
-  is_trending: boolean;
-  is_new: boolean;
-  is_limited_time: boolean;
-  limited_time_end: string | null;
-  participant_count: number;
-  is_active: boolean;
+  cover_emoji: string | null;
+  invite_code: string | null;
+  owner_user_id: string;
   created_at: string;
-  updated_at: string;
+  participant_count: number;
 }
 
 export interface UserChallengeParticipation {
-  id: string;
-  user_id: string;
   challenge_id: string;
+  user_id: string;
+  role: string;
+  status: string;
   joined_at: string;
-  start_date: string;
-  end_date: string;
-  current_progress: number;
-  total_target: number;
-  daily_completions: any;
-  streak_count: number;
-  best_streak: number;
-  completion_percentage: number;
-  is_completed: boolean;
-  completed_at: string | null;
-  last_progress_update: string | null;
 }
 
 export const usePublicChallenges = () => {
@@ -56,16 +37,43 @@ export const usePublicChallenges = () => {
 
   const fetchChallenges = async () => {
     try {
-      const { data, error } = await supabase
-        .from('public_challenges')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_trending', { ascending: false })
-        .order('is_new', { ascending: false })
-        .order('participant_count', { ascending: false });
+      // Fetch public challenges with participant counts
+      const { data: challengesData, error: challengesError } = await supabase
+        .from('challenges')
+        .select(`
+          id,
+          title,
+          description,
+          category,
+          visibility,
+          duration_days,
+          cover_emoji,
+          invite_code,
+          owner_user_id,
+          created_at
+        `)
+        .eq('visibility', 'public')
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setChallenges(data || []);
+      if (challengesError) throw challengesError;
+
+      // Get participant counts for each challenge
+      const challengesWithCounts = await Promise.all(
+        (challengesData || []).map(async (challenge) => {
+          const { count } = await supabase
+            .from('challenge_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('challenge_id', challenge.id)
+            .eq('status', 'joined');
+
+          return {
+            ...challenge,
+            participant_count: count || 0
+          };
+        })
+      );
+
+      setChallenges(challengesWithCounts);
     } catch (error) {
       console.error('Error fetching challenges:', error);
       toast({
@@ -81,9 +89,10 @@ export const usePublicChallenges = () => {
 
     try {
       const { data, error } = await supabase
-        .from('user_challenge_participations')
+        .from('challenge_members')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('status', 'joined');
 
       if (error) throw error;
       setUserParticipations(data || []);
@@ -118,18 +127,13 @@ export const usePublicChallenges = () => {
       const challenge = challenges.find(c => c.id === challengeId);
       if (!challenge) throw new Error('Challenge not found');
 
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date(Date.now() + challenge.duration_days * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0];
-
       const { error } = await supabase
-        .from('user_challenge_participations')
+        .from('challenge_members')
         .insert({
-          user_id: user.id,
           challenge_id: challengeId,
-          start_date: startDate,
-          end_date: endDate,
-          total_target: challenge.target_value || challenge.duration_days,
+          user_id: user.id,
+          role: 'member',
+          status: 'joined',
         });
 
       if (error) throw error;
@@ -162,18 +166,11 @@ export const usePublicChallenges = () => {
       if (!participation) throw new Error('Participation not found');
 
       const today = new Date().toISOString().split('T')[0];
-      
-      // Update daily completion
-      const updatedCompletions = {
-        ...participation.daily_completions,
-        [today]: true
-      };
 
       // Log progress
       const { error: logError } = await supabase
         .from('challenge_progress_logs')
         .insert({
-          participation_id: participation.id,
           user_id: user.id,
           challenge_id: challengeId,
           log_date: today,
@@ -182,54 +179,6 @@ export const usePublicChallenges = () => {
         });
 
       if (logError) throw logError;
-
-      // Update participation record
-      const { error: updateError } = await supabase
-        .from('user_challenge_participations')
-        .update({
-          daily_completions: updatedCompletions,
-          last_progress_update: new Date().toISOString(),
-        })
-        .eq('id', participation.id);
-
-      if (updateError) throw updateError;
-
-      // Calculate progress using the database function
-      const { error: calcError } = await supabase.rpc('calculate_challenge_progress', {
-        participation_id_param: participation.id
-      });
-
-      if (calcError) throw calcError;
-
-      // Refresh user participations
-      await fetchUserParticipations();
-
-      // Check for challenge completion and trigger celebration
-      const updatedParticipation = await supabase
-        .from('user_challenge_participations')
-        .select('*')
-        .eq('id', participation.id)
-        .single();
-
-      if (updatedParticipation.data && updatedParticipation.data.completion_percentage >= 100 && 
-          !celebrationShown.has(challengeId)) {
-        
-        // Trigger celebration popup
-        const challengeData = challenges.find(c => c.id === challengeId);
-        const celebrationEvent = new CustomEvent('showCelebration', {
-          detail: {
-            message: `Challenge Completed! 🏆\n"${challengeData?.title || 'Challenge'}" conquered!`,
-            type: 'challenge'
-          }
-        });
-        window.dispatchEvent(celebrationEvent);
-        
-        // Play victory sound
-        playChallengeWin();
-        
-        // Mark celebration as shown
-        setCelebrationShown(prev => new Set([...prev, challengeId]));
-      }
 
       toast({
         title: "Progress Updated!",
@@ -253,8 +202,8 @@ export const usePublicChallenges = () => {
 
     try {
       const { error } = await supabase
-        .from('user_challenge_participations')
-        .delete()
+        .from('challenge_members')
+        .update({ status: 'left' })
         .eq('user_id', user.id)
         .eq('challenge_id', challengeId);
 
@@ -291,13 +240,52 @@ export const usePublicChallenges = () => {
     };
 
     loadData();
+
+    // Set up real-time subscriptions
+    const challengesChannel = supabase
+      .channel('public-challenges-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'challenges',
+          filter: 'visibility=eq.public'
+        },
+        () => {
+          fetchChallenges();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'challenge_members'
+        },
+        () => {
+          fetchChallenges();
+          if (user) {
+            fetchUserParticipations();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(challengesChannel);
+    };
   }, [user]);
 
   // Filter challenges by category
   const globalChallenges = challenges.filter(c => c.duration_days >= 7);
   const quickChallenges = challenges.filter(c => c.duration_days <= 3);
-  const trendingChallenges = challenges.filter(c => c.is_trending);
-  const newChallenges = challenges.filter(c => c.is_new);
+  const trendingChallenges = challenges.filter(c => c.participant_count > 5);
+  const newChallenges = challenges.filter(c => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return new Date(c.created_at) > weekAgo;
+  });
 
   // Get user's participation status for each challenge
   const getUserParticipation = (challengeId: string) => 

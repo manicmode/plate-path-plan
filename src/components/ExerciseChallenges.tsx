@@ -118,38 +118,42 @@ export const ExerciseChallenges: React.FC = () => {
       </div>
 
       {/* Accountability Groups */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Your Squad</h2>
-          <span className="text-sm text-muted-foreground">Private groups</span>
+      {accountabilityGroups.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Your Squad</h2>
+            <span className="text-sm text-muted-foreground">Private groups</span>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {accountabilityGroups.map((group, index) => (
+              <motion.div
+                key={group.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.2 }}
+              >
+                <AccountabilityGroupCard 
+                  group={group} 
+                  onSendNudge={handleSendNudge}
+                />
+              </motion.div>
+            ))}
+          </div>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {accountabilityGroups.map((group, index) => (
-            <motion.div
-              key={group.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.2 }}
-            >
-              <AccountabilityGroupCard 
-                group={group} 
-                onSendNudge={handleSendNudge}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Mini Leaderboard */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
-        <ChallengeLeaderboard leaderboard={leaderboard} />
-      </motion.div>
+      {leaderboard.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <ChallengeLeaderboard leaderboard={leaderboard} />
+        </motion.div>
+      )}
 
       {/* Nudge Modal */}
       <Dialog open={isNudgeModalOpen} onOpenChange={setIsNudgeModalOpen}>

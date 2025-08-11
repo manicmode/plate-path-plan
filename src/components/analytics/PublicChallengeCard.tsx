@@ -18,8 +18,8 @@ export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
   onLeave,
 }) => {
   const isParticipating = !!participation;
-  const isCompleted = participation?.is_completed || false;
-  const progressPercentage = participation?.completion_percentage || 0;
+  const isCompleted = false; // Simplified for now
+  const progressPercentage = 0; // Simplified for now
 
   // Determine challenge type based on duration for color coding
   const getChallengeType = (): ChallengeType => {
@@ -39,21 +39,25 @@ export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
     <UnifiedChallengeCard
       id={challenge.id}
       title={challenge.title}
-      description={challenge.goal_description}
-      badgeIcon={challenge.badge_icon}
+      description={challenge.description || 'No description available'}
+      badgeIcon={challenge.cover_emoji || '🏆'}
       challengeType={getChallengeType()}
       durationDays={challenge.duration_days}
       participantCount={challenge.participant_count}
-      targetValue={challenge.target_value}
-      targetUnit={challenge.target_unit}
+      targetValue={challenge.duration_days}
+      targetUnit="days"
       isParticipating={isParticipating}
       isCompleted={isCompleted}
       progressPercentage={progressPercentage}
-      streakCount={participation?.streak_count || 0}
-      bestStreak={participation?.best_streak || 0}
-      isTrending={challenge.is_trending}
-      isNew={challenge.is_new}
-      difficultyLevel={challenge.difficulty_level}
+      streakCount={0}
+      bestStreak={0}
+      isTrending={challenge.participant_count > 5}
+      isNew={(() => {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return new Date(challenge.created_at) > weekAgo;
+      })()}
+      difficultyLevel={challenge.duration_days <= 3 ? 'beginner' : challenge.duration_days <= 14 ? 'intermediate' : 'advanced'}
       onJoin={handleJoin}
       onLeave={handleLeave}
     />
