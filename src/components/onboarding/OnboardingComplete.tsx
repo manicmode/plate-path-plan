@@ -7,6 +7,7 @@ import { SavingScreen } from '@/components/SavingScreen';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { preloadHome } from '@/utils/preload';
 
 interface OnboardingCompleteProps {
   onComplete: () => void;
@@ -66,6 +67,9 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       } else {
         await markOnboardingComplete();
       }
+      
+      // Preload the route chunk to avoid Suspense blank
+      await Promise.race([preloadHome(), new Promise(r => setTimeout(r, 300))]);
     } catch (e) {
       console.error('[ONB] markOnboardingComplete failed', e);
     } finally {
@@ -73,7 +77,7 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
       document.body.classList.remove('splash-visible');
 
-      console.info('[ONB] handleFinish → navigate("/home")');
+      console.info('[ONB] navigate("/home")');
       navigate('/home', { replace: true });
 
       // Force-paint safety after navigate

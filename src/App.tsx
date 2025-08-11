@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { isDebug } from '@/utils/debugFlag';
 import { RouterErrorBoundary } from '@/components/dev/RouterErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -152,7 +153,7 @@ function AppContent() {
         <>
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
-          <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+          <Suspense fallback={isDebug() ? <div style={{padding:16}}>Loading…</div> : <SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <OnboardingGate>
               <Routes>
                 {/* Fullscreen pages without Layout */}
