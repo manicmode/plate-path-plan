@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { DEFAULT_GLASS_SIZE_ML } from '@/utils/hydrationUnits';
 
 export const useOnboardingStatus = () => {
   const { user, isAuthenticated } = useAuth();
@@ -118,7 +119,7 @@ export const useOnboardingStatus = () => {
       try {
         const { data, error: fetchErr } = await supabase
           .from('user_profiles')
-          .select('activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml')
+          .select('activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml, target_hydration_glasses')
           .eq('user_id', user.id)
           .maybeSingle();
         if (fetchErr) {
@@ -139,10 +140,20 @@ export const useOnboardingStatus = () => {
       if (!profile || isMissing(profile?.meal_frequency)) { patch.meal_frequency = 3; applied = true; }
       if (!profile || isMissing(profile?.fasting_schedule)) { patch.fasting_schedule = 'none'; applied = true; }
       if (!profile || profile?.food_allergies == null) { patch.food_allergies = {}; applied = true; }
-      if (!profile || isMissing(profile?.hydration_target_ml)) { patch.hydration_target_ml = 2500; applied = true; }
+      if (!profile || isMissing(profile?.hydration_target_ml)) {
+        const g = Number((profile as any)?.target_hydration_glasses);
+        const ml = Number.isFinite(g) ? g * DEFAULT_GLASS_SIZE_ML : 2500;
+        patch.hydration_target_ml = Math.max(800, Math.min(6000, ml));
+        applied = true;
+      }
 
       if (applied) {
         patch.onboarding_defaults_applied = true;
+        try {
+          if ((import.meta as any)?.env?.MODE !== 'production') {
+            console.info('[ONB DEFAULTS]', patch);
+          }
+        } catch {}
         const { error: updErr } = await supabase
           .from('user_profiles')
           .update(patch)
