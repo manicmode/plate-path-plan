@@ -5,6 +5,31 @@ import { useAuth } from '@/contexts/auth';
 import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { getLocalDateString, getLocalDayBounds } from '@/lib/dateUtils';
 
+// Resilient fetch helpers to avoid blank UI on 4xx
+const sleep = (ms:number)=>new Promise(r=>setTimeout(r,ms));
+
+async function safeSelect<T>(q: any, {retries=2, delay=400}:{retries?:number, delay?:number} = {}): Promise<T[]> {
+  for (let i=0;i<=retries;i++){
+    const { data, error, status } = await q;
+    if (!error) return (data ?? []) as T[];
+    console.warn('[nutri] select warn', { status, error });
+    if (status >= 500 && i < retries) await sleep(delay);
+    else return [] as T[]; // 4xx → empty
+  }
+  return [] as T[];
+}
+
+async function safeSingle<T>(q: any, {retries=2, delay=400}:{retries?:number, delay?:number} = {}): Promise<T | null> {
+  for (let i=0;i<=retries;i++){
+    const { data, error, status } = await (q.single?.() ?? q);
+    if (!error) return (data ?? null) as T | null;
+    console.warn('[nutri] single warn', { status, error });
+    if (status >= 500 && i < retries) await sleep(delay);
+    else return null; // 4xx → null
+  }
+  return null;
+}
+
 interface FoodItem {
   id: string;
   name: string;
@@ -80,49 +105,49 @@ export const useNutritionLoader = () => {
       const localData = safeGetJSON(localKey, null);
       
       // Load foods from nutrition_logs using local day bounds
-      const { data: foodsData, error: foodsError } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: true });
-
-      if (foodsError) throw foodsError;
+      const foodsRows = await safeSelect<any>(
+        supabase
+          .from('nutrition_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: true })
+      );
       
-      console.log(`🍽️ Found ${foodsData?.length || 0} food logs for ${date}`);
-      if (foodsData && foodsData.length > 0) {
-        console.log('📋 Food logs:', foodsData.map(f => ({ name: f.food_name, created_at: f.created_at })));
+      console.log(`🍽️ Found ${foodsRows?.length || 0} food logs for ${date}`);
+      if (foodsRows && foodsRows.length > 0) {
+        console.log('📋 Food logs:', foodsRows.map((f: any) => ({ name: f.food_name, created_at: f.created_at })));
       }
 
       // Load hydration from hydration_logs using local day bounds
-      const { data: hydrationData, error: hydrationError } = await supabase
-        .from('hydration_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: true });
-
-      if (hydrationError) throw hydrationError;
+      const hydrationRows = await safeSelect<any>(
+        supabase
+          .from('hydration_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: true })
+      );
       
-      console.log(`💧 Found ${hydrationData?.length || 0} hydration logs for ${date}`);
+      console.log(`💧 Found ${hydrationRows?.length || 0} hydration logs for ${date}`);
 
       // Load supplements from supplement_logs using local day bounds
-      const { data: supplementsData, error: supplementsError } = await supabase
-        .from('supplement_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: true });
-
-      if (supplementsError) throw supplementsError;
+      const supplementsRows = await safeSelect<any>(
+        supabase
+          .from('supplement_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: true })
+      );
       
-      console.log(`💊 Found ${supplementsData?.length || 0} supplement logs for ${date}`);
+      console.log(`💊 Found ${supplementsRows?.length || 0} supplement logs for ${date}`);
 
       // Transform database data to context format
-      const foods: FoodItem[] = (foodsData || []).map(item => ({
+      const foods: FoodItem[] = (foodsRows || []).map((item: any) => ({
         id: item.id,
         name: item.food_name,
         calories: item.calories || 0,
@@ -139,7 +164,7 @@ export const useNutritionLoader = () => {
         confirmed: true
       }));
 
-      const hydration: HydrationItem[] = (hydrationData || []).map(item => ({
+      const hydration: HydrationItem[] = (hydrationRows || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         volume: item.volume,
@@ -148,7 +173,7 @@ export const useNutritionLoader = () => {
         timestamp: new Date(item.created_at)
       }));
 
-      const supplements: SupplementItem[] = (supplementsData || []).map(item => ({
+      const supplements: SupplementItem[] = (supplementsRows || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         dosage: Number(item.dosage),
