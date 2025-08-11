@@ -15,7 +15,6 @@ export const InfluencerGuard = ({ children, fallback }: InfluencerGuardProps) =>
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Checking influencer permissions...</span>
       </div>
     );
   }

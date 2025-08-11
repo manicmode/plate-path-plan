@@ -41,9 +41,8 @@ const Index = () => {
   if (loading || !sessionChecked || isInitialLoad) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           
           {showRecovery && (
             <div className="bg-card p-6 rounded-lg border shadow-sm space-y-4">
