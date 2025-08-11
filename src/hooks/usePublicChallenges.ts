@@ -37,11 +37,12 @@ export const usePublicChallenges = () => {
 
   const fetchChallenges = async () => {
     try {
-      // Use the challenges_with_counts view for efficient querying
+      // Use the challenges_with_counts view for efficient querying with computed end_at
       const { data, error } = await supabase
         .from('challenges_with_counts')
         .select('*')
         .eq('visibility', 'public')
+        .gt('end_at', new Date().toISOString()) // Only active challenges
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -4938,12 +4938,45 @@ export type Database = {
           created_at: string | null
           description: string | null
           duration_days: number | null
+          end_at: string | null
           id: string | null
           invite_code: string | null
           owner_user_id: string | null
           participants: number | null
           title: string | null
           visibility: Database["public"]["Enums"]["challenge_visibility"] | null
+        }
+        Insert: {
+          category?: string | null
+          cover_emoji?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          end_at?: never
+          id?: string | null
+          invite_code?: string | null
+          owner_user_id?: string | null
+          participants?: never
+          title?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["challenge_visibility"]
+            | null
+        }
+        Update: {
+          category?: string | null
+          cover_emoji?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          end_at?: never
+          id?: string | null
+          invite_code?: string | null
+          owner_user_id?: string | null
+          participants?: never
+          title?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["challenge_visibility"]
+            | null
         }
         Relationships: []
       }
