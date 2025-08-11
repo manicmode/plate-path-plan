@@ -15,6 +15,16 @@ export const LoadingErrorFallback: React.FC<LoadingErrorFallbackProps> = ({
   onRefresh = () => window.location.reload(),
   context = 'component'
 }) => {
+  // Development warning for misuse
+  if (process.env.NODE_ENV !== 'production' && !error) {
+    console.warn('LoadingErrorFallback was rendered directly; it should only be used by an ErrorBoundary.');
+  }
+
+  // Don't render anything if there's no error
+  if (!error) {
+    return null;
+  }
+
   console.error(`🚨 LoadingErrorFallback: ${context} failed`, error);
 
   const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
