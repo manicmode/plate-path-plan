@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user_metadata: supabaseUser.user_metadata || {},
         aud: supabaseUser.aud || 'authenticated',
         selectedTrackers: ['calories', 'hydration', 'supplements'],
-        display_name: supabaseUser.email?.split('@')[0] || 'User',
+        
         weight: null,
         height: null,
         age: null,

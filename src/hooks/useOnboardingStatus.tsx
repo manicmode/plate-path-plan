@@ -129,8 +129,7 @@ export const useOnboardingStatus = () => {
           'meal_frequency',
           'fasting_schedule',
           'food_allergies',
-          'hydration_target_ml',
-          'target_hydration_glasses'
+          'hydration_target_ml'
         ].join(',');
         
         const { data: prof, error: fetchErr, status: fetchStatus } = await supabase
@@ -157,9 +156,7 @@ export const useOnboardingStatus = () => {
       if (!profile || isMissing(profile?.fasting_schedule)) { patch.fasting_schedule = 'none'; applied = true; }
       if (!profile || profile?.food_allergies == null) { patch.food_allergies = {}; applied = true; }
       if (!profile || isMissing(profile?.hydration_target_ml)) {
-        const g = Number((profile as any)?.target_hydration_glasses);
-        const ml = Number.isFinite(g) ? g * DEFAULT_GLASS_SIZE_ML : 2500;
-        patch.hydration_target_ml = Math.max(800, Math.min(6000, ml));
+        patch.hydration_target_ml = 2000; // 8 glasses * 250ml
         applied = true;
       }
 

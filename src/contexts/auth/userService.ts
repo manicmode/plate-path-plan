@@ -7,7 +7,7 @@ export const loadUserProfile = async (userId: string) => {
   try {
     const { data: profile, error } = await supabase
       .from('user_profiles')
-      .select('id,user_id,display_name,hydration_target_ml,target_hydration_glasses,first_name,last_name,avatar_url,caricature_generation_count,caricature_history,avatar_variant_1,avatar_variant_2,avatar_variant_3,selected_avatar_variant,last_caricature_generation,main_health_goal,diet_styles,foods_to_avoid,activity_level,health_conditions,onboarding_completed,selected_trackers')
+      .select('id,user_id,hydration_target_ml,first_name,last_name,avatar_url,caricature_generation_count,caricature_history,avatar_variant_1,avatar_variant_2,avatar_variant_3,selected_avatar_variant,last_caricature_generation,main_health_goal,diet_styles,foods_to_avoid,activity_level,health_conditions,onboarding_completed,selected_trackers')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -18,8 +18,8 @@ export const loadUserProfile = async (userId: string) => {
 
     // Add temporary logging to verify hydration targets
     console.info('[PROFILE]', { 
-      hydration_target_ml: profile?.hydration_target_ml, 
-      target_hydration_glasses: profile?.target_hydration_glasses 
+      hydration_target_ml: profile?.hydration_target_ml,
+      selected_trackers: profile?.selected_trackers
     });
 
     return profile;
@@ -84,7 +84,7 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
 
   // Expose hydration targets from profile
   const hydrationTargetMl = profile?.hydration_target_ml ?? null;
-  const hydrationTargetGlasses = profile?.target_hydration_glasses ?? null;
+  const hydrationTargetGlasses = hydrationTargetMl ? Math.round(hydrationTargetMl / 250) : null;
   
   // Only compute defaults if both are null
   const glasses = hydrationTargetGlasses ?? 8;
