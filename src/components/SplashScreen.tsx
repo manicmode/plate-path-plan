@@ -75,6 +75,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     if (!isVisible) return;
     const t = setTimeout(() => {
       console.log('💫 Force completing splash (1500ms timeout)');
+      document.body.classList.remove('splash-visible');
       try { if (typeof window !== 'undefined') sessionStorage.setItem('splash_forced', '1'); } catch {}
       try { onComplete(); } catch {}
     }, 1500);

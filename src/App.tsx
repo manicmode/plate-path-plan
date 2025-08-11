@@ -5,7 +5,8 @@ import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { RouterErrorBoundary } from '@/components/dev/RouterErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
@@ -120,6 +121,13 @@ function AppContent() {
   
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // Enable debug mode in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).__VOYAGE_DEBUG = true;
+    }
+  }, []);
 
 
   // Prefetch critical components after app has loaded
@@ -427,8 +435,9 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
+    <RouterErrorBoundary>
+      <BrowserRouter>
+        <ErrorBoundary>
         <ThemeProvider>
           <SoundProvider>
             <TooltipProvider>
@@ -452,6 +461,7 @@ function App() {
         </ThemeProvider>
       </ErrorBoundary>
     </BrowserRouter>
+  </RouterErrorBoundary>
   );
 }
 

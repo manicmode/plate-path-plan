@@ -73,7 +73,16 @@ export const OnboardingComplete = ({ onComplete, isSubmitting, formData }: Onboa
       try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
       document.body.classList.remove('splash-visible');
 
+      console.info('[ONB] handleFinish → navigate("/home")');
       navigate('/home', { replace: true });
+
+      // Force-paint safety after navigate
+      requestAnimationFrame(() => document.body.classList.remove('splash-visible'));
+      setTimeout(() => {
+        // Force reflow & repaint in edge cases
+        document.documentElement.style.transform = 'translateZ(0)';
+        setTimeout(() => (document.documentElement.style.transform = ''), 0);
+      }, 100);
 
       // Belt & suspenders: retry once after router settles
       setTimeout(() => navigate('/home', { replace: true }), 800);

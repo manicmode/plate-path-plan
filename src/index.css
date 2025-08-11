@@ -1406,3 +1406,10 @@
   .IdentitySummary.isHidden { opacity: 0; pointer-events: none; }
   .IdentityEditorOverlay.isHidden { opacity: 0; pointer-events: none; transform: translateY(6px); }
 }
+
+/* Debug-only styles */
+.splash-hidden { 
+  display: none !important; 
+  opacity: 0 !important; 
+  pointer-events: none !important; 
+}

@@ -85,6 +85,7 @@ const Home = () => {
   // Home mount safety
   useEffect(() => {
     console.info('[HOME] mounted');
+    requestAnimationFrame(() => console.info('[HOME] first-paint'));
     // Ensure we're not hidden by any splash/scroll state
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
     document.body.classList.remove('splash-visible');
@@ -858,8 +859,12 @@ const Home = () => {
     }, 5000);
   };
 
-  // Show loading state with recovery options
+  // Show loading state with recovery options - debug-only skeleton
   if (authLoading && !hasTimedOut) {
+    const { isDebug } = require('@/utils/debugFlag');
+    if (isDebug()) {
+      return <div id="home-skeleton" data-state="loading" style={{padding: 24}}>Loading your day… (auth loading)</div>;
+    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4">
