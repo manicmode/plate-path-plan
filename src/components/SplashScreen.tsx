@@ -70,6 +70,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     return () => clearInterval(interval);
   }, [isVisible]);
 
+  // Defensive failsafe: auto-complete splash even if readiness gets stuck
+  useEffect(() => {
+    if (!isVisible) return;
+    const t = setTimeout(() => {
+      try { onComplete(); } catch {}
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [isVisible, onComplete]);
+
+
   // Enhanced completion logic - extended duration for better UX
   useEffect(() => {
     if (!isVisible) return;

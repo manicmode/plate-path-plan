@@ -45,7 +45,7 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
     optimistic: sessionStorage.getItem('onb_completed_optimistic') === '1',
     ts: Number(sessionStorage.getItem('onb_completed_optimistic_at') || '0'),
   } : { optimistic: false, ts: 0 };
-  const OPT_MAX_MS = 30_000; // 30s safety
+  const OPT_MAX_MS = 10_000; // 10s safety (edge fn returns defaults fast)
   const optimisticActive = opt.optimistic && (Date.now() - opt.ts) < OPT_MAX_MS;
 
   // Auto-clear stale flags
