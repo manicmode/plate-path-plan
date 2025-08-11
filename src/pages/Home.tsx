@@ -46,7 +46,7 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
 import SafeSection, { EmptyState } from '@/components/common/SafeSection';
-import HomeLayout from '@/components/home/HomeLayout';
+// import HomeLayout from '@/components/home/HomeLayout'; // temporarily unused wrapper
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
