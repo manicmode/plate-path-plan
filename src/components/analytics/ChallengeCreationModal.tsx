@@ -149,7 +149,9 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
     { value: 'custom', label: 'Custom', description: 'Pick your own dates' },
   ];
 
-  const handleCreateChallenge = async () => {
+  const handleCreateChallenge = async (e?: React.FormEvent) => {
+    e?.preventDefault?.();
+
     if (!challengeName.trim()) {
       toast({
         title: "Missing Information",
@@ -208,19 +210,21 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
         category: goalType === 'custom' ? 'general' : goalType,
       };
 
+      console.log("[CreateChallenge] payload", payload);
+
       const { data, error } = await createChallenge(payload);
       
       if (error) {
-        console.error("createChallenge error:", error, payload);
+        console.error("[CreateChallenge] error", error);
         toast({
           title: "Error",
-          description: error,
+          description: typeof error === "string" ? error : "Create failed",
           variant: "destructive",
         });
         return;
       }
 
-      console.log("createChallenge success:", data);
+      console.log("[CreateChallenge] success", data);
       toast({
         title: "Challenge Created! 🎉",
         description: `"${title}" is now live and ready for participants!`,
@@ -241,7 +245,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       onChallengeCreated?.();
 
     } catch (e) {
-      console.error("createChallenge threw:", e);
+      console.error("[CreateChallenge] threw:", e);
       toast({
         title: "Error",
         description: String((e as any)?.message ?? e),
@@ -574,10 +578,12 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
            </div>
          </div>
 
-         {/* Debug Info - temporary */}
-         <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-           Debug: challengeType: {challengeType}, computed vis: {challengeType === "private" ? "private" : "public"}, days: {duration === 'custom' && customEndDate ? Math.ceil((customEndDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : parseInt(duration) || 7}
-         </div>
+          {/* Debug Info - temporary */}
+          <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+            Debug: challengeType: {challengeType}, computed vis: {challengeType === "private" ? "private" : "public"}, days: {duration === 'custom' && customEndDate ? Math.ceil((customEndDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : parseInt(duration) || 7}
+            <br />
+            Submitting: {isCreating ? "yes" : "no"}
+          </div>
        </DialogContent>
      </Dialog>
    );

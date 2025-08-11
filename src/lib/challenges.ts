@@ -64,8 +64,13 @@ export async function createChallenge(params: {
   category?: string;
   inviteCode?: string;
 }): Promise<{ data?: Challenge; error?: string }> {
-  const { userId, error: authErr } = await getUserId();
-  if (authErr) return { error: authErr };
+  // Fetch current user session and check auth
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const uid = sessionData?.session?.user?.id;
+  
+  if (sessionError || !uid) {
+    return { error: "Authentication required to create challenges" };
+  }
 
   const { data, error } = await supabase
     .from("challenges")
@@ -77,19 +82,23 @@ export async function createChallenge(params: {
       duration_days: params.durationDays ?? 7,
       cover_emoji: params.coverEmoji ?? null,
       invite_code: params.inviteCode ?? null,
-      owner_user_id: userId!,
+      owner_user_id: uid, // REQUIRED for RLS
     })
     .select("*")
     .single();
 
-  if (error) return { error: normalizeError(error) };
+  if (error) {
+    return { 
+      error: error.message ?? error.details ?? "RLS or insert failed" 
+    };
+  }
 
   // Auto-join creator as owner
   const { error: memberError } = await supabase
     .from("challenge_members")
     .insert({
       challenge_id: data.id,
-      user_id: userId!,
+      user_id: uid,
       role: "owner",
       status: "joined",
     })
