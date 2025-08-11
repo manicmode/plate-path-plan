@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,13 @@ export const ChallengesFeed: React.FC<ChallengesFeedProps> = ({
   const { toast } = useToast();
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+
+  // Listen for custom refresh events
+  useEffect(() => {
+    const h = () => refreshData();
+    window.addEventListener('challenges:refresh', h);
+    return () => window.removeEventListener('challenges:refresh', h);
+  }, [refreshData]);
 
   const handleJoinChallenge = async (challengeId: string): Promise<boolean> => {
     const success = await joinChallenge(challengeId);

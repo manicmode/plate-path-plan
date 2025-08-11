@@ -153,6 +153,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
 
   const handleCreateChallenge = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
+    console.log('[CreateChallenge] clicked');
 
     if (!challengeName.trim()) {
       toast({
@@ -201,32 +202,29 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
         days = parseInt(duration);
       }
 
-      // Normalize fields before calling helper
-      const vis: "public" | "private" = challengeType === "private" ? "private" : "public";
       const payload = {
         title: title.trim(),
-        description: desc?.trim() || undefined,
-        visibility: vis,
-        durationDays: Number.isFinite(Number(days)) ? Number(days) : 7,
-        coverEmoji: goalEmoji || undefined,
-        category: goalType === 'custom' ? 'general' : goalType,
-      };
-
-      console.log("[CreateChallenge] payload", payload);
+        description: desc?.trim() || null,
+        visibility: challengeType === 'public' ? 'public' : 'private',
+        durationDays: Number(days ?? 7),
+        coverEmoji: goalEmoji || null,
+      } as const;
+      
+      console.log('[CreateChallenge] payload', payload);
 
       const { data, error } = await createChallenge(payload);
       
       if (error) {
-        console.error("[CreateChallenge] error", error);
+        console.error('[CreateChallenge] error', error);
         toast({
           title: "Error",
-          description: typeof error === "string" ? error : "Create failed",
+          description: typeof error === 'string' ? error : 'Failed to create challenge',
           variant: "destructive",
         });
         return;
       }
 
-      console.log("[CreateChallenge] success", data);
+      console.log('[CreateChallenge] success', data);
       toast({
         title: "Challenge Created! 🎉",
         description: `"${title}" is now live and ready for participants!`,
@@ -242,15 +240,16 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       setChallengeType(defaultVisibility);
       setMaxParticipants('10');
 
-      // Close modal and refresh challenges list
+      // Close modal and trigger refresh
       onOpenChange(false);
       onChallengeCreated?.();
+      window.dispatchEvent(new CustomEvent('challenges:refresh'));
 
-    } catch (e) {
-      console.error("[CreateChallenge] threw:", e);
+    } catch (e: any) {
+      console.error('[CreateChallenge] exception', e);
       toast({
         title: "Error",
-        description: String((e as any)?.message ?? e),
+        description: e?.message ?? 'Unexpected error',
         variant: "destructive",
       });
     } finally {
@@ -572,6 +571,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
                 onClick={handleCreateChallenge}
                 disabled={isCreating}
                 className="flex items-center gap-2"
+                data-testid="create-challenge-button"
               >
                 <Plus className="h-4 w-4" />
                  {isCreating ? 'Creating...' : 'Create Challenge'}

@@ -64,53 +64,35 @@ export async function createChallenge(params: {
   category?: string;
   inviteCode?: string;
 }): Promise<{ data?: Challenge; error?: string }> {
+  console.log('[createChallenge] start', params);
+  
   // Fetch current user session and check auth
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const uid = sessionData?.session?.user?.id;
   
   if (sessionError || !uid) {
-    return { error: "Authentication required to create challenges" };
+    return { data: null, error: 'Not authenticated' };
   }
 
-  const { data, error } = await supabase
-    .from("challenges")
-    .insert({
-      title: params.title,
-      description: params.description ?? null,
-      category: params.category ?? null,
-      visibility: params.visibility ?? "public",
-      duration_days: params.durationDays ?? 7,
-      cover_emoji: params.coverEmoji ?? null,
-      invite_code: params.inviteCode ?? null,
-      owner_user_id: uid, // REQUIRED for RLS
-    })
-    .select("*")
-    .single();
+  const insert = {
+    title: params.title,
+    description: params.description,
+    visibility: params.visibility, // 'public' | 'private'
+    duration_days: params.durationDays,
+    cover_emoji: params.coverEmoji,
+    owner_user_id: uid,
+  };
 
-  if (error) {
-    return { 
-      error: error.message ?? error.details ?? "RLS or insert failed" 
-    };
-  }
+  const { data, error } = await supabase.from('challenges').insert(insert).select().single();
+  if (error) return { data: null, error: error.message };
 
-  // Auto-join creator as owner
-  const { error: memberError } = await supabase
-    .from("challenge_members")
-    .insert({
-      challenge_id: data.id,
-      user_id: uid,
-      role: "owner",
-      status: "joined",
-    })
-    .select("*")
-    .single();
+  // auto-join owner (ignore duplicate errors)
+  const memberInsert = await supabase.from('challenge_members').insert({
+    challenge_id: data.id, user_id: uid, role: 'owner', status: 'joined',
+  });
+  // Ignore any membership errors (like duplicates)
 
-  // Ignore duplicate key errors (already joined)
-  if (memberError && !memberError.message?.includes("duplicate")) {
-    return { error: normalizeError(memberError) };
-  }
-
-  return { data: data as Challenge };
+  return { data, error: null };
 }
 
 /** Join a public challenge as the current user */
