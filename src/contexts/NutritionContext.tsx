@@ -426,18 +426,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     const mlFromDailyTargets = dailyTargets?.hydration_ml;
     if (typeof mlFromDailyTargets === 'number' && !Number.isNaN(mlFromDailyTargets)) {
       const finalGoal = Math.min(6000, Math.max(800, mlFromDailyTargets));
-      console.info('[UI]', { hydrationGoalMl: finalGoal, source: 'daily_targets', dailyTargetsValue: mlFromDailyTargets });
       return finalGoal;
     }
     
     const finalGoal = Math.min(6000, Math.max(800, hydrationGoalMl));
-    console.info('[UI]', { 
-      hydrationGoalMl: finalGoal, 
-      hydrationGoalGlasses: user?.hydrationTargetGlasses ?? Math.round(hydrationGoalMl / 250),
-      source: 'user_profile',
-      userTargetMl: user?.hydrationTargetMl,
-      userTargetGlasses: user?.hydrationTargetGlasses
-    });
     return finalGoal;
   };
   

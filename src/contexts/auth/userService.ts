@@ -16,11 +16,6 @@ export const loadUserProfile = async (userId: string) => {
       return null;
     }
 
-    // Add temporary logging to verify hydration targets
-    console.info('[PROFILE]', { 
-      hydration_target_ml: profile?.hydration_target_ml,
-      selected_trackers: profile?.selected_trackers
-    });
 
     return profile;
   } catch (error) {
