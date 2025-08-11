@@ -89,16 +89,20 @@ export async function createChallenge(payload: {
     return { data: null, error: insErr.message };
   }
 
-  // best-effort owner auto-join
-  try {
-    await supabase.from('challenge_members').insert({
+  // Auto-enroll creator as member (role owner)
+  const { error: memErr } = await supabase
+    .from('challenge_members')
+    .upsert({
       challenge_id: id,
       user_id: uid,
       role: 'owner',
       status: 'joined',
-    });
-  } catch (e) {
-    console.warn('[createChallenge] owner auto-join warning', e);
+      joined_at: new Date().toISOString(),
+    }, { onConflict: 'challenge_id,user_id', ignoreDuplicates: true });
+
+  if (memErr) {
+    // Log but don't fail the whole flow; feed will still show via owner filter once implemented
+    console.warn('[createChallenge] auto-enroll failed', memErr);
   }
 
   return { data: { id }, error: null };
