@@ -39,7 +39,12 @@ export default function AuthUrlHandler() {
         return;
       }
 
-      // Check onboarding status quickly
+      // Check onboarding status quickly - guard against null session
+      if (!session?.user?.id) {
+        nav('/', { replace: true });
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('onboarding_completed')

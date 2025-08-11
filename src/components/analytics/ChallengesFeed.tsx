@@ -29,6 +29,7 @@ export const ChallengesFeed: React.FC<ChallengesFeedProps> = ({
   } = usePublicChallenges();
   
   const { user } = useAuth();
+  const uid = user?.id ?? null;
   const { toast } = useToast();
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
@@ -252,7 +253,7 @@ export const ChallengesFeed: React.FC<ChallengesFeedProps> = ({
 
       {/* Debug Info - temporary */}
       <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-        Debug: items: {publicChallenges.length}, error: {error?.message || "none"}, user: {user?.id || "none"}
+        Debug: items: {publicChallenges.length}, error: {error?.message || "none"}, user: {uid || "anon"}
       </div>
     </div>
   );

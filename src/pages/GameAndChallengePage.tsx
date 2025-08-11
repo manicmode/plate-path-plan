@@ -95,6 +95,7 @@ function GameAndChallengeContent() {
   const { challenges, quickChallenges, joinChallenge } = usePublicChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
+  const uid = currentUser?.id ?? null;
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({

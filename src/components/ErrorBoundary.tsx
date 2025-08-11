@@ -26,6 +26,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[Boot Error]', error, errorInfo?.componentStack);
     console.error('React Error Boundary caught an error:', error, errorInfo);
     
     // Enhanced mobile debugging
@@ -201,6 +202,19 @@ class ErrorBoundary extends Component<Props, State> {
                 : "The app encountered an unexpected error."
               }
             </p>
+            
+            {/* Dev error details */}
+            {process.env.NODE_ENV !== 'production' && this.state.error && (
+              <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/20 rounded text-left text-sm">
+                <div className="font-bold text-red-700 dark:text-red-300">Dev Error Details:</div>
+                <div className="text-red-600 dark:text-red-400 mt-1 font-mono text-xs">
+                  {this.state.error.message}
+                </div>
+                <div className="text-red-500 dark:text-red-500 mt-1 font-mono text-xs">
+                  {this.state.error.stack?.split('\n').slice(0, 2).join('\n')}
+                </div>
+              </div>
+            )}
             
             {this.state.error && (
               <details className="text-left bg-muted p-3 rounded text-sm mb-4">
