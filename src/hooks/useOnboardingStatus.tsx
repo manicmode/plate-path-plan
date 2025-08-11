@@ -117,15 +117,20 @@ export const useOnboardingStatus = () => {
       // 1) Load minimal profile fields to determine if defaults are needed
       let profile: any = null;
       try {
-        const { data, error: fetchErr } = await supabase
+        // Ensure profile row exists (idempotent)
+        await supabase
           .from('user_profiles')
-          .select('activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml, target_hydration_glasses')
+          .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
+
+        const { data: prof, error: fetchErr, status: fetchStatus } = await supabase
+          .from('user_profiles')
+          .select('user_id, onboarding_completed, activity_level, meal_frequency, fasting_schedule, food_allergies, hydration_target_ml, target_hydration_glasses')
           .eq('user_id', user.id)
-          .maybeSingle();
+          .single();
         if (fetchErr) {
-          console.warn('[ONB] load profile failed', { error: fetchErr });
+          console.warn('[ONB] load profile failed', { status: fetchStatus, error: fetchErr });
         } else {
-          profile = data;
+          profile = prof;
         }
       } catch (e) {
         console.warn('[ONB] load profile exception', e);
@@ -189,20 +194,28 @@ export const useOnboardingStatus = () => {
       
       // 4) Generate daily nutrition targets after onboarding completion
       try {
-        console.log('[DEBUG] markOnboardingComplete: Generating daily nutrition targets...');
-        const { data, error: targetsError } = await supabase.functions.invoke('calculate-daily-targets', {
-          body: { userId: user.id }
-        });
-        
-        if (targetsError) {
-          console.warn('[DEBUG] markOnboardingComplete: Error generating targets', {
-            error: targetsError,
+        const callOnce = async () => {
+          console.debug('[DEBUG] daily-targets: calling...');
+          const result = await supabase.functions.invoke('calculate-daily-targets', {
+            body: { userId: user.id }
           });
-        } else {
-          console.log('[DEBUG] markOnboardingComplete: Daily nutrition targets generated successfully:', data);
+          const { data, error } = result;
+          if (error) {
+            console.warn('[DEBUG] daily-targets: non-2xx', { error });
+          } else {
+            console.debug('[DEBUG] daily-targets: ok', { data });
+          }
+          return result;
+        };
+
+        let resp = await callOnce();
+        if (!resp || resp.error) {
+          console.debug('[DEBUG] daily-targets: retrying once in 750ms');
+          await new Promise((r) => setTimeout(r, 750));
+          resp = await callOnce();
         }
-      } catch (targetsError) {
-        console.warn('[DEBUG] markOnboardingComplete: Error invoking targets function', targetsError);
+      } catch (e) {
+        console.warn('[DEBUG] daily-targets: threw', e);
       }
       
     } catch (error) {
