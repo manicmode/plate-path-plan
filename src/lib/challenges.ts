@@ -82,7 +82,7 @@ export async function createChallenge(payload: {
 
   const { error: insErr } = await supabase
     .from('challenges')
-    .insert(insert, { returning: 'minimal' }); // ← no RETURNING, no SELECT, no policy recursion
+    .insert(insert); // ← no RETURNING, no SELECT, no policy recursion
 
   if (insErr) {
     console.error('[createChallenge] insert error', insErr);
@@ -96,7 +96,7 @@ export async function createChallenge(payload: {
       user_id: uid,
       role: 'owner',
       status: 'joined',
-    }, { returning: 'minimal' });
+    });
   } catch (e) {
     console.warn('[createChallenge] owner auto-join warning', e);
   }
