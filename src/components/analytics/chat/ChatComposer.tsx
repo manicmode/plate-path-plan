@@ -16,6 +16,8 @@ const EMOJIS = [
 export default function ChatComposer({ onSend, disabled, className }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [isComposing, setIsComposing] = useState(false);
 
   const canSend = useMemo(() => value.trim().length > 0 && !disabled, [value, disabled]);
 
@@ -34,7 +36,8 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
     const text = value.trim();
     if (!text) return;
     await onSend(text);
@@ -44,9 +47,13 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   };
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
-      handleSubmit();
+      if (formRef.current?.requestSubmit) {
+        formRef.current.requestSubmit();
+      } else {
+        handleSubmit(e);
+      }
     }
   };
 
@@ -88,14 +95,18 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
       </div>
 
       {/* Input row */}
-      <div className="flex items-end gap-2 px-4 md:px-6 pb-3">
+      <form ref={formRef} onSubmit={handleSubmit} className="flex items-end gap-2 px-4 md:px-6 pb-3">
         <textarea
           ref={taRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           onKeyDown={onKeyDown}
           placeholder="Type a message…"
           rows={1}
+          enterKeyHint="send"
+          inputMode="text"
           className={cn(
             "min-h-[44px] max-h-[160px] w-full resize-none",
             "rounded-2xl bg-muted/30 border border-border",
@@ -103,8 +114,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
           )}
         />
         <button
-          type="button"
-          onClick={handleSubmit}
+          type="submit"
           disabled={!canSend}
           aria-label="Send message"
           className={cn(
@@ -117,7 +127,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
         >
           <Send className="h-6 w-6" />
         </button>
-      </div>
+      </form>
     </div>
   );
 }
