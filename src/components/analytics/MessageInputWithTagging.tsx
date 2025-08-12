@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Smile } from 'lucide-react';
@@ -139,18 +139,13 @@ export const MessageInputWithTagging = ({
     setTaggedUsers([]);
   };
 
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    handleSend();
-  };
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isComposing, setIsComposing] = useState(false);
 
-  // Handle key press
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const handleSubmit = useCallback((e?: React.FormEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
+    handleSend();
+  }, [handleSend]);
 
   // Render message with highlighted tags
   const renderMessagePreview = () => {
@@ -214,12 +209,25 @@ export const MessageInputWithTagging = ({
             </div>
           )}
           
-          <form className="flex-1 relative" onSubmit={handleFormSubmit}>
+          <form ref={formRef} className="flex-1 relative" onSubmit={handleSubmit}>
             <Input
               ref={inputRef}
               value={value}
               onChange={(e) => handleInputChange(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+                  e.preventDefault();
+                  if (formRef.current?.requestSubmit) {
+                    formRef.current.requestSubmit();
+                  } else {
+                    handleSubmit(e);
+                  }
+                }
+              }}
+              enterKeyHint="send"
+              inputMode="text"
               placeholder={placeholder}
               disabled={disabled}
               className="pr-10"
