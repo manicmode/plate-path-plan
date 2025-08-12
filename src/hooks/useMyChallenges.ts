@@ -80,10 +80,11 @@ export function useMyChallenges(options?: { activeOnly?: boolean }): UseMyChalle
        console.info('[my] joinedPub.count', joinedPub?.length || 0, (joinedPub ?? []).map((c: any) => c.id));
 
       // C) Private challenges (creator or participant)
-      const { data: myPrivParts, error: privPartsErr } = await supabase
+      const { data: myPrivParts, error: privPartsErr } = await (supabase as any)
         .from('private_challenge_participations')
-        .select('private_challenge_id')
-        .eq('user_id', user.id);
+        .select('private_challenge_id, status, joined_at')
+        .eq('user_id', user.id)
+        .eq('status', 'joined');
        if (privPartsErr) throw privPartsErr;
        console.info('[my] privPartIds.count', myPrivParts?.length || 0, (myPrivParts ?? []).map((r: any) => r.private_challenge_id));
 
