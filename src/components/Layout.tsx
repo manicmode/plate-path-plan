@@ -173,7 +173,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Enhanced Bottom Navigation - Only show for authenticated users and hide when chat modal is open */}
       {shouldShowNavigation && !isChatModalOpen && (
         <nav className={`fixed bottom-0 left-0 right-0 z-50 ${isMobile ? 'p-3' : 'pb-6 px-6 flex justify-center'}`}>
-          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-t-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60`}>
+          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-t-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60 md:max-w-[620px] md:mx-0 md:left-1/2 md:-translate-x-1/2 md:relative`}>
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
                 const isActive = location.pathname === path;
@@ -187,7 +187,7 @@ const Layout = ({ children }: LayoutProps) => {
                       isMobile 
                         ? 'h-16 px-2 min-w-[60px] flex-1' 
                         : 'h-20 w-24 px-4'
-                    } rounded-2xl transition-all duration-300 ${
+                    } md:flex-1 md:min-w-0 md:w-auto rounded-2xl transition-all duration-300 ${
                       isActive 
                         ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
                         : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
@@ -197,7 +197,7 @@ const Layout = ({ children }: LayoutProps) => {
                     <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
                     <span className={`${
                       isMobile ? 'text-xs' : 'text-sm'
-                    } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
+                    } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full md:truncate`}>
                       {label}
                     </span>
                   </Button>
