@@ -93,31 +93,40 @@ export function useMyChallenges(): UseMyChallengesResult {
       if (privPartsErr) throw privPartsErr;
 
       let privateChallengesMapped: MyChallenge[] = [];
-      if ((privParts?.length ?? 0) > 0) {
-        const ids = (privParts || []).map((p: any) => p.private_challenge_id);
+
+      // Include private challenges where user participates OR is creator
+      const { data: privOwned, error: privOwnErr } = await supabase
+        .from('private_challenges')
+        .select('id, title, created_at, duration_days, creator_id')
+        .eq('creator_id', user.id);
+      if (privOwnErr) throw privOwnErr;
+
+      const idSet = new Set<string>();
+      (privParts || []).forEach((p: any) => idSet.add(p.private_challenge_id));
+      (privOwned || []).forEach((o: any) => idSet.add(o.id));
+
+      if (idSet.size > 0) {
         const { data: privChals, error: privErr } = await supabase
           .from('private_challenges')
           .select('id,title,created_at,duration_days,creator_id')
-          .in('id', ids);
+          .in('id', Array.from(idSet));
         if (privErr) throw privErr;
-        privateChallengesMapped = (privChals || []).map((pc: any) => {
-          return {
-            id: pc.id,
-            title: pc.title ?? 'Private Challenge',
-            description: null,
-            category: null,
-            visibility: 'private',
-            duration_days: pc.duration_days ?? 7,
-            cover_emoji: null,
-            invite_code: null,
-            owner_user_id: pc.creator_id,
-            created_at: pc.created_at,
-            participant_count: 0,
-            user_role: pc.creator_id === user.id ? 'owner' : 'member',
-            user_status: 'joined',
-            joined_at: pc.created_at,
-          } as MyChallenge;
-        });
+        privateChallengesMapped = (privChals || []).map((pc: any) => ({
+          id: pc.id,
+          title: pc.title ?? 'Private Challenge',
+          description: null,
+          category: null,
+          visibility: 'private',
+          duration_days: pc.duration_days ?? 7,
+          cover_emoji: null,
+          invite_code: null,
+          owner_user_id: pc.creator_id,
+          created_at: pc.created_at,
+          participant_count: 0,
+          user_role: pc.creator_id === user.id ? 'owner' : 'member',
+          user_status: 'joined',
+          joined_at: pc.created_at,
+        } as MyChallenge));
       }
 
       // Merge and de-dupe
@@ -194,6 +203,7 @@ export function useMyChallenges(): UseMyChallengesResult {
     };
   }, [user?.id, refresh]);
 
+  console.info('[my] useMyChallenges.ids', (data || []).map(c => c.id));
   return {
     data,
     isLoading,

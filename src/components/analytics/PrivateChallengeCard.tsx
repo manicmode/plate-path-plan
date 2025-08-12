@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { PrivateChallenge, PrivateChallengeParticipation } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
@@ -40,6 +40,17 @@ export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = ({
       await onLeave(challenge.id);
     }
   };
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ challengeId?: string }>;
+      if (ce.detail?.challengeId === challenge.id) {
+        console.info('[chat] open from private card', challenge.id);
+      }
+    };
+    window.addEventListener('switch-to-chat-tab', handler as EventListener);
+    return () => window.removeEventListener('switch-to-chat-tab', handler as EventListener);
+  }, [challenge.id]);
 
   return (
     <UnifiedChallengeCard

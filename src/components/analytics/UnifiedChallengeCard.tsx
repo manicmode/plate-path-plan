@@ -62,10 +62,11 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   const { selectChatroom } = useChatStore();
+
   const handleChat = () => {
     selectChatroom(id);
     window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: id } }));
-    console.info('[chat] open from card', id);
+    console.info(challengeType === 'friend' ? '[chat] open from private card' : '[chat] open from card', id);
   };
   const getTypeColor = (type: ChallengeType) => {
     switch (type) {

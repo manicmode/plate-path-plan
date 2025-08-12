@@ -35,8 +35,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
     [myChallenges]
   );
 
-  console.info('[chat] activeIds', rooms.map(r => r.id));
-  console.info('[chat] selected', selectedChatroomId);
+  console.info('[chat] rooms.ids', rooms.map(r => r.id));
 
   // Selection sync (no conditional hooks)
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
