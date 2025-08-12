@@ -853,7 +853,7 @@ const ExerciseHub = () => {
 
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24">
+    <div className="min-h-screen bg-background px-4 pb-24">
       {/* Silent goal initialization */}
       <ExerciseGoalsInitializer />
       
