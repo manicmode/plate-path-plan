@@ -1567,7 +1567,7 @@ const SupplementHub = () => {
         )}
 
         {/* Personal AI Recommendations Section */}
-        <Card className="glass-card border-0 rounded-3xl bg-gradient-to-br from-purple-50/50 via-blue-50/30 to-emerald-50/40 dark:from-purple-900/20 dark:via-blue-900/10 dark:to-emerald-900/15 shadow-lg border border-purple-200/30 dark:border-purple-700/30 animate-slide-up">
+        <Card className="glass-card border-0 rounded-3xl bg-gradient-to-br from-purple-50/50 via-blue-50/30 to-emerald-50/40 dark:from-purple-900/20 dark:via-blue-900/10 dark:to-emerald-900/15 shadow-lg border border-purple-200/30 dark:border-purple-700/30 animate-slide-up mt-12">
           <CardHeader className="text-center space-y-3">
             <div className="flex items-center justify-center space-x-2">
               <Sparkles className="h-6 w-6 text-purple-500 animate-pulse" />
