@@ -88,7 +88,7 @@ export function useMyChallenges(): UseMyChallengesResult {
       // Fetch private challenge participations and map to challenges
       const { data: privParts, error: privPartsErr } = await supabase
         .from('private_challenge_participations')
-        .select('private_challenge_id,is_creator,created_at')
+        .select('private_challenge_id')
         .eq('user_id', user.id);
       if (privPartsErr) throw privPartsErr;
 
@@ -97,11 +97,10 @@ export function useMyChallenges(): UseMyChallengesResult {
         const ids = (privParts || []).map((p: any) => p.private_challenge_id);
         const { data: privChals, error: privErr } = await supabase
           .from('private_challenges')
-          .select('id,title,created_at,duration_days')
+          .select('id,title,created_at,duration_days,creator_id')
           .in('id', ids);
         if (privErr) throw privErr;
         privateChallengesMapped = (privChals || []).map((pc: any) => {
-          const part = (privParts || []).find((p: any) => p.private_challenge_id === pc.id);
           return {
             id: pc.id,
             title: pc.title ?? 'Private Challenge',
@@ -111,12 +110,12 @@ export function useMyChallenges(): UseMyChallengesResult {
             duration_days: pc.duration_days ?? 7,
             cover_emoji: null,
             invite_code: null,
-            owner_user_id: user.id,
+            owner_user_id: pc.creator_id,
             created_at: pc.created_at,
             participant_count: 0,
-            user_role: part?.is_creator ? 'owner' : 'member',
+            user_role: pc.creator_id === user.id ? 'owner' : 'member',
             user_status: 'joined',
-            joined_at: part?.created_at ?? pc.created_at,
+            joined_at: pc.created_at,
           } as MyChallenge;
         });
       }
