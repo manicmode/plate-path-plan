@@ -33,16 +33,22 @@ import { cn } from '@/lib/utils';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { useToast } from '@/hooks/use-toast';
 
+type Visibility = "public" | "private";
+
 interface ChallengeCreationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  friends: Array<{ id: number; nickname: string; avatar: string }>;
+  friends?: Array<{ id: number; nickname: string; avatar: string }>;
+  defaultVisibility?: Visibility;            // NEW
+  onChallengeCreated?: (id: string) => void; // NEW
 }
 
 export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   open,
   onOpenChange,
-  friends
+  friends,
+  defaultVisibility,
+  onChallengeCreated
 }) => {
   const [step, setStep] = useState(1);
   const [challengeName, setChallengeName] = useState('');
@@ -50,7 +56,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [customGoal, setCustomGoal] = useState('');
   const [duration, setDuration] = useState<string>('7');
   const [customEndDate, setCustomEndDate] = useState<Date>();
-  const [challengeType, setChallengeType] = useState<'public' | 'private'>('public');
+  const [challengeType, setChallengeType] = useState<'public' | 'private'>(defaultVisibility ?? 'public');
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
   
@@ -196,13 +202,17 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       description: `"${challengeName}" is now live and ready for participants!`,
     });
 
+    // Call the callback if provided
+    const challengeId = `challenge-${Date.now()}`;
+    onChallengeCreated?.(challengeId);
+
     // Reset form
     setStep(1);
     setChallengeName('');
     setGoalType('');
     setCustomGoal('');
     setDuration('7');
-    setChallengeType('public');
+    setChallengeType(defaultVisibility ?? 'public');
     setSelectedFriends([]);
     setCustomEndDate(undefined);
     onOpenChange(false);
@@ -474,7 +484,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
                 {challengeType === 'private' ? (
                   <div className="space-y-4">
                     <div className="grid gap-2 max-h-48 overflow-y-auto">
-                      {friends.map((friend) => (
+                      {(friends || []).map((friend) => (
                         <Card 
                           key={friend.id}
                           className={cn(

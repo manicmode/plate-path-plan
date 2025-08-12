@@ -90,6 +90,9 @@ export default function GameAndChallengePage() {
   );
 }
 
+// Named export for compatibility
+export { GameAndChallengePage as GameAndChallengePage_Min };
+
 function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const { setIsChatModalOpen } = useChatModal();
