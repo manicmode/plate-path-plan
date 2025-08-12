@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Users, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
-import { MessageInputWithTagging } from './MessageInputWithTagging';
+import ChatComposer from '@/components/analytics/chat/ChatComposer';
 
 interface ChallengeChatPanelProps {
   challengeId: string;
@@ -18,14 +18,13 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   participantCount = 0,
   showHeader = true,
 }) => {
-  const [message, setMessage] = useState('');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, sendMessage: sendChatMessage } = useChallengeMessages(challengeId);
 
   const handleSendMessage = async (text: string) => {
     if (text.trim()) {
       await sendChatMessage(text);
-      setMessage('');
     }
   };
 
@@ -52,7 +51,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       )}
 
       {/* Messages */}
-      <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[90px] md:pb-[120px]">
+      <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[180px] md:pb-[220px]">
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -83,19 +82,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         )}
       </div>
 
-      {/* Input */}
+      {/* Composer */}
       <div className="flex-shrink-0">
-        <MessageInputWithTagging
-          value={message}
-          onChange={(value) => setMessage(value)}
-          onSend={handleSendMessage}
-          onEmojiClick={async (emoji) => {
-            if (emoji) await handleSendMessage(emoji);
-          }}
-          placeholder="Type a message or @ to tag friends..."
-          showEmojiReactions={true}
-          excludeUserIds={[]}
-        />
+        <ChatComposer onSend={handleSendMessage} />
       </div>
     </section>
   );

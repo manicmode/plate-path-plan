@@ -1405,6 +1405,10 @@
   .IdentityEditorOverlay { position: absolute; inset: 0; display: grid; align-content: start; padding: 16px; pointer-events: auto; background: radial-gradient(120% 120% at 50% 0%, hsl(var(--background) / 0.04), hsl(var(--foreground) / 0.18)); }
   .IdentitySummary.isHidden { opacity: 0; pointer-events: none; }
   .IdentityEditorOverlay.isHidden { opacity: 0; pointer-events: none; transform: translateY(6px); }
+
+  /* Hide horizontal scrollbar for emoji strip */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 /* Debug-only styles */
