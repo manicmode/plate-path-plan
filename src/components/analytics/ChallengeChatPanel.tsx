@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MessageCircle, Users, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
@@ -20,7 +20,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
 }) => {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, sendMessage } = useChallengeMessages(challengeId);
+  const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId);
 
   useEffect(() => {
     console.info('[chat] panel challengeId=', challengeId);
@@ -35,6 +35,14 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       console.error('[chat] panel.sendMessage error', e);
     }
   }, [challengeId, sendMessage]);
+
+  const list = useMemo(() => {
+    return [...(messages || [])].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [messages]);
+
+  console.info('[chat] render messages', { count: list.length, challengeId });
 
   useEffect(() => {
     const el = document.getElementById('chat-inline-scroll');
@@ -79,7 +87,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
           </div>
         ) : (
           <>
-            {messages.map((msg: any) => (
+            {list.map((msg: any) => (
               <div key={msg.id} className="flex gap-3">
                 <div className="flex flex-col">
                   <div className="text-xs text-muted-foreground">
@@ -98,7 +106,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
 
       {/* Composer */}
       <div className="flex-shrink-0">
-        <ChatComposer onSend={handleSend} disabled={false} />
+        <ChatComposer onSend={handleSend} disabled={!!error} />
       </div>
     </section>
   );

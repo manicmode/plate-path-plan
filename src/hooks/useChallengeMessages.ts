@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
+export interface ChallengeMessage {
+  id: string | number;
+  challenge_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
 export function useChallengeMessages(challengeId: string | null) {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,11 +58,34 @@ export function useChallengeMessages(challengeId: string | null) {
   }, [challengeId]);
 
   const sendMessage = async (content: string) => {
-    if (!challengeId || !content.trim() || !user?.id) return;
-    const { error } = await supabase
-      .from('challenge_messages')
-      .insert({ challenge_id: challengeId, content: content.trim(), user_id: user.id });
-    if (error) throw error;
+    const text = (content ?? '').trim();
+    if (!challengeId || !user?.id || !text) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('challenge_messages')
+        .insert({
+          challenge_id: challengeId,
+          user_id: user.id,
+          content: text,
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Optimistically append to local state, guard against duplicates
+      setMessages((prev) => {
+        if (!data) return prev;
+        const exists = prev.some((m) => m.id === (data as any).id);
+        return exists ? prev : [...prev, data as any];
+      });
+
+      return data as any;
+    } catch (err) {
+      console.error('[useChallengeMessages] send error', err);
+      throw err;
+    }
   };
 
   return { messages, isLoading, error, sendMessage };
