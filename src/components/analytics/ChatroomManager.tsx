@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { useChatStore } from '@/store/chatStore';
 import { ChallengeChatModal } from './ChallengeChatModal';
+import { ChallengeChatPanel } from './ChallengeChatPanel';
 import { supabase } from '@/integrations/supabase/client';
 
 // ---- RLS-safe: 2-step ID-first loader (no joins)
@@ -87,12 +88,14 @@ type ChatroomManagerProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   initialChatroomId?: string;
+  inline?: boolean;
 };
 
 export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   isOpen,
   onOpenChange,
   initialChatroomId,
+  inline = false,
 }) => {
   const { selectedChatroomId, selectChatroom, clearSelection } = useChatStore();
   const [roomsSource, setRoomsSource] = useState<any[] | null>(null);
@@ -127,6 +130,8 @@ useEffect(() => {
       })),
     [roomsSource]
   );
+
+  console.info('[chat] rooms ids', rooms.map(r => r.id));
 
   // Selection sync (no conditional hooks)
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
@@ -167,7 +172,13 @@ useEffect(() => {
   const selected = rooms.find((r) => r.id === localSelectedId) ?? rooms[0];
   console.info('[chat] render rooms', rooms.map((r) => r.id), 'selected', localSelectedId);
 
-  return (
+  return inline ? (
+    <ChallengeChatPanel
+      challengeId={selected.id}
+      challengeName={selected.name}
+      participantCount={selected.participantCount}
+    />
+  ) : (
     <ChallengeChatModal
       open={true}
       onOpenChange={onOpenChange}

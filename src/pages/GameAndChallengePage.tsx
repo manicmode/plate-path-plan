@@ -791,12 +791,13 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0 -mt-4">
-                <ChatroomManager
-                  isOpen={true}
-                  onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                  initialChatroomId={preselectedChatId || selectedChatroomId || undefined}
-                />
-              </TabsContent>
+                 <ChatroomManager
+                   inline
+                   isOpen={true}
+                   onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                   initialChatroomId={preselectedChatId || selectedChatroomId || undefined}
+                 />
+               </TabsContent>
 
               <TabsContent value="winners" className="mt-4">
                 <MonthlyTrophyPodium />
