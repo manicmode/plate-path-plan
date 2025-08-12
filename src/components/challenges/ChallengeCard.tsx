@@ -44,13 +44,9 @@ const { selectChatroom } = useChatStore();
   const handleChatClick = () => {
     console.info('[chat] open from my card', challenge.id);
     selectChatroom(challenge.id);
-    if (onChatClick) {
-      onChatClick(challenge.id);
-    } else {
-      window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
-        detail: { challengeId: challenge.id },
-      }));
-    }
+    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
+      detail: { challengeId: challenge.id },
+    }));
   };
 
   const handleJoinClick = async () => {

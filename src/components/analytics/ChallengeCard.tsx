@@ -145,15 +145,9 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 // Chat handler to open global Chat tab and preselect room
   const { selectChatroom } = useChatStore();
   const handleChatClick = () => {
-    console.log('[ChallengeCard] Chat clicked for:', challenge.id);
+    console.info('[chat] open from my card', challenge.id);
     selectChatroom(challenge.id);
-    if (onChatClick) {
-      onChatClick(challenge.id);
-    } else {
-      window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
-        detail: { challengeId: challenge.id },
-      }));
-    }
+    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: challenge.id } }));
   };
 
   return (

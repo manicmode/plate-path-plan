@@ -37,6 +37,7 @@ export function useMyChallenges(): UseMyChallengesResult {
   const fetchChallenges = useCallback(async (reset = false) => {
     if (!user?.id) {
       setIsLoading(false);
+      setData([]);
       return;
     }
 
@@ -47,71 +48,62 @@ export function useMyChallenges(): UseMyChallengesResult {
         setData([]);
       }
 
-      // Get challenges where user is owner or member
-      const { data: challengesData, error: challengesError } = await supabase
+      // A) Public challenges I OWN
+      const { data: ownedPub, error: ownedErr } = await supabase
         .from('challenges')
-        .select(`
-          *,
-          challenge_members!inner(
-            user_id,
-            role,
-            status,
-            joined_at
-          )
-        `)
-        .or(`owner_user_id.eq.${user.id},challenge_members.user_id.eq.${user.id}`)
-        .eq('challenge_members.status', 'joined')
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .select('id, title, description, category, visibility, duration_days, cover_emoji, invite_code, owner_user_id, created_at')
+        .eq('owner_user_id', user.id);
+      if (ownedErr) throw ownedErr;
 
-      if (challengesError) throw challengesError;
+      // B) Public challenges I JOINED
+      const { data: myMemberRows, error: memErr } = await supabase
+        .from('challenge_members')
+        .select('challenge_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'joined');
+      if (memErr) throw memErr;
 
-      // Get participant counts for each public challenge
-      const publicChallengesWithCounts: MyChallenge[] = [];
-      for (const challenge of challengesData || []) {
-        const { count, error: countError } = await supabase
-          .from('challenge_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('challenge_id', challenge.id)
-          .eq('status', 'joined');
-        if (countError) throw countError;
-        const membership = challenge.challenge_members.find((m: any) => m.user_id === user.id);
-        publicChallengesWithCounts.push({
-          ...challenge,
-          participant_count: count || 0,
-          user_role: membership?.role || (challenge.owner_user_id === user.id ? 'owner' : 'member'),
-          user_status: membership?.status || 'joined',
-          joined_at: membership?.joined_at || challenge.created_at,
-        });
+      let joinedPub: any[] = [];
+      const joinedIds = (myMemberRows ?? []).map((r: any) => r.challenge_id);
+      if (joinedIds.length > 0) {
+        const { data: joinedRows, error: joinedErr } = await supabase
+          .from('challenges')
+          .select('id, title, description, category, visibility, duration_days, cover_emoji, invite_code, owner_user_id, created_at')
+          .in('id', joinedIds);
+        if (joinedErr) throw joinedErr;
+        joinedPub = joinedRows ?? [];
       }
 
-      // Fetch private challenge participations and map to challenges
-      const { data: privParts, error: privPartsErr } = await supabase
+      // C) Private challenges (creator or participant)
+      const { data: myPrivParts, error: privPartsErr } = await supabase
         .from('private_challenge_participations')
         .select('private_challenge_id')
         .eq('user_id', user.id);
       if (privPartsErr) throw privPartsErr;
 
-      let privateChallengesMapped: MyChallenge[] = [];
-
-      // Include private challenges where user participates OR is creator
-      const { data: privOwned, error: privOwnErr } = await supabase
+      const { data: ownedPriv, error: ownedPrivErr } = await supabase
         .from('private_challenges')
-        .select('id, title, created_at, duration_days, creator_id')
+        .select('id')
         .eq('creator_id', user.id);
-      if (privOwnErr) throw privOwnErr;
+      if (ownedPrivErr) throw ownedPrivErr;
 
-      const idSet = new Set<string>();
-      (privParts || []).forEach((p: any) => idSet.add(p.private_challenge_id));
-      (privOwned || []).forEach((o: any) => idSet.add(o.id));
+      const privIds: string[] = [];
+      (myPrivParts ?? []).forEach((r: any) => {
+        if (r?.private_challenge_id) privIds.push(r.private_challenge_id);
+      });
+      (ownedPriv ?? []).forEach((r: any) => {
+        if (r?.id && !privIds.includes(r.id)) privIds.push(r.id);
+      });
 
-      if (idSet.size > 0) {
-        const { data: privChals, error: privErr } = await supabase
+      let privateList: MyChallenge[] = [];
+      if (privIds.length > 0) {
+        const { data: privRows, error: privErr } = await supabase
           .from('private_challenges')
-          .select('id,title,created_at,duration_days,creator_id')
-          .in('id', Array.from(idSet));
+          .select('id, title, created_at, duration_days, creator_id')
+          .in('id', privIds);
         if (privErr) throw privErr;
-        privateChallengesMapped = (privChals || []).map((pc: any) => ({
+
+        privateList = (privRows ?? []).map((pc: any) => ({
           id: pc.id,
           title: pc.title ?? 'Private Challenge',
           description: null,
@@ -129,23 +121,32 @@ export function useMyChallenges(): UseMyChallengesResult {
         } as MyChallenge));
       }
 
-      // Merge and de-dupe
+      // Map public challenge rows to MyChallenge shape
+      const publicMapped: MyChallenge[] = ([...(ownedPub ?? []), ...joinedPub] as any[]).map((ch: any) => ({
+        id: ch.id,
+        title: ch.title ?? 'Challenge',
+        description: ch.description ?? null,
+        category: ch.category ?? null,
+        visibility: (ch.visibility ?? 'public') as 'public' | 'private',
+        duration_days: ch.duration_days ?? 7,
+        cover_emoji: ch.cover_emoji ?? null,
+        invite_code: ch.invite_code ?? null,
+        owner_user_id: ch.owner_user_id,
+        created_at: ch.created_at,
+        participant_count: 0,
+        user_role: ch.owner_user_id === user.id ? 'owner' : 'member',
+        user_status: 'joined',
+        joined_at: ch.created_at,
+      }));
+
+      // Merge and de-dupe (prefer private entry if collision)
       const mergedMap = new Map<string, MyChallenge>();
-      publicChallengesWithCounts.forEach((c) => mergedMap.set(c.id, c));
-      privateChallengesMapped.forEach((c) => mergedMap.set(c.id, c));
+      publicMapped.forEach((c) => mergedMap.set(c.id, c));
+      privateList.forEach((c) => mergedMap.set(c.id, c));
       const mergedList = Array.from(mergedMap.values());
 
-      if (reset) {
-        setData(mergedList);
-      } else {
-        setData((prev) => {
-          const map = new Map<string, MyChallenge>();
-          [...prev, ...mergedList].forEach((c) => map.set(c.id, c));
-          return Array.from(map.values());
-        });
-      }
-
-      setHasMore(mergedList.length >= 10);
+      setData(mergedList);
+      setHasMore(false);
     } catch (err) {
       console.error('[useMyChallenges] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch challenges'));

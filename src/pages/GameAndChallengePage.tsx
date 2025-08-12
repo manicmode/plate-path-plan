@@ -144,7 +144,10 @@ function GameAndChallengeContent() {
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
-      if (ce.detail?.challengeId) selectChatroom(ce.detail.challengeId);
+      if (ce.detail?.challengeId) {
+        selectChatroom(ce.detail.challengeId);
+        setPreselectedChatId(ce.detail.challengeId);
+      }
       setActiveSection('chat');
       console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
     };
