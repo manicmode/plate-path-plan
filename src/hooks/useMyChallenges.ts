@@ -66,22 +66,17 @@ export function useMyChallenges(): UseMyChallengesResult {
 
       if (challengesError) throw challengesError;
 
-      // Get participant counts for each challenge
-      const challengesWithCounts: MyChallenge[] = [];
-      
+      // Get participant counts for each public challenge
+      const publicChallengesWithCounts: MyChallenge[] = [];
       for (const challenge of challengesData || []) {
         const { count, error: countError } = await supabase
           .from('challenge_members')
           .select('*', { count: 'exact', head: true })
           .eq('challenge_id', challenge.id)
           .eq('status', 'joined');
-
         if (countError) throw countError;
-
-        // Find user's membership info
         const membership = challenge.challenge_members.find((m: any) => m.user_id === user.id);
-        
-        challengesWithCounts.push({
+        publicChallengesWithCounts.push({
           ...challenge,
           participant_count: count || 0,
           user_role: membership?.role || (challenge.owner_user_id === user.id ? 'owner' : 'member'),
@@ -90,13 +85,59 @@ export function useMyChallenges(): UseMyChallengesResult {
         });
       }
 
-      if (reset) {
-        setData(challengesWithCounts);
-      } else {
-        setData(prev => [...prev, ...challengesWithCounts]);
+      // Fetch private challenge participations and map to challenges
+      const { data: privParts, error: privPartsErr } = await supabase
+        .from('private_challenge_participations')
+        .select('private_challenge_id,is_creator,created_at')
+        .eq('user_id', user.id);
+      if (privPartsErr) throw privPartsErr;
+
+      let privateChallengesMapped: MyChallenge[] = [];
+      if ((privParts?.length ?? 0) > 0) {
+        const ids = (privParts || []).map((p: any) => p.private_challenge_id);
+        const { data: privChals, error: privErr } = await supabase
+          .from('private_challenges')
+          .select('id,title,created_at,duration_days')
+          .in('id', ids);
+        if (privErr) throw privErr;
+        privateChallengesMapped = (privChals || []).map((pc: any) => {
+          const part = (privParts || []).find((p: any) => p.private_challenge_id === pc.id);
+          return {
+            id: pc.id,
+            title: pc.title ?? 'Private Challenge',
+            description: null,
+            category: null,
+            visibility: 'private',
+            duration_days: pc.duration_days ?? 7,
+            cover_emoji: null,
+            invite_code: null,
+            owner_user_id: user.id,
+            created_at: pc.created_at,
+            participant_count: 0,
+            user_role: part?.is_creator ? 'owner' : 'member',
+            user_status: 'joined',
+            joined_at: part?.created_at ?? pc.created_at,
+          } as MyChallenge;
+        });
       }
 
-      setHasMore(challengesWithCounts.length === 10);
+      // Merge and de-dupe
+      const mergedMap = new Map<string, MyChallenge>();
+      publicChallengesWithCounts.forEach((c) => mergedMap.set(c.id, c));
+      privateChallengesMapped.forEach((c) => mergedMap.set(c.id, c));
+      const mergedList = Array.from(mergedMap.values());
+
+      if (reset) {
+        setData(mergedList);
+      } else {
+        setData((prev) => {
+          const map = new Map<string, MyChallenge>();
+          [...prev, ...mergedList].forEach((c) => map.set(c.id, c));
+          return Array.from(map.values());
+        });
+      }
+
+      setHasMore(mergedList.length >= 10);
     } catch (err) {
       console.error('[useMyChallenges] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch challenges'));

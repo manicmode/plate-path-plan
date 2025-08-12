@@ -31,6 +31,7 @@ interface UnifiedChallengeCardProps {
   onJoin: () => Promise<void>;
   onLeave: () => Promise<void>;
   showInMyActiveChallenges?: boolean;
+  showChat?: boolean; // browse should hide chat
 }
 
 export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
@@ -55,6 +56,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   onJoin,
   onLeave,
   showInMyActiveChallenges = false,
+  showChat = true,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -258,15 +260,17 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                 <Share className="w-4 h-4 mr-2" />
                 Share
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleChat}
-                className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                {challengeType === 'friend' ? 'Chat' : 'Chat'}
-              </Button>
+              {showChat && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleChat}
+                  className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Chat
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

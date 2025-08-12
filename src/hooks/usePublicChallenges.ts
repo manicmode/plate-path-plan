@@ -76,16 +76,9 @@ export const usePublicChallenges = () => {
           const joinedIds = new Set((memberRows || []).map((r: any) => r.challenge_id));
           const ownedIds = new Set(normalized.filter((c: any) => c.owner_user_id === user.id).map((c: any) => c.id));
 
-          const beforeIds = normalized.map((c: any) => c.id);
-          normalized = normalized.filter((c: any) => c.owner_user_id !== user.id && !joinedIds.has(c.id));
-          const afterIds = normalized.map((c: any) => c.id);
+          console.info('[browse] excludedIds', { ownedIds: Array.from(ownedIds), joinedIds: Array.from(joinedIds) });
 
-          // QA log once per fetch
-          console.info('[browse] filtered', {
-            before: beforeIds,
-            after: afterIds,
-            excluded: { owned: Array.from(ownedIds), joined: Array.from(joinedIds) },
-          });
+          normalized = normalized.filter((c: any) => c.owner_user_id !== user.id && !joinedIds.has(c.id));
         } catch (e) {
           console.warn('[browse] filter step failed (will show unfiltered)', e);
         }
@@ -221,7 +214,7 @@ export const usePublicChallenges = () => {
     try {
       const { error } = await supabase
         .from('challenge_members')
-        .update({ status: 'left' })
+        .delete()
         .eq('user_id', user.id)
         .eq('challenge_id', challengeId);
 
@@ -229,6 +222,7 @@ export const usePublicChallenges = () => {
 
       // Refresh data
       await Promise.all([fetchChallenges(), fetchUserParticipations()]);
+      console.info('[feeds] refreshed', { my: true, public: true, private: true });
 
       toast({
         title: "Left Challenge",
