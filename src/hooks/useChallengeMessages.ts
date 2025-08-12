@@ -47,7 +47,21 @@ export function useChallengeMessages(challengeId: string | null) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
-        (payload) => setMessages((prev) => [...prev, payload.new as any])
+        (payload) => {
+          const row = payload.new as ChallengeMessage;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === row.id)) return prev;
+            const i = prev.findIndex(
+              (m: any) => String(m.id).startsWith('local-') && m.user_id === (row as any).user_id && m.content === (row as any).content
+            );
+            if (i >= 0) {
+              const next = prev.slice();
+              next[i] = row as any;
+              return next;
+            }
+            return [...prev, row as any];
+          });
+        }
       )
       .subscribe();
 
@@ -60,6 +74,17 @@ export function useChallengeMessages(challengeId: string | null) {
   const sendMessage = async (content: string) => {
     const text = (content ?? '').trim();
     if (!challengeId || !user?.id || !text) return null;
+
+    const temp: ChallengeMessage = {
+      id: `local-${Date.now()}`,
+      challenge_id: challengeId,
+      user_id: user.id,
+      content: text,
+      created_at: new Date().toISOString(),
+    };
+
+    // Optimistically show it immediately
+    setMessages((prev) => [...prev, temp as any]);
 
     try {
       const { data, error } = await supabase
@@ -74,16 +99,13 @@ export function useChallengeMessages(challengeId: string | null) {
 
       if (error) throw error;
 
-      // Optimistically append to local state, guard against duplicates
-      setMessages((prev) => {
-        if (!data) return prev;
-        const exists = prev.some((m) => m.id === (data as any).id);
-        return exists ? prev : [...prev, data as any];
-      });
-
+      // Replace temp with real row
+      setMessages((prev) => prev.map((m) => (m.id === temp.id ? (data as any) : m)));
       return data as any;
     } catch (err) {
-      console.error('[useChallengeMessages] send error', err);
+      // Rollback optimistic insert on error
+      setMessages((prev) => prev.filter((m) => m.id !== temp.id));
+      console.error('[chat] send error', err);
       throw err;
     }
   };
