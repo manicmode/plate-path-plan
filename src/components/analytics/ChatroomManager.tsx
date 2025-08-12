@@ -21,7 +21,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   inline = false,
 }) => {
   const { selectedChatroomId, selectChatroom, clearSelection } = useChatStore();
-  const { data: myChallenges, isLoading } = useMyChallenges();
+  const { data: myChallenges, isLoading } = useMyChallenges({ activeOnly: true });
 
   // Build rooms from My Active challenges
   const rooms = useMemo(

@@ -7,7 +7,7 @@ import { useChatStore } from "@/store/chatStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ChatroomDropdown() {
-  const { data: myChallenges, isLoading } = useMyChallenges();
+  const { data: myChallenges, isLoading } = useMyChallenges({ activeOnly: true });
   const { selectedChatroomId, selectChatroom } = useChatStore();
 
   const rooms = React.useMemo(

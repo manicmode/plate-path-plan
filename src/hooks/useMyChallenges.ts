@@ -27,12 +27,13 @@ interface UseMyChallengesResult {
   refresh: () => Promise<void>;
 }
 
-export function useMyChallenges(): UseMyChallengesResult {
+export function useMyChallenges(options?: { activeOnly?: boolean }): UseMyChallengesResult {
   const { user } = useAuth();
   const [data, setData] = useState<MyChallenge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const activeOnly = options?.activeOnly ?? true;
 
   const fetchChallenges = useCallback(async (reset = false) => {
     if (!user?.id) {
@@ -151,11 +152,27 @@ export function useMyChallenges(): UseMyChallengesResult {
       const mergedMap = new Map<string, MyChallenge>();
       publicMapped.forEach((c) => mergedMap.set(c.id, c));
       privateList.forEach((c) => mergedMap.set(c.id, c));
-       const mergedList = Array.from(mergedMap.values());
+      const mergedList = Array.from(mergedMap.values());
 
-       console.info('[my] useMyChallenges.ids', mergedList.map(c => c.id));
+      // Active-only filter (duration-based fallback)
+      const now = new Date();
+      const isActive = (row: MyChallenge) => {
+        if (!row?.duration_days || !row?.created_at) return true;
+        const end = new Date(new Date(row.created_at).getTime() + row.duration_days * 86400000);
+        return end >= now;
+      };
+      let finalList = activeOnly ? mergedList.filter(isActive) : mergedList;
 
-      setData(mergedList);
+      // Orphan guard (defensive): ensure id existed in fetched sources
+      const validIds = new Set<string>([
+        ...publicMapped.map((c) => c.id),
+        ...privateList.map((c) => c.id),
+      ]);
+      finalList = finalList.filter((r) => validIds.has(r.id));
+
+      console.info('[my] useMyChallenges.active.ids', finalList.map(c => c.id));
+
+      setData(finalList);
       setHasMore(false);
     } catch (err) {
       console.error('[useMyChallenges] Error:', err);
