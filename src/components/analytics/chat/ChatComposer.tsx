@@ -148,7 +148,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!canSend}
+          disabled={disabled || !canSend}
           aria-label="Send message"
           className={cn(
             "grid place-items-center rounded-full transition-all",

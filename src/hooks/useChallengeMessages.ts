@@ -10,51 +10,73 @@ export interface ChallengeMessage {
   content: string;
   created_at: string;
   pending?: boolean;
+  // joined user (nullable if RLS denies)
+  user?: { name?: string | null; display_name?: string | null; avatar_url?: string | null };
 }
 
-// Race-safe, merge-only reconcile function
 function reconcile(prev: ChallengeMessage[], incoming: ChallengeMessage[]) {
+  const keyOf = (m: ChallengeMessage) => String(m.id ?? m.tempId);
   const map = new Map<string, ChallengeMessage>();
-  const byId = (m: ChallengeMessage) => String(m.id ?? m.tempId);
-
-  for (const m of prev) map.set(byId(m), m);
+  for (const m of prev) map.set(keyOf(m), m);
 
   for (const m of incoming) {
-    const key = byId(m);
-
-    // If this is a server row, try to replace a temp optimistic row
+    // Replace optimistic with server row (match by user + content + close timestamps)
     if (m.id && !m.tempId) {
-      for (const [tempKey, tempMsg] of map) {
+      for (const [k, t] of map) {
         if (
-          tempKey.startsWith('temp-') &&
-          tempMsg.user_id === m.user_id &&
-          tempMsg.content === m.content &&
-          Math.abs(new Date(tempMsg.created_at).getTime() - new Date(m.created_at).getTime()) < 5000
+          k.startsWith('temp-') &&
+          t.user_id === m.user_id &&
+          t.content === m.content &&
+          Math.abs(new Date(t.created_at).getTime() - new Date(m.created_at).getTime()) < 8000
         ) {
-          map.delete(tempKey);
+          map.delete(k);
           break;
         }
       }
     }
-
-    map.set(key, { ...map.get(key), ...m });
+    const k = keyOf(m);
+    map.set(k, { ...map.get(k), ...m });
   }
 
-  return [...map.values()].sort((a, b) => {
-    const timeA = new Date(a.created_at ?? '').getTime();
-    const timeB = new Date(b.created_at ?? '').getTime();
-    if (timeA !== timeB) return timeA - timeB;
-    return String(a.id ?? a.tempId).localeCompare(String(b.id ?? b.tempId));
+  const sorted = [...map.values()].sort((a, b) => {
+    const ta = new Date(a.created_at ?? '').getTime();
+    const tb = new Date(b.created_at ?? '').getTime();
+    if (ta !== tb) return ta - tb;
+    return keyOf(a).localeCompare(keyOf(b));
   });
+  return sorted;
 }
 
 export function useChallengeMessages(challengeId: string | null) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChallengeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { user } = useAuth();
   const seq = useRef(0);
 
+  // Local refetch helper (race-safe)
+  const refetch = async (sid: number, id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('challenge_messages')
+        .select(`
+          id, challenge_id, user_id, content, created_at,
+          user:user_profiles!user_id(name, display_name, avatar_url)
+        `)
+        .eq('challenge_id', id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (seq.current !== sid) return;
+      setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
+      console.info('[chat] refetch merged', { count: data?.length ?? 0, challengeId: id, seq: sid });
+    } catch (e) {
+      if (seq.current !== sid) return;
+      console.warn('[chat] refetch error', e);
+    }
+  };
+
+  // Initial fetch on challenge change
   useEffect(() => {
     if (!challengeId) {
       setMessages([]);
@@ -62,7 +84,6 @@ export function useChallengeMessages(challengeId: string | null) {
       setError(null);
       return;
     }
-
     const my = ++seq.current;
     setIsLoading(true);
     setError(null);
@@ -71,19 +92,20 @@ export function useChallengeMessages(challengeId: string | null) {
       try {
         const { data, error } = await supabase
           .from('challenge_messages')
-          .select('*')
+          .select(`
+            id, challenge_id, user_id, content, created_at,
+            user:user_profiles!user_id(name, display_name, avatar_url)
+          `)
           .eq('challenge_id', challengeId)
           .order('created_at', { ascending: true });
 
         if (error) throw error;
         if (seq.current !== my) return;
-
         setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
         console.info('[chat] fetch merged', { count: data?.length ?? 0, challengeId, seq: my });
       } catch (err) {
         if (seq.current !== my) return;
         setError(err as Error);
-        console.error('[chat] fetch error', err);
       } finally {
         if (seq.current !== my) return;
         setIsLoading(false);
@@ -91,18 +113,31 @@ export function useChallengeMessages(challengeId: string | null) {
     })();
   }, [challengeId]);
 
+  // Realtime INSERT
   useEffect(() => {
     if (!challengeId) return;
-
     const channel = supabase
       .channel(`challenge-messages-${challengeId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
-        payload => {
-          const newMessage = payload.new as ChallengeMessage;
-          setMessages(prev => reconcile(prev, [newMessage]));
-          console.info('[chat] RT insert merged', newMessage.id);
+        async (payload) => {
+          // Fetch one row with join for the new id
+          const { data } = await supabase
+            .from('challenge_messages')
+            .select(`
+              id, challenge_id, user_id, content, created_at,
+              user:user_profiles!user_id(name, display_name, avatar_url)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          const merged = (data
+            ? [data as ChallengeMessage]
+            : [payload.new as ChallengeMessage]);
+
+          setMessages(prev => reconcile(prev, merged));
+          console.info('[chat] RT insert merged', payload.new.id);
         }
       )
       .subscribe();
@@ -110,41 +145,48 @@ export function useChallengeMessages(challengeId: string | null) {
     return () => { supabase.removeChannel(channel); };
   }, [challengeId]);
 
+  // Optimistic send with “guaranteed persist”
   const sendMessage = async (content: string) => {
     const text = content.trim();
     if (!challengeId || !user?.id || !text) return null;
 
     const now = new Date().toISOString();
     const tempId = `temp-${Date.now()}-${user.id}`;
-
     const optimistic: ChallengeMessage = {
-      id: undefined,
-      tempId,
-      challenge_id: challengeId,
-      user_id: user.id,
-      content: text,
-      created_at: now,
-      pending: true,
+      tempId, challenge_id: challengeId, user_id: user.id, content: text, created_at: now, pending: true,
+      user: { name: user.user_metadata?.name ?? null, display_name: user.user_metadata?.name ?? null, avatar_url: null }
     };
-
     setMessages(prev => reconcile(prev, [optimistic]));
     console.info('[chat] optimistic add', tempId);
+
+    let insertedId: number | null = null;
 
     try {
       const { data, error } = await supabase
         .from('challenge_messages')
         .insert({ challenge_id: challengeId, user_id: user.id, content: text })
-        .select('*')
+        .select(`
+          id, challenge_id, user_id, content, created_at,
+          user:user_profiles!user_id(name, display_name, avatar_url)
+        `)
         .single();
 
       if (error) throw error;
+      insertedId = (data as any)?.id ?? null;
 
       setMessages(prev => {
         const withoutTemp = prev.filter(m => m.tempId !== tempId);
         return reconcile(withoutTemp, [data as ChallengeMessage]);
       });
 
-      console.info('[chat] send ok, replaced temp with server', (data as any)?.id);
+      console.info('[chat] send ok, replaced temp with server', insertedId);
+
+      // Fallback: if RT didn’t arrive yet, force one refetch shortly
+      const my = seq.current;
+      setTimeout(() => {
+        if (!insertedId) refetch(my, challengeId);
+      }, 1500);
+
       return data as ChallengeMessage;
     } catch (err) {
       setMessages(prev => prev.filter(m => m.tempId !== tempId));
