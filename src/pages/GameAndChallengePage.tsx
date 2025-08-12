@@ -238,12 +238,12 @@ function GameAndChallengeContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Sticky Header - Outside the main container */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
+        <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
-          <div className="flex flex-col space-y-2 md:space-y-3 md:max-w-[520px] md:mx-auto md:px-4">
+          <div className="flex flex-col space-y-2 md:space-y-3 w-full">
             <div className="flex items-center justify-between">
               <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
                 <ArrowLeft className="h-5 w-5" />
@@ -333,10 +333,9 @@ function GameAndChallengeContent() {
         )}
 
           {/* Main Content */}
-          <div className="container mx-auto md:max-w-[520px] md:px-4 md:pb-[120px]">
+          <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 pb-[90px] md:pb-[120px]">
             <div className={cn(
-              "space-y-6 sm:space-y-12",
-              isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
+              "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
           
           {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
