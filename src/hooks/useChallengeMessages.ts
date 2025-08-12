@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
@@ -40,33 +40,36 @@ export function useChallengeMessages(challengeId: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
+  const fetchSeq = useRef(0);
 
   useEffect(() => {
-    if (!challengeId) {
-      setMessages([]);
-      return;
-    }
+    if (!challengeId) return;
 
-    let isCancelled = false;
+    let active = true;
+    const mySeq = ++fetchSeq.current;
 
-    const load = async () => {
+    (async () => {
       setIsLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from('challenge_messages')
-        .select('*')
-        .eq('challenge_id', challengeId)
-        .order('created_at', { ascending: true });
-
-      if (!isCancelled) {
-        if (error) setError(error as any);
+      try {
+        const { data, error } = await supabase
+          .from('challenge_messages')
+          .select('*')
+          .eq('challenge_id', challengeId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        if (!active || mySeq !== fetchSeq.current) return;
         setMessages((prev) => reconcile(prev as any, (data ?? []) as any));
-        console.info('[chat] fetch ok', { count: data?.length ?? 0 });
-        setIsLoading(false);
+        console.info('[chat] fetch merged', { count: data?.length ?? 0, challengeId });
+      } catch (e) {
+        if (active && mySeq === fetchSeq.current) {
+          setError(e as any);
+          console.error('[chat] fetch error', e);
+        }
+      } finally {
+        if (active && mySeq === fetchSeq.current) setIsLoading(false);
       }
-    };
-
-    load();
+    })();
 
     const channel = supabase
       .channel(`challenge-messages-${challengeId}`)
@@ -76,16 +79,16 @@ export function useChallengeMessages(challengeId: string | null) {
         (payload) => {
           const row = payload.new as ChallengeMessage;
           setMessages((prev) => reconcile(prev as any, [row as any]));
-          console.info('[chat] RT insert', (row as any)?.id);
+          console.info('[chat] RT insert merged', (row as any)?.id);
         }
       )
       .subscribe();
 
     return () => {
-      isCancelled = true;
+      active = false;
       supabase.removeChannel(channel);
     };
-  }, [challengeId, user?.id]);
+  }, [challengeId]);
 
   const sendMessage = async (content: string) => {
     const text = (content ?? '').trim();

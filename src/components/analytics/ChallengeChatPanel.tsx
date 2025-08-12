@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageCircle, Users, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
@@ -36,11 +36,6 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
     }
   }, [challengeId, sendMessage]);
 
-  const list = useMemo(() => {
-    return [...(messages || [])].sort(
-      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-  }, [messages]);
 
   console.info('[chat] render messages', { count: messages.length });
 
@@ -87,7 +82,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
           </div>
         ) : (
           <>
-            {list.map((msg: any) => (
+            {(messages || []).map((msg: any) => (
               <div key={msg.id} className="flex gap-3">
                 <div className="flex flex-col">
                   <div className="text-xs text-muted-foreground">
