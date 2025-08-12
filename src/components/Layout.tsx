@@ -30,6 +30,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
 
+  // [nav-restore-2025-08-11] begin
   const navItems = [
     { path: '/home', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
@@ -37,6 +38,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/explore', icon: Compass, label: 'Explore' },
   ];
+  // [nav-restore-2025-08-11] end
 
   const scrollToTop = useCallback(() => {
     window.scrollTo({
@@ -92,8 +94,20 @@ const Layout = ({ children }: LayoutProps) => {
     return () => window.removeEventListener("resize", setVar);
   }, []);
 
+  // [nav-restore-2025-08-11] begin
   // Show only header for unauthenticated users on non-auth pages
   const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
+  
+  // Debug logging for navigation visibility
+  if (import.meta.env.DEV) {
+    console.log('[Navigation Debug]', {
+      isAuthenticated,
+      pathname: location.pathname,
+      shouldShowNavigation,
+      isChatModalOpen
+    });
+  }
+  // [nav-restore-2025-08-11] end
 
   // Special handling for explore page to prevent scrolling
   const isExplorePage = location.pathname === '/explore';
