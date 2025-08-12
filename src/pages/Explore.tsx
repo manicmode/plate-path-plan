@@ -106,7 +106,7 @@ const Explore = () => {
   const safeIsMobile = isMobile ?? false;
 
   return (
-    <div className="flex flex-col p-4 overflow-hidden relative">
+    <div className="flex flex-col p-4 overflow-hidden relative md:pb-[120px]">
       {/* Main 2x3 Grid with simplified styling */}
       <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-4">
         {mainTiles.map((tile) => {

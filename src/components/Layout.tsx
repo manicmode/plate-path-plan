@@ -158,7 +158,7 @@ const Layout = ({ children }: LayoutProps) => {
           ) : 'pb-8'
         } ${
           isExplorePage 
-            ? 'h-[calc(100vh-160px)]' // Precise height for explore page
+            ? 'h-[calc(100vh-160px)] md:min-h-[calc(100vh-140px)] md:h-auto' // Fixed height only on mobile; allow natural height on desktop
             : 'min-h-[calc(100vh-140px)]'
         } md:pb-[120px]`}
       >
