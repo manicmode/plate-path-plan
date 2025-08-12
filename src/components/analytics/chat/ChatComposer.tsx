@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,19 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const [isComposing, setIsComposing] = useState(false);
+
+  // Auto-resize up to 160px (matches max-h class)
+  const autoresize = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const max = 160; // px
+    const h = Math.min(ta.scrollHeight, max);
+    ta.style.height = `${h}px`;
+    ta.style.overflowY = ta.scrollHeight > h ? 'auto' : 'hidden';
+  }, []);
+
+  useEffect(() => { autoresize(); }, [value, autoresize]);
 
   const canSend = useMemo(() => value.trim().length > 0 && !disabled, [value, disabled]);
 
