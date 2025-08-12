@@ -34,7 +34,11 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   }, [messages.length]);
 
   return (
-    <section aria-label="Challenge chat" className="w-full">
+    <section
+      aria-label="Challenge chat"
+      className="relative grid grid-rows-[auto,1fr,auto] h-[100dvh] max-h-[100dvh] overflow-hidden w-full"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 76px)' }}
+    >
       {showHeader && (
         <header className="p-4 border-b bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -51,7 +55,10 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       )}
 
       {/* Messages */}
-      <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[180px] md:pb-[220px]">
+      <div
+        id="chat-inline-scroll"
+        className="overflow-y-auto overscroll-contain scroll-smooth px-4 md:px-6 pt-3 pb-4 space-y-3"
+      >
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -82,10 +89,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         )}
       </div>
 
-      {/* Composer */}
-      <div className="flex-shrink-0">
-        <ChatComposer onSend={handleSendMessage} />
-      </div>
+      {/* Bottom docked composer above BottomNav */}
+      <ChatComposer onSend={handleSendMessage} style={{ bottom: 'calc(env(safe-area-inset-bottom) + 76px)' }} />
     </section>
   );
+
 };
