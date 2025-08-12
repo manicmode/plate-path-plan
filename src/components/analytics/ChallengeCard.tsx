@@ -139,6 +139,14 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
     : 0;
 
+  // Minimal chat handler to open the modal and notify global chat manager
+  const handleChatClick = () => {
+    setShowChat(true);
+    try {
+      window.dispatchEvent(new CustomEvent('open-chat-for-challenge', { detail: { challengeId: challenge.id } }));
+    } catch {}
+  };
+
   return (
     <>
       <Card className={cn(
