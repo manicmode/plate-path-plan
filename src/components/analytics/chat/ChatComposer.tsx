@@ -56,27 +56,35 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
       "pt-2 md:pt-3 pb-[env(safe-area-inset-bottom)]",
       className
     )}>
-      {/* Emoji strip */}
-      <div
-        className={cn(
-          "no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6",
-          "overflow-x-auto overscroll-x-contain snap-x snap-mandatory",
-          "flex gap-2 pb-2"
-        )}
-        role="listbox"
-        aria-label="Emoji picker"
-      >
-        {EMOJIS.map((e, i) => (
-          <button
-            key={`${e}-${i}`}
-            type="button"
-            onClick={() => insertEmoji(e)}
-            className="shrink-0 snap-start rounded-xl px-3 py-2 text-2xl hover:scale-110 transition-transform"
-            aria-label={`Insert ${e}`}
+      {/* Emoji strip (contained & clipped) */}
+      <div className="px-4 md:px-6">
+        <div className="relative rounded-2xl border border-white/10 bg-muted/20 overflow-hidden">
+          <div
+            role="listbox"
+            aria-label="Emoji picker"
+            className="no-scrollbar overflow-x-auto flex gap-2 px-3 py-2 items-center"
+            style={{
+              touchAction: 'pan-x',
+              overscrollBehaviorX: 'contain'
+            }}
           >
-            {e}
-          </button>
-        ))}
+            {EMOJIS.map((e, i) => (
+              <button
+                key={`${e}-${i}`}
+                type="button"
+                onClick={() => insertEmoji(e)}
+                className="shrink-0 rounded-xl px-2 py-1 text-2xl hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                aria-label={`Insert ${e}`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+
+          {/* Subtle edge fades to hint scroll, while keeping content 'inside' */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background/90 to-transparent" />
+        </div>
       </div>
 
       {/* Input row */}
