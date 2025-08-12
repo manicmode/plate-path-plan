@@ -116,6 +116,7 @@ function GameAndChallengeContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
+  const [preselectedChatId, setPreselectedChatId] = useState<string | null>(null);
   const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
   
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -822,6 +823,7 @@ function GameAndChallengeContent() {
         <ChatroomManager
           isOpen={isChatroomManagerOpen}
           onOpenChange={setIsChatroomManagerOpen}
+          initialChatroomId={preselectedChatId || undefined}
         />
         
         {/* Smart Team-Up Prompts */}

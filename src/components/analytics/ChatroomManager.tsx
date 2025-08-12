@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
-import { ChatroomSelector } from './ChatroomSelector';
 import { useChallenge } from '@/contexts/ChallengeContext';
+import { useMyChallenges } from '@/hooks/useMyChallenges';
 
 interface Chatroom {
   id: string;
@@ -16,52 +16,34 @@ interface Chatroom {
 interface ChatroomManagerProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  initialChatroomId?: string;
 }
 
-export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) => {
+export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: ChatroomManagerProps) => {
   const { challenges, microChallenges, activeUserChallenges } = useChallenge();
+  const { data: myChallenges } = useMyChallenges();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
-  // Build chatrooms list from user's challenge participations
+  // Build chatrooms list from user's challenge participations (Supabase source of truth)
   useEffect(() => {
     const availableChatrooms: Chatroom[] = [];
 
-    // Add public challenges the user is participating in
-    activeUserChallenges?.forEach(challenge => {
-      if (challenge.type === 'public') {
-        availableChatrooms.push({
-          id: challenge.id,
-          name: challenge.name,
-          type: 'public',
-          participantCount: challenge.participants.length,
-          participantIds: challenge.participants,
-        });
-      }
-    });
+    const list = myChallenges || [];
+    const challengeIdsUsedInChatQuery = list.map(c => c.id);
 
-    // Add micro-challenges (treating them as mini chatrooms)
-    microChallenges?.forEach(challenge => {
+    // Instrumentation logs (temporary)
+    console.info('[chat] activeChallenges.count', list.length, list.map(c => c.id));
+    console.info('[chat] chatQuery.challengeIds', challengeIdsUsedInChatQuery);
+
+    list.forEach(ch => {
       availableChatrooms.push({
-        id: challenge.id,
-        name: challenge.name,
-        type: 'public',
-        participantCount: challenge.participants.length,
-        participantIds: challenge.participants,
+        id: ch.id,
+        name: ch.title,
+        type: (ch.visibility === 'public' ? 'public' : 'private'),
+        participantCount: ch.participant_count || 0,
+        participantIds: [],
       });
-    });
-
-    // Add private challenges the user is participating in
-    activeUserChallenges?.forEach(challenge => {
-      if (challenge.type === 'private') {
-        availableChatrooms.push({
-          id: challenge.id,
-          name: challenge.name,
-          type: 'private',
-          participantCount: challenge.participants.length,
-          participantIds: challenge.participants,
-        });
-      }
     });
 
     setChatrooms(availableChatrooms);
@@ -70,36 +52,33 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     if (availableChatrooms.length > 0 && !activeChatroomId) {
       setActiveChatroomId(availableChatrooms[0].id);
     }
-  }, [challenges, microChallenges, activeUserChallenges, activeChatroomId]);
+  }, [myChallenges, activeChatroomId]);
+
+  // Preselect chatroom when requested from CTA
+  useEffect(() => {
+    if (initialChatroomId) {
+      setActiveChatroomId(initialChatroomId);
+    }
+  }, [initialChatroomId]);
 
   const handleSelectChatroom = (chatroomId: string) => {
     setActiveChatroomId(chatroomId);
   };
 
-  const activeChatroom = chatrooms.find(room => room.id === activeChatroomId);
-
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Chatroom Selector - positioned in top-right corner of dialog */}
-      <div className="fixed top-4 right-4 z-50">
-        <ChatroomSelector
-          chatrooms={chatrooms}
-          activeChatroomId={activeChatroomId || undefined}
-          onSelectChatroom={handleSelectChatroom}
-        />
-      </div>
 
       {/* Active Chatroom Modal */}
-      {activeChatroom && (
+      {chatrooms.length > 0 && activeChatroomId && (
         <ChallengeChatModal
           open={isOpen}
           onOpenChange={onOpenChange}
-          challengeId={activeChatroom.id}
-          challengeName={activeChatroom.name}
-          participantCount={activeChatroom.participantCount}
-          challengeParticipants={activeChatroom.participantIds || []}
+          challengeId={activeChatroomId}
+          challengeName={chatrooms.find(r => r.id === activeChatroomId)?.name || 'Chat'}
+          participantCount={chatrooms.find(r => r.id === activeChatroomId)?.participantCount || 0}
+          challengeParticipants={chatrooms.find(r => r.id === activeChatroomId)?.participantIds || []}
         />
       )}
     </>
