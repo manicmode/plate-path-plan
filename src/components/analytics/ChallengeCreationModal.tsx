@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { createChallenge as createSupabaseChallenge } from '@/lib/challenges';
 import { useToast } from '@/hooks/use-toast';
 
 type Visibility = "public" | "private";
@@ -59,9 +59,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [challengeType, setChallengeType] = useState<'public' | 'private'>(defaultVisibility ?? 'public');
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
-  
-  const { createChallenge } = useChallenge();
-  const { toast } = useToast();
+const { toast } = useToast();
 
   const goalOptions = [
     { 
@@ -137,7 +135,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
     { value: 'custom', label: 'Custom', description: 'Pick your own dates' },
   ];
 
-  const handleCreateChallenge = () => {
+  const handleCreateChallenge = async () => {
     if (!challengeName.trim()) {
       toast({
         title: "Missing Information",
@@ -165,46 +163,42 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       return;
     }
 
-    const startDate = new Date();
-    let endDate: Date;
+    // Compute duration in days
+    const durationDays = (duration === 'custom' && customEndDate)
+      ? Math.max(1, Math.ceil((customEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : parseInt(duration, 10);
 
-    if (duration === 'custom' && customEndDate) {
-      endDate = customEndDate;
-    } else {
-      const days = parseInt(duration);
-      endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    // Build description from goal selection
+    const desc = goalType === 'custom'
+      ? customGoal.trim()
+      : (goalOptions.find(g => g.value === goalType)?.label || null);
+
+    const visibility = challengeType;
+
+    const { data, error } = await createSupabaseChallenge({
+      title: challengeName.trim(),
+      description: desc,
+      visibility,
+      durationDays,
+      coverEmoji: null,
+    });
+
+    if (error || !data) {
+      toast({
+        title: "Error",
+        description: error || 'Failed to create challenge',
+        variant: "destructive",
+      });
+      return;
     }
 
-    const newChallenge = {
-      name: challengeName,
-      type: challengeType,
-      creatorId: 'current-user-id',
-      creatorName: 'Current User 👤',
-      goalType: goalType as any,
-      customGoal: goalType === 'custom' ? customGoal : undefined,
-      startDate,
-      endDate,
-      participants: ['current-user-id'],
-      participantDetails: {
-        'current-user-id': { name: 'Current User 👤', avatar: '👤' }
-      },
-      progress: {
-        'current-user-id': 0
-      },
-      maxParticipants: challengeType === 'public' ? parseInt(maxParticipants) : undefined,
-      inviteCode: challengeType === 'private' ? `PRIV${Math.random().toString(36).substr(2, 6).toUpperCase()}` : undefined,
-    };
-
-    createChallenge(newChallenge);
-    
+    console.log('[createChallenge] success', data.id, visibility);
     toast({
       title: "Challenge Created! 🎉",
       description: `"${challengeName}" is now live and ready for participants!`,
     });
 
-    // Call the callback if provided
-    const challengeId = `challenge-${Date.now()}`;
-    onChallengeCreated?.(challengeId);
+    onChallengeCreated?.(data.id);
 
     // Reset form
     setStep(1);

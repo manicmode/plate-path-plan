@@ -120,9 +120,10 @@ export const PublicChallengesFeed: React.FC = () => {
     }
   };
 
-  const handleChallengeCreated = () => {
+  const handleChallengeCreated = async () => {
     setShowCreateModal(false);
-    refreshData();
+    await refreshData();
+    console.log('[feeds] refreshed');
   };
 
   if (loading) {
