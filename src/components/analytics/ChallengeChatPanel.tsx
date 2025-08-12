@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageCircle, Users, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
@@ -20,17 +20,21 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
 }) => {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, sendMessage: sendChatMessage } = useChallengeMessages(challengeId);
+  const { messages, isLoading, sendMessage } = useChallengeMessages(challengeId);
 
   useEffect(() => {
     console.info('[chat] panel challengeId=', challengeId);
   }, [challengeId]);
 
-  const handleSendMessage = async (text: string) => {
-    if (text.trim()) {
-      await sendChatMessage(text);
+  const handleSend = useCallback(async (text: string) => {
+    console.info('[chat] panel.handleSend', { challengeId, len: text.trim().length });
+    try {
+      await sendMessage(text);
+      console.info('[chat] panel.sendMessage ok');
+    } catch (e) {
+      console.error('[chat] panel.sendMessage error', e);
     }
-  };
+  }, [challengeId, sendMessage]);
 
   useEffect(() => {
     const el = document.getElementById('chat-inline-scroll');
@@ -59,7 +63,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         id="chat-inline-scroll"
         className="flex-1 overflow-y-auto px-4 pt-2"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 128px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 140px)",
         }}
       >
         {isLoading ? (
@@ -94,7 +98,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
 
       {/* Composer */}
       <div className="flex-shrink-0">
-        <ChatComposer onSend={handleSendMessage} />
+        <ChatComposer onSend={handleSend} disabled={false} />
       </div>
     </section>
   );
