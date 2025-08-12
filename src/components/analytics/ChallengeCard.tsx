@@ -45,11 +45,6 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const { toast } = useToast();
   const { playChallengeWin } = useSound();
 
-  const handleChatClick = () => {
-    console.info('[chat] openChatForChallenge', { challengeId: challenge.id });
-    window.dispatchEvent(new CustomEvent('open-chat-for-challenge', { detail: { challengeId: challenge.id } }));
-  };
-
   const isParticipant = challenge.participants.includes(currentUserId);
   const isCreator = challenge.creatorId === currentUserId;
   const canJoin = challenge.type === 'public' && !isParticipant && 
@@ -359,7 +354,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={handleChatClick}
+              onClick={() => setShowChat(true)}
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
@@ -379,7 +374,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           </div>
         </CardContent>
 
-        {/* Challenge Chat Modal (kept mounted but not auto-opened) */}
+        {/* Challenge Chat Modal */}
         <ChallengeChatModal
           open={showChat}
           onOpenChange={setShowChat}

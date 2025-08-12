@@ -167,7 +167,7 @@ export const ChallengeChatModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="z-40 max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="p-4 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -222,7 +222,7 @@ export const ChallengeChatModal = ({
         )}
 
         {/* Messages Container - Fixed height with proper scroll */}
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[90px] md:pb-[120px]" id="chat-scroll-container">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2" id="chat-scroll-container">
           {(!chat?.messages || chat.messages.length === 0) ? (
             <div className="text-center py-8">
               <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />

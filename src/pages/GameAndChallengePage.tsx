@@ -116,7 +116,6 @@ function GameAndChallengeContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
-  const [preselectedChatId, setPreselectedChatId] = useState<string | null>(null);
   const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
   
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -136,23 +135,6 @@ function GameAndChallengeContent() {
   useEffect(() => {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
-
-  // Listen for Chat CTA events to open specific challenge chat
-  useEffect(() => {
-    const handler: EventListener = (e: Event) => {
-      const custom = e as CustomEvent<{ challengeId?: string }>;
-      const selectedId = custom.detail?.challengeId;
-      console.info('[chat] opening', selectedId);
-      if (selectedId) setPreselectedChatId(selectedId);
-      setActiveSection('chat');
-      setIsChatroomManagerOpen(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-    window.addEventListener('open-chat-for-challenge' as any, handler);
-    return () => {
-      window.removeEventListener('open-chat-for-challenge' as any, handler);
-    };
-  }, []);
 
   // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
@@ -258,7 +240,7 @@ function GameAndChallengeContent() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Sticky Header - Outside the main container */}
-      <div className="sticky top-[env(safe-area-inset-top)] z-40 bg-gradient-to-b from-slate-900/80 to-slate-900/40 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-b border-white/10">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
@@ -351,7 +333,7 @@ function GameAndChallengeContent() {
         )}
 
           {/* Main Content */}
-          <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 pt-3 sm:pt-4 pb-[90px] md:pb-[120px]">
+          <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 pb-[90px] md:pb-[120px]">
             <div className={cn(
               "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
@@ -840,7 +822,6 @@ function GameAndChallengeContent() {
         <ChatroomManager
           isOpen={isChatroomManagerOpen}
           onOpenChange={setIsChatroomManagerOpen}
-          initialChatroomId={preselectedChatId || undefined}
         />
         
         {/* Smart Team-Up Prompts */}
