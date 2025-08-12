@@ -888,7 +888,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Body Scan Section */}
-      <div className="mb-6 mt-6 space-y-3">
+      <div className="mb-6 mt-8 space-y-3">
         {/* AI Body Scan Analysis */}
         <button
           onClick={() => navigate('/body-scan-ai')}
