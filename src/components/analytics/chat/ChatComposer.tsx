@@ -18,6 +18,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const [isComposing, setIsComposing] = useState(false);
+  const [sending, setSending] = useState(false);
 
   // Auto-resize up to 160px (matches max-h class)
   const autoresize = useCallback(() => {
@@ -32,7 +33,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
   useEffect(() => { autoresize(); }, [value, autoresize]);
 
-  const canSend = useMemo(() => value.trim().length > 0 && !disabled, [value, disabled]);
+  const canSend = useMemo(() => value.trim().length > 0 && !disabled && !sending, [value, disabled, sending]);
 
   const insertEmoji = (emoji: string) => {
     const ta = taRef.current;
@@ -52,11 +53,19 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   const handleSubmit = async (e?: React.FormEvent | React.KeyboardEvent) => {
     if (e) e.preventDefault();
     const text = value.trim();
-    if (!text) return;
-    await onSend(text);
-    setValue("");
-    // keep focus for quick chats
-    requestAnimationFrame(() => taRef.current?.focus());
+    if (!text || disabled || sending) return;
+    try {
+      setSending(true);
+      await onSend(text);
+      setValue("");
+      if (taRef.current) {
+        taRef.current.style.height = 'auto';
+      }
+      // keep focus for quick chats
+      requestAnimationFrame(() => taRef.current?.focus());
+    } finally {
+      setSending(false);
+    }
   };
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -109,12 +118,14 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
       {/* Input row */}
       <form ref={formRef} onSubmit={handleSubmit} className="flex items-end gap-2 px-4 md:px-6 pb-3">
+        <input type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
         <textarea
           ref={taRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
+          onBlur={() => setIsComposing(false)}
           onKeyDown={onKeyDown}
           placeholder="Type a message…"
           rows={1}
