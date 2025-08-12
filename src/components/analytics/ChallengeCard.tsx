@@ -45,6 +45,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const { toast } = useToast();
   const { playChallengeWin } = useSound();
 
+  const handleChatClick = () => {
+    console.info('[chat] openChatForChallenge', { challengeId: challenge.id });
+    window.dispatchEvent(new CustomEvent('open-chat-for-challenge', { detail: { challengeId: challenge.id } }));
+  };
+
   const isParticipant = challenge.participants.includes(currentUserId);
   const isCreator = challenge.creatorId === currentUserId;
   const canJoin = challenge.type === 'public' && !isParticipant && 
