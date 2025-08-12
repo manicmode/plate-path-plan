@@ -60,6 +60,7 @@ import { useChallenge } from '@/contexts/ChallengeContext';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
+import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
@@ -788,11 +789,14 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0 -mt-4">
+                 {/* Centered chatroom selector under the header */}
+                 <ChatroomDropdown />
+                 
                  <ChatroomManager
                    inline
                    isOpen={true}
                    onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                   initialChatroomId={preselectedChatId || selectedChatroomId || undefined}
+                   initialChatroomId={selectedChatroomId ?? undefined}
                  />
                </TabsContent>
 
