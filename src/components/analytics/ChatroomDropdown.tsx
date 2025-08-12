@@ -1,24 +1,32 @@
 import * as React from "react";
 import { MessageCircle } from "lucide-react";
-import { useMyChallenges } from "@/hooks/useMyChallenges";
+import { useActiveChallengeIds } from "@/hooks/challenges/useActiveChallengeIds";
+import { usePublicChallenges } from "@/hooks/usePublicChallenges";
+import { usePrivateChallenges } from "@/hooks/usePrivateChallenges";
 import { useChatStore } from "@/store/chatStore";
 
 // shadcn/ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ChatroomDropdown() {
-  const { data: myChallenges, isLoading } = useMyChallenges({ activeOnly: true });
+  const { ids, isLoading } = useActiveChallengeIds();
+  const { challenges: publicChallenges } = usePublicChallenges();
+  const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
   const { selectedChatroomId, selectChatroom } = useChatStore();
 
+  const index = React.useMemo(() => {
+    const map = new Map<string, { id: string; name: string; type: 'public'|'private'; count?: number }>();
+    (publicChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'public', count: c.participant_count ?? 0 }));
+    (privateChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 }));
+    return map;
+  }, [publicChallenges, privateChallenges]);
+
   const rooms = React.useMemo(
-    () => (myChallenges ?? []).map(c => ({
-      id: c.id,
-      name: c.title ?? "Untitled Challenge",
-      type: (c.visibility ?? "public") as "public" | "private",
-      count: (c as any).participant_count ?? 0,
-    })),
-    [myChallenges]
+    () => ids.map(id => index.get(id)).filter(Boolean) as Array<{id:string; name:string; type:'public'|'private'; count?: number}>,
+    [ids, index]
   );
+
+  console.info('[chat-dropdown] activeIds', rooms.map(r => r.id));
 
   if (isLoading || rooms.length === 0) return null;
 

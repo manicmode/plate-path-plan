@@ -3,7 +3,9 @@ import { MessageCircle } from 'lucide-react';
 import { useChatStore } from '@/store/chatStore';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { ChallengeChatPanel } from './ChallengeChatPanel';
-import { useMyChallenges } from '@/hooks/useMyChallenges';
+import { useActiveChallengeIds } from '@/hooks/challenges/useActiveChallengeIds';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
+import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 // Chatrooms are built from useMyChallenges() source of truth
 
@@ -21,18 +23,21 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   inline = false,
 }) => {
   const { selectedChatroomId, selectChatroom, clearSelection } = useChatStore();
-  const { data: myChallenges, isLoading } = useMyChallenges({ activeOnly: true });
+  const { ids, isLoading } = useActiveChallengeIds();
+  const { challenges: publicChallenges } = usePublicChallenges();
+  const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
 
   // Build rooms from My Active challenges
+  const index = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; type: 'public'|'private'; participantCount?: number }>();
+    (publicChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title, type: 'public', participantCount: c.participant_count ?? 0 }));
+    (privateChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title, type: 'private', participantCount: (c as any).participant_count ?? 0 }));
+    return map;
+  }, [publicChallenges, privateChallenges]);
+
   const rooms = useMemo(
-    () =>
-      (myChallenges ?? []).map((c) => ({
-        id: c.id,
-        name: c.title,
-        type: (c.visibility ?? 'public') as 'public' | 'private',
-        participantCount: c.participant_count ?? 0,
-      })),
-    [myChallenges]
+    () => ids.map((id) => index.get(id)).filter(Boolean) as Array<{ id: string; name: string; type: 'public'|'private'; participantCount?: number }>,
+    [ids, index]
   );
 
   console.info('[chat] rooms.ids', rooms.map(r => r.id));
