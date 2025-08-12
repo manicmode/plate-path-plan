@@ -288,15 +288,15 @@ function GameAndChallengeContent() {
           {/* Sort Controls - Responsive */}
           {activeSection === 'ranking' && (
             <div className={cn(
-              "flex items-center gap-2 mt-2",
-              isMobile ? "justify-between" : "justify-center gap-4"
+              "flex items-center gap-2 mt-2 justify-between md:justify-center md:gap-4"
             )}>
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
-                <span className={cn("font-medium", isMobile ? "text-xs" : "text-sm")}>Sort:</span>
+                <span className="font-medium text-xs md:text-sm">Sort:</span>
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className={cn(isMobile ? "w-32 h-8 text-xs" : "w-40")}>
+                <SelectTrigger className="w-32 h-8 text-xs md:w-40">
+                  <SelectValue />
                   <SelectValue />
                 </SelectTrigger>
                  <SelectContent className="bg-background border z-50">
@@ -333,11 +333,12 @@ function GameAndChallengeContent() {
           </div>
         )}
 
-        {/* Main Content */}
-        <div className={cn(
-          "container mx-auto md:max-w-[520px] space-y-6 sm:space-y-12 md:pb-[120px]",
-          isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
-        )}>
+          {/* Main Content */}
+          <div className="container mx-auto md:max-w-[520px] md:px-4 md:pb-[120px]">
+            <div className={cn(
+              "space-y-6 sm:space-y-12",
+              isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
+            )}>
           
           {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
           {false && (
@@ -590,14 +591,13 @@ function GameAndChallengeContent() {
           )}
 
           {/* Mobile-Optimized Tabs for All Sections */}
-          {true ? (
-            <Tabs value={activeSection} onValueChange={(value) => {
-              if (value === 'chat') {
-                setIsChatroomManagerOpen(true);
-              } else {
-                setActiveSection(value);
-              }
-            }} className="w-full flex flex-col">
+          <Tabs value={activeSection} onValueChange={(value) => {
+            if (value === 'chat') {
+              setIsChatroomManagerOpen(true);
+            } else {
+              setActiveSection(value);
+            }
+          }} className="w-full flex flex-col">
 
               <TabsContent value="ranking" className="mt-4">
                 {/* Mobile Ranking Section */}
@@ -614,7 +614,7 @@ function GameAndChallengeContent() {
                     "p-4"
                   )}>
                     <div className="flex flex-col space-y-2">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
+                        <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2 text-center justify-center">
                           {challengeMode === 'recovery' ? (
                             <>
                               <Trophy className="h-6 w-6 text-yellow-500" />
@@ -633,7 +633,7 @@ function GameAndChallengeContent() {
                       {/* Create Challenge Button */}
                       <Button 
                         onClick={() => setShowChallengeModal(true)}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full"
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full md:w-full"
                         size="sm"
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -643,7 +643,7 @@ function GameAndChallengeContent() {
                   </CardHeader>
                    <CardContent className="p-3">
                       {isLoading ? (
-                        <div className="space-y-3">
+                        <div className="space-y-3 md:space-y-4">
                           {[1, 2, 3].map((i) => (
                             <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
                               <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
@@ -663,7 +663,7 @@ function GameAndChallengeContent() {
                           <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">
                             {challengeMode === 'recovery' ? "You're the first challenger! Time to inspire others 🔥" : "No challengers yet! Time to be the first to rise 💪"}
                           </h3>
-                          <p className="text-muted-foreground text-sm mb-4">
+                          <p className="text-muted-foreground text-sm md:text-base mb-4">
                             Start your {challengeMode} journey today!
                           </p>
                           <Button 
@@ -813,14 +813,14 @@ function GameAndChallengeContent() {
                         New Challenge
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">
+                    <p className="text-sm md:text-base text-muted-foreground mt-2">
                       Join ongoing challenges or create your own mini-competition!
                     </p>
                   </CardHeader>
                   
                   <CardContent className="p-6">
                     {challenges.length > 0 ? (
-                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-6 md:flex md:flex-col md:space-y-4">
                         {challenges.map((challenge) => (
                           <ChallengeCard 
                             key={challenge.id} 
@@ -834,7 +834,7 @@ function GameAndChallengeContent() {
                           <Target className="h-10 w-10 text-green-600" />
                         </div>
                         <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
-                        <p className="text-muted-foreground mb-4">
+                        <p className="text-muted-foreground md:text-base mb-4">
                           Be the first to create a challenge and inspire others to join!
                         </p>
                         <Button 
@@ -887,7 +887,7 @@ function GameAndChallengeContent() {
                           <Sparkles className="h-8 w-8 text-yellow-500" />
                         </div>
                         <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
-                        <p className="text-muted-foreground mb-4 text-sm">
+                        <p className="text-muted-foreground mb-4 text-sm md:text-base">
                           Create quick 1-7 day challenges with friends for instant motivation!
                         </p>
                         <Button 
@@ -926,8 +926,8 @@ function GameAndChallengeContent() {
                     <div className="space-y-4">
                       <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto" />
                       <div>
-                        <h3 className="text-xl font-semibold mb-2">Challenge Chatrooms</h3>
-                        <p className="text-muted-foreground">
+                        <h3 className="text-xl md:text-2xl font-semibold mb-2">Challenge Chatrooms</h3>
+                        <p className="text-muted-foreground md:text-base">
                           Chat with participants in your active challenges. Each challenge has its own dedicated chatroom.
                         </p>
                       </div>
@@ -952,8 +952,6 @@ function GameAndChallengeContent() {
               <section id="hall-of-fame" className="animate-fade-in">
                 <HallOfFame champions={optimizedHallOfFame} challengeMode={challengeMode} />
               </section>
-            </>
-          )}
 
           {/* Challenge Creation Modals */}
           <ChallengeCreationModal
@@ -967,6 +965,7 @@ function GameAndChallengeContent() {
             onOpenChange={setShowMicroChallengeModal}
           />
 
+        </div>
         </div>
 
         {/* User Stats Modal */}
