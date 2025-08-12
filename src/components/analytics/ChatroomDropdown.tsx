@@ -34,7 +34,7 @@ export default function ChatroomDropdown() {
     <div className="w-full flex justify-center pt-2 pb-3">
       <div className="w-[280px] md:w-[360px]">
         <Select value={selectedChatroomId ?? ""} onValueChange={handleChange}>
-          <SelectTrigger className="h-10 rounded-full justify-between bg-gradient-to-r from-primary/20 to-secondary/20 border border-white/10 shadow-sm backdrop-blur">
+          <SelectTrigger aria-label="Select chatroom" className="h-10 rounded-full justify-between bg-gradient-to-r from-primary/20 to-secondary/20 border border-white/10 shadow-sm backdrop-blur">
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 opacity-80" />
               <SelectValue placeholder="Select chatroom" />

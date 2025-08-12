@@ -788,17 +788,19 @@ function GameAndChallengeContent() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="chat" className="mt-0 -mt-4">
-                 {/* Centered chatroom selector under the header */}
-                 <ChatroomDropdown />
-                 
-                 <ChatroomManager
-                   inline
-                   isOpen={true}
-                   onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                   initialChatroomId={selectedChatroomId ?? undefined}
-                 />
-               </TabsContent>
+              <TabsContent value="chat" className="mt-0">
+                <div className="space-y-2">
+                  {/* Centered chatroom selector under the header */}
+                  <ChatroomDropdown />
+                  
+                  <ChatroomManager
+                    inline
+                    isOpen={true}
+                    onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                    initialChatroomId={selectedChatroomId ?? undefined}
+                  />
+                </div>
+              </TabsContent>
 
               <TabsContent value="winners" className="mt-4">
                 <MonthlyTrophyPodium />

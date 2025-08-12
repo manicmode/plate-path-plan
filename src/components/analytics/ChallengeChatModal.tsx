@@ -23,6 +23,7 @@ interface ChallengeChatModalProps {
   participantCount?: number;
   challengeParticipants?: string[];
   showChatroomSelector?: boolean;
+  showHeader?: boolean;
 }
 
 export const ChallengeChatModal = ({ 
@@ -32,7 +33,8 @@ export const ChallengeChatModal = ({
   challengeName,
   participantCount = 0,
   challengeParticipants = [],
-  showChatroomSelector = true
+  showChatroomSelector = true,
+  showHeader = true,
 }: ChallengeChatModalProps) => {
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
@@ -174,41 +176,42 @@ export const ChallengeChatModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="z-40 max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
-        {/* Header */}
-        <DialogHeader className="p-4 border-b bg-muted/30 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MessageCircle className="h-5 w-5 text-primary" />
-              <div>
-                <DialogTitle className="text-lg">{displayName}</DialogTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-3 w-3" />
-                  {displayCount} participants
+        {showHeader && (
+          <DialogHeader className="p-4 border-b bg-muted/30 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-5 w-5 text-primary" />
+                <div>
+                  <DialogTitle className="text-lg">{displayName}</DialogTitle>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    {displayCount} participants
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Chatroom Selector */}
-              {showChatroomSelector && chatrooms.length > 1 && (
-                <ChatroomSelector
-                  chatrooms={chatrooms}
-                  activeChatroomId={activeChatroomId}
-                  onSelectChatroom={handleChatroomSelect}
-                />
-              )}
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleMute(activeChatroomId)}
-                className="h-8 w-8 p-0"
-              >
-                {chat?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Chatroom Selector */}
+                {showChatroomSelector && chatrooms.length > 1 && (
+                  <ChatroomSelector
+                    chatrooms={chatrooms}
+                    activeChatroomId={activeChatroomId}
+                    onSelectChatroom={handleChatroomSelect}
+                  />
+                )}
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleMute(activeChatroomId)}
+                  className="h-8 w-8 p-0"
+                >
+                  {chat?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+        )}
 
         {/* Pinned Message */}
         {chat?.pinnedMessage && (

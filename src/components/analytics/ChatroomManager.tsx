@@ -87,6 +87,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       challengeId={activeId}
       challengeName={rooms.find(r => r.id === activeId)?.name || 'Chat'}
       participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
+      showHeader={false}
     />
   ) : (
     <ChallengeChatModal
@@ -97,6 +98,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
       challengeParticipants={[]}
       showChatroomSelector={rooms.length > 1}
+      showHeader={true}
     />
   );
 };

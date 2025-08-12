@@ -9,12 +9,14 @@ interface ChallengeChatPanelProps {
   challengeName?: string;
   participantCount?: number;
   isPublic?: boolean;
+  showHeader?: boolean;
 }
 
 export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   challengeId,
   challengeName = 'Chat',
   participantCount = 0,
+  showHeader = true,
 }) => {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -34,19 +36,20 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
 
   return (
     <section aria-label="Challenge chat" className="w-full">
-      {/* Header */}
-      <header className="p-4 border-b bg-muted/30 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          <div>
-            <h2 className="text-base font-semibold leading-none">{challengeName}</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="h-3 w-3" />
-              {participantCount} participants
+      {showHeader && (
+        <header className="p-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MessageCircle className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-base font-semibold leading-none">{challengeName}</h2>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="h-3 w-3" />
+                {participantCount} participants
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Messages */}
       <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[90px] md:pb-[120px]">
