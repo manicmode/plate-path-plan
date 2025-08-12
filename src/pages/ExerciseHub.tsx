@@ -853,7 +853,7 @@ const ExerciseHub = () => {
 
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24">
+    <div className="min-h-screen bg-background px-4 pb-24">
       {/* Silent goal initialization */}
       <ExerciseGoalsInitializer />
       
@@ -888,7 +888,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Body Scan Section */}
-      <div className="mb-6 mt-2 space-y-3">
+      <div className="mb-6 space-y-3">
         {/* AI Body Scan Analysis */}
         <button
           onClick={() => navigate('/body-scan-ai')}
