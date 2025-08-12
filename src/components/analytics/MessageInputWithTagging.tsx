@@ -139,6 +139,11 @@ export const MessageInputWithTagging = ({
     setTaggedUsers([]);
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSend();
+  };
+
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -186,59 +191,64 @@ export const MessageInputWithTagging = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
-      <div className="flex gap-2 p-3 border-t">
-        {showEmojiReactions && (
-          <div className="flex gap-1">
-            {quickEmojis.map((emoji) => (
-              <Button
-                key={emoji}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => onEmojiClick?.(emoji)}
-                disabled={disabled}
-              >
-                {emoji}
-              </Button>
-            ))}
-          </div>
-        )}
-        
-        <div className="flex-1 relative">
-          <Input
-            ref={inputRef}
-            value={value}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={disabled}
-            className="pr-10"
-          />
+    <div
+      className="fixed inset-x-0 z-40 bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t border-white/10"
+      style={{ bottom: '88px' }}
+    >
+      <div className="mx-auto max-w-screen-sm px-4 py-2">
+        <div className="flex gap-2 p-3 border-t">
+          {showEmojiReactions && (
+            <div className="flex gap-1">
+              {quickEmojis.map((emoji) => (
+                <Button
+                  key={emoji}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => onEmojiClick?.(emoji)}
+                  disabled={disabled}
+                >
+                  {emoji}
+                </Button>
+              ))}
+            </div>
+          )}
           
-          <Button
-            size="sm"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-            onClick={handleSend}
-            disabled={disabled || !value.trim()}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          <form className="flex-1 relative" onSubmit={handleFormSubmit}>
+            <Input
+              ref={inputRef}
+              value={value}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={placeholder}
+              disabled={disabled}
+              className="pr-10"
+            />
+            
+            <Button
+              type="submit"
+              size="sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+              disabled={disabled || !value.trim()}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
         </div>
+
+        {taggedUsers.length > 0 && renderMessagePreview()}
+
+        <FriendSelector
+          isOpen={showFriendSelector}
+          onClose={() => setShowFriendSelector(false)}
+          onSelectFriend={handleSelectFriend}
+          searchQuery={currentAtQuery}
+          position={selectorPosition}
+          useSmartRecommendations={useSmartRecommendations}
+          maxResults={5}
+          excludeUserIds={excludeUserIds}
+        />
       </div>
-
-      {taggedUsers.length > 0 && renderMessagePreview()}
-
-      <FriendSelector
-        isOpen={showFriendSelector}
-        onClose={() => setShowFriendSelector(false)}
-        onSelectFriend={handleSelectFriend}
-        searchQuery={currentAtQuery}
-        position={selectorPosition}
-        useSmartRecommendations={useSmartRecommendations}
-        maxResults={5}
-        excludeUserIds={excludeUserIds}
-      />
     </div>
   );
 };

@@ -51,7 +51,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       )}
 
       {/* Messages */}
-      <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[180px] md:pb-[220px]">
+      <div id="chat-inline-scroll" className="flex-1 overflow-y-auto px-4 pt-2 pb-[160px] md:pb-[184px]">
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
