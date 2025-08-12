@@ -10,6 +10,7 @@ import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
 import { PrivateRecoveryChallenges } from './PrivateRecoveryChallenges';
 import { useToast } from '@/hooks/use-toast';
+import { useChatStore } from '@/store/chatStore';
 
 interface UserChallengeParticipationsProps {
   challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
@@ -127,6 +128,7 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     if (!item) return null;
     
     const { type, challenge, participation, onLeave } = item;
+    const { selectChatroom } = useChatStore();
     
     const progressPercentage = type === 'private'
       ? (participation as any).completion_percentage || 0
@@ -176,6 +178,14 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     const participantCount = type === 'private'
       ? 1 // For now, private challenges show 1 participant
       : (challenge as any).participant_count || 1;
+
+    const handleChatFromMyCard = () => {
+      console.info('[chat] open from my card', challenge.id);
+      selectChatroom(challenge.id);
+      window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
+        detail: { challengeId: challenge.id }
+      }));
+    };
 
     return (
       <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 mb-4">
@@ -259,8 +269,10 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
               </Button>
               
               <Button 
-                variant="outline"
-                size="sm"
+                variant="outline" 
+                size="sm" 
+                onClick={handleChatFromMyCard}
+                data-testid={`my-chat-${challenge.id}`}
                 className="flex-1 bg-muted/50 border-border/50 hover:bg-muted/70 transition-all duration-200"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
