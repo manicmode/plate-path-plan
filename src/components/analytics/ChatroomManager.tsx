@@ -67,6 +67,11 @@ export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: Cha
 
   if (!isOpen) return null;
 
+  // Instrumentation: rooms list
+  useEffect(() => {
+    console.info('[chat] rooms.count', chatrooms.length, chatrooms.map(r => r.id));
+  }, [chatrooms]);
+
   return (
     <>
 
