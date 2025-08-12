@@ -354,7 +354,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowChat(true)}
+              onClick={handleChatClick}
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
@@ -374,7 +374,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           </div>
         </CardContent>
 
-        {/* Challenge Chat Modal */}
+        {/* Challenge Chat Modal (kept mounted but not auto-opened) */}
         <ChallengeChatModal
           open={showChat}
           onOpenChange={setShowChat}
