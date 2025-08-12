@@ -27,17 +27,17 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   }, [challengeId]);
 
   const handleSend = useCallback(async (text: string) => {
-    console.info('[chat] panel.handleSend', { challengeId, len: text.trim().length });
+    console.info('[panel] onSend', { challengeId, textLen: text.trim().length });
     try {
       await sendMessage(text);
-      console.info('[chat] panel.sendMessage ok');
+      console.info('[panel] send ok');
     } catch (e) {
-      console.error('[chat] panel.sendMessage error', e);
+      console.error('[panel] send error', e);
     }
   }, [challengeId, sendMessage]);
 
 
-  console.info('[chat] render messages', { count: messages.length });
+  console.info('[panel] render messages.count', messages.length, 'for', challengeId);
 
   useEffect(() => {
     const el = document.getElementById('chat-inline-scroll');
@@ -82,8 +82,8 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
           </div>
         ) : (
           <>
-            {(messages || []).map((msg: any) => (
-              <div key={msg.id} className="flex gap-3">
+            {messages.map((msg: any) => (
+              <div key={String(msg.id)} className="flex gap-3">
                 <div className="flex flex-col">
                   <div className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}

@@ -51,7 +51,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       const id = rooms[0].id;
       setLocalSelectedId(id);
       selectChatroom(id);
-      console.info('[chat] fallback select', id);
+      console.info('[mgr] autoselect', id);
     }
   }, [rooms, selectedChatroomId, localSelectedId, selectChatroom]);
 
@@ -66,11 +66,18 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   }, [selectedChatroomId, initialChatroomId, localSelectedId, selectChatroom]);
 
   useEffect(() => {
+    if (inline) return; // do not clear selection in inline mode
     if (!isOpen) {
       clearSelection();
       setLocalSelectedId(null);
     }
-  }, [isOpen, clearSelection]);
+  }, [inline, isOpen, clearSelection]);
+
+  useEffect(() => {
+    return () => {
+      console.warn('[mgr] unmount');
+    };
+  }, []);
 
   if (isOpen && isLoading) return <div className="p-4">Loading chatrooms…</div>;
 
