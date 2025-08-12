@@ -39,39 +39,64 @@ export const usePublicChallenges = () => {
   const fetchChallenges = async () => {
     try {
       setError(null);
-      // Use the challenges_with_counts view for efficient querying with computed end_at
       const nowIso = new Date().toISOString();
+
+      // Base: all active public challenges with counts
       const { data, error } = await supabase
-        .from("challenges_with_counts")
-        .select("*")
-        .eq("visibility", "public")
-        .gt("end_at", nowIso) // Only active challenges - use ISO, not "now()"
-        .order("created_at", { ascending: false });
+        .from('challenges_with_counts')
+        .select('*')
+        .eq('visibility', 'public')
+        .gt('end_at', nowIso)
+        .order('created_at', { ascending: false });
 
       if (error) {
         setError(error);
         console.error('Error fetching challenges:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load challenges: " + error.message,
-          variant: "destructive",
-        });
+        toast({ title: 'Error', description: 'Failed to load challenges: ' + error.message, variant: 'destructive' });
         return;
       }
-      
-      setChallenges((data || []).map(challenge => ({
+
+      // Normalize with participant_count
+      let normalized = (data || []).map((challenge: any) => ({
         ...challenge,
-        participant_count: challenge.participants || 0
-      })));
+        participant_count: challenge.participants || 0,
+      }));
+
+      // Exclude owned/joined for the current user (Browse-only behavior)
+      if (user?.id) {
+        try {
+          // Fetch joined challenge ids
+          const { data: memberRows, error: memErr } = await supabase
+            .from('challenge_members')
+            .select('challenge_id')
+            .eq('user_id', user.id)
+            .eq('status', 'joined');
+          if (memErr) console.error('[browse] memberships error', memErr);
+
+          const joinedIds = new Set((memberRows || []).map((r: any) => r.challenge_id));
+          const ownedIds = new Set(normalized.filter((c: any) => c.owner_user_id === user.id).map((c: any) => c.id));
+
+          const beforeIds = normalized.map((c: any) => c.id);
+          normalized = normalized.filter((c: any) => c.owner_user_id !== user.id && !joinedIds.has(c.id));
+          const afterIds = normalized.map((c: any) => c.id);
+
+          // QA log once per fetch
+          console.info('[browse] filtered', {
+            before: beforeIds,
+            after: afterIds,
+            excluded: { owned: Array.from(ownedIds), joined: Array.from(joinedIds) },
+          });
+        } catch (e) {
+          console.warn('[browse] filter step failed (will show unfiltered)', e);
+        }
+      }
+
+      setChallenges(normalized);
     } catch (err) {
       const error = err as Error;
       setError(error);
       console.error('Error fetching challenges:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load challenges",
-        variant: "destructive",
-      });
+      toast({ title: 'Error', description: 'Failed to load challenges', variant: 'destructive' });
     }
   };
 
@@ -132,6 +157,7 @@ export const usePublicChallenges = () => {
 
       // Refresh data
       await Promise.all([fetchChallenges(), fetchUserParticipations()]);
+      console.info('[feeds] refreshed', { my: true, public: true, private: true });
 
       toast({
         title: "Challenge Joined!",
