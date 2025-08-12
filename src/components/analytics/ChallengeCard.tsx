@@ -27,15 +27,18 @@ import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { ShareComposer } from '@/components/share/ShareComposer';
+import { useChatStore } from '@/store/chatStore';
 
 interface ChallengeCardProps {
   challenge: Challenge;
   currentUserId?: string;
+  onChatClick?: (challengeId: string) => void;
 }
 
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({ 
   challenge, 
-  currentUserId = 'current-user-id' 
+  currentUserId = 'current-user-id',
+  onChatClick
 }) => {
   const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
@@ -139,12 +142,18 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
     : 0;
 
-  // Minimal chat handler to open the modal and notify global chat manager
+// Chat handler to open global Chat tab and preselect room
+  const { selectChatroom } = useChatStore();
   const handleChatClick = () => {
-    setShowChat(true);
-    try {
-      window.dispatchEvent(new CustomEvent('open-chat-for-challenge', { detail: { challengeId: challenge.id } }));
-    } catch {}
+    console.log('[ChallengeCard] Chat clicked for:', challenge.id);
+    selectChatroom(challenge.id);
+    if (onChatClick) {
+      onChatClick(challenge.id);
+    } else {
+      window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
+        detail: { challengeId: challenge.id },
+      }));
+    }
   };
 
   return (

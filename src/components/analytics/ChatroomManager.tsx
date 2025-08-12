@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
-import { useChallenge } from '@/contexts/ChallengeContext';
 import { useMyChallenges } from '@/hooks/useMyChallenges';
+import { useChatStore } from '@/store/chatStore';
 
 interface Chatroom {
   id: string;
@@ -20,8 +20,8 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: ChatroomManagerProps) => {
-  const { challenges, microChallenges, activeUserChallenges } = useChallenge();
   const { data: myChallenges } = useMyChallenges();
+  const { selectedChatroomId, selectChatroom, clearSelection } = useChatStore();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
@@ -48,11 +48,17 @@ export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: Cha
 
     setChatrooms(availableChatrooms);
 
-    // Auto-select first chatroom if none selected
-    if (availableChatrooms.length > 0 && !activeChatroomId) {
-      setActiveChatroomId(availableChatrooms[0].id);
+    // Auto-select based on global store or first available
+    if (availableChatrooms.length > 0) {
+      if (selectedChatroomId) {
+        setActiveChatroomId(selectedChatroomId);
+      } else if (!activeChatroomId) {
+        const firstId = availableChatrooms[0].id;
+        setActiveChatroomId(firstId);
+        selectChatroom(firstId);
+      }
     }
-  }, [myChallenges, activeChatroomId]);
+  }, [myChallenges, activeChatroomId, selectedChatroomId, selectChatroom]);
 
   // Preselect chatroom when requested from CTA
   useEffect(() => {

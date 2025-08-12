@@ -63,6 +63,7 @@ import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
+import { useChatStore } from '@/store/chatStore';
 
 // Types
 interface ChatMessage {
@@ -118,6 +119,8 @@ function GameAndChallengeContent() {
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
   const [preselectedChatId, setPreselectedChatId] = useState<string | null>(null);
   const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
+  
+  const { selectedChatroomId } = useChatStore();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   

@@ -17,6 +17,7 @@ import {
 import { MyChallenge } from '@/hooks/useMyChallenges';
 import { useToast } from '@/hooks/use-toast';
 import { ChallengeChatModal } from './ChallengeChatModal';
+import { useChatStore } from '@/store/chatStore';
 
 interface ChallengeCardProps {
   challenge: MyChallenge | any; // Support both challenge types
@@ -24,6 +25,7 @@ interface ChallengeCardProps {
   onJoin?: (challengeId: string) => Promise<void>;
   onLeave?: (challengeId: string) => Promise<void>;
   isLoading?: boolean;
+  onChatClick?: (challengeId: string) => void;
 }
 
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({
@@ -31,13 +33,24 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   isParticipating = false,
   onJoin,
   onLeave,
-  isLoading = false
+  isLoading = false,
+  onChatClick,
 }) => {
   const { toast } = useToast();
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
+const { selectChatroom } = useChatStore();
+
   const handleChatClick = () => {
-    setIsChatModalOpen(true);
+    console.log('[ChallengeCard] Chat clicked for:', challenge.id);
+    selectChatroom(challenge.id);
+    if (onChatClick) {
+      onChatClick(challenge.id);
+    } else {
+      window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
+        detail: { challengeId: challenge.id },
+      }));
+    }
   };
 
   const handleJoinClick = async () => {
