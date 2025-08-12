@@ -45,7 +45,7 @@ export default function Analytics() {
   useMilestoneTracker();
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen md:pb-[120px]">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>

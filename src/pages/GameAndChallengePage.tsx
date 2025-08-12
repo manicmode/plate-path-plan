@@ -409,7 +409,7 @@ function GameAndChallengeContent() {
 
         {/* Main Content */}
         <div className={cn(
-          "container mx-auto space-y-6 sm:space-y-12",
+          "container mx-auto space-y-6 sm:space-y-12 md:pb-[120px]",
           isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
         )}>
           

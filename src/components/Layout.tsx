@@ -160,12 +160,7 @@ const Layout = ({ children }: LayoutProps) => {
           isExplorePage 
             ? 'h-[calc(100vh-160px)]' // Precise height for explore page
             : 'min-h-[calc(100vh-140px)]'
-        }`}
-        style={{
-          paddingBottom: shouldShowNavigation && !isExplorePage 
-            ? 'max(env(safe-area-inset-bottom), var(--tabbar-height))' 
-            : undefined
-        }}
+        } md:pb-[120px]`}
       >
         {children}
       </main>
