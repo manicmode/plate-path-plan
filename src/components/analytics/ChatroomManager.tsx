@@ -64,8 +64,17 @@ export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: Cha
   useEffect(() => {
     if (initialChatroomId) {
       setActiveChatroomId(initialChatroomId);
+      selectChatroom(initialChatroomId);
     }
-  }, [initialChatroomId]);
+  }, [initialChatroomId, selectChatroom]);
+
+  // Clear selection when manager closes
+  useEffect(() => {
+    if (!isOpen) {
+      clearSelection();
+      setActiveChatroomId(null);
+    }
+  }, [isOpen, clearSelection]);
 
   const handleSelectChatroom = (chatroomId: string) => {
     setActiveChatroomId(chatroomId);

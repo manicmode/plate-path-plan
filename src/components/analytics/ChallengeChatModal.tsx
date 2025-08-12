@@ -40,6 +40,10 @@ export const ChallengeChatModal = ({
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
   const [activeChatroomId, setActiveChatroomId] = useState(challengeId);
+  // Keep internal active chatroom in sync with prop changes
+  useEffect(() => {
+    setActiveChatroomId(challengeId);
+  }, [challengeId]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   

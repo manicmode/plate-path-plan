@@ -140,6 +140,29 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
+  // Listen for "switch-to-chat-tab" events from challenge cards
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ challengeId?: string }>;
+      setActiveSection('chat');
+      setIsChatroomManagerOpen(true);
+      if (ce.detail?.challengeId) {
+        setPreselectedChatId(ce.detail.challengeId);
+      }
+    };
+    window.addEventListener('switch-to-chat-tab', handler as EventListener);
+    return () => window.removeEventListener('switch-to-chat-tab', handler as EventListener);
+  }, []);
+
+  // If a chatroom is selected globally, open the chat tab/modal and preselect it
+  useEffect(() => {
+    if (selectedChatroomId) {
+      setActiveSection('chat');
+      setIsChatroomManagerOpen(true);
+      setPreselectedChatId(selectedChatroomId);
+    }
+  }, [selectedChatroomId]);
+
   // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
   let isLoading = false;
