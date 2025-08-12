@@ -38,28 +38,6 @@ export default function ChatroomDropdown() {
     console.info("[chat-dropdown] selected", val);
   };
 
-  const getEmojiByName = React.useCallback((name: string) => {
-    const n = (name || "").toLowerCase();
-    if (/(veg|plant|vegan)/.test(n)) return "🥦";
-    if (/(run|jog|marathon)/.test(n)) return "🏃";
-    if (/(walk|steps|move)/.test(n)) return "🚶";
-    if (/(yoga|stretch)/.test(n)) return "🧘";
-    if (/(push|lift|strength)/.test(n)) return "💪";
-    if (/(water|hydrate)/.test(n)) return "💧";
-    if (/(sleep|bed|rest)/.test(n)) return "😴";
-    if (/(read|book)/.test(n)) return "📚";
-    if (/(code|dev|program)/.test(n)) return "💻";
-    if (/(mind|meditat|focus)/.test(n)) return "🧘‍♂️";
-    if (/(recycl|eco|green)/.test(n)) return "♻️";
-    if (/(sugar|sweet)/.test(n)) return "🍭";
-    if (/(alcohol|wine|beer)/.test(n)) return "🚫🍷";
-    if (/(finance|budget|money|save)/.test(n)) return "💰";
-    if (/(bike|cycle)/.test(n)) return "🚴";
-    if (/(swim)/.test(n)) return "🏊";
-    return "🏆";
-  }, []);
-
-
   return (
     <div className="w-full flex justify-center pt-2 pb-3">
       <div className="w-[280px] md:w-[360px]">
@@ -73,12 +51,7 @@ export default function ChatroomDropdown() {
           <SelectContent align="center" className="max-h-[260px]">
             {rooms.map(r => (
               <SelectItem key={r.id} value={r.id}>
-                <div className="flex items-center gap-2">
-                  <span aria-hidden="true">{getEmojiByName(r.name)}</span>
-                  <span>
-                    {r.name} {r.type === "private" ? "• Private" : "• Public"}{r.count ? ` • ${r.count}` : ""}
-                  </span>
-                </div>
+                {r.name} {r.type === "private" ? "• Private" : "• Public"}{r.count ? ` • ${r.count}` : ""}
               </SelectItem>
             ))}
           </SelectContent>
