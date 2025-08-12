@@ -10,6 +10,31 @@ export interface ChallengeMessage {
   created_at: string;
 }
 
+
+// --- NEW: reconcile helper (merge, never blindly replace) ---
+function reconcile(prev: ChallengeMessage[], incoming: ChallengeMessage[]) {
+  const byId = new Map<string, ChallengeMessage>();
+  for (const m of prev) byId.set(String(m.id), m);
+
+  for (const m of incoming) {
+    for (const [id, p] of byId) {
+      if (
+        id.startsWith('local-') &&
+        p.user_id === m.user_id &&
+        p.content === m.content
+      ) {
+        byId.delete(id);
+        break;
+      }
+    }
+    byId.set(String(m.id), m);
+  }
+
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+}
+
 export function useChallengeMessages(challengeId: string | null) {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +60,8 @@ export function useChallengeMessages(challengeId: string | null) {
 
       if (!isCancelled) {
         if (error) setError(error as any);
-        setMessages(data ?? []);
+        setMessages((prev) => reconcile(prev as any, (data ?? []) as any));
+        console.info('[chat] fetch ok', { count: data?.length ?? 0 });
         setIsLoading(false);
       }
     };
@@ -49,18 +75,8 @@ export function useChallengeMessages(challengeId: string | null) {
         { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
         (payload) => {
           const row = payload.new as ChallengeMessage;
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === row.id)) return prev;
-            const i = prev.findIndex(
-              (m: any) => String(m.id).startsWith('local-') && m.user_id === (row as any).user_id && m.content === (row as any).content
-            );
-            if (i >= 0) {
-              const next = prev.slice();
-              next[i] = row as any;
-              return next;
-            }
-            return [...prev, row as any];
-          });
+          setMessages((prev) => reconcile(prev as any, [row as any]));
+          console.info('[chat] RT insert', (row as any)?.id);
         }
       )
       .subscribe();
@@ -69,7 +85,7 @@ export function useChallengeMessages(challengeId: string | null) {
       isCancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [challengeId]);
+  }, [challengeId, user?.id]);
 
   const sendMessage = async (content: string) => {
     const text = (content ?? '').trim();
@@ -85,6 +101,7 @@ export function useChallengeMessages(challengeId: string | null) {
 
     // Optimistically show it immediately
     setMessages((prev) => [...prev, temp as any]);
+    console.info('[chat] optimistic add', temp.id);
 
     try {
       const { data, error } = await supabase
@@ -99,8 +116,9 @@ export function useChallengeMessages(challengeId: string | null) {
 
       if (error) throw error;
 
-      // Replace temp with real row
-      setMessages((prev) => prev.map((m) => (m.id === temp.id ? (data as any) : m)));
+      // Merge server row (auto-drops the local temp)
+      setMessages((prev) => reconcile(prev as any, [data as any]));
+      console.info('[chat] insert ok', (data as any)?.id);
       return data as any;
     } catch (err) {
       // Rollback optimistic insert on error

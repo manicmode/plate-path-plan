@@ -42,7 +42,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
     );
   }, [messages]);
 
-  console.info('[chat] render messages', { count: list.length, challengeId });
+  console.info('[chat] render messages', { count: messages.length });
 
   useEffect(() => {
     const el = document.getElementById('chat-inline-scroll');
