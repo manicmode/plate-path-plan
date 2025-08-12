@@ -120,7 +120,7 @@ function GameAndChallengeContent() {
   const [preselectedChatId, setPreselectedChatId] = useState<string | null>(null);
   const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
   
-  const { selectedChatroomId } = useChatStore();
+  const { selectedChatroomId, selectChatroom } = useChatStore();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -144,15 +144,19 @@ function GameAndChallengeContent() {
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
+      if (ce.detail?.challengeId) {
+        selectChatroom(ce.detail.challengeId);
+      }
       setActiveSection('chat');
       setIsChatroomManagerOpen(true);
       if (ce.detail?.challengeId) {
         setPreselectedChatId(ce.detail.challengeId);
       }
+      console.info('[chat] event switch-to-chat-tab', ce.detail);
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
     return () => window.removeEventListener('switch-to-chat-tab', handler as EventListener);
-  }, []);
+  }, [selectChatroom]);
 
   // If a chatroom is selected globally, open the chat tab/modal and preselect it
   useEffect(() => {

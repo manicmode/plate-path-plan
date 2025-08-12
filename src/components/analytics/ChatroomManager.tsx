@@ -45,8 +45,12 @@ export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: Cha
         participantIds: [],
       });
     });
-
-    setChatrooms(availableChatrooms);
+ 
+     // QA logs
+     console.info('[chat] activeIds', (myChallenges ?? []).map(c => c.id));
+     console.info('[chat] rooms', availableChatrooms.map(r => r.id));
+ 
+     setChatrooms(availableChatrooms);
 
     // Auto-select based on global store or first available
     if (availableChatrooms.length > 0) {

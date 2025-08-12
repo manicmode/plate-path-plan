@@ -171,7 +171,7 @@ export const ChallengeChatModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="z-40 max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="p-4 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between">
