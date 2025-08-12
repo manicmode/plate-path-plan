@@ -284,54 +284,6 @@ function GameAndChallengeContent() {
               </div>
             )}
           </div>
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex items-center justify-center">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
-                </div>
-                <div className="w-10"></div> {/* Spacer for balance */}
-              </div>
-              
-              {/* Challenge Mode Toggle - Desktop */}
-              {activeSection !== 'my-friends' && activeSection !== 'chat' && (
-                <div className="flex justify-center">
-                  <ToggleGroup 
-                    type="single" 
-                    value={challengeMode} 
-                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
-                    className="bg-muted/50 rounded-full p-1"
-                  >
-                    <ToggleGroupItem 
-                      value="nutrition" 
-                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Nutrition
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="exercise" 
-                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Exercise
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="recovery" 
-                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Recovery
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="combined" 
-                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Combined
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-              )}
-            </div>
-          )}
           
           {/* Sort Controls - Responsive */}
           {activeSection === 'ranking' && (
@@ -383,12 +335,12 @@ function GameAndChallengeContent() {
 
         {/* Main Content */}
         <div className={cn(
-          "container mx-auto space-y-6 sm:space-y-12 md:pb-[120px]",
+          "container mx-auto md:max-w-[520px] space-y-6 sm:space-y-12 md:pb-[120px]",
           isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
         )}>
           
           {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
-          {!isMobile && (
+          {false && (
             <section id="ranking" className="animate-fade-in">
             <Card className={cn(
               "overflow-hidden border-2 shadow-xl",
@@ -638,7 +590,7 @@ function GameAndChallengeContent() {
           )}
 
           {/* Mobile-Optimized Tabs for All Sections */}
-          {isMobile ? (
+          {true ? (
             <Tabs value={activeSection} onValueChange={(value) => {
               if (value === 'chat') {
                 setIsChatroomManagerOpen(true);
