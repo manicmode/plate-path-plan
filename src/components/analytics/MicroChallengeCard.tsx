@@ -8,7 +8,7 @@ import { Clock, Zap, Users, MessageCircle } from 'lucide-react';
 import { Challenge } from '@/contexts/ChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { cn } from '@/lib/utils';
-
+import { useChatStore } from '@/store/chatStore';
 interface MicroChallengeCardProps {
   challenge: Challenge;
   onNudgeFriend?: (challengeId: string, friendId: string) => void;
@@ -35,6 +35,13 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
   };
 
   const averageProgress = Object.values(challenge.progress).reduce((sum, progress) => sum + progress, 0) / challenge.participants.length;
+
+  const { selectChatroom } = useChatStore();
+  const handleChatClick = () => {
+    selectChatroom(challenge.id);
+    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: challenge.id } }));
+    console.info('[chat] open from card', challenge.id);
+  };
 
   return (
     <Card className="min-w-[320px] bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border-2 border-yellow-200 dark:border-yellow-800 hover:shadow-lg transition-all duration-300 mb-0 !mb-0">
@@ -149,7 +156,7 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setShowChat(true)}
+              onClick={handleChatClick}
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />

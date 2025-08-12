@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Clock, Users, Target, Trophy, Flame, Star, Globe, Lock, Zap, Crown, Share, MessageCircle, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
+import { useChatStore } from '@/store/chatStore';
 export type ChallengeType = 'global' | 'friend' | 'quick';
 
 interface UnifiedChallengeCardProps {
@@ -59,6 +59,12 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
+  const { selectChatroom } = useChatStore();
+  const handleChat = () => {
+    selectChatroom(id);
+    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: id } }));
+    console.info('[chat] open from card', id);
+  };
   const getTypeColor = (type: ChallengeType) => {
     switch (type) {
       case 'global': return 'challenge-card-gradient-blue';
@@ -255,6 +261,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
               <Button 
                 variant="outline" 
                 size="sm" 
+                onClick={handleChat}
                 className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />

@@ -13,6 +13,7 @@ import { ChatroomSelector } from './ChatroomSelector';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useChallengeMessages } from '@/hooks/useChallengeMessages';
 
 interface ChallengeChatModalProps {
   open: boolean;
@@ -40,6 +41,7 @@ export const ChallengeChatModal = ({
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
   const [activeChatroomId, setActiveChatroomId] = useState(challengeId);
+  const { messages, isLoading, sendMessage: sendChatMessage } = useChallengeMessages(activeChatroomId);
   // Keep internal active chatroom in sync with prop changes
   useEffect(() => {
     setActiveChatroomId(challengeId);
@@ -139,17 +141,17 @@ export const ChallengeChatModal = ({
   }, [open, activeChatroomId, getLastEmojiTime, canSendEmoji]);
 
   // Handle message send with tagging
-  const handleSendMessage = (messageText: string, taggedUsers?: string[]) => {
+  const handleSendMessage = async (messageText: string) => {
     if (messageText.trim()) {
-      sendMessage(activeChatroomId, messageText, undefined, taggedUsers);
+      await sendChatMessage(messageText);
       setMessage('');
     }
   };
 
   // Handle emoji reactions
-  const handleEmojiClick = (emoji: string) => {
+  const handleEmojiClick = async (emoji: string) => {
     if (canSendEmoji(activeChatroomId)) {
-      sendMessage(activeChatroomId, undefined, emoji);
+      await sendChatMessage(emoji);
     }
   };
 
@@ -227,7 +229,12 @@ export const ChallengeChatModal = ({
 
         {/* Messages Container - Fixed height with proper scroll */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2 pb-[90px] md:pb-[120px]" id="chat-scroll-container">
-          {(!chat?.messages || chat.messages.length === 0) ? (
+          {isLoading ? (
+            <div className="text-center py-8">
+              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-8">
               <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground">No messages yet</p>
@@ -235,15 +242,17 @@ export const ChallengeChatModal = ({
             </div>
           ) : (
             <>
-              {chat.messages.map((msg) => (
-                <MessageBubbleWithTags
-                  key={msg.id}
-                  message={msg}
-                  isCurrentUser={msg.userId === user?.id}
-                  onTagClick={handleTagClick}
-                  onJoinChallenge={handleJoinChallenge}
-                  challengeParticipants={challengeParticipants}
-                />
+              {messages.map((msg: any) => (
+                <div key={msg.id} className="flex gap-3">
+                  <div className="flex flex-col">
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                    </div>
+                    <div className="rounded-lg px-3 py-2 max-w-xs break-words bg-muted">
+                      <div className="text-sm">{msg.content}</div>
+                    </div>
+                  </div>
+                </div>
               ))}
               <div ref={messagesEndRef} />
             </>

@@ -1,17 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useMyChallenges } from '@/hooks/useMyChallenges';
 import { useChatStore } from '@/store/chatStore';
-
-interface Chatroom {
-  id: string;
-  name: string;
-  type: 'public' | 'private';
-  participantCount: number;
-  participantIds?: string[];
-  unreadCount?: number;
-}
+import { MessageCircle } from 'lucide-react';
 
 interface ChatroomManagerProps {
   isOpen: boolean;
@@ -20,86 +12,64 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange, initialChatroomId }: ChatroomManagerProps) => {
-  const { data: myChallenges } = useMyChallenges();
+  const { data: myChallenges, isLoading } = useMyChallenges();
   const { selectedChatroomId, selectChatroom, clearSelection } = useChatStore();
-  const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
-  const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
 
-  // Build chatrooms list from user's challenge participations (Supabase source of truth)
+  const rooms = useMemo(() => (myChallenges ?? []).map(c => ({
+    id: c.id,
+    name: c.title,
+    type: (c.visibility === 'public' ? 'public' : 'private') as 'public' | 'private',
+    participantCount: c.participant_count || 0
+  })), [myChallenges]);
+
+  // QA logs
+  console.info('[chat] activeIds', (myChallenges ?? []).map(c => c.id));
+  console.info('[chat] rooms', rooms.map(r => r.id));
+
   useEffect(() => {
-    const availableChatrooms: Chatroom[] = [];
-
-    const list = myChallenges || [];
-    const challengeIdsUsedInChatQuery = list.map(c => c.id);
-
-    // Instrumentation logs (temporary)
-    console.info('[chat] activeChallenges.count', list.length, list.map(c => c.id));
-    console.info('[chat] chatQuery.challengeIds', challengeIdsUsedInChatQuery);
-
-    list.forEach(ch => {
-      availableChatrooms.push({
-        id: ch.id,
-        name: ch.title,
-        type: (ch.visibility === 'public' ? 'public' : 'private'),
-        participantCount: ch.participant_count || 0,
-        participantIds: [],
-      });
-    });
- 
-     // QA logs
-     console.info('[chat] activeIds', (myChallenges ?? []).map(c => c.id));
-     console.info('[chat] rooms', availableChatrooms.map(r => r.id));
- 
-     setChatrooms(availableChatrooms);
-
-    // Auto-select based on global store or first available
-    if (availableChatrooms.length > 0) {
-      if (selectedChatroomId) {
-        setActiveChatroomId(selectedChatroomId);
-      } else if (!activeChatroomId) {
-        const firstId = availableChatrooms[0].id;
-        setActiveChatroomId(firstId);
-        selectChatroom(firstId);
-      }
-    }
-  }, [myChallenges, activeChatroomId, selectedChatroomId, selectChatroom]);
-
-  // Preselect chatroom when requested from CTA
-  useEffect(() => {
-    if (initialChatroomId) {
-      setActiveChatroomId(initialChatroomId);
+    if (selectedChatroomId) {
+      setLocalSelectedId(selectedChatroomId);
+    } else if (initialChatroomId) {
+      setLocalSelectedId(initialChatroomId);
       selectChatroom(initialChatroomId);
+    } else if (rooms.length > 0 && !localSelectedId) {
+      const firstId = rooms[0].id;
+      setLocalSelectedId(firstId);
+      selectChatroom(firstId);
     }
-  }, [initialChatroomId, selectChatroom]);
+  }, [selectedChatroomId, initialChatroomId, rooms, localSelectedId, selectChatroom]);
 
-  // Clear selection when manager closes
   useEffect(() => {
     if (!isOpen) {
       clearSelection();
-      setActiveChatroomId(null);
+      setLocalSelectedId(null);
     }
   }, [isOpen, clearSelection]);
 
-  const handleSelectChatroom = (chatroomId: string) => {
-    setActiveChatroomId(chatroomId);
-  };
-
   if (!isOpen) return null;
+  if (isLoading) return <div className="p-4">Loading chatrooms...</div>;
+  if (rooms.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
+        <p className="text-muted-foreground">Join a challenge to access chat</p>
+      </div>
+    );
+  }
+
+  const selectedRoom = rooms.find(r => r.id === localSelectedId);
 
   return (
-    <>
-
-      {/* Active Chatroom Modal */}
-      {chatrooms.length > 0 && activeChatroomId && (
-        <ChallengeChatModal
-          open={isOpen}
-          onOpenChange={onOpenChange}
-          challengeId={activeChatroomId}
-          challengeName={chatrooms.find(r => r.id === activeChatroomId)?.name || 'Chat'}
-          participantCount={chatrooms.find(r => r.id === activeChatroomId)?.participantCount || 0}
-          challengeParticipants={chatrooms.find(r => r.id === activeChatroomId)?.participantIds || []}
-        />
-      )}
-    </>
+    <ChallengeChatModal
+      open={true}
+      onOpenChange={onOpenChange}
+      challengeId={localSelectedId || rooms[0].id}
+      challengeName={selectedRoom?.name || 'Chat'}
+      participantCount={selectedRoom?.participantCount || 0}
+      challengeParticipants={[]}
+      showChatroomSelector={rooms.length > 1}
+    />
   );
 };

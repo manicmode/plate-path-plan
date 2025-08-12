@@ -144,14 +144,14 @@ function GameAndChallengeContent() {
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
+      console.info('[chat] tabs active=', 'chat');
+      console.info('[chat] selectedChatroomId=', ce.detail?.challengeId);
       if (ce.detail?.challengeId) {
         selectChatroom(ce.detail.challengeId);
+        setPreselectedChatId(ce.detail.challengeId);
       }
       setActiveSection('chat');
       setIsChatroomManagerOpen(true);
-      if (ce.detail?.challengeId) {
-        setPreselectedChatId(ce.detail.challengeId);
-      }
       console.info('[chat] event switch-to-chat-tab', ce.detail);
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
@@ -791,21 +791,11 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0 -mt-4">
-                {/* Chat is now handled by ChatroomManager */}
-                <div className="text-center py-12">
-                  <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Challenge Chatrooms</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Chat with participants in your active challenges
-                  </p>
-                  <Button 
-                    onClick={() => setIsChatroomManagerOpen(true)}
-                    className="bg-gradient-to-r from-primary to-purple-600"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Open Chatrooms
-                  </Button>
-                </div>
+                <ChatroomManager
+                  isOpen={true}
+                  onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                  initialChatroomId={preselectedChatId || selectedChatroomId || undefined}
+                />
               </TabsContent>
 
               <TabsContent value="winners" className="mt-4">
@@ -849,12 +839,6 @@ function GameAndChallengeContent() {
           />
         )}
 
-        {/* Chatroom Manager */}
-        <ChatroomManager
-          isOpen={isChatroomManagerOpen}
-          onOpenChange={setIsChatroomManagerOpen}
-          initialChatroomId={preselectedChatId || undefined}
-        />
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
