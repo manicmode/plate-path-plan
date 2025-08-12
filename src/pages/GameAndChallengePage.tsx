@@ -242,74 +242,48 @@ function GameAndChallengeContent() {
       {/* Sticky Header - Outside the main container */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
-          {isMobile ? (
-            // Mobile Tab Navigation
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
-                <div className="w-10"></div> {/* Spacer for balance */}
-              </div>
-              
-              {/* Mobile horizontal scroll tabs */}
-              <ScrollArea className="w-full">
-                <div className="flex justify-between w-full pb-3 pt-1 px-2">
-                  {navigationItems.map(({ id, label, icon: Icon }) => (
-                    <Button
-                      key={id}
-                      variant={activeSection === id ? "default" : "ghost"}
-                      onClick={() => scrollToSection(id)}
-                      className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
-                      size="sm"
-                    >
-                      <Icon className="h-6 w-6" />
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              {/* Challenge Mode Toggle - Mobile */}
-              {activeSection !== 'my-friends' && activeSection !== 'chat' && (
-                <div className="flex justify-center mt-2">
-                  <ToggleGroup 
-                    type="single" 
-                    value={challengeMode} 
-                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
-                    className="bg-muted/50 rounded-full p-1"
-                  >
-                    <ToggleGroupItem 
-                      value="nutrition" 
-                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Nutrition
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="exercise" 
-                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Exercise
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="recovery" 
-                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Recovery
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="combined" 
-                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
-                    >
-                      Combined
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-              )}
+          {/* Unified mobile-style navigation for all sizes */}
+          <div className="flex flex-col space-y-2 md:space-y-3 md:max-w-[520px] md:mx-auto md:px-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+              <div className="w-10"></div>
             </div>
-          ) : (
-            // Desktop Navigation
-            <div className="flex flex-col space-y-3">
+            {/* Horizontal scroll tabs (same as mobile) */}
+            <ScrollArea className="w-full">
+              <div className="flex justify-between w-full pb-3 pt-1 px-2">
+                {navigationItems.map(({ id, label, icon: Icon }) => (
+                  <Button
+                    key={id}
+                    variant={activeSection === id ? "default" : "ghost"}
+                    onClick={() => scrollToSection(id)}
+                    className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
+                    size="sm"
+                  >
+                    <Icon className="h-6 w-6" />
+                  </Button>
+                ))}
+              </div>
+            </ScrollArea>
+            {/* Challenge Mode Toggle (same placement as mobile) */}
+            {activeSection !== 'my-friends' && activeSection !== 'chat' && (
+              <div className="flex justify-center mt-2">
+                <ToggleGroup 
+                  type="single" 
+                  value={challengeMode} 
+                  onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
+                  className="bg-muted/50 rounded-full p-1"
+                >
+                  <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
+                  <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Exercise</ToggleGroupItem>
+                  <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Recovery</ToggleGroupItem>
+                  <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Combined</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )}
+          </div>
               <div className="flex items-center justify-between">
                 <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
                   <ArrowLeft className="h-5 w-5" />
