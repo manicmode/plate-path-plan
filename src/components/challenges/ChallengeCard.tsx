@@ -42,7 +42,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 const { selectChatroom } = useChatStore();
 
   const handleChatClick = () => {
-    console.info('[chat] open from private card', challenge.id);
+    console.info('[chat] open from my card', challenge.id);
     selectChatroom(challenge.id);
     if (onChatClick) {
       onChatClick(challenge.id);

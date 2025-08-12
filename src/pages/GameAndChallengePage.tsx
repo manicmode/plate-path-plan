@@ -144,15 +144,9 @@ function GameAndChallengeContent() {
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
-      console.info('[chat] tabs active=', 'chat');
-      console.info('[chat] selectedChatroomId=', ce.detail?.challengeId);
-      if (ce.detail?.challengeId) {
-        selectChatroom(ce.detail.challengeId);
-        setPreselectedChatId(ce.detail.challengeId);
-      }
+      if (ce.detail?.challengeId) selectChatroom(ce.detail.challengeId);
       setActiveSection('chat');
-      setIsChatroomManagerOpen(true);
-      console.info('[chat] event switch-to-chat-tab', ce.detail);
+      console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
     return () => window.removeEventListener('switch-to-chat-tab', handler as EventListener);

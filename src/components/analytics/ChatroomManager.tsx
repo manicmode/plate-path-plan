@@ -36,22 +36,29 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   );
 
   console.info('[chat] rooms.ids', rooms.map(r => r.id));
-
+  console.info('[chat] selectedChatroomId', selectedChatroomId);
   // Selection sync (no conditional hooks)
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
 
+  // Fallback selection to avoid empty chat when rooms exist
   useEffect(() => {
-    if (selectedChatroomId) {
+    if (rooms.length && !selectedChatroomId && !localSelectedId) {
+      const id = rooms[0].id;
+      setLocalSelectedId(id);
+      selectChatroom(id);
+      console.info('[chat] fallback select', id);
+    }
+  }, [rooms, selectedChatroomId, localSelectedId, selectChatroom]);
+
+  // Sync with store and initialChatroomId
+  useEffect(() => {
+    if (selectedChatroomId && selectedChatroomId !== localSelectedId) {
       setLocalSelectedId(selectedChatroomId);
-    } else if (initialChatroomId) {
+    } else if (initialChatroomId && !localSelectedId) {
       setLocalSelectedId(initialChatroomId);
       selectChatroom(initialChatroomId);
-    } else if (rooms.length > 0 && !localSelectedId) {
-      const firstId = rooms[0].id;
-      setLocalSelectedId(firstId);
-      selectChatroom(firstId);
     }
-  }, [selectedChatroomId, initialChatroomId, rooms, localSelectedId, selectChatroom]);
+  }, [selectedChatroomId, initialChatroomId, localSelectedId, selectChatroom]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -72,22 +79,22 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
     );
   }
 
-  const selected = rooms.find((r) => r.id === localSelectedId) ?? rooms[0];
+  const activeId = localSelectedId || rooms[0]?.id;
   console.info('[chat] render rooms', rooms.map((r) => r.id), 'selected', localSelectedId);
 
   return inline ? (
     <ChallengeChatPanel
-      challengeId={selected.id}
-      challengeName={selected.name}
-      participantCount={selected.participantCount}
+      challengeId={activeId}
+      challengeName={rooms.find(r => r.id === activeId)?.name || 'Chat'}
+      participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
     />
   ) : (
     <ChallengeChatModal
       open={true}
       onOpenChange={onOpenChange}
-      challengeId={selected.id}
-      challengeName={selected.name}
-      participantCount={selected.participantCount}
+      challengeId={activeId}
+      challengeName={rooms.find(r => r.id === activeId)?.name || 'Chat'}
+      participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
       challengeParticipants={[]}
       showChatroomSelector={rooms.length > 1}
     />
