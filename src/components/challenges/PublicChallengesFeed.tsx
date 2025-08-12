@@ -205,7 +205,7 @@ export const PublicChallengesFeed: React.FC = () => {
         </div>
       ) : (
         /* Challenges Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
           {challenges.map((challenge) => {
             const isParticipating = isUserParticipating(challenge.id);
             const isLoading = loadingStates[challenge.id];
