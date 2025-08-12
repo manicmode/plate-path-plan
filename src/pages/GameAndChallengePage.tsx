@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -40,8 +40,7 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Lock,
-  Globe
+  Lock
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
@@ -53,19 +52,17 @@ import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 
-import { ChallengesFeed } from '@/components/analytics/ChallengesFeed';
+import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesBrowse';
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
-import { usePublicChallenges } from '@/hooks/usePublicChallenges';
+import { useChallenge } from '@/contexts/ChallengeContext';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
-import { ChallengesTabs } from '@/components/challenges/ChallengesTabs';
-import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 // Types
 interface ChatMessage {
@@ -81,91 +78,22 @@ interface ChatMessage {
 
 // All mock data removed - now using real data from Supabase
 
-// Minimal shell for bisection testing
-export function GameAndChallengePageShell() {
-  const { user } = useAuth(); // ok to read, no other custom hooks
-  console.log('[Bisect] Shell mounted, uid:', user?.id ?? null);
-  return <div style={{padding:24}}>SHELL OK</div>;
-}
-
-// Minimal page with just ChallengesFeed for bisection testing
-export function GameAndChallengePage_Min() {
-  const [showCreate, setShowCreate] = useState(false);
-  const [nudge, setNudge] = useState(0);
-  
-  console.log("[Bisect] Min page mounted");
-  
-  const handleCreated = useCallback(() => {
-    console.log("[Bisect] challenge created → refresh feed");
-    setNudge((n) => n + 1); // local state to bump a key on ChallengesFeed
-    setShowCreate(false);
-  }, []);
-
-  return (
-    <div style={{ padding: 16 }}>
-      <h2 style={{ color: "white", marginBottom: 12 }}>Challenges</h2>
-      <button onClick={() => setShowCreate(true)}>+ Create Challenge</button>
-      <ChallengeCreationModal
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        defaultVisibility="public"
-        onChallengeCreated={handleCreated}
-      />
-      <Suspense fallback={<div style={{color:"white"}}>Loading…</div>}>
-        <ChallengesFeed key={nudge} />
-      </Suspense>
-    </div>
-  );
-}
-
 export default function GameAndChallengePage() {
   return (
     <RewardsProvider>
       <ChatProvider>
         <ChallengeProvider>
-          <GameAndChallengePageTabs />
+          <GameAndChallengeContent />
         </ChallengeProvider>
       </ChatProvider>
     </RewardsProvider>
   );
 }
 
-function GameAndChallengePageTabs() {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/explore')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              Challenges
-            </h1>
-            <div className="w-10"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="container mx-auto px-2 sm:px-4 py-6">
-        <ChallengesTabs />
-      </div>
-    </div>
-  );
-}
-
 function GameAndChallengeContent() {
-  if (import.meta.env.DEV) console.log("[hooks-order-ok] GameAndChallengeContent");
-  
-  const { challenges, quickChallenges, joinChallenge } = usePublicChallenges();
+  const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
-  const uid = currentUser?.id ?? null;
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
@@ -180,7 +108,6 @@ function GameAndChallengeContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [challengeModalVisibility, setChallengeModalVisibility] = useState<'public' | 'private'>('public');
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -269,7 +196,7 @@ function GameAndChallengeContent() {
     if (chatMessage.trim()) {
       const newMessage = {
         id: messages.length + 1,
-        user: "You 🌟",
+        user: "Maya 🌟",
         message: chatMessage,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         reactions: []
@@ -523,10 +450,7 @@ function GameAndChallengeContent() {
                   
                   {/* Create Challenge Button */}
                   <Button 
-                    onClick={() => {
-                      setChallengeModalVisibility('public');
-                      setShowChallengeModal(true);
-                    }}
+                    onClick={() => setShowChallengeModal(true)}
                     className={cn(
                       "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg",
                       isMobile ? "h-8 px-3 text-xs w-full" : ""
@@ -779,10 +703,7 @@ function GameAndChallengeContent() {
                       
                       {/* Create Challenge Button */}
                       <Button 
-                        onClick={() => {
-                          setChallengeModalVisibility('public');
-                          setShowChallengeModal(true);
-                        }}
+                        onClick={() => setShowChallengeModal(true)}
                         className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full"
                         size="sm"
                       >
@@ -902,41 +823,7 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
-                {/* Mobile Challenge Action Buttons */}
-                {isMobile && (
-                  <div className="mb-6 grid grid-cols-2 gap-3">
-                    <Button
-                      onClick={() => {
-                        // Scroll to challenges feed if already visible, or it's a no-op since we're already there
-                        const challengeSection = document.querySelector('[data-challenge-feed]');
-                        if (challengeSection) {
-                          challengeSection.scrollIntoView({ behavior: 'smooth' });
-                        }
-                      }}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Globe className="h-4 w-4" />
-                      Browse Public
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setChallengeModalVisibility('private');
-                        setShowChallengeModal(true);
-                      }}
-                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                    >
-                      <Lock className="h-4 w-4" />
-                      Create Private
-                    </Button>
-                  </div>
-                )}
-                <div data-challenge-feed>
-                  <ChallengesFeed onCreate={() => {
-                    setChallengeModalVisibility('public');
-                    setShowChallengeModal(true);
-                  }} />
-                </div>
+                <PublicChallengesBrowse challengeMode={challengeMode} />
               </TabsContent>
 
               <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
@@ -1006,30 +893,10 @@ function GameAndChallengeContent() {
                     {challenges.length > 0 ? (
                       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {challenges.map((challenge) => (
-                          <Card key={challenge.id} className="border border-border bg-card hover:shadow-lg transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="font-semibold text-lg">{challenge.title}</h3>
-                                <span className="text-lg">{challenge.cover_emoji || '🏆'}</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-3">
-                                {challenge.description || 'Join this public challenge!'}
-                              </p>
-                              <Badge variant="secondary" className="mb-3">Public</Badge>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">
-                                  👥 {challenge.participant_count} participants
-                                </span>
-                                <Button
-                                  size="sm"
-                                  onClick={() => joinChallenge(challenge.id)}
-                                  className="text-xs"
-                                >
-                                  Join
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
+                          <ChallengeCard 
+                            key={challenge.id} 
+                            challenge={challenge} 
+                          />
                         ))}
                       </div>
                     ) : (
@@ -1037,10 +904,17 @@ function GameAndChallengeContent() {
                         <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Target className="h-10 w-10 text-green-600" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">No public challenges yet</h3>
+                        <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
                         <p className="text-muted-foreground mb-4">
-                          Create one to get started!
+                          Be the first to create a challenge and inspire others to join!
                         </p>
+                        <Button 
+                          onClick={() => setShowChallengeModal(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create First Challenge
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -1067,32 +941,14 @@ function GameAndChallengeContent() {
                     </Button>
                   </div>
                   
-                  {quickChallenges.length > 0 ? (
+                  {microChallenges.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto pb-4">
-                      {quickChallenges.map((challenge) => (
-                        <Card key={challenge.id} className="min-w-64 border border-border bg-card">
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-lg">{challenge.cover_emoji || '⚡'}</span>
-                              <h3 className="font-semibold text-sm">{challenge.title}</h3>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {challenge.description || 'Quick challenge!'}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">
-                                👥 {challenge.participant_count}
-                              </span>
-                              <Button
-                                size="sm"
-                                onClick={() => joinChallenge(challenge.id)}
-                                className="text-xs h-7"
-                              >
-                                Join
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                      {microChallenges.map((challenge) => (
+                        <MicroChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge}
+                          onNudgeFriend={nudgeFriend}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -1174,11 +1030,7 @@ function GameAndChallengeContent() {
           <ChallengeCreationModal
             open={showChallengeModal}
             onOpenChange={setShowChallengeModal}
-            defaultVisibility={challengeModalVisibility}
-            onChallengeCreated={() => {
-              // Refresh challenges data when a new challenge is created
-              console.log('Challenge created, refreshing data');
-            }}
+            friends={optimizedFriends}
           />
 
           <MicroChallengeCreationModal
