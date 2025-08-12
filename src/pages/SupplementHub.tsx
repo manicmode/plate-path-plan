@@ -1452,7 +1452,7 @@ const SupplementHub = () => {
           </div>
         </div>
       </div>
-      <div className="max-w-md mx-auto animate-fade-in pb-32">
+      <div className="max-w-md mx-auto animate-fade-in pb-20">
         
         {/* Scrolling Ticker */}
         <div className="overflow-hidden whitespace-nowrap bg-gradient-to-r from-transparent via-muted/20 to-transparent py-3 my-8">
