@@ -22,6 +22,10 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, sendMessage: sendChatMessage } = useChallengeMessages(challengeId);
 
+  useEffect(() => {
+    console.info('[chat] panel challengeId=', challengeId);
+  }, [challengeId]);
+
   const handleSendMessage = async (text: string) => {
     if (text.trim()) {
       await sendChatMessage(text);
@@ -55,7 +59,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         id="chat-inline-scroll"
         className="flex-1 overflow-y-auto px-4 pt-2"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 192px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 128px)",
         }}
       >
         {isLoading ? (

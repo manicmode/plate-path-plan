@@ -33,6 +33,11 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
   useEffect(() => { autoresize(); }, [value, autoresize]);
 
+  // Mount log
+  useEffect(() => {
+    console.info('[chat] composer mounted');
+  }, []);
+
   const canSend = useMemo(() => value.trim().length > 0 && !disabled && !sending, [value, disabled, sending]);
 
   const insertEmoji = (emoji: string) => {
@@ -52,8 +57,8 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
   const handleSubmit = useCallback(async () => {
     const text = value.trim();
-    console.info("[chat] submit called", { textLen: text.length, disabled: !!disabled, sending, composing: isComposing });
-    if (!text || disabled || sending || isComposing) return;
+    console.info('[chat] submit called', { textLen: text.length, disabled, sending, isComposing });
+    if (!text || disabled || sending) return;
     try {
       setSending(true);
       await onSend(text);
@@ -72,21 +77,21 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   }, [value, disabled, sending, isComposing, onSend]);
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    const nativeIsComp = (e.nativeEvent as any)?.isComposing;
+    const key229 = (e as any).keyCode === 229;
+    const composing = isComposing || nativeIsComp || key229;
+    console.info('[chat] keydown', { key: e.key, shift: e.shiftKey, code: e.code, keyCode: (e as any).keyCode, isComposing, nativeIsComp, composing });
+
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isComposing) {
-        console.info("[chat] enter pressed (no shift) -> handleSubmit()");
-        handleSubmit();
-      } else {
-        console.info("[chat] enter during composition (ignored)");
-      }
+      if (!composing) handleSubmit();
     }
   };
 
   return (
     <div className={cn(
-      "sticky bottom-0 z-40 w-full bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
-      "pt-2 md:pt-3 pb-[env(safe-area-inset-bottom)] px-0",
+      "fixed left-0 right-0 z-[60] bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
+      "bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-h,88px))] px-0",
       className
     )}>
       {/* Emoji strip (contained & clipped) */}
