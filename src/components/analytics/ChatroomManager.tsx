@@ -7,8 +7,6 @@ import { useActiveChallengeIds } from '@/hooks/challenges/useActiveChallengeIds'
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
-// Chatrooms are built from useMyChallenges() source of truth
-
 type ChatroomManagerProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,7 +25,6 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   const { challenges: publicChallenges } = usePublicChallenges();
   const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
 
-  // Build rooms from My Active challenges
   const index = useMemo(() => {
     const map = new Map<string, { id: string; name: string; type: 'public'|'private'; participantCount?: number }>();
     (publicChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title, type: 'public', participantCount: c.participant_count ?? 0 }));
@@ -42,42 +39,40 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
 
   console.info('[chat] rooms.ids', rooms.map(r => r.id));
   console.info('[chat] selectedChatroomId', selectedChatroomId);
-  // Selection sync (no conditional hooks)
+
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
 
-  // Fallback selection to avoid empty chat when rooms exist
   useEffect(() => {
     if (rooms.length && !selectedChatroomId && !localSelectedId) {
       const id = rooms[0].id;
       setLocalSelectedId(id);
       selectChatroom(id);
-      console.info('[mgr] autoselect', id);
+      console.info('[mgr] autoselect first room', id);
     }
   }, [rooms, selectedChatroomId, localSelectedId, selectChatroom]);
 
-  // Sync with store and initialChatroomId
   useEffect(() => {
     if (selectedChatroomId && selectedChatroomId !== localSelectedId) {
       setLocalSelectedId(selectedChatroomId);
-    } else if (initialChatroomId && !localSelectedId) {
+    } else if (initialChatroomId && !localSelectedId && rooms.some(r => r.id === initialChatroomId)) {
       setLocalSelectedId(initialChatroomId);
       selectChatroom(initialChatroomId);
+      console.info('[mgr] set initial room', initialChatroomId);
     }
-  }, [selectedChatroomId, initialChatroomId, localSelectedId, selectChatroom]);
+  }, [selectedChatroomId, initialChatroomId, localSelectedId, selectChatroom, rooms]);
 
+  // IMPORTANT: do not clear selection in inline mode (prevents remount wipes)
   useEffect(() => {
-    if (inline) return; // do not clear selection in inline mode
+    if (inline) {
+      console.info('[mgr] inline mode - not clearing selection on close');
+      return;
+    }
     if (!isOpen) {
+      console.info('[mgr] modal closed - clearing selection');
       clearSelection();
       setLocalSelectedId(null);
     }
   }, [inline, isOpen, clearSelection]);
-
-  useEffect(() => {
-    return () => {
-      console.warn('[mgr] unmount');
-    };
-  }, []);
 
   if (isOpen && isLoading) return <div className="p-4">Loading chatrooms…</div>;
 
@@ -92,13 +87,15 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   }
 
   const activeId = localSelectedId || rooms[0]?.id;
-  console.info('[chat] render rooms', rooms.map((r) => r.id), 'selected', localSelectedId);
+  const activeRoom = rooms.find(r => r.id === activeId);
+
+  console.info('[chat] render rooms', rooms.map(r => r.id), 'selected', localSelectedId);
 
   return inline ? (
     <ChallengeChatPanel
       challengeId={activeId}
-      challengeName={rooms.find(r => r.id === activeId)?.name || 'Chat'}
-      participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
+      challengeName={activeRoom?.name || 'Chat'}
+      participantCount={activeRoom?.participantCount || 0}
       showHeader={false}
     />
   ) : (
@@ -106,8 +103,8 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       open={true}
       onOpenChange={onOpenChange}
       challengeId={activeId}
-      challengeName={rooms.find(r => r.id === activeId)?.name || 'Chat'}
-      participantCount={rooms.find(r => r.id === activeId)?.participantCount || 0}
+      challengeName={activeRoom?.name || 'Chat'}
+      participantCount={activeRoom?.participantCount || 0}
       challengeParticipants={[]}
       showChatroomSelector={rooms.length > 1}
       showHeader={true}

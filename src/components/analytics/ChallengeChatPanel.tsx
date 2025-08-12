@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { MessageCircle, Users, Clock } from 'lucide-react';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { MessageCircle, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
 import ChatComposer from '@/components/analytics/chat/ChatComposer';
@@ -18,8 +18,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   participantCount = 0,
   showHeader = true,
 }) => {
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // SINGLE SOURCE: only this hook
   const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId);
 
   useEffect(() => {
@@ -35,9 +36,6 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       console.error('[panel] send error', e);
     }
   }, [challengeId, sendMessage]);
-
-
-  console.info('[panel] render messages.count', messages.length, 'for', challengeId);
 
   useEffect(() => {
     const el = document.getElementById('chat-inline-scroll');
@@ -61,18 +59,23 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         </header>
       )}
 
-      {/* Messages */}
       <div
         id="chat-inline-scroll"
         className="flex-1 overflow-y-auto px-4 pt-2"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 160px)",
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 160px)',
         }}
       >
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">Loading messages...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <MessageCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+            <p className="text-red-400">Error loading messages</p>
+            <p className="text-sm text-muted-foreground">{error.message}</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
@@ -82,24 +85,30 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
           </div>
         ) : (
           <>
-            {messages.map((msg: any) => (
-              <div key={String(msg.id)} className="flex gap-3">
-                <div className="flex flex-col">
-                  <div className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                  </div>
-                  <div className="rounded-lg px-3 py-2 max-w-xs break-words bg-muted">
-                    <div className="text-sm">{msg.content}</div>
+            {messages.map((msg) => {
+              const isOptimistic = msg.pending || String(msg.id ?? '').startsWith('temp-');
+              return (
+                <div
+                  key={String(msg.id ?? msg.tempId)}
+                  className={`flex gap-3 mb-4 ${isOptimistic ? 'opacity-70' : ''}`}
+                >
+                  <div className="flex flex-col">
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                      {isOptimistic && ' (sending...)'}
+                    </div>
+                    <div className="rounded-lg px-3 py-2 max-w-xs break-words bg-muted">
+                      <div className="text-sm">{msg.content}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
-      {/* Composer */}
       <div className="flex-shrink-0">
         <ChatComposer onSend={handleSend} disabled={!!error} />
       </div>

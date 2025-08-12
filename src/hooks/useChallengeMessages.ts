@@ -3,129 +3,151 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
 export interface ChallengeMessage {
-  id: string | number;
+  id?: string | number;
+  tempId?: string;
   challenge_id: string;
   user_id: string;
   content: string;
   created_at: string;
+  pending?: boolean;
 }
 
-
-// --- NEW: reconcile helper (merge, never blindly replace) ---
+// Race-safe, merge-only reconcile function
 function reconcile(prev: ChallengeMessage[], incoming: ChallengeMessage[]) {
-  const byId = new Map<string, ChallengeMessage>();
-  for (const m of prev) byId.set(String(m.id), m);
+  const map = new Map<string, ChallengeMessage>();
+  const byId = (m: ChallengeMessage) => String(m.id ?? m.tempId);
+
+  for (const m of prev) map.set(byId(m), m);
 
   for (const m of incoming) {
-    for (const [id, p] of byId) {
-      if (
-        id.startsWith('local-') &&
-        p.user_id === m.user_id &&
-        p.content === m.content
-      ) {
-        byId.delete(id);
-        break;
+    const key = byId(m);
+
+    // If this is a server row, try to replace a temp optimistic row
+    if (m.id && !m.tempId) {
+      for (const [tempKey, tempMsg] of map) {
+        if (
+          tempKey.startsWith('temp-') &&
+          tempMsg.user_id === m.user_id &&
+          tempMsg.content === m.content &&
+          Math.abs(new Date(tempMsg.created_at).getTime() - new Date(m.created_at).getTime()) < 5000
+        ) {
+          map.delete(tempKey);
+          break;
+        }
       }
     }
-    byId.set(String(m.id), m);
+
+    map.set(key, { ...map.get(key), ...m });
   }
 
-  return Array.from(byId.values()).sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  return [...map.values()].sort((a, b) => {
+    const timeA = new Date(a.created_at ?? '').getTime();
+    const timeB = new Date(b.created_at ?? '').getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    return String(a.id ?? a.tempId).localeCompare(String(b.id ?? b.tempId));
+  });
 }
 
 export function useChallengeMessages(challengeId: string | null) {
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChallengeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
-  const fetchSeq = useRef(0);
+  const seq = useRef(0);
 
   useEffect(() => {
-    if (!challengeId) return;
+    if (!challengeId) {
+      setMessages([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
-    let active = true;
-    const mySeq = ++fetchSeq.current;
+    const my = ++seq.current;
+    setIsLoading(true);
+    setError(null);
 
     (async () => {
-      setIsLoading(true);
-      setError(null);
       try {
         const { data, error } = await supabase
           .from('challenge_messages')
           .select('*')
           .eq('challenge_id', challengeId)
           .order('created_at', { ascending: true });
+
         if (error) throw error;
-        if (!active || mySeq !== fetchSeq.current) return;
-        setMessages((prev) => reconcile(prev as any, (data ?? []) as any));
-        console.info('[chat] fetch merged', { count: data?.length ?? 0, challengeId });
-      } catch (e) {
-        if (active && mySeq === fetchSeq.current) {
-          setError(e as any);
-          console.error('[chat] fetch error', e);
-        }
+        if (seq.current !== my) return;
+
+        setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
+        console.info('[chat] fetch merged', { count: data?.length ?? 0, challengeId, seq: my });
+      } catch (err) {
+        if (seq.current !== my) return;
+        setError(err as Error);
+        console.error('[chat] fetch error', err);
       } finally {
-        if (active && mySeq === fetchSeq.current) setIsLoading(false);
+        if (seq.current !== my) return;
+        setIsLoading(false);
       }
     })();
+  }, [challengeId]);
+
+  useEffect(() => {
+    if (!challengeId) return;
 
     const channel = supabase
       .channel(`challenge-messages-${challengeId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
-        (payload) => {
-          const row = payload.new as ChallengeMessage;
-          setMessages((prev) => reconcile(prev as any, [row as any]));
-          console.info('[chat] RT insert merged', (row as any)?.id);
+        payload => {
+          const newMessage = payload.new as ChallengeMessage;
+          setMessages(prev => reconcile(prev, [newMessage]));
+          console.info('[chat] RT insert merged', newMessage.id);
         }
       )
       .subscribe();
 
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [challengeId]);
 
   const sendMessage = async (content: string) => {
-    const text = (content ?? '').trim();
+    const text = content.trim();
     if (!challengeId || !user?.id || !text) return null;
 
-    const temp: ChallengeMessage = {
-      id: `local-${Date.now()}`,
+    const now = new Date().toISOString();
+    const tempId = `temp-${Date.now()}-${user.id}`;
+
+    const optimistic: ChallengeMessage = {
+      id: undefined,
+      tempId,
       challenge_id: challengeId,
       user_id: user.id,
       content: text,
-      created_at: new Date().toISOString(),
+      created_at: now,
+      pending: true,
     };
 
-    // Optimistically show it immediately
-    setMessages((prev) => [...prev, temp as any]);
-    console.info('[chat] optimistic add', temp.id);
+    setMessages(prev => reconcile(prev, [optimistic]));
+    console.info('[chat] optimistic add', tempId);
 
     try {
       const { data, error } = await supabase
         .from('challenge_messages')
-        .insert({
-          challenge_id: challengeId,
-          user_id: user.id,
-          content: text,
-        })
+        .insert({ challenge_id: challengeId, user_id: user.id, content: text })
         .select('*')
         .single();
 
       if (error) throw error;
 
-      // Merge server row (auto-drops the local temp)
-      setMessages((prev) => reconcile(prev as any, [data as any]));
-      console.info('[chat] insert ok', (data as any)?.id);
-      return data as any;
+      setMessages(prev => {
+        const withoutTemp = prev.filter(m => m.tempId !== tempId);
+        return reconcile(withoutTemp, [data as ChallengeMessage]);
+      });
+
+      console.info('[chat] send ok, replaced temp with server', (data as any)?.id);
+      return data as ChallengeMessage;
     } catch (err) {
-      // Rollback optimistic insert on error
-      setMessages((prev) => prev.filter((m) => m.id !== temp.id));
+      setMessages(prev => prev.filter(m => m.tempId !== tempId));
       console.error('[chat] send error', err);
       throw err;
     }
