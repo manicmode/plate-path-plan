@@ -63,7 +63,7 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         id="chat-inline-scroll"
         className="flex-1 overflow-y-auto px-4 pt-2"
         style={{
-          paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--bottom-nav-h,88px) + 160px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 88px + 180px)',
         }}
       >
         {isLoading ? (

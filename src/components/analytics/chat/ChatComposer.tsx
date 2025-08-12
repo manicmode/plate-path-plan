@@ -16,6 +16,7 @@ const EMOJIS = [
 export default function ChatComposer({ onSend, disabled, className }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
   
   const [isComposing, setIsComposing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -55,7 +56,8 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
     });
   };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const text = value.trim();
     console.info('[chat] submit called', { textLen: text.length, disabled, sending, isComposing });
     if (!text || disabled || sending) return;
@@ -66,7 +68,6 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
       if (taRef.current) {
         taRef.current.style.height = 'auto';
       }
-      // keep focus for quick chats
       requestAnimationFrame(() => taRef.current?.focus());
       console.info("[chat] submit ok");
     } catch (e) {
@@ -82,9 +83,12 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
     const composing = isComposing || nativeIsComp || key229;
     console.info('[chat] keydown', { key: e.key, shift: e.shiftKey, code: e.code, keyCode: (e as any).keyCode, isComposing, nativeIsComp, composing });
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!composing) handleSubmit();
+      if (!composing) {
+        if (formRef.current?.requestSubmit) formRef.current.requestSubmit();
+        else handleSubmit();
+      }
     }
   };
 
@@ -126,7 +130,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
       </div>
 
       {/* Input row */}
-      <div className="flex items-end gap-2 px-4 md:px-6 pb-3">
+      <form ref={formRef} onSubmit={handleSubmit} className="flex items-end gap-2 px-4 md:px-6 pb-3">
         <textarea
           ref={taRef}
           value={value}
@@ -139,6 +143,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
           rows={1}
           enterKeyHint="send"
           inputMode="text"
+          disabled={disabled}
           className={cn(
             "min-h-[44px] max-h-[160px] w-full resize-none",
             "rounded-2xl bg-muted/30 border border-border",
@@ -146,21 +151,20 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
           )}
         />
         <button
-          type="button"
-          onClick={handleSubmit}
+          type="submit"
           disabled={disabled || !canSend}
           aria-label="Send message"
           className={cn(
             "grid place-items-center rounded-full transition-all",
             "h-12 w-12 md:h-14 md:w-14",
-            canSend
+            canSend && !disabled
               ? "bg-primary text-primary-foreground shadow-lg hover:scale-105 active:scale-95"
               : "bg-muted/40 cursor-not-allowed"
           )}
         >
           <Send className="h-6 w-6" />
         </button>
-      </div>
+      </form>
     </div>
   );
 }

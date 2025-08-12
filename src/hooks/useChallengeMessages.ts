@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
+const CHAT_COLS = 'id,challenge_id,user_id,content,created_at';
+
 export interface ChallengeMessage {
   id?: string | number;
   tempId?: string;
@@ -59,13 +61,11 @@ export function useChallengeMessages(challengeId: string | null) {
     try {
       const { data, error } = await supabase
         .from('challenge_messages')
-        .select(`
-          id, challenge_id, user_id, content, created_at,
-          user:user_profiles!user_id(name, display_name, avatar_url)
-        `)
+        .select(CHAT_COLS)
         .eq('challenge_id', id)
         .order('created_at', { ascending: true });
 
+      console.info('[chat] refetch OK', { challengeId: id, rows: data?.length ?? 0 });
       if (error) throw error;
       if (seq.current !== sid) return;
       setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
@@ -92,13 +92,11 @@ export function useChallengeMessages(challengeId: string | null) {
       try {
         const { data, error } = await supabase
           .from('challenge_messages')
-          .select(`
-            id, challenge_id, user_id, content, created_at,
-            user:user_profiles!user_id(name, display_name, avatar_url)
-          `)
+          .select(CHAT_COLS)
           .eq('challenge_id', challengeId)
           .order('created_at', { ascending: true });
 
+        console.info('[chat] fetch OK', { challengeId, rows: data?.length ?? 0 });
         if (error) throw error;
         if (seq.current !== my) return;
         setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
@@ -122,16 +120,14 @@ export function useChallengeMessages(challengeId: string | null) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
         async (payload) => {
-          // Fetch one row with join for the new id
+          // Fetch one row for the new id
           const { data } = await supabase
             .from('challenge_messages')
-            .select(`
-              id, challenge_id, user_id, content, created_at,
-              user:user_profiles!user_id(name, display_name, avatar_url)
-            `)
+            .select(CHAT_COLS)
             .eq('id', payload.new.id)
             .single();
 
+          console.info('[chat] RT fetch OK', { id: payload.new.id, found: !!data });
           const merged = (data
             ? [data as ChallengeMessage]
             : [payload.new as ChallengeMessage]);
@@ -165,12 +161,10 @@ export function useChallengeMessages(challengeId: string | null) {
       const { data, error } = await supabase
         .from('challenge_messages')
         .insert({ challenge_id: challengeId, user_id: user.id, content: text })
-        .select(`
-          id, challenge_id, user_id, content, created_at,
-          user:user_profiles!user_id(name, display_name, avatar_url)
-        `)
+        .select(CHAT_COLS)
         .single();
 
+      console.info('[chat] insert OK', { challengeId, ok: !error });
       if (error) throw error;
       insertedId = (data as any)?.id ?? null;
 
