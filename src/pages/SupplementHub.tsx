@@ -1676,7 +1676,7 @@ const SupplementHub = () => {
         </Card>
 
         {/* My Supplements Section */}
-        <Card className="glass-card border-0 rounded-3xl">
+        <Card className="glass-card border-0 rounded-3xl mt-8">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <span>📂</span>
