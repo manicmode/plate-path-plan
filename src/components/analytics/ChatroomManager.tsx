@@ -4,67 +4,82 @@ import { useChatStore } from '@/store/chatStore';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { supabase } from '@/integrations/supabase/client';
 
-// ---- Local fallback: union public + private memberships for current user
-async function fetchActiveChallengesForChat(userId: string) {
-  console.info('[chat] fallback loader: fetching active challenges for', userId);
+// ---- RLS-safe: 2-step ID-first loader (no joins)
+async function fetchActiveChallengesForChat_RLSSafe(userId: string) {
+  console.info('[chat] RLS-safe loader start for', userId);
 
-  // PUBLIC challenges: owner or member (joined)
-  const pub = await supabase
+  // 1) PUBLIC MEMBERSHIP: read challenge IDs from challenge_members
+  const cm = await supabase
+    .from('challenge_members')
+    .select('challenge_id,status')
+    .eq('user_id', userId);
+
+  if (cm.error) console.error('[chat] challenge_members error', cm.error);
+  const memberIds = (cm.data ?? []).map((r: any) => r.challenge_id);
+  const memberStatuses = (cm.data ?? []).reduce((acc: Record<string, number>, r: any) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  console.info('[chat] memberIds', memberIds, 'byStatus', memberStatuses);
+
+  // 2) PUBLIC OWNER: read IDs for challenges you own (no join)
+  const owned = await supabase
     .from('challenges')
-    .select(
-      `
-      id, title, visibility, created_at,
-      challenge_members!inner(user_id, status),
-      owner_user_id
-    `
-    )
-    .or(`owner_user_id.eq.${userId},challenge_members.user_id.eq.${userId}`)
-    .eq('challenge_members.status', 'joined')
-    .order('created_at', { ascending: false });
+    .select('id')
+    .eq('owner_user_id', userId);
 
-  if (pub.error) {
-    console.error('[chat] public fetch error', pub.error);
-  }
+  if (owned.error) console.error('[chat] challenges(owner) error', owned.error);
+  const ownerIds = (owned.data ?? []).map((r: any) => r.id);
+  console.info('[chat] ownerIds', ownerIds);
 
-  // PRIVATE challenges: via private_challenge_participations
-  const priv = await supabase
+  const publicIds = Array.from(new Set([...(memberIds || []), ...(ownerIds || [])]));
+  console.info('[chat] publicIds merged', publicIds);
+
+  // 3) PRIVATE MEMBERSHIP: from participation table (no join)
+  const pcp = await supabase
     .from('private_challenge_participations')
-    .select(
-      `
-      private_challenge_id,
-      private_challenges:private_challenges!inner(
-        id, title, created_at
-      )
-    `
-    )
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .select('private_challenge_id')
+    .eq('user_id', userId);
 
-  if (priv.error) {
-    console.error('[chat] private fetch error', priv.error);
+  if (pcp.error) console.error('[chat] pcp error', pcp.error);
+  const privateIds = Array.from(new Set((pcp.data ?? []).map((r: any) => r.private_challenge_id)));
+  console.info('[chat] privateIds', privateIds);
+
+  // 4) FETCH PUBLIC CHALLENGE RECORDS by id IN (...)
+  let publicChallenges: any[] = [];
+  if (publicIds.length) {
+    const pub = await supabase
+      .from('challenges')
+      .select('id,title,created_at')
+      .in('id', publicIds);
+
+    if (pub.error) console.error('[chat] fetch public by id error', pub.error);
+    publicChallenges = pub.data ?? [];
   }
 
-  const publicRows = (pub.data ?? []).map((c: any) => ({
-    id: c.id,
-    title: c.title,
-    visibility: 'public',
-    participant_count: undefined,
-  }));
+  // 5) FETCH PRIVATE CHALLENGE RECORDS by id IN (...)
+  let privateChallenges: any[] = [];
+  if (privateIds.length) {
+    const priv = await supabase
+      .from('private_challenges')
+      .select('id,title,created_at')
+      .in('id', privateIds);
 
-  const privateRows = (priv.data ?? [])
-    .filter((r: any) => r.private_challenges?.id)
-    .map((r: any) => ({
-      id: r.private_challenges.id,
-      title: r.private_challenges.title ?? 'Private Challenge',
-      visibility: 'private',
-      participant_count: undefined,
-    }));
+    if (priv.error) console.error('[chat] fetch private by id error', priv.error);
+    privateChallenges = priv.data ?? [];
+  }
 
-  // de-dupe by id just in case
+  const rows = [
+    ...publicChallenges.map((c: any) => ({ id: c.id, title: c.title, visibility: 'public' })),
+    ...privateChallenges.map((c: any) => ({ id: c.id, title: c.title ?? 'Private Challenge', visibility: 'private' })),
+  ];
+
+  // de-dupe
   const map = new Map<string, any>();
-  [...publicRows, ...privateRows].forEach((c) => map.set(c.id, c));
+  rows.forEach((r) => map.set(r.id, r));
   const merged = Array.from(map.values());
-  console.info('[chat] rooms ids', merged.map((m) => m.id));
+
+  console.info('[chat] final rooms ids', merged.map((m) => m.id));
   return merged;
 }
 
@@ -83,36 +98,23 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   const [roomsSource, setRoomsSource] = useState<any[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Top-level effect: load rooms using the safe fallback loader
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData?.user;
-      if (!user) {
-        console.warn('[chat] no auth user; showing empty rooms');
-        if (!cancelled) {
-          setRoomsSource([]);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const merged = await fetchActiveChallengesForChat(user.id);
-      if (!cancelled) {
-        setRoomsSource(merged);
-        setLoading(false);
-      }
+// Top-level effect: load rooms using RLS-safe loader
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    setLoading(true);
+    const { data: au } = await supabase.auth.getUser();
+    const user = au?.user;
+    if (!user) {
+      console.warn('[chat] no auth user; rooms empty');
+      if (!cancelled) { setRoomsSource([]); setLoading(false); }
+      return;
     }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const merged = await fetchActiveChallengesForChat_RLSSafe(user.id);
+    if (!cancelled) { setRoomsSource(merged); setLoading(false); }
+  })();
+  return () => { cancelled = true; };
+}, []);
 
   // Build rooms
   const rooms = useMemo(
@@ -163,6 +165,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
   }
 
   const selected = rooms.find((r) => r.id === localSelectedId) ?? rooms[0];
+  console.info('[chat] render rooms', rooms.map((r) => r.id), 'selected', localSelectedId);
 
   return (
     <ChallengeChatModal
