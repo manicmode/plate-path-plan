@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { MessageCircle, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useChallengeMessages } from '@/hooks/useChallengeMessages';
-
+import ChatComposer from '@/components/analytics/chat/ChatComposer';
 
 interface ChallengeChatPanelProps {
   challengeId: string;
@@ -19,7 +19,11 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   roomType = 'public',
   showHeader = true,
 }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [composerH, setComposerH] = useState(180); // fallback
+  const [bottomNavH, setBottomNavH] = useState(96); // fallback
 
   // SINGLE SOURCE: only this hook
   const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId, roomType);
@@ -28,8 +32,39 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
     console.info('[chat] panel challengeId=', challengeId);
   }, [challengeId]);
 
+  // Measure bottom nav once (so composer can sit above it)
+  useEffect(() => {
+    const nav = document.querySelector('[data-bottom-nav]') as HTMLElement | null;
+    const h = nav?.offsetHeight ?? 96;
+    setBottomNavH(h);
+    // expose var so ChatComposer can use it in its bottom calc
+    document.documentElement.style.setProperty('--bottom-nav-h', `${h}px`);
+  }, []);
 
+  // Observe composer height so messages never hide behind it
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (box) setComposerH(Math.ceil(box.height));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
+  const handleSend = useCallback(async (text: string) => {
+    console.info('[panel] onSend', { challengeId, textLen: text.trim().length });
+    try {
+      await sendMessage(text);
+      requestAnimationFrame(() => {
+        endRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+      });
+      console.info('[panel] send ok');
+    } catch (e) {
+      console.error('[panel] send error', e);
+    }
+  }, [challengeId, sendMessage]);
 
   useEffect(() => {
     // Always scroll to bottom when messages change or room changes
@@ -55,7 +90,17 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         </header>
       )}
 
-      <div>
+      <div
+        id="chat-inline-scroll"
+        ref={scrollRef}
+        className="relative overflow-y-auto overscroll-contain px-4 pt-4"
+        style={{
+          // viewport: only this region scrolls, grows under sticky header
+          height: `calc(100vh - ${composerH}px - var(--bottom-nav-h, 88px) - env(safe-area-inset-bottom))`,
+          scrollBehavior: 'smooth',
+          overscrollBehavior: 'contain',
+        }}
+      >
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -99,6 +144,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         )}
       </div>
 
+      <div ref={composerRef} className="flex-shrink-0">
+        <ChatComposer onSend={handleSend} disabled={!!error} />
+      </div>
     </section>
   );
 };
