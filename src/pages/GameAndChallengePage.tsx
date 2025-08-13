@@ -347,6 +347,16 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
+        {activeSection === 'chat' && (
+          <>
+            {/* Dropdown under header; preserve its own background/classes */}
+            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+              <ChatroomDropdown />
+            </div>
+            {/* Thin separator below dropdown */}
+            <div className="border-b" />
+          </>
+        )}
       </div>
 
       {/* Main Content Container */}
@@ -789,17 +799,12 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div className="space-y-2">
-                  {/* Centered chatroom selector under the header */}
-                  <ChatroomDropdown />
-                  
                   <ChatroomManager
                     inline
                     isOpen={true}
                     onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
                     initialChatroomId={selectedChatroomId ?? undefined}
                   />
-                </div>
               </TabsContent>
 
               <TabsContent value="winners" className="mt-4">
