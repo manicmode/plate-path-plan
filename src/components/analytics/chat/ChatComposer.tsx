@@ -94,7 +94,7 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
   return (
     <div className={cn(
-      "fixed inset-x-0 z-50 bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
+      "fixed left-0 right-0 z-[60] bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
       "bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-h,88px))] px-0",
       className
     )}>

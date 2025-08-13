@@ -347,6 +347,16 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
+        {activeSection === 'chat' && (
+          <>
+            {/* Dropdown under header; preserve its own background/classes */}
+            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+              <ChatroomDropdown />
+            </div>
+            {/* Thin separator below dropdown */}
+            <div className="border-t border-white/10" />
+          </>
+        )}
       </div>
 
       {/* Main Content Container */}
@@ -790,17 +800,6 @@ function GameAndChallengeContent() {
 
               <TabsContent value="chat" className="mt-0">
                 <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
-                  {/* Sticky header + dropdown group (keep existing colors) */}
-                  <div id="chat-sticky-top" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-                    {/* place the existing ChatroomDropdown right under the header */}
-                    <div className="px-4 sm:px-4 md:px-6 lg:px-8">
-                      <ChatroomDropdown />
-                    </div>
-                    {/* thin separator line */}
-                    <div className="border-t border-white/10" role="separator" />
-                  </div>
-
-                  {/* Inline manager under the sticky block */}
                   <ChatroomManager
                     inline
                     isOpen={true}
