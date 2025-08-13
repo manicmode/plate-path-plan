@@ -36,21 +36,39 @@ export default function BillboardCard({ event }: { event: BillboardEvent }) {
         return null;
     }
   }, [event]);
+  const kindBorderClass = useMemo(() => {
+    switch (event.kind) {
+      case 'rank_jump':
+        return 'border-emerald-500';
+      case 'lead_change':
+        return 'border-amber-500';
+      case 'streak':
+        return 'border-sky-500';
+      case 'group_record':
+        return 'border-violet-500';
+      case 'milestone':
+        return 'border-rose-500';
+      case 'comeback':
+        return 'border-orange-500';
+      default:
+        return 'border-primary';
+    }
+  }, [event.kind]);
   return (
-    <article className="relative rounded-2xl border bg-card text-card-foreground shadow-sm border-l-4 border-primary">
+    <article className={`relative rounded-2xl border bg-card/80 backdrop-blur text-card-foreground shadow-lg border-l-4 ${kindBorderClass}`}>
       <header className="relative px-4 py-3 border-b flex items-center justify-between">
-        <h3 className="text-lg sm:text-xl font-bold">
+        <h3 className="text-xl md:text-2xl font-bold">
           {event.title}
         </h3>
         <time className="text-xs opacity-70">{ts}</time>
         {badge && (
-          <span className="absolute top-2 right-3 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/30">
+          <span className="absolute top-2 right-3 text-xs px-2 py-0.5 rounded-full bg-muted/60">
             {badge}
           </span>
         )}
       </header>
       {event.body && (
-        <div className="px-4 py-3 text-sm opacity-80">
+        <div className="px-4 py-3 text-sm md:text-base text-muted-foreground">
           {event.body}
         </div>
       )}

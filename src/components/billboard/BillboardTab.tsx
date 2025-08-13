@@ -2,6 +2,7 @@ import React from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
+import { seedBillboardForMyLatestChallenge } from "@/dev/seedBillboard";
 
 export default function BillboardTab() {
   const { selectedChatroomId } = useChatStore();
@@ -23,7 +24,17 @@ export default function BillboardTab() {
           ) : events.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-sm opacity-80 mb-3">No highlights yet. Check back later or refresh.</div>
-              <button onClick={refresh} className="px-3 py-1 rounded-full border text-sm">Refresh</button>
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={refresh} className="px-3 py-1 rounded-full border text-sm">Refresh</button>
+                {import.meta.env.DEV && (
+                  <button
+                    className="px-3 py-1 rounded-full border text-sm hover:bg-accent"
+                    onClick={async () => { await seedBillboardForMyLatestChallenge(); await refresh(); }}
+                  >
+                    Seed demo events
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             events.map((ev) => <BillboardCard key={ev.id} event={ev} />)
