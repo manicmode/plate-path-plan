@@ -90,17 +90,17 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
         </header>
       )}
 
-      <div
-        id="chat-inline-scroll"
-        ref={scrollRef}
-        className="relative overflow-y-auto overscroll-contain px-4 pt-4"
-        style={{
-          // viewport: only this region scrolls, grows under sticky header
-          height: `calc(100vh - ${composerH}px - var(--bottom-nav-h, 88px) - env(safe-area-inset-bottom))`,
-          scrollBehavior: 'smooth',
-          overscrollBehavior: 'contain',
-        }}
-      >
+        <div
+          id="chat-inline-scroll"
+          ref={scrollRef}
+          className="relative overflow-y-auto overscroll-contain px-4 pt-4"
+          style={{
+            // viewport: only this region scrolls, grows under sticky header
+            height: `calc(100dvh - ${composerH}px - var(--bottom-nav-h, 88px) - env(safe-area-inset-bottom))`,
+            scrollBehavior: 'smooth',
+            overscrollBehavior: 'contain',
+          }}
+        >
         {isLoading ? (
           <div className="text-center py-8">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
