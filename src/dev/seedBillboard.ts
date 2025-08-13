@@ -1,5 +1,48 @@
-// dev/seedBillboard.ts
+// src/dev/seedBillboard.ts
 import { supabase } from "@/integrations/supabase/client";
+
+export async function seedBillboardForChallenge(challengeId: string) {
+  if (!challengeId) throw new Error("No challenge selected");
+  const events = [
+    {
+      challenge_id: challengeId,
+      kind: "rank_jump",
+      title: "🔥 Sally rockets to #2!",
+      body: "Up 3 places overnight. Morning runs paying off.",
+      meta: { oldRank: 5, newRank: 2, delta: 3 },
+    },
+    {
+      challenge_id: challengeId,
+      kind: "streak",
+      title: "🏁 Tom hits a 14-day streak",
+      body: "Longest in the group so far.",
+      meta: { streak: 14 },
+    },
+    {
+      challenge_id: challengeId,
+      kind: "group_record",
+      title: "📈 Team record day",
+      body: "Average steps 12,400 — new high!",
+      meta: { avg_steps: 12400 },
+    },
+    {
+      challenge_id: challengeId,
+      kind: "milestone",
+      title: "💪 Mary crosses 100km total",
+      body: "She's been unstoppable this week.",
+      meta: { distance_km: 100 },
+    },
+    {
+      challenge_id: challengeId,
+      kind: "comeback",
+      title: "⚡ Danny climbs back into top 3",
+      body: "Was in 7th place just last week.",
+      meta: { oldRank: 7, newRank: 3 },
+    },
+  ];
+  const { error } = await supabase.from("billboard_events").insert(events);
+  if (error) throw error;
+}
 
 export async function seedBillboardForMyLatestChallenge() {
   const sb: any = supabase as any;
@@ -62,7 +105,7 @@ export async function seedBillboardForMyLatestChallenge() {
       challenge_id: challengeId,
       kind: "milestone",
       title: "💪 Mary crosses 100km total",
-      body: "She’s been unstoppable this week.",
+      body: "She's been unstoppable this week.",
       meta: { distance_km: 100 },
     },
     {

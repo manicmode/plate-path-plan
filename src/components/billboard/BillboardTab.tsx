@@ -1,13 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
-import { seedBillboardForMyLatestChallenge } from "@/dev/seedBillboard";
+import { seedBillboardForChallenge } from "@/dev/seedBillboard";
 
 export default function BillboardTab() {
   const { selectedChatroomId } = useChatStore();
   const challengeId = selectedChatroomId || "";
   const { events, isLoading, refresh } = useBillboardEvents(challengeId);
+  const [seeding, setSeeding] = useState(false);
 
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
@@ -22,19 +23,30 @@ export default function BillboardTab() {
           ) : !challengeId ? (
             <div className="text-center text-sm opacity-80 py-8">Select a challenge to view its Billboard.</div>
           ) : events.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-sm opacity-80 mb-3">No highlights yet. Check back later or refresh.</div>
+            <div className="flex flex-col items-center gap-3 py-12 text-sm text-muted-foreground">
+              <div>No highlights yet. Check back later or refresh.</div>
               <div className="flex items-center justify-center gap-2">
                 <button onClick={refresh} className="px-3 py-1 rounded-full border text-sm">Refresh</button>
-                {import.meta.env.DEV && (
-                  <button
-                    className="px-3 py-1 rounded-full border text-sm hover:bg-accent"
-                    onClick={async () => { await seedBillboardForMyLatestChallenge(); await refresh(); }}
-                  >
-                    Seed demo events
-                  </button>
-                )}
+                <button
+                  className="rounded-xl px-3 py-2 border hover:bg-accent disabled:opacity-50"
+                  disabled={!challengeId || seeding}
+                  onClick={async () => {
+                    if (!challengeId) return;
+                    try {
+                      setSeeding(true);
+                      await seedBillboardForChallenge(challengeId);
+                      await refresh();
+                    } finally {
+                      setSeeding(false);
+                    }
+                  }}
+                >
+                  {seeding ? "Seeding…" : "Seed demo events"}
+                </button>
               </div>
+              {!challengeId && (
+                <div className="text-xs">Select a challenge above first</div>
+              )}
             </div>
           ) : (
             events.map((ev) => <BillboardCard key={ev.id} event={ev} />)
