@@ -42,11 +42,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 const { selectChatroom } = useChatStore();
 
   const handleChatClick = () => {
-    console.info('[chat] open from my card', challenge.id);
     selectChatroom(challenge.id);
-    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', {
-      detail: { challengeId: challenge.id },
-    }));
+    window.dispatchEvent(
+      new CustomEvent("switch-to-chat-tab", { detail: { challengeId: challenge.id } })
+    );
+    // Navigate to Billboard tab instead of opening chat modal
+    console.log('Navigating to Billboard for challenge:', challenge.id);
   };
 
   const handleJoinClick = async () => {
@@ -182,7 +183,7 @@ const { selectChatroom } = useChatStore();
               data-testid={`btn-chat-${challenge.id}`}
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              Chat
+              Billboard
             </Button>
             {challenge.user_role !== 'owner' && !challenge.is_creator && (
               isParticipating ? (

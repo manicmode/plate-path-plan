@@ -1,14 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
 import { seedBillboardForChallenge } from "@/dev/seedBillboard";
+import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
+import { isDev } from "@/utils/dev";
 
 export default function BillboardTab() {
-  const { selectedChatroomId } = useChatStore();
+  const { selectedChatroomId, selectChatroom } = useChatStore();
   const challengeId = selectedChatroomId || "";
   const { events, isLoading, refresh } = useBillboardEvents(challengeId);
   const [seeding, setSeeding] = useState(false);
+
+  // Auto-assign to Rank-of-20 and default selection
+  useEffect(() => {
+    (async () => {
+      if (!selectedChatroomId) {
+        const chId = await ensureRank20ChallengeForMe();
+        if (chId) {
+          selectChatroom(chId);
+          
+          // Auto-seed demo events in dev mode if billboard is empty
+          if (isDev) {
+            setTimeout(async () => {
+              await seedBillboardForChallenge(chId, refresh);
+              await refresh();
+            }, 1000);
+          }
+        }
+      }
+    })();
+  }, [selectedChatroomId, selectChatroom, refresh]);
 
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
