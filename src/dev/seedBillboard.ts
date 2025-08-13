@@ -1,8 +1,12 @@
 // src/dev/seedBillboard.ts
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export async function seedBillboardForChallenge(challengeId: string) {
-  if (!challengeId) throw new Error("No challenge selected");
+  if (!challengeId) { 
+    toast({ title: "Select a challenge first" }); 
+    return; 
+  }
   const events = [
     {
       challenge_id: challengeId,
@@ -40,8 +44,13 @@ export async function seedBillboardForChallenge(challengeId: string) {
       meta: { oldRank: 7, newRank: 3 },
     },
   ];
-  const { error } = await supabase.from("billboard_events").insert(events);
-  if (error) throw error;
+  const { error } = await (supabase as any).from("billboard_events").insert(events);
+  if (error) {
+    console.error("Seed error:", error);
+    toast({ title: "Seeding failed", description: error.message, variant: "destructive" });
+    throw error;
+  }
+  toast({ title: "Seeded!", description: "Added 5 demo headlines." });
 }
 
 export async function seedBillboardForMyLatestChallenge() {
