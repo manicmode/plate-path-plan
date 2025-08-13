@@ -6,6 +6,7 @@ type ChatComposerProps = {
   onSend: (text: string) => Promise<void> | void;
   disabled?: boolean;
   className?: string;
+  fixed?: boolean;
 };
 
 const EMOJIS = [
@@ -13,7 +14,7 @@ const EMOJIS = [
   // add more freely; list can be long
 ];
 
-export default function ChatComposer({ onSend, disabled, className }: ChatComposerProps) {
+export default function ChatComposer({ onSend, disabled, className, fixed = true }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -94,8 +95,8 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
 
   return (
     <div className={cn(
-      "fixed left-0 right-0 z-[60] bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
-      "bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-h,88px))] px-0",
+      "z-[60] bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
+      fixed ? "fixed left-0 right-0 bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-h,88px))] px-0" : "",
       className
     )}>
       {/* Emoji strip (contained & clipped) */}
