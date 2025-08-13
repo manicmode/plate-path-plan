@@ -16,3 +16,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// One-time logging to verify project connection
+console.log('SUPABASE_URL', SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY', SUPABASE_PUBLISHABLE_KEY.slice(0, 8) + '…');

@@ -34,7 +34,7 @@ export default function BillboardTab() {
                     if (!challengeId) return;
                     try {
                       setSeeding(true);
-                      await seedBillboardForChallenge(challengeId);
+                      await seedBillboardForChallenge(challengeId, refresh);
                       await refresh();
                     } finally {
                       setSeeding(false);

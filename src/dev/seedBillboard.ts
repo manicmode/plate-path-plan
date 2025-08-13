@@ -2,55 +2,60 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-export async function seedBillboardForChallenge(challengeId: string) {
-  if (!challengeId) { 
-    toast({ title: "Select a challenge first" }); 
-    return; 
+const DEMO_EVENTS = (challengeId: string) => [
+  { challenge_id: challengeId, kind: "rank_jump",   title: "🔥 Sally rockets to #2!",        body: "Up 3 places overnight. Morning runs paying off.", meta: { oldRank: 5, newRank: 2, delta: 3 } },
+  { challenge_id: challengeId, kind: "streak",      title: "🏁 Tom hits a 14-day streak",    body: "Longest in the group so far.",                     meta: { streak: 14 } },
+  { challenge_id: challengeId, kind: "group_record",title: "📈 Team record day",             body: "Average steps 12,400 — new high!",                 meta: { avg_steps: 12400 } },
+  { challenge_id: challengeId, kind: "milestone",   title: "💪 Mary crosses 100km total",    body: "She's been unstoppable this week.",                meta: { distance_km: 100 } },
+  { challenge_id: challengeId, kind: "comeback",    title: "⚡ Danny climbs back into top 3",body: "Was in 7th place just last week.",                 meta: { oldRank: 7, newRank: 3 } },
+];
+
+export async function seedBillboardForChallenge(challengeId: string, refresh?: () => Promise<any>) {
+  if (!challengeId) {
+    toast({ title: "Select a challenge first" });
+    return;
   }
-  const events = [
-    {
-      challenge_id: challengeId,
-      kind: "rank_jump",
-      title: "🔥 Sally rockets to #2!",
-      body: "Up 3 places overnight. Morning runs paying off.",
-      meta: { oldRank: 5, newRank: 2, delta: 3 },
-    },
-    {
-      challenge_id: challengeId,
-      kind: "streak",
-      title: "🏁 Tom hits a 14-day streak",
-      body: "Longest in the group so far.",
-      meta: { streak: 14 },
-    },
-    {
-      challenge_id: challengeId,
-      kind: "group_record",
-      title: "📈 Team record day",
-      body: "Average steps 12,400 — new high!",
-      meta: { avg_steps: 12400 },
-    },
-    {
-      challenge_id: challengeId,
-      kind: "milestone",
-      title: "💪 Mary crosses 100km total",
-      body: "She's been unstoppable this week.",
-      meta: { distance_km: 100 },
-    },
-    {
-      challenge_id: challengeId,
-      kind: "comeback",
-      title: "⚡ Danny climbs back into top 3",
-      body: "Was in 7th place just last week.",
-      meta: { oldRank: 7, newRank: 3 },
-    },
-  ];
+  
+  console.log('Seeding billboard for challenge:', challengeId);
+  const events = DEMO_EVENTS(challengeId);
+
+  // Use any to bypass missing-type complaints if types are stale
   const { error } = await (supabase as any).from("billboard_events").insert(events);
+
   if (error) {
     console.error("Seed error:", error);
-    toast({ title: "Seeding failed", description: error.message, variant: "destructive" });
-    throw error;
+    toast({ 
+      title: "Seeding failed", 
+      description: `${error.message}${error.code ? ` (${error.code})` : ''}`, 
+      variant: "destructive" 
+    });
+    return;
   }
+  
+  console.log('Successfully seeded 5 events');
   toast({ title: "Seeded!", description: "Added 5 demo headlines." });
+  await refresh?.();
+}
+
+export async function ensureMembership(challengeId: string, userId: string) {
+  console.log('Ensuring membership for user', userId, 'in challenge', challengeId);
+  const { error } = await (supabase as any).from("private_challenge_participations").insert({ 
+    private_challenge_id: challengeId, 
+    user_id: userId 
+  });
+  
+  if (error && !error.message.includes('duplicate')) {
+    console.error('Membership error:', error);
+    toast({ 
+      title: "Membership failed", 
+      description: error.message, 
+      variant: "destructive" 
+    });
+    return false;
+  }
+  
+  console.log('Membership ensured');
+  return true;
 }
 
 export async function seedBillboardForMyLatestChallenge() {
