@@ -6,12 +6,33 @@ import ChallengeRankings from "./ChallengeRankings";
 import { seedBillboardForChallenge } from "@/dev/seedBillboard";
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function BillboardTab() {
   const { selectedChatroomId, selectChatroom } = useChatStore();
   const challengeId = selectedChatroomId || "";
   const { events, isLoading, refresh } = useBillboardEvents(challengeId);
   const [seeding, setSeeding] = useState(false);
+  const [challengeTitle, setChallengeTitle] = useState<string>("");
+
+  // Fetch challenge details to determine if it's Rank-of-20
+  useEffect(() => {
+    (async () => {
+      if (!challengeId) {
+        setChallengeTitle("");
+        return;
+      }
+      console.log('[diag] billboard challenge', challengeId);
+      
+      const { data: challenge } = await supabase
+        .from("private_challenges")
+        .select("title")
+        .eq("id", challengeId)
+        .single();
+      
+      setChallengeTitle(challenge?.title || "");
+    })();
+  }, [challengeId]);
 
   // Auto-assign to Rank-of-20 and default selection
   useEffect(() => {
@@ -84,7 +105,9 @@ export default function BillboardTab() {
             </div>
           ) : (
             <>
-              <ChallengeRankings challengeId={challengeId} />
+              {challengeTitle.toLowerCase().startsWith("rank of 20") && (
+                <ChallengeRankings challengeId={challengeId} />
+              )}
               {events.map((ev) => <BillboardCard key={ev.id} event={ev} />)}
             </>
           )}
