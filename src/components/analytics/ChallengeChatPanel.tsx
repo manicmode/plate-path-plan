@@ -8,8 +8,7 @@ interface ChallengeChatPanelProps {
   challengeId: string;
   challengeName?: string;
   participantCount?: number;
-  isPublic?: boolean;
-  isPrivate?: boolean;
+  roomType?: 'public' | 'private';
   showHeader?: boolean;
 }
 
@@ -17,13 +16,13 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   challengeId,
   challengeName = 'Chat',
   participantCount = 0,
-  isPrivate = false,
+  roomType = 'public',
   showHeader = true,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // SINGLE SOURCE: only this hook
-  const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId, { isPrivate });
+  const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId, roomType);
 
   useEffect(() => {
     console.info('[chat] panel challengeId=', challengeId);

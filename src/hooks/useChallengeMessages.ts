@@ -80,9 +80,9 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
   const refetch = async (sid: number, id: string) => {
     try {
       const { data, error } = await (supabase as any)
-        .from(TABLE)
+        .from(table)
         .select(COLS)
-        .eq(CH_ID_COL, id)
+        .eq(idCol, id)
         .order('created_at', { ascending: true });
 
       console.info('[chat] refetch OK', { challengeId: id, rows: data?.length ?? 0 });
@@ -111,9 +111,9 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
     (async () => {
       try {
         const { data, error } = await (supabase as any)
-          .from(TABLE)
+          .from(table)
           .select(COLS)
-          .eq(CH_ID_COL, challengeId)
+          .eq(idCol, challengeId)
           .order('created_at', { ascending: true });
 
         console.info('[chat] fetch OK', { challengeId, rows: data?.length ?? 0 });
@@ -129,20 +129,20 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
         setIsLoading(false);
       }
     })();
-  }, [challengeId, isPrivate]);
+  }, [challengeId, table, idCol, roomType]);
 
   // Realtime INSERT
   useEffect(() => {
     if (!challengeId) return;
     const channel = supabase
-      .channel(`${TABLE}-${challengeId}`)
+      .channel(`chat-${table}-${challengeId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: TABLE, filter: `${CH_ID_COL}=eq.${challengeId}` },
+        { event: 'INSERT', schema: 'public', table: table, filter: `${idCol}=eq.${challengeId}` },
         async (payload) => {
           // Fetch one row for the new id
           const { data } = await (supabase as any)
-            .from(TABLE)
+            .from(table)
             .select(COLS)
             .eq('id', payload.new.id)
             .single();
@@ -159,7 +159,7 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [challengeId, isPrivate]);
+  }, [challengeId, table, idCol, roomType]);
 
   // Optimistic send with “guaranteed persist”
   const sendMessage = async (content: string) => {
@@ -168,9 +168,13 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
 
     const now = new Date().toISOString();
     const tempId = `temp-${Date.now()}-${user.id}`;
-    const optimistic: ChallengeMessage = {
-      tempId, challenge_id: challengeId, user_id: user.id, content: text, created_at: now, pending: true,
-      user: { name: user.user_metadata?.name ?? null, display_name: user.user_metadata?.name ?? null, avatar_url: null }
+    const optimistic: any = {
+      tempId,
+      [idCol]: challengeId,
+      user_id: user.id,
+      content: text,
+      created_at: now,
+      pending: true,
     };
     setMessages(prev => reconcile(prev, [optimistic]));
     console.info('[chat] optimistic add', tempId);
@@ -179,8 +183,8 @@ export function useChallengeMessages(challengeId: string | null, roomType: RoomT
 
     try {
       const { data, error } = await (supabase as any)
-        .from(TABLE)
-        .insert({ [CH_ID_COL]: challengeId, user_id: user.id, content: text } as any)
+        .from(table)
+        .insert({ [idCol]: challengeId, user_id: user.id, content: text } as any)
         .select(COLS)
         .single();
 
