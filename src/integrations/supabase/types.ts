@@ -2088,6 +2088,45 @@ export type Database = {
         }
         Relationships: []
       }
+      private_challenge_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          private_challenge_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          private_challenge_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          private_challenge_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_challenge_messages_private_challenge_id_fkey"
+            columns: ["private_challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_challenge_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       private_challenge_participations: {
         Row: {
           completed_at: string | null

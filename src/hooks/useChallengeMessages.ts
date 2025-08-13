@@ -49,26 +49,29 @@ function reconcile(prev: ChallengeMessage[], incoming: ChallengeMessage[]) {
   return sorted;
 }
 
-export function useChallengeMessages(challengeId: string | null) {
+export function useChallengeMessages(challengeId: string | null, opts?: { isPrivate?: boolean }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChallengeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const seq = useRef(0);
-
+  const isPrivate = !!opts?.isPrivate;
+  const TABLE = isPrivate ? 'private_challenge_messages' : 'challenge_messages';
+  const CH_ID_COL = isPrivate ? 'private_challenge_id' : 'challenge_id';
+  const COLS = isPrivate ? `id,${CH_ID_COL},user_id,content,created_at` : CHAT_COLS;
   // Local refetch helper (race-safe)
   const refetch = async (sid: number, id: string) => {
     try {
-      const { data, error } = await supabase
-        .from('challenge_messages')
-        .select(CHAT_COLS)
-        .eq('challenge_id', id)
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .select(COLS)
+        .eq(CH_ID_COL, id)
         .order('created_at', { ascending: true });
 
       console.info('[chat] refetch OK', { challengeId: id, rows: data?.length ?? 0 });
       if (error) throw error;
       if (seq.current !== sid) return;
-      setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
+      setMessages(prev => reconcile(prev, (data ?? []) as unknown as ChallengeMessage[]));
       console.info('[chat] refetch merged', { count: data?.length ?? 0, challengeId: id, seq: sid });
     } catch (e) {
       if (seq.current !== sid) return;
@@ -90,16 +93,16 @@ export function useChallengeMessages(challengeId: string | null) {
 
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from('challenge_messages')
-          .select(CHAT_COLS)
-          .eq('challenge_id', challengeId)
+        const { data, error } = await (supabase as any)
+          .from(TABLE)
+          .select(COLS)
+          .eq(CH_ID_COL, challengeId)
           .order('created_at', { ascending: true });
 
         console.info('[chat] fetch OK', { challengeId, rows: data?.length ?? 0 });
         if (error) throw error;
         if (seq.current !== my) return;
-        setMessages(prev => reconcile(prev, (data ?? []) as ChallengeMessage[]));
+        setMessages(prev => reconcile(prev, (data ?? []) as unknown as ChallengeMessage[]));
         console.info('[chat] fetch merged', { count: data?.length ?? 0, challengeId, seq: my });
       } catch (err) {
         if (seq.current !== my) return;
@@ -109,21 +112,21 @@ export function useChallengeMessages(challengeId: string | null) {
         setIsLoading(false);
       }
     })();
-  }, [challengeId]);
+  }, [challengeId, isPrivate]);
 
   // Realtime INSERT
   useEffect(() => {
     if (!challengeId) return;
     const channel = supabase
-      .channel(`challenge-messages-${challengeId}`)
+      .channel(`${TABLE}-${challengeId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'challenge_messages', filter: `challenge_id=eq.${challengeId}` },
+        { event: 'INSERT', schema: 'public', table: TABLE, filter: `${CH_ID_COL}=eq.${challengeId}` },
         async (payload) => {
           // Fetch one row for the new id
-          const { data } = await supabase
-            .from('challenge_messages')
-            .select(CHAT_COLS)
+          const { data } = await (supabase as any)
+            .from(TABLE)
+            .select(COLS)
             .eq('id', payload.new.id)
             .single();
 
@@ -139,7 +142,7 @@ export function useChallengeMessages(challengeId: string | null) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [challengeId]);
+  }, [challengeId, isPrivate]);
 
   // Optimistic send with “guaranteed persist”
   const sendMessage = async (content: string) => {
@@ -155,13 +158,13 @@ export function useChallengeMessages(challengeId: string | null) {
     setMessages(prev => reconcile(prev, [optimistic]));
     console.info('[chat] optimistic add', tempId);
 
-    let insertedId: number | null = null;
+    let insertedId: string | number | null = null;
 
     try {
-      const { data, error } = await supabase
-        .from('challenge_messages')
-        .insert({ challenge_id: challengeId, user_id: user.id, content: text })
-        .select(CHAT_COLS)
+      const { data, error } = await (supabase as any)
+        .from(TABLE)
+        .insert({ [CH_ID_COL]: challengeId, user_id: user.id, content: text } as any)
+        .select(COLS)
         .single();
 
       console.info('[chat] insert OK', { challengeId, ok: !error });

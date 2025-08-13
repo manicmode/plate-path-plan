@@ -96,6 +96,7 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       challengeId={activeId}
       challengeName={activeRoom?.name || 'Chat'}
       participantCount={activeRoom?.participantCount || 0}
+      isPrivate={activeRoom?.type === 'private'}
       showHeader={false}
     />
   ) : (
