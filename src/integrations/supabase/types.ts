@@ -347,6 +347,126 @@ export type Database = {
         }
         Relationships: []
       }
+      billboard_comments: {
+        Row: {
+          body: string
+          created_at: string | null
+          event_id: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          event_id: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billboard_comments_event_fk"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "billboard_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billboard_events: {
+        Row: {
+          author_system: string | null
+          author_user_id: string | null
+          body: string | null
+          challenge_id: string
+          created_at: string | null
+          id: string
+          kind: string
+          meta: Json | null
+          pinned: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_system?: string | null
+          author_user_id?: string | null
+          body?: string | null
+          challenge_id: string
+          created_at?: string | null
+          id?: string
+          kind: string
+          meta?: Json | null
+          pinned?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_system?: string | null
+          author_user_id?: string | null
+          body?: string | null
+          challenge_id?: string
+          created_at?: string | null
+          id?: string
+          kind?: string
+          meta?: Json | null
+          pinned?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billboard_events_challenge_fk"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billboard_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          event_id: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          event_id: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          event_id?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billboard_reactions_event_fk"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "billboard_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       body_scan_reminders: {
         Row: {
           created_at: string
