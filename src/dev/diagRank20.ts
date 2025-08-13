@@ -4,14 +4,8 @@ export async function diagRank20() {
   try {
     const url = (supabase as any)?.rest?.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
     console.log("[diag] Supabase URL:", url);
-
-    // Check tables exist
-    const { data: exists, error: existsErr } = await supabase.rpc("sql", {
-      // use the built-in SQL edge function if available; otherwise run a safe select
-    } as any);
-
   } catch (e) {
-    console.warn("[diag] rpc(sql) not available, using lightweight checks");
+    console.warn("[diag] Error getting Supabase URL:", e);
   }
 
   // Lightweight checks without SQL edge function:
