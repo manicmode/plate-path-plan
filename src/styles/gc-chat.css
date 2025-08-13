@@ -1,0 +1,4 @@
+/* Chat tab grid layout for sticky header + scroller + composer */
+.gc-chat-root {
+  grid-template-rows: auto 1fr auto;
+}

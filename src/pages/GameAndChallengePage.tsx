@@ -65,6 +65,8 @@ import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 import { useChatStore } from '@/store/chatStore';
+import ChatComposer from '@/components/analytics/chat/ChatComposer';
+import '@/styles/gc-chat.css';
 
 // Types
 interface ChatMessage {
@@ -165,24 +167,38 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
+  // Measure and expose header/composer/bottom-nav heights for chat layout
   useEffect(() => {
     if (activeSection !== 'chat') return;
-    const header = document.getElementById('gaming-sticky-header');
+
+    const header = document.getElementById('gc-sticky-header');
+    const composer = document.getElementById('gc-composer');
+    const bottomNav = document.querySelector('[data-bottom-nav]') as HTMLElement | null;
+
     const apply = () => {
-      const h = header?.offsetHeight ?? 0;
-      document.documentElement.style.setProperty('--gc-header-h', `${h}px`);
+      if (header) document.documentElement.style.setProperty('--gc-header-h', `${header.offsetHeight}px`);
+      if (composer) document.documentElement.style.setProperty('--gc-composer-h', `${composer.offsetHeight}px`);
+      if (bottomNav) {
+        document.documentElement.style.setProperty('--gc-bottom-nav-h', `${bottomNav.offsetHeight}px`);
+        document.documentElement.style.setProperty('--bottom-nav-h', `${bottomNav.offsetHeight}px`);
+      }
     };
+
     apply();
 
-    const ro = header ? new ResizeObserver(apply) : null;
-    if (header) ro?.observe(header);
+    const ro1 = header && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+    const ro2 = composer && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+    const ro3 = bottomNav && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+
+    ro1?.observe(header!);
+    ro2?.observe(composer!);
+    ro3?.observe(bottomNav!);
 
     window.addEventListener('resize', apply);
     window.addEventListener('orientationchange', apply);
 
     return () => {
-      ro?.disconnect();
+      ro1?.disconnect(); ro2?.disconnect(); ro3?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('orientationchange', apply);
     };
@@ -370,6 +386,16 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
+        {activeSection === 'chat' && (
+          <>
+            {/* Dropdown under header; preserve its own background/classes */}
+            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+              <ChatroomDropdown />
+            </div>
+            {/* Thin separator below dropdown */}
+            <div className="border-t border-white/10" />
+          </>
+        )}
       </div>
 
       {/* Main Content Container */}
@@ -812,25 +838,46 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div id="chat-tab-root" className="relative min-h-[100dvh] flex flex-col"> {/* NOTE: no overflow here */}
-                  {/* Sticky header (dropdown/avatars) */}
-                  <div id="gaming-sticky-header"
-                       className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                <div id="gc-chat-root" className="gc-chat-root grid h-[100dvh]">
+                  {/* Row 1: Sticky header (dropdown/avatars) */}
+                  <div
+                    id="gc-sticky-header"
+                    className="sticky top-0 z-[60] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b"
+                  >
                     <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
                       <ChatroomDropdown />
                     </div>
                     <div className="border-t border-white/10" />
                   </div>
 
-                  {/* THE ONLY VERTICAL SCROLLER */}
-                  <div id="gaming-chat-scroll"
-                       className="flex-1 overflow-y-auto overscroll-contain"
-                       style={{ paddingTop: 'var(--gc-header-h,0px)' }}>
+                  {/* Row 2: ONLY scroll container */}
+                  <div
+                    id="gc-scroll"
+                    className="gc-scroll overflow-y-auto overscroll-contain"
+                    style={{
+                      paddingTop: 'var(--gc-header-h,0px)',
+                      paddingBottom: 'calc(var(--gc-composer-h,72px) + var(--gc-bottom-nav-h,88px) + env(safe-area-inset-bottom))',
+                    }}
+                  >
                     <ChatroomManager
                       inline
                       isOpen={true}
                       onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
                       initialChatroomId={selectedChatroomId ?? undefined}
+                    />
+                    <div id="gc-end" />
+                  </div>
+
+                  {/* Row 3: Sticky composer (above bottom nav) */}
+                  <div
+                    id="gc-composer"
+                    className="sticky bottom-[calc(var(--gc-bottom-nav-h,88px)+env(safe-area-inset-bottom))] z-[70] bg-background/95 backdrop-blur border-t"
+                  >
+                    <ChatComposer
+                      fixed={false}
+                      onSend={(text) => {
+                        window.dispatchEvent(new CustomEvent('gc-send-message', { detail: { text } }));
+                      }}
                     />
                   </div>
                 </div>
