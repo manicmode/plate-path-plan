@@ -168,7 +168,7 @@ function GameAndChallengeContent() {
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
     if (activeSection !== 'chat') return;
-    const header = document.getElementById('gaming-sticky-header');
+    const header = document.getElementById('gc-sticky-header');
     const apply = () => {
       const h = header?.offsetHeight ?? 0;
       document.documentElement.style.setProperty('--gc-header-h', `${h}px`);
@@ -814,8 +814,8 @@ function GameAndChallengeContent() {
               <TabsContent value="chat" className="mt-0">
                 <div id="chat-tab-root" className="relative min-h-[100dvh] flex flex-col"> {/* NOTE: no overflow here */}
                   {/* Sticky header (dropdown/avatars) */}
-                  <div id="gaming-sticky-header"
-                       className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                  <div id="gc-sticky-header"
+                       className="sticky top-[var(--app-header-height)] z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
                     <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
                       <ChatroomDropdown />
                     </div>
