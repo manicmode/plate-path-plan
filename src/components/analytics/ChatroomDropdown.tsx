@@ -4,6 +4,7 @@ import { useActiveChallengeIds } from "@/hooks/challenges/useActiveChallengeIds"
 import { usePublicChallenges } from "@/hooks/usePublicChallenges";
 import { usePrivateChallenges } from "@/hooks/usePrivateChallenges";
 import { useChatStore } from "@/store/chatStore";
+import { supabase } from "@/integrations/supabase/client";
 
 // shadcn/ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,19 +15,64 @@ export default function ChatroomDropdown() {
   const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
   const { selectedChatroomId, selectChatroom } = useChatStore();
 
+  const [participationChallenges, setParticipationChallenges] = React.useState<any[]>([]);
+
+  // Fetch challenges the user participates in (including Rank-of-20)
+  React.useEffect(() => {
+    (async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.session?.user?.id;
+      if (!userId) return;
+
+      const { data: parts } = await supabase
+        .from("private_challenge_participations")
+        .select("private_challenge_id, private_challenges(id, title)")
+        .eq("user_id", userId);
+
+      const byParticipation = (parts ?? [])
+        .map((p: any) => p.private_challenges)
+        .filter(Boolean);
+
+      setParticipationChallenges(byParticipation);
+    })();
+  }, []);
+
   const index = React.useMemo(() => {
     const map = new Map<string, { id: string; name: string; type: 'public'|'private'; count?: number }>();
-    (publicChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'public', count: c.participant_count ?? 0 }));
-    (privateChallenges ?? []).forEach((c: any) => map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 }));
+    
+    // Add public challenges
+    (publicChallenges ?? []).forEach((c: any) => 
+      map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'public', count: c.participant_count ?? 0 })
+    );
+    
+    // Add private challenges created by user
+    (privateChallenges ?? []).forEach((c: any) => 
+      map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 })
+    );
+    
+    // Add challenges user participates in (including Rank-of-20)
+    participationChallenges.forEach((c: any) => 
+      map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: 0 })
+    );
+    
     return map;
-  }, [publicChallenges, privateChallenges]);
+  }, [publicChallenges, privateChallenges, participationChallenges]);
 
-  const rooms = React.useMemo(
-    () => ids.map(id => index.get(id)).filter(Boolean) as Array<{id:string; name:string; type:'public'|'private'; count?: number}>,
-    [ids, index]
-  );
+  const rooms = React.useMemo(() => {
+    const allRooms = ids.map(id => index.get(id)).filter(Boolean) as Array<{id:string; name:string; type:'public'|'private'; count?: number}>;
+    
+    // Sort Rank-of-20 first
+    allRooms.sort((a, b) => {
+      const ra = (a.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
+      const rb = (b.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
+      return ra - rb || (a.name || "").localeCompare(b.name || "");
+    });
+    
+    return allRooms;
+  }, [ids, index]);
 
   console.info('[chat-dropdown] activeIds', rooms.map(r => r.id));
+  console.log("[Billboard] Dropdown options:", rooms);
 
   if (isLoading || rooms.length === 0) return null;
 

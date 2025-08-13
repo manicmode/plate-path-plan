@@ -67,6 +67,8 @@ import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
+import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
+import { toast } from "sonner";
 
 // Types
 interface ChatMessage {
@@ -854,6 +856,11 @@ function GameAndChallengeContent() {
               {BILLBOARD_ENABLED ? (
                 <TabsContent value="billboard" className="mt-0">
                   <BillboardTab />
+                  {process.env.NODE_ENV !== "production" && (
+                    <div className="text-xs text-muted-foreground px-4 py-2">
+                      Selected challenge: {selectedChatroomId ?? "(none)"}<br/>
+                    </div>
+                  )}
                 </TabsContent>
               ) : (
                 <TabsContent value="chat" className="mt-0">

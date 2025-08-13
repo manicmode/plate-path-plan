@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { PrivateChallenge, PrivateChallengeParticipation } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
+import { useChatStore } from '@/store/chatStore';
 
 interface PrivateChallengeCardProps {
   challenge: PrivateChallenge;
@@ -27,6 +28,7 @@ export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = ({
   onUpdateProgress,
   onLeave,
 }) => {
+  const { selectChatroom } = useChatStore();
   const isCompleted = participation.completion_percentage >= 100;
   const isCreator = participation.is_creator;
   const progressPercentage = participation.completion_percentage;
@@ -41,11 +43,19 @@ export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = ({
     }
   };
 
+  const handleChatClick = () => {
+    selectChatroom(challenge.id);
+    window.dispatchEvent(
+      new CustomEvent("switch-to-chat-tab", { detail: { challengeId: challenge.id } })
+    );
+    console.log('Navigating to Billboard for challenge:', challenge.id);
+  };
+
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
       if (ce.detail?.challengeId === challenge.id) {
-        console.info('[chat] open from private card', challenge.id);
+        console.info('[Billboard] open from private card', challenge.id);
       }
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
