@@ -98,8 +98,6 @@ export const ChatroomManager: React.FC<ChatroomManagerProps> = ({
       participantCount={activeRoom?.participantCount || 0}
       roomType={activeRoom?.type || 'public'}
       showHeader={false}
-      noScroll
-      hideComposer
     />
   ) : (
     <ChallengeChatModal
