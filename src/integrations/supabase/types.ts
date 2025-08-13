@@ -5448,6 +5448,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      diag_rank20: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       ensure_mood_prefs: {
         Args: { p_user: string; p_tz: string; p_time?: string }
         Returns: undefined

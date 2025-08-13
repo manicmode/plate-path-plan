@@ -31,6 +31,14 @@ export default function BillboardTab() {
         .single();
       
       setChallengeInfo(challenge || null);
+
+      // Call diagnostics
+      try {
+        const { data, error } = await supabase.rpc('diag_rank20');
+        console.debug('[diag] diag_rank20', { data, error });
+      } catch (diagError) {
+        console.debug('[diag] diag_rank20 unavailable', diagError);
+      }
     })();
   }, [challengeId]);
 
@@ -124,14 +132,10 @@ export default function BillboardTab() {
                   className="text-xs underline opacity-70"
                   onClick={async () => {
                     try {
-                      const { data, error } = await (supabase as any).rpc('diag_rank20');
-                      if (error) {
-                        console.log("[diag] diag_rank20 RPC not available:", error.message);
-                      } else {
-                        console.log("[diag] rank20 diagnostics:", data);
-                      }
-                    } catch (err) {
-                      console.log("[diag] diagnostics unavailable - optional feature");
+                      const { data, error } = await supabase.rpc('diag_rank20');
+                      console.debug('[diag] diag_rank20', { data, error });
+                    } catch (diagError) {
+                      console.debug('[diag] diag_rank20 unavailable - optional feature', diagError);
                     }
                   }}
                 >

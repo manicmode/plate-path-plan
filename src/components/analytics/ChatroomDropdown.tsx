@@ -40,12 +40,18 @@ export default function ChatroomDropdown() {
         .map((p: any) => p.private_challenges)
         .filter(Boolean);
 
-      // merge unique (both created and participated)
+      // also include any rank_of_20 challenges that exist (ensure they're always visible)
+      const { data: rank20Challenges } = await supabase
+        .from("private_challenges")
+        .select("id, title, challenge_type")
+        .eq("challenge_type", "rank_of_20");
+
+      // merge unique (created + participated + rank_of_20)
       const map = new Map<string, any>();
-      [...(created ?? []), ...byParticipation].forEach((c: any) => map.set(c.id, c));
+      [...(created ?? []), ...byParticipation, ...(rank20Challenges ?? [])].forEach((c: any) => map.set(c.id, c));
       const options = Array.from(map.values());
 
-      // sort: R20 first, then alpha
+      // sort: rank_of_20 first, then alpha
       options.sort((a, b) => {
         const ra = a.challenge_type === 'rank_of_20' ? 0 : 1;
         const rb = b.challenge_type === 'rank_of_20' ? 0 : 1;
@@ -57,10 +63,19 @@ export default function ChatroomDropdown() {
       console.log("[Billboard] Dropdown options:", {
         created: created?.length || 0, 
         joined: byParticipation?.length || 0, 
+        rank20: rank20Challenges?.length || 0,
         union: options.length
       }, options);
+
+      // Auto-select rank_of_20 if no selection
+      if (!selectedChatroomId) {
+        const rank20Option = options.find(c => c.challenge_type === 'rank_of_20');
+        if (rank20Option) {
+          selectChatroom(rank20Option.id);
+        }
+      }
     })();
-  }, []);
+  }, [selectedChatroomId, selectChatroom]);
 
   const index = React.useMemo(() => {
     const map = new Map<string, { id: string; name: string; type: 'public'|'private'; count?: number }>();
@@ -101,7 +116,7 @@ export default function ChatroomDropdown() {
     return allRooms;
   }, [ids, index]);
 
-  console.info('[chat-dropdown] activeIds', rooms.map(r => r.id));
+  console.debug('[dropdown] activeIds', rooms.map(r => r.id));
 
   if (isLoading || rooms.length === 0) return null;
 
