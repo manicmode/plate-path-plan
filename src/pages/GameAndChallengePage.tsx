@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -61,12 +61,14 @@ import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
+import ChatComposer from '@/components/analytics/chat/ChatComposer';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 import { useChatStore } from '@/store/chatStore';
-import ChatComposer from '@/components/analytics/chat/ChatComposer';
-import '@/styles/gc-chat.css';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
+import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { useChallengeMessages } from '@/hooks/useChallengeMessages';
 
 // Types
 interface ChatMessage {
@@ -167,42 +169,18 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Measure and expose header/composer/bottom-nav heights for chat layout
-  useEffect(() => {
-    if (activeSection !== 'chat') return;
+  // Chat send wiring for sticky composer (Chat tab only)
+  const { challenges: publicChallenges } = usePublicChallenges();
+  const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
+  const activeRoomType = useMemo<'public' | 'private'>(() => {
+    if (!selectedChatroomId) return 'public';
+    return privateChallenges?.some((c: any) => c.id === selectedChatroomId) ? 'private' : 'public';
+  }, [selectedChatroomId, privateChallenges]);
 
-    const header = document.getElementById('gc-sticky-header');
-    const composer = document.getElementById('gc-composer');
-    const bottomNav = document.querySelector('[data-bottom-nav]') as HTMLElement | null;
-
-    const apply = () => {
-      if (header) document.documentElement.style.setProperty('--gc-header-h', `${header.offsetHeight}px`);
-      if (composer) document.documentElement.style.setProperty('--gc-composer-h', `${composer.offsetHeight}px`);
-      if (bottomNav) {
-        document.documentElement.style.setProperty('--gc-bottom-nav-h', `${bottomNav.offsetHeight}px`);
-        document.documentElement.style.setProperty('--bottom-nav-h', `${bottomNav.offsetHeight}px`);
-      }
-    };
-
-    apply();
-
-    const ro1 = header && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
-    const ro2 = composer && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
-    const ro3 = bottomNav && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
-
-    ro1?.observe(header!);
-    ro2?.observe(composer!);
-    ro3?.observe(bottomNav!);
-
-    window.addEventListener('resize', apply);
-    window.addEventListener('orientationchange', apply);
-
-    return () => {
-      ro1?.disconnect(); ro2?.disconnect(); ro3?.disconnect();
-      window.removeEventListener('resize', apply);
-      window.removeEventListener('orientationchange', apply);
-    };
-  }, [activeSection]);
+  const { sendMessage: sendChatMessage } = useChallengeMessages(selectedChatroomId ?? null, activeRoomType);
+  const handleSend = async (text: string) => {
+    try { await sendChatMessage(text); } catch (e) { console.error('[chat] send error', e); }
+  };
 
   // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
@@ -388,12 +366,6 @@ function GameAndChallengeContent() {
         </div>
         {activeSection === 'chat' && (
           <>
-            {/* Dropdown under header; preserve its own background/classes */}
-            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
-              <ChatroomDropdown />
-            </div>
-            {/* Thin separator below dropdown */}
-            <div className="border-t border-white/10" />
           </>
         )}
       </div>
@@ -838,47 +810,29 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div id="gc-chat-root" className="gc-chat-root grid h-[100dvh]">
-                  {/* Row 1: Sticky header (dropdown/avatars) */}
-                  <div
-                    id="gc-sticky-header"
-                    className="sticky top-0 z-[60] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b"
-                  >
-                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+                <div className="flex flex-col h-[100dvh]">
+                  {/* Sticky Header: existing chat header content exactly as-is */}
+                  <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2">
                       <ChatroomDropdown />
                     </div>
-                    <div className="border-t border-white/10" />
                   </div>
 
-                  {/* Row 2: ONLY scroll container */}
-                  <div
-                    id="gc-scroll"
-                    className="gc-scroll overflow-y-auto overscroll-contain"
-                    style={{
-                      paddingTop: 'var(--gc-header-h,0px)',
-                      paddingBottom: 'calc(var(--gc-composer-h,72px) + var(--gc-bottom-nav-h,88px) + env(safe-area-inset-bottom))',
-                    }}
-                  >
+                  {/* Scrollable Messages - single scroll container */}
+                  <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
                     <ChatroomManager
                       inline
                       isOpen={true}
                       onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
                       initialChatroomId={selectedChatroomId ?? undefined}
                     />
-                    <div id="gc-end" />
                   </div>
 
-                  {/* Row 3: Sticky composer (above bottom nav) */}
-                  <div
-                    id="gc-composer"
-                    className="sticky bottom-[calc(var(--gc-bottom-nav-h,88px)+env(safe-area-inset-bottom))] z-[70] bg-background/95 backdrop-blur border-t"
-                  >
-                    <ChatComposer
-                      fixed={false}
-                      onSend={(text) => {
-                        window.dispatchEvent(new CustomEvent('gc-send-message', { detail: { text } }));
-                      }}
-                    />
+                  {/* Sticky Composer at bottom */}
+                  <div className="sticky bottom-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4">
+                    <div className="py-2">
+                      <ChatComposer onSend={handleSend} disabled={!selectedChatroomId} />
+                    </div>
                   </div>
                 </div>
               </TabsContent>
