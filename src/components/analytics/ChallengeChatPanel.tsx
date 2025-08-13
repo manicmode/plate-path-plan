@@ -24,8 +24,6 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerH, setComposerH] = useState(180); // fallback
   const [bottomNavH, setBottomNavH] = useState(96); // fallback
-  const [padBottom, setPadBottom] = useState(180);
-  const stickRef = useRef(true);
 
   // SINGLE SOURCE: only this hook
   const { messages, isLoading, error, sendMessage } = useChallengeMessages(challengeId, roomType);
@@ -47,11 +45,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
   useEffect(() => {
     const el = composerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const h = Math.ceil(entry.contentRect.height);
-      setComposerH(h);
-      setPadBottom(h + 16);
-      document.documentElement.style.setProperty('--composer-h', `${h}px`);
+    const ro = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (box) setComposerH(Math.ceil(box.height));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -67,25 +63,12 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
     }
   }, [challengeId, sendMessage]);
 
-  const isNearBottom = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 140;
-  }, []);
-
-  const onScroll = useCallback(() => {
-    stickRef.current = isNearBottom();
-  }, [isNearBottom]);
-
-  // Auto-scroll to bottom when new messages arrive if user was near bottom
   useEffect(() => {
-    if (!stickRef.current) return;
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        endRef.current?.scrollIntoView({ block: 'end' });
-      })
-    );
-  }, [messages.length]);
+    // Always scroll to bottom when messages change or room changes
+    requestAnimationFrame(() => {
+      endRef.current?.scrollIntoView({ block: 'end' });
+    });
+  }, [messages.length, challengeId]);
 
   return (
     <section aria-label="Challenge chat" className="w-full">
@@ -107,13 +90,10 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
       <div
         id="chat-inline-scroll"
         ref={scrollRef}
-        onScroll={onScroll}
         className="flex-1 overflow-y-auto px-4 pt-2"
         style={{
-          paddingTop: 'var(--chat-header-h, 0px)',
-          paddingBottom: `calc(env(safe-area-inset-bottom) + var(--bottom-nav-h, 88px) + ${padBottom}px)`,
-          scrollPaddingTop: 'var(--chat-header-h, 0px)',
-          scrollPaddingBottom: 'calc(var(--composer-h, 160px) + 24px)',
+          // keep messages clear of composer + safe area + a little breathing room
+          paddingBottom: `calc(${composerH}px + env(safe-area-inset-bottom) + 8px)`,
           scrollBehavior: 'smooth',
           overscrollBehavior: 'contain',
         }}

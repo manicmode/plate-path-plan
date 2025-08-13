@@ -93,14 +93,11 @@ export default function ChatComposer({ onSend, disabled, className }: ChatCompos
   };
 
   return (
-    <div
-      className={cn(
-        "fixed left-0 right-0 z-50 bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
-        "px-0",
-        className
-      )}
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + var(--bottom-nav-h, 88px))" }}
-    >
+    <div className={cn(
+      "fixed left-0 right-0 z-[60] bg-gradient-to-t from-background/95 to-background/60 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-t",
+      "bottom-[calc(env(safe-area-inset-bottom)+var(--bottom-nav-h,88px))] px-0",
+      className
+    )}>
       {/* Emoji strip (contained & clipped) */}
       <div className="px-4 md:px-6">
         <div className="relative rounded-2xl border border-white/10 bg-muted/20 overflow-hidden">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -125,19 +125,6 @@ function GameAndChallengeContent() {
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Sticky chat header (dropdown) measurer
-  const chatTopRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = chatTopRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const h = Math.ceil(entry.contentRect.height);
-      document.documentElement.style.setProperty('--chat-header-h', `${h}px`);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   // Recovery leaderboard hook
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
@@ -802,26 +789,17 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <>
-                  {/* Sticky header + dropdown for chat */}
-                  <div
-                    ref={chatTopRef}
-                    className="sticky top-0 z-40 bg-background/90 backdrop-blur"
-                  >
-                    <div className="px-4 pb-2">
-                      <ChatroomDropdown />
-                    </div>
-                    <div className="border-b" />
-                  </div>
-
-                  {/* chat manager (inline) */}
+                <div className="space-y-2">
+                  {/* Centered chatroom selector under the header */}
+                  <ChatroomDropdown />
+                  
                   <ChatroomManager
                     inline
                     isOpen={true}
                     onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
                     initialChatroomId={selectedChatroomId ?? undefined}
                   />
-                </>
+                </div>
               </TabsContent>
 
               <TabsContent value="winners" className="mt-4">
