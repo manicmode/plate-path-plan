@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
 
-const EMOJIS = ["🔥","👏","💯","😂","😮","❤️"] as const;
+const EMOJIS = ["🔥","👏","❤️","🎯","💯"] as const;
 
 type Reaction = {
   id: string;
@@ -17,11 +17,18 @@ export default function BillboardReactions({ eventId }: Props) {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const [reactions, setReactions] = useState<Reaction[]>([]);
-  const counts = useMemo(() => {
+const counts = useMemo(() => {
     const map: Record<string, number> = {};
     for (const r of reactions) map[r.emoji] = (map[r.emoji] || 0) + 1;
     return map;
   }, [reactions]);
+
+  const myEmojis = useMemo(() => {
+    const set = new Set<string>();
+    if (!userId) return set;
+    for (const r of reactions) if (r.user_id === userId) set.add(r.emoji);
+    return set;
+  }, [reactions, userId]);
 
   const sb: any = supabase as any;
 
@@ -64,17 +71,22 @@ export default function BillboardReactions({ eventId }: Props) {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {EMOJIS.map((e) => (
-        <button
-          key={e}
-          onClick={() => toggle(e)}
-          className="px-2 py-1 rounded-full border text-sm hover:bg-muted"
-          aria-label={`React ${e}`}
-        >
-          <span className="mr-1">{e}</span>
-          <span className="opacity-70">{counts[e] || 0}</span>
-        </button>
-      ))}
+      {EMOJIS.map((e) => {
+        const active = myEmojis.has(e);
+        return (
+          <button
+            key={e}
+            onClick={() => toggle(e)}
+            className={`px-2 py-1 rounded-full border text-sm hover:bg-muted transition-colors ${active ? 'bg-primary/10 border-primary text-primary' : ''}`}
+            aria-label={`React ${e}`}
+            aria-pressed={active}
+            title={`React ${e}`}
+          >
+            <span className="mr-1">{e}</span>
+            <span className="opacity-70">{counts[e] || 0}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
