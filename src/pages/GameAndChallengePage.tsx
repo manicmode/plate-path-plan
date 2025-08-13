@@ -165,6 +165,49 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
+  // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
+  useEffect(() => {
+    if (activeSection !== 'chat') return;
+
+    // Set a sensible default first
+    document.documentElement.style.setProperty('--gc-header-h', '56px');
+
+    const header = document.getElementById('gaming-sticky-header');
+    const applyHeaderHeight = () => {
+      const h = header?.offsetHeight ?? 56;
+      document.documentElement.style.setProperty('--gc-header-h', `${h}px`);
+    };
+
+    applyHeaderHeight();
+
+    let ro: ResizeObserver | undefined;
+    if (header && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => applyHeaderHeight());
+      ro.observe(header);
+    }
+
+    window.addEventListener('orientationchange', applyHeaderHeight);
+    window.addEventListener('resize', applyHeaderHeight);
+
+    const applyScrollPadding = () => {
+      const scroller = document.getElementById('chat-inline-scroll') as HTMLElement | null;
+      if (scroller) {
+        scroller.style.paddingTop = 'var(--gc-header-h)';
+      }
+    };
+
+    // Try now and shortly after mount in case the inner panel mounts async
+    applyScrollPadding();
+    const t = window.setTimeout(applyScrollPadding, 150);
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('orientationchange', applyHeaderHeight);
+      window.removeEventListener('resize', applyHeaderHeight);
+      window.clearTimeout(t);
+    };
+  }, [activeSection]);
+
   // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
   let isLoading = false;
@@ -269,7 +312,7 @@ function GameAndChallengeContent() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Sticky Header - Outside the main container */}
-<div id="chat-sticky-top" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+<div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
