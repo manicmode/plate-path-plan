@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -61,14 +61,10 @@ import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
-import ChatComposer from '@/components/analytics/chat/ChatComposer';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 import { useChatStore } from '@/store/chatStore';
-import { usePublicChallenges } from '@/hooks/usePublicChallenges';
-import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
-import { useChallengeMessages } from '@/hooks/useChallengeMessages';
 
 // Types
 interface ChatMessage {
@@ -169,18 +165,48 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Chat send wiring for sticky composer (Chat tab only)
-  const { challenges: publicChallenges } = usePublicChallenges();
-  const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
-  const activeRoomType = useMemo<'public' | 'private'>(() => {
-    if (!selectedChatroomId) return 'public';
-    return privateChallenges?.some((c: any) => c.id === selectedChatroomId) ? 'private' : 'public';
-  }, [selectedChatroomId, privateChallenges]);
+  // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
+  useEffect(() => {
+    if (activeSection !== 'chat') return;
 
-  const { sendMessage: sendChatMessage } = useChallengeMessages(selectedChatroomId ?? null, activeRoomType);
-  const handleSend = async (text: string) => {
-    try { await sendChatMessage(text); } catch (e) { console.error('[chat] send error', e); }
-  };
+    // Set a sensible default first
+    document.documentElement.style.setProperty('--gc-header-h', '56px');
+
+    const header = document.getElementById('gaming-sticky-header');
+    const applyHeaderHeight = () => {
+      const h = header?.offsetHeight ?? 56;
+      document.documentElement.style.setProperty('--gc-header-h', `${h}px`);
+    };
+
+    applyHeaderHeight();
+
+    let ro: ResizeObserver | undefined;
+    if (header && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => applyHeaderHeight());
+      ro.observe(header);
+    }
+
+    window.addEventListener('orientationchange', applyHeaderHeight);
+    window.addEventListener('resize', applyHeaderHeight);
+
+    const applyScrollPadding = () => {
+      const scroller = document.getElementById('gaming-chat-scroll') as HTMLElement | null;
+      if (scroller) {
+        scroller.style.paddingTop = 'var(--gc-header-h)';
+      }
+    };
+
+    // Try now and shortly after mount in case the inner panel mounts async
+    applyScrollPadding();
+    const t = window.setTimeout(applyScrollPadding, 150);
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('orientationchange', applyHeaderHeight);
+      window.removeEventListener('resize', applyHeaderHeight);
+      window.clearTimeout(t);
+    };
+  }, [activeSection]);
 
   // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
@@ -286,7 +312,7 @@ function GameAndChallengeContent() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Sticky Header - Outside the main container */}
-<div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+<div id="gaming-global-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
@@ -364,10 +390,7 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
-        {activeSection === 'chat' && (
-          <>
-          </>
-        )}
+{/* Chat dropdown rendered inside chat tab sticky header */}
       </div>
 
       {/* Main Content Container */}
@@ -810,16 +833,18 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div className="flex flex-col h-[100dvh]">
-                  {/* Sticky Header: existing chat header content exactly as-is */}
-                  <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2">
+                <div id="chat-tab-root" className="relative min-h-[100dvh] flex flex-col">
+                  {/* 1) STICKY HEADER — sibling of the ONLY scroller */}
+                  <div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                    {/* existing header content exactly as-is (dropdown/avatars) */}
+                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
                       <ChatroomDropdown />
                     </div>
                   </div>
 
-                  {/* Scrollable Messages - single scroll container */}
-                  <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+                  {/* 2) THE ONLY VERTICAL SCROLLER */}
+                  <div id="gaming-chat-scroll" className="flex-1 overflow-y-auto overscroll-contain" style={{ paddingTop: 'var(--gc-header-h,56px)' }}>
+                    {/* Render ChatroomManager / ChallengeChatPanel here (messages list lives inside) */}
                     <ChatroomManager
                       inline
                       isOpen={true}
@@ -828,12 +853,7 @@ function GameAndChallengeContent() {
                     />
                   </div>
 
-                  {/* Sticky Composer at bottom */}
-                  <div className="sticky bottom-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4">
-                    <div className="py-2">
-                      <ChatComposer onSend={handleSend} disabled={!selectedChatroomId} />
-                    </div>
-                  </div>
+                  {/* 3) OPTIONAL STICKY FOOTER (composer) — leave as-is */}
                 </div>
               </TabsContent>
 
