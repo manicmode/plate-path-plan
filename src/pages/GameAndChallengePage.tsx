@@ -168,43 +168,23 @@ function GameAndChallengeContent() {
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
     if (activeSection !== 'chat') return;
-
-    // Set a sensible default first
-    document.documentElement.style.setProperty('--gc-header-h', '56px');
-
     const header = document.getElementById('gaming-sticky-header');
-    const applyHeaderHeight = () => {
-      const h = header?.offsetHeight ?? 56;
+    const apply = () => {
+      const h = header?.offsetHeight ?? 0;
       document.documentElement.style.setProperty('--gc-header-h', `${h}px`);
     };
+    apply();
 
-    applyHeaderHeight();
+    const ro = header ? new ResizeObserver(apply) : null;
+    if (header) ro?.observe(header);
 
-    let ro: ResizeObserver | undefined;
-    if (header && typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => applyHeaderHeight());
-      ro.observe(header);
-    }
-
-    window.addEventListener('orientationchange', applyHeaderHeight);
-    window.addEventListener('resize', applyHeaderHeight);
-
-    const applyScrollPadding = () => {
-      const scroller = document.getElementById('chat-inline-scroll') as HTMLElement | null;
-      if (scroller) {
-        scroller.style.paddingTop = 'var(--gc-header-h)';
-      }
-    };
-
-    // Try now and shortly after mount in case the inner panel mounts async
-    applyScrollPadding();
-    const t = window.setTimeout(applyScrollPadding, 150);
+    window.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', apply);
 
     return () => {
       ro?.disconnect();
-      window.removeEventListener('orientationchange', applyHeaderHeight);
-      window.removeEventListener('resize', applyHeaderHeight);
-      window.clearTimeout(t);
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('orientationchange', apply);
     };
   }, [activeSection]);
 
@@ -390,16 +370,6 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
-        {activeSection === 'chat' && (
-          <>
-            {/* Dropdown under header; preserve its own background/classes */}
-            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
-              <ChatroomDropdown />
-            </div>
-            {/* Thin separator below dropdown */}
-            <div className="border-t border-white/10" />
-          </>
-        )}
       </div>
 
       {/* Main Content Container */}
@@ -842,13 +812,27 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
-                  <ChatroomManager
-                    inline
-                    isOpen={true}
-                    onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                    initialChatroomId={selectedChatroomId ?? undefined}
-                  />
+                <div id="chat-tab-root" className="relative min-h-[100dvh] flex flex-col"> {/* NOTE: no overflow here */}
+                  {/* Sticky header (dropdown/avatars) */}
+                  <div id="gaming-sticky-header"
+                       className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+                      <ChatroomDropdown />
+                    </div>
+                    <div className="border-t border-white/10" />
+                  </div>
+
+                  {/* THE ONLY VERTICAL SCROLLER */}
+                  <div id="gaming-chat-scroll"
+                       className="flex-1 overflow-y-auto overscroll-contain"
+                       style={{ paddingTop: 'var(--gc-header-h,0px)' }}>
+                    <ChatroomManager
+                      inline
+                      isOpen={true}
+                      onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                      initialChatroomId={selectedChatroomId ?? undefined}
+                    />
+                  </div>
                 </div>
               </TabsContent>
 
