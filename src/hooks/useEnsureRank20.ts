@@ -13,7 +13,7 @@ export async function ensureRank20ChallengeForMe(): Promise<string | null> {
   // Do I already participate in a Rank-of-20 challenge?
   const { data: parts, error: partsErr } = await supabase
     .from("private_challenge_participations")
-    .select(`private_challenge_id, private_challenges(name)`)
+    .select(`private_challenge_id, private_challenges(id, name)`)
     .eq("user_id", userId)
     .limit(100);
 

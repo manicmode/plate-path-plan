@@ -269,7 +269,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                   className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
-                  Chat
+                  Billboard
                 </Button>
               )}
             </div>

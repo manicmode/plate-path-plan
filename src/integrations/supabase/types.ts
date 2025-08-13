@@ -2566,6 +2566,56 @@ export type Database = {
         }
         Relationships: []
       }
+      rank20_groups: {
+        Row: {
+          batch_number: number
+          challenge_id: string | null
+          created_at: string
+          id: string
+          is_closed: boolean
+        }
+        Insert: {
+          batch_number?: never
+          challenge_id?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+        }
+        Update: {
+          batch_number?: never
+          challenge_id?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+        }
+        Relationships: []
+      }
+      rank20_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rank20_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "rank20_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recovery_challenge_metrics: {
         Row: {
           breathing_sessions: number | null

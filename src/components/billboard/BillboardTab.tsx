@@ -66,6 +66,17 @@ export default function BillboardTab() {
                   {seeding ? "Seeding…" : "Seed demo events"}
                 </button>
               </div>
+              {process.env.NODE_ENV !== "production" && (
+                <button
+                  className="text-xs underline opacity-70"
+                  onClick={async () => {
+                    const checks = await import("@/dev/diagRank20").then(m => m.diagRank20());
+                    console.log("[diag] checks:", checks);
+                  }}
+                >
+                  Run Rank-of-20 diagnostics
+                </button>
+              )}
               {!challengeId && (
                 <div className="text-xs">Select a challenge above first</div>
               )}

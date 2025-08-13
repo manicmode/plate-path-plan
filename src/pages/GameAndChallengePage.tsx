@@ -69,6 +69,7 @@ import { BILLBOARD_ENABLED } from '@/config/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
+import { useSearchParams } from 'react-router-dom';
 
 // Types
 interface ChatMessage {
@@ -126,6 +127,7 @@ function GameAndChallengeContent() {
   const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
   
   const { selectedChatroomId, selectChatroom } = useChatStore();
+  const [searchParams] = useSearchParams();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -168,6 +170,32 @@ function GameAndChallengeContent() {
       setPreselectedChatId(selectedChatroomId);
     }
   }, [selectedChatroomId]);
+
+  // Read challenge param and preselect
+  useEffect(() => {
+    const fromUrl = searchParams.get("challenge");
+    if (fromUrl) {
+      selectChatroom(fromUrl);
+      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+    }
+  }, [searchParams, selectChatroom]);
+
+  // Ensure Rank-of-20 assignment and default selection for Billboard tab
+  useEffect(() => {
+    (async () => {
+      if (activeSection !== (BILLBOARD_ENABLED ? 'billboard' : 'chat')) return;
+      if (selectedChatroomId) return;
+
+      console.log("[Billboard] defaulting to Rank-of-20…");
+      const chId = await ensureRank20ChallengeForMe();
+      if (chId) {
+        selectChatroom(chId);
+        toast.success("Joined Rank of 20");
+      } else {
+        console.warn("[Billboard] No Rank-of-20 challenge id");
+      }
+    })();
+  }, [activeSection, selectedChatroomId, selectChatroom]);
 
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
