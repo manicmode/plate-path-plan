@@ -24,40 +24,41 @@ export default function ChatroomDropdown() {
       const userId = session?.session?.user?.id;
       if (!userId) return;
 
-      // fetch created-by-me (non Rank-of-20)
+      // fetch created-by-me 
       const { data: created } = await supabase
         .from("private_challenges")
-        .select("id, title")
+        .select("id, title, challenge_type")
         .eq("creator_id", userId);
-
-      const createdNonR20 = (created ?? []).filter(
-        c => !(c.title || "").toLowerCase().startsWith("rank of 20")
-      );
 
       // fetch I-participate-in (includes R20)
       const { data: parts } = await supabase
         .from("private_challenge_participations")
-        .select("private_challenge_id, private_challenges(id, title)")
+        .select("private_challenge_id, private_challenges(id, title, challenge_type)")
         .eq("user_id", userId);
 
       const byParticipation = (parts ?? [])
         .map((p: any) => p.private_challenges)
         .filter(Boolean);
 
-      // merge unique
+      // merge unique (both created and participated)
       const map = new Map<string, any>();
-      [...createdNonR20, ...byParticipation].forEach((c: any) => map.set(c.id, c));
+      [...(created ?? []), ...byParticipation].forEach((c: any) => map.set(c.id, c));
       const options = Array.from(map.values());
 
       // sort: R20 first, then alpha
       options.sort((a, b) => {
-        const ra = (a.title || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-        const rb = (b.title || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-        return ra - rb || (a.title || "").localeCompare(b.title || "");
+        const ra = a.challenge_type === 'rank_of_20' ? 0 : 1;
+        const rb = b.challenge_type === 'rank_of_20' ? 0 : 1;
+        if (ra !== rb) return ra - rb;
+        return (a.title || "").localeCompare(b.title || "");
       });
 
       setParticipationChallenges(options);
-      console.log("[Billboard] Dropdown options:", options);
+      console.log("[Billboard] Dropdown options:", {
+        created: created?.length || 0, 
+        joined: byParticipation?.length || 0, 
+        union: options.length
+      }, options);
     })();
   }, []);
 
@@ -85,11 +86,16 @@ export default function ChatroomDropdown() {
   const rooms = React.useMemo(() => {
     const allRooms = ids.map(id => index.get(id)).filter(Boolean) as Array<{id:string; name:string; type:'public'|'private'; count?: number}>;
     
-    // Sort Rank-of-20 first
+    // Sort Rank-of-20 first (check both challenge_type and title)
     allRooms.sort((a, b) => {
-      const ra = (a.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-      const rb = (b.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-      return ra - rb || (a.name || "").localeCompare(b.name || "");
+      const challenge_a = participationChallenges.find(c => c.id === a.id);
+      const challenge_b = participationChallenges.find(c => c.id === b.id);
+      
+      const ra = challenge_a?.challenge_type === 'rank_of_20' ? 0 : 1;
+      const rb = challenge_b?.challenge_type === 'rank_of_20' ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      
+      return (a.name || "").localeCompare(b.name || "");
     });
     
     return allRooms;

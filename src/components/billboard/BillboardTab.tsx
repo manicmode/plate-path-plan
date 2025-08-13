@@ -35,10 +35,7 @@ export default function BillboardTab() {
   }, [challengeId]);
 
   // Determine if this is a Rank-of-20 challenge
-  const isRank20 = challengeInfo && (
-    challengeInfo.challenge_type === 'rank_of_20' || 
-    challengeInfo.title?.toLowerCase().startsWith('rank of 20')
-  );
+  const isRank20 = challengeInfo && challengeInfo.challenge_type === 'rank_of_20';
 
   // Auto-assign to Rank-of-20 and default selection
   useEffect(() => {
@@ -48,16 +45,28 @@ export default function BillboardTab() {
       console.log('[diag] user', user);
       
       if (!selectedChatroomId) {
-        const chId = await ensureRank20ChallengeForMe();
-        if (chId) {
-          selectChatroom(chId);
-          
-          // Auto-seed demo events in dev mode if billboard is empty
-          if (isDev) {
-            setTimeout(async () => {
-              await seedBillboardForChallenge(chId, refresh);
-              await refresh();
-            }, 1000);
+        // First try to find an existing Rank-of-20 challenge
+        const { data: rank20Challenge } = await supabase
+          .from("private_challenges")
+          .select("id")
+          .eq("challenge_type", "rank_of_20")
+          .single();
+        
+        if (rank20Challenge) {
+          selectChatroom(rank20Challenge.id);
+        } else {
+          // Fallback to assign_rank20 if no existing challenge
+          const chId = await ensureRank20ChallengeForMe();
+          if (chId) {
+            selectChatroom(chId);
+            
+            // Auto-seed demo events in dev mode if billboard is empty
+            if (isDev) {
+              setTimeout(async () => {
+                await seedBillboardForChallenge(chId, refresh);
+                await refresh();
+              }, 1000);
+            }
           }
         }
       }
