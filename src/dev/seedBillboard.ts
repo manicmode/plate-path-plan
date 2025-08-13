@@ -26,7 +26,7 @@ export async function seedBillboardForChallenge(challengeId: string, refresh?: (
     console.error("Seed error:", error);
     toast({ 
       title: "Seeding failed", 
-      description: `${error.message}${error.code ? ` (${error.code})` : ''}`, 
+      description: error.message || "Failed to seed demo events", 
       variant: "destructive" 
     });
     return;
@@ -132,7 +132,7 @@ export async function seedBillboardForMyLatestChallenge() {
   ];
 
   const { error } = await (sb as any).rpc('seed_billboard_events', { _challenge_id: challengeId });
-  if (error) throw error;
+  if (error) throw new Error(error.message || 'Failed to seed events');
 
   return { challengeId };
 }

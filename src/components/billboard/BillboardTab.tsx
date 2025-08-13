@@ -13,30 +13,40 @@ export default function BillboardTab() {
   const challengeId = selectedChatroomId || "";
   const { events, isLoading, refresh } = useBillboardEvents(challengeId);
   const [seeding, setSeeding] = useState(false);
-  const [challengeTitle, setChallengeTitle] = useState<string>("");
+  const [challengeInfo, setChallengeInfo] = useState<{title: string, challenge_type?: string} | null>(null);
 
   // Fetch challenge details to determine if it's Rank-of-20
   useEffect(() => {
     (async () => {
       if (!challengeId) {
-        setChallengeTitle("");
+        setChallengeInfo(null);
         return;
       }
       console.log('[diag] billboard challenge', challengeId);
       
       const { data: challenge } = await supabase
         .from("private_challenges")
-        .select("title")
+        .select("title, challenge_type")
         .eq("id", challengeId)
         .single();
       
-      setChallengeTitle(challenge?.title || "");
+      setChallengeInfo(challenge || null);
     })();
   }, [challengeId]);
+
+  // Determine if this is a Rank-of-20 challenge
+  const isRank20 = challengeInfo && (
+    challengeInfo.challenge_type === 'rank_of_20' || 
+    challengeInfo.title?.toLowerCase().startsWith('rank of 20')
+  );
 
   // Auto-assign to Rank-of-20 and default selection
   useEffect(() => {
     (async () => {
+      // Log current user for diagnostics
+      const { data: user } = await supabase.auth.getUser();
+      console.log('[diag] user', user);
+      
       if (!selectedChatroomId) {
         const chId = await ensureRank20ChallengeForMe();
         if (chId) {
@@ -51,8 +61,20 @@ export default function BillboardTab() {
           }
         }
       }
+      
+      // Verify membership when challenge is selected
+      if (challengeId) {
+        const { data: membership } = await supabase
+          .from("private_challenge_participations")
+          .select("user_id")
+          .eq("private_challenge_id", challengeId)
+          .eq("user_id", user?.user?.id)
+          .single();
+        
+        console.log('[diag] user is member:', !!membership);
+      }
     })();
-  }, [selectedChatroomId, selectChatroom, refresh]);
+  }, [selectedChatroomId, selectChatroom, refresh, challengeId]);
 
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
@@ -92,8 +114,16 @@ export default function BillboardTab() {
                 <button
                   className="text-xs underline opacity-70"
                   onClick={async () => {
-                    const checks = await import("@/dev/diagRank20").then(m => m.diagRank20());
-                    console.log("[diag] checks:", checks);
+                    try {
+                      const { data, error } = await (supabase as any).rpc('diag_rank20');
+                      if (error) {
+                        console.log("[diag] diag_rank20 RPC not available:", error.message);
+                      } else {
+                        console.log("[diag] rank20 diagnostics:", data);
+                      }
+                    } catch (err) {
+                      console.log("[diag] diagnostics unavailable - optional feature");
+                    }
                   }}
                 >
                   Run Rank-of-20 diagnostics
@@ -105,9 +135,7 @@ export default function BillboardTab() {
             </div>
           ) : (
             <>
-              {challengeTitle.toLowerCase().startsWith("rank of 20") && (
-                <ChallengeRankings challengeId={challengeId} />
-              )}
+              {isRank20 && <ChallengeRankings challengeId={challengeId} />}
               {events.map((ev) => <BillboardCard key={ev.id} event={ev} />)}
             </>
           )}

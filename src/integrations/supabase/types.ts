@@ -5654,6 +5654,10 @@ export type Database = {
           current_supplement_streak: number
         }[]
       }
+      seed_billboard_events: {
+        Args: { _challenge_id: string }
+        Returns: undefined
+      }
       send_friend_request: {
         Args: { target_user_id: string }
         Returns: boolean
