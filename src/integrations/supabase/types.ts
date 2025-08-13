@@ -5242,6 +5242,10 @@ export type Database = {
       }
     }
     Functions: {
+      _ensure_rank20_challenge: {
+        Args: { _group_id: string }
+        Returns: string
+      }
       accept_challenge_invitation: {
         Args: { invitation_id_param: string }
         Returns: boolean
@@ -5298,6 +5302,14 @@ export type Database = {
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
         Returns: undefined
+      }
+      assign_rank20: {
+        Args: { _user_id: string }
+        Returns: {
+          group_id: string
+          challenge_id: string
+          batch_number: number
+        }[]
       }
       auto_assign_teams: {
         Args: { challenge_id_param: string; team_size_param?: number }
