@@ -57,6 +57,9 @@ export const ChallengeChatPanel: React.FC<ChallengeChatPanelProps> = ({
     console.info('[panel] onSend', { challengeId, textLen: text.trim().length });
     try {
       await sendMessage(text);
+      requestAnimationFrame(() => {
+        endRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+      });
       console.info('[panel] send ok');
     } catch (e) {
       console.error('[panel] send error', e);
