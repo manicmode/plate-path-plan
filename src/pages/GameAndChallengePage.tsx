@@ -190,7 +190,7 @@ function GameAndChallengeContent() {
     window.addEventListener('resize', applyHeaderHeight);
 
     const applyScrollPadding = () => {
-      const scroller = document.getElementById('gaming-chat-scroll') as HTMLElement | null;
+      const scroller = document.getElementById('chat-inline-scroll') as HTMLElement | null;
       if (scroller) {
         scroller.style.paddingTop = 'var(--gc-header-h)';
       }
@@ -312,7 +312,7 @@ function GameAndChallengeContent() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       {/* Sticky Header - Outside the main container */}
-<div id="gaming-global-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+<div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
@@ -390,7 +390,16 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
-{/* Chat dropdown rendered inside chat tab sticky header */}
+        {activeSection === 'chat' && (
+          <>
+            {/* Dropdown under header; preserve its own background/classes */}
+            <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
+              <ChatroomDropdown />
+            </div>
+            {/* Thin separator below dropdown */}
+            <div className="border-t border-white/10" />
+          </>
+        )}
       </div>
 
       {/* Main Content Container */}
@@ -833,27 +842,13 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-0">
-                <div id="chat-tab-root" className="relative min-h-[100dvh] flex flex-col">
-                  {/* 1) STICKY HEADER — sibling of the ONLY scroller */}
-                  <div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-                    {/* existing header content exactly as-is (dropdown/avatars) */}
-                    <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
-                      <ChatroomDropdown />
-                    </div>
-                  </div>
-
-                  {/* 2) THE ONLY VERTICAL SCROLLER */}
-                  <div id="gaming-chat-scroll" className="flex-1 overflow-y-auto overscroll-contain" style={{ paddingTop: 'var(--gc-header-h,56px)' }}>
-                    {/* Render ChatroomManager / ChallengeChatPanel here (messages list lives inside) */}
-                    <ChatroomManager
-                      inline
-                      isOpen={true}
-                      onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                      initialChatroomId={selectedChatroomId ?? undefined}
-                    />
-                  </div>
-
-                  {/* 3) OPTIONAL STICKY FOOTER (composer) — leave as-is */}
+                <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
+                  <ChatroomManager
+                    inline
+                    isOpen={true}
+                    onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                    initialChatroomId={selectedChatroomId ?? undefined}
+                  />
                 </div>
               </TabsContent>
 
