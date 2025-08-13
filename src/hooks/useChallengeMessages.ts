@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
+export type RoomType = 'public' | 'private';
 const CHAT_COLS = 'id,challenge_id,user_id,content,created_at';
 
 export interface ChallengeMessage {
@@ -49,16 +50,32 @@ function reconcile(prev: ChallengeMessage[], incoming: ChallengeMessage[]) {
   return sorted;
 }
 
-export function useChallengeMessages(challengeId: string | null, opts?: { isPrivate?: boolean }) {
+export function useChallengeMessages(challengeId: string | null, roomType: RoomType = 'public') {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChallengeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // request sequence + current room tracking
   const seq = useRef(0);
-  const isPrivate = !!opts?.isPrivate;
-  const TABLE = isPrivate ? 'private_challenge_messages' : 'challenge_messages';
-  const CH_ID_COL = isPrivate ? 'private_challenge_id' : 'challenge_id';
-  const COLS = isPrivate ? `id,${CH_ID_COL},user_id,content,created_at` : CHAT_COLS;
+  const currentKeyRef = useRef<string | null>(null);
+
+  // compute table/column per room type
+  const table = roomType === 'private' ? 'private_challenge_messages' : 'challenge_messages';
+  const idCol = roomType === 'private' ? 'private_challenge_id' : 'challenge_id';
+  const COLS = `id,${idCol},user_id,content,created_at`;
+
+  // ⛑ RESET state when room changes to avoid bleed between chats
+  useEffect(() => {
+    const nextKey = challengeId ? `${roomType}:${challengeId}` : null;
+    if (currentKeyRef.current !== nextKey) {
+      currentKeyRef.current = nextKey;
+      setMessages([]);
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [challengeId, roomType]);
+
   // Local refetch helper (race-safe)
   const refetch = async (sid: number, id: string) => {
     try {
