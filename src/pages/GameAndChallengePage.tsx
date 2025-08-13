@@ -65,6 +65,8 @@ import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 import { useChatStore } from '@/store/chatStore';
+import { BILLBOARD_ENABLED } from '@/config/flags';
+import BillboardTab from '@/components/billboard/BillboardTab';
 
 // Types
 interface ChatMessage {
@@ -149,7 +151,7 @@ function GameAndChallengeContent() {
         selectChatroom(ce.detail.challengeId);
         setPreselectedChatId(ce.detail.challengeId);
       }
-      setActiveSection('chat');
+      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
       console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
@@ -159,15 +161,15 @@ function GameAndChallengeContent() {
   // If a chatroom is selected globally, open the chat tab/modal and preselect it
   useEffect(() => {
     if (selectedChatroomId) {
-      setActiveSection('chat');
-      setIsChatroomManagerOpen(true);
+      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+      setIsChatroomManagerOpen(!BILLBOARD_ENABLED);
       setPreselectedChatId(selectedChatroomId);
     }
   }, [selectedChatroomId]);
 
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
-    if (activeSection !== 'chat') return;
+    if (activeSection !== (BILLBOARD_ENABLED ? 'billboard' : 'chat')) return;
 
     // Set a sensible default first
     document.documentElement.style.setProperty('--gc-header-h', '56px');
@@ -299,7 +301,15 @@ function GameAndChallengeContent() {
 
   const quickEmojis = ['😆', '🔥', '👏', '🥦', '🍩', '💪', '🚀', '⭐'];
 
-  const navigationItems = [
+  const navigationItems = BILLBOARD_ENABLED ? [
+    { id: 'ranking', label: 'Ranking', icon: Trophy },
+    { id: 'my-friends', label: 'My Friends', icon: Users },
+    { id: 'challenges', label: 'Browse', icon: Target },
+    { id: 'my-challenges', label: 'My Challenges', icon: Star },
+    { id: 'billboard', label: 'Billboard', icon: MessageCircle },
+    { id: 'winners', label: 'Winners', icon: Crown },
+    { id: 'hall-of-fame', label: 'Hall of Fame', icon: Medal }
+  ] : [
     { id: 'ranking', label: 'Ranking', icon: Trophy },
     { id: 'my-friends', label: 'My Friends', icon: Users },
     { id: 'challenges', label: 'Browse', icon: Target },
@@ -390,7 +400,7 @@ function GameAndChallengeContent() {
             </div>
           )}
         </div>
-        {activeSection === 'chat' && (
+        {activeSection === (BILLBOARD_ENABLED ? 'billboard' : 'chat') && (
           <>
             {/* Dropdown under header; preserve its own background/classes */}
             <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8">
@@ -841,16 +851,22 @@ function GameAndChallengeContent() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="chat" className="mt-0">
-                <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
-                  <ChatroomManager
-                    inline
-                    isOpen={true}
-                    onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
-                    initialChatroomId={selectedChatroomId ?? undefined}
-                  />
-                </div>
-              </TabsContent>
+              {BILLBOARD_ENABLED ? (
+                <TabsContent value="billboard" className="mt-0">
+                  <BillboardTab />
+                </TabsContent>
+              ) : (
+                <TabsContent value="chat" className="mt-0">
+                  <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
+                    <ChatroomManager
+                      inline
+                      isOpen={true}
+                      onOpenChange={(open) => { if (!open) setActiveSection('challenges'); }}
+                      initialChatroomId={selectedChatroomId ?? undefined}
+                    />
+                  </div>
+                </TabsContent>
+              )}
 
               <TabsContent value="winners" className="mt-4">
                 <MonthlyTrophyPodium />
