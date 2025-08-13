@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
-import ChallengeRankings from "./ChallengeRankings";
 import { seedBillboardForChallenge } from "@/dev/seedBillboard";
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";
@@ -83,10 +82,7 @@ export default function BillboardTab() {
               )}
             </div>
           ) : (
-            <>
-              <ChallengeRankings challengeId={challengeId} />
-              {events.map((ev) => <BillboardCard key={ev.id} event={ev} />)}
-            </>
+            events.map((ev) => <BillboardCard key={ev.id} event={ev} />)
           )}
         </div>
       </div>
