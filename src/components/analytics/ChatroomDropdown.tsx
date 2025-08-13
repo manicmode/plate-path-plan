@@ -24,31 +24,36 @@ export default function ChatroomDropdown() {
       const userId = session?.session?.user?.id;
       if (!userId) return;
 
-      // created by me
+      // fetch created-by-me (non Rank-of-20)
       const { data: created } = await supabase
         .from("private_challenges")
-        .select("id, name")
+        .select("id, title")
         .eq("creator_id", userId);
 
-      // I participate in
+      const createdNonR20 = (created ?? []).filter(
+        c => !(c.title || "").toLowerCase().startsWith("rank of 20")
+      );
+
+      // fetch I-participate-in (includes R20)
       const { data: parts } = await supabase
         .from("private_challenge_participations")
-        .select("private_challenge_id, private_challenges(id, name)")
+        .select("private_challenge_id, private_challenges(id, title)")
         .eq("user_id", userId);
 
       const byParticipation = (parts ?? [])
         .map((p: any) => p.private_challenges)
         .filter(Boolean);
 
+      // merge unique
       const map = new Map<string, any>();
-      [...(created ?? []), ...byParticipation].forEach((c: any) => map.set(c.id, c));
+      [...createdNonR20, ...byParticipation].forEach((c: any) => map.set(c.id, c));
       const options = Array.from(map.values());
 
-      // Sort Rank-of-20 first
+      // sort: R20 first, then alpha
       options.sort((a, b) => {
-        const ra = (a.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-        const rb = (b.name || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
-        return ra - rb || (a.name || "").localeCompare(b.name || "");
+        const ra = (a.title || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
+        const rb = (b.title || "").toLowerCase().startsWith("rank of 20") ? 0 : 1;
+        return ra - rb || (a.title || "").localeCompare(b.title || "");
       });
 
       setParticipationChallenges(options);
@@ -71,7 +76,7 @@ export default function ChatroomDropdown() {
     
     // Add challenges user participates in (already merged and sorted)
     participationChallenges.forEach((c: any) => 
-      map.set(c.id, { id: c.id, name: c.name ?? 'Untitled Challenge', type: 'private', count: 0 })
+      map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: 0 })
     );
     
     return map;
