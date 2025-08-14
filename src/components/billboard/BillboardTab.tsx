@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { MessageCircle } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
@@ -14,6 +15,7 @@ export default function BillboardTab() {
   const { events, isLoading, refresh } = useBillboardEvents(challengeId);
   const [seeding, setSeeding] = useState(false);
   const [challengeInfo, setChallengeInfo] = useState<{title: string, challenge_type?: string} | null>(null);
+  const [hasLoggedEmpty, setHasLoggedEmpty] = useState(false);
 
   // Fetch challenge details and add console tracing
   useEffect(() => {
@@ -77,6 +79,10 @@ export default function BillboardTab() {
       // Sort existing items by newest first (no rank_of_20 challenges)
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       console.info('[billboard] default candidates', items);
+      
+      // Log telemetry
+      console.info('[telemetry] billboard_loaded', { count: items.length });
+      
       if (items.length > 0) {
         selectChatroom(items[0].id);
         console.info('[billboard] default selected', items[0]);
@@ -114,6 +120,16 @@ export default function BillboardTab() {
     })();
   }, [selectedChatroomId, selectChatroom, refresh, challengeId]);
 
+  // Log telemetry for empty state
+  useEffect(() => {
+    if (!challengeId && !hasLoggedEmpty && !isLoading) {
+      console.info('[telemetry] billboard_empty_shown');
+      setHasLoggedEmpty(true);
+    } else if (challengeId && hasLoggedEmpty) {
+      setHasLoggedEmpty(false);
+    }
+  }, [challengeId, hasLoggedEmpty, isLoading]);
+
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
       <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -125,7 +141,39 @@ export default function BillboardTab() {
               ))}
             </div>
           ) : !challengeId ? (
-            <div className="text-center text-sm opacity-80 py-8">Select a challenge to view its Billboard.</div>
+            // Polished empty state when no challenge is selected
+            <div className="flex flex-col items-center justify-center gap-6 py-16 px-6 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">No Billboard challenges yet</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Create or join a private challenge to see it here.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button 
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                  onClick={() => {
+                    console.info('[telemetry] billboard_create_clicked');
+                    // Create challenge logic would go here
+                  }}
+                >
+                  Create Private Challenge
+                </button>
+                <button 
+                  className="px-6 py-2 border border-border rounded-full hover:bg-accent transition-colors"
+                  onClick={() => {
+                    console.info('[telemetry] billboard_arena_link_clicked');
+                    // Navigate to Arena tab - you can customize this based on your routing
+                    window.dispatchEvent(new CustomEvent("switch-to-arena-tab"));
+                  }}
+                >
+                  Go to Arena (Rank-of-20)
+                </button>
+              </div>
+            </div>
           ) : events.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-sm text-muted-foreground">
               <div>No highlights yet. Check back later or refresh.</div>
