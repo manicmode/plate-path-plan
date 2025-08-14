@@ -142,6 +142,9 @@ function GameAndChallengeContent() {
   const [isBillboardChatOpen, setIsBillboardChatOpen] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
+  // Track user intent to prevent auto-navigation
+  const userInitiatedRef = React.useRef(false);
+  
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
@@ -177,6 +180,7 @@ function GameAndChallengeContent() {
         selectChatroom(ce.detail.challengeId);
         setPreselectedChatId(ce.detail.challengeId);
       }
+      userInitiatedRef.current = true;
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
       console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
     };
@@ -186,7 +190,7 @@ function GameAndChallengeContent() {
 
   // If a chatroom is selected globally, open the chat tab/modal and preselect it
   useEffect(() => {
-    if (selectedChatroomId) {
+    if (selectedChatroomId && userInitiatedRef.current) {
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
       setIsChatroomManagerOpen(!BILLBOARD_ENABLED);
       setPreselectedChatId(selectedChatroomId);
@@ -198,6 +202,7 @@ function GameAndChallengeContent() {
     const fromUrl = searchParams.get("challenge");
     if (fromUrl) {
       selectChatroom(fromUrl);
+      userInitiatedRef.current = true;
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
     }
   }, [searchParams, selectChatroom]);
@@ -318,6 +323,7 @@ function GameAndChallengeContent() {
   };
 
   const scrollToSection = (sectionId: string) => {
+    userInitiatedRef.current = true;
     setActiveSection(sectionId);
     
     // Handle chat section specially to open chatroom manager
@@ -757,6 +763,7 @@ function GameAndChallengeContent() {
 
           {/* Mobile-Optimized Tabs for All Sections */}
           <Tabs value={activeSection} onValueChange={(value) => {
+            userInitiatedRef.current = true;
             if (value === 'chat') {
               setIsChatroomManagerOpen(true);
             } else {

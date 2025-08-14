@@ -5825,6 +5825,15 @@ export type Database = {
         Args: { _body: string }
         Returns: undefined
       }
+      my_rank20_group_members: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          display_name: string
+          avatar_url: string
+          joined_at: string
+        }[]
+      }
       my_rank20_latest_announcement: {
         Args: Record<PropertyKey, never>
         Returns: {
