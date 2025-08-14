@@ -753,82 +753,82 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Billboard & Chat
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[96svh] sm:max-h-[92vh] p-0">
+        <div className="flex h-full flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Billboard & Chat
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex-1 flex flex-col min-h-0 space-y-4">
-          {/* Enhanced Announcement Section */}
-          <motion.div
-            className={`rounded-2xl p-[1px] bg-gradient-to-r from-cyan-500/40 via-fuchsia-500/40 to-emerald-500/40 transition-all duration-300 ${
-              showNewGlow ? 'shadow-lg shadow-cyan-500/25 animate-pulse' : ''
-            }`}
-            initial={false}
-            animate={showNewGlow ? { 
-              boxShadow: [
-                '0 0 0 rgba(34, 211, 238, 0)',
-                '0 0 20px rgba(34, 211, 238, 0.4)',
-                '0 0 0 rgba(34, 211, 238, 0)'
-              ]
-            } : {}}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-          >
-            <div className="rounded-2xl bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-              {/* Accent bar */}
-              <div className="h-[3px] bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 rounded-t-2xl"></div>
-              
-              <div className="py-5 md:py-6 px-4 md:px-6">
-                {/* Icon + Label Row */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Megaphone className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium text-primary">Latest Announcement</span>
-                  {announcement && (
-                    <>
-                      <div className="w-1 h-1 rounded-full bg-muted-foreground/40"></div>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
-                      </span>
-                    </>
+          <div className="flex-1 flex flex-col min-h-0 px-6 py-4 space-y-3">
+            {/* Enhanced Announcement Section */}
+            <motion.div
+              className={`rounded-2xl p-[1px] bg-gradient-to-r from-cyan-500/40 via-fuchsia-500/40 to-emerald-500/40 transition-all duration-300 ${
+                showNewGlow ? 'shadow-lg shadow-cyan-500/25 animate-pulse' : ''
+              }`}
+              initial={false}
+              animate={showNewGlow ? { 
+                boxShadow: [
+                  '0 0 0 rgba(34, 211, 238, 0)',
+                  '0 0 20px rgba(34, 211, 238, 0.4)',
+                  '0 0 0 rgba(34, 211, 238, 0)'
+                ]
+              } : {}}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+            >
+              <div className="rounded-2xl bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                {/* Accent bar */}
+                <div className="h-[3px] bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 rounded-t-2xl"></div>
+                
+                <div className="py-5 md:py-6 px-4 md:px-6">
+                  {/* Icon + Label Row */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Megaphone className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium text-primary">Latest Announcement</span>
+                    {announcement && (
+                      <>
+                        <div className="w-1 h-1 rounded-full bg-muted-foreground/40"></div>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  {isLoading ? (
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-6 bg-muted rounded w-3/4"></div>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </div>
+                  ) : announcement ? (
+                    <div className="space-y-3">
+                      {announcement.title && (
+                        <h2 
+                          role="heading" 
+                          aria-level={2}
+                          className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight"
+                        >
+                          {announcement.title}
+                        </h2>
+                      )}
+                      <p className="text-base md:text-lg leading-7 text-muted-foreground">
+                        {announcement.body}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-base text-muted-foreground italic">No announcements yet.</p>
                   )}
                 </div>
-
-                {/* Content */}
-                {isLoading ? (
-                  <div className="animate-pulse space-y-3">
-                    <div className="h-6 bg-muted rounded w-3/4"></div>
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                  </div>
-                ) : announcement ? (
-                  <div className="space-y-3">
-                    {announcement.title && (
-                      <h2 
-                        role="heading" 
-                        aria-level={2}
-                        className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight"
-                      >
-                        {announcement.title}
-                      </h2>
-                    )}
-                    <p className="text-base md:text-lg leading-7 text-muted-foreground">
-                      {announcement.body}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-base text-muted-foreground italic">No announcements yet.</p>
-                )}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Chat Section */}
-          <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-base">
-                <span>Group Chat</span>
+            {/* Chat Section */}
+            <div className="rounded-2xl bg-card/90 p-4 mt-3 flex min-h-0 flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-base font-semibold">Group Chat</span>
                 {connectionStatus === 'reconnecting' && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <WifiOff className="h-3 w-3" />
@@ -841,14 +841,13 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     Live
                   </div>
                 )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col min-h-0 space-y-3">
+              </div>
+              
               {/* Messages */}
               <div
                 ref={scrollAreaRef}
                 onScroll={handleScroll}
-                className="mt-3 h-[420px] max-h-[60vh] overflow-y-auto pr-2"
+                className="mt-2 flex-1 min-h-0 overflow-y-auto pr-2"
               >
                 {loadingOlder && (
                   <div className="text-center py-2">
@@ -922,30 +921,12 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                 )}
               </div>
 
-              {/* Send Message */}
-              <div className="space-y-2">
-                {/* Emoji Strip Toggle */}
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleEmojiStrip}
-                    className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <Smile className="h-3 w-3" />
-                    Emoji
-                  </Button>
-                  {newMessage.length > 1800 && (
-                    <div className="text-xs text-muted-foreground">
-                      {newMessage.length}/2000 characters
-                    </div>
-                  )}
-                </div>
-
+              {/* Composer pinned at bottom */}
+              <div className="pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
                 {/* Emoji Strip */}
                 {showEmojiStrip && (
                   <div 
-                    className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-1 emoji-strip"
+                    className="mb-2 flex items-center gap-1 overflow-x-auto no-scrollbar h-8"
                     onWheel={(e) => {
                       // Allow horizontal scroll with wheel on desktop
                       if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
@@ -977,28 +958,28 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                           e.currentTarget.addEventListener('touchend', cleanup);
                           e.currentTarget.addEventListener('touchmove', cleanup);
                         }}
-                        className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/50 active:scale-95 transition-all duration-150 flex-shrink-0"
+                        className="h-8 w-8 rounded-lg hover:bg-muted/50 flex items-center justify-center"
                         aria-label={`Insert ${emoji} emoji`}
                         type="button"
                       >
-                        <span className="text-base">{emoji}</span>
+                        {emoji}
                       </button>
                     ))}
-                    <button
-                      onClick={handleEmojiLongPress}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/50 active:scale-95 transition-all duration-150 flex-shrink-0"
-                      aria-label="Open emoji picker"
-                      type="button"
-                    >
-                      <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
-                    </button>
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Emoji"
+                    onClick={toggleEmojiStrip}
+                    className="h-9 w-9 rounded-lg hover:bg-muted/50 flex items-center justify-center"
+                  >
+                    <span>🙂</span>
+                  </button>
                   <Input
                     ref={inputRef}
-                    placeholder="Type your message... (max 2000 chars)"
+                    placeholder="Type your message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
@@ -1015,8 +996,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
