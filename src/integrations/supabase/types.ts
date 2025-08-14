@@ -2591,7 +2591,15 @@ export type Database = {
           id?: string
           title?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_billboard_challenge"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rank20_chat_messages: {
         Row: {
@@ -2615,7 +2623,15 @@ export type Database = {
           id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_challenge"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rank20_groups: {
         Row: {
@@ -5708,7 +5724,13 @@ export type Database = {
         Returns: string
       }
       my_rank20_chat_list: {
-        Args: { _limit?: number; _before?: string }
+        Args:
+          | { _limit?: number; _before?: string }
+          | {
+              _limit?: number
+              _before_created_at?: string
+              _before_id?: string
+            }
         Returns: {
           id: string
           user_id: string

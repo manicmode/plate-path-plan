@@ -35,6 +35,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isNotMember, setIsNotMember] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +62,18 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
 
   const loadInitialData = async () => {
     setIsLoading(true);
+    setIsNotMember(false);
+    
     try {
+      // First check if user has rank20 challenge access
+      const { data: challengeId, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
+      if (challengeError || !challengeId) {
+        console.info('User not in rank20 challenge');
+        setIsNotMember(true);
+        setIsLoading(false);
+        return;
+      }
+
       // Load latest announcement
       const { data: announcementData, error: announcementError } = await supabase.rpc('my_rank20_latest_announcement');
       if (announcementError) {
@@ -70,8 +82,12 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         setAnnouncement(announcementData?.[0] || null);
       }
 
-      // Load initial chat messages
-      const { data: chatData, error: chatError } = await supabase.rpc('my_rank20_chat_list', { _limit: 50 });
+      // Load initial chat messages with improved pagination
+      const { data: chatData, error: chatError } = await supabase.rpc('my_rank20_chat_list', { 
+        _limit: 50,
+        _before_created_at: null,
+        _before_id: null
+      });
       if (chatError) {
         console.error('Error loading chat:', chatError);
       } else {
@@ -96,7 +112,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       const oldestMessage = chatMessages[0];
       const { data: olderData, error } = await supabase.rpc('my_rank20_chat_list', {
         _limit: 50,
-        _before: oldestMessage.created_at
+        _before_created_at: oldestMessage.created_at,
+        _before_id: oldestMessage.id
       });
 
       if (error) {
@@ -113,11 +130,18 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || isSending) return;
+    const trimmedMessage = newMessage.trim();
+    if (!trimmedMessage || isSending) return;
+
+    // Client-side length validation (2000 chars max)
+    if (trimmedMessage.length > 2000) {
+      toast.error('Message too long (max 2000 characters)');
+      return;
+    }
 
     setIsSending(true);
     try {
-      const { error } = await supabase.rpc('my_rank20_chat_post', { _body: newMessage.trim() });
+      const { error } = await supabase.rpc('my_rank20_chat_post', { _body: trimmedMessage });
       
       if (error) {
         console.error('Error sending message:', error);
@@ -127,14 +151,18 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
 
       // Telemetry
       if (process.env.NODE_ENV !== 'production') {
-        console.info('arena_chat_message_sent', { length: newMessage.trim().length });
+        console.info('arena_chat_message_sent', { length: trimmedMessage.length });
       }
 
       // Clear input
       setNewMessage('');
       
       // Reload recent messages to show the new one
-      const { data: recentData } = await supabase.rpc('my_rank20_chat_list', { _limit: 10 });
+      const { data: recentData } = await supabase.rpc('my_rank20_chat_list', { 
+        _limit: 10,
+        _before_created_at: null,
+        _before_id: null
+      });
       if (recentData) {
         const reversedRecent = recentData.reverse();
         setChatMessages(prev => {
@@ -173,6 +201,26 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       sendMessage();
     }
   };
+
+  // Handle non-member state
+  if (isNotMember) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Billboard & Chat
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground mb-4">You're not in this Arena yet.</p>
+            <p className="text-sm text-muted-foreground">Join a Rank-of-20 challenge to access the Arena Billboard & Chat.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -287,16 +335,17 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               {/* Send Message */}
               <div className="flex gap-2">
                 <Input
-                  placeholder="Type your message..."
+                  placeholder="Type your message... (max 2000 chars)"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   disabled={isSending}
                   className="flex-1"
+                  maxLength={2000}
                 />
                 <Button 
                   onClick={sendMessage} 
-                  disabled={!newMessage.trim() || isSending}
+                  disabled={!newMessage.trim() || isSending || newMessage.trim().length > 2000}
                   size="icon"
                 >
                   <Send className="h-4 w-4" />
