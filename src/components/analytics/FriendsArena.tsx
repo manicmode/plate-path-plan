@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ interface FriendsArenaProps {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
+  const navigate = useNavigate();
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
@@ -171,6 +173,25 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             <Button onClick={refresh} variant="outline" size="sm" className="mt-2">
               Try Again
             </Button>
+          </div>
+        ) : Array.isArray(members) && members.length === 0 ? (
+          <div className="rounded-xl border p-4 text-sm opacity-80">
+            <div className="font-medium mb-1">No arena buddies yet</div>
+            <div className="mb-3">Join or invite friends to a Rank-of-20 challenge to see live rankings here.</div>
+            <div className="flex gap-2">
+              <button
+                className="rounded-lg border px-3 py-1.5"
+                onClick={() => navigate('/challenges/new?type=rank_of_20')}
+              >
+                Start a Live Arena
+              </button>
+              <button
+                className="rounded-lg border px-3 py-1.5"
+                onClick={() => navigate('/friends')}
+              >
+                Invite friends
+              </button>
+            </div>
           </div>
         ) : (
           <>
