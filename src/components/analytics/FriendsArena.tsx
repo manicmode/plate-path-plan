@@ -108,15 +108,14 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const params = new URLSearchParams(location.search);
   const arenaPlain = params.get("arena_plain") === "1";
 
+  // Auto-enable Plain once so the user never edits URLs
   useEffect(() => {
-    // Auto-switch to Plain once if not set
-    if (!arenaPlain) {
-      const p = new URLSearchParams(location.search);
+    const p = new URLSearchParams(location.search);
+    if (!p.get("arena_plain")) {
       p.set("arena_plain", "1");
       navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
     }
-  // run on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // dev: helper to flip mode without touching URL manually
@@ -125,6 +124,55 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     if (on) p.set("arena_plain", "1"); else p.delete("arena_plain");
     navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
   };
+
+  const content = arenaPlain ? (
+    <div className="p-3">
+      <ul className="list-disc pl-5 space-y-1">
+        {rows.map(r => <li key={r.user_id}>{r.display_name} — {r.user_id}</li>)}
+      </ul>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {rows.map((row, index) => (
+        <div key={row.user_id}>
+          <Card className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <ProgressAvatar 
+                    avatar="👤"
+                    nickname={row.display_name}
+                    weeklyProgress={0}
+                    dailyStreak={0}
+                    weeklyStreak={0}
+                    size="sm"
+                    showStats={false}
+                    isCurrentUser={false}
+                  />
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Joined {new Date(row.joined_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                {getRankBadge(index + 1)}
+              </div>
+              
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Rank: #{index + 1}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Trophy className="h-3 w-3 text-yellow-500" />
+                  <span>Active Member</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ))}
+    </div>
+  );
 
 
   const getTrendIcon = (trend: string) => {
@@ -159,16 +207,40 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           "flex items-center",
           isMobile ? "flex-col space-y-2" : "justify-between"
         )}>
-          <CardTitle className={cn(
-            "font-bold flex items-center gap-2",
-            isMobile ? "text-xl" : "text-3xl gap-3"
-          )}>
-            <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
-            👥 Friends Arena
-            <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
-          </CardTitle>
-          
-          <div className="flex gap-2">
+          {/* LEFT: existing title/icons */}
+          <div className="flex items-center gap-2">
+            <CardTitle className={cn(
+              "font-bold flex items-center gap-2",
+              isMobile ? "text-xl" : "text-3xl gap-3"
+            )}>
+              <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
+              Live Rankings Arena
+            </CardTitle>
+          </div>
+
+          {/* RIGHT: TOOLBAR AND ACTIONS */}
+          <div className="flex items-center gap-2">
+            {/* ALWAYS-VISIBLE TOOLBAR */}
+            <div
+              data-testid="arena-toolbar"
+              className="flex items-center gap-2 text-[10px] sm:text-xs px-2 py-1 rounded-md border border-emerald-500 bg-emerald-500/15 text-emerald-300"
+            >
+              <button
+                onClick={() => setArenaPlain(false)}
+                className={!arenaPlain ? "px-2 py-0.5 rounded border bg-emerald-500/30" : "px-2 py-0.5 rounded border"}
+              >
+                Cards
+              </button>
+              <button
+                onClick={() => setArenaPlain(true)}
+                className={arenaPlain ? "px-2 py-0.5 rounded border bg-emerald-500/30" : "px-2 py-0.5 rounded border"}
+              >
+                Plain
+              </button>
+              <span className="ml-2 px-2 py-0.5 rounded border">rows={rows.length}</span>
+            </div>
+
+            {/* ACTION BUTTONS */}
             <Button 
               onClick={() => setArenaChatOpen(true)}
               className={cn(
@@ -236,170 +308,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             </div>
           </div>
         ) : (
-          <>
-            {inDev && (
-              <div className="mb-2 flex items-center gap-2 text-xs opacity-75">
-                <span>Dev:</span>
-                <button
-                  data-testid="arena-mode-cards"
-                  onClick={() => setArenaPlain(false)}
-                  className={arenaPlain ? "px-2 py-1 rounded border" : "px-2 py-1 rounded border bg-emerald-500/20"}
-                >
-                  Cards
-                </button>
-                <button
-                  data-testid="arena-mode-plain"
-                  onClick={() => setArenaPlain(true)}
-                  className={arenaPlain ? "px-2 py-1 rounded border bg-emerald-500/20" : "px-2 py-1 rounded border"}
-                >
-                  Plain
-                </button>
-                <span
-                  data-testid="arena-count"
-                  className="ml-2 px-2 py-0.5 rounded border"
-                >
-                  rows={rows.length}
-                </span>
-              </div>
-            )}
-
-            {arenaPlain ? (
-              <div className="p-4">
-                <h3 className="font-semibold mb-2">Live Rankings Arena (Plain)</h3>
-                <div className="text-sm opacity-70 mb-3">rows: {rows.length}</div>
-                <ul className="list-disc pl-5 space-y-1">
-                  {rows.map(r => (
-                    <li key={r.user_id}>{r.display_name} — {r.user_id}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <>
-                {isMobile ? (
-                  // Mobile: Vertical Stack Layout
-                  <div className="space-y-3">
-                     {rows.map((row, index) => (
-                       <div key={row.user_id}>
-                         <Card 
-                            className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
-                           >
-                             <CardContent className="p-3">
-                               <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-3">
-                                     <ProgressAvatar 
-                                       avatar="👤"
-                                       nickname={row.display_name}
-                                       weeklyProgress={0}
-                                       dailyStreak={0}
-                                       weeklyStreak={0}
-                                       size="sm"
-                                       showStats={false}
-                                       isCurrentUser={false}
-                                     />
-                                    <div>
-                                     <span className="text-xs text-muted-foreground">
-                                       Joined {new Date(row.joined_at).toLocaleDateString()}
-                                     </span>
-                                   </div>
-                                 </div>
-                                {getRankBadge(index + 1)}
-                              </div>
-                              
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Rank: #{index + 1}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Trophy className="h-3 w-3 text-yellow-500" />
-                                  <span>Active Member</span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  // Desktop: Horizontal Grid Layout  
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {rows.map((row, index) => (
-                       <div key={row.user_id}>
-                         <Card 
-                            className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative"
-                           >
-                             {/* Rank Badge Overlay */}
-                             <div className="absolute top-2 right-2 z-10">
-                               {getRankBadge(index + 1)}
-                             </div>
-                             
-                             <CardContent className="p-4">
-                                <div className="flex items-center gap-3 mb-4">
-                                   <ProgressAvatar 
-                                     avatar="👤"
-                                     nickname={row.display_name}
-                                     weeklyProgress={0}
-                                     dailyStreak={0}
-                                     weeklyStreak={0}
-                                     size="md"
-                                     showStats={false}
-                                     isCurrentUser={false}
-                                   />
-                                  <div className="flex-1">
-                                    <span className="text-xs text-muted-foreground">
-                                      Joined {new Date(row.joined_at).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <Trophy className="h-4 w-4 text-yellow-500" />
-                                    <span className="font-medium">Rank: #{index + 1}</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-2">
-                                  <Users className="h-4 w-4 text-blue-500" />
-                                  <span className="text-sm">Arena Member</span>
-                                </div>
-                                
-                                <div className="flex gap-2 pt-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="flex-1 text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // Handle challenge friend
-                                    }}
-                                  >
-                                    <Target className="h-3 w-3 mr-1" />
-                                    Challenge
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="flex-1 text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // Handle message friend
-                                    }}
-                                  >
-                                    <MessageCircle className="h-3 w-3 mr-1" />
-                                    Message
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                        </Card>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </>
+          content
         )}
 
         {rows.length === 0 && !loading && !error && (
