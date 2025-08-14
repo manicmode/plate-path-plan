@@ -1,6 +1,7 @@
 
 import React, { Suspense, lazy, useEffect } from 'react';
 import ArenaSmoke from "@/debug/ArenaSmoke";
+import ArenaSmokeGlobal from "@/debug/ArenaSmoke";
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -468,6 +469,7 @@ function App() {
             </TooltipProvider>
           </SoundProvider>
         </ThemeProvider>
+        <ArenaSmokeGlobal />
       </ErrorBoundary>
     </BrowserRouter>
   );

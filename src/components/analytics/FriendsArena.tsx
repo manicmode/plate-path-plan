@@ -53,6 +53,8 @@ interface FriendsArenaProps {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
+  useEffect(() => { console.info("[SOURCE] FriendsArena rendered"); }, []);
+
   const rawSearch = typeof window !== "undefined" ? window.location.search : "";
   const qs = new URLSearchParams(rawSearch);
   const urlFlag = qs.get("arena_smoke") === "1";
@@ -283,7 +285,20 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   return (
     <>
       {arenaOverlay}
-    <Card className="w-full h-auto overflow-visible border-2 border-blue-200 shadow-xl">
+    <Card className="w-full h-auto overflow-visible border-2 border-blue-200 shadow-xl relative">
+      <div style={{
+        position: "absolute",
+        top: 6,
+        right: 8,
+        zIndex: 5,
+        background: "rgba(0,0,0,0.6)",
+        color: "#fff",
+        borderRadius: 6,
+        padding: "2px 6px",
+        fontSize: 11,
+      }}>
+        SOURCE: FriendsArena
+      </div>
       <CardHeader className={cn(
         "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
         isMobile ? "p-4" : "p-6"

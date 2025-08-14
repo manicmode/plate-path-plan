@@ -127,6 +127,8 @@ function GameAndChallengeContent() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  useEffect(() => { console.info("[SOURCE] GameAndChallengePage rendered"); }, []);
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
     memoryThreshold: 0.7,
@@ -753,11 +755,24 @@ function GameAndChallengeContent() {
               <TabsContent value="ranking" className="mt-4">
                 {/* Mobile Ranking Section */}
                 <Card className={cn(
-                  "overflow-hidden border-2 shadow-xl",
+                  "overflow-hidden border-2 shadow-xl relative",
                   challengeMode === 'recovery' 
                     ? "border-teal-200/30 bg-gradient-to-br from-teal-50/50 to-purple-50/50 dark:from-teal-950/20 dark:to-purple-950/20"
                     : "border-primary/20"
                 )}>
+                  <div style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 8,
+                    zIndex: 5,
+                    background: "rgba(0,0,0,0.6)",
+                    color: "#fff",
+                    borderRadius: 6,
+                    padding: "2px 6px",
+                    fontSize: 11,
+                  }}>
+                    SOURCE: GameAndChallengePage
+                  </div>
                   <CardHeader className={cn(
                     challengeMode === 'recovery' 
                       ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/30 dark:to-purple-950/30"
