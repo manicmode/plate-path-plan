@@ -202,42 +202,33 @@ function GameAndChallengeContent() {
     }
   }, [searchParams, selectChatroom]);
 
-  // Ensure Rank-of-20 assignment ONLY for Arena tab
+  // Ensure Rank-of-20 assignment ONLY for ranking (Live Arena) tab
   useEffect(() => {
+    let cancelled = false;
+    
     (async () => {
-      // Only join Rank-of-20 when Arena is active
-      if (activeSection !== 'arena') return;
+      // Only join Rank-of-20 when ranking (Live Arena) is active
+      if (activeSection !== 'ranking') return;
       if (selectedChatroomId) return;
 
-      // Check if user is already in a Rank-of-20 challenge
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
       if (!userId) return;
 
-      const { data: existing } = await supabase
-        .from("private_challenge_participations")
-        .select(`private_challenge_id, private_challenges(challenge_type)`)
-        .eq("user_id", userId)
-        .limit(50);
-
-      const alreadyInRank20 = existing?.some(
-        (p: any) => p.private_challenges?.challenge_type === 'rank_of_20'
-      );
-
-      if (alreadyInRank20) {
-        // Already a member, just select the challenge without toast
-        const chId = await ensureRank20ChallengeForMe();
-        if (chId) selectChatroom(chId);
-        return;
+      // Auto-enroll using the new RPC function (idempotent)
+      const { error: enrollError } = await supabase.rpc("rank20_enroll_me");
+      if (enrollError) {
+        console.error("rank20_enroll_me error", enrollError);
       }
 
-      // Not a member yet, join and show toast
+      // Get the current challenge and select it
       const chId = await ensureRank20ChallengeForMe();
-      if (chId) {
+      if (chId && !cancelled) {
         selectChatroom(chId);
-        toast.success("Joined Rank of 20");
       }
     })();
+    
+    return () => { cancelled = true; };
   }, [activeSection, selectedChatroomId, selectChatroom]);
 
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it

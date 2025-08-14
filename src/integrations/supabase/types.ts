@@ -5572,6 +5572,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      current_rank20_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       diag_rank20: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -5845,6 +5849,14 @@ export type Database = {
       process_yearly_hall_of_fame: {
         Args: { target_year: number }
         Returns: Json
+      }
+      rank20_enroll_me: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      rank20_enroll_user: {
+        Args: { _user: string }
+        Returns: undefined
       }
       record_team_up_prompt_action: {
         Args: {

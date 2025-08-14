@@ -10,25 +10,18 @@ export async function ensureRank20ChallengeForMe(): Promise<string | null> {
   const userId = await getSessionUserId();
   if (!userId) return null;
 
-  // Do I already participate in a Rank-of-20 challenge?
-  const { data: parts, error: partsErr } = await supabase
-    .from("private_challenge_participations")
-    .select(`private_challenge_id, private_challenges(id, name)`)
-    .eq("user_id", userId)
-    .limit(100);
-
-  if (!partsErr) {
-    const r20 = (parts ?? []).find(
-      (p: any) => (p.private_challenges?.name || "").toLowerCase().startsWith("rank of 20")
-    );
-    if (r20) return r20.private_challenge_id as string;
+  // Auto-enroll using the new RPC function (idempotent)
+  const { error: enrollError } = await supabase.rpc("rank20_enroll_me");
+  if (enrollError) {
+    console.error("rank20_enroll_me error", enrollError);
   }
 
-  // If not, ask the server to assign me
-  const { data: assigned, error } = await supabase.rpc("assign_rank20", { _user_id: userId });
-  if (error) {
-    console.error("assign_rank20 error", error);
+  // Get current rank-of-20 challenge ID
+  const { data: challengeId, error: challengeError } = await supabase.rpc("current_rank20_challenge_id");
+  if (challengeError) {
+    console.error("current_rank20_challenge_id error", challengeError);
     return null;
   }
-  return assigned?.[0]?.challenge_id ?? null;
+
+  return challengeId || null;
 }
