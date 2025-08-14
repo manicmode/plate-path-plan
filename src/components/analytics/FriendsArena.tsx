@@ -104,6 +104,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     console.info("[Arena] rows.len", rows.length, rows.map(r => r.user_id));
   }
 
+  const inDev = process.env.NODE_ENV !== "production";
   const params = new URLSearchParams(location.search);
   const arenaPlain = params.get("arena_plain") === "1";
 
@@ -119,7 +120,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Dev-only toggle helpers
+  // dev: helper to flip mode without touching URL manually
   const setArenaPlain = (on: boolean) => {
     const p = new URLSearchParams(location.search);
     if (on) p.set("arena_plain", "1"); else p.delete("arena_plain");
@@ -237,9 +238,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           </div>
         ) : (
           <>
-            {process.env.NODE_ENV !== "production" && (
-              <div className="mb-2 flex items-center gap-2 text-xs opacity-70">
-                <span>Dev view:</span>
+            {inDev && (
+              <div className="mb-2 flex items-center gap-2 text-xs opacity-75">
+                <span>Dev:</span>
                 <button
                   data-testid="arena-mode-cards"
                   onClick={() => setArenaPlain(false)}
@@ -254,6 +255,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 >
                   Plain
                 </button>
+                <span
+                  data-testid="arena-count"
+                  className="ml-2 px-2 py-0.5 rounded border"
+                >
+                  rows={rows.length}
+                </span>
               </div>
             )}
 
