@@ -70,6 +70,7 @@ import BillboardTab from '@/components/billboard/BillboardTab';
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 // Types
 interface ChatMessage {
@@ -180,19 +181,40 @@ function GameAndChallengeContent() {
     }
   }, [searchParams, selectChatroom]);
 
-  // Ensure Rank-of-20 assignment and default selection for Billboard tab
+  // Ensure Rank-of-20 assignment ONLY for Arena tab
   useEffect(() => {
     (async () => {
-      if (activeSection !== (BILLBOARD_ENABLED ? 'billboard' : 'chat')) return;
+      // Only join Rank-of-20 when Arena is active
+      if (activeSection !== 'arena') return;
       if (selectedChatroomId) return;
 
-      console.log("[Billboard] defaulting to Rank-of-20…");
+      // Check if user is already in a Rank-of-20 challenge
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) return;
+
+      const { data: existing } = await supabase
+        .from("private_challenge_participations")
+        .select(`private_challenge_id, private_challenges(challenge_type)`)
+        .eq("user_id", userId)
+        .limit(50);
+
+      const alreadyInRank20 = existing?.some(
+        (p: any) => p.private_challenges?.challenge_type === 'rank_of_20'
+      );
+
+      if (alreadyInRank20) {
+        // Already a member, just select the challenge without toast
+        const chId = await ensureRank20ChallengeForMe();
+        if (chId) selectChatroom(chId);
+        return;
+      }
+
+      // Not a member yet, join and show toast
       const chId = await ensureRank20ChallengeForMe();
       if (chId) {
         selectChatroom(chId);
         toast.success("Joined Rank of 20");
-      } else {
-        console.warn("[Billboard] No Rank-of-20 challenge id");
       }
     })();
   }, [activeSection, selectedChatroomId, selectChatroom]);

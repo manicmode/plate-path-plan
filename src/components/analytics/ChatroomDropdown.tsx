@@ -23,7 +23,7 @@ export default function ChatroomDropdown() {
       // Auth guard: don't RPC while unauthenticated
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.user?.id) {
-        console.warn('[AUTH_GUARD] No session; skipping my_billboard_challenges RPC');
+        if (process.env.NODE_ENV !== 'production') console.warn('No session; skipping my_billboard_challenges RPC');
         setParticipationChallenges([]);
         return;
       }
@@ -52,7 +52,7 @@ export default function ChatroomDropdown() {
       // Defensive filter: should never trigger but protects against rank_of_20 leakage
       const safeItems = items.filter(i => i.challenge_type !== 'rank_of_20');
       if (safeItems.length !== items.length) {
-        console.error('[BILLBOARD_GUARD] stripped rank_of_20 item from dropdown');
+        if (process.env.NODE_ENV !== 'production') console.warn('Filtered rank_of_20 from dropdown');
       }
 
       // Sort by newest first (no rank_of_20 challenges since RPC filters them out)
@@ -68,7 +68,7 @@ export default function ChatroomDropdown() {
       }));
 
       // Console tracing: final options array  
-      console.info('[BILLBOARD_DROPDOWN] final options array', options);
+      
 
       setParticipationChallenges(options);
 

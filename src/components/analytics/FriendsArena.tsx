@@ -45,7 +45,7 @@ interface FriendsArenaProps {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
-  console.info('[ARENA_DATA] friends for arena', friends);
+  
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);

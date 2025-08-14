@@ -104,10 +104,6 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   const regularPublicChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'public'));
   const filteredPrivateChallenges = filterChallengesByMode(privateChallenges);
   
-  // Console logging for forensic investigation
-  console.info('[ACTIVE_DATA] allPublicChallenges', allPublicChallenges);
-  console.info('[ACTIVE_DATA] privateChallenges (from RPC)', privateChallenges);
-  console.info('[ACTIVE_DATA] activePrivateChallenges raw', activePrivateChallenges);
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;

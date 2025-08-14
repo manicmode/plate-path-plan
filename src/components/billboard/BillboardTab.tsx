@@ -48,16 +48,6 @@ export default function BillboardTab() {
   // Determine if this is a Rank-of-20 challenge (only check challenge_type)
   const isRank20 = challengeInfo && challengeInfo.challenge_type === 'rank_of_20';
 
-  // Client-side auto-assign safeguard
-  const ensureRank20ClientSide = async (userId: string) => {
-    try {
-      console.info('[rank20] auto-assigning user', userId);
-      const { error } = await supabase.rpc('assign_rank20', { _user_id: userId });
-      if (error) console.error('[rank20] assign rpc error', error);
-    } catch (e) {
-      console.error('[rank20] assign exception', e);
-    }
-  };
 
   // Auto-select first available challenge if none selected
   useEffect(() => {
@@ -67,7 +57,7 @@ export default function BillboardTab() {
       // Auth guard: don't RPC while unauthenticated
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.user?.id) {
-        console.warn('[AUTH_GUARD] No session; skipping my_billboard_challenges RPC');
+        if (process.env.NODE_ENV !== 'production') console.warn('No session; skipping my_billboard_challenges RPC');
         return;
       }
 
@@ -82,12 +72,12 @@ export default function BillboardTab() {
       // Defensive filter: should never trigger but protects against rank_of_20 leakage
       const safeItems = items.filter(i => i.challenge_type !== 'rank_of_20');
       if (safeItems.length !== items.length) {
-        console.error('[BILLBOARD_GUARD] stripped rank_of_20 item from billboard');
+        if (process.env.NODE_ENV !== 'production') console.warn('Filtered rank_of_20 from billboard');
       }
       
       // Sort existing items by newest first (no rank_of_20 challenges)
       safeItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      console.info('[BILLBOARD_DATA] RPC result items', safeItems);
+      
       
       // Log telemetry
       console.info('[telemetry] billboard_loaded', { count: safeItems.length });

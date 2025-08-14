@@ -22,7 +22,7 @@ export function useMyActivePrivateChallenges() {
       // Auth guard: don't RPC while unauthenticated
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.user?.id) {
-        console.warn('[AUTH_GUARD] No session; skipping my_active_private_challenges RPC');
+        if (process.env.NODE_ENV !== 'production') console.warn('No session; skipping my_active_private_challenges RPC');
         setItems([]);
         setIsLoading(false);
         return;
@@ -36,10 +36,9 @@ export function useMyActivePrivateChallenges() {
       } else {
         const safeItems = (data ?? []).filter((i: any) => i.challenge_type !== 'rank_of_20');
         if (safeItems.length !== (data ?? []).length) {
-          console.error('[ACTIVE_GUARD] stripped rank_of_20 item from active challenges');
+          if (process.env.NODE_ENV !== 'production') console.warn('Filtered rank_of_20 from active challenges');
         }
         setItems(safeItems);
-        console.info('[ACTIVE_DATA] my_active_private_challenges result:', safeItems);
       }
 
       setIsLoading(false);
