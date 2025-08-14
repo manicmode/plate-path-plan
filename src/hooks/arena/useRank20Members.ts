@@ -29,6 +29,12 @@ export function useRank20Members() {
       await requireSession();
       const { data, error } = await supabase.rpc('my_rank20_group_members');
       if (error) setError(error.message);
+      
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.info('[RPC] my_rank20_group_members length:', Array.isArray(data) ? data.length : data, data?.slice?.(0, 3));
+      }
+      
       setMembers((data as Member[]) ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication required');

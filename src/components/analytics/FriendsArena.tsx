@@ -98,6 +98,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     };
   });
 
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.info('[Arena rows]', rows.length, rows.slice(0,3));
+  }
+
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -211,7 +216,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           <>
             {isMobile ? (
               // Mobile: Vertical Stack Layout
-              <div className="space-y-3">
+              <div 
+                data-testid="arena-list"
+                className="flex flex-col gap-2 overflow-visible"
+                style={{ maxHeight: 'none' }}
+              >
                 {rows.map((member, index) => (
                   <Card 
                     key={member.user_id}
@@ -254,7 +263,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               </div>
             ) : (
               // Desktop: Horizontal Grid Layout  
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div 
+                data-testid="arena-list"
+                className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-visible"
+                style={{ maxHeight: 'none' }}
+              >
                 {rows.map((member, index) => (
                   <Card 
                     key={member.user_id}
