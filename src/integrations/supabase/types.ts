@@ -5632,6 +5632,16 @@ export type Database = {
         Args: { violation_type: string; details: string; metadata?: Json }
         Returns: undefined
       }
+      my_active_private_challenges: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          category: string
+          challenge_type: string
+          created_at: string
+        }[]
+      }
       my_billboard_challenges: {
         Args: Record<PropertyKey, never>
         Returns: {

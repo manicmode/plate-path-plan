@@ -64,11 +64,13 @@ export default function BillboardTab() {
     const loadDefaultChallenge = async () => {
       console.info('[billboard] resolving default via my_billboard_challenges');
       
-      // Get current user for auto-assignment
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      console.info('[BILLBOARD_DATA] current auth user', userId);
-      
+      // Auth guard: don't RPC while unauthenticated
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.user?.id) {
+        console.warn('[AUTH_GUARD] No session; skipping my_billboard_challenges RPC');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('my_billboard_challenges');
       if (error) {
         console.error('[billboard] rpc error', error);
@@ -77,16 +79,22 @@ export default function BillboardTab() {
       
       const items = (data ?? []) as any[];
       
+      // Defensive filter: should never trigger but protects against rank_of_20 leakage
+      const safeItems = items.filter(i => i.challenge_type !== 'rank_of_20');
+      if (safeItems.length !== items.length) {
+        console.error('[BILLBOARD_GUARD] stripped rank_of_20 item from billboard');
+      }
+      
       // Sort existing items by newest first (no rank_of_20 challenges)
-      items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      console.info('[BILLBOARD_DATA] RPC result items', items);
+      safeItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      console.info('[BILLBOARD_DATA] RPC result items', safeItems);
       
       // Log telemetry
-      console.info('[telemetry] billboard_loaded', { count: items.length });
+      console.info('[telemetry] billboard_loaded', { count: safeItems.length });
       
-      if (items.length > 0) {
-        selectChatroom(items[0].id);
-        console.info('[billboard] default selected', items[0]);
+      if (safeItems.length > 0) {
+        selectChatroom(safeItems[0].id);
+        console.info('[billboard] default selected', safeItems[0]);
       }
     };
 

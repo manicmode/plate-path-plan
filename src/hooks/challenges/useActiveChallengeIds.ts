@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
-import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { useMyActivePrivateChallenges } from '@/hooks/challenges/useMyActivePrivateChallenges';
 
 // Unified active challenge IDs sourced from the exact hooks powering the "My" sections
 export function useActiveChallengeIds() {
   const { userParticipations, challenges: publicChallenges, loading: lp } = usePublicChallenges();
-  const { challengesWithParticipation, loading: lpr } = usePrivateChallenges();
+  const { items: activePrivateChallenges, isLoading: lpr } = useMyActivePrivateChallenges();
 
   const ids = useMemo(() => {
     // Public: derive from current user participations and cross-check against active public list when available
@@ -14,8 +14,8 @@ export function useActiveChallengeIds() {
       .map((p: any) => p.challenge_id)
       .filter((id: string) => !activePublicSet.size || activePublicSet.has(id));
 
-    // Private: use the same list used by "My Private Challenges"
-    const prvIds = (challengesWithParticipation ?? []).map((c: any) => c.id);
+    // Private: use the RPC result that excludes rank_of_20
+    const prvIds = (activePrivateChallenges ?? []).map((c: any) => c.id);
 
     // Dedup and preserve order (public first then private)
     const seen = new Set<string>();
@@ -26,7 +26,7 @@ export function useActiveChallengeIds() {
     });
 
     return ordered;
-  }, [userParticipations, publicChallenges, challengesWithParticipation]);
+  }, [userParticipations, publicChallenges, activePrivateChallenges]);
 
   return {
     ids,

@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle, Zap } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
-import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { useMyActivePrivateChallenges } from '@/hooks/challenges/useMyActivePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
 import { PrivateRecoveryChallenges } from './PrivateRecoveryChallenges';
 import { useToast } from '@/hooks/use-toast';
@@ -30,22 +30,18 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     loading: publicLoading 
   } = usePublicChallenges();
 
-  const {
-    challengesWithParticipation,
-    updatePrivateProgress,
-    loading: privateLoading,
-    refreshData
-  } = usePrivateChallenges();
+  // Use the new dedicated hook for active private challenges (excludes rank_of_20)
+  const { items: activePrivateChallenges, isLoading: privateLoading } = useMyActivePrivateChallenges();
 
   const loading = publicLoading || privateLoading;
 
-  // Auto-refresh on mount to get latest data after RLS fix
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      refreshData();
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [refreshData]);
+  // Remove auto-refresh since we're now using RPC
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     refreshData();
+  //   }, 1000);
+  //   return () => clearTimeout(timer);
+  // }, [refreshData]);
 
   if (loading) {
     return (
@@ -78,10 +74,10 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     };
   }).filter(Boolean);
 
-  const privateChallenges = challengesWithParticipation.map(({ participation, ...challenge }) => ({
+  const privateChallenges = activePrivateChallenges.map(challenge => ({
     type: 'private',
     challenge,
-    participation: participation!,
+    participation: { completion_percentage: 0 }, // Mock participation for now
     onLeave: async (challengeId: string) => {
       console.log('Leave private challenge:', challengeId);
       return true;
@@ -110,8 +106,8 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   
   // Console logging for forensic investigation
   console.info('[ACTIVE_DATA] allPublicChallenges', allPublicChallenges);
-  console.info('[ACTIVE_DATA] privateChallenges', privateChallenges);
-  console.info('[ACTIVE_DATA] challengesWithParticipation raw', challengesWithParticipation);
+  console.info('[ACTIVE_DATA] privateChallenges (from RPC)', privateChallenges);
+  console.info('[ACTIVE_DATA] activePrivateChallenges raw', activePrivateChallenges);
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;

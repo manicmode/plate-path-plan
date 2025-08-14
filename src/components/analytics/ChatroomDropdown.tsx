@@ -20,11 +20,13 @@ export default function ChatroomDropdown() {
   // Fetch challenges using RPC only (no merging with other sources)
   React.useEffect(() => {
     (async () => {
-      // Console tracing: supabase.auth.getUser() result
-      const { data: user, error: userError } = await supabase.auth.getUser();
-      console.info('[billboard-dropdown] auth.getUser()', { user: user?.user?.id, error: userError });
-      
-      if (!user?.user?.id) return;
+      // Auth guard: don't RPC while unauthenticated
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.user?.id) {
+        console.warn('[AUTH_GUARD] No session; skipping my_billboard_challenges RPC');
+        setParticipationChallenges([]);
+        return;
+      }
 
       // Test RPC first
       console.info('[billboard-dropdown] testing RPC my_billboard_challenges');
@@ -47,11 +49,17 @@ export default function ChatroomDropdown() {
         created_at: string;
       }>;
 
+      // Defensive filter: should never trigger but protects against rank_of_20 leakage
+      const safeItems = items.filter(i => i.challenge_type !== 'rank_of_20');
+      if (safeItems.length !== items.length) {
+        console.error('[BILLBOARD_GUARD] stripped rank_of_20 item from dropdown');
+      }
+
       // Sort by newest first (no rank_of_20 challenges since RPC filters them out)
-      items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      safeItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Map to options (should only be non-rank_of_20 challenges)
-      const options = items.map(x => ({
+      const options = safeItems.map(x => ({
         id: x.id,
         title: x.title,
         challenge_type: x.challenge_type,
