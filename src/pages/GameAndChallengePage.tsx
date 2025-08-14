@@ -73,6 +73,25 @@ import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
+// Domain filtering utility
+function applyDomainFilter<T extends { category?: string }>(
+  items: T[],
+  domain: 'nutrition' | 'exercise' | 'recovery' | 'combined'
+) {
+  if (domain === 'combined') return items;
+  
+  // Special case for recovery domain - includes multiple categories
+  if (domain === 'recovery') {
+    return items.filter(item => 
+      ['meditation', 'breathing', 'yoga', 'sleep', 'thermotherapy', 'recovery'].includes(
+        (item.category ?? '').toLowerCase()
+      )
+    );
+  }
+  
+  return items.filter(item => (item.category ?? '').toLowerCase() === domain);
+}
+
 // Types
 interface ChatMessage {
   id: number;
@@ -403,22 +422,33 @@ function GameAndChallengeContent() {
                 ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Only show in Arena (ranking) */}
-            {activeSection === 'ranking' && (
-              <div className="flex justify-center mt-2">
-                <ToggleGroup 
-                  type="single" 
-                  value={challengeMode} 
-                  onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
-                  className="bg-muted/50 rounded-full p-1"
-                >
-                  <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
-                  <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Exercise</ToggleGroupItem>
-                  <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Recovery</ToggleGroupItem>
-                  <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Combined</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-            )}
+            {/* Challenge Mode Toggle - Show in Arena, Browse, and My Challenges */}
+            {(() => {
+              const showCategoryFilters = ['ranking', 'challenges', 'my-challenges'].includes(activeSection);
+              return showCategoryFilters && (
+                <div className="flex justify-center mt-2">
+                  <ToggleGroup 
+                    type="single" 
+                    value={challengeMode} 
+                    onValueChange={(value) => {
+                      if (value) {
+                        setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
+                        // Telemetry
+                        if (process.env.NODE_ENV !== 'production') {
+                          console.info('domain_filter_changed', { section: activeSection, domain: value });
+                        }
+                      }
+                    }}
+                    className="bg-muted/50 rounded-full p-1"
+                  >
+                    <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
+                    <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Exercise</ToggleGroupItem>
+                    <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Recovery</ToggleGroupItem>
+                    <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Combined</ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              );
+            })()}
           </div>
           
           {/* Sort Controls - Responsive */}
@@ -896,12 +926,12 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
-                <PublicChallengesBrowse challengeMode="combined" />
+                <PublicChallengesBrowse challengeMode={challengeMode} />
               </TabsContent>
 
               <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
                 <div className="space-y-8">
-                  <UserChallengeParticipations challengeMode="combined" />
+                  <UserChallengeParticipations challengeMode={challengeMode} />
                 </div>
               </TabsContent>
 
