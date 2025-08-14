@@ -1046,12 +1046,23 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                                 </button>
                               ))}
 
-                            {/* If more than 3, show a collapsed count */}
-                            {Object.keys(reactions[message.id] ?? {}).length > 3 && (
-                              <span className="px-2 h-6 rounded-full bg-muted/50 text-xs flex items-center">
-                                +{Object.keys(reactions[message.id] ?? {}).length - 3}
-                              </span>
-                            )}
+                            {/* If more than 3, show remaining reaction count */}
+                            {(() => {
+                              const messageReactions = reactions[message.id] ?? {};
+                              const allEntries = Object.entries(messageReactions);
+                              if (allEntries.length <= 3) return null;
+                              
+                              // Calculate total count of reactions not shown in top 3
+                              const topThree = allEntries.sort((a,b) => (b[1] ?? 0) - (a[1] ?? 0)).slice(0, 3);
+                              const remainingEntries = allEntries.sort((a,b) => (b[1] ?? 0) - (a[1] ?? 0)).slice(3);
+                              const remainingCount = remainingEntries.reduce((sum, [, count]) => sum + (count ?? 0), 0);
+                              
+                              return (
+                                <span className="px-2 h-6 rounded-full bg-muted/50 text-xs flex items-center">
+                                  +{remainingCount}
+                                </span>
+                              );
+                            })()}
 
                             {/* Add reaction: '+' chip opens popover - always show */}
                             <ReactionAddButton
