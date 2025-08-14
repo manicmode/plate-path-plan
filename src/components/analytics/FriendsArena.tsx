@@ -322,26 +322,32 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       </CardHeader>
       
       <CardContent className={cn("w-full h-auto overflow-visible", isMobile ? "p-3" : "p-6")}>
+        {/* === ARENA INLINE DEBUG (always visible) === */}
         <div
           data-testid="arena-debug-inline"
-          className="mb-3 text-xs rounded-md border border-yellow-500 bg-yellow-500/10 p-2"
+          style={{
+            background: '#111827',
+            border: '2px dashed #fbbf24',
+            color: '#fde68a',
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 12,
+          }}
         >
-          <div className="font-medium mb-1">ARENA DEBUG</div>
-          <div className="mb-1">
-            members=<b>{Array.isArray(members) ? members.length : 'n/a'}</b>
-            {' '}rows=<b>{rows.length}</b>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>ARENA DEBUG</div>
+          <div style={{ marginBottom: 6 }}>
+            members=<b>{Array.isArray(members) ? members.length : 'n/a'}</b>{' '}
+            rows=<b>{rows.length}</b>
           </div>
-          <pre className="whitespace-pre-wrap break-all text-[10px] leading-snug max-h-48 overflow-auto">
-            {JSON.stringify(
-              {
-                members_sample: (Array.isArray(members) ? members.slice(0,5) : []).map(m => ({ id: m.user_id, name: m.display_name })),
-                rows_sample: rows.slice(0,5).map(r => ({ id: r.user_id, name: r.display_name })),
-              },
-              null,
-              2
-            )}
-          </pre>
+          <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0, maxHeight: 160, overflow: 'auto' }}>
+            {rows.map((r) => (
+              <li key={'dump-' + r.user_id}>
+                {r.user_id} — {r.display_name || 'N/A'}
+              </li>
+            ))}
+          </ul>
         </div>
+        {/* === /ARENA INLINE DEBUG === */}
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
