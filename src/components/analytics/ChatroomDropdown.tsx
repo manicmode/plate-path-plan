@@ -24,22 +24,47 @@ export default function ChatroomDropdown() {
       const userId = session?.session?.user?.id;
       if (!userId) return;
 
+      console.info('[billboard-dropdown] loading options via RPC my_billboard_challenges');
       const { data, error } = await supabase.rpc('my_billboard_challenges');
       if (error) {
         console.error('[billboard-dropdown] rpc error', error);
         return;
       }
-      console.info('[billboard-dropdown] options', data);
-      let options = (data ?? []).sort((a, b) => {
-        if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
-        if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
+
+      let items = (data ?? []) as Array<{
+        id: string;
+        title: string;
+        category: string | null;
+        challenge_type: string | null;
+        created_at: string;
+      }>;
+
+      console.info('[billboard-dropdown] raw options', items);
+
+      // Prefer Rank-of-20 first, then newest
+      items.sort((a, b) => {
+        const ar = a.challenge_type === 'rank_of_20' ? 0 : 1;
+        const br = b.challenge_type === 'rank_of_20' ? 0 : 1;
+        if (ar !== br) return ar - br;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
+      // Map to dropdown options
+      const options = items.map(x => ({
+        id: x.id,
+        title: x.title,
+        challenge_type: x.challenge_type,
+        label: x.challenge_type === 'rank_of_20' ? 'Rank of 20 • Private' : `${x.title} • Private`,
+        type: x.challenge_type ?? 'custom',
+      }));
+
+      console.info('[billboard-dropdown] mapped options', options);
+
       setParticipationChallenges(options);
 
-      // Auto-select first option if no selection
+      // Auto-select first if none
       if (!selectedChatroomId && options.length > 0) {
+        console.info('[billboard-dropdown] auto-selecting', options[0]);
         selectChatroom(options[0].id);
       }
     })();
@@ -58,15 +83,14 @@ export default function ChatroomDropdown() {
       map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 })
     );
     
-    // Add challenges from RPC with proper labeling
+    // Add challenges from RPC with mapped labels
     participationChallenges.forEach((c: any) => {
-      let displayName;
-      if (c.challenge_type === 'rank_of_20') {
-        displayName = 'Rank of 20';
-      } else {
-        displayName = c.title ?? 'Untitled Challenge';
-      }
-      map.set(c.id, { id: c.id, name: displayName, type: 'private', count: 0 });
+      map.set(c.id, { 
+        id: c.id, 
+        name: c.label || c.title || 'Untitled Challenge', 
+        type: 'private', 
+        count: 0 
+      });
     });
     
     return map;

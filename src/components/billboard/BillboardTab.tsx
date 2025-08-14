@@ -47,40 +47,57 @@ export default function BillboardTab() {
 
   // Auto-select first available challenge if none selected
   useEffect(() => {
+    const loadDefaultChallenge = async () => {
+      console.info('[billboard] resolving default via my_billboard_challenges');
+      const { data, error } = await supabase.rpc('my_billboard_challenges');
+      if (error) {
+        console.error('[billboard] rpc error', error);
+        return;
+      }
+      const items = (data ?? []) as any[];
+      items.sort((a, b) => {
+        const ar = a.challenge_type === 'rank_of_20' ? 0 : 1;
+        const br = b.challenge_type === 'rank_of_20' ? 0 : 1;
+        if (ar !== br) return ar - br;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      console.info('[billboard] default candidates', items);
+      if (items.length > 0) {
+        selectChatroom(items[0].id);
+        console.info('[billboard] default selected', items[0]);
+      } else {
+        // Fallback: ensure assignment then refetch
+        console.warn('[billboard] no candidates; attempting ensure/assign then refetch');
+        try {
+          await supabase.rpc('diag_rank20');
+        } catch (diagErr) {
+          console.debug('[billboard] diag_rank20 fallback failed', diagErr);
+        }
+        const retry = await supabase.rpc('my_billboard_challenges');
+        if (!retry.error && retry.data?.length) {
+          const ritems = retry.data as any[];
+          ritems.sort((a,b)=> (a.challenge_type==='rank_of_20'?0:1)-(b.challenge_type==='rank_of_20'?0:1)
+            || new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+          selectChatroom(ritems[0].id);
+          console.info('[billboard] default selected after ensure', ritems[0]);
+        }
+      }
+    };
+
     (async () => {
       // Log current user for diagnostics
       const { data: user } = await supabase.auth.getUser();
       console.log('[diag] user', user);
       
       if (!selectedChatroomId) {
-        // Try to get challenges from RPC to auto-select first
-        try {
-          const { data: challenges } = await supabase.rpc('my_billboard_challenges');
-          if (challenges && challenges.length > 0) {
-            // Sort to get rank_of_20 first, then by created_at desc
-            const sorted = challenges.sort((a: any, b: any) => {
-              if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
-              if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
-              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            
-            selectChatroom(sorted[0].id);
-            
-            // Auto-seed demo events in dev mode if billboard is empty
-            if (isDev) {
-              setTimeout(async () => {
-                await seedBillboardForChallenge(sorted[0].id, refresh);
-                await refresh();
-              }, 1000);
-            }
-          }
-        } catch (err) {
-          console.error('[diag] Failed to fetch challenges for auto-selection:', err);
-          // Fallback to old method
-          const chId = await ensureRank20ChallengeForMe();
-          if (chId) {
-            selectChatroom(chId);
-          }
+        await loadDefaultChallenge();
+        
+        // Auto-seed demo events in dev mode if billboard is empty
+        if (isDev && selectedChatroomId) {
+          setTimeout(async () => {
+            await seedBillboardForChallenge(selectedChatroomId, refresh);
+            await refresh();
+          }, 1000);
         }
       }
       
