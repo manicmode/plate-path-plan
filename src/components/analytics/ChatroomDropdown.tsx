@@ -124,9 +124,7 @@ export default function ChatroomDropdown() {
 
   const handleChange = (val: string) => {
     selectChatroom(val);
-    window.dispatchEvent(
-      new CustomEvent("switch-to-chat-tab", { detail: { challengeId: val } })
-    );
+    // DO NOT dispatch switch-to-chat-tab to prevent auto-navigation
     console.info("[chat-dropdown] selected", val);
   };
 

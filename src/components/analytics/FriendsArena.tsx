@@ -21,11 +21,13 @@ import {
   Medal,
   Star,
   Zap,
-  Gift
+  Gift,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ProgressAvatar } from './ui/ProgressAvatar';
+import { useRank20Members } from '@/hooks/arena/useRank20Members';
 
 interface Friend {
   id: number;
@@ -41,11 +43,11 @@ interface Friend {
 }
 
 interface FriendsArenaProps {
-  friends: Friend[];
+  friends?: Friend[]; // Now optional since we use RPC data
 }
 
-export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
-  
+export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
+  const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -112,52 +114,58 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
       </CardHeader>
       
       <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
-        {isMobile ? (
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-muted/30 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
+            <p className="text-destructive text-sm">{error}</p>
+            <Button onClick={refresh} variant="outline" size="sm" className="mt-2">
+              Try Again
+            </Button>
+          </div>
+        ) : isMobile ? (
           // Mobile: Vertical Stack Layout
           <div className="space-y-3">
-            {friends.map((friend) => (
+            {members.map((member, index) => (
               <Card 
-                key={friend.id} 
+                key={member.user_id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
-                onClick={() => setSelectedFriend(friend)}
               >
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
                      <div className="flex items-center gap-3">
                         <ProgressAvatar 
-                          avatar={friend.avatar}
-                          nickname={friend.nickname}
-                          weeklyProgress={friend.weeklyProgress}
-                          dailyStreak={friend.streak}
+                          avatar="👤"
+                          nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
+                          weeklyProgress={0}
+                          dailyStreak={0}
                           weeklyStreak={0}
                           size="sm"
                           showStats={false}
                           isCurrentUser={false}
                         />
                        <div>
-                        {getOnlineStatus(friend.isOnline, friend.lastSeen)}
+                        <span className="text-xs text-muted-foreground">
+                          Joined {new Date(member.joined_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                    {getRankBadge(friend.rank)}
+                    {getRankBadge(index + 1)}
                   </div>
                   
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">Score: {friend.score}</span>
-                      {getTrendIcon(friend.trend)}
+                      <span className="font-medium">Rank: #{index + 1}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-orange-500" />
-                      <span>{friend.streak} day streak</span>
+                      <Trophy className="h-3 w-3 text-yellow-500" />
+                      <span>Active Member</span>
                     </div>
-                  </div>
-                  
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Weekly Progress</span>
-                      <span>{friend.weeklyProgress}%</span>
-                    </div>
-                    <Progress value={friend.weeklyProgress} className="h-1" />
                   </div>
                 </CardContent>
               </Card>
@@ -166,31 +174,32 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
         ) : (
           // Desktop: Horizontal Grid Layout
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {friends.map((friend) => (
+            {members.map((member, index) => (
               <Card 
-                key={friend.id} 
+                key={member.user_id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
-                onClick={() => setSelectedFriend(friend)}
               >
                 {/* Rank Badge Overlay */}
                 <div className="absolute top-2 right-2 z-10">
-                  {getRankBadge(friend.rank)}
+                  {getRankBadge(index + 1)}
                 </div>
                 
                 <CardContent className="p-4">
                    <div className="flex items-center gap-3 mb-4">
                       <ProgressAvatar 
-                        avatar={friend.avatar}
-                        nickname={friend.nickname}
-                        weeklyProgress={friend.weeklyProgress}
-                        dailyStreak={friend.streak}
+                        avatar="👤"
+                        nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
+                        weeklyProgress={0}
+                        dailyStreak={0}
                         weeklyStreak={0}
                         size="md"
                         showStats={false}
                         isCurrentUser={false}
                       />
                      <div className="flex-1">
-                       {getOnlineStatus(friend.isOnline, friend.lastSeen)}
+                       <span className="text-xs text-muted-foreground">
+                         Joined {new Date(member.joined_at).toLocaleDateString()}
+                       </span>
                      </div>
                    </div>
                   
@@ -198,22 +207,13 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Trophy className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">Score: {friend.score}</span>
+                        <span className="font-medium">Rank: #{index + 1}</span>
                       </div>
-                      {getTrendIcon(friend.trend)}
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Flame className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm">{friend.streak} day streak</span>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Weekly Progress</span>
-                        <span className="font-medium">{friend.weeklyProgress}%</span>
-                      </div>
-                      <Progress value={friend.weeklyProgress} className="h-2" />
+                      <Users className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm">Arena Member</span>
                     </div>
                     
                     <div className="flex gap-2 pt-2">
@@ -249,7 +249,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
           </div>
         )}
 
-        {friends.length === 0 && (
+        {members.length === 0 && !loading && !error && (
           <div className="text-center py-12">
             <div className={cn(
               "bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4",

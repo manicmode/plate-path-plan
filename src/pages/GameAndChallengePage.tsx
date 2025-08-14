@@ -207,34 +207,29 @@ function GameAndChallengeContent() {
     }
   }, [searchParams, selectChatroom]);
 
-  // Ensure Rank-of-20 assignment ONLY for ranking (Live Arena) tab
+  // Ensure Rank-of-20 assignment silently (no navigation)
   useEffect(() => {
     let cancelled = false;
     
     (async () => {
-      // Only join Rank-of-20 when ranking (Live Arena) is active
+      // Only enroll when ranking (Live Arena) is active
       if (activeSection !== 'ranking') return;
-      if (selectedChatroomId) return;
 
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
       if (!userId) return;
 
-      // Auto-enroll using the new RPC function (idempotent)
+      // Auto-enroll using the new RPC function (idempotent) - no navigation
       const { error: enrollError } = await supabase.rpc("rank20_enroll_me");
       if (enrollError) {
         console.error("rank20_enroll_me error", enrollError);
       }
-
-      // Get the current challenge and select it
-      const chId = await ensureRank20ChallengeForMe();
-      if (chId && !cancelled) {
-        selectChatroom(chId);
-      }
+      
+      // Note: No selectChatroom() call here to prevent auto-navigation
     })();
     
     return () => { cancelled = true; };
-  }, [activeSection, selectedChatroomId, selectChatroom]);
+  }, [activeSection]);
 
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
@@ -329,6 +324,12 @@ function GameAndChallengeContent() {
     // Handle chat section specially to open chatroom manager
     if (sectionId === 'chat') {
       setIsChatroomManagerOpen(true);
+      return;
+    }
+    
+    // Handle billboard section specially
+    if (sectionId === 'billboard') {
+      setIsBillboardChatOpen(true);
       return;
     }
     
