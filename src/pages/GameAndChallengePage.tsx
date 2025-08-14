@@ -403,8 +403,8 @@ function GameAndChallengeContent() {
                 ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle (same placement as mobile) */}
-            {activeSection !== 'my-friends' && activeSection !== 'chat' && (
+            {/* Challenge Mode Toggle - Only show in Arena (ranking) */}
+            {activeSection === 'ranking' && (
               <div className="flex justify-center mt-2">
                 <ToggleGroup 
                   type="single" 
@@ -896,12 +896,12 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
-                <PublicChallengesBrowse challengeMode={challengeMode} />
+                <PublicChallengesBrowse challengeMode="combined" />
               </TabsContent>
 
               <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
                 <div className="space-y-8">
-                  <UserChallengeParticipations challengeMode={challengeMode} />
+                  <UserChallengeParticipations challengeMode="combined" />
                 </div>
               </TabsContent>
 
@@ -936,7 +936,7 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="hall-of-fame" className="mt-4">
-                <HallOfFame champions={optimizedHallOfFame} />
+                <HallOfFame champions={optimizedHallOfFame} challengeMode="combined" />
               </TabsContent>
             </Tabs>
             
