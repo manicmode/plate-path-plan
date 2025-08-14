@@ -98,6 +98,21 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     console.info('[Arena] rows', rows.length, rows.map(r => r.user_id));
   }
 
+  const arenaPlain = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('arena_plain') === '1';
+  if (arenaPlain) {
+    return (
+      <div className="p-4">
+        <h3 className="font-semibold mb-2">Live Rankings Arena (Plain)</h3>
+        <div className="text-sm opacity-70 mb-3">rows: {rows.length}</div>
+        <ul className="list-disc pl-5 space-y-1">
+          {rows.map(r => (
+            <li key={r.user_id}>{r.display_name} — {r.user_id}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
