@@ -74,33 +74,8 @@ export default function BillboardTab() {
       
       const items = (data ?? []) as any[];
       
-      // If empty and we have a user, auto-assign then refetch
-      if (items.length === 0 && userId) {
-        console.info('[billboard] no challenges found, auto-assigning to Rank-of-20');
-        await ensureRank20ClientSide(userId);
-        const retry = await supabase.rpc('my_billboard_challenges');
-        if (!retry.error && retry.data?.length) {
-          const ritems = retry.data as any[];
-          ritems.sort((a, b) => 
-            (a.challenge_type === 'rank_of_20' ? 0 : 1) - (b.challenge_type === 'rank_of_20' ? 0 : 1)
-            || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          console.info('[billboard] refetched options after auto-assign', ritems);
-          if (ritems.length > 0) {
-            selectChatroom(ritems[0].id);
-            console.info('[billboard] default selected after auto-assign', ritems[0]);
-          }
-        }
-        return;
-      }
-      
-      // Sort existing items and select first
-      items.sort((a, b) => {
-        const ar = a.challenge_type === 'rank_of_20' ? 0 : 1;
-        const br = b.challenge_type === 'rank_of_20' ? 0 : 1;
-        if (ar !== br) return ar - br;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
+      // Sort existing items by newest first (no rank_of_20 challenges)
+      items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       console.info('[billboard] default candidates', items);
       if (items.length > 0) {
         selectChatroom(items[0].id);

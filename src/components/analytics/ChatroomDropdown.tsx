@@ -47,19 +47,15 @@ export default function ChatroomDropdown() {
         created_at: string;
       }>;
 
-      // Sort: Rank-of-20 first, then newest
-      items.sort((a, b) => {
-        if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
-        if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
+      // Sort by newest first (no rank_of_20 challenges since RPC filters them out)
+      items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // Map to options
+      // Map to options (should only be non-rank_of_20 challenges)
       const options = items.map(x => ({
         id: x.id,
         title: x.title,
         challenge_type: x.challenge_type,
-        label: x.challenge_type === 'rank_of_20' ? 'Rank of 20 • Private' : `${x.title} • Private`,
+        label: `${x.title} • Private`,
         type: x.challenge_type ?? 'custom',
       }));
 
@@ -108,17 +104,8 @@ export default function ChatroomDropdown() {
   const rooms = React.useMemo(() => {
     const allRooms = ids.map(id => index.get(id)).filter(Boolean) as Array<{id:string; name:string; type:'public'|'private'; count?: number}>;
     
-    // Sort Rank-of-20 first (check both challenge_type and title)
-    allRooms.sort((a, b) => {
-      const challenge_a = participationChallenges.find(c => c.id === a.id);
-      const challenge_b = participationChallenges.find(c => c.id === b.id);
-      
-      const ra = challenge_a?.challenge_type === 'rank_of_20' ? 0 : 1;
-      const rb = challenge_b?.challenge_type === 'rank_of_20' ? 0 : 1;
-      if (ra !== rb) return ra - rb;
-      
-      return (a.name || "").localeCompare(b.name || "");
-    });
+    // Sort alphabetically (no rank_of_20 challenges in dropdown)
+    allRooms.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     
     return allRooms;
   }, [ids, index]);
