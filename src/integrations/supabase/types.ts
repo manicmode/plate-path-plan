@@ -5448,6 +5448,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      cleanup_rank20_dupes: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       diag_rank20: {
         Args: Record<PropertyKey, never>
         Returns: Json
