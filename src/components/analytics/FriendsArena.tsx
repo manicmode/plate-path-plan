@@ -99,6 +99,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     console.info('[Arena] rows', rows.length, rows.map(r => r.user_id));
   }
 
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.info("[Arena] rows.len", rows.length, rows.map(r => r.user_id));
+  }
+
   const params = new URLSearchParams(location.search);
   const arenaPlain = params.get("arena_plain") === "1";
 
