@@ -82,10 +82,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     rank: scores[m.user_id]?.rank ?? undefined,
   }));
 
-  // Development logging
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[arena] members=', members?.map(m => m.user_id), 'rows=', rows.length);
-  }
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -178,17 +174,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           </div>
         ) : (
           <>
-            {process.env.NODE_ENV !== 'production' && Array.isArray(members) && (
-              <div data-testid="arena-debug-count" className="mb-2 text-xs opacity-70">
-                [dev] Arena members loaded: {members.length}
-              </div>
-            )}
             {isMobile ? (
               // Mobile: Vertical Stack Layout
               <div className="space-y-3">
                 {rows.map((member, index) => (
-                  <div data-testid="arena-card" key={member.user_id}>
-                    <Card 
+                  <Card 
+                    key={member.user_id}
                       className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
                     >
                       <CardContent className="p-3">
@@ -224,15 +215,14 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
                 ))}
               </div>
             ) : (
               // Desktop: Horizontal Grid Layout  
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {rows.map((member, index) => (
-                  <div data-testid="arena-card" key={member.user_id}>
-                    <Card 
+                  <Card 
+                    key={member.user_id}
                       className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
                     >
                       {/* Rank Badge Overlay */}
@@ -300,8 +290,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}

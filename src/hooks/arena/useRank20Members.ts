@@ -21,7 +21,6 @@ export function useRank20Members() {
       // Check auth first
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[arena] no session – returning empty members');
         setMembers([]);
         setLoading(false);
         return;
