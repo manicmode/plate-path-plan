@@ -5628,6 +5628,16 @@ export type Database = {
         Args: { violation_type: string; details: string; metadata?: Json }
         Returns: undefined
       }
+      my_billboard_challenges: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          category: string
+          challenge_type: string
+          created_at: string
+        }[]
+      }
       process_yearly_hall_of_fame: {
         Args: { target_year: number }
         Returns: Json

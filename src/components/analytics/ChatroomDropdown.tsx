@@ -17,62 +17,37 @@ export default function ChatroomDropdown() {
 
   const [participationChallenges, setParticipationChallenges] = React.useState<any[]>([]);
 
-  // Fetch challenges the user participates in (including Rank-of-20)
+  // Fetch challenges using the new RPC
   React.useEffect(() => {
     (async () => {
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
       if (!userId) return;
 
-      // fetch created-by-me 
-      const { data: created } = await supabase
-        .from("private_challenges")
-        .select("id, title, challenge_type")
-        .eq("creator_id", userId);
-
-      // fetch I-participate-in (includes R20)
-      const { data: parts } = await supabase
-        .from("private_challenge_participations")
-        .select("private_challenge_id, private_challenges(id, title, challenge_type)")
-        .eq("user_id", userId);
-
-      const byParticipation = (parts ?? [])
-        .map((p: any) => p.private_challenges)
-        .filter(Boolean);
-
-      // also include any rank_of_20 challenges that exist (ensure they're always visible)
-      const { data: rank20Challenges } = await supabase
-        .from("private_challenges")
-        .select("id, title, challenge_type")
-        .eq("challenge_type", "rank_of_20");
-
-      // merge unique (created + participated + rank_of_20)
-      const map = new Map<string, any>();
-      [...(created ?? []), ...byParticipation, ...(rank20Challenges ?? [])].forEach((c: any) => map.set(c.id, c));
-      const options = Array.from(map.values());
-
-      // sort: rank_of_20 first, then alpha
-      options.sort((a, b) => {
-        const ra = a.challenge_type === 'rank_of_20' ? 0 : 1;
-        const rb = b.challenge_type === 'rank_of_20' ? 0 : 1;
-        if (ra !== rb) return ra - rb;
-        return (a.title || "").localeCompare(b.title || "");
-      });
-
-      setParticipationChallenges(options);
-      console.log("[Billboard] Dropdown options:", {
-        created: created?.length || 0, 
-        joined: byParticipation?.length || 0, 
-        rank20: rank20Challenges?.length || 0,
-        union: options.length
-      }, options);
-
-      // Auto-select rank_of_20 if no selection
-      if (!selectedChatroomId) {
-        const rank20Option = options.find(c => c.challenge_type === 'rank_of_20');
-        if (rank20Option) {
-          selectChatroom(rank20Option.id);
+      try {
+        const { data, error } = await supabase.rpc('my_billboard_challenges');
+        
+        if (error) {
+          console.error('[billboard-dropdown] RLS error from my_billboard_challenges:', error);
+          return;
         }
+
+        // Sort with rank_of_20 first, then by created_at desc
+        const options = (data ?? []).sort((a, b) => {
+          if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
+          if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
+          return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        });
+
+        setParticipationChallenges(options);
+        console.info('[billboard-dropdown]', { options });
+
+        // Auto-select first option if no selection
+        if (!selectedChatroomId && options.length > 0) {
+          selectChatroom(options[0].id);
+        }
+      } catch (err) {
+        console.error('[billboard-dropdown] Failed to fetch challenges:', err);
       }
     })();
   }, [selectedChatroomId, selectChatroom]);
@@ -90,10 +65,11 @@ export default function ChatroomDropdown() {
       map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 })
     );
     
-    // Add challenges user participates in (already merged and sorted)
-    participationChallenges.forEach((c: any) => 
-      map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: 0 })
-    );
+    // Add challenges user participates in (with proper labeling)
+    participationChallenges.forEach((c: any) => {
+      const displayName = c.challenge_type === 'rank_of_20' ? 'Rank of 20' : (c.title ?? 'Untitled Challenge');
+      map.set(c.id, { id: c.id, name: displayName, type: 'private', count: 0 });
+    });
     
     return map;
   }, [publicChallenges, privateChallenges, participationChallenges]);

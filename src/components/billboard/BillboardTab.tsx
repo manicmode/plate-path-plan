@@ -42,10 +42,10 @@ export default function BillboardTab() {
     })();
   }, [challengeId]);
 
-  // Determine if this is a Rank-of-20 challenge
+  // Determine if this is a Rank-of-20 challenge (only check challenge_type)
   const isRank20 = challengeInfo && challengeInfo.challenge_type === 'rank_of_20';
 
-  // Auto-assign to Rank-of-20 and default selection
+  // Auto-select first available challenge if none selected
   useEffect(() => {
     (async () => {
       // Log current user for diagnostics
@@ -53,28 +53,33 @@ export default function BillboardTab() {
       console.log('[diag] user', user);
       
       if (!selectedChatroomId) {
-        // First try to find an existing Rank-of-20 challenge
-        const { data: rank20Challenge } = await supabase
-          .from("private_challenges")
-          .select("id")
-          .eq("challenge_type", "rank_of_20")
-          .single();
-        
-        if (rank20Challenge) {
-          selectChatroom(rank20Challenge.id);
-        } else {
-          // Fallback to assign_rank20 if no existing challenge
-          const chId = await ensureRank20ChallengeForMe();
-          if (chId) {
-            selectChatroom(chId);
+        // Try to get challenges from RPC
+        try {
+          const { data: challenges } = await supabase.rpc('my_billboard_challenges');
+          if (challenges && challenges.length > 0) {
+            // Sort to get rank_of_20 first, then by created_at desc
+            const sorted = challenges.sort((a: any, b: any) => {
+              if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
+              if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
+              return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            });
+            
+            selectChatroom(sorted[0].id);
             
             // Auto-seed demo events in dev mode if billboard is empty
             if (isDev) {
               setTimeout(async () => {
-                await seedBillboardForChallenge(chId, refresh);
+                await seedBillboardForChallenge(sorted[0].id, refresh);
                 await refresh();
               }, 1000);
             }
+          }
+        } catch (err) {
+          console.error('[diag] Failed to fetch challenges for auto-selection:', err);
+          // Fallback to old method
+          const chId = await ensureRank20ChallengeForMe();
+          if (chId) {
+            selectChatroom(chId);
           }
         }
       }
