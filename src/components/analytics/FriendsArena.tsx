@@ -33,6 +33,7 @@ import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { requireSession } from '@/lib/ensureAuth';
+import ArenaSmoke from "@/components/analytics/ArenaSmoke";
 
 interface Friend {
   id: number;
@@ -108,6 +109,10 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const inDev = true; // TEMP: force-visible debug UI
   const params = new URLSearchParams(location.search);
   const arenaPlain = params.get("arena_plain") === "1";
+
+  if (params.get("arena_smoke") === "1") {
+    return <ArenaSmoke />;
+  }
 
   // Auto-enable Plain once so the user never edits URLs
   useEffect(() => {
