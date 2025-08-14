@@ -25,11 +25,11 @@ export default function ChatroomDropdown() {
       if (!userId) return;
 
       const { data, error } = await supabase.rpc('my_billboard_challenges');
-      if (error) { 
-        console.error('[billboard-dropdown] rpc error', error); 
-        return; 
+      if (error) {
+        console.error('[billboard-dropdown] rpc error', error);
+        return;
       }
-      
+      console.info('[billboard-dropdown] options', data);
       let options = (data ?? []).sort((a, b) => {
         if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
         if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
@@ -37,7 +37,6 @@ export default function ChatroomDropdown() {
       });
 
       setParticipationChallenges(options);
-      console.info('[billboard-dropdown] options', options);
 
       // Auto-select first option if no selection
       if (!selectedChatroomId && options.length > 0) {
@@ -59,9 +58,14 @@ export default function ChatroomDropdown() {
       map.set(c.id, { id: c.id, name: c.title ?? 'Untitled Challenge', type: 'private', count: (c as any).participant_count ?? 0 })
     );
     
-    // Add challenges from RPC (with proper labeling)
+    // Add challenges from RPC with proper labeling
     participationChallenges.forEach((c: any) => {
-      const displayName = c.challenge_type === 'rank_of_20' ? 'Rank of 20' : (c.title ?? 'Untitled Challenge');
+      let displayName;
+      if (c.challenge_type === 'rank_of_20') {
+        displayName = 'Rank of 20';
+      } else {
+        displayName = c.title ?? 'Untitled Challenge';
+      }
       map.set(c.id, { id: c.id, name: displayName, type: 'private', count: 0 });
     });
     
