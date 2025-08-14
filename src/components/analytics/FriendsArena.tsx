@@ -28,7 +28,6 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ProgressAvatar } from './ui/ProgressAvatar';
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
-import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 
 interface Friend {
   id: number;
@@ -52,7 +51,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [isArenaChatOpen, setArenaChatOpen] = useState(false);
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -95,32 +93,17 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
           </CardTitle>
           
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowInviteModal(true)}
-              className={cn(
-                "flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg",
-                isMobile ? "h-8 px-3 text-xs flex-1" : ""
-              )}
-              size={isMobile ? "sm" : "default"}
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className={isMobile ? "text-xs" : ""}>Invite</span>
-            </Button>
-            
-            <Button 
-              onClick={() => setArenaChatOpen(true)}
-              variant="outline"
-              className={cn(
-                "flex items-center gap-2 border-2 border-primary/20 hover:border-primary/40 bg-primary/5 hover:bg-primary/10",
-                isMobile ? "h-8 px-3 text-xs flex-1" : ""
-              )}
-              size={isMobile ? "sm" : "default"}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className={isMobile ? "text-xs" : ""}>Billboard & Chat</span>
-            </Button>
-          </div>
+          <Button 
+            onClick={() => setShowInviteModal(true)}
+            className={cn(
+              "flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg",
+              isMobile ? "h-8 px-3 text-xs w-full" : ""
+            )}
+            size={isMobile ? "sm" : "default"}
+          >
+            <UserPlus className="h-4 w-4" />
+            <span className={isMobile ? "text-xs" : ""}>Invite Friends</span>
+          </Button>
         </div>
         <p className={cn(
           "text-muted-foreground",
@@ -381,12 +364,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Arena Billboard & Chat Panel */}
-      <ArenaBillboardChatPanel
-        isOpen={isArenaChatOpen}
-        onClose={() => setArenaChatOpen(false)}
-      />
     </Card>
   );
 };
