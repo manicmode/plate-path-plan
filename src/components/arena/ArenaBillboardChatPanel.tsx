@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare, Megaphone } from 'lucide-react';
+import { Send, MessageSquare, Megaphone, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +21,9 @@ interface ChatMessage {
   user_id: string;
   body: string;
   created_at: string;
+  pending?: boolean;
+  error?: boolean;
+  clientId?: string;
 }
 
 interface ArenaBillboardChatPanelProps {
@@ -37,18 +40,26 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [hasMore, setHasMore] = useState(true);
   const [isNotMember, setIsNotMember] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
+  const [session, setSession] = useState<any>(null);
+  
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const chatChannelRef = useRef<any>(null);
+  const announcementChannelRef = useRef<any>(null);
+  const backfillTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session?.user);
+      setSession(session);
     };
     checkAuth();
   }, []);
 
-  // Load initial data when panel opens
+  // Load initial data and setup realtime when panel opens
   useEffect(() => {
     if (isOpen && isAuthenticated) {
       loadInitialData();
@@ -57,8 +68,196 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       if (process.env.NODE_ENV !== 'production') {
         console.info('arena_billboard_opened');
       }
+    } else if (!isOpen) {
+      // Cleanup when panel closes
+      cleanupRealtimeSubscriptions();
     }
   }, [isOpen, isAuthenticated]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupRealtimeSubscriptions();
+    };
+  }, []);
+
+  // Realtime functions
+  const cleanupRealtimeSubscriptions = useCallback(() => {
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current);
+      chatChannelRef.current = null;
+    }
+    if (announcementChannelRef.current) {
+      supabase.removeChannel(announcementChannelRef.current);
+      announcementChannelRef.current = null;
+    }
+    if (backfillTimerRef.current) {
+      clearInterval(backfillTimerRef.current);
+      backfillTimerRef.current = null;
+    }
+    setConnectionStatus('disconnected');
+  }, []);
+
+  const setupRealtimeSubscriptions = useCallback((challengeId: string) => {
+    if (!challengeId) return;
+    
+    // Setup chat channel
+    const chatChannel = supabase
+      .channel(`r20-chat-${challengeId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'rank20_chat_messages', 
+          filter: `challenge_id=eq.${challengeId}` 
+        },
+        (payload) => {
+          const row = payload.new as ChatMessage;
+          onChatInsertFromRealtime(row);
+          
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_message_received', { messageId: row.id });
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[RT] chat status', status);
+        }
+        
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_subscribed', { kind: 'chat' });
+          }
+        } else if (status === 'CHANNEL_ERROR') {
+          setConnectionStatus('reconnecting');
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_dropped', { reason: 'channel_error', kind: 'chat' });
+          }
+        }
+      });
+
+    chatChannelRef.current = chatChannel;
+
+    // Setup announcement channel
+    const announcementChannel = supabase
+      .channel(`r20-ann-${challengeId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'rank20_billboard_messages', 
+          filter: `challenge_id=eq.${challengeId}` 
+        },
+        (payload) => {
+          const row = payload.new as Announcement;
+          onAnnouncementInsertFromRealtime(row);
+          
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_announcement_received', { announcementId: row.id });
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[RT] announcement status', status);
+        }
+        
+        if (status === 'SUBSCRIBED') {
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_subscribed', { kind: 'announcement' });
+          }
+        } else if (status === 'CHANNEL_ERROR') {
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_realtime_dropped', { reason: 'channel_error', kind: 'announcement' });
+          }
+        }
+      });
+
+    announcementChannelRef.current = announcementChannel;
+
+    // Setup backfill timer
+    backfillTimerRef.current = setInterval(() => {
+      if (connectionStatus !== 'connected') {
+        backfillMessages();
+      }
+    }, 45000); // 45 seconds
+  }, [connectionStatus]);
+
+  const onChatInsertFromRealtime = useCallback((row: ChatMessage) => {
+    setChatMessages(prev => {
+      // Try to find a pending temp match (same user, same body, within 3s)
+      const match = prev.find(msg => 
+        msg.pending && 
+        msg.user_id === row.user_id && 
+        msg.body === row.body &&
+        Math.abs(new Date(msg.created_at).getTime() - new Date(row.created_at).getTime()) < 3000
+      );
+      
+      if (match) {
+        // Replace temp message with server row
+        return prev.map(msg => 
+          msg.id === match.id 
+            ? { ...row, pending: false, error: false }
+            : msg
+        );
+      } else {
+        // Add new message if not duplicate
+        const exists = prev.find(msg => msg.id === row.id);
+        if (!exists) {
+          return [...prev, { ...row, pending: false }];
+        }
+        return prev;
+      }
+    });
+    
+    // Auto-scroll to bottom for new messages
+    setTimeout(scrollToBottom, 100);
+  }, []);
+
+  const onAnnouncementInsertFromRealtime = useCallback((row: Announcement) => {
+    setAnnouncement(current => {
+      // Only replace if this announcement is newer
+      if (!current || new Date(row.created_at) > new Date(current.created_at)) {
+        return row;
+      }
+      return current;
+    });
+  }, []);
+
+  const backfillMessages = useCallback(async () => {
+    try {
+      const { data: recentData } = await supabase.rpc('my_rank20_chat_list', { 
+        _limit: 10,
+        _before_created_at: null,
+        _before_id: null
+      });
+      
+      if (recentData) {
+        const reversedRecent = recentData.reverse();
+        setChatMessages(prev => {
+          const combined = [...prev];
+          reversedRecent.forEach(msg => {
+            if (!combined.find(existing => existing.id === msg.id)) {
+              combined.push(msg);
+            }
+          });
+          return combined;
+        });
+      }
+    } catch (error) {
+      console.error('Error during backfill:', error);
+    }
+  }, []);
 
   const loadInitialData = async () => {
     setIsLoading(true);
@@ -66,13 +265,15 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     
     try {
       // First check if user has rank20 challenge access
-      const { data: challengeId, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
-      if (challengeError || !challengeId) {
+      const { data: challengeIdData, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
+      if (challengeError || !challengeIdData) {
         console.info('User not in rank20 challenge');
         setIsNotMember(true);
         setIsLoading(false);
         return;
       }
+
+      setChallengeId(challengeIdData);
 
       // Load latest announcement
       const { data: announcementData, error: announcementError } = await supabase.rpc('my_rank20_latest_announcement');
@@ -98,6 +299,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         // Scroll to bottom after initial load
         setTimeout(scrollToBottom, 100);
       }
+
+      // Setup realtime subscriptions
+      setupRealtimeSubscriptions(challengeIdData);
+      
     } catch (error) {
       console.error('Error loading initial data:', error);
     } finally {
@@ -129,9 +334,48 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     }
   };
 
+  const retryMessage = useCallback(async (messageId: string) => {
+    const message = chatMessages.find(msg => msg.id === messageId);
+    if (!message || !message.body) return;
+
+    // Mark as pending
+    setChatMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, pending: true, error: false }
+          : msg
+      )
+    );
+
+    try {
+      const { error } = await supabase.rpc('my_rank20_chat_post', { _body: message.body });
+      
+      if (error) {
+        setChatMessages(prev => 
+          prev.map(msg => 
+            msg.id === messageId 
+              ? { ...msg, pending: false, error: true }
+              : msg
+          )
+        );
+        toast.error('Failed to retry message');
+      }
+      // Success will be handled by realtime insert
+    } catch (error) {
+      setChatMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, pending: false, error: true }
+            : msg
+        )
+      );
+      toast.error('Failed to retry message');
+    }
+  }, [chatMessages]);
+
   const sendMessage = async () => {
     const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage || isSending) return;
+    if (!trimmedMessage || isSending || !session?.user) return;
 
     // Client-side length validation (2000 chars max)
     if (trimmedMessage.length > 2000) {
@@ -140,12 +384,49 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     }
 
     setIsSending(true);
+    
+    // Optimistic update - add temp message immediately
+    const clientId = crypto.randomUUID();
+    const tempMessage: ChatMessage = {
+      id: clientId,
+      user_id: session.user.id,
+      body: trimmedMessage,
+      created_at: new Date().toISOString(),
+      pending: true,
+      clientId
+    };
+
+    setChatMessages(prev => [...prev, tempMessage]);
+    setNewMessage('');
+    setTimeout(scrollToBottom, 100);
+
+    // Telemetry
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('arena_chat_optimistic_sent', { length: trimmedMessage.length });
+    }
+
     try {
       const { error } = await supabase.rpc('my_rank20_chat_post', { _body: trimmedMessage });
       
       if (error) {
         console.error('Error sending message:', error);
+        
+        // Mark message as error for retry
+        setChatMessages(prev => 
+          prev.map(msg => 
+            msg.id === clientId 
+              ? { ...msg, pending: false, error: true }
+              : msg
+          )
+        );
+        
         toast.error('Failed to send message');
+        
+        // Telemetry
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('arena_chat_optimistic_fail', { error: error.message });
+        }
+        
         return;
       }
 
@@ -154,33 +435,26 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         console.info('arena_chat_message_sent', { length: trimmedMessage.length });
       }
 
-      // Clear input
-      setNewMessage('');
+      // Success - realtime will handle replacing the temp message
       
-      // Reload recent messages to show the new one
-      const { data: recentData } = await supabase.rpc('my_rank20_chat_list', { 
-        _limit: 10,
-        _before_created_at: null,
-        _before_id: null
-      });
-      if (recentData) {
-        const reversedRecent = recentData.reverse();
-        setChatMessages(prev => {
-          // Merge and deduplicate
-          const combined = [...prev];
-          reversedRecent.forEach(msg => {
-            if (!combined.find(existing => existing.id === msg.id)) {
-              combined.push(msg);
-            }
-          });
-          return combined;
-        });
-        
-        setTimeout(scrollToBottom, 100);
-      }
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Mark message as error for retry
+      setChatMessages(prev => 
+        prev.map(msg => 
+          msg.id === clientId 
+            ? { ...msg, pending: false, error: true }
+            : msg
+        )
+      );
+      
       toast.error('Failed to send message');
+      
+      // Telemetry
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('arena_chat_optimistic_fail', { error: 'network_error' });
+      }
     } finally {
       setIsSending(false);
     }
@@ -287,7 +561,21 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
           {/* Chat Section */}
           <Card className="flex-1 flex flex-col min-h-0">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Group Chat</CardTitle>
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>Group Chat</span>
+                {connectionStatus === 'reconnecting' && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <WifiOff className="h-3 w-3" />
+                    Reconnecting...
+                  </div>
+                )}
+                {connectionStatus === 'connected' && challengeId && (
+                  <div className="flex items-center gap-1 text-xs text-green-600">
+                    <Wifi className="h-3 w-3" />
+                    Live
+                  </div>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0 space-y-3">
               {/* Messages */}
@@ -319,7 +607,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     </p>
                   ) : (
                     chatMessages.map((message) => (
-                      <div key={message.id} className="space-y-1">
+                      <div key={message.id} className={`space-y-1 ${message.pending ? 'opacity-60' : ''} ${message.error ? 'border-l-2 border-red-500 pl-2' : ''}`}>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">
                             User {message.user_id.slice(-6)}
@@ -327,8 +615,24 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                           </span>
+                          {message.pending && (
+                            <span className="text-xs text-blue-500">Sending...</span>
+                          )}
+                          {message.error && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => retryMessage(message.id)}
+                              className="h-4 px-2 text-xs text-red-500 hover:text-red-700"
+                            >
+                              Retry
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-sm">{message.body}</p>
+                        <p className={`text-sm ${message.error ? 'text-red-700' : ''}`}>
+                          {message.body}
+                          {message.error && <span className="text-xs text-red-500 ml-2">(Failed to send)</span>}
+                        </p>
                       </div>
                     ))
                   )}
