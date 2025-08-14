@@ -59,8 +59,8 @@ export default function ChatroomDropdown() {
         type: x.challenge_type ?? 'custom',
       }));
 
-      // Console tracing: final options array
-      console.info('[billboard-dropdown] final options array', options);
+      // Console tracing: final options array  
+      console.info('[BILLBOARD_DROPDOWN] final options array', options);
 
       setParticipationChallenges(options);
 

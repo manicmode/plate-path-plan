@@ -67,6 +67,7 @@ export default function BillboardTab() {
       // Get current user for auto-assignment
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
+      console.info('[BILLBOARD_DATA] current auth user', userId);
       
       const { data, error } = await supabase.rpc('my_billboard_challenges');
       if (error) {
@@ -78,7 +79,7 @@ export default function BillboardTab() {
       
       // Sort existing items by newest first (no rank_of_20 challenges)
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      console.info('[billboard] default candidates', items);
+      console.info('[BILLBOARD_DATA] RPC result items', items);
       
       // Log telemetry
       console.info('[telemetry] billboard_loaded', { count: items.length });
