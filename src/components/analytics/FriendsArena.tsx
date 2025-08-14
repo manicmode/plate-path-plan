@@ -101,12 +101,16 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   if (process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
-    const countNow = document.querySelectorAll('[data-testid="arena-item"]').length;
-    console.info('[Arena DOM now]', countNow);
     setTimeout(() => {
-      const countLater = document.querySelectorAll('[data-testid="arena-item"]').length;
-      console.info('[Arena DOM +3s]', countLater);
-    }, 3000);
+      const now = document.querySelectorAll('[data-testid="arena-item"]').length;
+      // eslint-disable-next-line no-console
+      console.info('[Arena DOM]', { now });
+      setTimeout(() => {
+        const later = document.querySelectorAll('[data-testid="arena-item"]').length;
+        // eslint-disable-next-line no-console
+        console.info('[Arena DOM +3s]', { later });
+      }, 3000);
+    }, 0);
   }
 
 
@@ -133,7 +137,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   };
 
   return (
-    <Card className="overflow-hidden border-2 border-blue-200 shadow-xl">
+    <Card className="w-full h-auto overflow-visible border-2 border-blue-200 shadow-xl">
       <CardHeader className={cn(
         "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
         isMobile ? "p-4" : "p-6"
@@ -184,7 +188,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </p>
       </CardHeader>
       
-      <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
+      <CardContent className={cn("w-full h-auto overflow-visible", isMobile ? "p-3" : "p-6")}>
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
