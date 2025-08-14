@@ -139,7 +139,6 @@ function GameAndChallengeContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [isBillboardChatOpen, setIsBillboardChatOpen] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
   // Track user intent to prevent auto-navigation
@@ -172,7 +171,7 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Listen for "switch-to-chat-tab" events from challenge cards
+  // Listen for "switch-to-chat-tab" events from challenge cards (but don't auto-navigate)
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ challengeId?: string }>;
@@ -180,8 +179,10 @@ function GameAndChallengeContent() {
         selectChatroom(ce.detail.challengeId);
         setPreselectedChatId(ce.detail.challengeId);
       }
-      userInitiatedRef.current = true;
-      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+      // Only navigate if user explicitly clicked a chat button
+      if (userInitiatedRef.current) {
+        setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+      }
       console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
@@ -197,13 +198,14 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Read challenge param and preselect
+  // Read challenge param and preselect (only if user initiated)
   useEffect(() => {
     const fromUrl = searchParams.get("challenge");
     if (fromUrl) {
       selectChatroom(fromUrl);
-      userInitiatedRef.current = true;
-      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+      if (userInitiatedRef.current) {
+        setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+      }
     }
   }, [searchParams, selectChatroom]);
 
@@ -324,12 +326,6 @@ function GameAndChallengeContent() {
     // Handle chat section specially to open chatroom manager
     if (sectionId === 'chat') {
       setIsChatroomManagerOpen(true);
-      return;
-    }
-    
-    // Handle billboard section specially
-    if (sectionId === 'billboard') {
-      setIsBillboardChatOpen(true);
       return;
     }
     
@@ -803,15 +799,10 @@ function GameAndChallengeContent() {
                           )}
                         </CardTitle>
                       
-                       {/* Billboard & Chat Button */}
-                       <Button 
-                         onClick={() => setIsBillboardChatOpen(true)}
-                         className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full md:w-full"
-                         size="sm"
-                       >
-                         <MessageCircle className="h-4 w-4 mr-1" />
-                         Billboard & Chat
-                       </Button>
+                       {/* This button moved to FriendsArena component */}
+                       <div className="text-center text-muted-foreground text-sm">
+                         Billboard & Chat now available in the Arena below
+                       </div>
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
@@ -851,9 +842,10 @@ function GameAndChallengeContent() {
                             Start Journey
                           </Button>
                         </div>
-                      ) : (
-                       <div className="space-y-2">
-                         {currentLeaderboard.map((user, index) => (
+                       ) : (
+                        <div className="space-y-2">
+                          <FriendsArena />
+                          {currentLeaderboard.map((user, index) => (
                          <div
                            key={user.id}
                             className={cn(
@@ -1000,12 +992,6 @@ function GameAndChallengeContent() {
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
-        
-        {/* Arena Billboard Chat Panel */}
-        <ArenaBillboardChatPanel 
-          isOpen={isBillboardChatOpen}
-          onClose={() => setIsBillboardChatOpen(false)}
-        />
       </div>
     </div>
   );
