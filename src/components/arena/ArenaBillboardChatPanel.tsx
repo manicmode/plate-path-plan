@@ -1037,7 +1037,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                               </span>
                             )}
 
-                            {/* Add reaction: '+' chip opens popover */}
+                            {/* Add reaction: '+' chip opens popover - always show */}
                             <ReactionAddButton
                               messageId={message.id as string}
                               onPick={(e) => toggleReaction(message.id as string, e)}
