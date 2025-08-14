@@ -1,44 +1,31 @@
-import React, { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
 import { useRank20Members } from "@/hooks/arena/useRank20Members";
 
 export default function ArenaSmoke() {
   const { members, loading, error } = useRank20Members();
-
-  const rows = useMemo(
-    () =>
-      (Array.isArray(members) ? members : []).map((m) => ({
-        id: m.user_id,
-        name:
-          (m.display_name && m.display_name.trim()) ||
-          `User ${String(m.user_id).slice(0, 5)}`,
-      })),
-    [members]
-  );
+  const rows = (Array.isArray(members) ? members : []).map(m => ({
+    user_id: m.user_id,
+    display_name:
+      (m.display_name?.trim?.() ? m.display_name : `User ${String(m.user_id).slice(0,5)}`),
+    avatar_url: m.avatar_url ?? null,
+    joined_at: m.joined_at,
+  }));
 
   return (
-    <div className="p-4 space-y-3">
-      <div className="text-xs rounded-md border border-yellow-500 bg-yellow-500/10 p-2">
-        <div className="font-semibold mb-1">ARENA SMOKE</div>
-        <div>loading: <b>{String(loading)}</b></div>
-        <div>error: <b>{error ?? "none"}</b></div>
-        <div>members: <b>{Array.isArray(members) ? members.length : "n/a"}</b></div>
-        <div>rows: <b>{rows.length}</b></div>
-        <pre className="mt-2 whitespace-pre-wrap break-all max-h-40 overflow-auto">
-{JSON.stringify(rows.slice(0, 5), null, 2)}
-        </pre>
+    <div style={{background:'#FFF3CD', border:'1px solid #FFEC99', color:'#664d03', padding:12, borderRadius:8, marginBottom:12}}>
+      <div style={{fontWeight:700}}>ARENA SMOKE</div>
+      <div>members: {Array.isArray(members) ? members.length : 0}</div>
+      <pre style={{whiteSpace:'pre-wrap', margin:0}}>
+        {JSON.stringify(members?.slice?.(0,3) ?? [], null, 2)}
+      </pre>
+      <div style={{marginTop:8}}>rows: {rows.length}</div>
+      <div style={{marginTop:12, display:'flex', flexDirection:'column', gap:8}}>
+        {rows.map(r => (
+          <div key={r.user_id} style={{padding:8, border:'1px dashed #aaa', borderRadius:6, background:'#fff'}}>
+            {r.display_name} — {r.user_id}
+          </div>
+        ))}
       </div>
-
-      {rows.map((r) => (
-        <Card key={r.id}>
-          <CardHeader>
-            <CardTitle className="text-sm">{r.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {r.id}
-          </CardContent>
-        </Card>
-      ))}
     </div>
   );
 }

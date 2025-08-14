@@ -55,6 +55,24 @@ interface FriendsArenaProps {
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const searchFromRouter = location?.search ?? "";
+  const searchFromWindow =
+    typeof window !== "undefined" ? window.location.search : "";
+  const search = searchFromRouter || searchFromWindow;
+  const qs = new URLSearchParams(search);
+  const arenaSmoke = qs.get("arena_smoke") === "1";
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+   console.info("[ARENA_SMOKE] search=", search, "flag=", arenaSmoke);
+  }
+  if (arenaSmoke) {
+    return (
+      <div style={{ padding: 16 }}>
+        <ArenaSmoke />
+      </div>
+    );
+  }
+
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
@@ -113,8 +131,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   if (params.get("arena_smoke") === "1") {
     return <ArenaSmoke />;
   }
-
-  // Auto-enable Plain once so the user never edits URLs
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     if (!p.get("arena_plain")) {
