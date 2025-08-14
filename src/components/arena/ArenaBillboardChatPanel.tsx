@@ -848,7 +848,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               <div
                 ref={scrollAreaRef}
                 onScroll={handleScroll}
-                className="mt-3 h-[420px] max-h-[60vh] overflow-y-auto pr-2"
+                className="mt-2 max-h-[65svh] sm:max-h-[70vh] overflow-y-auto pr-2"
               >
                 {loadingOlder && (
                   <div className="text-center py-2">
@@ -924,8 +924,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
 
               {/* Send Message */}
               <div className="space-y-2">
-                {/* Emoji Strip Toggle */}
-                <div className="flex items-center justify-between">
+                {false && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -935,6 +934,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     <Smile className="h-3 w-3" />
                     Emoji
                   </Button>
+                )}
+                <div className="flex items-center justify-between">
                   {newMessage.length > 1800 && (
                     <div className="text-xs text-muted-foreground">
                       {newMessage.length}/2000 characters
