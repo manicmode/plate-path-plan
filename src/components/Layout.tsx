@@ -167,11 +167,9 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Enhanced Bottom Navigation - Always visible for authenticated users */}
       {shouldShowNavigation && (
-        <nav 
-          className="fixed left-1/2 -translate-x-1/2 bottom-[max(env(safe-area-inset-bottom),12px)] z-50 w-[min(92%,720px)] rounded-3xl overflow-hidden bg-card/80 backdrop-blur-xl ring-1 ring-white/10 shadow-xl"
-          data-bottom-nav
-        >
-          <div className="flex justify-between gap-1 px-3 py-4 sm:px-6 sm:py-5">
+        <nav className={`fixed bottom-0 left-0 right-0 z-50 ${isMobile ? 'p-3' : 'pb-6 px-6'}`}>
+          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-t-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60 md:max-w-[620px] md:mx-auto`}>
+            <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
                 const isActive = location.pathname === path;
                 return (
@@ -200,6 +198,7 @@ const Layout = ({ children }: LayoutProps) => {
                   </Button>
                 );
               })}
+            </div>
           </div>
         </nav>
       )}
