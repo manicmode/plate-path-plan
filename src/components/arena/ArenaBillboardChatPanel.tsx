@@ -46,6 +46,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [session, setSession] = useState<any>(null);
   
+  // --- scrolling refs/state ---
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<any>(null);
@@ -53,6 +54,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const backfillTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const BOTTOM_THRESHOLD = 60; // px
 
   // Check authentication
@@ -300,6 +302,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         const reversedMessages = (chatData || []).reverse();
         setChatMessages(reversedMessages);
         setHasMore((chatData || []).length === 50);
+        setInitialLoadDone(true);
       }
 
       // Setup realtime subscriptions
@@ -316,6 +319,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     if (loadingOlder) return;
     
     setLoadingOlder(true);
+    const el = scrollAreaRef.current;
+    const prevScrollHeight = el?.scrollHeight ?? 0;
+
     const { data, error } = await supabase.rpc('my_rank20_chat_list', {
       _limit: 50,
       _before_created_at: beforeCreatedAt,
@@ -323,29 +329,28 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     });
     setLoadingOlder(false);
     
-    if (error) {
+    if (error || !data) {
       console.error('Error loading older messages:', error);
       return;
     }
 
-    // Keep scroll position stable after prepending
-    const el = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-    const prevScrollHeight = el?.scrollHeight ?? 0;
-
     setChatMessages(prev => {
-      const merged = [...(data || []).reverse(), ...prev]; // data comes DESC; reverse to ASC
-      // Dedupe by id
+      // data comes DESC; prepend as ASC
+      const toPrepend = [...data].reverse();
+      const merged = [...toPrepend, ...prev];
+      // dedupe by id
       const seen = new Set<string>();
       return merged.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true)));
     });
 
     setHasMore((data || []).length === 50);
 
-    // Maintain viewport position
+    // keep the user anchored where they were reading
     requestAnimationFrame(() => {
-      if (!el) return;
-      const diff = el.scrollHeight - prevScrollHeight;
-      el.scrollTop = (el.scrollTop ?? 0) + diff;
+      const el2 = scrollAreaRef.current;
+      if (!el2) return;
+      const diff = el2.scrollHeight - prevScrollHeight;
+      el2.scrollTop = (el2.scrollTop ?? 0) + diff;
     });
   };
 
@@ -413,8 +418,17 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       clientId
     };
 
-    setChatMessages(prev => [...prev, tempMessage]);
+    setChatMessages(prev => {
+      const next = [...prev, tempMessage];
+      next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      return next;
+    });
     setNewMessage('');
+
+    // if user was at bottom, keep them at bottom
+    if (atBottom) {
+      requestAnimationFrame(() => scrollToBottom(true));
+    }
 
     // Telemetry
     if (process.env.NODE_ENV !== 'production') {
@@ -477,35 +491,40 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   };
 
   const handleScroll = () => {
-    const el = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    const el = scrollAreaRef.current;
     if (!el) return;
     
-    // Check if near bottom
+    // near bottom?
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD;
     setAtBottom(nearBottom);
     
-    // Load older when near top
+    // load older when near top
     if (el.scrollTop <= 24 && !loadingOlder && chatMessages.length > 0) {
-      const oldestMsg = chatMessages[0];
-      if (oldestMsg) {
-        loadOlderWithCursor(oldestMsg.created_at, oldestMsg.id);
+      const oldest = chatMessages[0];
+      if (oldest) {
+        void loadOlderWithCursor(oldest.created_at, oldest.id);
       }
     }
   };
 
   const scrollToBottom = (smooth = true) => {
-    const el = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    const el = scrollAreaRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   };
 
-  // Auto-scroll when appropriate
+  // after initial load finishes
   useEffect(() => {
-    scrollToBottom(false);
-  }, []);
+    // only once after first load
+    if (initialLoadDone && chatMessages.length > 0) {
+      requestAnimationFrame(() => scrollToBottom(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone]);
 
+  // when messages change: if user is at bottom, follow new messages
   useEffect(() => {
-    if (atBottom) {
+    if (atBottom && chatMessages.length > 0) {
       scrollToBottom(true);
     }
   }, [chatMessages.length, atBottom]);
@@ -623,7 +642,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               <div
                 ref={scrollAreaRef}
                 onScroll={handleScroll}
-                className="h-[420px] max-h-[55vh] overflow-y-auto pr-2 space-y-3"
+                className="mt-3 h-[420px] max-h-[60vh] overflow-y-auto pr-2"
               >
                 {loadingOlder && (
                   <div className="text-center py-2">
@@ -645,46 +664,48 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     No messages yet. Start the conversation!
                   </p>
                 ) : (
-                  chatMessages.map((message) => (
-                    <div key={message.id} className={`space-y-1 ${message.pending ? 'opacity-60' : ''} ${message.error ? 'border-l-2 border-red-500 pl-2' : ''}`}>
-                       <div className="flex items-center gap-2">
-                         {message.avatar_url ? (
-                           <img src={message.avatar_url} alt={message.display_name || 'User'} className="h-6 w-6 rounded-full flex-shrink-0" />
-                         ) : (
-                           <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                             <span className="text-xs font-medium text-muted-foreground">
-                               {(message.display_name || message.user_id.slice(-6))[0]?.toUpperCase()}
-                             </span>
-                           </div>
-                         )}
-                         <span className="text-xs font-medium text-foreground">
-                           {message.display_name || `User ${message.user_id.slice(-6)}`}
-                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                        </span>
-                        {message.pending && (
-                          <span className="text-xs text-blue-500">Sending...</span>
-                        )}
-                        {message.error && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => retryMessage(message.id)}
-                            className="h-4 px-2 text-xs text-red-500 hover:text-red-700"
-                          >
-                            Retry
-                          </Button>
-                        )}
+                  <div className="space-y-3">
+                    {chatMessages.map((message) => (
+                      <div key={message.id} className={`space-y-1 ${message.pending ? 'opacity-60' : ''} ${message.error ? 'border-l-2 border-red-500 pl-2' : ''}`}>
+                        <div className="flex items-center gap-2">
+                          {message.avatar_url ? (
+                            <img src={message.avatar_url} alt={message.display_name || 'User'} className="h-6 w-6 rounded-full flex-shrink-0" />
+                          ) : (
+                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {(message.display_name || message.user_id.slice(-6))[0]?.toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <span className="text-xs font-medium text-foreground">
+                            {message.display_name || `User ${message.user_id.slice(-6)}`}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                          </span>
+                          {message.pending && (
+                            <span className="text-xs text-blue-500">Sending...</span>
+                          )}
+                          {message.error && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => retryMessage(message.id)}
+                              className="h-4 px-2 text-xs text-red-500 hover:text-red-700"
+                            >
+                              Retry
+                            </Button>
+                          )}
+                        </div>
+                        <p className={`text-sm ${message.error ? 'text-red-700' : ''}`}>
+                          {message.body}
+                          {message.error && <span className="text-xs text-red-500 ml-2">(Failed to send)</span>}
+                        </p>
                       </div>
-                      <p className={`text-sm ${message.error ? 'text-red-700' : ''}`}>
-                        {message.body}
-                        {message.error && <span className="text-xs text-red-500 ml-2">(Failed to send)</span>}
-                      </p>
-                    </div>
-                  ))
+                    ))}
+                    <div ref={bottomAnchorRef} />
+                  </div>
                 )}
-                <div ref={bottomAnchorRef} />
               </div>
 
               {/* Send Message */}
