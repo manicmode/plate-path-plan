@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,15 +74,29 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     })(); 
   }, [refresh]);
 
-  // Compute display rows (render from members directly, enrich with scores)
-  const rows = (members ?? []).map(m => ({
-    user_id: m.user_id,
-    display_name: m.display_name,
-    avatar_url: m.avatar_url,
-    joined_at: m.joined_at,
-    score: scores[m.user_id]?.score ?? 0,
-    rank: scores[m.user_id]?.rank ?? undefined,
-  }));
+  // Build a lookup of stats by user_id (if stats exist elsewhere in this component)
+  const scoresById: Record<string, { score?: number; streak?: number }> = useMemo(() => {
+    const list = Array.isArray(scores) ? Object.values(scores) : []; // keep your existing "scores" source if present
+    const map: Record<string, { score?: number; streak?: number }> = {};
+    for (const s of list) {
+      if (!s?.user_id) continue;
+      map[s.user_id] = { score: s.score ?? 0, streak: s.streak ?? 0 };
+    }
+    return map;
+  }, [scores]);
+
+  // LEFT-JOIN semantics: render *all* members; fill missing stats with 0
+  const rows = (Array.isArray(members) ? members : []).map((m) => {
+    const s = scoresById[m.user_id] ?? {};
+    return {
+      user_id: m.user_id,
+      display_name: m.display_name || `User ${String(m.user_id).slice(0, 5)}`,
+      avatar_url: m.avatar_url ?? null,
+      joined_at: m.joined_at,
+      score: s.score ?? 0,
+      streak: s.streak ?? 0,
+    };
+  });
 
 
   const getTrendIcon = (trend: string) => {
