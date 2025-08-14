@@ -1160,7 +1160,22 @@ function ReactionAddButton({
   onPick,
 }: { messageId: string; onPick: (emoji: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [showAbove, setShowAbove] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Check positioning when opening
+  const handleToggle = () => {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const popoverHeight = 120; // Approximate height of the emoji grid
+      
+      setShowAbove(spaceBelow < popoverHeight);
+    }
+    setOpen(v => !v);
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -1175,9 +1190,10 @@ function ReactionAddButton({
   return (
     <div className="relative inline-block">
       <button
+        ref={buttonRef}
         type="button"
         aria-label="Add reaction"
-        onClick={() => setOpen(v => !v)}
+        onClick={handleToggle}
         className="px-2 h-6 rounded-full bg-muted/60 hover:bg-muted text-xs"
         title="Add reaction"
       >
@@ -1187,7 +1203,9 @@ function ReactionAddButton({
       {open && (
         <div
           ref={panelRef}
-          className="absolute z-50 mt-2 w-44 rounded-xl border border-border bg-popover shadow-lg p-2"
+          className={`absolute z-50 w-44 rounded-xl border border-border bg-popover shadow-lg p-2 ${
+            showAbove ? 'bottom-full mb-2' : 'mt-2'
+          }`}
         >
           <div className="grid grid-cols-6 gap-1">
             {REACTION_EMOJIS.map(e => (
