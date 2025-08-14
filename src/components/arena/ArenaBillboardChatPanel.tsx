@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,62 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   // User cache for display names and avatars
   const userCache = useRef(new Map<string, {display_name?: string|null; avatar_url?: string|null}>());
 
-  // Emoji set
+  // ===== Reactions state =====
+  type ReactionCount = { message_id: string; emoji: string; count: number };
+
+  const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
+  const visibleMessageIdsRef = useRef<Set<string>>(new Set());
+
+  // Quick-pick emojis (keep small to avoid clutter)
+  const REACTION_EMOJIS = ['👍','🔥','🎉','💧','🙌','😂'];
+
+  // Merge helper
+  function mergeReactions(rows: ReactionCount[]) {
+    const byMsg: Record<string, Record<string, number>> = {};
+    for (const r of rows) {
+      (byMsg[r.message_id] ??= {})[r.emoji] = Number(r.count);
+    }
+    setReactions(prev => ({ ...prev, ...byMsg }));
+  }
+
+  // Fetch counts for a list of message IDs
+  async function loadReactionsFor(ids: string[]) {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (!unique.length) return;
+    const { data, error } = await supabase.rpc('my_rank20_reactions_for', { _message_ids: unique });
+    if (error) {
+      console.error('[reactions] fetch error', error);
+      return;
+    }
+    mergeReactions((data ?? []) as ReactionCount[]);
+  }
+
+  // Toggle reaction (optimistic)
+  async function toggleReaction(messageId: string, emoji: string) {
+    if (!messageId) return;
+    // optimistic change
+    setReactions(prev => {
+      const m = { ...(prev[messageId] ?? {}) };
+      m[emoji] = (m[emoji] ?? 0) + 1;
+      return { ...prev, [messageId]: m };
+    });
+    const { error } = await supabase.rpc('my_rank20_react_toggle', {
+      _message_id: messageId,
+      _emoji: emoji,
+    });
+    if (error) {
+      // revert optimistic change
+      setReactions(prev => {
+        const m = { ...(prev[messageId] ?? {}) };
+        m[emoji] = Math.max(0, (m[emoji] ?? 1) - 1);
+        if (m[emoji] === 0) delete m[emoji];
+        return { ...prev, [messageId]: m };
+      });
+      console.error('[reactions] toggle error', error);
+    }
+  }
+
+  // Emoji set for text input
   const EMOJI_SET = ['😀', '😂', '🥳', '🙌', '👍', '👎', '💯', '🔥', '💧', '🧠', '❤️‍🔥', '🏆', '🚀', '🌟', '😴'];
 
   // Check authentication
@@ -98,6 +153,37 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       cleanupRealtimeSubscriptions();
     }
   }, [isOpen, isAuthenticated]);
+
+  // Realtime subscription to reaction changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('r20-reactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rank20_chat_reactions' }, (payload) => {
+        const row = (payload.new ?? payload.old) as { message_id?: string; emoji?: string };
+        const messageId = row?.message_id;
+        const emoji = row?.emoji;
+        if (!messageId || !emoji) return;
+        // Update only if the message is on screen / known
+        if (!visibleMessageIdsRef.current.has(messageId)) return;
+
+        setReactions(prev => {
+          const m = { ...(prev[messageId] ?? {}) };
+          const delta = payload.eventType === 'INSERT' ? 1 : -1;
+          m[emoji] = Math.max(0, (m[emoji] ?? 0) + delta);
+          if (m[emoji] === 0) delete m[emoji];
+          return { ...prev, [messageId]: m };
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Keep visibleMessageIdsRef updated
+  useEffect(() => {
+    const ids = chatMessages.filter((m) => !!m.id && !m.pending).map((m) => m.id as string);
+    visibleMessageIdsRef.current = new Set(ids);
+  }, [chatMessages.length]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -362,6 +448,11 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
             });
           }
         });
+
+        // After initial message load:
+        const initialIds = reversedMessages.filter((m) => !!m.id).map((m) => m.id as string);
+        visibleMessageIdsRef.current = new Set(initialIds);
+        loadReactionsFor(initialIds);
       }
 
       // Setup realtime subscriptions
@@ -393,9 +484,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       return;
     }
 
+    // data comes DESC; prepend as ASC
+    const toPrepend = [...data].reverse();
+    
     setChatMessages(prev => {
-      // data comes DESC; prepend as ASC
-      const toPrepend = [...data].reverse();
       const merged = [...toPrepend, ...prev];
       
       // Update user cache with any new user info
@@ -414,6 +506,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     });
 
     setHasMore((data || []).length === 50);
+
+    const olderIds = toPrepend.filter((m) => !!m.id).map((m) => m.id as string);
+    olderIds.forEach((id) => visibleMessageIdsRef.current.add(id));
+    loadReactionsFor(olderIds);
 
     // keep the user anchored where they were reading
     requestAnimationFrame(() => {
@@ -915,6 +1011,40 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                           {message.body}
                           {message.error && <span className="text-xs text-red-500 ml-2">(Failed to send)</span>}
                         </p>
+                        
+                        {/* Reactions row */}
+                        {!message.pending && message.id && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {/* Existing reactions with counts */}
+                            {Object.entries(reactions[message.id] ?? {}).map(([emoji, count]) => (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(message.id as string, emoji)}
+                                className="px-2 h-7 rounded-full bg-muted hover:bg-muted/70 text-xs flex items-center gap-1"
+                                aria-label={`React ${emoji}`}
+                                title={`${emoji} ${count}`}
+                              >
+                                <span>{emoji}</span>
+                                <span>{count}</span>
+                              </button>
+                            ))}
+
+                            {/* Quick add reactions (small inline set) */}
+                            <div className="ml-1 flex items-center gap-1">
+                              {REACTION_EMOJIS.map((e) => (
+                                <button
+                                  key={e}
+                                  onClick={() => toggleReaction(message.id as string, e)}
+                                  className="px-2 h-7 rounded-full bg-muted/60 hover:bg-muted text-xs"
+                                  aria-label={`Add ${e}`}
+                                  title={`Add ${e}`}
+                                >
+                                  {e}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                     <div ref={bottomAnchorRef} />
