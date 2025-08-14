@@ -77,10 +77,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     () =>
       (Array.isArray(members) ? members : []).map((m) => ({
         user_id: m.user_id,
-        display_name:
-          m.display_name && m.display_name.trim().length > 0
-            ? m.display_name
-            : `User ${String(m.user_id).slice(0, 5)}`,
+        display_name: m.display_name?.trim() ? m.display_name : `User ${String(m.user_id).slice(0, 5)}`,
         avatar_url: m.avatar_url ?? null,
         joined_at: m.joined_at,
         // default stats to avoid dropping rows when stats are absent
@@ -90,10 +87,15 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     [members]
   );
 
-  // dev-only sanity (remove after QA)
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
-    console.info("[Arena] members:", members?.length ?? 0, "rows:", rows.length);
+    console.info(
+      '[Arena] rpc members',
+      Array.isArray(members) ? members.length : members,
+      Array.isArray(members) ? members.map(m => m.user_id) : []
+    );
+    // eslint-disable-next-line no-console
+    console.info('[Arena] rows', rows.length, rows.map(r => r.user_id));
   }
 
 
@@ -186,7 +188,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               Try Again
             </Button>
           </div>
-        ) : Array.isArray(members) && members.length === 0 ? (
+        ) : rows.length === 0 ? (
           <div className="rounded-xl border p-4 text-sm opacity-80">
             <div className="font-medium mb-1">No arena buddies yet</div>
             <div className="mb-3">Join or invite friends to a Rank-of-20 challenge to see live rankings here.</div>
@@ -210,30 +212,30 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             {isMobile ? (
               // Mobile: Vertical Stack Layout
               <div className="space-y-3">
-                {rows.map((member, index) => (
-                  <div key={member.user_id}>
-                    <Card 
+                 {rows.map((row, index) => (
+                   <div key={row.user_id}>
+                     <Card 
                         className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                             <div className="flex items-center gap-3">
-                                <ProgressAvatar 
-                                  avatar="👤"
-                                  nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
-                                  weeklyProgress={0}
-                                  dailyStreak={0}
-                                  weeklyStreak={0}
-                                  size="sm"
-                                  showStats={false}
-                                  isCurrentUser={false}
-                                />
-                               <div>
-                                <span className="text-xs text-muted-foreground">
-                                  Joined {new Date(member.joined_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
+                       >
+                         <CardContent className="p-3">
+                           <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                 <ProgressAvatar 
+                                   avatar="👤"
+                                   nickname={row.display_name}
+                                   weeklyProgress={0}
+                                   dailyStreak={0}
+                                   weeklyStreak={0}
+                                   size="sm"
+                                   showStats={false}
+                                   isCurrentUser={false}
+                                 />
+                                <div>
+                                 <span className="text-xs text-muted-foreground">
+                                   Joined {new Date(row.joined_at).toLocaleDateString()}
+                                 </span>
+                               </div>
+                             </div>
                             {getRankBadge(index + 1)}
                           </div>
                           
@@ -254,34 +256,34 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             ) : (
               // Desktop: Horizontal Grid Layout  
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {rows.map((member, index) => (
-                  <div key={member.user_id}>
-                    <Card 
-                        className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
-                      >
-                        {/* Rank Badge Overlay */}
-                        <div className="absolute top-2 right-2 z-10">
-                          {getRankBadge(index + 1)}
-                        </div>
-                        
-                        <CardContent className="p-4">
-                           <div className="flex items-center gap-3 mb-4">
-                              <ProgressAvatar 
-                                avatar="👤"
-                                nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
-                                weeklyProgress={0}
-                                dailyStreak={0}
-                                weeklyStreak={0}
-                                size="md"
-                                showStats={false}
-                                isCurrentUser={false}
-                              />
-                             <div className="flex-1">
-                               <span className="text-xs text-muted-foreground">
-                                 Joined {new Date(member.joined_at).toLocaleDateString()}
-                               </span>
-                             </div>
-                           </div>
+                {rows.map((row, index) => (
+                   <div key={row.user_id}>
+                     <Card 
+                        className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative"
+                       >
+                         {/* Rank Badge Overlay */}
+                         <div className="absolute top-2 right-2 z-10">
+                           {getRankBadge(index + 1)}
+                         </div>
+                         
+                         <CardContent className="p-4">
+                            <div className="flex items-center gap-3 mb-4">
+                               <ProgressAvatar 
+                                 avatar="👤"
+                                 nickname={row.display_name}
+                                 weeklyProgress={0}
+                                 dailyStreak={0}
+                                 weeklyStreak={0}
+                                 size="md"
+                                 showStats={false}
+                                 isCurrentUser={false}
+                               />
+                              <div className="flex-1">
+                                <span className="text-xs text-muted-foreground">
+                                  Joined {new Date(row.joined_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
                           
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">

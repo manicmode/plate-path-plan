@@ -32,7 +32,7 @@ export function useRank20Members() {
       
       if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
-        console.info('[RPC] my_rank20_group_members length:', Array.isArray(data) ? data.length : data, data?.slice?.(0, 3));
+        console.info('[RPC] my_rank20_group_members', Array.isArray(data) ? data.length : data, data);
       }
       
       setMembers((data as Member[]) ?? []);
