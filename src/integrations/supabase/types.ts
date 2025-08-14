@@ -5296,6 +5296,26 @@ export type Database = {
         Args: { _group_id: string }
         Returns: string
       }
+      _verify_active_for: {
+        Args: { _user: string }
+        Returns: {
+          id: string
+          title: string
+          category: string
+          challenge_type: string
+          created_at: string
+        }[]
+      }
+      _verify_billboard_for: {
+        Args: { _user: string }
+        Returns: {
+          id: string
+          title: string
+          category: string
+          challenge_type: string
+          created_at: string
+        }[]
+      }
       accept_challenge_invitation: {
         Args: { invitation_id_param: string }
         Returns: boolean

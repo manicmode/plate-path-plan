@@ -98,6 +98,7 @@ const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfi
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
+const ChallengesDebug = lazy(() => import('@/pages/dev/ChallengesDebug'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -411,8 +412,14 @@ function AppContent() {
                       <ProtectedRoute>
                         <DevChallengesPage />
                       </ProtectedRoute>
-                    } />
-                    <Route path="/influencer/:username" element={<PublicInfluencerProfile />} />
+                     } />
+                    {process.env.NODE_ENV !== 'production' && (
+                      <Route path="/dev/challenges-debug" element={
+                        <ProtectedRoute>
+                          <ChallengesDebug />
+                        </ProtectedRoute>
+                      } />
+                    )}
                     <Route path="/404" element={<NotFound />} />
                     <Route path="*" element={<Navigate to="/404" replace />} />
                   </Routes>
