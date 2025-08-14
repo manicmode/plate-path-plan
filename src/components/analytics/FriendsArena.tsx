@@ -101,6 +101,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   if (process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
+    const countNow = document.querySelectorAll('[data-testid="arena-item"]').length;
+    console.info('[Arena DOM now]', countNow);
+    setTimeout(() => {
+      const countLater = document.querySelectorAll('[data-testid="arena-item"]').length;
+      console.info('[Arena DOM +3s]', countLater);
+    }, 3000);
   }
 
 
@@ -218,127 +224,129 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               // Mobile: Vertical Stack Layout
               <div 
                 data-testid="arena-list"
-                className="flex flex-col gap-2 overflow-visible"
+                className="flex flex-col gap-2 overflow-visible min-h-0"
                 style={{ maxHeight: 'none' }}
               >
                 {rows.map((member, index) => (
-                  <Card 
-                    key={member.user_id}
-                      className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                           <div className="flex items-center gap-3">
-                              <ProgressAvatar 
-                                avatar="👤"
-                                nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
-                                weeklyProgress={0}
-                                dailyStreak={0}
-                                weeklyStreak={0}
-                                size="sm"
-                                showStats={false}
-                                isCurrentUser={false}
-                              />
-                             <div>
-                              <span className="text-xs text-muted-foreground">
-                                Joined {new Date(member.joined_at).toLocaleDateString()}
-                              </span>
+                  <div data-testid="arena-item" key={member.user_id}>
+                    <Card 
+                        className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                             <div className="flex items-center gap-3">
+                                <ProgressAvatar 
+                                  avatar="👤"
+                                  nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
+                                  weeklyProgress={0}
+                                  dailyStreak={0}
+                                  weeklyStreak={0}
+                                  size="sm"
+                                  showStats={false}
+                                  isCurrentUser={false}
+                                />
+                               <div>
+                                <span className="text-xs text-muted-foreground">
+                                  Joined {new Date(member.joined_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            {getRankBadge(index + 1)}
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Rank: #{index + 1}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Trophy className="h-3 w-3 text-yellow-500" />
+                              <span>Active Member</span>
                             </div>
                           </div>
-                          {getRankBadge(index + 1)}
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Rank: #{index + 1}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Trophy className="h-3 w-3 text-yellow-500" />
-                            <span>Active Member</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                  </div>
                 ))}
               </div>
             ) : (
               // Desktop: Horizontal Grid Layout  
               <div 
                 data-testid="arena-list"
-                className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-visible"
+                className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-visible min-h-0"
                 style={{ maxHeight: 'none' }}
               >
                 {rows.map((member, index) => (
-                  <Card 
-                    key={member.user_id}
-                      className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
-                    >
-                      {/* Rank Badge Overlay */}
-                      <div className="absolute top-2 right-2 z-10">
-                        {getRankBadge(index + 1)}
-                      </div>
-                      
-                      <CardContent className="p-4">
-                         <div className="flex items-center gap-3 mb-4">
-                            <ProgressAvatar 
-                              avatar="👤"
-                              nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
-                              weeklyProgress={0}
-                              dailyStreak={0}
-                              weeklyStreak={0}
-                              size="md"
-                              showStats={false}
-                              isCurrentUser={false}
-                            />
-                           <div className="flex-1">
-                             <span className="text-xs text-muted-foreground">
-                               Joined {new Date(member.joined_at).toLocaleDateString()}
-                             </span>
-                           </div>
-                         </div>
+                  <div data-testid="arena-item" key={member.user_id}>
+                    <Card 
+                        className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
+                      >
+                        {/* Rank Badge Overlay */}
+                        <div className="absolute top-2 right-2 z-10">
+                          {getRankBadge(index + 1)}
+                        </div>
                         
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
+                        <CardContent className="p-4">
+                           <div className="flex items-center gap-3 mb-4">
+                              <ProgressAvatar 
+                                avatar="👤"
+                                nickname={member.display_name || `User ${member.user_id.slice(0, 5)}`}
+                                weeklyProgress={0}
+                                dailyStreak={0}
+                                weeklyStreak={0}
+                                size="md"
+                                showStats={false}
+                                isCurrentUser={false}
+                              />
+                             <div className="flex-1">
+                               <span className="text-xs text-muted-foreground">
+                                 Joined {new Date(member.joined_at).toLocaleDateString()}
+                               </span>
+                             </div>
+                           </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Trophy className="h-4 w-4 text-yellow-500" />
+                                <span className="font-medium">Rank: #{index + 1}</span>
+                              </div>
+                            </div>
+                            
                             <div className="flex items-center gap-2">
-                              <Trophy className="h-4 w-4 text-yellow-500" />
-                              <span className="font-medium">Rank: #{index + 1}</span>
+                              <Users className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm">Arena Member</span>
+                            </div>
+                            
+                            <div className="flex gap-2 pt-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Handle challenge friend
+                                }}
+                              >
+                                <Target className="h-3 w-3 mr-1" />
+                                Challenge
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Handle message friend
+                                }}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Message
+                              </Button>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm">Arena Member</span>
-                          </div>
-                          
-                          <div className="flex gap-2 pt-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Handle challenge friend
-                              }}
-                            >
-                              <Target className="h-3 w-3 mr-1" />
-                              Challenge
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Handle message friend
-                              }}
-                            >
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              Message
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                  </Card>
+                        </CardContent>
+                    </Card>
+                  </div>
                 ))}
               </div>
             )}
