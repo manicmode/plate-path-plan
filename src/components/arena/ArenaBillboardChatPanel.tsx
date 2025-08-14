@@ -21,6 +21,8 @@ interface ChatMessage {
   user_id: string;
   body: string;
   created_at: string;
+  display_name?: string;
+  avatar_url?: string;
   pending?: boolean;
   error?: boolean;
   clientId?: string;
@@ -405,6 +407,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       user_id: session.user.id,
       body: trimmedMessage,
       created_at: new Date().toISOString(),
+      display_name: session.user.user_metadata?.display_name || `User ${session.user.id.slice(-6)}`,
+      avatar_url: session.user.user_metadata?.avatar_url || null,
       pending: true,
       clientId
     };
@@ -643,10 +647,19 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                 ) : (
                   chatMessages.map((message) => (
                     <div key={message.id} className={`space-y-1 ${message.pending ? 'opacity-60' : ''} ${message.error ? 'border-l-2 border-red-500 pl-2' : ''}`}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          User {message.user_id.slice(-6)}
-                        </span>
+                       <div className="flex items-center gap-2">
+                         {message.avatar_url ? (
+                           <img src={message.avatar_url} alt={message.display_name || 'User'} className="h-6 w-6 rounded-full flex-shrink-0" />
+                         ) : (
+                           <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                             <span className="text-xs font-medium text-muted-foreground">
+                               {(message.display_name || message.user_id.slice(-6))[0]?.toUpperCase()}
+                             </span>
+                           </div>
+                         )}
+                         <span className="text-xs font-medium text-foreground">
+                           {message.display_name || `User ${message.user_id.slice(-6)}`}
+                         </span>
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                         </span>

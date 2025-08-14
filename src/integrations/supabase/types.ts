@@ -2412,6 +2412,27 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          display_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       public_challenge_messages: {
         Row: {
           challenge_id: string
@@ -5736,6 +5757,8 @@ export type Database = {
           user_id: string
           body: string
           created_at: string
+          display_name: string
+          avatar_url: string
         }[]
       }
       my_rank20_chat_post: {
