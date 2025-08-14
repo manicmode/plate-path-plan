@@ -53,7 +53,7 @@ export default function BillboardTab() {
       console.log('[diag] user', user);
       
       if (!selectedChatroomId) {
-        // Try to get challenges from RPC
+        // Try to get challenges from RPC to auto-select first
         try {
           const { data: challenges } = await supabase.rpc('my_billboard_challenges');
           if (challenges && challenges.length > 0) {
@@ -61,7 +61,7 @@ export default function BillboardTab() {
             const sorted = challenges.sort((a: any, b: any) => {
               if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
               if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
-              return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
             
             selectChatroom(sorted[0].id);
