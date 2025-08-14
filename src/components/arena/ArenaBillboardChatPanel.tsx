@@ -334,17 +334,32 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       
       if (match) {
         // Replace temp message with server row
-        return prev.map(msg => 
+        const updated = prev.map(msg => 
           msg.id === match.id 
             ? { ...enrichedRow, pending: false, error: false }
             : msg
         );
+        
+        // Load reactions for the newly confirmed message
+        if (enrichedRow.id) {
+          visibleMessageIdsRef.current.add(enrichedRow.id);
+          loadReactionsFor([enrichedRow.id]);
+        }
+        
+        return updated;
       } else {
         // Add new message if not duplicate and sort ASC
         const exists = prev.find(msg => msg.id === enrichedRow.id);
         if (!exists) {
           const next = [...prev, { ...enrichedRow, pending: false }];
           next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          
+          // Load reactions for the new message
+          if (enrichedRow.id) {
+            visibleMessageIdsRef.current.add(enrichedRow.id);
+            loadReactionsFor([enrichedRow.id]);
+          }
+          
           return next;
         }
         return prev;
@@ -942,6 +957,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               <div
                 ref={scrollAreaRef}
                 onScroll={handleScroll}
+                data-chat-scroll
                 className="mt-2 max-h-[65svh] sm:max-h-[70vh] overflow-y-auto pr-2"
               >
                 {loadingOlder && (
@@ -1168,11 +1184,23 @@ function ReactionAddButton({
   const handleToggle = () => {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom;
-      const popoverHeight = 120; // Approximate height of the emoji grid
       
-      setShowAbove(spaceBelow < popoverHeight);
+      // Find the chat scroll container
+      const chatContainer = document.querySelector('[data-chat-scroll]') as HTMLElement;
+      if (chatContainer) {
+        const containerRect = chatContainer.getBoundingClientRect();
+        const spaceBelow = containerRect.bottom - rect.bottom;
+        const popoverHeight = 120; // Approximate height of the emoji grid
+        
+        setShowAbove(spaceBelow < popoverHeight);
+      } else {
+        // Fallback to viewport calculation
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const popoverHeight = 120;
+        
+        setShowAbove(spaceBelow < popoverHeight);
+      }
     }
     setOpen(v => !v);
   };
