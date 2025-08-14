@@ -2654,6 +2654,38 @@ export type Database = {
           },
         ]
       }
+      rank20_chat_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rank20_chat_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "rank20_chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rank20_groups: {
         Row: {
           batch_number: number
@@ -5796,6 +5828,18 @@ export type Database = {
           title: string
           body: string
           created_at: string
+        }[]
+      }
+      my_rank20_react_toggle: {
+        Args: { _message_id: string; _emoji: string }
+        Returns: undefined
+      }
+      my_rank20_reactions_for: {
+        Args: { _message_ids: string[] }
+        Returns: {
+          message_id: string
+          emoji: string
+          count: number
         }[]
       }
       process_yearly_hall_of_fame: {
