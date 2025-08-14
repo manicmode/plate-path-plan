@@ -15,14 +15,23 @@ export default function BillboardTab() {
   const [seeding, setSeeding] = useState(false);
   const [challengeInfo, setChallengeInfo] = useState<{title: string, challenge_type?: string} | null>(null);
 
-  // Fetch challenge details to determine if it's Rank-of-20
+  // Fetch challenge details and add console tracing
   useEffect(() => {
     (async () => {
+      // Console tracing at mount
+      console.info('[diag] billboard challenge', challengeId);
+      
+      const { data: user } = await supabase.auth.getUser();
+      console.info('[diag] user', user?.user?.id);
+
+      // Test diagnostics RPC
+      const d = await supabase.rpc('diag_rank20');
+      console.info('[diag] diag_rank20', d.error, d.data);
+
       if (!challengeId) {
         setChallengeInfo(null);
         return;
       }
-      console.log('[diag] billboard challenge', challengeId);
       
       const { data: challenge } = await supabase
         .from("private_challenges")
@@ -31,14 +40,6 @@ export default function BillboardTab() {
         .single();
       
       setChallengeInfo(challenge || null);
-
-      // Call diagnostics
-      try {
-        const { data, error } = await supabase.rpc('diag_rank20');
-        console.debug('[diag] diag_rank20', { data, error });
-      } catch (diagError) {
-        console.debug('[diag] diag_rank20 unavailable', diagError);
-      }
     })();
   }, [challengeId]);
 

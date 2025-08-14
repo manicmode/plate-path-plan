@@ -19,8 +19,8 @@ export async function seedBillboardForChallenge(challengeId: string, refresh?: (
   console.log('Seeding billboard for challenge:', challengeId);
   const events = DEMO_EVENTS(challengeId);
 
-  // Use the secure RPC instead of direct insert to avoid RLS issues
-  const { error } = await (supabase as any).rpc('seed_billboard_events', { _challenge_id: challengeId });
+  // Use the secure RPC for seeding
+  const { error } = await supabase.rpc('seed_billboard_events', { _challenge_id: challengeId });
 
   if (error) {
     console.error("Seed error:", error);

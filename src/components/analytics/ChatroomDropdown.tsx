@@ -17,21 +17,29 @@ export default function ChatroomDropdown() {
 
   const [participationChallenges, setParticipationChallenges] = React.useState<any[]>([]);
 
-  // Fetch challenges using the new RPC
+  // Fetch challenges using RPC only (no merging with other sources)
   React.useEffect(() => {
     (async () => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session?.session?.user?.id;
-      if (!userId) return;
+      // Console tracing: supabase.auth.getUser() result
+      const { data: user, error: userError } = await supabase.auth.getUser();
+      console.info('[billboard-dropdown] auth.getUser()', { user: user?.user?.id, error: userError });
+      
+      if (!user?.user?.id) return;
 
-      console.info('[billboard-dropdown] loading options via RPC my_billboard_challenges');
-      const { data, error } = await supabase.rpc('my_billboard_challenges');
-      if (error) {
-        console.error('[billboard-dropdown] rpc error', error);
+      // Test RPC first
+      console.info('[billboard-dropdown] testing RPC my_billboard_challenges');
+      const r = await supabase.rpc('my_billboard_challenges');
+      console.info('[rpc test] my_billboard_challenges', r.error, r.data);
+      
+      if (r.error) {
+        console.error('[billboard-dropdown] RPC ERROR - stopping', r.error);
         return;
       }
 
-      let items = (data ?? []) as Array<{
+      // Console tracing: raw RPC response
+      console.info('[billboard-dropdown] raw RPC response', r.data);
+
+      let items = (r.data ?? []) as Array<{
         id: string;
         title: string;
         category: string | null;
@@ -39,17 +47,14 @@ export default function ChatroomDropdown() {
         created_at: string;
       }>;
 
-      console.info('[billboard-dropdown] raw options', items);
-
-      // Prefer Rank-of-20 first, then newest
+      // Sort: Rank-of-20 first, then newest
       items.sort((a, b) => {
-        const ar = a.challenge_type === 'rank_of_20' ? 0 : 1;
-        const br = b.challenge_type === 'rank_of_20' ? 0 : 1;
-        if (ar !== br) return ar - br;
+        if (a.challenge_type === 'rank_of_20' && b.challenge_type !== 'rank_of_20') return -1;
+        if (b.challenge_type === 'rank_of_20' && a.challenge_type !== 'rank_of_20') return 1;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      // Map to dropdown options
+      // Map to options
       const options = items.map(x => ({
         id: x.id,
         title: x.title,
@@ -58,15 +63,19 @@ export default function ChatroomDropdown() {
         type: x.challenge_type ?? 'custom',
       }));
 
-      console.info('[billboard-dropdown] mapped options', options);
+      // Console tracing: final options array
+      console.info('[billboard-dropdown] final options array', options);
 
       setParticipationChallenges(options);
 
-      // Auto-select first if none
+      // Auto-select first if none selected
       if (!selectedChatroomId && options.length > 0) {
-        console.info('[billboard-dropdown] auto-selecting', options[0]);
+        console.info('[billboard-dropdown] auto-selecting first option', options[0]);
         selectChatroom(options[0].id);
       }
+
+      // Console tracing: selected id
+      console.info('[billboard-dropdown] selected id', selectedChatroomId || options[0]?.id);
     })();
   }, [selectedChatroomId, selectChatroom]);
 
