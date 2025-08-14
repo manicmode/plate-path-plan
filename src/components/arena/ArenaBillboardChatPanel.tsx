@@ -999,7 +999,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                 <div className="flex gap-2">
                   <Input
                     ref={inputRef}
-                    placeholder="Type your message... (max 2000 chars)"
+                    placeholder="Type your message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
