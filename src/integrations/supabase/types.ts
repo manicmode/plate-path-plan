@@ -2566,6 +2566,57 @@ export type Database = {
         }
         Relationships: []
       }
+      rank20_billboard_messages: {
+        Row: {
+          author_id: string | null
+          body: string
+          challenge_id: string
+          created_at: string
+          id: string
+          title: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          challenge_id: string
+          created_at?: string
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
+      rank20_chat_messages: {
+        Row: {
+          body: string
+          challenge_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          challenge_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rank20_groups: {
         Row: {
           batch_number: number
@@ -5649,6 +5700,32 @@ export type Database = {
           title: string
           category: string
           challenge_type: string
+          created_at: string
+        }[]
+      }
+      my_rank20_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      my_rank20_chat_list: {
+        Args: { _limit?: number; _before?: string }
+        Returns: {
+          id: string
+          user_id: string
+          body: string
+          created_at: string
+        }[]
+      }
+      my_rank20_chat_post: {
+        Args: { _body: string }
+        Returns: undefined
+      }
+      my_rank20_latest_announcement: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          body: string
           created_at: string
         }[]
       }

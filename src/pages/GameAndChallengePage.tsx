@@ -67,6 +67,7 @@ import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
+import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
@@ -119,6 +120,7 @@ function GameAndChallengeContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [isBillboardChatOpen, setIsBillboardChatOpen] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -772,15 +774,15 @@ function GameAndChallengeContent() {
                           )}
                         </CardTitle>
                       
-                      {/* Create Challenge Button */}
-                      <Button 
-                        onClick={() => setShowChallengeModal(true)}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full md:w-full"
-                        size="sm"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Create Challenge
-                      </Button>
+                       {/* Billboard & Chat Button */}
+                       <Button 
+                         onClick={() => setIsBillboardChatOpen(true)}
+                         className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full md:w-full"
+                         size="sm"
+                       >
+                         <MessageCircle className="h-4 w-4 mr-1" />
+                         Billboard & Chat
+                       </Button>
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
@@ -969,6 +971,12 @@ function GameAndChallengeContent() {
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
+        
+        {/* Arena Billboard Chat Panel */}
+        <ArenaBillboardChatPanel 
+          isOpen={isBillboardChatOpen}
+          onClose={() => setIsBillboardChatOpen(false)}
+        />
       </div>
     </div>
   );

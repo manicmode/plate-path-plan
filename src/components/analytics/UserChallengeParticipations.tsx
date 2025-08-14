@@ -286,13 +286,13 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
                 }}
                 className="bg-red-500/80 hover:bg-red-500 backdrop-blur-sm transition-all duration-200"
               >
-                Leave
-              </Button>
-            </div>
-          </div>
-        </Card>
-    );
-  };
+               Leave
+             </Button>
+           </div>
+         </div>
+       </Card>
+     );
+   };
 
   // Vertical Stack Section Component
   const VerticalStack = ({ 
@@ -354,7 +354,20 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   }
 
   return (
-    <div className="space-y-8 min-h-screen">
+    <div className="space-y-6">
+      {/* Create Challenge Button - Centered */}
+      <div className="flex justify-center">
+        <Button 
+          onClick={() => setShowCreateModal(true)}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg px-6 py-2"
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Challenge
+        </Button>
+      </div>
+      
+      <div className="space-y-8 min-h-screen">
 
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
@@ -391,6 +404,9 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
       />
+      </div>
     </div>
   );
 };
+
+export default UserChallengeParticipations;
