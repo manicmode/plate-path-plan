@@ -56,43 +56,44 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const rawSearch = typeof window !== "undefined" ? window.location.search : "";
   const qs = new URLSearchParams(rawSearch);
   const urlFlag = qs.get("arena_smoke") === "1";
-  const lsFlag = typeof window !== "undefined" ? window.localStorage.getItem("arena_smoke") === "1" : false;
+  const lsFlag  = typeof window !== "undefined" ? window.localStorage.getItem("arena_smoke") === "1" : false;
+
   if (urlFlag && typeof window !== "undefined") {
     try { window.localStorage.setItem("arena_smoke", "1"); } catch {}
   }
-  const arenaSmoke = urlFlag || lsFlag;
+
+  const ARENA_SMOKE = urlFlag || lsFlag;
+
   if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
-    console.info("[ARENA_SMOKE] rawSearch:", rawSearch, { urlFlag, lsFlag, arenaSmoke });
+    console.info("[ARENA_SMOKE] flags =>", { urlFlag, lsFlag, ARENA_SMOKE, rawSearch });
   }
-  if (arenaSmoke) {
+
+  // Dev keyboard toggle: Shift+S
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "s" && e.shiftKey) {
+        const cur = localStorage.getItem("arena_smoke") === "1";
+        localStorage.setItem("arena_smoke", cur ? "" : "1");
+        window.location.reload();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  if (ARENA_SMOKE) {
     return (
       <div style={{ padding: 16 }}>
         <ArenaSmoke />
+        {/* Render the normal arena below too so we can compare */}
       </div>
     );
   }
 
   const navigate = useNavigate();
   const location = useLocation();
-  const searchFromRouter = location?.search ?? "";
-  const searchFromWindow =
-    typeof window !== "undefined" ? window.location.search : "";
-  const search = searchFromRouter || searchFromWindow;
-  const qs2 = new URLSearchParams(search);
-  const arenaSmoke2 = qs2.get("arena_smoke") === "1";
-  if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
-   console.info("[ARENA_SMOKE] search=", search, "flag=", arenaSmoke2);
-  }
-  if (arenaSmoke2) {
-    return (
-      <div style={{ padding: 16 }}>
-        <ArenaSmoke />
-      </div>
-    );
-  }
-
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
@@ -112,25 +113,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       }
     })(); 
   }, [refresh]);
-
-  // Optional dev keyboard toggle
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production") {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.shiftKey && e.key === 'S') {
-          const current = window.localStorage.getItem("arena_smoke");
-          if (current === "1") {
-            window.localStorage.removeItem("arena_smoke");
-          } else {
-            window.localStorage.setItem("arena_smoke", "1");
-          }
-          window.location.reload();
-        }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, []);
 
   // REPLACE the existing scoresById + rows logic with this:
   const rows = useMemo(
