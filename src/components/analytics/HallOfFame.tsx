@@ -285,14 +285,14 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
       {/* Main Hall of Fame Card */}
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden p-6">
-          <div className="absolute inset-0">
-            <div className="absolute top-4 left-8 text-yellow-400 animate-pulse">⭐</div>
-            <div className="absolute top-4 right-8 text-amber-400 animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
-            <div className="absolute bottom-6 left-12 text-orange-400 animate-pulse" style={{ animationDelay: '2s' }}>✨</div>
-            <div className="absolute top-1/2 right-16 text-yellow-500 animate-pulse" style={{ animationDelay: '1.5s' }}>✨</div>
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-2 left-4 text-yellow-400 animate-pulse text-lg">⭐</div>
+            <div className="absolute top-2 right-4 text-amber-400 animate-pulse text-lg" style={{ animationDelay: '1s' }}>⭐</div>
+            <div className="absolute bottom-2 left-6 text-orange-400 animate-pulse text-sm" style={{ animationDelay: '2s' }}>✨</div>
+            <div className="absolute bottom-2 right-6 text-yellow-500 animate-pulse text-sm" style={{ animationDelay: '1.5s' }}>✨</div>
           </div>
           
-          <CardTitle className="text-3xl font-bold text-center relative z-10 flex items-center justify-center gap-3">
+          <CardTitle className="text-3xl font-bold text-center relative z-20 flex items-center justify-center gap-3 px-4">
             🏆 Hall of Fame 🏆
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
@@ -428,8 +428,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                   </div>
                 ))}
 
-                <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10 hover:border-primary transition-all duration-300 flex flex-col items-center justify-center min-h-[400px] relative">
-                  <div className="text-center space-y-4 w-full">
+                <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10 hover:border-primary transition-all duration-300 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden">
+                  <div className="text-center space-y-4 w-full relative z-10">
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                       <Sparkles className="h-10 w-10 text-primary animate-pulse" />
                     </div>
