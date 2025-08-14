@@ -104,19 +104,18 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     console.info("[Arena] rows.len", rows.length, rows.map(r => r.user_id));
   }
 
-  const inDev = process.env.NODE_ENV !== "production";
+  const inDev = true; // TEMP: force-visible debug UI
   const params = new URLSearchParams(location.search);
   const arenaPlain = params.get("arena_plain") === "1";
 
-  // Dev-only: auto-enable plain mode once (so you don't touch the URL)
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    const p = new URLSearchParams(location.search);
-    if (p.get("arena_plain") !== "1") {
+    // Auto-switch to Plain once if not set
+    if (!arenaPlain) {
+      const p = new URLSearchParams(location.search);
       p.set("arena_plain", "1");
       navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
     }
-  // run once on mount for this page
+  // run on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
