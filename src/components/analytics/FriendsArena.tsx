@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ProgressAvatar } from './ui/ProgressAvatar';
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
+import { supabase } from '@/integrations/supabase/client';
+import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 
 interface Friend {
   id: number;
@@ -51,6 +53,23 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [isArenaChatOpen, setArenaChatOpen] = useState(false);
+  
+  // Enroll in Rank-of-20 on mount (silent, no navigation)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.user?.id || cancelled) return;
+      
+      // Auto-enroll using the RPC function (idempotent)
+      await supabase.rpc('rank20_enroll_me');
+      if (!cancelled) {
+        refresh(); // Refresh members list
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [refresh]);
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -93,17 +112,30 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
           </CardTitle>
           
-          <Button 
-            onClick={() => setShowInviteModal(true)}
-            className={cn(
-              "flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg",
-              isMobile ? "h-8 px-3 text-xs w-full" : ""
-            )}
-            size={isMobile ? "sm" : "default"}
-          >
-            <UserPlus className="h-4 w-4" />
-            <span className={isMobile ? "text-xs" : ""}>Invite Friends</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setArenaChatOpen(true)}
+              className={cn(
+                "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg",
+                isMobile ? "h-8 px-3 text-xs" : ""
+              )}
+              size={isMobile ? "sm" : "default"}
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className={isMobile ? "text-xs" : ""}>Billboard & Chat</span>
+            </Button>
+            <Button 
+              onClick={() => setShowInviteModal(true)}
+              className={cn(
+                "flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg",
+                isMobile ? "h-8 px-3 text-xs" : ""
+              )}
+              size={isMobile ? "sm" : "default"}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className={isMobile ? "text-xs" : ""}>Invite Friends</span>
+            </Button>
+          </div>
         </div>
         <p className={cn(
           "text-muted-foreground",
@@ -364,6 +396,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Arena Billboard Chat Panel */}
+      <ArenaBillboardChatPanel 
+        isOpen={isArenaChatOpen}
+        onClose={() => setArenaChatOpen(false)}
+      />
     </Card>
   );
 };

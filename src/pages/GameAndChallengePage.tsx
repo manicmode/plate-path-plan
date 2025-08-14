@@ -139,7 +139,6 @@ function GameAndChallengeContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [isBillboardChatOpen, setIsBillboardChatOpen] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   
   // Track user intent to prevent auto-navigation
@@ -180,9 +179,11 @@ function GameAndChallengeContent() {
         selectChatroom(ce.detail.challengeId);
         setPreselectedChatId(ce.detail.challengeId);
       }
-      userInitiatedRef.current = true;
-      setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
-      console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
+      // Only allow programmatic navigation if user has initiated action
+      if (userInitiatedRef.current) {
+        setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+        console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
+      }
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
     return () => window.removeEventListener('switch-to-chat-tab', handler as EventListener);
@@ -207,29 +208,12 @@ function GameAndChallengeContent() {
     }
   }, [searchParams, selectChatroom]);
 
-  // Ensure Rank-of-20 assignment silently (no navigation)
+  // Block programmatic tab switches on first load
   useEffect(() => {
-    let cancelled = false;
-    
-    (async () => {
-      // Only enroll when ranking (Live Arena) is active
-      if (activeSection !== 'ranking') return;
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id;
-      if (!userId) return;
-
-      // Auto-enroll using the new RPC function (idempotent) - no navigation
-      const { error: enrollError } = await supabase.rpc("rank20_enroll_me");
-      if (enrollError) {
-        console.error("rank20_enroll_me error", enrollError);
-      }
-      
-      // Note: No selectChatroom() call here to prevent auto-navigation
-    })();
-    
-    return () => { cancelled = true; };
-  }, [activeSection]);
+    // Any effect that used to flip to 'billboard' on data arrival would go here
+    // but we block it with userInitiatedRef check
+    if (!userInitiatedRef.current) return;
+  }, []);
 
   // Measure sticky header height and apply top padding to chat scroller so content never hides beneath it
   useEffect(() => {
@@ -324,12 +308,6 @@ function GameAndChallengeContent() {
     // Handle chat section specially to open chatroom manager
     if (sectionId === 'chat') {
       setIsChatroomManagerOpen(true);
-      return;
-    }
-    
-    // Handle billboard section specially
-    if (sectionId === 'billboard') {
-      setIsBillboardChatOpen(true);
       return;
     }
     
@@ -803,15 +781,6 @@ function GameAndChallengeContent() {
                           )}
                         </CardTitle>
                       
-                       {/* Billboard & Chat Button */}
-                       <Button 
-                         onClick={() => setIsBillboardChatOpen(true)}
-                         className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full md:w-full"
-                         size="sm"
-                       >
-                         <MessageCircle className="h-4 w-4 mr-1" />
-                         Billboard & Chat
-                       </Button>
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
@@ -1000,12 +969,6 @@ function GameAndChallengeContent() {
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
-        
-        {/* Arena Billboard Chat Panel */}
-        <ArenaBillboardChatPanel 
-          isOpen={isBillboardChatOpen}
-          onClose={() => setIsBillboardChatOpen(false)}
-        />
       </div>
     </div>
   );
