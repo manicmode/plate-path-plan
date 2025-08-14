@@ -69,7 +69,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         await supabase.rpc('rank20_enroll_me'); // safe to call repeatedly
         refresh(); // Refresh members list after enrollment
       } catch (e) { 
-        console.warn('[rank20_enroll_me]', e); 
+        // Silent fail for enrollment
       }
     })(); 
   }, [refresh]);
