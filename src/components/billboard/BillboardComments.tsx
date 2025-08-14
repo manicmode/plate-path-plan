@@ -8,6 +8,8 @@ type Comment = {
   user_id: string;
   body: string;
   created_at: string;
+  display_name?: string;
+  avatar_url?: string;
 };
 
 export default function BillboardComments({ eventId }: { eventId: string }) {
@@ -17,31 +19,38 @@ export default function BillboardComments({ eventId }: { eventId: string }) {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(true);
 
-  const sb: any = supabase as any;
+  
 
   const load = useCallback(async () => {
-    const { data } = await sb
-      .from("billboard_comments")
-      .select("id,event_id,user_id,body,created_at")
-      .eq("event_id", eventId)
-      .order("created_at", { ascending: true });
-    setItems((data as any) || []);
-  }, [eventId, sb]);
+    const { data } = await supabase.rpc('my_billboard_comments_list', {
+      _event_id: eventId,
+      _limit: 50
+    });
+    setItems((data as Comment[]) || []);
+  }, [eventId]);
 
   useEffect(() => { load(); }, [load]);
 
   const send = async () => {
     if (!userId || !value.trim()) return;
-    const optimistic: Comment = { id: crypto.randomUUID(), event_id: eventId, user_id: userId, body: value, created_at: new Date().toISOString() } as any;
+    const optimistic: Comment = { 
+      id: crypto.randomUUID(), 
+      event_id: eventId, 
+      user_id: userId, 
+      body: value, 
+      created_at: new Date().toISOString(),
+      display_name: "You" // Temporary optimistic name
+    };
     setItems((prev) => [...prev, optimistic]);
     setValue("");
-    const { data, error } = await sb
-      .from("billboard_comments")
-      .insert({ event_id: eventId, user_id: userId, body: optimistic.body })
-      .select("id,event_id,user_id,body,created_at")
-      .single();
-    if (!error && data) {
-      setItems((prev) => prev.map(i => i.id === optimistic.id ? (data as any) : i));
+    
+    const { data, error } = await supabase.rpc('my_billboard_comment_post', {
+      _event_id: eventId,
+      _body: optimistic.body
+    });
+    
+    if (!error && data && data[0]) {
+      setItems((prev) => prev.map(i => i.id === optimistic.id ? data[0] as Comment : i));
     }
   };
 
@@ -53,12 +62,16 @@ export default function BillboardComments({ eventId }: { eventId: string }) {
       {open && (
         <>
           <div className="space-y-2 mb-2">
-            {items.map((c) => (
-              <div key={c.id} className="text-sm">
-                <span className="opacity-70 mr-2">{new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
-                <span>{c.body}</span>
-              </div>
-            ))}
+            {items.map((c) => {
+              const displayName = c.display_name ?? `User ${c.user_id.slice(0,5)}`;
+              return (
+                <div key={c.id} className="text-sm">
+                  <span className="opacity-70 mr-2">{new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                  <span className="font-medium mr-2">{displayName}:</span>
+                  <span>{c.body}</span>
+                </div>
+              );
+            })}
           </div>
           <div className="flex items-center gap-2">
             <input

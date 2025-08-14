@@ -5740,6 +5740,30 @@ export type Database = {
           created_at: string
         }[]
       }
+      my_billboard_comment_post: {
+        Args: { _event_id: string; _body: string }
+        Returns: {
+          id: string
+          event_id: string
+          user_id: string
+          body: string
+          created_at: string
+          display_name: string
+          avatar_url: string
+        }[]
+      }
+      my_billboard_comments_list: {
+        Args: { _event_id: string; _limit?: number }
+        Returns: {
+          id: string
+          event_id: string
+          user_id: string
+          body: string
+          created_at: string
+          display_name: string
+          avatar_url: string
+        }[]
+      }
       my_rank20_challenge_id: {
         Args: Record<PropertyKey, never>
         Returns: string
