@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,13 +56,8 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isArenaChatOpen, setArenaChatOpen] = useState(false);
   
-  // Race condition protection
-  const reqId = useRef(0);
-  const [leaderboard, setLeaderboard] = useState(members || []);
-
-  // Stable key for peer IDs to prevent unnecessary re-renders
-  const peerIds = members?.map(m => m.user_id).filter(Boolean) ?? [];
-  const peerIdsKey = useMemo(() => peerIds.sort().join(','), [peerIds.length]);
+  // Simple scores state for enrichment (no separate leaderboard state)
+  const [scores, setScores] = useState<Record<string, {score: number; rank?: number}>>({});
   
   // Enroll in Rank-of-20 on mount (silent, no navigation) 
   useEffect(() => {
@@ -77,36 +72,20 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     })(); 
   }, [refresh]);
 
-  // Fetch leaderboard only after peerIds are ready, with race condition protection
-  useEffect(() => {
-    // Only fetch when we actually have peers
-    if (!peerIds.length) {
-      setLeaderboard([]);
-      return;
-    }
+  // Compute display rows (render from members directly, enrich with scores)
+  const rows = (members ?? []).map(m => ({
+    user_id: m.user_id,
+    display_name: m.display_name,
+    avatar_url: m.avatar_url,
+    joined_at: m.joined_at,
+    score: scores[m.user_id]?.score ?? 0,
+    rank: scores[m.user_id]?.rank ?? undefined,
+  }));
 
-    const current = ++reqId.current; // bump request token
-
-    (async () => {
-      try {
-        await requireSession();
-
-        // Since we're using members directly for display, just ensure we have the filtered list
-        // The members from useRank20Members are already the peer list we want
-        if (current !== reqId.current) return; // Ignore stale responses
-
-        setLeaderboard(members || []);
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[arena] peerIds', peerIds.length, 'rows', members?.length ?? 0);
-        }
-      } catch (e) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[arena] fetch failed', e);
-        }
-      }
-    })();
-  }, [peerIdsKey, members]);
+  // Development logging
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[arena] members=', members?.map(m => m.user_id), 'rows=', rows.length);
+  }
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -200,7 +179,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         ) : isMobile ? (
           // Mobile: Vertical Stack Layout
           <div className="space-y-3">
-            {leaderboard.map((member, index) => (
+            {rows.map((member, index) => (
               <Card 
                 key={member.user_id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
@@ -243,7 +222,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         ) : (
           // Desktop: Horizontal Grid Layout  
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {leaderboard.map((member, index) => (
+            {rows.map((member, index) => (
               <Card 
                 key={member.user_id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
@@ -318,7 +297,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           </div>
         )}
 
-        {leaderboard.length === 0 && !loading && !error && (
+        {rows.length === 0 && !loading && !error && (
           <div className="text-center py-12">
             <div className={cn(
               "bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4",

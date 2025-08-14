@@ -18,6 +18,15 @@ export function useRank20Members() {
     setLoading(true);
     setError(null);
     try {
+      // Check auth first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        if (process.env.NODE_ENV !== 'production') console.warn('[arena] no session – returning empty members');
+        setMembers([]);
+        setLoading(false);
+        return;
+      }
+
       await requireSession();
       const { data, error } = await supabase.rpc('my_rank20_group_members');
       if (error) setError(error.message);
