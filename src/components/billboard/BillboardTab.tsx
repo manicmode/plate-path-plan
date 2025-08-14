@@ -46,16 +46,55 @@ export default function BillboardTab() {
   // Determine if this is a Rank-of-20 challenge (only check challenge_type)
   const isRank20 = challengeInfo && challengeInfo.challenge_type === 'rank_of_20';
 
+  // Client-side auto-assign safeguard
+  const ensureRank20ClientSide = async (userId: string) => {
+    try {
+      console.info('[rank20] auto-assigning user', userId);
+      const { error } = await supabase.rpc('assign_rank20', { _user_id: userId });
+      if (error) console.error('[rank20] assign rpc error', error);
+    } catch (e) {
+      console.error('[rank20] assign exception', e);
+    }
+  };
+
   // Auto-select first available challenge if none selected
   useEffect(() => {
     const loadDefaultChallenge = async () => {
       console.info('[billboard] resolving default via my_billboard_challenges');
+      
+      // Get current user for auto-assignment
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      
       const { data, error } = await supabase.rpc('my_billboard_challenges');
       if (error) {
         console.error('[billboard] rpc error', error);
         return;
       }
+      
       const items = (data ?? []) as any[];
+      
+      // If empty and we have a user, auto-assign then refetch
+      if (items.length === 0 && userId) {
+        console.info('[billboard] no challenges found, auto-assigning to Rank-of-20');
+        await ensureRank20ClientSide(userId);
+        const retry = await supabase.rpc('my_billboard_challenges');
+        if (!retry.error && retry.data?.length) {
+          const ritems = retry.data as any[];
+          ritems.sort((a, b) => 
+            (a.challenge_type === 'rank_of_20' ? 0 : 1) - (b.challenge_type === 'rank_of_20' ? 0 : 1)
+            || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          console.info('[billboard] refetched options after auto-assign', ritems);
+          if (ritems.length > 0) {
+            selectChatroom(ritems[0].id);
+            console.info('[billboard] default selected after auto-assign', ritems[0]);
+          }
+        }
+        return;
+      }
+      
+      // Sort existing items and select first
       items.sort((a, b) => {
         const ar = a.challenge_type === 'rank_of_20' ? 0 : 1;
         const br = b.challenge_type === 'rank_of_20' ? 0 : 1;
@@ -66,22 +105,6 @@ export default function BillboardTab() {
       if (items.length > 0) {
         selectChatroom(items[0].id);
         console.info('[billboard] default selected', items[0]);
-      } else {
-        // Fallback: ensure assignment then refetch
-        console.warn('[billboard] no candidates; attempting ensure/assign then refetch');
-        try {
-          await supabase.rpc('diag_rank20');
-        } catch (diagErr) {
-          console.debug('[billboard] diag_rank20 fallback failed', diagErr);
-        }
-        const retry = await supabase.rpc('my_billboard_challenges');
-        if (!retry.error && retry.data?.length) {
-          const ritems = retry.data as any[];
-          ritems.sort((a,b)=> (a.challenge_type==='rank_of_20'?0:1)-(b.challenge_type==='rank_of_20'?0:1)
-            || new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
-          selectChatroom(ritems[0].id);
-          console.info('[billboard] default selected after ensure', ritems[0]);
-        }
       }
     };
 
