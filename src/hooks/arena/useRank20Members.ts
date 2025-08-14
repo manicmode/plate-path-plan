@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { requireSession } from '@/lib/ensureAuth';
 
 type Member = {
   user_id: string;
@@ -16,9 +17,15 @@ export function useRank20Members() {
   async function refresh() {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase.rpc('my_rank20_group_members');
-    if (error) setError(error.message);
-    setMembers((data as Member[]) ?? []);
+    try {
+      await requireSession();
+      const { data, error } = await supabase.rpc('my_rank20_group_members');
+      if (error) setError(error.message);
+      setMembers((data as Member[]) ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication required');
+      setMembers([]);
+    }
     setLoading(false);
   }
 

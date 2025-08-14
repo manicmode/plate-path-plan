@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -5428,6 +5428,7 @@ export type Database = {
         Args:
           | {
               target_routine_id: string
+              target_routine_type?: string
               target_table_name: string
               target_user_id: string
             }
@@ -5435,7 +5436,6 @@ export type Database = {
               target_routine_id: string
               target_table_name: string
               target_user_id: string
-              target_routine_type?: string
             }
         Returns: Json
       }
@@ -5445,28 +5445,28 @@ export type Database = {
       }
       add_user_xp: {
         Args: {
-          p_user_id: string
+          p_activity_id?: string
           p_activity_type: string
           p_base_xp: number
-          p_activity_id?: string
           p_bonus_xp?: number
           p_reason?: string
+          p_user_id: string
         }
         Returns: undefined
       }
       add_workout_xp: {
         Args: {
-          p_user_id: string
+          p_reason?: string
           p_routine_id: string
           p_score: number
-          p_reason?: string
+          p_user_id: string
         }
         Returns: undefined
       }
       apply_daily_cap: {
         Args:
-          | { p_user_id: string; p_proposed_xp: number }
-          | { p_user_id: string; p_total_award: number; p_client_tz?: string }
+          | { p_client_tz?: string; p_total_award: number; p_user_id: string }
+          | { p_proposed_xp: number; p_user_id: string }
         Returns: number
       }
       assign_monthly_recovery_rankings: {
@@ -5476,9 +5476,9 @@ export type Database = {
       assign_rank20: {
         Args: { _user_id: string }
         Returns: {
-          group_id: string
-          challenge_id: string
           batch_number: number
+          challenge_id: string
+          group_id: string
         }[]
       }
       auto_assign_teams: {
@@ -5487,23 +5487,23 @@ export type Database = {
       }
       award_nutrition_xp: {
         Args: {
-          p_user_id: string
-          p_activity_type: string
           p_activity_id?: string
+          p_activity_type: string
+          p_user_id: string
         }
         Returns: undefined
       }
       award_recovery_xp: {
         Args: {
-          p_user_id: string
+          p_duration_minutes?: number
           p_recovery_type: string
           p_session_id: string
-          p_duration_minutes?: number
+          p_user_id: string
         }
         Returns: undefined
       }
       batch_load_nutrition_data: {
-        Args: { user_id_param: string; date_param: string }
+        Args: { date_param: string; user_id_param: string }
         Returns: Json
       }
       calculate_challenge_progress: {
@@ -5516,12 +5516,12 @@ export type Database = {
       }
       calculate_performance_score: {
         Args: {
-          completed_sets: number
-          total_sets: number
           completed_exercises: number
-          total_exercises: number
-          skipped_steps: number
+          completed_sets: number
           difficulty_rating: string
+          skipped_steps: number
+          total_exercises: number
+          total_sets: number
         }
         Returns: number
       }
@@ -5531,13 +5531,13 @@ export type Database = {
       }
       calculate_recovery_score: {
         Args: {
-          meditation_count: number
           breathing_count: number
-          yoga_count: number
-          sleep_count: number
-          stretching_count: number
+          meditation_count: number
           muscle_recovery_count: number
+          sleep_count: number
           streak_bonus?: number
+          stretching_count: number
+          yoga_count: number
         }
         Returns: number
       }
@@ -5548,11 +5548,11 @@ export type Database = {
       calculate_workout_forecast: {
         Args: { target_user_id: string }
         Returns: {
+          confidence_score: number
           forecast_week: number
-          predicted_workouts: number
           predicted_completion_rate: number
           predicted_skipped_sets: number
-          confidence_score: number
+          predicted_workouts: number
           trend_direction: string
         }[]
       }
@@ -5581,29 +5581,29 @@ export type Database = {
         Returns: Json
       }
       ensure_mood_prefs: {
-        Args: { p_user: string; p_tz: string; p_time?: string }
+        Args: { p_time?: string; p_tz: string; p_user: string }
         Returns: undefined
       }
       find_user_friends: {
         Args: { contact_hashes: string[] }
         Returns: {
-          user_id: string
+          contact_hash: string
           email: string
           phone: string
-          contact_hash: string
+          user_id: string
         }[]
       }
       get_challenge_podium_winners: {
         Args: { challenge_id_param: string; month_year?: string }
         Returns: {
-          user_id: string
-          username: string
+          completion_date: string
           display_name: string
           final_score: number
           final_streak: number
-          completion_date: string
           podium_position: number
           total_interactions: number
+          user_id: string
+          username: string
         }[]
       }
       get_completed_challenges_for_month: {
@@ -5611,8 +5611,8 @@ export type Database = {
         Returns: {
           challenge_id: string
           challenge_name: string
-          participant_count: number
           completion_date: string
+          participant_count: number
         }[]
       }
       get_current_user_role: {
@@ -5622,48 +5622,48 @@ export type Database = {
       get_follow_status: {
         Args: { target_user_id: string }
         Returns: {
-          is_following: boolean
-          is_followed_by: boolean
           followers_count: number
           following_count: number
+          is_followed_by: boolean
+          is_following: boolean
         }[]
       }
       get_mutual_friends: {
         Args: { current_user_id: string }
         Returns: {
+          friend_email: string
           friend_id: string
           friend_name: string
-          friend_email: string
           friend_phone: string
         }[]
       }
       get_pending_friend_requests: {
         Args: Record<PropertyKey, never>
         Returns: {
+          created_at: string
+          direction: string
           request_id: string
-          requester_id: string
+          requested_email: string
           requested_id: string
-          requester_name: string
           requested_name: string
           requester_email: string
-          requested_email: string
-          created_at: string
+          requester_id: string
+          requester_name: string
           status: string
-          direction: string
         }[]
       }
       get_potential_accountability_buddies: {
         Args: { current_user_id: string }
         Returns: {
-          buddy_user_id: string
-          buddy_name: string
           buddy_email: string
-          challenge_name: string
-          challenge_id: string
-          completion_date: string
-          shared_ranking_group: boolean
+          buddy_name: string
           buddy_rank_position: number
+          buddy_user_id: string
+          challenge_id: string
+          challenge_name: string
+          completion_date: string
           current_user_rank_position: number
+          shared_ranking_group: boolean
         }[]
       }
       get_security_dashboard_stats: {
@@ -5673,41 +5673,41 @@ export type Database = {
       get_smart_friend_recommendations: {
         Args: { current_user_id: string }
         Returns: {
+          friend_email: string
           friend_id: string
           friend_name: string
-          friend_email: string
           friend_phone: string
-          relevance_score: number
           interaction_metadata: Json
+          relevance_score: number
         }[]
       }
       get_top_100_yearly_users: {
         Args: { target_year?: number }
         Returns: {
-          user_id: string
-          username: string
-          display_name: string
-          yearly_score: number
-          monthly_trophies: number
-          avg_nutrition_streak: number
           avg_hydration_streak: number
+          avg_nutrition_streak: number
           avg_supplement_streak: number
+          display_name: string
+          monthly_trophies: number
+          rank_position: number
           total_active_days: number
           total_messages: number
-          rank_position: number
+          user_id: string
+          username: string
+          yearly_score: number
         }[]
       }
       get_user_active_routine: {
         Args: { user_id_param: string }
         Returns: {
+          current_day_in_week: number
+          current_week: number
+          is_active: boolean
           routine_id: string
           routine_name: string
           routine_type: string
-          table_source: string
-          is_active: boolean
           start_date: string
-          current_week: number
-          current_day_in_week: number
+          table_source: string
         }[]
       }
       get_user_private_challenge_access: {
@@ -5717,26 +5717,26 @@ export type Database = {
       get_workout_trends_summary: {
         Args: { target_user_id: string }
         Returns: {
-          total_weeks_analyzed: number
           avg_weekly_workouts: number
+          consistency_rating: string
           overall_completion_rate: number
           overall_skip_rate: number
-          trend_direction: string
-          consistency_rating: string
           top_exercise_categories: string[]
+          total_weeks_analyzed: number
+          trend_direction: string
         }[]
       }
       get_xp_reset_window: {
-        Args: { p_user_id: string; p_client_tz?: string }
+        Args: { p_client_tz?: string; p_user_id: string }
         Returns: {
-          start_utc: string
           end_utc: string
+          start_utc: string
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -5753,51 +5753,51 @@ export type Database = {
         Returns: undefined
       }
       log_security_violation: {
-        Args: { violation_type: string; details: string; metadata?: Json }
+        Args: { details: string; metadata?: Json; violation_type: string }
         Returns: undefined
       }
       my_active_private_challenges: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          title: string
           category: string
           challenge_type: string
           created_at: string
+          id: string
+          title: string
         }[]
       }
       my_billboard_challenges: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          title: string
           category: string
           challenge_type: string
           created_at: string
+          id: string
+          title: string
         }[]
       }
       my_billboard_comment_post: {
-        Args: { _event_id: string; _body: string }
+        Args: { _body: string; _event_id: string }
         Returns: {
-          id: string
-          event_id: string
-          user_id: string
+          avatar_url: string
           body: string
           created_at: string
           display_name: string
-          avatar_url: string
+          event_id: string
+          id: string
+          user_id: string
         }[]
       }
       my_billboard_comments_list: {
         Args: { _event_id: string; _limit?: number }
         Returns: {
-          id: string
-          event_id: string
-          user_id: string
+          avatar_url: string
           body: string
           created_at: string
           display_name: string
-          avatar_url: string
+          event_id: string
+          id: string
+          user_id: string
         }[]
       }
       my_rank20_challenge_id: {
@@ -5806,19 +5806,19 @@ export type Database = {
       }
       my_rank20_chat_list: {
         Args:
-          | { _limit?: number; _before?: string }
+          | { _before?: string; _limit?: number }
           | {
-              _limit?: number
               _before_created_at?: string
               _before_id?: string
+              _limit?: number
             }
         Returns: {
-          id: string
-          user_id: string
+          avatar_url: string
           body: string
           created_at: string
           display_name: string
-          avatar_url: string
+          id: string
+          user_id: string
         }[]
       }
       my_rank20_chat_post: {
@@ -5828,31 +5828,31 @@ export type Database = {
       my_rank20_group_members: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
-          display_name: string
           avatar_url: string
+          display_name: string
           joined_at: string
+          user_id: string
         }[]
       }
       my_rank20_latest_announcement: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          title: string
           body: string
           created_at: string
+          id: string
+          title: string
         }[]
       }
       my_rank20_react_toggle: {
-        Args: { _message_id: string; _emoji: string }
+        Args: { _emoji: string; _message_id: string }
         Returns: undefined
       }
       my_rank20_reactions_for: {
         Args: { _message_ids: string[] }
         Returns: {
-          message_id: string
-          emoji: string
           count: number
+          emoji: string
+          message_id: string
         }[]
       }
       process_yearly_hall_of_fame: {
@@ -5869,9 +5869,9 @@ export type Database = {
       }
       record_team_up_prompt_action: {
         Args: {
+          action_param: string
           buddy_user_id_param: string
           challenge_id_param: string
-          action_param: string
         }
         Returns: boolean
       }
@@ -5882,15 +5882,15 @@ export type Database = {
       search_users_by_username_email: {
         Args: { search_term: string }
         Returns: {
-          user_id: string
-          username: string
-          email: string
+          current_hydration_streak: number
+          current_nutrition_streak: number
+          current_supplement_streak: number
           display_name: string
+          email: string
           first_name: string
           last_name: string
-          current_nutrition_streak: number
-          current_hydration_streak: number
-          current_supplement_streak: number
+          user_id: string
+          username: string
         }[]
       }
       seed_billboard_events: {
@@ -5903,9 +5903,9 @@ export type Database = {
       }
       track_coach_interaction: {
         Args: {
-          p_user_id: string
           p_coach_type: string
           p_interaction_type?: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -5918,7 +5918,7 @@ export type Database = {
         Returns: undefined
       }
       update_body_scan_reminder: {
-        Args: { p_user_id: string; p_scan_date?: string }
+        Args: { p_scan_date?: string; p_user_id: string }
         Returns: undefined
       }
       update_private_challenge_status: {
@@ -5926,7 +5926,7 @@ export type Database = {
         Returns: undefined
       }
       update_recovery_challenge_metrics: {
-        Args: { target_user_id: string; target_month_year: string }
+        Args: { target_month_year: string; target_user_id: string }
         Returns: undefined
       }
       update_team_scores: {
@@ -5935,8 +5935,8 @@ export type Database = {
       }
       validate_role_assignment: {
         Args: {
-          target_user_id: string
           new_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
         }
         Returns: boolean
       }

@@ -8,6 +8,7 @@ import { seedBillboardForChallenge } from "@/dev/seedBillboard";
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";
 import { supabase } from "@/integrations/supabase/client";
+import { requireSession } from "@/lib/ensureAuth";
 
 export default function BillboardTab() {
   const { selectedChatroomId, selectChatroom } = useChatStore();
@@ -20,15 +21,22 @@ export default function BillboardTab() {
   // Fetch challenge details and add console tracing
   useEffect(() => {
     (async () => {
-      // Console tracing at mount
-      console.info('[diag] billboard challenge', challengeId);
-      
-      const { data: user } = await supabase.auth.getUser();
-      console.info('[diag] user', user?.user?.id);
+      try {
+        await requireSession();
+        
+        // Console tracing at mount
+        console.info('[diag] billboard challenge', challengeId);
+        
+        const { data: user } = await supabase.auth.getUser();
+        console.info('[diag] user', user?.user?.id);
 
-      // Test diagnostics RPC
-      const d = await supabase.rpc('diag_rank20');
-      console.info('[diag] diag_rank20', d.error, d.data);
+        // Test diagnostics RPC (if available)
+        try {
+          const d = await supabase.rpc('diag_rank20');
+          console.info('[diag] diag_rank20', d.error, d.data);
+        } catch (err) {
+          console.info('[diag] diag_rank20 RPC not available');
+        }
 
       if (!challengeId) {
         setChallengeInfo(null);
@@ -41,7 +49,10 @@ export default function BillboardTab() {
         .eq("id", challengeId)
         .single();
       
-      setChallengeInfo(challenge || null);
+        setChallengeInfo(challenge || null);
+      } catch (err) {
+        console.warn('[billboard] Authentication required');
+      }
     })();
   }, [challengeId]);
 
@@ -52,20 +63,15 @@ export default function BillboardTab() {
   // Auto-select first available challenge if none selected
   useEffect(() => {
     const loadDefaultChallenge = async () => {
-      console.info('[billboard] resolving default via my_billboard_challenges');
-      
-      // Auth guard: don't RPC while unauthenticated
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.user?.id) {
-        if (process.env.NODE_ENV !== 'production') console.warn('No session; skipping my_billboard_challenges RPC');
-        return;
-      }
-
-      const { data, error } = await supabase.rpc('my_billboard_challenges');
-      if (error) {
-        console.error('[billboard] rpc error', error);
-        return;
-      }
+      try {
+        await requireSession();
+        console.info('[billboard] resolving default via my_billboard_challenges');
+        
+        const { data, error } = await supabase.rpc('my_billboard_challenges');
+        if (error) {
+          console.error('[billboard] rpc error', error);
+          return;
+        }
       
       const items = (data ?? []) as any[];
       
@@ -82,9 +88,12 @@ export default function BillboardTab() {
       // Log telemetry
       console.info('[telemetry] billboard_loaded', { count: safeItems.length });
       
-      if (safeItems.length > 0) {
-        selectChatroom(safeItems[0].id);
-        console.info('[billboard] default selected', safeItems[0]);
+        if (safeItems.length > 0) {
+          selectChatroom(safeItems[0].id);
+          console.info('[billboard] default selected', safeItems[0]);
+        }
+      } catch (err) {
+        console.warn('[billboard] Authentication required for challenge loading');
       }
     };
 

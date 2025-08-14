@@ -301,7 +301,7 @@ function GameAndChallengeContent() {
     setIsRefreshing(false);
   };
 
-  const scrollToSection = (sectionId: string) => {
+  const onTabClick = (sectionId: string) => {
     userInitiatedRef.current = true;
     setActiveSection(sectionId);
     
@@ -385,17 +385,17 @@ function GameAndChallengeContent() {
             {/* Horizontal scroll tabs (same as mobile) */}
             <ScrollArea className="w-full">
               <div className="flex justify-between w-full pb-3 pt-1 px-2">
-                {navigationItems.map(({ id, label, icon: Icon }) => (
-                  <Button
-                    key={id}
-                    variant={activeSection === id ? "default" : "ghost"}
-                    onClick={() => scrollToSection(id)}
-                    className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
-                    size="sm"
-                  >
-                    <Icon className="h-6 w-6" />
-                  </Button>
-                ))}
+                  {navigationItems.map(({ id, label, icon: Icon }) => (
+                    <Button
+                      key={id}
+                      variant={activeSection === id ? "default" : "ghost"}
+                      onClick={() => onTabClick(id)}
+                      className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
+                      size="sm"
+                    >
+                      <Icon className="h-6 w-6" />
+                    </Button>
+                  ))}
               </div>
             </ScrollArea>
             {/* Challenge Mode Toggle - Show in Arena, Browse, and My Challenges */}

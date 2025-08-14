@@ -30,6 +30,7 @@ import { ProgressAvatar } from './ui/ProgressAvatar';
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
+import { requireSession } from '@/lib/ensureAuth';
 
 interface Friend {
   id: number;
@@ -59,13 +60,19 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.user?.id || cancelled) return;
-      
-      // Auto-enroll using the RPC function (idempotent)
-      await supabase.rpc('rank20_enroll_me');
-      if (!cancelled) {
-        refresh(); // Refresh members list
+      try {
+        await requireSession();
+        if (cancelled) return;
+        
+        // Auto-enroll using the RPC function (idempotent)
+        await supabase.rpc('rank20_enroll_me');
+        if (!cancelled) {
+          refresh(); // Refresh members list
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('[arena] Authentication required for rank20 enrollment');
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -204,8 +211,15 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             ))}
           </div>
         ) : (
-          // Desktop: Horizontal Grid Layout
+          // Desktop: Horizontal Grid Layout  
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {(() => {
+              if (process.env.NODE_ENV !== 'production') {
+                console.log('[arena] peerIds', members?.length ?? 0);
+                console.log('[arena] leaderboard rows', members?.length ?? 0);
+              }
+              return null;
+            })()}
             {members.map((member, index) => (
               <Card 
                 key={member.user_id} 
