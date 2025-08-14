@@ -1409,6 +1409,13 @@
   /* Hide horizontal scrollbar for emoji strip */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Emoji strip mobile optimization */
+  .emoji-strip {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
 }
 
 /* Debug-only styles */

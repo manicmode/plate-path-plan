@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare, Megaphone, Wifi, WifiOff } from 'lucide-react';
+import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -49,6 +49,14 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [session, setSession] = useState<any>(null);
   
+  // --- emoji strip state ---
+  const [showEmojiStrip, setShowEmojiStrip] = useState(() => {
+    return localStorage.getItem('arena-emoji-strip-visible') !== 'false';
+  });
+  const [emojiTapCount, setEmojiTapCount] = useState(0);
+  const [emojiTapResetTimer, setEmojiTapResetTimer] = useState<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
   // --- scrolling refs/state ---
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -62,6 +70,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   
   // User cache for display names and avatars
   const userCache = useRef(new Map<string, {display_name?: string|null; avatar_url?: string|null}>());
+
+  // Emoji set
+  const EMOJI_SET = ['😀', '😂', '🥳', '🙌', '👍', '👎', '💯', '🔥', '💧', '🧠', '❤️‍🔥', '🏆', '🚀', '🌟', '😴'];
 
   // Check authentication
   useEffect(() => {
@@ -597,6 +608,101 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     }
   }, [chatMessages.length, atBottom]);
 
+  // Emoji strip functions
+  const toggleEmojiStrip = useCallback(() => {
+    const newState = !showEmojiStrip;
+    setShowEmojiStrip(newState);
+    localStorage.setItem('arena-emoji-strip-visible', String(newState));
+    
+    // Telemetry
+    if (process.env.NODE_ENV !== 'production') {
+      if (newState) {
+        console.info('arena_emoji_strip_shown');
+      } else {
+        console.info('arena_emoji_strip_hidden');
+      }
+    }
+  }, [showEmojiStrip]);
+
+  const handleEmojiTap = useCallback((emoji: string) => {
+    // Spam protection: max 10 emoji taps per 5s
+    if (emojiTapCount >= 10) {
+      toast.error('Slow down with the emojis! 😅');
+      return;
+    }
+
+    // Update spam counter
+    setEmojiTapCount(prev => prev + 1);
+    
+    // Clear existing timer and set new one
+    if (emojiTapResetTimer) {
+      clearTimeout(emojiTapResetTimer);
+    }
+    const timer = setTimeout(() => {
+      setEmojiTapCount(0);
+    }, 5000);
+    setEmojiTapResetTimer(timer);
+
+    // Insert emoji at cursor position
+    const input = inputRef.current;
+    if (!input) return;
+
+    const start = input.selectionStart ?? newMessage.length;
+    const end = input.selectionEnd ?? newMessage.length;
+    const beforeCursor = newMessage.slice(0, start);
+    const afterCursor = newMessage.slice(end);
+    const newText = beforeCursor + emoji + afterCursor;
+
+    // Check length limit
+    if (newText.length > 2000) {
+      toast.error('Message too long (max 2000 characters)');
+      return;
+    }
+
+    setNewMessage(newText);
+
+    // Restore cursor position after emoji
+    requestAnimationFrame(() => {
+      const newCursorPos = start + emoji.length;
+      input.setSelectionRange(newCursorPos, newCursorPos);
+      input.focus();
+    });
+
+    // Telemetry
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('arena_emoji_tapped', { emoji });
+    }
+  }, [newMessage, emojiTapCount, emojiTapResetTimer]);
+
+  const handleEmojiLongPress = useCallback(() => {
+    // Open OS emoji picker by temporarily creating an input with emoji picker
+    const hiddenInput = document.createElement('input');
+    hiddenInput.style.position = 'absolute';
+    hiddenInput.style.left = '-9999px';
+    hiddenInput.style.opacity = '0';
+    hiddenInput.setAttribute('inputmode', 'none');
+    document.body.appendChild(hiddenInput);
+    
+    // Focus and trigger emoji picker
+    hiddenInput.focus();
+    hiddenInput.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(hiddenInput);
+      inputRef.current?.focus();
+    }, 100);
+  }, []);
+
+  // Cleanup emoji timer on unmount
+  useEffect(() => {
+    return () => {
+      if (emojiTapResetTimer) {
+        clearTimeout(emojiTapResetTimer);
+      }
+    };
+  }, [emojiTapResetTimer]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -818,8 +924,80 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
 
               {/* Send Message */}
               <div className="space-y-2">
+                {/* Emoji Strip Toggle */}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleEmojiStrip}
+                    className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <Smile className="h-3 w-3" />
+                    Emoji
+                  </Button>
+                  {newMessage.length > 1800 && (
+                    <div className="text-xs text-muted-foreground">
+                      {newMessage.length}/2000 characters
+                    </div>
+                  )}
+                </div>
+
+                {/* Emoji Strip */}
+                {showEmojiStrip && (
+                  <div 
+                    className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-1 emoji-strip"
+                    onWheel={(e) => {
+                      // Allow horizontal scroll with wheel on desktop
+                      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                        e.currentTarget.scrollLeft += e.deltaY;
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    {EMOJI_SET.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleEmojiTap(emoji)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          handleEmojiLongPress();
+                        }}
+                        onTouchStart={(e) => {
+                          // Long press on mobile
+                          const timer = setTimeout(() => {
+                            handleEmojiLongPress();
+                          }, 500);
+                          
+                          const cleanup = () => {
+                            clearTimeout(timer);
+                            e.currentTarget.removeEventListener('touchend', cleanup);
+                            e.currentTarget.removeEventListener('touchmove', cleanup);
+                          };
+                          
+                          e.currentTarget.addEventListener('touchend', cleanup);
+                          e.currentTarget.addEventListener('touchmove', cleanup);
+                        }}
+                        className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/50 active:scale-95 transition-all duration-150 flex-shrink-0"
+                        aria-label={`Insert ${emoji} emoji`}
+                        type="button"
+                      >
+                        <span className="text-base">{emoji}</span>
+                      </button>
+                    ))}
+                    <button
+                      onClick={handleEmojiLongPress}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/50 active:scale-95 transition-all duration-150 flex-shrink-0"
+                      aria-label="Open emoji picker"
+                      type="button"
+                    >
+                      <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Input
+                    ref={inputRef}
                     placeholder="Type your message... (max 2000 chars)"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
@@ -836,11 +1014,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                {newMessage.length > 1800 && (
-                  <div className="text-xs text-muted-foreground text-right">
-                    {newMessage.length}/2000 characters
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
