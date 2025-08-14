@@ -21,8 +21,8 @@ interface ChatMessage {
   user_id: string;
   body: string;
   created_at: string;
-  display_name?: string;
-  avatar_url?: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
   pending?: boolean;
   error?: boolean;
   clientId?: string;
@@ -56,6 +56,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const BOTTOM_THRESHOLD = 60; // px
+  
+  // User cache for display names and avatars
+  const userCache = useRef(new Map<string, {display_name?: string|null; avatar_url?: string|null}>());
 
   // Check authentication
   useEffect(() => {
@@ -201,28 +204,48 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     }, 45000); // 45 seconds
   }, [connectionStatus]);
 
-  const onChatInsertFromRealtime = useCallback((row: ChatMessage) => {
+  const onChatInsertFromRealtime = useCallback(async (row: ChatMessage) => {
+    // Enrich with user info from cache or fetch if missing
+    let meta = userCache.current.get(row.user_id);
+    if (!meta) {
+      try {
+        const { data } = await supabase.from('profiles').select('display_name, avatar_url').eq('user_id', row.user_id).single();
+        meta = { display_name: data?.display_name, avatar_url: data?.avatar_url };
+        userCache.current.set(row.user_id, meta);
+      } catch (error) {
+        // Fallback if profile fetch fails
+        meta = { display_name: null, avatar_url: null };
+        userCache.current.set(row.user_id, meta);
+      }
+    }
+    
+    const enrichedRow: ChatMessage = { 
+      ...row, 
+      display_name: meta?.display_name, 
+      avatar_url: meta?.avatar_url 
+    };
+
     setChatMessages(prev => {
       // Try to find a pending temp match (same user, same body, within 3s)
       const match = prev.find(msg => 
         msg.pending && 
-        msg.user_id === row.user_id && 
-        msg.body === row.body &&
-        Math.abs(new Date(msg.created_at).getTime() - new Date(row.created_at).getTime()) < 3000
+        msg.user_id === enrichedRow.user_id && 
+        msg.body === enrichedRow.body &&
+        Math.abs(new Date(msg.created_at).getTime() - new Date(enrichedRow.created_at).getTime()) < 3000
       );
       
       if (match) {
         // Replace temp message with server row
         return prev.map(msg => 
           msg.id === match.id 
-            ? { ...row, pending: false, error: false }
+            ? { ...enrichedRow, pending: false, error: false }
             : msg
         );
       } else {
         // Add new message if not duplicate and sort ASC
-        const exists = prev.find(msg => msg.id === row.id);
+        const exists = prev.find(msg => msg.id === enrichedRow.id);
         if (!exists) {
-          const next = [...prev, { ...row, pending: false }];
+          const next = [...prev, { ...enrichedRow, pending: false }];
           next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
           return next;
         }
@@ -303,6 +326,16 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         setChatMessages(reversedMessages);
         setHasMore((chatData || []).length === 50);
         setInitialLoadDone(true);
+        
+        // Build user cache from initial data
+        reversedMessages.forEach((m: ChatMessage) => {
+          if (!userCache.current.has(m.user_id)) {
+            userCache.current.set(m.user_id, { 
+              display_name: m.display_name, 
+              avatar_url: m.avatar_url 
+            });
+          }
+        });
       }
 
       // Setup realtime subscriptions
@@ -338,6 +371,17 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       // data comes DESC; prepend as ASC
       const toPrepend = [...data].reverse();
       const merged = [...toPrepend, ...prev];
+      
+      // Update user cache with any new user info
+      toPrepend.forEach((m: ChatMessage) => {
+        if (!userCache.current.has(m.user_id)) {
+          userCache.current.set(m.user_id, { 
+            display_name: m.display_name, 
+            avatar_url: m.avatar_url 
+          });
+        }
+      });
+      
       // dedupe by id
       const seen = new Set<string>();
       return merged.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true)));
@@ -407,13 +451,22 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     
     // Optimistic update - add temp message immediately
     const clientId = crypto.randomUUID();
+    
+    // Get display name from current user's cached profile or session
+    const currentUserMeta = userCache.current.get(session.user.id);
+    const currentUserDisplayName = currentUserMeta?.display_name || 
+                                   session.user.user_metadata?.display_name || 
+                                   session.user.user_metadata?.full_name ||
+                                   session.user.user_metadata?.name ||
+                                   `User ${session.user.id.slice(-6)}`;
+    
     const tempMessage: ChatMessage = {
       id: clientId,
       user_id: session.user.id,
       body: trimmedMessage,
       created_at: new Date().toISOString(),
-      display_name: session.user.user_metadata?.display_name || `User ${session.user.id.slice(-6)}`,
-      avatar_url: session.user.user_metadata?.avatar_url || null,
+      display_name: currentUserDisplayName,
+      avatar_url: currentUserMeta?.avatar_url || session.user.user_metadata?.avatar_url || null,
       pending: true,
       clientId
     };
@@ -668,17 +721,25 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                     {chatMessages.map((message) => (
                       <div key={message.id} className={`space-y-1 ${message.pending ? 'opacity-60' : ''} ${message.error ? 'border-l-2 border-red-500 pl-2' : ''}`}>
                         <div className="flex items-center gap-2">
-                          {message.avatar_url ? (
-                            <img src={message.avatar_url} alt={message.display_name || 'User'} className="h-6 w-6 rounded-full flex-shrink-0" />
+                          {(message.avatar_url || userCache.current.get(message.user_id)?.avatar_url) ? (
+                            <img 
+                              src={message.avatar_url || userCache.current.get(message.user_id)?.avatar_url || ''} 
+                              alt={message.display_name || userCache.current.get(message.user_id)?.display_name || 'User'} 
+                              className="h-6 w-6 rounded-full flex-shrink-0" 
+                            />
                           ) : (
                             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                               <span className="text-xs font-medium text-muted-foreground">
-                                {(message.display_name || message.user_id.slice(-6))[0]?.toUpperCase()}
+                                {(message.display_name || 
+                                  userCache.current.get(message.user_id)?.display_name || 
+                                  message.user_id.slice(-6))[0]?.toUpperCase()}
                               </span>
                             </div>
                           )}
                           <span className="text-xs font-medium text-foreground">
-                            {message.display_name || `User ${message.user_id.slice(-6)}`}
+                            {message.display_name || 
+                             userCache.current.get(message.user_id)?.display_name || 
+                             `User ${message.user_id.slice(-6)}`}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
