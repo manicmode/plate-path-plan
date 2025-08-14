@@ -77,8 +77,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
   const visibleMessageIdsRef = useRef<Set<string>>(new Set());
 
-  // Quick-pick emojis (keep small to avoid clutter)
-  const REACTION_EMOJIS = ['👍','🔥','🎉','💧','🙌','😂'];
 
   // Merge helper
   function mergeReactions(rows: ReactionCount[]) {
@@ -1012,37 +1010,38 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
                           {message.error && <span className="text-xs text-red-500 ml-2">(Failed to send)</span>}
                         </p>
                         
-                        {/* Reactions row */}
+                        {/* Reactions row (compact) */}
                         {!message.pending && message.id && (
                           <div className="mt-1 flex flex-wrap items-center gap-1">
-                            {/* Existing reactions with counts */}
-                            {Object.entries(reactions[message.id] ?? {}).map(([emoji, count]) => (
-                              <button
-                                key={emoji}
-                                onClick={() => toggleReaction(message.id as string, emoji)}
-                                className="px-2 h-7 rounded-full bg-muted hover:bg-muted/70 text-xs flex items-center gap-1"
-                                aria-label={`React ${emoji}`}
-                                title={`${emoji} ${count}`}
-                              >
-                                <span>{emoji}</span>
-                                <span>{count}</span>
-                              </button>
-                            ))}
-
-                            {/* Quick add reactions (small inline set) */}
-                            <div className="ml-1 flex items-center gap-1">
-                              {REACTION_EMOJIS.map((e) => (
+                            {/* Top 3 reactions by count */}
+                            {Object.entries(reactions[message.id] ?? {})
+                              .sort((a,b) => (b[1] ?? 0) - (a[1] ?? 0))
+                              .slice(0,3)
+                              .map(([emoji, count]) => (
                                 <button
-                                  key={e}
-                                  onClick={() => toggleReaction(message.id as string, e)}
-                                  className="px-2 h-7 rounded-full bg-muted/60 hover:bg-muted text-xs"
-                                  aria-label={`Add ${e}`}
-                                  title={`Add ${e}`}
+                                  key={emoji}
+                                  onClick={() => toggleReaction(message.id as string, emoji)}
+                                  className="px-2 h-6 rounded-full bg-muted hover:bg-muted/70 text-xs flex items-center gap-1"
+                                  aria-label={`Remove ${emoji}`}
+                                  title={`${emoji} ${count}`}
                                 >
-                                  {e}
+                                  <span>{emoji}</span>
+                                  <span>{count}</span>
                                 </button>
                               ))}
-                            </div>
+
+                            {/* If more than 3, show a collapsed count */}
+                            {Object.keys(reactions[message.id] ?? {}).length > 3 && (
+                              <span className="px-2 h-6 rounded-full bg-muted/50 text-xs flex items-center">
+                                +{Object.keys(reactions[message.id] ?? {}).length - 3}
+                              </span>
+                            )}
+
+                            {/* Add reaction: '+' chip opens popover */}
+                            <ReactionAddButton
+                              messageId={message.id as string}
+                              onPick={(e) => toggleReaction(message.id as string, e)}
+                            />
                           </div>
                         )}
                       </div>
@@ -1151,5 +1150,61 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const REACTION_EMOJIS = ['👍','🔥','🎉','💧','🙌','😂','🥳','❤️','😮','👏'];
+
+function ReactionAddButton({
+  messageId,
+  onPick,
+}: { messageId: string; onPick: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!panelRef.current) return;
+      if (!panelRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        aria-label="Add reaction"
+        onClick={() => setOpen(v => !v)}
+        className="px-2 h-6 rounded-full bg-muted/60 hover:bg-muted text-xs"
+        title="Add reaction"
+      >
+        +
+      </button>
+
+      {open && (
+        <div
+          ref={panelRef}
+          className="absolute z-50 mt-2 w-44 rounded-xl border border-border bg-popover shadow-lg p-2"
+        >
+          <div className="grid grid-cols-6 gap-1">
+            {REACTION_EMOJIS.map(e => (
+              <button
+                key={e}
+                type="button"
+                className="h-8 w-8 rounded-lg hover:bg-muted/60 flex items-center justify-center"
+                onClick={() => { onPick(e); setOpen(false); }}
+                aria-label={`React ${e}`}
+                title={`React ${e}`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
