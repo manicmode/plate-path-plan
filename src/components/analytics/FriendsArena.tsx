@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -130,6 +131,41 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     console.info("[ARENA DEBUG] mounted: rows=", rows.length, "plain?", arenaPlain);
   }
 
+  const arenaOverlay = typeof document !== "undefined"
+    ? createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            zIndex: 2147483647, // on top of everything
+            background: "rgba(16, 185, 129, 0.92)",
+            color: "#04130d",
+            border: "2px solid #10b981",
+            borderRadius: 10,
+            padding: "8px 10px",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+            fontSize: 12,
+            lineHeight: 1.1,
+          }}
+          data-testid="arena-debug-overlay"
+        >
+          <div style={{fontWeight: 700, marginBottom: 6}}>Arena Debug</div>
+          <div style={{display: "flex", gap: 6, marginBottom: 6}}>
+            <button onClick={() => setArenaPlain(false)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "transparent" : "#34d399"}}>
+              Cards
+            </button>
+            <button onClick={() => setArenaPlain(true)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "#34d399" : "transparent"}}>
+              Plain
+            </button>
+          </div>
+          <div>rows: <strong>{rows.length}</strong></div>
+          <div>mode: <strong>{arenaPlain ? "plain" : "cards"}</strong></div>
+        </div>,
+        document.body
+      )
+    : null;
+
   const content = arenaPlain ? (
     <div className="p-3">
       <ul className="list-disc pl-5 space-y-1">
@@ -204,37 +240,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   return (
     <>
-      {/* FIXED ARENA DEBUG OVERLAY — remove after QA */}
-      <div
-        style={{
-          position: "fixed",
-          right: 12,
-          bottom: 12,
-          zIndex: 99999,
-          background: "rgba(16, 185, 129, 0.92)", // emerald-ish
-          color: "#04130d",
-          border: "2px solid #10b981",
-          borderRadius: 10,
-          padding: "8px 10px",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
-          fontSize: 12,
-          lineHeight: 1.1,
-        }}
-        data-testid="arena-debug-overlay"
-      >
-        <div style={{fontWeight: 700, marginBottom: 6}}>Arena Debug</div>
-        <div style={{display: "flex", gap: 6, marginBottom: 6}}>
-          <button onClick={() => setArenaPlain(false)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "transparent" : "#34d399"}}>
-            Cards
-          </button>
-          <button onClick={() => setArenaPlain(true)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "#34d399" : "transparent"}}>
-            Plain
-          </button>
-        </div>
-        <div>rows: <strong>{rows.length}</strong></div>
-        <div>mode: <strong>{arenaPlain ? "plain" : "cards"}</strong></div>
-      </div>
-
+      {arenaOverlay}
     <Card className="w-full h-auto overflow-visible border-2 border-blue-200 shadow-xl">
       <CardHeader className={cn(
         "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
@@ -252,6 +258,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             )}>
               <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
               Live Rankings Arena
+              {arenaPlain && (
+                <span className="ml-2 px-2 py-0.5 rounded-md border border-emerald-500 text-emerald-300 text-[10px]">
+                  PLAIN MODE — rows={rows.length}
+                </span>
+              )}
             </CardTitle>
           </div>
 
