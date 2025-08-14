@@ -322,6 +322,26 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       </CardHeader>
       
       <CardContent className={cn("w-full h-auto overflow-visible", isMobile ? "p-3" : "p-6")}>
+        <div
+          data-testid="arena-debug-inline"
+          className="mb-3 text-xs rounded-md border border-yellow-500 bg-yellow-500/10 p-2"
+        >
+          <div className="font-medium mb-1">ARENA DEBUG</div>
+          <div className="mb-1">
+            members=<b>{Array.isArray(members) ? members.length : 'n/a'}</b>
+            {' '}rows=<b>{rows.length}</b>
+          </div>
+          <pre className="whitespace-pre-wrap break-all text-[10px] leading-snug max-h-48 overflow-auto">
+            {JSON.stringify(
+              {
+                members_sample: (Array.isArray(members) ? members.slice(0,5) : []).map(m => ({ id: m.user_id, name: m.display_name })),
+                rows_sample: rows.slice(0,5).map(r => ({ id: r.user_id, name: r.display_name })),
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
