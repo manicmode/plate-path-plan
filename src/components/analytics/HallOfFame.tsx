@@ -292,8 +292,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
             <div className="absolute top-1/2 right-16 text-yellow-500 animate-pulse" style={{ animationDelay: '1.5s' }}>✨</div>
           </div>
           
-          <CardTitle className="text-3xl font-bold text-center relative z-10">
-            🏆 Hall of Fame
+          <CardTitle className="text-3xl font-bold text-center relative z-10 flex items-center justify-center gap-3">
+            🏆 Hall of Fame 🏆
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
             {challengeMode === 'exercise' 
@@ -428,8 +428,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                   </div>
                 ))}
 
-                <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[400px]">
-                  <div className="text-center space-y-4">
+                <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10 hover:border-primary transition-all duration-300 flex flex-col items-center justify-center min-h-[400px] relative">
+                  <div className="text-center space-y-4 w-full">
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                       <Sparkles className="h-10 w-10 text-primary animate-pulse" />
                     </div>
@@ -439,15 +439,17 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                         Discover more legendary stories and achievements from our hall of fame
                       </p>
                     </div>
-                    <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
-                      <DialogTrigger asChild>
-                        <Button className="flex items-center gap-2">
-                          <Trophy className="h-4 w-4" />
-                          See All
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                    </Dialog>
+                    <div className="flex justify-center w-full">
+                      <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
+                        <DialogTrigger asChild>
+                          <Button className="flex items-center gap-2 mx-auto">
+                            <Trophy className="h-4 w-4" />
+                            See All
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                      </Dialog>
+                    </div>
                   </div>
                 </div>
               </div>
