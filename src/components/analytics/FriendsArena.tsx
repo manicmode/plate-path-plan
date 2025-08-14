@@ -58,8 +58,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isArenaChatOpen, setArenaChatOpen] = useState(false);
   
-  // Simple scores state for enrichment (no separate leaderboard state)
-  const [scores, setScores] = useState<Record<string, {score: number; rank?: number}>>({});
   
   // Enroll in Rank-of-20 on mount (silent, no navigation) 
   useEffect(() => {
@@ -74,43 +72,28 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     })(); 
   }, [refresh]);
 
-  // Build a lookup of stats by user_id (if stats exist elsewhere in this component)
-  const scoresById: Record<string, { score?: number; streak?: number }> = useMemo(() => {
-    const list = Array.isArray(scores) ? Object.values(scores) : []; // keep your existing "scores" source if present
-    const map: Record<string, { score?: number; streak?: number }> = {};
-    for (const s of list) {
-      if (!s?.user_id) continue;
-      map[s.user_id] = { score: s.score ?? 0, streak: s.streak ?? 0 };
-    }
-    return map;
-  }, [scores]);
+  // REPLACE the existing scoresById + rows logic with this:
+  const rows = useMemo(
+    () =>
+      (Array.isArray(members) ? members : []).map((m) => ({
+        user_id: m.user_id,
+        display_name:
+          m.display_name && m.display_name.trim().length > 0
+            ? m.display_name
+            : `User ${String(m.user_id).slice(0, 5)}`,
+        avatar_url: m.avatar_url ?? null,
+        joined_at: m.joined_at,
+        // default stats to avoid dropping rows when stats are absent
+        score: 0,
+        streak: 0,
+      })),
+    [members]
+  );
 
-  // LEFT-JOIN semantics: render *all* members; fill missing stats with 0
-  const rows = (Array.isArray(members) ? members : []).map((m) => {
-    const s = scoresById[m.user_id] ?? {};
-    return {
-      user_id: m.user_id,
-      display_name: m.display_name || `User ${String(m.user_id).slice(0, 5)}`,
-      avatar_url: m.avatar_url ?? null,
-      joined_at: m.joined_at,
-      score: s.score ?? 0,
-      streak: s.streak ?? 0,
-    };
-  });
-
-  if (process.env.NODE_ENV !== 'production') {
+  // dev-only sanity (remove after QA)
+  if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
-    console.info('[Arena rows]', rows.length, rows.slice(0,3));
-    setTimeout(() => {
-      const now = document.querySelectorAll('[data-testid="arena-item"]').length;
-      // eslint-disable-next-line no-console
-      console.info('[Arena DOM]', { now });
-      setTimeout(() => {
-        const later = document.querySelectorAll('[data-testid="arena-item"]').length;
-        // eslint-disable-next-line no-console
-        console.info('[Arena DOM +3s]', { later });
-      }, 3000);
-    }, 0);
+    console.info("[Arena] members:", members?.length ?? 0, "rows:", rows.length);
   }
 
 
@@ -226,13 +209,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           <>
             {isMobile ? (
               // Mobile: Vertical Stack Layout
-              <div 
-                data-testid="arena-list"
-                className="flex flex-col gap-2 overflow-visible min-h-0"
-                style={{ maxHeight: 'none' }}
-              >
+              <div className="space-y-3">
                 {rows.map((member, index) => (
-                  <div data-testid="arena-item" key={member.user_id}>
+                  <div key={member.user_id}>
                     <Card 
                         className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
                       >
@@ -274,13 +253,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               </div>
             ) : (
               // Desktop: Horizontal Grid Layout  
-              <div 
-                data-testid="arena-list"
-                className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 overflow-visible min-h-0"
-                style={{ maxHeight: 'none' }}
-              >
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {rows.map((member, index) => (
-                  <div data-testid="arena-item" key={member.user_id}>
+                  <div key={member.user_id}>
                     <Card 
                         className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
                       >
