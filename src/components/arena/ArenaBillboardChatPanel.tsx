@@ -213,9 +213,12 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               Billboard & Chat
             </DialogTitle>
           </DialogHeader>
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">You're not in this Arena yet.</p>
-            <p className="text-sm text-muted-foreground">Join a Rank-of-20 challenge to access the Arena Billboard & Chat.</p>
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <MessageSquare className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Not in this Arena</h3>
+            <p className="text-muted-foreground">Join a Rank-of-20 group to see announcements and chat.</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -333,23 +336,30 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
               </ScrollArea>
 
               {/* Send Message */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type your message... (max 2000 chars)"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isSending}
-                  className="flex-1"
-                  maxLength={2000}
-                />
-                <Button 
-                  onClick={sendMessage} 
-                  disabled={!newMessage.trim() || isSending || newMessage.trim().length > 2000}
-                  size="icon"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type your message... (max 2000 chars)"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    disabled={isSending}
+                    className="flex-1"
+                    maxLength={2000}
+                  />
+                  <Button 
+                    onClick={sendMessage} 
+                    disabled={!newMessage.trim() || isSending || newMessage.trim().length > 2000}
+                    size="icon"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                {newMessage.length > 1800 && (
+                  <div className="text-xs text-muted-foreground text-right">
+                    {newMessage.length}/2000 characters
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
