@@ -8,6 +8,7 @@ import { Send, MessageSquare, Megaphone, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { motion } from 'framer-motion';
 
 interface Announcement {
   id: string;
@@ -35,6 +36,8 @@ interface ArenaBillboardChatPanelProps {
 
 export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillboardChatPanelProps) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [lastAnnouncementId, setLastAnnouncementId] = useState<string | null>(null);
+  const [showNewGlow, setShowNewGlow] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -258,11 +261,18 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
     setAnnouncement(current => {
       // Only replace if this announcement is newer
       if (!current || new Date(row.created_at) > new Date(current.created_at)) {
+        // Check if this is a new announcement (different from last seen)
+        if (lastAnnouncementId !== row.id) {
+          setShowNewGlow(true);
+          setLastAnnouncementId(row.id);
+          // Hide glow after animation
+          setTimeout(() => setShowNewGlow(false), 1500);
+        }
         return row;
       }
       return current;
     });
-  }, []);
+  }, [lastAnnouncementId]);
 
   const backfillMessages = useCallback(async () => {
     try {
@@ -310,7 +320,12 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
       if (announcementError) {
         console.error('Error loading announcement:', announcementError);
       } else {
-        setAnnouncement(announcementData?.[0] || null);
+        const firstAnnouncement = announcementData?.[0] || null;
+        setAnnouncement(firstAnnouncement);
+        // Set initial announcement ID without triggering glow
+        if (firstAnnouncement) {
+          setLastAnnouncementId(firstAnnouncement.id);
+        }
       }
 
       // Load initial chat messages with improved pagination
@@ -641,35 +656,67 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillbo
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0 space-y-4">
-          {/* Announcement Section */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Megaphone className="h-4 w-4" />
-                Latest Announcement
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </div>
-              ) : announcement ? (
-                <div>
-                  {announcement.title && (
-                    <h4 className="font-medium mb-2">{announcement.title}</h4>
+          {/* Enhanced Announcement Section */}
+          <motion.div
+            className={`rounded-2xl p-[1px] bg-gradient-to-r from-cyan-500/40 via-fuchsia-500/40 to-emerald-500/40 transition-all duration-300 ${
+              showNewGlow ? 'shadow-lg shadow-cyan-500/25 animate-pulse' : ''
+            }`}
+            initial={false}
+            animate={showNewGlow ? { 
+              boxShadow: [
+                '0 0 0 rgba(34, 211, 238, 0)',
+                '0 0 20px rgba(34, 211, 238, 0.4)',
+                '0 0 0 rgba(34, 211, 238, 0)'
+              ]
+            } : {}}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+          >
+            <div className="rounded-2xl bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+              {/* Accent bar */}
+              <div className="h-[3px] bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 rounded-t-2xl"></div>
+              
+              <div className="py-5 md:py-6 px-4 md:px-6">
+                {/* Icon + Label Row */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium text-primary">Latest Announcement</span>
+                  {announcement && (
+                    <>
+                      <div className="w-1 h-1 rounded-full bg-muted-foreground/40"></div>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                      </span>
+                    </>
                   )}
-                  <p className="text-sm text-muted-foreground mb-2">{announcement.body}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
-                  </p>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No announcements yet.</p>
-              )}
-            </CardContent>
-          </Card>
+
+                {/* Content */}
+                {isLoading ? (
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-6 bg-muted rounded w-3/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </div>
+                ) : announcement ? (
+                  <div className="space-y-3">
+                    {announcement.title && (
+                      <h2 
+                        role="heading" 
+                        aria-level={2}
+                        className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight"
+                      >
+                        {announcement.title}
+                      </h2>
+                    )}
+                    <p className="text-base md:text-lg leading-7 text-muted-foreground">
+                      {announcement.body}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-base text-muted-foreground italic">No announcements yet.</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
 
           {/* Chat Section */}
           <Card className="flex-1 flex flex-col min-h-0">
