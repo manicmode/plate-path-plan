@@ -1,5 +1,6 @@
 
 import React, { Suspense, lazy, useEffect } from 'react';
+import ArenaSmoke from "@/debug/ArenaSmoke";
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -408,11 +409,12 @@ function AppContent() {
                         <ChallengePreview />
                       </ProtectedRoute>
                     } />
-                    <Route path="/dev/challenges" element={
-                      <ProtectedRoute>
-                        <DevChallengesPage />
-                      </ProtectedRoute>
-                     } />
+                     <Route path="/dev/challenges" element={
+                       <ProtectedRoute>
+                         <DevChallengesPage />
+                       </ProtectedRoute>
+                      } />
+                     <Route path="/__arena" element={<ArenaSmoke />} />
                     <Route path="/404" element={<NotFound />} />
                     <Route path="*" element={<Navigate to="/404" replace />} />
                   </Routes>
