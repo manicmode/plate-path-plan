@@ -5,6 +5,7 @@ import { usePublicChallenges } from "@/hooks/usePublicChallenges";
 import { usePrivateChallenges } from "@/hooks/usePrivateChallenges";
 import { useChatStore } from "@/store/chatStore";
 import { supabase } from "@/integrations/supabase/client";
+import { requireSession } from "@/lib/ensureAuth";
 
 // shadcn/ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,18 +21,13 @@ export default function ChatroomDropdown() {
   // Fetch challenges using RPC only (no merging with other sources)
   React.useEffect(() => {
     (async () => {
-      // Auth guard: don't RPC while unauthenticated
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.user?.id) {
-        if (process.env.NODE_ENV !== 'production') console.warn('No session; skipping my_billboard_challenges RPC');
-        setParticipationChallenges([]);
-        return;
-      }
-
-      // Test RPC first
-      console.info('[billboard-dropdown] testing RPC my_billboard_challenges');
-      const r = await supabase.rpc('my_billboard_challenges');
-      console.info('[rpc test] my_billboard_challenges', r.error, r.data);
+      try {
+        await requireSession();
+        
+        // Test RPC first
+        console.info('[billboard-dropdown] testing RPC my_billboard_challenges');
+        const r = await supabase.rpc('my_billboard_challenges');
+        console.info('[rpc test] my_billboard_challenges', r.error, r.data);
       
       if (r.error) {
         console.error('[billboard-dropdown] RPC ERROR - stopping', r.error);
@@ -78,8 +74,12 @@ export default function ChatroomDropdown() {
         selectChatroom(options[0].id);
       }
 
-      // Console tracing: selected id
-      console.info('[billboard-dropdown] selected id', selectedChatroomId || options[0]?.id);
+        // Console tracing: selected id
+        console.info('[billboard-dropdown] selected id', selectedChatroomId || options[0]?.id);
+      } catch (e) {
+        console.warn('[auth]', e);
+        setParticipationChallenges([]);
+      }
     })();
   }, [selectedChatroomId, selectChatroom]);
 

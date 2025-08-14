@@ -67,7 +67,7 @@ import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
-import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
+
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';

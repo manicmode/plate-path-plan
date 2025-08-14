@@ -56,26 +56,17 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isArenaChatOpen, setArenaChatOpen] = useState(false);
   
-  // Enroll in Rank-of-20 on mount (silent, no navigation)
+  // Enroll in Rank-of-20 on mount (silent, no navigation) 
   useEffect(() => {
-    let cancelled = false;
     (async () => {
-      try {
+      try { 
         await requireSession();
-        if (cancelled) return;
-        
-        // Auto-enroll using the RPC function (idempotent)
-        await supabase.rpc('rank20_enroll_me');
-        if (!cancelled) {
-          refresh(); // Refresh members list
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.warn('[arena] Authentication required for rank20 enrollment');
-        }
+        await supabase.rpc('rank20_enroll_me'); // safe to call repeatedly
+        refresh(); // Refresh members list after enrollment
+      } catch (e) { 
+        console.warn('[rank20_enroll_me]', e); 
       }
-    })();
-    return () => { cancelled = true; };
+    })(); 
   }, [refresh]);
 
   const getTrendIcon = (trend: string) => {
