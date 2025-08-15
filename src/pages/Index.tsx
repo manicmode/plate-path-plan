@@ -64,14 +64,14 @@ const Index = () => {
     );
   }
 
-  // Server-side redirect to arena to eliminate flicker
+  // Server-side redirect to home to eliminate flicker
   if (isAuthenticated) {
     // Use window.location for immediate redirect to prevent any flash
     if (typeof window !== 'undefined') {
-      window.location.replace('/arena');
+      window.location.replace('/home');
       return null;
     }
-    return <Navigate to="/arena" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // Show auth form for unauthenticated users (only after loading is complete)

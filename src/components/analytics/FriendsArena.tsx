@@ -194,7 +194,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
       {/* Show Arena error banner if there's an error */}
       {membership.isError && (
-        <ArenaErrorBanner />
+        <ArenaErrorBanner message="Arena temporarily unavailable — try again shortly." />
       )}
       
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">

@@ -27,3 +27,12 @@ export const ArenaErrorBanner: React.FC<ArenaErrorBannerProps> = ({
     </div>
   );
 };
+
+export function SimpleArenaErrorBanner({ message }: { message: string }) {
+  return (
+    <div style={{padding:12, margin:'8px 0', border:'1px solid #ddd', borderRadius:8}}>
+      <strong>Arena temporarily unavailable.</strong>
+      <div style={{marginTop:4}}>{message || 'Please try again shortly.'}</div>
+    </div>
+  );
+}

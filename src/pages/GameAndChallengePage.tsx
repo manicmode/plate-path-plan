@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-import { FriendsArena } from '@/components/analytics/FriendsArena';
+const FriendsArena = React.lazy(() => import('@/components/analytics/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') })));
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
 import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreationModal';
@@ -486,7 +486,9 @@ function GameAndChallengeContent() {
 
               <TabsContent value="ranking" className="mt-4 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
                 <section id="live-rankings-arena" className="mt-6">
-                  <FriendsArena />
+                  <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
+                    <FriendsArena />
+                  </React.Suspense>
                 </section>
               </TabsContent>
 
