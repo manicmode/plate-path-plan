@@ -151,7 +151,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-5">
           {rows.map((row, index) => (
             <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
               {/* Off-card rank badge */}
