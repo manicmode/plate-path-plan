@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
+import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 
 interface FriendsArenaProps {
   friends?: any[]; // Keep for compatibility but unused
@@ -23,6 +24,7 @@ interface FriendsArenaProps {
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   const rows = Array.isArray(members) ? members.map(m => ({
     user_id: m.user_id,
@@ -71,10 +73,22 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       
       <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
         <div className="flex flex-col gap-3">
-          {rows.map(row => (
+          {rows.map((row, index) => (
             <div key={row.user_id}>
               <Card className="border border-muted/50 hover:border-primary/30 transition-colors bg-gradient-to-r from-background to-muted/20">
-                <CardContent className="p-4">
+                <CardContent 
+                  className="p-4 cursor-pointer"
+                  onClick={() => setActiveUserId(row.user_id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { 
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveUserId(row.user_id);
+                    }
+                  }}
+                  aria-label={`Open profile for ${row.display_name || 'this user'}`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12")}>
@@ -108,6 +122,25 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           ))}
         </div>
       </CardContent>
+      
+      {activeUserId && (
+        <UserStatsModal
+          isOpen={!!activeUserId}
+          onClose={() => setActiveUserId(null)}
+          user={{
+            id: activeUserId,
+            nickname: rows.find(r => r.user_id === activeUserId)?.display_name || 'User',
+            avatar: '🧙‍♂️',
+            rank: rows.findIndex(r => r.user_id === activeUserId) + 1,
+            score: rows.find(r => r.user_id === activeUserId)?.score || 0,
+            streak: rows.find(r => r.user_id === activeUserId)?.streak || 0,
+            weeklyProgress: Math.floor(Math.random() * 100),
+            trend: 'up' as const,
+            isOnline: true,
+            first_name: rows.find(r => r.user_id === activeUserId)?.display_name || 'User'
+          }}
+        />
+      )}
     </Card>
   );
 };
