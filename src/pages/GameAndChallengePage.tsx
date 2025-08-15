@@ -457,7 +457,7 @@ function GameAndChallengeContent() {
             }
           }} className="w-full flex flex-col">
 
-              <TabsContent value="ranking" className="mt-4">
+              <TabsContent value="ranking" className="mt-4 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
                 <section id="live-rankings-arena" className="mt-6">
                   <FriendsArena />
                 </section>
