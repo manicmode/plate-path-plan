@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,10 +32,10 @@ export const PrivateChallengesFeed: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
-  const navigate = useNavigate();
   const handleChatClick = (challengeId: string, challengeTitle: string) => {
-    console.info('[Billboard] nav: type=private id=' + challengeId);
-    navigate(`/game-and-challenge?tab=billboard&type=private&private_challenge_id=${challengeId}`);
+    setIsChatModalOpen(true);
+    // TODO: Implement challenge-specific chat modal
+    console.log('Opening chat for challenge:', challengeId, challengeTitle);
   };
 
   const handleProgressUpdate = async (challengeId: string) => {
@@ -210,7 +209,7 @@ export const PrivateChallengesFeed: React.FC = () => {
                           className="flex-1"
                         >
                           <MessageCircle className="h-4 w-4 mr-2" />
-                          Billboard & Chat
+                          Chat
                         </Button>
                         {participation && challenge.status === 'active' && (
                           <Button

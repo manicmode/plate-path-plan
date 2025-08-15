@@ -59,8 +59,6 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [challengeType, setChallengeType] = useState<'public' | 'private'>(defaultVisibility ?? 'public');
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
-  const [isCreating, setIsCreating] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 const { toast } = useToast();
 
   const goalOptions = [
@@ -137,42 +135,33 @@ const { toast } = useToast();
     { value: 'custom', label: 'Custom', description: 'Pick your own dates' },
   ];
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    
-    if (!challengeName.trim()) {
-      errors.name = "Challenge name is required";
-    }
-    
-    if (challengeName.trim().length < 3) {
-      errors.name = "Challenge name must be at least 3 characters";
-    }
-    
-    if (!goalType) {
-      errors.goal = "Please select a goal type";
-    }
-    
-    if (goalType === 'custom' && !customGoal.trim()) {
-      errors.customGoal = "Please enter your custom goal";
-    }
-    
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const handleCreateChallenge = async () => {
-    console.log('handleCreateChallenge called');
-    
-    if (!validateForm()) {
+    if (!challengeName.trim()) {
       toast({
-        title: "Please fix the errors",
-        description: "Check the form for validation errors",
+        title: "Missing Information",
+        description: "Please enter a challenge name",
         variant: "destructive",
       });
       return;
     }
 
-    setIsCreating(true);
+    if (!goalType) {
+      toast({
+        title: "Missing Information", 
+        description: "Please select a goal type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (goalType === 'custom' && !customGoal.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your custom goal",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Compute duration in days
     const durationDays = (duration === 'custom' && customEndDate)
@@ -186,62 +175,41 @@ const { toast } = useToast();
 
     const visibility = challengeType;
 
-    try {
-      console.log('[createChallenge] attempting with params:', {
-        title: challengeName.trim(),
-        description: desc,
-        visibility,
-        durationDays,
-        coverEmoji: null,
-      });
-      
-      const { data, error } = await createSupabaseChallenge({
-        title: challengeName.trim(),
-        description: desc,
-        visibility,
-        durationDays,
-        coverEmoji: null,
-      });
+    const { data, error } = await createSupabaseChallenge({
+      title: challengeName.trim(),
+      description: desc,
+      visibility,
+      durationDays,
+      coverEmoji: null,
+    });
 
-      if (error || !data) {
-        console.error('[createChallenge] error:', error);
-        toast({
-          title: "Error",
-          description: error || 'Failed to create challenge',
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('[createChallenge] success', data.id, visibility);
-      toast({
-        title: "Challenge Created! 🎉",
-        description: `"${challengeName}" is now live and ready for participants!`,
-      });
-
-      onChallengeCreated?.(data.id);
-      
-      // Reset form
-      setStep(1);
-      setChallengeName('');
-      setGoalType('');
-      setCustomGoal('');
-      setDuration('7');
-      setChallengeType(defaultVisibility ?? 'public');
-      setSelectedFriends([]);
-      setCustomEndDate(undefined);
-      setValidationErrors({});
-      onOpenChange(false);
-    } catch (err) {
-      console.error('[createChallenge] exception:', err);
+    if (error || !data) {
       toast({
         title: "Error",
-        description: 'Failed to create challenge due to unexpected error',
+        description: error || 'Failed to create challenge',
         variant: "destructive",
       });
-    } finally {
-      setIsCreating(false);
+      return;
     }
+
+    console.log('[createChallenge] success', data.id, visibility);
+    toast({
+      title: "Challenge Created! 🎉",
+      description: `"${challengeName}" is now live and ready for participants!`,
+    });
+
+    onChallengeCreated?.(data.id);
+
+    // Reset form
+    setStep(1);
+    setChallengeName('');
+    setGoalType('');
+    setCustomGoal('');
+    setDuration('7');
+    setChallengeType(defaultVisibility ?? 'public');
+    setSelectedFriends([]);
+    setCustomEndDate(undefined);
+    onOpenChange(false);
   };
 
   const toggleFriend = (friendId: number) => {
@@ -267,7 +235,7 @@ const { toast } = useToast();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <Target className="h-6 w-6 text-primary" />
@@ -300,7 +268,7 @@ const { toast } = useToast();
           ))}
         </div>
 
-        <ScrollArea className="max-h-[55vh]">
+        <ScrollArea className="max-h-[60vh]">
           <div className="space-y-6">
             {/* Step 1: Basic Info */}
             {step === 1 && (
@@ -316,17 +284,9 @@ const { toast } = useToast();
                     id="challenge-name"
                     placeholder="e.g., Summer Hydration Challenge 💧"
                     value={challengeName}
-                    onChange={(e) => {
-                      setChallengeName(e.target.value);
-                      if (validationErrors.name) {
-                        setValidationErrors(prev => ({ ...prev, name: '' }));
-                      }
-                    }}
-                    className={`text-lg ${validationErrors.name ? 'border-destructive' : ''}`}
+                    onChange={(e) => setChallengeName(e.target.value)}
+                    className="text-lg"
                   />
-                  {validationErrors.name && (
-                    <p className="text-sm text-destructive mt-1">{validationErrors.name}</p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -591,14 +551,14 @@ const { toast } = useToast();
           </Button>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             
             {step < 4 ? (
               <Button 
                 onClick={nextStep} 
-                disabled={!isStepValid() || isCreating}
+                disabled={!isStepValid()}
                 className="flex items-center gap-2"
               >
                 Next
@@ -607,20 +567,10 @@ const { toast } = useToast();
             ) : (
               <Button 
                 onClick={handleCreateChallenge}
-                disabled={isCreating}
                 className="flex items-center gap-2"
               >
-                {isCreating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    Create Challenge
-                  </>
-                )}
+                <Plus className="h-4 w-4" />
+                Create Challenge
               </Button>
             )}
           </div>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,10 +37,10 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
   const averageProgress = Object.values(challenge.progress).reduce((sum, progress) => sum + progress, 0) / challenge.participants.length;
 
   const { selectChatroom } = useChatStore();
-  const navigate = useNavigate();
   const handleChatClick = () => {
-    console.info('[Billboard] nav: type=private id=' + challenge.id);
-    navigate(`/game-and-challenge?tab=billboard&type=private&private_challenge_id=${challenge.id}`);
+    selectChatroom(challenge.id);
+    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: challenge.id } }));
+    console.info('[chat] open from card', challenge.id);
   };
 
   return (
@@ -161,7 +160,7 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
-              💬 Billboard & Chat
+              💬
             </Button>
           </div>
         </div>

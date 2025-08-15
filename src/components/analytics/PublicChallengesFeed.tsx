@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -128,10 +127,10 @@ export const PublicChallengesFeed: React.FC = () => {
     }
   };
 
-  const navigate = useNavigate();
   const handleChatClick = (challengeId: string, challengeTitle: string) => {
-    console.info('[Billboard] nav: type=public id=' + challengeId);
-    navigate(`/game-and-challenge?tab=billboard&type=public&public_challenge_id=${challengeId}`);
+    setIsChatModalOpen(true);
+    // TODO: Implement challenge-specific chat modal
+    console.log('Opening chat for challenge:', challengeId, challengeTitle);
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -295,7 +294,7 @@ export const PublicChallengesFeed: React.FC = () => {
                         className="flex-1"
                       >
                         <MessageCircle className="h-4 w-4 mr-2" />
-                        Billboard & Chat
+                        Chat
                       </Button>
                       {isParticipating ? (
                         <Button

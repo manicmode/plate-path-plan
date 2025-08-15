@@ -32,10 +32,9 @@ interface ChatMessage {
 interface ArenaBillboardChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  privateChallengeId?: string | null;
 }
 
-export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChallengeId }: ArenaBillboardChatPanelProps) {
+export default function ArenaBillboardChatPanel({ isOpen, onClose }: ArenaBillboardChatPanelProps) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState<string | null>(null);
   const [showNewGlow, setShowNewGlow] = useState(false);
@@ -415,22 +414,16 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     setIsNotMember(false);
     
     try {
-      // Use provided privateChallengeId or fallback to RPC
-      let challengeIdData = privateChallengeId;
-      
-      if (!challengeIdData) {
-        const { data: rpcData, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
-        if (challengeError || !rpcData) {
-          console.info('User not in rank20 challenge');
-          setIsNotMember(true);
-          setIsLoading(false);
-          return;
-        }
-        challengeIdData = rpcData;
+      // First check if user has rank20 challenge access
+      const { data: challengeIdData, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
+      if (challengeError || !challengeIdData) {
+        console.info('User not in rank20 challenge');
+        setIsNotMember(true);
+        setIsLoading(false);
+        return;
       }
 
       setChallengeId(challengeIdData);
-      console.info('[ArenaBillboard] channel', challengeIdData);
 
       // Load latest announcement
       const { data: announcementData, error: announcementError } = await supabase.rpc('my_rank20_latest_announcement');

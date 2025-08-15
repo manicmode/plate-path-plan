@@ -42,10 +42,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 const { selectChatroom } = useChatStore();
 
   const handleChatClick = () => {
-    const challengeType = challenge.visibility === 'public' ? 'public' : 'private';
-    const idParam = challengeType === 'public' ? 'public_challenge_id' : 'private_challenge_id';
-    const url = `/game-and-challenge?tab=billboard&type=${challengeType}&${idParam}=${challenge.id}`;
-    window.location.href = url;
+    selectChatroom(challenge.id);
+    window.dispatchEvent(
+      new CustomEvent("switch-to-chat-tab", { detail: { challengeId: challenge.id } })
+    );
+    // Navigate to Billboard tab instead of opening chat modal
+    console.log('Navigating to Billboard for challenge:', challenge.id);
   };
 
   const handleJoinClick = async () => {
@@ -181,7 +183,7 @@ const { selectChatroom } = useChatStore();
               data-testid={`btn-chat-${challenge.id}`}
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              Billboard & Chat
+              Billboard
             </Button>
             {challenge.user_role !== 'owner' && !challenge.is_creator && (
               isParticipating ? (

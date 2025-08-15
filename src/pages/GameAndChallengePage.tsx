@@ -191,30 +191,11 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Read query params and handle billboard navigation
+  // Read challenge param and preselect
   useEffect(() => {
-    const tab = searchParams.get("tab");
-    const type = searchParams.get("type");
-    const privateChallengeId = searchParams.get("private_challenge_id");
-    const publicChallengeId = searchParams.get("public_challenge_id");
-    const challengeParam = searchParams.get("challenge");
-    
-    // Handle billboard navigation with context
-    if (tab === "billboard" && type) {
-      const challengeId = type === "private" ? privateChallengeId : 
-                         type === "public" ? publicChallengeId :
-                         type === "rank_of_20" ? privateChallengeId : null;
-      
-      if (challengeId) {
-        console.log(`[Billboard] nav: type=${type} id=${challengeId}`);
-        selectChatroom(challengeId);
-        userInitiatedRef.current = true;
-        setActiveSection('billboard');
-      }
-    }
-    // Legacy challenge param support
-    else if (challengeParam) {
-      selectChatroom(challengeParam);
+    const fromUrl = searchParams.get("challenge");
+    if (fromUrl) {
+      selectChatroom(fromUrl);
       userInitiatedRef.current = true;
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
     }
@@ -476,7 +457,7 @@ function GameAndChallengeContent() {
             }
           }} className="w-full flex flex-col">
 
-              <TabsContent value="ranking" className="mt-4 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
+              <TabsContent value="ranking" className="mt-4">
                 <section id="live-rankings-arena" className="mt-6">
                   <FriendsArena />
                 </section>
