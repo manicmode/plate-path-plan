@@ -214,7 +214,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   </div>
                   
                   {/* Robust points layout */}
-                  <div className="ml-auto min-w-[84px] text-right tabular-nums">
+                  <div className="ml-auto min-w-[84px] text-right tabular-nums mt-6">
                     <div className="inline-flex items-center gap-1">
                       <Target className="w-4 h-4" />
                       <span className="font-semibold">{formatNumber(row.score)}</span>
