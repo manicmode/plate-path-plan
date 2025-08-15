@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useArenaMembership } from '@/hooks/arena/useRank20Members';
@@ -37,6 +37,7 @@ interface ArenaBillboardChatPanelProps {
 }
 
 export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChallengeId }: ArenaBillboardChatPanelProps) {
+  const { toast } = useToast();
   // Arena membership check
   const { data: membership, isLoading: membershipLoading, isError: membershipError } = useArenaMembership();
   const { members = [], groupId, isInArena = false } = membership || {};
@@ -348,8 +349,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     let meta = userCache.current.get(row.user_id);
     if (!meta) {
       try {
-        const { data } = await supabase.from('profiles').select('display_name, avatar_url').eq('user_id', row.user_id).single();
-        meta = { display_name: data?.display_name, avatar_url: data?.avatar_url };
+        const { data } = await supabase.from('user_profiles').select('first_name, last_name, avatar_url').eq('user_id', row.user_id).maybeSingle();
+        const displayName = data ? `${data.first_name || ''} ${data.last_name || ''}`.trim() || null : null;
+        meta = { display_name: displayName, avatar_url: data?.avatar_url };
         userCache.current.set(row.user_id, meta);
       } catch (error) {
         // Fallback if profile fetch fails
@@ -598,7 +600,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     );
 
     try {
-      const { error } = await supabase.rpc('my_rank20_chat_post', { _body: message.body });
+      const { error } = await supabase.rpc('arena_post_message', { p_content: message.body });
       
       if (error) {
         setChatMessages(prev => 
@@ -608,7 +610,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
               : msg
           )
         );
-        toast.error('Failed to retry message');
+        toast({ title: "Error", description: "Failed to retry message", variant: "destructive" });
       }
       // Success will be handled by realtime insert
     } catch (error) {
@@ -619,7 +621,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
             : msg
         )
       );
-      toast.error('Failed to retry message');
+      toast({ title: "Error", description: "Failed to retry message", variant: "destructive" });
     }
   }, [chatMessages]);
 
@@ -629,7 +631,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
     // Client-side length validation (2000 chars max)
     if (trimmedMessage.length > 2000) {
-      toast.error('Message too long (max 2000 characters)');
+      toast({ title: "Error", description: "Message too long (max 2000 characters)", variant: "destructive" });
       return;
     }
 
@@ -675,10 +677,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     }
 
     try {
-      const { error } = await supabase.rpc('my_rank20_chat_post', { _body: trimmedMessage });
+      const { data: messageId, error } = await supabase.rpc('arena_post_message', { p_content: trimmedMessage });
       
       if (error) {
-        console.error('Error sending message:', error);
+        console.error('[Arena] Failed to send message:', error);
         
         // Mark message as error for retry
         setChatMessages(prev => 
@@ -689,7 +691,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
           )
         );
         
-        toast.error('Failed to send message');
+        // Show user-friendly error with toast
+        toast({ title: "Error", description: `Failed to send message: ${error.message || 'Please try again.'}`, variant: "destructive" });
         
         // Telemetry
         if (process.env.NODE_ENV !== 'production') {
@@ -718,7 +721,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         )
       );
       
-      toast.error('Failed to send message');
+      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
       
       // Telemetry
       if (process.env.NODE_ENV !== 'production') {
@@ -787,7 +790,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const handleEmojiTap = useCallback((emoji: string) => {
     // Spam protection: max 10 emoji taps per 5s
     if (emojiTapCount >= 10) {
-      toast.error('Slow down with the emojis! 😅');
+      toast({ title: "Slow down", description: "Slow down with the emojis! 😅", variant: "destructive" });
       return;
     }
 
@@ -815,7 +818,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
     // Check length limit
     if (newText.length > 2000) {
-      toast.error('Message too long (max 2000 characters)');
+      toast({ title: "Error", description: "Message too long (max 2000 characters)", variant: "destructive" });
       return;
     }
 

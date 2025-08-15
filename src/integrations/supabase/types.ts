@@ -5506,6 +5506,10 @@ export type Database = {
           | { p_proposed_xp: number; p_user_id: string }
         Returns: number
       }
+      arena_post_message: {
+        Args: { p_content: string }
+        Returns: string
+      }
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
         Returns: undefined
