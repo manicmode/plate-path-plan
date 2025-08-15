@@ -191,11 +191,30 @@ function GameAndChallengeContent() {
     }
   }, [selectedChatroomId]);
 
-  // Read challenge param and preselect
+  // Read query params and handle billboard navigation
   useEffect(() => {
-    const fromUrl = searchParams.get("challenge");
-    if (fromUrl) {
-      selectChatroom(fromUrl);
+    const tab = searchParams.get("tab");
+    const type = searchParams.get("type");
+    const privateChallengeId = searchParams.get("private_challenge_id");
+    const publicChallengeId = searchParams.get("public_challenge_id");
+    const challengeParam = searchParams.get("challenge");
+    
+    // Handle billboard navigation with context
+    if (tab === "billboard" && type) {
+      const challengeId = type === "private" ? privateChallengeId : 
+                         type === "public" ? publicChallengeId :
+                         type === "rank_of_20" ? privateChallengeId : null;
+      
+      if (challengeId) {
+        console.log(`[Billboard] nav: type=${type} id=${challengeId}`);
+        selectChatroom(challengeId);
+        userInitiatedRef.current = true;
+        setActiveSection('billboard');
+      }
+    }
+    // Legacy challenge param support
+    else if (challengeParam) {
+      selectChatroom(challengeParam);
       userInitiatedRef.current = true;
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
     }
