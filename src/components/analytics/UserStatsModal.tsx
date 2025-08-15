@@ -248,20 +248,15 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             
             <div className="relative flex flex-col items-center text-center gap-3">
               {/* Avatar with initials fallback */}
-              <div className="mx-auto mb-3 h-16 w-16 rounded-full ring-2 ring-white/20 overflow-hidden flex items-center justify-center">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    className="h-full w-full object-cover"
-                    onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-                  />
-                ) : (
-                  <span className="text-lg font-semibold tracking-wide">
-                    {initialsFrom(displayName)}
-                  </span>
-                )}
-              </div>
+              <Avatar
+                className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-white/20 shadow-xl"
+                data-testid="user-stats-avatar"
+              >
+                <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? 'User'} />
+                <AvatarFallback className="text-2xl md:text-3xl font-semibold">
+                  {initialsFrom(displayName)}
+                </AvatarFallback>
+              </Avatar>
               
               {/* User name */}
               <h2 className="text-center text-xl font-semibold">{displayName}</h2>

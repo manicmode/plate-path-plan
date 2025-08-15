@@ -9,8 +9,10 @@ import {
   Target,
   Flame,
   Crown,
-  Medal
+  Medal,
+  MessageSquare
 } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -24,6 +26,7 @@ interface FriendsArenaProps {
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<null | {
     user_id: string;
     display_name: string;
@@ -81,6 +84,24 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       </CardHeader>
       
       <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
+        <div className="my-3">
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/chat?channel=arena"); 
+            }}
+            className="w-full rounded-full px-4 py-3 text-sm md:text-base font-medium
+                       bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
+                       hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
+                       text-white shadow-md transition-colors flex items-center justify-center gap-2"
+            aria-label="Open Billboard & Chat"
+            data-testid="arena-billboard-pill"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Billboard &amp; Chat
+          </button>
+        </div>
+        
         <div className="flex flex-col gap-3">
           {rows.map((row, index) => (
             <div key={row.user_id}>
