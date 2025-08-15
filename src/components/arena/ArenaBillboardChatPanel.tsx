@@ -486,6 +486,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       await withArenaSession(async (uid) => {
         // First ensure rank20 membership before other calls
         await supabase.rpc('ensure_rank20_membership');
+      });
+      
       // Use provided privateChallengeId or fallback to RPC
       let challengeIdData = privateChallengeId;
       
@@ -684,43 +686,43 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
           return;
         }
 
-    setIsSending(true);
-    
-    // Optimistic update - add temp message immediately
-    const clientId = crypto.randomUUID();
-    
-    // Get display name from current user's cached profile or session
-    const currentUserMeta = userCache.current.get(uid);
-    const currentUserDisplayName = currentUserMeta?.display_name || 
-                                   `User ${uid.slice(0, 8)}`;
-    
-    const tempMessage: ChatMessage = {
-      id: clientId,
-      user_id: uid,
-      body: trimmedMessage,
-      created_at: new Date().toISOString(),
-      display_name: currentUserDisplayName,
-      avatar_url: currentUserMeta?.avatar_url,
-      pending: true,
-      clientId
-    };
+        setIsSending(true);
+        
+        // Optimistic update - add temp message immediately
+        const clientId = crypto.randomUUID();
+        
+        // Get display name from current user's cached profile or session
+        const currentUserMeta = userCache.current.get(uid);
+        const currentUserDisplayName = currentUserMeta?.display_name || 
+                                       `User ${uid.slice(0, 8)}`;
+        
+        const tempMessage: ChatMessage = {
+          id: clientId,
+          user_id: uid,
+          body: trimmedMessage,
+          created_at: new Date().toISOString(),
+          display_name: currentUserDisplayName,
+          avatar_url: currentUserMeta?.avatar_url,
+          pending: true,
+          clientId
+        };
 
-    setChatMessages(prev => {
-      const next = [...prev, tempMessage];
-      next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      return next;
-    });
-    setNewMessage('');
+        setChatMessages(prev => {
+          const next = [...prev, tempMessage];
+          next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          return next;
+        });
+        setNewMessage('');
 
-    // if user was at bottom, keep them at bottom
-    if (atBottom) {
-      requestAnimationFrame(() => scrollToBottom(true));
-    }
+        // if user was at bottom, keep them at bottom
+        if (atBottom) {
+          requestAnimationFrame(() => scrollToBottom(true));
+        }
 
-    // Telemetry
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('arena_chat_optimistic_sent', { length: trimmedMessage.length });
-    }
+        // Telemetry
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('arena_chat_optimistic_sent', { length: trimmedMessage.length });
+        }
 
         try {
           const { data: messageId, error } = await supabase.rpc('arena_post_message', { p_content: trimmedMessage });
@@ -733,53 +735,58 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
               hint: error.hint 
             });
         
-        // Mark message as error for retry
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === clientId 
-              ? { ...msg, pending: false, error: true }
-              : msg
-          )
-        );
-        
-        // Show user-friendly error with toast
-        toast({ title: "Error", description: error.message || 'Failed to send message', variant: "destructive" });
-        
-        // Telemetry
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('arena_chat_optimistic_fail', { error: error.message });
+            // Mark message as error for retry
+            setChatMessages(prev => 
+              prev.map(msg => 
+                msg.id === clientId 
+                  ? { ...msg, pending: false, error: true }
+                  : msg
+              )
+            );
+            
+            // Show user-friendly error with toast
+            toast({ title: "Error", description: error.message || 'Failed to send message', variant: "destructive" });
+            
+            // Telemetry
+            if (process.env.NODE_ENV !== 'production') {
+              console.info('arena_chat_optimistic_fail', { error: error.message });
+            }
+            
+            return;
+          }
+
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_chat_message_sent', { length: trimmedMessage.length });
+          }
+
+          // Success - realtime will handle replacing the temp message
+          
+        } catch (error) {
+          console.error('Error sending message:', error);
+          
+          // Mark message as error for retry
+          setChatMessages(prev => 
+            prev.map(msg => 
+              msg.id === clientId 
+                ? { ...msg, pending: false, error: true }
+                : msg
+            )
+          );
+          
+          toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+          
+          // Telemetry
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('arena_chat_optimistic_fail', { error: 'network_error' });
+          }
+        } finally {
+          setIsSending(false);
         }
-        
-        return;
-      }
-
-      // Telemetry
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('arena_chat_message_sent', { length: trimmedMessage.length });
-      }
-
-      // Success - realtime will handle replacing the temp message
-      
+      });
     } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Mark message as error for retry
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === clientId 
-            ? { ...msg, pending: false, error: true }
-            : msg
-        )
-      );
-      
-      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
-      
-      // Telemetry
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('arena_chat_optimistic_fail', { error: 'network_error' });
-      }
-    } finally {
-      setIsSending(false);
+      console.error('Session error:', error);
+      toast({ title: "Error", description: "Authentication required", variant: "destructive" });
     }
   };
 
