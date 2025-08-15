@@ -28,36 +28,43 @@ import {
 import confetti from "canvas-confetti";
 
 interface UserStatsModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  user: {
-    id: string;
-    nickname: string;
-    avatar: string;
-    rank: number;
-    score: number;
-    streak: number;
-    weeklyProgress: number;
-    trend: 'up' | 'down' | 'stable';
-    isOnline: boolean;
-    avatar_url?: string;
-    caricature_history?: any[];
-    avatar_variant_1?: string;
-    avatar_variant_2?: string;
-    avatar_variant_3?: string;
-    selected_avatar_variant?: number;
-    name?: string; // Real user name from profile
-    first_name?: string;
-    last_name?: string;
-    email?: string; // Fallback for name
-  };
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+}
+
+function initialsFrom(name: string) {
+  const n = (name || "").trim();
+  if (!n) return "??";
+  const parts = n.split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? (parts[0]?.[1] ?? "");
+  return (first + second).toUpperCase();
 }
 
 export const UserStatsModal: React.FC<UserStatsModalProps> = ({
-  isOpen,
+  open,
   onClose,
-  user
+  userId,
+  displayName,
+  avatarUrl
 }) => {
+  // Mock user data for now - in production, fetch from userId
+  const user = {
+    id: userId,
+    nickname: displayName,
+    avatar: '🧙‍♂️',
+    rank: Math.floor(Math.random() * 10) + 1,
+    score: Math.floor(Math.random() * 1000),
+    streak: Math.floor(Math.random() * 30),
+    weeklyProgress: Math.floor(Math.random() * 100),
+    trend: 'up' as const,
+    isOnline: true,
+    first_name: displayName,
+    avatar_url: avatarUrl
+  };
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(Math.floor(Math.random() * 50) + 10);
   const [challengeSent, setChallengeSent] = useState(false);
@@ -173,31 +180,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
     return 'from-blue-500 to-purple-600';
   };
   
-  // Get user's caricature avatar
-  const getUserCaricatureAvatar = () => {
-    if (user.avatar_url) return user.avatar_url;
-    
-    // Check for variant avatars
-    if (user.selected_avatar_variant) {
-      const variantKey = `avatar_variant_${user.selected_avatar_variant}`;
-      if (user[variantKey as keyof typeof user]) {
-        return user[variantKey as keyof typeof user] as string;
-      }
-    }
-    
-    // Check caricature history for latest
-    if (user.caricature_history && user.caricature_history.length > 0) {
-      return user.caricature_history[user.caricature_history.length - 1];
-    }
-    
-    return null;
-  };
-
-  const caricatureAvatar = getUserCaricatureAvatar();
 
   // Enhanced confetti effect for top performers
   React.useEffect(() => {
-    if (isOpen && user.rank <= 3) {
+    if (open && user.rank <= 3) {
       setTimeout(() => {
         const colors = user.rank === 1 ? ['#FFD700', '#FFA500', '#FFFF00'] : 
                       user.rank === 2 ? ['#C0C0C0', '#E5E5E5', '#B8B8B8'] : 
@@ -230,11 +216,11 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
         }
       }, 400);
     }
-  }, [isOpen, user.rank]);
+  }, [open, user.rank]);
 
   return (
     <TooltipProvider>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-700 slide-in-from-bottom-8 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
           <DialogHeader className="sr-only">
             <DialogTitle>User Profile</DialogTitle>
@@ -261,143 +247,26 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             </div>
             
             <div className="relative flex flex-col items-center text-center gap-3">
-              {/* Large Caricature Avatar Display */}
-              {caricatureAvatar ? (
-                <div className="relative mb-2">
-                  {/* DOUBLED SIZE Large caricature avatar - prominently displayed */}
-                  <div className="w-64 h-64 sm:w-80 sm:h-80 relative">
-                    <img 
-                      src={caricatureAvatar} 
-                      alt={`${user.nickname}'s avatar`}
-                      className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl shadow-primary/30 hover:scale-105 transition-all duration-300"
-                    />
-                    
-                    {/* Enhanced glow effect behind caricature */}
-                    <div className={cn(
-                      "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
-                      user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
-                    )} style={{ zIndex: -1 }} />
-                    
-                    {/* Progress ring around caricature */}
-                    <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="48"
-                        stroke="hsl(var(--muted))"
-                        strokeWidth="2"
-                        fill="none"
-                        opacity="0.3"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="48"
-                        stroke="url(#progressGradient)"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeDasharray={`${(user.weeklyProgress / 100) * 302} 302`}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                  </div>
-                  
-                  {/* Online indicator */}
-                  {user.isOnline && (
-                    <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-background animate-ping" />
-                  )}
-                </div>
-              ) : (
-                /* Fallback to emoji avatar with progress ring */
-                <div className="relative mb-2">
-                  {/* DOUBLED SIZE Progress Ring */}
-                  <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-                    <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="hsl(var(--muted))"
-                        strokeWidth="4"
-                        fill="none"
-                        opacity="0.3"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="url(#progressGradient)"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeDasharray={`${(user.weeklyProgress / 100) * 264} 264`}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                      <defs>
-                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" />
-                          <stop offset="50%" stopColor="hsl(var(--accent))" />
-                          <stop offset="100%" stopColor="hsl(var(--secondary))" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    
-                    {/* ENLARGED Avatar with enhanced glow */}
-                    <div className="absolute inset-2 flex items-center justify-center">
-                      <div className={cn(
-                        "text-3xl sm:text-4xl relative",
-                        "hover:animate-bounce transition-all duration-300 cursor-pointer",
-                        "drop-shadow-2xl filter"
-                      )}>
-                        {user.avatar}
-                        
-                        {/* Dramatic glow effect behind avatar */}
-                        <div className={cn(
-                          "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
-                          user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
-                        )} style={{ zIndex: -1 }} />
-                        {/* Enhanced sparkle particles */}
-                        <div className="absolute -inset-3 opacity-0 hover:opacity-100 transition-opacity duration-300">
-                          <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 animate-ping" />
-                          <Sparkles className="absolute -bottom-1 -left-1 h-2 w-2 text-blue-400 animate-ping delay-300" />
-                          <Sparkles className="absolute top-0 -left-2 h-2 w-2 text-purple-400 animate-ping delay-600" />
-                          <Sparkles className="absolute -top-1 right-0 h-2 w-2 text-green-400 animate-ping delay-900" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Compact online indicator */}
-                  {user.isOnline && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
-                  )}
-                </div>
-              )}
+              {/* Avatar with initials fallback */}
+              <div className="mx-auto mb-3 h-16 w-16 rounded-full ring-2 ring-white/20 overflow-hidden flex items-center justify-center">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                    onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+                  />
+                ) : (
+                  <span className="text-lg font-semibold tracking-wide">
+                    {initialsFrom(displayName)}
+                  </span>
+                )}
+              </div>
               
-              {/* DRAMATIC User Info Section - ENLARGED NAME */}
-              <div className="w-full text-center">
-                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {(() => {
-                    // Priority 1: first_name + last_name (properly trimmed)
-                    if (user.first_name && user.last_name) {
-                      return `${user.first_name.trim()} ${user.last_name.trim()}`;
-                    }
-                    // Priority 2: first_name only
-                    if (user.first_name) return user.first_name.trim();
-                    // Priority 3: nickname
-                    if (user.nickname) return user.nickname.trim();
-                    // Priority 4: email prefix
-                    if (user.email) return user.email.split('@')[0];
-                    // Fallback
-                    return 'User';
-                  })()}
-                </h2>
+              {/* User name */}
+              <h2 className="text-center text-xl font-semibold">{displayName}</h2>
                 
-                {/* Optional: Top goal emoji or title could go here */}
-                {/* Add this section later if needed based on user data structure */}
-                
-                <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="flex items-center justify-center gap-2 mb-3">
                   {/* ENHANCED Rank Badge with glow */}
                   <div className={cn(
                     "flex items-center gap-1 px-3 py-1.5 rounded-full",
@@ -411,10 +280,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                       #{user.rank}
                     </Badge>
                   </div>
-                </div>
-                
-                {/* DRAMATIC Stats with large numbers and emoji icons */}
-                <div className="grid grid-cols-3 gap-2">
+              </div>
+                 
+              {/* DRAMATIC Stats with large numbers and emoji icons */}
+              <div className="grid grid-cols-3 gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex flex-col items-center p-2 bg-gradient-to-br from-primary/25 to-primary/15 rounded-xl border border-primary/40 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30">
@@ -447,11 +316,11 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     </TooltipTrigger>
                     <TooltipContent>Weekly Progress Percentage</TooltipContent>
                   </Tooltip>
-                </div>
               </div>
-              
-              {/* ENHANCED Action Bar with dramatic styling */}
-              <div className="flex items-center gap-2 mt-1">
+            </div>
+               
+            {/* ENHANCED Action Bar with dramatic styling */}
+            <div className="flex items-center gap-2 mt-1">
                 <Button
                   onClick={handleLike}
                   variant={isLiked ? "default" : "outline"}
@@ -485,44 +354,43 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   {challengeSent && (
                     <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 animate-pulse opacity-30 rounded" />
                   )}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-        <div className="p-1 sm:p-2">
-          <Tabs defaultValue="overview" className="w-full">
-            {/* ENHANCED Tab Navigation with dramatic glowing effects */}
-            <TabsList className="grid w-full grid-cols-4 mb-2 h-16 bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary/30 rounded-xl shadow-lg">
-              <TabsTrigger
-                value="overview" 
-                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary/40 data-[state=active]:to-secondary/40 data-[state=active]:shadow-xl data-[state=active]:shadow-primary/30 rounded-lg transition-all duration-300"
-              >
-                <span className="text-xl">📊</span>
-                <span className="text-xs font-black">Performance</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="trophies" 
-                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-yellow-500/40 data-[state=active]:to-orange-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-yellow-500/30 rounded-lg transition-all duration-300"
-              >
-                <span className="text-xl">🏆</span>
-                <span className="text-xs font-black">Trophies</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="stats" 
-                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-500/40 data-[state=active]:to-blue-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/30 rounded-lg transition-all duration-300"
-              >
-                <span className="text-xl">📈</span>
-                <span className="text-xs font-black">Records</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="titles" 
-                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500/40 data-[state=active]:to-pink-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-300"
-              >
-                <span className="text-xl">🚀</span>
-                <span className="text-xs font-black">Titles</span>
-              </TabsTrigger>
-            </TabsList>
+               </Button>
+             </div>
+           </div>
+          
+          <div className="p-1 sm:p-2">
+            <Tabs defaultValue="overview" className="w-full">
+              {/* ENHANCED Tab Navigation with dramatic glowing effects */}
+              <TabsList className="grid w-full grid-cols-4 mb-2 h-16 bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary/30 rounded-xl shadow-lg">
+                <TabsTrigger
+                  value="overview" 
+                  className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary/40 data-[state=active]:to-secondary/40 data-[state=active]:shadow-xl data-[state=active]:shadow-primary/30 rounded-lg transition-all duration-300"
+                >
+                  <span className="text-xl">📊</span>
+                  <span className="text-xs font-black">Performance</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="trophies" 
+                  className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-yellow-500/40 data-[state=active]:to-orange-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-yellow-500/30 rounded-lg transition-all duration-300"
+                >
+                  <span className="text-xl">🏆</span>
+                  <span className="text-xs font-black">Trophies</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="stats" 
+                  className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-500/40 data-[state=active]:to-blue-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/30 rounded-lg transition-all duration-300"
+                >
+                  <span className="text-xl">📈</span>
+                  <span className="text-xs font-black">Records</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="titles" 
+                  className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500/40 data-[state=active]:to-pink-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-300"
+                >
+                  <span className="text-xl">🚀</span>
+                  <span className="text-xs font-black">Titles</span>
+                </TabsTrigger>
+              </TabsList>
           
             <TabsContent value="overview" className="space-y-1 animate-in slide-in-from-bottom-4 duration-700">
               {/* ULTRA-COMPACT Performance & Activity with TRUE 2x3 Grid */}
@@ -798,10 +666,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                 </Card>
               ))}
             </TabsContent>
-          </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 };

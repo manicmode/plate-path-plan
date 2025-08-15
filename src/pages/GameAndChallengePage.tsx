@@ -527,12 +527,14 @@ function GameAndChallengeContent() {
         {/* User Stats Modal */}
         {selectedUser && (
           <UserStatsModal
-            isOpen={isUserStatsOpen}
+            open={isUserStatsOpen}
             onClose={() => {
               setIsUserStatsOpen(false);
               setSelectedUser(null);
             }}
-            user={selectedUser}
+            userId={selectedUser.id}
+            displayName={selectedUser.nickname || selectedUser.first_name || 'User'}
+            avatarUrl={selectedUser.avatar_url}
           />
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,16 +24,25 @@ interface FriendsArenaProps {
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { members, loading, error, refresh } = useRank20Members();
   const isMobile = useIsMobile();
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<null | {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  }>(null);
 
-  const rows = Array.isArray(members) ? members.map(m => ({
-    user_id: m.user_id,
-    display_name: (m.display_name?.trim()?.length ? m.display_name : `User ${String(m.user_id).slice(0,5)}`),
-    avatar_url: m.avatar_url ?? null,
-    joined_at: m.joined_at,
-    score: 0,
-    streak: 0,
-  })) : [];
+  const rows = useMemo(
+    () =>
+      (Array.isArray(members) ? members : []).map((m) => ({
+        user_id: m.user_id,
+        display_name:
+          m.display_name?.trim() ? m.display_name.trim() : `User ${String(m.user_id).slice(0, 5)}`,
+        avatar_url: m.avatar_url ?? null,
+        joined_at: m.joined_at,
+        score: 0,
+        streak: 0,
+      })),
+    [members]
+  );
 
   if (process.env.NODE_ENV !== 'production') {
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
@@ -78,13 +87,21 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               <Card className="border border-muted/50 hover:border-primary/30 transition-colors bg-gradient-to-r from-background to-muted/20">
                 <CardContent 
                   className="p-4 cursor-pointer"
-                  onClick={() => setActiveUserId(row.user_id)}
+                  onClick={() => setSelected({ 
+                    user_id: row.user_id, 
+                    display_name: row.display_name, 
+                    avatar_url: row.avatar_url 
+                  })}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { 
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setActiveUserId(row.user_id);
+                      setSelected({ 
+                        user_id: row.user_id, 
+                        display_name: row.display_name, 
+                        avatar_url: row.avatar_url 
+                      });
                     }
                   }}
                   aria-label={`Open profile for ${row.display_name || 'this user'}`}
@@ -123,22 +140,13 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </div>
       </CardContent>
       
-      {activeUserId && (
+      {selected && (
         <UserStatsModal
-          isOpen={!!activeUserId}
-          onClose={() => setActiveUserId(null)}
-          user={{
-            id: activeUserId,
-            nickname: rows.find(r => r.user_id === activeUserId)?.display_name || 'User',
-            avatar: '🧙‍♂️',
-            rank: rows.findIndex(r => r.user_id === activeUserId) + 1,
-            score: rows.find(r => r.user_id === activeUserId)?.score || 0,
-            streak: rows.find(r => r.user_id === activeUserId)?.streak || 0,
-            weeklyProgress: Math.floor(Math.random() * 100),
-            trend: 'up' as const,
-            isOnline: true,
-            first_name: rows.find(r => r.user_id === activeUserId)?.display_name || 'User'
-          }}
+          open={!!selected}
+          onClose={() => setSelected(null)}
+          userId={selected?.user_id ?? ""}
+          displayName={selected?.display_name ?? ""}
+          avatarUrl={selected?.avatar_url ?? undefined}
         />
       )}
     </Card>
