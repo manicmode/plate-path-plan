@@ -70,6 +70,7 @@ import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Domain filtering utility
 function applyDomainFilter<T extends { category?: string }>(
@@ -155,9 +156,16 @@ function GameAndChallengeContent() {
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  const queryClient = useQueryClient();
   
   // Use the scroll-to-top hook
   useScrollToTop();
+
+  // Cache hygiene for Arena
+  useEffect(() => {
+    // Keep Arena cache separate from domain lists
+    queryClient.invalidateQueries({ queryKey: ['rank20Members'] });
+  }, [currentUser?.id, queryClient]);
 
   // Update chat modal state in context when chatroom manager opens/closes
   useEffect(() => {

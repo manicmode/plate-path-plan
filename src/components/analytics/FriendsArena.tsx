@@ -21,6 +21,7 @@ import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
+import { useAuth } from '@/contexts/auth';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -40,7 +41,8 @@ function initials(name?: string) {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
-  const { members, loading, error, refresh } = useRank20Members();
+  const { user } = useAuth();
+  const { data: members = [], isLoading: loading, error, refetch: refresh } = useRank20Members(user?.id);
   const { challengeId } = useRank20ChallengeId();
   const isMobile = useIsMobile();
   const navigate = useNavigate();

@@ -1,46 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { requireSession } from '@/lib/ensureAuth';
 
-type Member = {
-  user_id: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  joined_at: string;
-};
-
-export function useRank20Members() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function refresh() {
-    setLoading(true);
-    setError(null);
-    try {
-      // Check auth first
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMembers([]);
-        setLoading(false);
-        return;
+export function useRank20Members(userId?: string) {
+  return useQuery({
+    queryKey: ['rank20Members', userId],
+    queryFn: async () => {
+      // Prefer RPC if it exists
+      const rpc = await supabase.rpc('my_rank20_members');
+      if (!rpc.error && Array.isArray(rpc.data)) {
+        console.info('[Arena] rows:', rpc.data.length);
+        return rpc.data;
       }
-
-      await requireSession();
-      const { data, error } = await supabase.rpc('my_rank20_group_members');
-      if (error) setError(error.message);
       
+      // Fallback: safe select from a view/table the UI expects
+      const { data, error } = await supabase
+        .from('rank20_members_view') // if this view doesn't exist, fallback below
+        .select('*');
+      if (!error && data) {
+        console.info('[Arena] rows:', data.length);
+        return data;
+      }
       
-      setMembers((data as Member[]) ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication required');
-      setMembers([]);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => { refresh(); }, []);
-
-
-  return { members, loading, error, refresh };
+      // Final fallback: raw table
+      const raw = await supabase.from('rank20_members').select('*');
+      console.info('[Arena] rows:', raw.data?.length ?? 0);
+      return raw.data ?? [];
+    },
+    enabled: !!userId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+  });
 }
