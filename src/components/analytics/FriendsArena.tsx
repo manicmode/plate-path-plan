@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { 
   Users, 
   TrendingUp, 
@@ -28,13 +29,15 @@ interface FriendsArenaProps {
   friends?: any[]; // Keep for compatibility but unused
 }
 
-// Helper: two-letter initials from display name
-function initials(name?: string) {
-  const n = (name ?? "").trim();
-  if (!n) return "US";
-  const parts = n.split(/\s+/).filter(Boolean);
-  const letters = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? parts[0]?.[1] ?? "");
-  return letters.toUpperCase();
+// Helper functions
+function getInitials(name?: string) {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  return (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
+}
+
+function formatPoints(n: number) {
+  return n.toLocaleString();
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
@@ -106,21 +109,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   return (
     <>
       <div className="mt-3 mb-8">
-        <button
-          type="button"
-          onClick={() => {
-            navigate("/chat?channel=arena"); 
-          }}
-          className="w-full rounded-full px-4 py-3 text-sm md:text-base font-medium
-                     bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
-                     hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
-                     text-white shadow-md transition-colors flex items-center justify-center gap-2"
-          aria-label="Open Billboard & Chat"
-          data-testid="arena-billboard-pill"
+        <Button
+          className="max-w-[640px] w-[92%] md:w-[80%] mx-auto rounded-full bg-gradient-to-r from-fuchsia-500 to-sky-500"
+          onClick={() => navigate('/game-and-challenge/billboard')}
         >
-          <MessageSquare className="h-4 w-4" />
-          Billboard &amp; Chat
-        </button>
+          🗨️  Billboard & Chat
+        </Button>
       </div>
 
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
@@ -151,31 +145,16 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <div className="flex flex-col gap-3">
-          {rows.map((row, index) => (
-            <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
-              {/* Off-card rank badge */}
-              <span
-                aria-label={`Rank ${index + 1}`}
-                className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
-              >
-                #{index + 1}
-              </span>
-
-              {/* Pinned Rising chip */}
-              <div className="absolute top-3 right-3 z-10">
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-green-500" />
-                  Rising
-                </Badge>
-              </div>
-
-              <div 
-                className="p-4 cursor-pointer"
+          {/* list wrapper */}
+          <div className="flex flex-col space-y-4 pt-2">
+            {rows.map((m, idx) => (
+              <Card
+                key={m.user_id}
+                className="relative bg-card/70"
                 onClick={() => setSelected({ 
-                  user_id: row.user_id, 
-                  display_name: row.display_name, 
-                  avatar_url: row.avatar_url 
+                  user_id: m.user_id, 
+                  display_name: m.display_name, 
+                  avatar_url: m.avatar_url 
                 })}
                 role="button"
                 tabIndex={0}
@@ -183,49 +162,60 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     setSelected({ 
-                      user_id: row.user_id, 
-                      display_name: row.display_name, 
-                      avatar_url: row.avatar_url 
+                      user_id: m.user_id, 
+                      display_name: m.display_name, 
+                      avatar_url: m.avatar_url 
                     });
                   }
                 }}
-                aria-label={`Open profile for ${row.display_name || 'this user'}`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 pl-2">
-                    {/* Avatar with z-index */}
-                    <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "z-10")}>
-                      <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {initials(row.display_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div>
-                      <div className="font-semibold text-foreground">
-                        {row.display_name}
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Flame className="h-3 w-3 text-orange-500" />
-                        <span className="font-semibold">{row.streak ?? 0}</span>
-                        <span className="text-muted-foreground text-xs">streak</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Robust points layout */}
-                  <div className="ml-auto min-w-[84px] text-right tabular-nums">
-                    <div className="inline-flex items-center gap-1">
-                      <Target className="w-4 h-4" />
-                      <span className="font-semibold">{formatNumber(row.score)}</span>
-                      <span className="text-xs text-muted-foreground ml-1">pts</span>
-                    </div>
-                  </div>
+                {/* rank chip — lifted a bit and nudged left, half outside */}
+                <div className="absolute -top-3 -left-2 z-10">
+                  <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black text-xs font-bold px-2 py-1 shadow">
+                    #{idx + 1}
+                  </span>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+
+                <CardContent className="p-5 pr-24 min-h-[92px]">
+                  <div className="flex items-center gap-4">
+                    {/* avatar / initials */}
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 ring-1 ring-white/10">
+                        {m.avatar_url ? (
+                          <AvatarImage src={m.avatar_url} alt={m.display_name} />
+                        ) : (
+                          <AvatarFallback className="text-sm">
+                            {getInitials(m.display_name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                    </div>
+
+                    {/* name + small stats */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{m.display_name}</div>
+                      <div className="text-xs opacity-80 flex items-center gap-4 mt-1">
+                        <span title="streak">
+                          🔥 {m.streak ?? 0} <span className="hidden sm:inline">streak</span>
+                        </span>
+                        <span className="flex items-center gap-1" title="points">
+                          <Target className="h-3.5 w-3.5" />
+                          {formatPoints(m.score ?? 0)} <span className="hidden sm:inline">pts</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+
+                {/* trend chip pinned top-right inside safe area, never overlaps points */}
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="whitespace-nowrap px-2.5 py-1 text-xs">
+                    ↗︎ Rising
+                  </Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
         </CardContent>
         
         {selected && (
