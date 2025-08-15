@@ -249,11 +249,11 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             <div className="relative flex flex-col items-center text-center gap-3">
               {/* Avatar with initials fallback */}
               <Avatar
-                className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-white/20 shadow-xl"
+                className="h-48 w-48 md:h-56 md:w-56 ring-4 ring-white/20 shadow-xl"
                 data-testid="user-stats-avatar"
               >
                 <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? 'User'} />
-                <AvatarFallback className="text-2xl md:text-3xl font-semibold">
+                <AvatarFallback className="text-4xl md:text-5xl font-semibold">
                   {initialsFrom(displayName)}
                 </AvatarFallback>
               </Avatar>
