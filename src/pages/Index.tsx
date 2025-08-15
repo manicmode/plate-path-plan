@@ -64,9 +64,14 @@ const Index = () => {
     );
   }
 
-  // Redirect to home if authenticated (no flash because of proper loading state above)
+  // Server-side redirect to arena to eliminate flicker
   if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
+    // Use window.location for immediate redirect to prevent any flash
+    if (typeof window !== 'undefined') {
+      window.location.replace('/arena');
+      return null;
+    }
+    return <Navigate to="/arena" replace />;
   }
 
   // Show auth form for unauthenticated users (only after loading is complete)

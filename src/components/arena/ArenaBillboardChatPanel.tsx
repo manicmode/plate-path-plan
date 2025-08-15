@@ -468,6 +468,14 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   }, []);
 
   const loadInitialData = async () => {
+    // Ensure authenticated session before any RPC calls
+    const { data: sessionRes } = await supabase.auth.getSession();
+    if (!sessionRes?.session) {
+      console.info('No authenticated session, skipping arena data load');
+      setIsLoading(false);
+      return;
+    }
+
     // Only load data if user is in arena
     if (!isInArena) {
       console.info('User not in arena, skipping data load');
@@ -481,6 +489,8 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     });
     
     try {
+      // First ensure rank20 membership before other calls
+      await supabase.rpc('ensure_rank20_membership');
       // Use provided privateChallengeId or fallback to RPC
       let challengeIdData = privateChallengeId;
       
@@ -663,6 +673,13 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const sendMessage = async () => {
     const trimmedMessage = newMessage.trim();
     if (!trimmedMessage || isSending || !session?.user) return;
+
+    // Verify authenticated session before sending
+    const { data: sessionRes } = await supabase.auth.getSession();
+    if (!sessionRes?.session) {
+      toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
+      return;
+    }
 
     // Client-side length validation (2000 chars max)
     if (trimmedMessage.length > 2000) {

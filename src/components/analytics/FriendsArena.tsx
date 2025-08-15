@@ -173,7 +173,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               <div className="mt-3 mb-8">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    // Ensure membership before opening chat
+                    await supabase.rpc('ensure_rank20_membership');
                     setBillboardOpen(true);
                   }}
                   className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
