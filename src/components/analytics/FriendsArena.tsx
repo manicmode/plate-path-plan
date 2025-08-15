@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { useAuth } from '@/contexts/auth';
 import ArenaSkeleton from '@/components/arena/ArenaSkeleton';
+import { ArenaErrorBanner } from '@/components/arena/ArenaErrorBanner';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -44,7 +45,8 @@ function initials(name?: string) {
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { user } = useAuth();
-  const { data: members = [], isLoading: loading, error, refetch: refresh } = useRank20Members(user?.id);
+  const membership = useRank20Members(user?.id);
+  const { data: members = [], isLoading: loading, error, refetch: refresh } = membership;
   const { challengeId } = useRank20ChallengeId();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -190,6 +192,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 </button>
               </div>
 
+      {/* Show Arena error banner if there's an error */}
+      {membership.isError && (
+        <ArenaErrorBanner />
+      )}
+      
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(
           "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",

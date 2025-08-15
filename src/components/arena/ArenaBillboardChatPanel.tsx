@@ -119,7 +119,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
           return; 
         }
         
-        const resolvedChallengeId = cid.data?.[0]?.private_challenge_id;
+        const resolvedChallengeId = cid.data;
         if (!resolvedChallengeId || cancelled) return;
         
         setChallengeId(resolvedChallengeId);

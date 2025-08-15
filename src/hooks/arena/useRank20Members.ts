@@ -15,7 +15,7 @@ export function useArenaMembership() {
       
       if (error) {
         console.error('[Arena] Error fetching membership:', error);
-        return { members: [], groupId: null, isInArena: false };
+        return { members: [], groupId: null, isInArena: false, error: 'Arena temporarily unavailable — try again shortly.' };
       }
       
       const members = rows || [];
@@ -30,7 +30,7 @@ export function useArenaMembership() {
         error: error?.message 
       });
       
-      return { members, groupId, isInArena };
+      return { members, groupId, isInArena, error: null };
     },
     staleTime: 30_000,
     gcTime: 5 * 60_000,

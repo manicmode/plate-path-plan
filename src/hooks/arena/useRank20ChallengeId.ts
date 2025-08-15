@@ -19,11 +19,7 @@ export function useRank20ChallengeId() {
           return;
         }
         
-        if (data && data.length > 0) {
-          setChallengeId(data[0].private_challenge_id);
-        } else {
-          setChallengeId(null);
-        }
+        setChallengeId(data || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch challenge ID');
       } finally {
