@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { withArenaSession } from '@/hooks/useArenaSession';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -468,14 +469,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   }, []);
 
   const loadInitialData = async () => {
-    // Ensure authenticated session before any RPC calls
-    const { data: sessionRes } = await supabase.auth.getSession();
-    if (!sessionRes?.session) {
-      console.info('No authenticated session, skipping arena data load');
-      setIsLoading(false);
-      return;
-    }
-
     // Only load data if user is in arena
     if (!isInArena) {
       console.info('User not in arena, skipping data load');
@@ -489,8 +482,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     });
     
     try {
-      // First ensure rank20 membership before other calls
-      await supabase.rpc('ensure_rank20_membership');
+      // Use session guard to ensure authenticated session
+      await withArenaSession(async (uid) => {
+        // First ensure rank20 membership before other calls
+        await supabase.rpc('ensure_rank20_membership');
       // Use provided privateChallengeId or fallback to RPC
       let challengeIdData = privateChallengeId;
       
@@ -672,20 +667,22 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
   const sendMessage = async () => {
     const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage || isSending || !session?.user) return;
+    if (!trimmedMessage || isSending) return;
 
-    // Verify authenticated session before sending
-    const { data: sessionRes } = await supabase.auth.getSession();
-    if (!sessionRes?.session) {
-      toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
-      return;
-    }
+    // Session guard for message sending
+    const withSession = async <T,>(fn: (uid: string) => Promise<T>) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error('No session');
+      return fn(session.user.id);
+    };
 
-    // Client-side length validation (2000 chars max)
-    if (trimmedMessage.length > 2000) {
-      toast({ title: "Error", description: "Message too long (max 2000 characters)", variant: "destructive" });
-      return;
-    }
+    try {
+      await withSession(async (uid) => {
+        // Client-side length validation (2000 chars max)
+        if (trimmedMessage.length > 2000) {
+          toast({ title: "Error", description: "Message too long (max 2000 characters)", variant: "destructive" });
+          return;
+        }
 
     setIsSending(true);
     
@@ -693,20 +690,17 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     const clientId = crypto.randomUUID();
     
     // Get display name from current user's cached profile or session
-    const currentUserMeta = userCache.current.get(session.user.id);
+    const currentUserMeta = userCache.current.get(uid);
     const currentUserDisplayName = currentUserMeta?.display_name || 
-                                   session.user.user_metadata?.display_name || 
-                                   session.user.user_metadata?.full_name ||
-                                   session.user.user_metadata?.name ||
-                                   `User ${session.user.id.slice(-6)}`;
+                                   `User ${uid.slice(0, 8)}`;
     
     const tempMessage: ChatMessage = {
       id: clientId,
-      user_id: session.user.id,
+      user_id: uid,
       body: trimmedMessage,
       created_at: new Date().toISOString(),
       display_name: currentUserDisplayName,
-      avatar_url: currentUserMeta?.avatar_url || session.user.user_metadata?.avatar_url || null,
+      avatar_url: currentUserMeta?.avatar_url,
       pending: true,
       clientId
     };
@@ -728,16 +722,16 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       console.info('arena_chat_optimistic_sent', { length: trimmedMessage.length });
     }
 
-    try {
-      const { data: messageId, error } = await supabase.rpc('arena_post_message', { p_content: trimmedMessage });
-      
-      if (error) {
-        console.error('[arena_post_message] failed', { 
-          code: error.code, 
-          message: error.message, 
-          details: error.details, 
-          hint: error.hint 
-        });
+        try {
+          const { data: messageId, error } = await supabase.rpc('arena_post_message', { p_content: trimmedMessage });
+          
+          if (error) {
+            console.error('[arena_post_message] failed', { 
+              code: error.code, 
+              message: error.message, 
+              details: error.details, 
+              hint: error.hint 
+            });
         
         // Mark message as error for retry
         setChatMessages(prev => 
