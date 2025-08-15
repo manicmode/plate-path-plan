@@ -123,7 +123,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </button>
       </div>
 
-      <Card className="overflow-visible border-2 shadow-xl relative dark:border-slate-700/70 border-slate-200/70 dark:bg-slate-900/40 bg-slate-50/40 hover:border-primary/40 transition-all duration-300">
+      <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(
           "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
           isMobile ? "p-4" : "p-6"
