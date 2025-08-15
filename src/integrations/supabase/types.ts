@@ -5625,6 +5625,13 @@ export type Database = {
         Args: { p_time?: string; p_tz: string; p_user: string }
         Returns: undefined
       }
+      ensure_rank20_membership: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          challenge_id: string
+          group_id: string
+        }[]
+      }
       find_user_friends: {
         Args: { contact_hashes: string[] }
         Returns: {

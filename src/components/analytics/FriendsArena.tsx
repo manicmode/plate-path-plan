@@ -140,25 +140,23 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   return (
     <>
-      {members && members.length > 0 && (
-        <div className="mt-3 mb-8">
-          <button
-            type="button"
-            onClick={() => {
-              setBillboardOpen(true);
-            }}
-            className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
-                       bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
-                       hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
-                       text-white shadow-md transition-colors flex items-center justify-center gap-2"
-            aria-label="Open Billboard & Chat"
-            data-testid="arena-billboard-pill"
-          >
-            <MessageSquare className="h-4 w-4" />
-            Billboard &amp; Chat
-          </button>
-        </div>
-      )}
+      <div className="mt-3 mb-8">
+        <button
+          type="button"
+          onClick={() => {
+            setBillboardOpen(true);
+          }}
+          className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
+                     bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
+                     hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
+                     text-white shadow-md transition-colors flex items-center justify-center gap-2"
+          aria-label="Open Billboard & Chat"
+          data-testid="arena-billboard-pill"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Billboard &amp; Chat
+        </button>
+      </div>
 
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(

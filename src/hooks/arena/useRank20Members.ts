@@ -5,6 +5,12 @@ export function useArenaMembership() {
   return useQuery({
     queryKey: ['arena-membership'],
     queryFn: async () => {
+      // Auto-enroll user into rank20 group
+      const { error: enrollError } = await supabase.rpc('ensure_rank20_membership');
+      if (enrollError) {
+        console.error('[Arena] Auto-enrollment failed:', enrollError);
+      }
+
       const { data: rows, error } = await supabase.rpc('my_rank20_members');
       
       if (error) {
