@@ -111,7 +111,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           onClick={() => {
             navigate("/chat?channel=arena"); 
           }}
-          className="max-w-md mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
+          className="max-w-lg mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
                      bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
                      hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
                      text-white shadow-md transition-colors flex items-center justify-center gap-2"
