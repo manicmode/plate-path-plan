@@ -5444,17 +5444,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      _arena_join_and_leaderboard: {
-        Args: { p_user: string }
-        Returns: {
-          avatar_url: string
-          display_name: string
-          points: number
-          rank: number
-          streak: number
-          user_id: string
-        }[]
-      }
       _current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
