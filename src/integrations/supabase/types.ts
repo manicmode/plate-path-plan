@@ -5927,6 +5927,13 @@ export type Database = {
         Args: { target_year: number }
         Returns: Json
       }
+      rank20_chosen_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          member_count: number
+          private_challenge_id: string
+        }[]
+      }
       rank20_enroll_me: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5934,6 +5941,23 @@ export type Database = {
       rank20_enroll_user: {
         Args: { _user: string }
         Returns: undefined
+      }
+      rank20_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          streak: number
+          user_id: string
+        }[]
+      }
+      rank20_membership: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          challenge_id: string
+          group_id: string
+        }[]
       }
       record_team_up_prompt_action: {
         Args: {
