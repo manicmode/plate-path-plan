@@ -2242,13 +2242,6 @@ export type Database = {
             foreignKeyName: "private_challenge_messages_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "arena_leaderboard_view"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "private_challenge_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["user_id"]
           },
@@ -2715,7 +2708,15 @@ export type Database = {
           id?: string
           is_closed?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_rank20_groups_challenge"
+            columns: ["challenge_id"]
+            isOneToOne: true
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rank20_members: {
         Row: {
@@ -5264,36 +5265,6 @@ export type Database = {
           source_count: number | null
           steps: number | null
           user_id: string | null
-        }
-        Relationships: []
-      }
-      arena_leaderboard_view: {
-        Row: {
-          avatar_url: string | null
-          first_name: string | null
-          hydration_streak: number | null
-          last_name: string | null
-          nutrition_streak: number | null
-          supplement_streak: number | null
-          user_id: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          first_name?: string | null
-          hydration_streak?: never
-          last_name?: string | null
-          nutrition_streak?: never
-          supplement_streak?: never
-          user_id?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          first_name?: string | null
-          hydration_streak?: never
-          last_name?: string | null
-          nutrition_streak?: never
-          supplement_streak?: never
-          user_id?: string | null
         }
         Relationships: []
       }
