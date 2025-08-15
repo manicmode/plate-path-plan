@@ -172,6 +172,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       // Guarantee auto-enrollment before anything else
       const initializeArena = async () => {
         try {
+          const logRpc = (name: string, err: any) => console.error('[RPC]', name, {
+            code: err?.code, message: err?.message, details: err?.details, hint: err?.hint
+          });
+
           await supabase.rpc('ensure_rank20_membership');
           console.info('[ArenaBillboard] open', { isInArena, groupId, challengeId });
           loadInitialData();
@@ -472,6 +476,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     
     setIsLoading(true);
     
+    const logRpc = (name: string, err: any) => console.error('[RPC]', name, {
+      code: err?.code, message: err?.message, details: err?.details, hint: err?.hint
+    });
+    
     try {
       // Use provided privateChallengeId or fallback to RPC
       let challengeIdData = privateChallengeId;
@@ -479,6 +487,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       if (!challengeIdData) {
         // Use new helper for challenge resolution
         const { data: cidData, error: cidErr } = await supabase.rpc('my_rank20_chosen_challenge_id');
+        if (cidErr) {
+          logRpc('my_rank20_chosen_challenge_id', cidErr);
+        }
         if (cidErr || !cidData?.[0]) {
           console.info('User not in rank20 challenge');
           setIsLoading(false);

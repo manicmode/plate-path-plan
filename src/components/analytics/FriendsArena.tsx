@@ -105,10 +105,14 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       setLeaderboard([]);
       setLeaderboardLoading(true);
       try {
+        const logRpc = (name: string, err: any) => console.error('[RPC]', name, {
+          code: err?.code, message: err?.message, details: err?.details, hint: err?.hint
+        });
+
         const { data, error } = await supabase.rpc('my_rank20_leaderboard');
         
         if (error) {
-          console.error('[Arena] Leaderboard error:', error);
+          logRpc('my_rank20_leaderboard', error);
           return;
         }
         
