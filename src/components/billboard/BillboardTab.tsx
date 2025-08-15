@@ -4,16 +4,34 @@ import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
 import ChallengeRankings from "./ChallengeRankings";
-import { seedBillboardForChallenge } from "@/dev/seedBillboard";
+import { seedBillboardForChallenge, seedBillboardDemoEventsFor } from "@/dev/seedBillboard";
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";
 import { supabase } from "@/integrations/supabase/client";
 import { requireSession } from "@/lib/ensureAuth";
+import { useSearchParams, useLocation } from 'react-router-dom';
 
-export default function BillboardTab() {
+type BillboardContext = 'rank_of_20' | 'private' | 'public';
+
+interface BillboardTabProps {
+  contextType?: BillboardContext;
+  challengeId?: string;
+}
+
+export default function BillboardTab(props: BillboardTabProps = {}) {
+  const { contextType, challengeId: propChallengeId } = props;
   const { selectedChatroomId, selectChatroom } = useChatStore();
-  const challengeId = selectedChatroomId || "";
-  const { events, isLoading, refresh } = useBillboardEvents(challengeId);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  
+  // Determine challenge ID and context from props or URL params
+  const urlContextType = searchParams.get("type") as BillboardContext;
+  const urlChallengeId = searchParams.get("private_challenge_id") || searchParams.get("public_challenge_id");
+  
+  const finalContextType = contextType || urlContextType || 'private';
+  const finalChallengeId = propChallengeId || urlChallengeId || selectedChatroomId || "";
+  
+  const { events, isLoading, refresh } = useBillboardEvents(finalChallengeId);
   const [seeding, setSeeding] = useState(false);
   const [challengeInfo, setChallengeInfo] = useState<{title: string, challenge_type?: string} | null>(null);
   const [hasLoggedEmpty, setHasLoggedEmpty] = useState(false);
@@ -25,7 +43,7 @@ export default function BillboardTab() {
         await requireSession();
         
         // Console tracing at mount
-        console.info('[diag] billboard challenge', challengeId);
+        console.info('[diag] billboard challenge', finalChallengeId);
         
         const { data: user } = await supabase.auth.getUser();
         console.info('[diag] user', user?.user?.id);
@@ -38,15 +56,17 @@ export default function BillboardTab() {
           console.info('[diag] diag_rank20 RPC not available');
         }
 
-      if (!challengeId) {
+      if (!finalChallengeId) {
         setChallengeInfo(null);
         return;
       }
       
+      // Query the appropriate table based on context type
+      const tableName = finalContextType === 'public' ? 'public_challenges' : 'private_challenges';
       const { data: challenge } = await supabase
-        .from("private_challenges")
+        .from(tableName)
         .select("title, challenge_type")
-        .eq("id", challengeId)
+        .eq("id", finalChallengeId)
         .single();
       
         setChallengeInfo(challenge || null);
@@ -54,7 +74,7 @@ export default function BillboardTab() {
         console.warn('[billboard] Authentication required');
       }
     })();
-  }, [challengeId]);
+  }, [finalChallengeId, finalContextType]);
 
   // Determine if this is a Rank-of-20 challenge (only check challenge_type)
   const isRank20 = challengeInfo && challengeInfo.challenge_type === 'rank_of_20';
@@ -106,37 +126,49 @@ export default function BillboardTab() {
         await loadDefaultChallenge();
         
         // Auto-seed demo events in dev mode if billboard is empty
-        if (isDev && selectedChatroomId) {
+        if (isDev && finalChallengeId) {
           setTimeout(async () => {
-            await seedBillboardForChallenge(selectedChatroomId, refresh);
+            await seedBillboardDemoEventsFor(finalContextType, finalChallengeId);
             await refresh();
           }, 1000);
         }
       }
       
       // Verify membership when challenge is selected
-      if (challengeId) {
-        const { data: membership } = await supabase
-          .from("private_challenge_participations")
-          .select("user_id")
-          .eq("private_challenge_id", challengeId)
-          .eq("user_id", user?.user?.id)
-          .single();
-        
-        console.log('[diag] user is member:', !!membership);
+      if (finalChallengeId && user?.user?.id) {
+        try {
+          const participationTable = finalContextType === 'public' ? 'public_challenge_participations' : 'private_challenge_participations';
+          const challengeIdField = finalContextType === 'public' ? 'public_challenge_id' : 'private_challenge_id';
+          
+          const { data: membership } = await supabase
+            .from(participationTable as any)
+            .select("user_id")
+            .eq(challengeIdField, finalChallengeId)
+            .eq("user_id", user.user.id)
+            .single();
+          
+          console.log('[diag] user is member:', !!membership);
+        } catch (membershipError) {
+          console.log('[diag] membership check failed:', membershipError);
+        }
       }
     })();
-  }, [selectedChatroomId, selectChatroom, refresh, challengeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChatroomId, finalChallengeId, finalContextType]);
 
   // Log telemetry for empty state
   useEffect(() => {
-    if (!challengeId && !hasLoggedEmpty && !isLoading) {
+    if (!finalChallengeId && !hasLoggedEmpty && !isLoading) {
       console.info('[telemetry] billboard_empty_shown');
       setHasLoggedEmpty(true);
-    } else if (challengeId && hasLoggedEmpty) {
+    } else if (finalChallengeId && hasLoggedEmpty) {
       setHasLoggedEmpty(false);
     }
-  }, [challengeId, hasLoggedEmpty, isLoading]);
+  }, [finalChallengeId, hasLoggedEmpty, isLoading]);
+
+  // Dev flag check
+  const showDebug = process.env.NODE_ENV !== 'production' || 
+                   new URLSearchParams(location.search).get('dev') === '1';
 
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
@@ -148,7 +180,7 @@ export default function BillboardTab() {
                 <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />
               ))}
             </div>
-          ) : !challengeId ? (
+          ) : !finalChallengeId ? (
             // Polished empty state when no challenge is selected
             <div className="flex flex-col items-center justify-center gap-6 py-16 px-6 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
@@ -187,24 +219,26 @@ export default function BillboardTab() {
               <div>No highlights yet. Check back later or refresh.</div>
               <div className="flex items-center justify-center gap-2">
                 <button onClick={refresh} className="px-3 py-1 rounded-full border text-sm">Refresh</button>
-                <button
-                  className="rounded-xl px-3 py-2 border hover:bg-accent disabled:opacity-50"
-                  disabled={!challengeId || seeding}
-                  onClick={async () => {
-                    if (!challengeId) return;
-                    try {
-                      setSeeding(true);
-                      await seedBillboardForChallenge(challengeId, refresh);
-                      await refresh();
-                    } finally {
-                      setSeeding(false);
-                    }
-                  }}
-                >
-                  {seeding ? "Seeding…" : "Seed demo events"}
-                </button>
+                {showDebug && (
+                  <button
+                    className="rounded-xl px-3 py-2 border hover:bg-accent disabled:opacity-50"
+                    disabled={!finalChallengeId || seeding}
+                    onClick={async () => {
+                      if (!finalChallengeId) return;
+                      try {
+                        setSeeding(true);
+                        await seedBillboardDemoEventsFor(finalContextType, finalChallengeId);
+                        await refresh();
+                      } finally {
+                        setSeeding(false);
+                      }
+                    }}
+                  >
+                    {seeding ? "Seeding…" : "Seed demo events"}
+                  </button>
+                )}
               </div>
-              {process.env.NODE_ENV !== "production" && (
+              {showDebug && (
                 <button
                   className="text-xs underline opacity-70"
                   onClick={async () => {
@@ -219,13 +253,13 @@ export default function BillboardTab() {
                   Run Rank-of-20 diagnostics
                 </button>
               )}
-              {!challengeId && (
+              {!finalChallengeId && (
                 <div className="text-xs">Select a challenge above first</div>
               )}
             </div>
           ) : (
             <>
-              {isRank20 && <ChallengeRankings challengeId={challengeId} />}
+              {isRank20 && <ChallengeRankings challengeId={finalChallengeId} />}
               {events.map((ev) => <BillboardCard key={ev.id} event={ev} />)}
             </>
           )}

@@ -5748,6 +5748,10 @@ export type Database = {
         Args: { challenge_id_param: string }
         Returns: undefined
       }
+      is_member_of_rank20_group: {
+        Args: { group_id_param: string; uid?: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: { event_data: Json }
         Returns: undefined

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Clock, Users, Target, Trophy, Flame, Star, Globe, Lock, Zap, Crown, Share, MessageCircle, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore } from '@/store/chatStore';
+import { useNavigate } from 'react-router-dom';
 export type ChallengeType = 'global' | 'friend' | 'quick';
 
 interface UnifiedChallengeCardProps {
@@ -32,6 +33,7 @@ interface UnifiedChallengeCardProps {
   onLeave: () => Promise<void>;
   showInMyActiveChallenges?: boolean;
   showChat?: boolean; // browse should hide chat
+  isPublicChallenge?: boolean; // to determine navigation context
 }
 
 export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
@@ -57,16 +59,20 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   onLeave,
   showInMyActiveChallenges = false,
   showChat = true,
+  isPublicChallenge = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   const { selectChatroom } = useChatStore();
+  const navigate = useNavigate();
 
   const handleChat = () => {
-    selectChatroom(id);
-    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: id } }));
-    console.info('[chat] open from my card', id);
+    const contextType = isPublicChallenge ? 'public' : 'private';
+    const challengeIdParam = isPublicChallenge ? 'public_challenge_id' : 'private_challenge_id';
+    
+    console.log(`[Billboard] nav: type=${contextType} id=${id}`);
+    navigate(`/game-and-challenge?tab=billboard&type=${contextType}&${challengeIdParam}=${id}`);
   };
   const getTypeColor = (type: ChallengeType) => {
     switch (type) {
@@ -269,7 +275,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                   className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
-                  Billboard
+                  Billboard & Chat
                 </Button>
               )}
             </div>

@@ -60,7 +60,8 @@ export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
       difficultyLevel={challenge.duration_days <= 3 ? 'beginner' : challenge.duration_days <= 14 ? 'intermediate' : 'advanced'}
       onJoin={handleJoin}
       onLeave={handleLeave}
-      showChat={false}
+      showChat={isParticipating} // Show Billboard for joined public challenges
+      isPublicChallenge={true}
     />
   );
 };

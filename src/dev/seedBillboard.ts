@@ -10,6 +10,40 @@ const DEMO_EVENTS = (challengeId: string) => [
   { challenge_id: challengeId, kind: "comeback",    title: "⚡ Danny climbs back into top 3",body: "Was in 7th place just last week.",                 meta: { oldRank: 7, newRank: 3 } },
 ];
 
+// New context-aware seeding function
+export async function seedBillboardDemoEventsFor(
+  contextType: 'rank_of_20' | 'private' | 'public',
+  challengeId: string
+) {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[Billboard] Seeding disabled in production');
+    return;
+  }
+
+  if (!challengeId) {
+    console.warn('[Billboard] No challenge ID provided for seeding');
+    return;
+  }
+
+  console.log(`[Billboard] seeded: type=${contextType} id=${challengeId} count=5`);
+  
+  // Use the existing secure RPC for seeding
+  const { error } = await supabase.rpc('seed_billboard_events', { _challenge_id: challengeId });
+
+  if (error) {
+    console.error("Seed error:", error);
+    toast({ 
+      title: "Seeding failed", 
+      description: error.message || "Failed to seed demo events", 
+      variant: "destructive" 
+    });
+    return;
+  }
+  
+  console.log(`[Billboard] seeded: type=${contextType} id=${challengeId} count=5`);
+  toast({ title: "Seeded!", description: `Added 5 demo events for ${contextType} challenge.` });
+}
+
 export async function seedBillboardForChallenge(challengeId: string, refresh?: () => Promise<any>) {
   if (!challengeId) {
     toast({ title: "Select a challenge first" });

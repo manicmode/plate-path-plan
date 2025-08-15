@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,17 +19,17 @@ import {
 import { useMyChallenges } from '@/hooks/useMyChallenges';
 import { useChatModal } from '@/contexts/ChatModalContext';
 import { ChallengeCreationModal } from './ChallengeCreationModal';
-import { useState } from 'react';
+
 
 export const MyChallengesFeed: React.FC = () => {
   const { data: challenges, isLoading, error, refresh } = useMyChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const navigate = useNavigate();
   const handleChatClick = (challengeId: string, challengeTitle: string) => {
-    setIsChatModalOpen(true);
-    // TODO: Implement challenge-specific chat modal
-    console.log('Opening chat for challenge:', challengeId, challengeTitle);
+    console.info('[Billboard] nav: type=private id=' + challengeId);
+    navigate(`/game-and-challenge?tab=billboard&type=private&private_challenge_id=${challengeId}`);
   };
 
   const handleChallengeCreated = () => {
@@ -163,7 +164,7 @@ export const MyChallengesFeed: React.FC = () => {
                       className="flex-1"
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      Chat
+                      Billboard & Chat
                     </Button>
                     <Button
                       variant="default"

@@ -315,7 +315,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             </div>
                
             {/* ENHANCED Action Bar with dramatic styling */}
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center justify-center gap-2 mt-1">
                 <Button
                   onClick={handleLike}
                   variant={isLiked ? "default" : "outline"}
