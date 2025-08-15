@@ -5804,24 +5804,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      my_private_challenges_by_domain: {
-        Args: { _domain: string }
-        Returns: {
-          category: string
-          created_at: string
-          id: string
-          title: string
-        }[]
-      }
-      my_public_challenges_by_domain: {
-        Args: { _domain: string }
-        Returns: {
-          category: string
-          created_at: string
-          id: string
-          title: string
-        }[]
-      }
       my_rank20_challenge_id: {
         Args: Record<PropertyKey, never>
         Returns: string
