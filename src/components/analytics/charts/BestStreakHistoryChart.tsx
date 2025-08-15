@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useWorkoutAnalytics } from '@/hooks/useWorkoutAnalytics';
 
@@ -25,7 +26,11 @@ export const BestStreakHistoryChart = () => {
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Loading...</div>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-32 mx-auto" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-4 w-24 mx-auto" />
+            </div>
           </div>
         </CardContent>
       </Card>

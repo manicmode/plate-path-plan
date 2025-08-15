@@ -23,6 +23,7 @@ import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { useAuth } from '@/contexts/auth';
+import ArenaSkeleton from '@/components/arena/ArenaSkeleton';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -65,6 +66,33 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   // Billboard modal state
   const [isBillboardOpen, setBillboardOpen] = useState(false);
+
+  // Use leaderboard data directly from server function
+  const rows = useMemo(() => {
+    return leaderboard.map(item => ({
+      user_id: item.user_id,
+      display_name: item.display_name,
+      avatar_url: item.avatar_url,
+      joined_at: null, // Not needed for display
+      score: item.points,
+      streak: item.streak,
+    }));
+  }, [leaderboard]);
+
+  // Anti-flicker loading state with grace period
+  const ready = !loading && !leaderboardLoading && !!challengeId && rows.length > 0;
+  const [showContent, setShowContent] = React.useState(false);
+  
+  React.useEffect(() => {
+    let t: any;
+    if (ready) {
+      // Small delay avoids a 1-frame swap that looks like a flash
+      t = setTimeout(() => setShowContent(true), 150);
+    } else {
+      setShowContent(false);
+    }
+    return () => clearTimeout(t);
+  }, [ready]);
 
   // Load leaderboard using server function that enforces group membership
   useEffect(() => {
@@ -118,45 +146,43 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     return () => { cancelled = true; };
   }, [user?.id, members.length]);
 
-  // Use leaderboard data directly from server function
-  const rows = useMemo(() => {
-    return leaderboard.map(item => ({
-      user_id: item.user_id,
-      display_name: item.display_name,
-      avatar_url: item.avatar_url,
-      joined_at: null, // Not needed for display
-      score: item.points,
-      streak: item.streak,
-    }));
-  }, [leaderboard]);
 
   if (process.env.NODE_ENV !== 'production') {
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
   }
 
-  if (loading || leaderboardLoading) return <div>Loading…</div>;
-  if (error) return <div className="text-red-500">Failed to load arena.</div>;
-  if (!rows.length) return <div>No arena buddies yet</div>;
 
   return (
-    <>
-      <div className="mt-3 mb-8">
-        <button
-          type="button"
-          onClick={() => {
-            setBillboardOpen(true);
-          }}
-          className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
-                     bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
-                     hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
-                     text-white shadow-md transition-colors flex items-center justify-center gap-2"
-          aria-label="Open Billboard & Chat"
-          data-testid="arena-billboard-pill"
-        >
-          <MessageSquare className="h-4 w-4" />
-          Billboard &amp; Chat
-        </button>
-      </div>
+    <section
+      aria-busy={!showContent}
+      aria-live="polite"
+      className="min-h-[420px]"
+    >
+      {showContent ? (
+        <>
+          {error ? (
+            <div className="text-destructive">Failed to load arena.</div>
+          ) : !rows.length ? (
+            <div className="text-muted-foreground">No arena buddies yet</div>
+          ) : (
+            <>
+              <div className="mt-3 mb-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillboardOpen(true);
+                  }}
+                  className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
+                             bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
+                             hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
+                             text-white shadow-md transition-colors flex items-center justify-center gap-2"
+                  aria-label="Open Billboard & Chat"
+                  data-testid="arena-billboard-pill"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Billboard &amp; Chat
+                </button>
+              </div>
 
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(
@@ -274,12 +300,18 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         )}
       </Card>
 
-      {/* Arena Billboard Modal */}
-      <ArenaBillboardChatPanel
-        isOpen={isBillboardOpen}
-        onClose={() => setBillboardOpen(false)}
-        privateChallengeId={challengeId}
-      />
-    </>
+              {/* Arena Billboard Modal */}
+              <ArenaBillboardChatPanel
+                isOpen={isBillboardOpen}
+                onClose={() => setBillboardOpen(false)}
+                privateChallengeId={challengeId}
+              />
+            </>
+          )}
+        </>
+      ) : (
+        <ArenaSkeleton />
+      )}
+    </section>
   );
 };
