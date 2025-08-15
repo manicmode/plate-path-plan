@@ -16,7 +16,13 @@ export function useArenaMembership() {
       const groupId = members[0]?.group_id ?? null;
       const isInArena = !!groupId && members.length > 0;
       
-      console.info('[Arena] membership check:', { groupId, memberCount: members.length, isInArena });
+      console.info('[Arena] membership check:', { 
+        groupId, 
+        memberCount: members.length, 
+        isInArena,
+        rawRows: rows,
+        error: error?.message 
+      });
       
       return { members, groupId, isInArena };
     },
