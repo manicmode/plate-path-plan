@@ -194,10 +194,30 @@ function GameAndChallengeContent() {
   // Read challenge param and preselect
   useEffect(() => {
     const fromUrl = searchParams.get("challenge");
+    const tab = searchParams.get("tab");
+    const type = searchParams.get("type");
+    const privateChallengeId = searchParams.get("private_challenge_id");
+
+    // Handle Billboard & Chat navigation from Arena
+    if (tab === "billboard" && type === "rank_of_20" && privateChallengeId) {
+      selectChatroom(privateChallengeId);
+      userInitiatedRef.current = true;
+      setActiveSection('billboard');
+      console.log(`[Billboard] Arena navigation - selectedChallengeId: ${privateChallengeId}`);
+      return;
+    }
+
+    // Handle legacy challenge parameter
     if (fromUrl) {
       selectChatroom(fromUrl);
       userInitiatedRef.current = true;
       setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
+    }
+
+    // Handle direct tab navigation
+    if (tab === "billboard") {
+      userInitiatedRef.current = true;
+      setActiveSection('billboard');
     }
   }, [searchParams, selectChatroom]);
 

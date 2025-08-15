@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
+import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 
@@ -39,6 +40,7 @@ function initials(name?: string) {
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { members, loading, error, refresh } = useRank20Members();
+  const { challengeId } = useRank20ChallengeId();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<null | {
@@ -109,7 +111,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         <button
           type="button"
           onClick={() => {
-            navigate("/chat?channel=arena"); 
+            if (challengeId) {
+              navigate(`/game-and-challenge?tab=billboard&type=rank_of_20&private_challenge_id=${challengeId}`);
+            } else {
+              navigate('/game-and-challenge?tab=billboard');
+            }
           }}
           className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
                      bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
