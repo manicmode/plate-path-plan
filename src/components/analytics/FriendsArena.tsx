@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Users, 
   TrendingUp, 
@@ -18,9 +18,19 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
+import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 
 interface FriendsArenaProps {
   friends?: any[]; // Keep for compatibility but unused
+}
+
+// Helper: two-letter initials from display name
+function initials(name?: string) {
+  const n = (name ?? "").trim();
+  if (!n) return "US";
+  const parts = n.split(/\s+/).filter(Boolean);
+  const letters = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? parts[0]?.[1] ?? "");
+  return letters.toUpperCase();
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
@@ -32,20 +42,54 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     display_name: string;
     avatar_url: string | null;
   }>(null);
+  
+  // Stats cache for all members
+  const [statsById, setStatsById] = useState<Record<string, UserStats>>({});
 
-  const rows = useMemo(
-    () =>
-      (Array.isArray(members) ? members : []).map((m) => ({
+  // Preload stats for all members
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ids = (Array.isArray(members) ? members : []).map(m => m.user_id);
+      // Fetch in parallel; reuse modal's fetch logic
+      const entries = await Promise.all(ids.map(async (id) => {
+        try { 
+          return [id, await fetchUserStats(id)] as const; 
+        } catch { 
+          return [id, { score: 0, streak: 0 }] as const; 
+        }
+      }));
+      if (!cancelled) {
+        const next: Record<string, UserStats> = {};
+        for (const [id, s] of entries) next[id] = s;
+        setStatsById(next);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [members]);
+
+  // Build rows with real stats and sort by score for ranking
+  const rows = useMemo(() => {
+    const list = Array.isArray(members) ? members : [];
+    // Inject stats from cache and sort for rank badges
+    const withStats = list.map(m => {
+      const s = statsById[m.user_id] ?? { score: 0, streak: 0 };
+      return {
         user_id: m.user_id,
-        display_name:
-          m.display_name?.trim() ? m.display_name.trim() : `User ${String(m.user_id).slice(0, 5)}`,
+        display_name: m.display_name?.trim() ? m.display_name.trim() : `User ${String(m.user_id).slice(0, 5)}`,
         avatar_url: m.avatar_url ?? null,
         joined_at: m.joined_at,
-        score: 0,
-        streak: 0,
-      })),
-    [members]
-  );
+        score: s.score ?? 0,
+        streak: s.streak ?? 0,
+      };
+    });
+    // Sort by score desc, then joined_at asc for stable rank numbers
+    withStats.sort((a, b) => 
+      (b.score ?? 0) - (a.score ?? 0) || 
+      (a.joined_at ? new Date(a.joined_at).getTime() : 0) - (b.joined_at ? new Date(b.joined_at).getTime() : 0)
+    );
+    return withStats;
+  }, [members, statsById]);
 
   if (process.env.NODE_ENV !== 'production') {
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
@@ -130,20 +174,32 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12")}>
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {row.display_name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        {/* Rank badge */}
+                        <Badge className="absolute -top-1 -left-1 z-10 rounded-full px-2 py-0 text-xs font-bold bg-gradient-to-r from-yellow-400 to-orange-500 text-black border-0">
+                          #{index + 1}
+                        </Badge>
+                        
+                        {/* Avatar with image or initials fallback */}
+                        <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12")}>
+                          <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {initials(row.display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      
                       <div>
                         <div className="font-semibold text-foreground">
                           {row.display_name}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Flame className="h-3 w-3 text-orange-500" />
-                          {row.streak} day streak
+                          <span className="font-semibold">{row.streak ?? 0}</span>
+                          <span className="text-muted-foreground text-xs">streak</span>
                           <Target className="h-3 w-3 text-blue-500 ml-2" />
-                          {row.score} pts
+                          <span className="font-semibold">{row.score ?? 0}</span>
+                          <span className="text-muted-foreground text-xs">pts</span>
                         </div>
                       </div>
                     </div>
