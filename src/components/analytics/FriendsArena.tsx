@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
 import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
+import { useRank20Leaderboard } from '@/hooks/arena/useRank20Leaderboard';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,9 +48,10 @@ function initials(name?: string) {
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { user } = useAuth();
   const membership = useRank20Members(user?.id);
-  const { data: members = [], isLoading: loading, error, refetch: refresh } = membership;
+  const { data: members = [], isLoading: membersLoading, error: membersError } = membership;
   const membershipData = useArenaMembership();
   const { challengeId } = useRank20ChallengeId();
+  const { data: rows, loading, error, refresh } = useRank20Leaderboard(20, 0);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<null | {
@@ -57,34 +59,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     display_name: string;
     avatar_url: string | null;
   }>(null);
-  
-  // Leaderboard data using server-side function
-  const [leaderboard, setLeaderboard] = useState<Array<{
-    user_id: string;
-    display_name: string;
-    avatar_url: string | null;
-    points: number;
-    streak: number;
-  }>>([]);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Billboard modal state
   const [isBillboardOpen, setBillboardOpen] = useState(false);
 
-  // Use leaderboard data directly from server function
-  const rows = useMemo(() => {
-    return leaderboard.map(item => ({
-      user_id: item.user_id,
-      display_name: item.display_name,
-      avatar_url: item.avatar_url,
-      joined_at: null, // Not needed for display
-      score: item.points,
-      streak: item.streak,
-    }));
-  }, [leaderboard]);
-
   // Anti-flicker loading state with grace period
-  const ready = !loading && !leaderboardLoading && !!challengeId && rows.length > 0;
+  const ready = !loading && !membersLoading && !!challengeId && rows.length > 0;
   const [showContent, setShowContent] = React.useState(false);
   
   React.useEffect(() => {
@@ -97,62 +77,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     }
     return () => clearTimeout(t);
   }, [ready]);
-
-  // Load leaderboard using server function that enforces group membership
-  useEffect(() => {
-    let cancelled = false;
-    
-    const loadLeaderboard = async () => {
-      if (!user?.id) return;
-      
-      // Invalidate any prior leaderboard cache on Arena tab mount/open
-      setLeaderboard([]);
-      setLeaderboardLoading(true);
-      try {
-        const logRpc = (name: string, err: any) => console.error('[RPC]', name, {
-          code: err?.code, message: err?.message, details: err?.details, hint: err?.hint
-        });
-
-        const { data, error } = await supabase.rpc('my_rank20_leaderboard');
-        
-        if (error) {
-          logRpc('my_rank20_leaderboard', error);
-          return;
-        }
-        
-        if (!cancelled) {
-          const leaderboardData = (data || []).map((row: any) => ({
-            user_id: row.user_id,
-            display_name: row.display_name || `User ${row.user_id.slice(0, 5)}`,
-            avatar_url: row.avatar_url,
-            points: row.points || 0,
-            streak: row.streak || 0,
-          }));
-          
-          setLeaderboard(leaderboardData);
-          
-          // Dev diagnostics - log once on Arena tab mount/open
-          if (process.env.NODE_ENV !== 'production') {
-            console.info('[Arena] Arena opened:', {
-              groupId: members[0]?.group_id,
-              isInArena: members.length > 0,
-              chatRows: 'N/A', // Available in ArenaBillboardChatPanel
-              leaderboardRows: leaderboardData.length
-            });
-          }
-        }
-      } catch (error) {
-        console.error('[Arena] Leaderboard fetch error:', error);
-      } finally {
-        if (!cancelled) {
-          setLeaderboardLoading(false);
-        }
-      }
-    };
-
-    loadLeaderboard();
-    return () => { cancelled = true; };
-  }, [user?.id, members.length]);
 
 
   if (process.env.NODE_ENV !== 'production') {
@@ -169,9 +93,19 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       {showContent ? (
         <>
           {error ? (
-            <div className="text-destructive">Failed to load arena.</div>
+            <ArenaErrorBanner message={error.message} />
           ) : !rows.length ? (
-            <div className="text-muted-foreground">No arena buddies yet</div>
+            <div className="text-center py-8">
+              <div className="text-muted-foreground mb-4">
+                No contenders yet. Invite friends or start logging to climb the board.
+              </div>
+              <button
+                onClick={refresh}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+              >
+                Refresh
+              </button>
+            </div>
           ) : (
             <>
               <div className="mt-3 mb-8">
@@ -222,20 +156,27 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 <Users className="h-3 w-3" />
                 {rows.length} members
               </Badge>
+              <button
+                onClick={refresh}
+                className="p-1 text-muted-foreground hover:text-foreground"
+                title="Refresh leaderboard"
+              >
+                <TrendingUp className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
           <div className="flex flex-col gap-5">
-          {rows.map((row, index) => (
+          {rows.map((row) => (
             <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
               {/* Off-card rank badge */}
               <span
-                aria-label={`Rank ${index + 1}`}
+                aria-label={`Rank ${row.rank}`}
                 className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
               >
-                #{index + 1}
+                #{row.rank}
               </span>
 
               {/* Pinned Rising chip */}
@@ -282,9 +223,14 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                         {row.display_name}
                       </div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Flame className="h-3 w-3 text-orange-500" />
-                        <span className="font-semibold">{row.streak ?? 0}</span>
-                        <span className="text-muted-foreground text-xs">streak</span>
+                        {row.streak > 0 ? (
+                          <>
+                            <Flame className="h-3 w-3 text-orange-500" />
+                            <span className="font-semibold">🔥 {row.streak}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -293,7 +239,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   <div className="ml-auto min-w-[84px] text-right tabular-nums mt-6">
                     <div className="inline-flex items-center gap-1">
                       <Target className="w-4 h-4" />
-                      <span className="font-semibold">{formatNumber(row.score)}</span>
+                      <span className="font-semibold">{formatNumber(row.points)}</span>
                       <span className="text-xs text-muted-foreground ml-1">pts</span>
                     </div>
                   </div>
