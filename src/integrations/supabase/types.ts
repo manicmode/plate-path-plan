@@ -5976,6 +5976,13 @@ export type Database = {
         Args: { request_id: string }
         Returns: boolean
       }
+      run_arena_chat_healthcheck: {
+        Args: { p_user_id?: string }
+        Returns: {
+          info: Json
+          step: string
+        }[]
+      }
       search_users_by_username_email: {
         Args: { search_term: string }
         Returns: {
