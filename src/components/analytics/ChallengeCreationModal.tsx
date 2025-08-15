@@ -175,30 +175,49 @@ const { toast } = useToast();
 
     const visibility = challengeType;
 
-    const { data, error } = await createSupabaseChallenge({
-      title: challengeName.trim(),
-      description: desc,
-      visibility,
-      durationDays,
-      coverEmoji: null,
-    });
+    try {
+      console.log('[createChallenge] attempting with params:', {
+        title: challengeName.trim(),
+        description: desc,
+        visibility,
+        durationDays,
+        coverEmoji: null,
+      });
+      
+      const { data, error } = await createSupabaseChallenge({
+        title: challengeName.trim(),
+        description: desc,
+        visibility,
+        durationDays,
+        coverEmoji: null,
+      });
 
-    if (error || !data) {
+      if (error || !data) {
+        console.error('[createChallenge] error:', error);
+        toast({
+          title: "Error",
+          description: error || 'Failed to create challenge',
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('[createChallenge] success', data.id, visibility);
+      toast({
+        title: "Challenge Created! 🎉",
+        description: `"${challengeName}" is now live and ready for participants!`,
+      });
+
+      onChallengeCreated?.(data.id);
+    } catch (err) {
+      console.error('[createChallenge] exception:', err);
       toast({
         title: "Error",
-        description: error || 'Failed to create challenge',
+        description: 'Failed to create challenge due to unexpected error',
         variant: "destructive",
       });
       return;
     }
-
-    console.log('[createChallenge] success', data.id, visibility);
-    toast({
-      title: "Challenge Created! 🎉",
-      description: `"${challengeName}" is now live and ready for participants!`,
-    });
-
-    onChallengeCreated?.(data.id);
 
     // Reset form
     setStep(1);
@@ -235,7 +254,7 @@ const { toast } = useToast();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <Target className="h-6 w-6 text-primary" />
@@ -268,7 +287,7 @@ const { toast } = useToast();
           ))}
         </div>
 
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="max-h-[55vh]">
           <div className="space-y-6">
             {/* Step 1: Basic Info */}
             {step === 1 && (
