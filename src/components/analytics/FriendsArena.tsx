@@ -56,53 +56,54 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   if (!rows.length) return <div>No arena buddies yet</div>;
 
   return (
-    <Card className="overflow-visible border-2 shadow-xl relative border-primary/20">
-      <CardHeader className={cn(
-        "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
-        isMobile ? "p-4" : "p-6"
-      )}>
-        <div className={cn(
-          "flex items-center",
-          isMobile ? "flex-col space-y-2" : "justify-between"
+    <>
+      <div className="my-3">
+        <button
+          type="button"
+          onClick={() => {
+            navigate("/chat?channel=arena"); 
+          }}
+          className="w-full rounded-full px-4 py-3 text-sm md:text-base font-medium
+                     bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
+                     hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
+                     text-white shadow-md transition-colors flex items-center justify-center gap-2"
+          aria-label="Open Billboard & Chat"
+          data-testid="arena-billboard-pill"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Billboard &amp; Chat
+        </button>
+      </div>
+
+      <Card className="overflow-visible border-2 shadow-xl relative border-primary/20">
+        <CardHeader className={cn(
+          "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
+          isMobile ? "p-4" : "p-6"
         )}>
-          <CardTitle className={cn(
-            "font-bold flex items-center gap-2",
-            isMobile ? "text-xl text-center" : "text-3xl gap-3"
+          <div className={cn(
+            "flex items-center",
+            isMobile ? "flex-col space-y-2" : "justify-between"
           )}>
-            <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-            Live Rankings Arena
-            <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-          </CardTitle>
-          
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {rows.length} members
-            </Badge>
+            <CardTitle className={cn(
+              "font-bold flex items-center gap-2",
+              isMobile ? "text-xl text-center" : "text-3xl gap-3"
+            )}>
+              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+              Live Rankings Arena
+              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+            </CardTitle>
+            
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {rows.length} members
+              </Badge>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-        <div className="my-3">
-          <button
-            type="button"
-            onClick={() => {
-              navigate("/chat?channel=arena"); 
-            }}
-            className="w-full rounded-full px-4 py-3 text-sm md:text-base font-medium
-                       bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
-                       hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500
-                       text-white shadow-md transition-colors flex items-center justify-center gap-2"
-            aria-label="Open Billboard & Chat"
-            data-testid="arena-billboard-pill"
-          >
-            <MessageSquare className="h-4 w-4" />
-            Billboard &amp; Chat
-          </button>
-        </div>
+        </CardHeader>
         
-        <div className="flex flex-col gap-3">
+        <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
+          <div className="flex flex-col gap-3">
           {rows.map((row, index) => (
             <div key={row.user_id}>
               <Card className="border border-muted/50 hover:border-primary/30 transition-colors bg-gradient-to-r from-background to-muted/20">
@@ -159,17 +160,18 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             </div>
           ))}
         </div>
-      </CardContent>
-      
-      {selected && (
-        <UserStatsModal
-          open={!!selected}
-          onClose={() => setSelected(null)}
-          userId={selected?.user_id ?? ""}
-          displayName={selected?.display_name ?? ""}
-          avatarUrl={selected?.avatar_url ?? undefined}
-        />
-      )}
-    </Card>
+        </CardContent>
+        
+        {selected && (
+          <UserStatsModal
+            open={!!selected}
+            onClose={() => setSelected(null)}
+            userId={selected?.user_id ?? ""}
+            displayName={selected?.display_name ?? ""}
+            avatarUrl={selected?.avatar_url ?? undefined}
+          />
+        )}
+      </Card>
+    </>
   );
 };
