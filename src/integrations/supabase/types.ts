@@ -5420,6 +5420,10 @@ export type Database = {
       }
     }
     Functions: {
+      _current_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       _ensure_rank20_challenge: {
         Args: { _group_id: string }
         Returns: string
@@ -5866,12 +5870,16 @@ export type Database = {
         Args: { _body: string }
         Returns: undefined
       }
-      my_rank20_chosen_challenge_id: {
+      my_rank20_chosen_challenge: {
         Args: Record<PropertyKey, never>
         Returns: {
           member_count: number
           private_challenge_id: string
         }[]
+      }
+      my_rank20_chosen_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       my_rank20_group_members: {
         Args: Record<PropertyKey, never>
