@@ -244,18 +244,19 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         challengeId,
         groupId,
         isInArena,
-        chatRows: chatMessages.length
+        chatRows: chatMessages.length,
+        members: members.length
       });
     }
     
-    // Setup chat channel - use groupId for topic consistency
-    const chatTopic = groupId ? `r20-chat-group-${groupId}` : `r20-chat-${challengeId}`;
+    // Setup chat channel - use groupId for consistent subscription across accounts
+    const chatTopic = `rank20-chat:${groupId}`;
     const chatChannel = supabase
       .channel(chatTopic)
       .on(
         'postgres_changes',
         { 
-          event: 'INSERT', 
+          event: '*', 
           schema: 'public', 
           table: 'rank20_chat_messages', 
           filter: `challenge_id=eq.${challengeId}` 
@@ -292,14 +293,14 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
     chatChannelRef.current = chatChannel;
 
-    // Setup announcement channel - use groupId for topic consistency
-    const announcementTopic = groupId ? `r20-ann-group-${groupId}` : `r20-ann-${challengeId}`;
+    // Setup announcement channel - use groupId for consistent subscription across accounts
+    const announcementTopic = `rank20-ann:${groupId}`;
     const announcementChannel = supabase
       .channel(announcementTopic)
       .on(
         'postgres_changes',
         { 
-          event: 'INSERT', 
+          event: '*', 
           schema: 'public', 
           table: 'rank20_billboard_messages', 
           filter: `challenge_id=eq.${challengeId}` 
@@ -340,7 +341,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         backfillMessages();
       }
     }, 45000); // 45 seconds
-  }, [connectionStatus]);
+  }, [connectionStatus, isInArena, chatMessages.length, members.length]);
 
   const onChatInsertFromRealtime = useCallback(async (row: ChatMessage) => {
     // Enrich with user info from cache or fetch if missing
@@ -1240,6 +1241,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     disabled={isSending || newMessage.trim().length > 2000}
                     size="icon"
                     data-testid="arena-plus-tab"
+                    aria-label="Send message"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
