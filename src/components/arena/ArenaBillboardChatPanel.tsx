@@ -680,7 +680,12 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       const { data: messageId, error } = await supabase.rpc('arena_post_message', { p_content: trimmedMessage });
       
       if (error) {
-        console.error('[Arena] Failed to send message:', error);
+        console.error('[arena_post_message] failed', { 
+          code: error.code, 
+          message: error.message, 
+          details: error.details, 
+          hint: error.hint 
+        });
         
         // Mark message as error for retry
         setChatMessages(prev => 
@@ -692,7 +697,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         );
         
         // Show user-friendly error with toast
-        toast({ title: "Error", description: `Failed to send message: ${error.message || 'Please try again.'}`, variant: "destructive" });
+        toast({ title: "Error", description: error.message || 'Failed to send message', variant: "destructive" });
         
         // Telemetry
         if (process.env.NODE_ENV !== 'production') {
