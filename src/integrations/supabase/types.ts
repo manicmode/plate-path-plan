@@ -5420,14 +5420,6 @@ export type Database = {
       }
     }
     Functions: {
-      _arena_realign_for_user: {
-        Args: { p_user: string }
-        Returns: {
-          challenge_id: string
-          chosen_id: string
-          group_id: string
-        }[]
-      }
       _current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
