@@ -20,6 +20,10 @@ import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 
+// Pretty numbers (e.g., 2,432)
+const nf = new Intl.NumberFormat();
+const formatNumber = (n?: number | null) => nf.format(Math.max(0, Number(n ?? 0)));
+
 interface FriendsArenaProps {
   friends?: any[]; // Keep for compatibility but unused
 }
@@ -119,7 +123,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </button>
       </div>
 
-      <Card className="overflow-visible border-2 shadow-xl relative border-primary/20">
+      <Card className="overflow-visible border-2 shadow-xl relative dark:border-slate-700/70 border-slate-200/70 dark:bg-slate-900/40 bg-slate-50/40 hover:border-primary/40 transition-all duration-300">
         <CardHeader className={cn(
           "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
           isMobile ? "p-4" : "p-6"
@@ -149,70 +153,76 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
           <div className="flex flex-col gap-3">
           {rows.map((row, index) => (
-            <div key={row.user_id}>
-              <Card className="border border-muted/50 hover:border-primary/30 transition-colors bg-gradient-to-r from-background to-muted/20">
-                <CardContent 
-                  className="p-4 cursor-pointer"
-                  onClick={() => setSelected({ 
-                    user_id: row.user_id, 
-                    display_name: row.display_name, 
-                    avatar_url: row.avatar_url 
-                  })}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { 
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelected({ 
-                        user_id: row.user_id, 
-                        display_name: row.display_name, 
-                        avatar_url: row.avatar_url 
-                      });
-                    }
-                  }}
-                  aria-label={`Open profile for ${row.display_name || 'this user'}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        {/* Rank badge */}
-                        <Badge className="absolute -top-1 -left-1 z-10 rounded-full px-2 py-0 text-xs font-bold bg-gradient-to-r from-yellow-400 to-orange-500 text-black border-0">
-                          #{index + 1}
-                        </Badge>
-                        
-                        {/* Avatar with image or initials fallback */}
-                        <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12")}>
-                          <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {initials(row.display_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      
-                      <div>
-                        <div className="font-semibold text-foreground">
-                          {row.display_name}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Flame className="h-3 w-3 text-orange-500" />
-                          <span className="font-semibold">{row.streak ?? 0}</span>
-                          <span className="text-muted-foreground text-xs">streak</span>
-                          <Target className="h-3 w-3 text-blue-500 ml-2" />
-                          <span className="font-semibold">{row.score ?? 0}</span>
-                          <span className="text-muted-foreground text-xs">pts</span>
-                        </div>
-                      </div>
-                    </div>
+            <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
+              {/* Off-card rank badge */}
+              <span
+                aria-label={`Rank ${index + 1}`}
+                className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
+              >
+                #{index + 1}
+              </span>
+
+              {/* Pinned Rising chip */}
+              <div className="absolute top-3 right-3 z-10">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-green-500" />
+                  Rising
+                </Badge>
+              </div>
+
+              <div 
+                className="p-4 cursor-pointer"
+                onClick={() => setSelected({ 
+                  user_id: row.user_id, 
+                  display_name: row.display_name, 
+                  avatar_url: row.avatar_url 
+                })}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelected({ 
+                      user_id: row.user_id, 
+                      display_name: row.display_name, 
+                      avatar_url: row.avatar_url 
+                    });
+                  }
+                }}
+                aria-label={`Open profile for ${row.display_name || 'this user'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 pl-2">
+                    {/* Avatar with z-index */}
+                    <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "z-10")}>
+                      <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {initials(row.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
                     
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3 text-green-500" />
-                        Rising
-                      </Badge>
+                    <div>
+                      <div className="font-semibold text-foreground">
+                        {row.display_name}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Flame className="h-3 w-3 text-orange-500" />
+                        <span className="font-semibold">{row.streak ?? 0}</span>
+                        <span className="text-muted-foreground text-xs">streak</span>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  
+                  {/* Robust points layout */}
+                  <div className="ml-auto min-w-[84px] text-right tabular-nums">
+                    <div className="inline-flex items-center gap-1">
+                      <Target className="w-4 h-4" />
+                      <span className="font-semibold">{formatNumber(row.score)}</span>
+                      <span className="text-xs text-muted-foreground ml-1">pts</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
