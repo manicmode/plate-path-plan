@@ -33,7 +33,7 @@ import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { requireSession } from '@/lib/ensureAuth';
-import ArenaSmoke from "@/components/analytics/ArenaSmoke";
+
 
 interface Friend {
   id: number;
@@ -53,46 +53,6 @@ interface FriendsArenaProps {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
-  useEffect(() => { console.info("[SOURCE] FriendsArena rendered"); }, []);
-
-  const rawSearch = typeof window !== "undefined" ? window.location.search : "";
-  const qs = new URLSearchParams(rawSearch);
-  const urlFlag = qs.get("arena_smoke") === "1";
-  const lsFlag  = typeof window !== "undefined" ? window.localStorage.getItem("arena_smoke") === "1" : false;
-
-  if (urlFlag && typeof window !== "undefined") {
-    try { window.localStorage.setItem("arena_smoke", "1"); } catch {}
-  }
-
-  const ARENA_SMOKE = urlFlag || lsFlag;
-
-  if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
-    console.info("[ARENA_SMOKE] flags =>", { urlFlag, lsFlag, ARENA_SMOKE, rawSearch });
-  }
-
-  // Dev keyboard toggle: Shift+S
-  React.useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "s" && e.shiftKey) {
-        const cur = localStorage.getItem("arena_smoke") === "1";
-        localStorage.setItem("arena_smoke", cur ? "" : "1");
-        window.location.reload();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  if (ARENA_SMOKE) {
-    return (
-      <div style={{ padding: 16 }}>
-        <ArenaSmoke />
-        {/* Render the normal arena below too so we can compare */}
-      </div>
-    );
-  }
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,6 +61,17 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isArenaChatOpen, setArenaChatOpen] = useState(false);
+  
+  // Get the arena_plain mode from URL
+  const params = new URLSearchParams(location.search);
+  const arenaPlain = params.get("arena_plain") === "1";
+  
+  // Helper to toggle arena mode
+  const setArenaPlain = (on: boolean) => {
+    const p = new URLSearchParams(location.search);
+    if (on) p.set("arena_plain", "1"); else p.delete("arena_plain");
+    navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
+  };
   
   
   // Enroll in Rank-of-20 on mount (silent, no navigation) 
@@ -131,84 +102,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     [members]
   );
 
-  if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
-    console.info(
-      '[Arena] rpc members',
-      Array.isArray(members) ? members.length : members,
-      Array.isArray(members) ? members.map(m => m.user_id) : []
-    );
-    // eslint-disable-next-line no-console
-    console.info('[Arena] rows', rows.length, rows.map(r => r.user_id));
-  }
 
-  if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
-    console.info("[Arena] rows.len", rows.length, rows.map(r => r.user_id));
-  }
-
-  const inDev = true; // TEMP: force-visible debug UI
-  const params = new URLSearchParams(location.search);
-  const arenaPlain = params.get("arena_plain") === "1";
-
-  if (params.get("arena_smoke") === "1") {
-    return <ArenaSmoke />;
-  }
-  useEffect(() => {
-    const p = new URLSearchParams(location.search);
-    if (!p.get("arena_plain")) {
-      p.set("arena_plain", "1");
-      navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // dev: helper to flip mode without touching URL manually
-  const setArenaPlain = (on: boolean) => {
-    const p = new URLSearchParams(location.search);
-    if (on) p.set("arena_plain", "1"); else p.delete("arena_plain");
-    navigate({ pathname: location.pathname, search: p.toString() }, { replace: true });
-  };
-
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.info("[ARENA DEBUG] mounted: rows=", rows.length, "plain?", arenaPlain);
-  }
-
-  const arenaOverlay = typeof document !== "undefined"
-    ? createPortal(
-        <div
-          style={{
-            position: "fixed",
-            top: 12,
-            left: 12,
-            zIndex: 2147483647, // on top of everything
-            background: "rgba(16, 185, 129, 0.92)",
-            color: "#04130d",
-            border: "2px solid #10b981",
-            borderRadius: 10,
-            padding: "8px 10px",
-            boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
-            fontSize: 12,
-            lineHeight: 1.1,
-          }}
-          data-testid="arena-debug-overlay"
-        >
-          <div style={{fontWeight: 700, marginBottom: 6}}>Arena Debug</div>
-          <div style={{display: "flex", gap: 6, marginBottom: 6}}>
-            <button onClick={() => setArenaPlain(false)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "transparent" : "#34d399"}}>
-              Cards
-            </button>
-            <button onClick={() => setArenaPlain(true)} style={{padding: "4px 8px", borderRadius: 6, border: "1px solid #064e3b", background: arenaPlain ? "#34d399" : "transparent"}}>
-              Plain
-            </button>
-          </div>
-          <div>rows: <strong>{rows.length}</strong></div>
-          <div>mode: <strong>{arenaPlain ? "plain" : "cards"}</strong></div>
-        </div>,
-        document.body
-      )
-    : null;
 
   const content = arenaPlain ? (
     <div className="p-3">
@@ -284,21 +178,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   return (
     <>
-      {arenaOverlay}
     <Card className="w-full h-auto overflow-visible border-2 border-blue-200 shadow-xl relative">
-      <div style={{
-        position: "absolute",
-        top: 6,
-        right: 8,
-        zIndex: 5,
-        background: "rgba(0,0,0,0.6)",
-        color: "#fff",
-        borderRadius: 6,
-        padding: "2px 6px",
-        fontSize: 11,
-      }}>
-        SOURCE: FriendsArena
-      </div>
       <CardHeader className={cn(
         "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
         isMobile ? "p-4" : "p-6"
@@ -315,37 +195,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             )}>
               <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
               Live Rankings Arena
-              {arenaPlain && (
-                <span className="ml-2 px-2 py-0.5 rounded-md border border-emerald-500 text-emerald-300 text-[10px]">
-                  PLAIN MODE — rows={rows.length}
-                </span>
-              )}
             </CardTitle>
           </div>
 
-          {/* RIGHT: TOOLBAR AND ACTIONS */}
+          {/* ACTION BUTTONS */}
           <div className="flex items-center gap-2">
-            {/* ALWAYS-VISIBLE TOOLBAR */}
-            <div
-              data-testid="arena-toolbar"
-              className="flex items-center gap-2 text-[10px] sm:text-xs px-2 py-1 rounded-md border border-emerald-500 bg-emerald-500/15 text-emerald-300"
-            >
-              <button
-                onClick={() => setArenaPlain(false)}
-                className={!arenaPlain ? "px-2 py-0.5 rounded border bg-emerald-500/30" : "px-2 py-0.5 rounded border"}
-              >
-                Cards
-              </button>
-              <button
-                onClick={() => setArenaPlain(true)}
-                className={arenaPlain ? "px-2 py-0.5 rounded border bg-emerald-500/30" : "px-2 py-0.5 rounded border"}
-              >
-                Plain
-              </button>
-              <span className="ml-2 px-2 py-0.5 rounded border">rows={rows.length}</span>
-            </div>
-
-            {/* ACTION BUTTONS */}
             <Button 
               onClick={() => setArenaChatOpen(true)}
               className={cn(
@@ -379,32 +233,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       </CardHeader>
       
       <CardContent className={cn("w-full h-auto overflow-visible", isMobile ? "p-3" : "p-6")}>
-        {/* === ARENA INLINE DEBUG (always visible) === */}
-        <div
-          data-testid="arena-debug-inline"
-          style={{
-            background: '#111827',
-            border: '2px dashed #fbbf24',
-            color: '#fde68a',
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>ARENA DEBUG</div>
-          <div style={{ marginBottom: 6 }}>
-            members=<b>{Array.isArray(members) ? members.length : 'n/a'}</b>{' '}
-            rows=<b>{rows.length}</b>
-          </div>
-          <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0, maxHeight: 160, overflow: 'auto' }}>
-            {rows.map((r) => (
-              <li key={'dump-' + r.user_id}>
-                {r.user_id} — {r.display_name || 'N/A'}
-              </li>
-            ))}
-          </ul>
-        </div>
-        {/* === /ARENA INLINE DEBUG === */}
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (

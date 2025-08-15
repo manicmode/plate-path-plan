@@ -128,7 +128,7 @@ function GameAndChallengeContent() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  useEffect(() => { console.info("[SOURCE] GameAndChallengePage rendered"); }, []);
+  
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
     memoryThreshold: 0.7,
@@ -753,159 +753,9 @@ function GameAndChallengeContent() {
           }} className="w-full flex flex-col">
 
               <TabsContent value="ranking" className="mt-4">
-                {/* Mobile Ranking Section */}
-                <Card className={cn(
-                  "overflow-hidden border-2 shadow-xl relative",
-                  challengeMode === 'recovery' 
-                    ? "border-teal-200/30 bg-gradient-to-br from-teal-50/50 to-purple-50/50 dark:from-teal-950/20 dark:to-purple-950/20"
-                    : "border-primary/20"
-                )}>
-                  <div style={{
-                    position: "absolute",
-                    top: 6,
-                    right: 8,
-                    zIndex: 5,
-                    background: "rgba(0,0,0,0.6)",
-                    color: "#fff",
-                    borderRadius: 6,
-                    padding: "2px 6px",
-                    fontSize: 11,
-                  }}>
-                    SOURCE: GameAndChallengePage
-                  </div>
-                  <CardHeader className={cn(
-                    challengeMode === 'recovery' 
-                      ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/30 dark:to-purple-950/30"
-                      : "bg-gradient-to-r from-primary/10 to-secondary/10",
-                    "p-4"
-                  )}>
-                    <div className="flex flex-col space-y-2">
-                        <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2 text-center justify-center">
-                          {challengeMode === 'recovery' ? (
-                            <>
-                              <Trophy className="h-6 w-6 text-yellow-500" />
-                              Live Rankings Arena
-                              <Trophy className="h-6 w-6 text-yellow-500" />
-                            </>
-                          ) : (
-                            <>
-                              <Trophy className="h-6 w-6 text-yellow-500" />
-                              Live Rankings Arena
-                              <Trophy className="h-6 w-6 text-yellow-500" />
-                            </>
-                          )}
-                        </CardTitle>
-                      
-                    </div>
-                  </CardHeader>
-                   <CardContent className="p-3">
-                      {isLoading ? (
-                        <div className="space-y-3 md:space-y-4">
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
-                              <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
-                              <div className="flex-1 space-y-2">
-                                <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
-                                <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
-                              </div>
-                              <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : isEmpty ? (
-                        <div className="text-center py-8">
-                          <div className="text-4xl mb-4">
-                            {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
-                          </div>
-                          <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">
-                            {challengeMode === 'recovery' ? "You're the first challenger! Time to inspire others 🔥" : "No challengers yet! Time to be the first to rise 💪"}
-                          </h3>
-                          <p className="text-muted-foreground text-sm md:text-base mb-4">
-                            Start your {challengeMode} journey today!
-                          </p>
-                          <Button 
-                            onClick={() => {
-                              if (challengeMode === 'nutrition') window.location.href = '/nutrition';
-                              else if (challengeMode === 'exercise') window.location.href = '/exercise-hub';
-                              else window.location.href = '/exercise-hub?tab=recovery';
-                            }}
-                            className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white text-xs"
-                            size="sm"
-                          >
-                            Start Journey
-                          </Button>
-                        </div>
-                      ) : (
-                       <div className="space-y-2">
-                         {currentLeaderboard.map((user, index) => (
-                         <div
-                           key={user.id}
-                            className={cn(
-                              "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer min-h-[60px]",
-                              user.isCurrentUser 
-                                ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md"
-                                : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
-                            )}
-                           onClick={() => {
-                             setSelectedUser(user);
-                             setIsUserStatsOpen(true);
-                           }}
-                         >
-                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                             <div className={cn(
-                               "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0",
-                               index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" :
-                               index === 1 ? "bg-gradient-to-r from-gray-300 to-gray-500 text-white" :
-                               index === 2 ? "bg-gradient-to-r from-amber-500 to-amber-700 text-white" :
-                               "bg-muted text-muted-foreground"
-                             )}>
-                               {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${user.rank}`}
-                             </div>
-                             
-                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                               <div className="text-lg flex-shrink-0">{user.avatar}</div>
-                               <div className="flex-1 min-w-0">
-                                 <div className="font-semibold text-sm flex items-center gap-1 truncate">
-                                   <span className="truncate">{user.nickname}</span>
-                                   {user.isCurrentUser && (
-                                     <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
-                                   )}
-                                 </div>
-                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                     <span>Score: {user.score}</span>
-                                     <span>•</span>
-                                     <span>{user.weeklyProgress}%</span>
-                                   </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex flex-col items-end">
-                               <div className="flex items-center gap-1 text-xs">
-                                 <Flame className="h-3 w-3 text-orange-500" />
-                                 <span>{(user as any).currentStreak || user.streak || 0}d</span>
-                               </div>
-                             
-                             <div className="flex items-center gap-1 mt-1">
-                               {user.improvement > 0 ? (
-                                 <>
-                                   <TrendingUp className="h-3 w-3 text-green-600" />
-                                   <span className="text-xs text-green-600">+{user.improvement}</span>
-                                 </>
-                               ) : (
-                                 <>
-                                   <TrendingDown className="h-3 w-3" />
-                                   <span className="text-xs">{user.improvement}</span>
-                                 </>
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                          ))}
-                       </div>
-                     )}
-                  </CardContent>
-                </Card>
+                <section id="live-rankings-arena" className="mt-6">
+                  <FriendsArena />
+                </section>
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
