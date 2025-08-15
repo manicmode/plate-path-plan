@@ -5420,6 +5420,10 @@ export type Database = {
       }
     }
     Functions: {
+      _active_rank20_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       _current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
