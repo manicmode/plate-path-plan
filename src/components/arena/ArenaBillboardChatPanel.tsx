@@ -169,7 +169,18 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   // Load initial data and setup realtime when panel opens
   useEffect(() => {
     if (isOpen && isAuthenticated && isInArena) {
-      loadInitialData();
+      // Guarantee auto-enrollment before anything else
+      const initializeArena = async () => {
+        try {
+          await supabase.rpc('ensure_rank20_membership');
+          console.info('[ArenaBillboard] open', { isInArena, groupId, challengeId });
+          loadInitialData();
+        } catch (error) {
+          console.error('[ArenaBillboard] auto-enrollment failed:', error);
+        }
+      };
+      
+      initializeArena();
       
       // Telemetry
       if (process.env.NODE_ENV !== 'production') {
@@ -179,7 +190,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       // Cleanup when panel closes
       cleanupRealtimeSubscriptions();
     }
-  }, [isOpen, isAuthenticated, isInArena]);
+  }, [isOpen, isAuthenticated, isInArena, groupId, challengeId]);
 
   // Realtime subscription to reaction changes
   useEffect(() => {
@@ -466,13 +477,14 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       let challengeIdData = privateChallengeId;
       
       if (!challengeIdData) {
-        const { data: rpcData, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
-        if (challengeError || !rpcData) {
+        // Use new helper for challenge resolution
+        const { data: cidData, error: cidErr } = await supabase.rpc('my_rank20_chosen_challenge_id');
+        if (cidErr || !cidData?.[0]) {
           console.info('User not in rank20 challenge');
           setIsLoading(false);
           return;
         }
-        challengeIdData = rpcData;
+        challengeIdData = cidData[0].private_challenge_id;
       }
 
       setChallengeId(challengeIdData);
@@ -603,6 +615,13 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       const { error } = await supabase.rpc('arena_post_message', { p_content: message.body });
       
       if (error) {
+        console.error('[arena_post_message] retry failed', {
+          code: error.code,
+          message: error.message,   // will include "arena_post_message failed [SQLSTATE]: SQLERRM"
+          details: error.details,
+          hint: error.hint,
+        });
+        
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
@@ -610,10 +629,15 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
               : msg
           )
         );
-        toast({ title: "Error", description: "Failed to retry message", variant: "destructive" });
+        toast({ 
+          title: "Error", 
+          description: error.message || "Failed to retry message", 
+          variant: "destructive" 
+        });
       }
       // Success will be handled by realtime insert
     } catch (error) {
+      console.error('[arena_post_message] retry error:', error);
       setChatMessages(prev => 
         prev.map(msg => 
           msg.id === messageId 
