@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -142,12 +143,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
     : 0;
 
-// Chat handler to open global Chat tab and preselect room
+// Chat handler to navigate to Billboard tab
   const { selectChatroom } = useChatStore();
+  const navigate = useNavigate();
   const handleChatClick = () => {
-    console.info('[chat] open from my card', challenge.id);
-    selectChatroom(challenge.id);
-    window.dispatchEvent(new CustomEvent('switch-to-chat-tab', { detail: { challengeId: challenge.id } }));
+    console.info('[Billboard] nav: type=private id=' + challenge.id);
+    navigate(`/game-and-challenge?tab=billboard&type=private&private_challenge_id=${challenge.id}`);
   };
 
   return (
@@ -369,7 +370,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
-              💬 Chat
+              Billboard & Chat
             </Button>
 
             {isParticipant && (

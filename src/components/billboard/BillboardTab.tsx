@@ -9,7 +9,7 @@ import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";
 import { supabase } from "@/integrations/supabase/client";
 import { requireSession } from "@/lib/ensureAuth";
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 
 type BillboardContext = 'rank_of_20' | 'private' | 'public';
 
@@ -22,6 +22,7 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
   const { contextType, challengeId: propChallengeId } = props;
   const { selectedChatroomId, selectChatroom } = useChatStore();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   
   // Determine challenge ID and context from props or URL params
   const urlContextType = searchParams.get("type") as BillboardContext;
@@ -165,6 +166,10 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
     }
   }, [finalChallengeId, hasLoggedEmpty, isLoading]);
 
+  // Dev flag check
+  const showDebug = process.env.NODE_ENV !== 'production' || 
+                   new URLSearchParams(location.search).get('dev') === '1';
+
   return (
     <div id="billboard-root" className="relative min-h-[100dvh] flex flex-col">
       <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -214,24 +219,26 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
               <div>No highlights yet. Check back later or refresh.</div>
               <div className="flex items-center justify-center gap-2">
                 <button onClick={refresh} className="px-3 py-1 rounded-full border text-sm">Refresh</button>
-                <button
-                  className="rounded-xl px-3 py-2 border hover:bg-accent disabled:opacity-50"
-                  disabled={!finalChallengeId || seeding}
-                  onClick={async () => {
-                    if (!finalChallengeId) return;
-                    try {
-                      setSeeding(true);
-                      await seedBillboardDemoEventsFor(finalContextType, finalChallengeId);
-                      await refresh();
-                    } finally {
-                      setSeeding(false);
-                    }
-                  }}
-                >
-                  {seeding ? "Seeding…" : "Seed demo events"}
-                </button>
+                {showDebug && (
+                  <button
+                    className="rounded-xl px-3 py-2 border hover:bg-accent disabled:opacity-50"
+                    disabled={!finalChallengeId || seeding}
+                    onClick={async () => {
+                      if (!finalChallengeId) return;
+                      try {
+                        setSeeding(true);
+                        await seedBillboardDemoEventsFor(finalContextType, finalChallengeId);
+                        await refresh();
+                      } finally {
+                        setSeeding(false);
+                      }
+                    }}
+                  >
+                    {seeding ? "Seeding…" : "Seed demo events"}
+                  </button>
+                )}
               </div>
-              {process.env.NODE_ENV !== "production" && (
+              {showDebug && (
                 <button
                   className="text-xs underline opacity-70"
                   onClick={async () => {
