@@ -51,18 +51,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const withinGrace = Date.now() - openedAt < 600; // 600ms grace period
   const showEmpty = !membershipLoading && !isInArena && !withinGrace && !hasEverBeenInArena.current;
   
-  // Dev diagnostics
-  useEffect(() => {
-    if (isOpen && !membershipLoading && process.env.NODE_ENV !== 'production') {
-      console.info('[ArenaBillboard] Opened:', {
-        groupId,
-        memberCount: members.length,
-        isInArena,
-        finalDecision: showEmpty ? 'empty' : 'content'
-      });
-    }
-  }, [isOpen, membershipLoading, groupId, members.length, isInArena, showEmpty]);
-
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState<string | null>(null);
   const [showNewGlow, setShowNewGlow] = useState(false);
@@ -153,6 +141,19 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
   // Emoji set for text input
   const EMOJI_SET = ['😀', '😂', '🥳', '🙌', '👍', '👎', '💯', '🔥', '💧', '🧠', '❤️‍🔥', '🏆', '🚀', '🌟', '😴'];
+
+  // Dev diagnostics
+  useEffect(() => {
+    if (isOpen && !membershipLoading && process.env.NODE_ENV !== 'production') {
+      console.info('[ArenaBillboard] Opened:', {
+        groupId,
+        memberCount: members.length,
+        isInArena,
+        chatRows: chatMessages.length,
+        finalDecision: showEmpty ? 'empty' : 'content'
+      });
+    }
+  }, [isOpen, membershipLoading, groupId, members.length, isInArena, showEmpty, chatMessages.length]);
 
   // Check authentication
   useEffect(() => {
@@ -1161,6 +1162,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                 {showEmojiStrip && (
                   <div 
                     className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-1 emoji-strip"
+                    data-testid="arena-emoji-bar"
                     onWheel={(e) => {
                       // Allow horizontal scroll with wheel on desktop
                       if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
@@ -1210,7 +1212,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex gap-2" data-testid="arena-composer">
                   <Input
                     ref={inputRef}
                     placeholder="Type your message..."
@@ -1225,6 +1227,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     onClick={sendMessage} 
                     disabled={isSending || newMessage.trim().length > 2000}
                     size="icon"
+                    data-testid="arena-plus-tab"
                   >
                     <Send className="h-4 w-4" />
                   </Button>

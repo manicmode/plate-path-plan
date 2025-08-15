@@ -20,6 +20,7 @@ import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
+import { supabase } from '@/integrations/supabase/client';
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { useAuth } from '@/contexts/auth';
 
@@ -52,62 +53,86 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     avatar_url: string | null;
   }>(null);
   
-  // Stats cache for all members
-  const [statsById, setStatsById] = useState<Record<string, UserStats>>({});
+  // Leaderboard data using server-side function
+  const [leaderboard, setLeaderboard] = useState<Array<{
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    points: number;
+    streak: number;
+  }>>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Billboard modal state
   const [isBillboardOpen, setBillboardOpen] = useState(false);
 
-  // Preload stats for all members
+  // Load leaderboard using server function that enforces group membership
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const ids = (Array.isArray(members) ? members : []).map(m => m.user_id);
-      // Fetch in parallel; reuse modal's fetch logic
-      const entries = await Promise.all(ids.map(async (id) => {
-        try { 
-          return [id, await fetchUserStats(id)] as const; 
-        } catch { 
-          return [id, { score: 0, streak: 0 }] as const; 
+    
+    const loadLeaderboard = async () => {
+      if (!user?.id) return;
+      
+      setLeaderboardLoading(true);
+      try {
+        const { data, error } = await supabase.rpc('my_rank20_leaderboard');
+        
+        if (error) {
+          console.error('[Arena] Leaderboard error:', error);
+          return;
         }
-      }));
-      if (!cancelled) {
-        const next: Record<string, UserStats> = {};
-        for (const [id, s] of entries) next[id] = s;
-        setStatsById(next);
+        
+        if (!cancelled) {
+          const leaderboardData = (data || []).map((row: any) => ({
+            user_id: row.user_id,
+            display_name: row.display_name || `User ${row.user_id.slice(0, 5)}`,
+            avatar_url: row.avatar_url,
+            points: row.points || 0,
+            streak: row.streak || 0,
+          }));
+          
+          setLeaderboard(leaderboardData);
+          
+          // Dev diagnostics
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('[Arena] Leaderboard loaded:', {
+              groupId: members[0]?.group_id,
+              isInArena: members.length > 0,
+              leaderboardRows: leaderboardData.length,
+              samplePoints: leaderboardData.slice(0, 3).map(u => ({ name: u.display_name, points: u.points }))
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[Arena] Leaderboard fetch error:', error);
+      } finally {
+        if (!cancelled) {
+          setLeaderboardLoading(false);
+        }
       }
-    })();
-    return () => { cancelled = true; };
-  }, [members]);
+    };
 
-  // Build rows with real stats and sort by score for ranking
+    loadLeaderboard();
+    return () => { cancelled = true; };
+  }, [user?.id, members.length]);
+
+  // Use leaderboard data directly from server function
   const rows = useMemo(() => {
-    const list = Array.isArray(members) ? members : [];
-    // Inject stats from cache and sort for rank badges
-    const withStats = list.map(m => {
-      const s = statsById[m.user_id] ?? { score: 0, streak: 0 };
-      return {
-        user_id: m.user_id,
-        display_name: m.display_name?.trim() ? m.display_name.trim() : `User ${String(m.user_id).slice(0, 5)}`,
-        avatar_url: m.avatar_url ?? null,
-        joined_at: m.joined_at,
-        score: s.score ?? 0,
-        streak: s.streak ?? 0,
-      };
-    });
-    // Sort by score desc, then joined_at asc for stable rank numbers
-    withStats.sort((a, b) => 
-      (b.score ?? 0) - (a.score ?? 0) || 
-      (a.joined_at ? new Date(a.joined_at).getTime() : 0) - (b.joined_at ? new Date(b.joined_at).getTime() : 0)
-    );
-    return withStats;
-  }, [members, statsById]);
+    return leaderboard.map(item => ({
+      user_id: item.user_id,
+      display_name: item.display_name,
+      avatar_url: item.avatar_url,
+      joined_at: null, // Not needed for display
+      score: item.points,
+      streak: item.streak,
+    }));
+  }, [leaderboard]);
 
   if (process.env.NODE_ENV !== 'production') {
     console.info('[Arena rows]', rows.length, rows.slice(0,3));
   }
 
-  if (loading) return <div>Loading…</div>;
+  if (loading || leaderboardLoading) return <div>Loading…</div>;
   if (error) return <div className="text-red-500">Failed to load arena.</div>;
   if (!rows.length) return <div>No arena buddies yet</div>;
 

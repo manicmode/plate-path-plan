@@ -2242,6 +2242,13 @@ export type Database = {
             foreignKeyName: "private_challenge_messages_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "arena_leaderboard_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "private_challenge_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["user_id"]
           },
@@ -5260,6 +5267,36 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_leaderboard_view: {
+        Row: {
+          avatar_url: string | null
+          first_name: string | null
+          hydration_streak: number | null
+          last_name: string | null
+          nutrition_streak: number | null
+          supplement_streak: number | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          first_name?: string | null
+          hydration_streak?: never
+          last_name?: string | null
+          nutrition_streak?: never
+          supplement_streak?: never
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          first_name?: string | null
+          hydration_streak?: never
+          last_name?: string | null
+          nutrition_streak?: never
+          supplement_streak?: never
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       challenges_with_counts: {
         Row: {
           category: string | null
@@ -5870,6 +5907,16 @@ export type Database = {
           created_at: string
           id: string
           title: string
+        }[]
+      }
+      my_rank20_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          streak: number
+          user_id: string
         }[]
       }
       my_rank20_members: {
