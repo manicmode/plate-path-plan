@@ -1,1 +1,1 @@
-export const ARENA_ENABLED = (import.meta as any)?.env?.VITE_ARENA_ENABLED ?? true;
+export const ARENA_ENABLED = true;

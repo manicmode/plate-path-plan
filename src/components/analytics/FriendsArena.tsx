@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-import { useRank20Members } from '@/hooks/arena/useRank20Members';
+import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
 import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
@@ -25,6 +25,7 @@ import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel'
 import { useAuth } from '@/contexts/auth';
 import ArenaSkeleton from '@/components/arena/ArenaSkeleton';
 import { ArenaErrorBanner } from '@/components/arena/ArenaErrorBanner';
+import { ArenaSmokeTester } from '@/components/arena/ArenaSmokeTester';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -47,6 +48,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { user } = useAuth();
   const membership = useRank20Members(user?.id);
   const { data: members = [], isLoading: loading, error, refetch: refresh } = membership;
+  const membershipData = useArenaMembership();
   const { challengeId } = useRank20ChallengeId();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -192,10 +194,10 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 </button>
               </div>
 
-      {/* Show Arena error banner if there's an error */}
-      {membership.isError && (
-        <ArenaErrorBanner message="Arena temporarily unavailable — try again shortly." />
-      )}
+              {/* Show Arena error banner only for real RPC errors */}
+              {membershipData.data?.error && (
+                <ArenaErrorBanner message={membershipData.data.error} />
+              )}
       
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(
@@ -325,6 +327,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       ) : (
         <ArenaSkeleton />
       )}
+      <ArenaSmokeTester />
     </section>
   );
 };
