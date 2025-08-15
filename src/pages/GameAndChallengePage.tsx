@@ -43,7 +43,7 @@ import {
   Lock
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
+
 import { FriendsArena } from '@/components/analytics/FriendsArena';
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
@@ -62,8 +62,6 @@ import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
-import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
-import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
@@ -157,13 +155,6 @@ function GameAndChallengeContent() {
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Recovery leaderboard hook
-  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
-  
-  // Real challenge leaderboards
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading } = useGameChallengeLeaderboard('nutrition');
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading } = useGameChallengeLeaderboard('exercise');
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading } = useGameChallengeLeaderboard('recovery');
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -184,7 +175,7 @@ function GameAndChallengeContent() {
       // Only allow programmatic navigation if user has initiated action
       if (userInitiatedRef.current) {
         setActiveSection(BILLBOARD_ENABLED ? 'billboard' : 'chat');
-        console.info('[chat] switch-to-chat-tab', ce.detail?.challengeId);
+        
       }
     };
     window.addEventListener('switch-to-chat-tab', handler as EventListener);
@@ -260,39 +251,6 @@ function GameAndChallengeContent() {
     };
   }, [activeSection]);
 
-  // Get real leaderboard data based on challenge mode
-  let currentLeaderboard;
-  let isLoading = false;
-  let isEmpty = false;
-  
-  switch (challengeMode) {
-    case 'nutrition':
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
-      isLoading = nutritionLoading;
-      isEmpty = nutritionLeaderboard.isEmpty;
-      break;
-    case 'exercise':
-      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
-      isLoading = exerciseLoading;
-      isEmpty = exerciseLeaderboard.isEmpty;
-      break;
-    case 'recovery':
-      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
-      isLoading = recoveryRealLoading;
-      isEmpty = recoveryRealLeaderboard.isEmpty;
-      break;
-    case 'combined':
-    default:
-      // Use nutrition leaderboard as default for combined view
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
-      isLoading = nutritionLoading;
-      isEmpty = nutritionLeaderboard.isEmpty;
-      break;
-  }
-  
-  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
-  const optimizedFriends = optimizeForMobile([]);
-  const optimizedHallOfFame = optimizeForMobile([]);
 
   // Mobile pull-to-refresh
   const handleRefresh = async () => {
@@ -411,10 +369,6 @@ function GameAndChallengeContent() {
                     onValueChange={(value) => {
                       if (value) {
                         setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
-                        // Telemetry
-                        if (process.env.NODE_ENV !== 'production') {
-                          console.info('domain_filter_changed', { section: activeSection, domain: value });
-                        }
                       }
                     }}
                     className="bg-muted/50 rounded-full p-1"
@@ -492,255 +446,6 @@ function GameAndChallengeContent() {
               "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
           
-          {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
-          {false && (
-            <section id="ranking" className="animate-fade-in">
-            <Card className={cn(
-              "overflow-hidden border-2 shadow-xl",
-              challengeMode === 'recovery' 
-                ? "border-teal-200/30 bg-gradient-to-br from-teal-50/50 to-purple-50/50 dark:from-teal-950/20 dark:to-purple-950/20"
-                : "border-primary/20"
-            )}>
-              <CardHeader className={cn(
-                challengeMode === 'recovery' 
-                  ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/30 dark:to-purple-950/30"
-                  : "bg-gradient-to-r from-primary/10 to-secondary/10",
-                isMobile ? "p-4" : "p-6"
-              )}>
-                <div className={cn(
-                  "flex items-center",
-                  isMobile ? "flex-col space-y-2" : "justify-between"
-                )}>
-                  <CardTitle className={cn(
-                    "font-bold flex items-center gap-2",
-                    isMobile ? "text-xl text-center" : "text-3xl gap-3"
-                  )}>
-                     {challengeMode === 'recovery' ? (
-                       <>
-                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                         Live Rankings Arena
-                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                       </>
-                     ) : (
-                       <>
-                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                         Live Rankings Arena
-                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                       </>
-                     )}
-                  </CardTitle>
-                  
-                  {/* Create Challenge Button */}
-                  <Button 
-                    onClick={() => setShowChallengeModal(true)}
-                    className={cn(
-                      "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg",
-                      isMobile ? "h-8 px-3 text-xs w-full" : ""
-                    )}
-                    size={isMobile ? "sm" : "default"}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className={isMobile ? "text-xs" : ""}>Create Challenge</span>
-                  </Button>
-                </div>
-              </CardHeader>
-               <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
-                  {isLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse flex items-center gap-4 p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20">
-                          <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
-                            <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
-                          </div>
-                          <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : isEmpty ? (
-                    <div className="text-center py-12">
-                      <div className="text-6xl mb-4">
-                        {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2 text-teal-700 dark:text-teal-300">
-                        {challengeMode === 'nutrition' && "No challengers yet! Time to be the first to rise 💪"}
-                        {challengeMode === 'exercise' && "No workout warriors yet! Time to be the first to rise 💪"}
-                        {challengeMode === 'recovery' && "No recovery warriors yet! Time to be the first to rise 💪"}
-                        {challengeMode === 'combined' && "No challengers yet! Time to be the first to rise 💪"}
-                      </h3>
-                      <p className="text-muted-foreground mb-6">
-                        {challengeMode === 'nutrition' && "Start logging your meals to appear on the nutrition leaderboard!"}
-                        {challengeMode === 'exercise' && "Start completing workouts to appear on the exercise leaderboard!"}
-                        {challengeMode === 'recovery' && "Start your meditation, breathing, yoga, sleep, or recovery journey to appear on the leaderboard!"}
-                        {challengeMode === 'combined' && "Start your fitness journey to appear on the leaderboard!"}
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          if (challengeMode === 'nutrition') window.location.href = '/nutrition';
-                          else if (challengeMode === 'exercise') window.location.href = '/exercise-hub';
-                          else if (challengeMode === 'recovery') window.location.href = '/exercise-hub?tab=recovery';
-                          else window.location.href = '/home';
-                        }}
-                        className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white"
-                      >
-                        <span className="mr-2">
-                          {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘'}
-                        </span>
-                        Start Your Journey
-                      </Button>
-                    </div>
-                   ) : (
-                    <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
-                      {/* Coach CTA for Recovery Leaderboard */}
-                      {challengeMode === 'recovery' && !isMobile && (
-                        <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-teal-100/50 to-purple-100/50 dark:from-teal-950/20 dark:to-purple-950/20 border border-teal-200/30">
-                          <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
-                            🌟 Try to reach the top 10 in Recovery! Practice daily meditation, breathing, or yoga to climb the ranks.
-                          </p>
-                        </div>
-                      )}
-                      {currentLeaderboard.map((user) => (
-                      <div
-                       key={user.id}
-                       className={cn(
-                         "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
-                         isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
-                         user.isCurrentUser 
-                           ? challengeMode === 'recovery'
-                             ? "border-teal-400 bg-teal-50/50 dark:bg-teal-950/20 shadow-lg shadow-teal-200/20 ring-2 ring-teal-300/30"
-                             : "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30"
-                           : challengeMode === 'recovery'
-                             ? "border-purple-200/40 bg-purple-50/30 dark:bg-purple-950/10 hover:border-teal-300/60"
-                             : "border-muted bg-muted/30 hover:border-primary/40"
-                       )}
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsUserStatsOpen(true);
-                      }}
-                    >
-                      
-                       <div className={cn(
-                         "flex items-center",
-                         isMobile ? "flex-col space-y-3" : "justify-between"
-                       )}>
-                         <div className={cn(
-                           "flex items-center",
-                           isMobile ? "w-full justify-center gap-3" : "gap-4"
-                         )}>
-                            <div className={cn(
-                              "font-bold text-muted-foreground",
-                              isMobile ? "text-lg" : "text-2xl"
-                            )}>
-                             {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
-                            </div>
-                           
-                              {/* Enhanced Progress Avatar - showStats=false to only show name */}
-                              <ProgressAvatar 
-                                avatar={user.avatar}
-                                nickname={user.nickname}
-                                weeklyProgress={user.weeklyProgress}
-                                dailyStreak={user.dailyStreak}
-                                weeklyStreak={user.weeklyStreak}
-                                size={isMobile ? "sm" : "md"}
-                                showStats={false}
-                                isCurrentUser={user.isCurrentUser}
-                                name={user.isCurrentUser ? 
-                                  (currentUser?.first_name && currentUser?.last_name ? 
-                                    `${currentUser.first_name} ${currentUser.last_name}` : 
-                                    currentUser?.first_name || currentUser?.name) : 
-                                  (user.first_name && user.last_name ? 
-                                    `${user.first_name} ${user.last_name}` : 
-                                    user.first_name || user.name)}
-                                email={user.isCurrentUser ? currentUser?.email : user.email}
-                                avatar_url={user.isCurrentUser ? currentUser?.avatar_url : user.avatar_url}
-                              />
-                          
-                             {!isMobile && (
-                               <div className="flex items-center gap-3 text-sm">
-                                 <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                                   <CheckCircle className="h-3 w-3 text-green-600" />
-                                   <span className="text-green-700 dark:text-green-400 font-medium">
-                                     {challengeMode === 'recovery' ? 
-                                       `${(user as any).totalSessions || 0} sessions` :
-                                       `${user.mealsLoggedThisWeek}/${user.totalMealsThisWeek}`
-                                     }
-                                   </span>
-                                 </div>
-                                 <Badge variant="outline" className="text-xs">
-                                   Score: {user.score}
-                                 </Badge>
-                               </div>
-                             )}
-                        </div>
-                        
-                        <div className={cn(
-                          "flex items-center",
-                          isMobile ? "w-full justify-between text-xs" : "gap-6"
-                        )}>
-                          {/* Mobile: Compact display */}
-                           {isMobile ? (
-                               <div className="flex items-center gap-2">
-                                 <Badge variant="secondary" className="text-xs px-1">
-                                   🥇{user.gold}
-                                 </Badge>
-                                 <Badge variant="secondary" className="text-xs px-1">
-                                   Score: {user.score}
-                                 </Badge>
-                                <div className="flex items-center gap-1 text-green-600">
-                                 {user.improvement > 0 ? (
-                                   <>
-                                     <TrendingUp className="h-3 w-3" />
-                                     <span className="text-xs">+{user.improvement}</span>
-                                   </>
-                                 ) : (
-                                   <>
-                                     <TrendingDown className="h-3 w-3" />
-                                     <span className="text-xs">{user.improvement}</span>
-                                   </>
-                                 )}
-                               </div>
-                             </div>
-                          ) : (
-                            <>
-                              {/* Desktop: Full display */}
-                              <div className="flex gap-2">
-                                <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
-                                  🥇 {user.gold}
-                                </Badge>
-                                <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
-                                  🥈 {user.silver}
-                                </Badge>
-                                <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
-                                  🥉 {user.bronze}
-                                </Badge>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                {user.improvement > 0 ? (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm font-medium">+{user.improvement}</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-red-500">
-                                    <TrendingDown className="h-4 w-4" />
-                                    <span className="text-sm font-medium">{user.improvement}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                      ))}
-                    </div>
-                 )}
-               </CardContent>
-            </Card>
-          </section>
-          )}
 
           {/* Mobile-Optimized Tabs for All Sections */}
           <Tabs value={activeSection} onValueChange={(value) => {
@@ -799,7 +504,7 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="hall-of-fame" className="mt-4">
-                <HallOfFame champions={optimizedHallOfFame} challengeMode="combined" />
+                <HallOfFame champions={[]} challengeMode="combined" />
               </TabsContent>
             </Tabs>
             
@@ -808,7 +513,7 @@ function GameAndChallengeContent() {
           <ChallengeCreationModal
             open={showChallengeModal}
             onOpenChange={setShowChallengeModal}
-            friends={optimizedFriends}
+            friends={[]}
           />
 
           <MicroChallengeCreationModal

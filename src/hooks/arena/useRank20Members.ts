@@ -30,10 +30,6 @@ export function useRank20Members() {
       const { data, error } = await supabase.rpc('my_rank20_group_members');
       if (error) setError(error.message);
       
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.info('[RPC] my_rank20_group_members', Array.isArray(data) ? data.length : data, data);
-      }
       
       setMembers((data as Member[]) ?? []);
     } catch (err) {
@@ -45,24 +41,6 @@ export function useRank20Members() {
 
   useEffect(() => { refresh(); }, []);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    (async () => {
-      try {
-        const [{ data: user }, chosen] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase.rpc('my_rank20_chosen_challenge_id')
-        ]);
-        // eslint-disable-next-line no-console
-        console.info('[RPC] auth user', user?.user?.id);
-        // eslint-disable-next-line no-console
-        console.info('[RPC] chosen_challenge', chosen?.data);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.info('[RPC] chosen_challenge error', e);
-      }
-    })();
-  }, []);
 
   return { members, loading, error, refresh };
 }
