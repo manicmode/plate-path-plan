@@ -20,6 +20,7 @@ import { useRank20Members } from '@/hooks/arena/useRank20Members';
 import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
+import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -51,6 +52,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   
   // Stats cache for all members
   const [statsById, setStatsById] = useState<Record<string, UserStats>>({});
+
+  // Billboard modal state
+  const [isBillboardOpen, setBillboardOpen] = useState(false);
 
   // Preload stats for all members
   useEffect(() => {
@@ -111,11 +115,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         <button
           type="button"
           onClick={() => {
-            if (challengeId) {
-              navigate(`/game-and-challenge?tab=billboard&type=rank_of_20&private_challenge_id=${challengeId}`);
-            } else {
-              navigate('/game-and-challenge?tab=billboard');
-            }
+            setBillboardOpen(true);
           }}
           className="w-80 mx-auto rounded-full px-4 py-3 text-sm md:text-base font-medium
                      bg-gradient-to-r from-fuchsia-500/80 via-purple-500/80 to-cyan-500/80
@@ -244,6 +244,13 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           />
         )}
       </Card>
+
+      {/* Arena Billboard Modal */}
+      <ArenaBillboardChatPanel
+        isOpen={isBillboardOpen}
+        onClose={() => setBillboardOpen(false)}
+        privateChallengeId={challengeId}
+      />
     </>
   );
 };

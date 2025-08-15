@@ -273,11 +273,6 @@ function AppContent() {
                         <GameAndChallengePage_Min />
                       </ProtectedRoute>
                     } />
-                    <Route path="/game-and-challenge/billboard" element={
-                      <ProtectedRoute>
-                        <GameAndChallengePage_Min />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/supplement-hub" element={
                       <ProtectedRoute>
                         <SupplementHub />
