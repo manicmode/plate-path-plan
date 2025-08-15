@@ -73,6 +73,8 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     const loadLeaderboard = async () => {
       if (!user?.id) return;
       
+      // Invalidate any prior leaderboard cache on Arena tab mount/open
+      setLeaderboard([]);
       setLeaderboardLoading(true);
       try {
         const { data, error } = await supabase.rpc('my_rank20_leaderboard');
@@ -93,13 +95,13 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
           
           setLeaderboard(leaderboardData);
           
-          // Dev diagnostics
+          // Dev diagnostics - log once on Arena tab mount/open
           if (process.env.NODE_ENV !== 'production') {
-            console.info('[Arena] Leaderboard loaded:', {
+            console.info('[Arena] Arena opened:', {
               groupId: members[0]?.group_id,
               isInArena: members.length > 0,
-              leaderboardRows: leaderboardData.length,
-              samplePoints: leaderboardData.slice(0, 3).map(u => ({ name: u.display_name, points: u.points }))
+              chatRows: 'N/A', // Available in ArenaBillboardChatPanel
+              leaderboardRows: leaderboardData.length
             });
           }
         }

@@ -235,12 +235,23 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     setConnectionStatus('disconnected');
   }, []);
 
-  const setupRealtimeSubscriptions = useCallback((challengeId: string) => {
+  const setupRealtimeSubscriptions = useCallback((challengeId: string, groupId?: string) => {
     if (!challengeId) return;
     
-    // Setup chat channel
+    // Dev logging for realtime setup
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[Arena] Setting up realtime subscriptions:', {
+        challengeId,
+        groupId,
+        isInArena,
+        chatRows: chatMessages.length
+      });
+    }
+    
+    // Setup chat channel - use groupId for topic consistency
+    const chatTopic = groupId ? `r20-chat-group-${groupId}` : `r20-chat-${challengeId}`;
     const chatChannel = supabase
-      .channel(`r20-chat-${challengeId}`)
+      .channel(chatTopic)
       .on(
         'postgres_changes',
         { 
@@ -281,9 +292,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
     chatChannelRef.current = chatChannel;
 
-    // Setup announcement channel
+    // Setup announcement channel - use groupId for topic consistency
+    const announcementTopic = groupId ? `r20-ann-group-${groupId}` : `r20-ann-${challengeId}`;
     const announcementChannel = supabase
-      .channel(`r20-ann-${challengeId}`)
+      .channel(announcementTopic)
       .on(
         'postgres_changes',
         { 
@@ -507,7 +519,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       }
 
       // Setup realtime subscriptions
-      setupRealtimeSubscriptions(challengeIdData);
+      setupRealtimeSubscriptions(challengeIdData, groupId);
       
     } catch (error) {
       console.error('Error loading initial data:', error);
