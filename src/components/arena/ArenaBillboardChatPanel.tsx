@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal } from 'lucide-react';
+import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
+import { useArenaMembership } from '@/hooks/arena/useRank20Members';
 
 interface Announcement {
   id: string;
@@ -36,6 +37,32 @@ interface ArenaBillboardChatPanelProps {
 }
 
 export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChallengeId }: ArenaBillboardChatPanelProps) {
+  // Arena membership check
+  const { data: membership, isLoading: membershipLoading, isError: membershipError } = useArenaMembership();
+  const { members = [], groupId, isInArena = false } = membership || {};
+  
+  // Anti-flicker logic
+  const [openedAt] = useState(() => Date.now());
+  const hasEverBeenInArena = useRef(false);
+  useEffect(() => { 
+    if (isInArena) hasEverBeenInArena.current = true; 
+  }, [isInArena]);
+
+  const withinGrace = Date.now() - openedAt < 600; // 600ms grace period
+  const showEmpty = !membershipLoading && !isInArena && !withinGrace && !hasEverBeenInArena.current;
+  
+  // Dev diagnostics
+  useEffect(() => {
+    if (isOpen && !membershipLoading && process.env.NODE_ENV !== 'production') {
+      console.info('[ArenaBillboard] Opened:', {
+        groupId,
+        memberCount: members.length,
+        isInArena,
+        finalDecision: showEmpty ? 'empty' : 'content'
+      });
+    }
+  }, [isOpen, membershipLoading, groupId, members.length, isInArena, showEmpty]);
+
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState<string | null>(null);
   const [showNewGlow, setShowNewGlow] = useState(false);
@@ -44,7 +71,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [isNotMember, setIsNotMember] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
@@ -140,7 +166,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
   // Load initial data and setup realtime when panel opens
   useEffect(() => {
-    if (isOpen && isAuthenticated) {
+    if (isOpen && isAuthenticated && isInArena) {
       loadInitialData();
       
       // Telemetry
@@ -151,7 +177,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       // Cleanup when panel closes
       cleanupRealtimeSubscriptions();
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen, isAuthenticated, isInArena]);
 
   // Realtime subscription to reaction changes
   useEffect(() => {
@@ -411,8 +437,13 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   }, []);
 
   const loadInitialData = async () => {
+    // Only load data if user is in arena
+    if (!isInArena) {
+      console.info('User not in arena, skipping data load');
+      return;
+    }
+    
     setIsLoading(true);
-    setIsNotMember(false);
     
     try {
       // Use provided privateChallengeId or fallback to RPC
@@ -422,7 +453,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         const { data: rpcData, error: challengeError } = await supabase.rpc('my_rank20_challenge_id');
         if (challengeError || !rpcData) {
           console.info('User not in rank20 challenge');
-          setIsNotMember(true);
           setIsLoading(false);
           return;
         }
@@ -826,11 +856,31 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     }
   };
 
-  // Handle non-member state
-  if (isNotMember) {
+  // Loading skeleton while checking membership
+  if (membershipLoading || withinGrace) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="billboard-chat-loading">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Billboard & Chat
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading arena...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Empty state for non-members
+  if (showEmpty) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="billboard-chat-empty">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
@@ -867,9 +917,10 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
     );
   }
 
+  // Real content for arena members
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" data-testid="billboard-chat-content">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />

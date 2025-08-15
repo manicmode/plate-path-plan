@@ -1,34 +1,39 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export function useRank20Members(userId?: string) {
+export function useArenaMembership() {
   return useQuery({
-    queryKey: ['rank20Members', userId],
+    queryKey: ['arena-membership'],
     queryFn: async () => {
-      // Prefer RPC if it exists
-      const rpc = await supabase.rpc('my_rank20_members');
-      if (!rpc.error && Array.isArray(rpc.data)) {
-        console.info('[Arena] rows:', rpc.data.length);
-        return rpc.data;
+      const { data: rows, error } = await supabase.rpc('my_rank20_members');
+      
+      if (error) {
+        console.error('[Arena] Error fetching membership:', error);
+        return { members: [], groupId: null, isInArena: false };
       }
       
-      // Fallback: safe select from a view/table the UI expects
-      const { data, error } = await supabase
-        .from('rank20_members_view') // if this view doesn't exist, fallback below
-        .select('*');
-      if (!error && data) {
-        console.info('[Arena] rows:', data.length);
-        return data;
-      }
+      const members = rows || [];
+      const groupId = members[0]?.group_id ?? null;
+      const isInArena = !!groupId && members.length > 0;
       
-      // Final fallback: raw table
-      const raw = await supabase.from('rank20_members').select('*');
-      console.info('[Arena] rows:', raw.data?.length ?? 0);
-      return raw.data ?? [];
+      console.info('[Arena] membership check:', { groupId, memberCount: members.length, isInArena });
+      
+      return { members, groupId, isInArena };
     },
-    enabled: !!userId,
-    staleTime: 0,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
   });
+}
+
+// Legacy hook for backward compatibility
+export function useRank20Members(userId?: string) {
+  const membership = useArenaMembership();
+  
+  return {
+    ...membership,
+    data: membership.data?.members || [],
+    isLoading: membership.isLoading,
+    isError: membership.isError,
+  };
 }
