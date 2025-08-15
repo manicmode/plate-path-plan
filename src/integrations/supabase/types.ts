@@ -5268,6 +5268,26 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_leaderboard_view: {
+        Row: {
+          avatar_url: string | null
+          challenge_id: string | null
+          display_name: string | null
+          points: number | null
+          rank: number | null
+          streak: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_rank20_groups_challenge"
+            columns: ["challenge_id"]
+            isOneToOne: true
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenges_with_counts: {
         Row: {
           category: string | null
@@ -5904,11 +5924,14 @@ export type Database = {
         }[]
       }
       my_rank20_leaderboard: {
-        Args: Record<PropertyKey, never>
+        Args:
+          | Record<PropertyKey, never>
+          | { p_limit?: number; p_offset?: number }
         Returns: {
           avatar_url: string
           display_name: string
           points: number
+          rank: number
           streak: number
           user_id: string
         }[]
