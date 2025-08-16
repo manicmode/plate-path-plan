@@ -178,6 +178,18 @@ function GameAndChallengeContent() {
   // Use the scroll-to-top hook
   useScrollToTop();
 
+  // A. page-level heartbeat (fires once on page render)
+  useEffect(() => {
+    arenaUiHeartbeat(supabase, "gc:mounted");
+  }, []);
+
+  // B. ranking-active heartbeat (fires whenever the Ranking tab becomes active)
+  useEffect(() => {
+    if (activeSection === "ranking") {
+      arenaUiHeartbeat(supabase, "ranking:active");
+    }
+  }, [activeSection]);
+
   // Cache hygiene for Arena
   useEffect(() => {
     // Keep Arena cache separate from domain lists
