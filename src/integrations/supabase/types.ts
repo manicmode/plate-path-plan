@@ -5962,6 +5962,16 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_billboard_mv: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          rank: number | null
+          score: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       arena_billboard_with_profiles: {
         Row: {
           avatar_url: string | null
@@ -6385,6 +6395,16 @@ export type Database = {
         Args: { p_content: string }
         Returns: string
       }
+      arena_recompute_and_refresh: {
+        Args: {
+          p_challenge_id?: string
+          p_limit?: number
+          p_month?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: undefined
+      }
       arena_recompute_rollups_monthly: {
         Args: {
           p_challenge_id?: string
@@ -6403,6 +6423,10 @@ export type Database = {
           p_section?: string
           p_year?: number
         }
+        Returns: undefined
+      }
+      arena_refresh_billboard_mv: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       arena_ui_server_smoketest: {
