@@ -805,6 +805,30 @@ export type Database = {
           },
         ]
       }
+      arena_friend_overtake_notifs: {
+        Row: {
+          friend_id: string
+          last_sent_at: string
+          month: number
+          user_id: string
+          year: number
+        }
+        Insert: {
+          friend_id: string
+          last_sent_at?: string
+          month: number
+          user_id: string
+          year: number
+        }
+        Update: {
+          friend_id?: string
+          last_sent_at?: string
+          month?: number
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       arena_groups: {
         Row: {
           challenge_id: string
@@ -6345,6 +6369,17 @@ export type Database = {
           rank: number
           score: number
         }[]
+      }
+      arena_notify_friend_overtakes: {
+        Args: {
+          p_challenge_id?: string
+          p_cooldown_hours?: number
+          p_month?: number
+          p_section?: string
+          p_top_cutoff?: number
+          p_year?: number
+        }
+        Returns: undefined
       }
       arena_post_message: {
         Args: { p_content: string }
