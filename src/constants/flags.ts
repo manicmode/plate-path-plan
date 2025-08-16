@@ -11,6 +11,13 @@ export const FLAGS = {
   BARCODE_GLOBAL_ROLLOUT: false,
 
   /**
+   * Enable header section tabs for Awards and Hall of Fame views.
+   * When true, shows Combined/Nutrition/Exercise/Recovery tabs at header level
+   * for winners and hall-of-fame sections only (Arena keeps inner tabs).
+   */
+  ARENA_HEADER_SECTION_TABS_FOR_AWARDS: true,
+
+  /**
    * XP demo flag (dev-friendly). Reads from Vite or Next-style envs.
    * Usage: import { FLAGS } and check FLAGS.ENABLE_XP.
    */

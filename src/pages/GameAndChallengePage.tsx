@@ -65,6 +65,7 @@ import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
+import { FLAGS } from '@/constants/flags';
 import BillboardTab from '@/components/billboard/BillboardTab';
 
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
@@ -386,29 +387,36 @@ function GameAndChallengeContent() {
                   ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Show in Browse and My Challenges, hide when Arena is active */}
+            {/* Challenge Mode Toggle - Show for Awards/Hall of Fame when flag enabled, hidden for Arena */}
             {(() => {
+              if (!FLAGS.ARENA_HEADER_SECTION_TABS_FOR_AWARDS) return null;
+              
               const isArenaActive = activeSection === 'ranking';
-              const showCategoryFilters = ['ranking', 'challenges', 'my-challenges'].includes(activeSection);
-              return showCategoryFilters && !isArenaActive && (
+              const showHeaderSectionTabs = ['winners', 'hall-of-fame'].includes(activeSection);
+              
+              if (showHeaderSectionTabs) {
+                console.log('[Header Tabs] visible for:', activeSection);
+              }
+              
+              return showHeaderSectionTabs && !isArenaActive && (
                 <div className="flex justify-center mt-2">
                   <ToggleGroup 
                     type="single" 
                     value={challengeMode} 
                      onValueChange={(value) => {
                        if (value) {
-                         console.log('[Header Tabs] changed to', value);
+                         console.log('[Header Tabs] selection:', value);
                          lightTap(); // Add haptic feedback
                          setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
                        }
                      }}
                     className="bg-muted/50 rounded-full p-1"
-                    data-testid="header-section-switcher"
+                    data-testid="gc-header-section-tabs"
                   >
-                    <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
-                    <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Exercise</ToggleGroupItem>
-                    <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Recovery</ToggleGroupItem>
-                    <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Combined</ToggleGroupItem>
+                    <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-combined">Combined</ToggleGroupItem>
+                    <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-nutrition">Nutrition</ToggleGroupItem>
+                    <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-exercise">Exercise</ToggleGroupItem>
+                    <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-recovery">Recovery</ToggleGroupItem>
                   </ToggleGroup>
                 </div>
               );
@@ -538,7 +546,7 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="hall-of-fame" className="mt-4">
-                <HallOfFame champions={[]} challengeMode="combined" />
+                <HallOfFame champions={[]} challengeMode={challengeMode} />
               </TabsContent>
             </Tabs>
             
