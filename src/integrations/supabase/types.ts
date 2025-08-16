@@ -5935,6 +5935,10 @@ export type Database = {
           path: string
         }[]
       }
+      arena_ui_server_smoketest_ping: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
         Returns: undefined
