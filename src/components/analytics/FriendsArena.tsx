@@ -76,7 +76,8 @@ const DevBadge = () => {
       title={dbg.cidError || ''}
     >
       {dbg.cidSource === 'fallback' ? 'fallback' : 
-       dbg.cidSource === 'rpc-safe' ? 'safe' : 'no-cid'}
+       dbg.cidSource === 'rpc-safe' ? 'safe' : 
+       dbg.cidSource === 'rpc-fallback' ? 'rpc-fb' : 'no-cid'}
     </div>
   );
 };

@@ -6288,6 +6288,10 @@ export type Database = {
           title: string
         }[]
       }
+      my_rank20_active_challenge_id_fallback: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       my_rank20_challenge_id: {
         Args: Record<PropertyKey, never>
         Returns: string
