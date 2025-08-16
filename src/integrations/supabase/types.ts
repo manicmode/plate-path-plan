@@ -5928,6 +5928,13 @@ export type Database = {
         Args: { p_content: string }
         Returns: string
       }
+      arena_ui_server_smoketest: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          challenge_id: string
+          path: string
+        }[]
+      }
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
         Returns: undefined
