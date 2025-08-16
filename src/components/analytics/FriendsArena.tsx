@@ -54,6 +54,32 @@ function initials(name?: string) {
   return letters.toUpperCase();
 }
 
+const DevBadge = () => {
+  if (typeof window === 'undefined') return null;
+  const dbg = (window as any).__arenaDbg || {};
+  if (!dbg?.cidSource || dbg.cidSource === 'rpc') return null;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        fontSize: 10,
+        opacity: 0.7,
+        padding: '2px 6px',
+        borderRadius: 6,
+        background: dbg.cidSource === 'fallback' ? '#1e293b' : '#7f1d1d',
+        color: '#fff',
+        zIndex: 1,
+      }}
+      data-testid="arena-cid-badge"
+      title={dbg.cidError || ''}
+    >
+      {dbg.cidSource === 'fallback' ? 'fallback' : 'no-cid'}
+    </div>
+  );
+};
+
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const { user } = useAuth();
   const membership = useRank20Members(user?.id);
@@ -184,6 +210,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               )}
       
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
+        <DevBadge />
         <CardHeader className={cn(
           "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
           isMobile ? "p-4" : "p-6"
