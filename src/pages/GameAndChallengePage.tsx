@@ -339,6 +339,21 @@ function GameAndChallengeContent() {
     }
   }, [messages]);
 
+  // Runtime verification for tab visibility fix
+  useEffect(() => {
+    const dump = (label) => {
+      const panels = Array.from(document.querySelectorAll('#gc-tabs-root [role="tabpanel"], #gc-tabs-root [data-radix-tabs-content]'));
+      console.info('[GC VERIFY]', label, panels.map(el => ({
+        value: el.getAttribute('data-value') || el.id || '(no-id)',
+        state: el.getAttribute('data-state'),
+        display: getComputedStyle(el).display
+      })));
+    };
+    dump('initial');
+    const triggers = Array.from(document.querySelectorAll('#gc-tabs-root [data-state="active"], #gc-tabs-root [role="tab"]'));
+    setTimeout(() => dump('after-timeout'), 200);
+  }, []);
+
   const quickEmojis = ['😆', '🔥', '👏', '🥦', '🍩', '💪', '🚀', '⭐'];
 
   const navigationItems = BILLBOARD_ENABLED ? [
@@ -488,15 +503,27 @@ function GameAndChallengeContent() {
               "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
           
+          {/* Inline CSS for bulletproof tab visibility control */}
+          <style id="gc-tabs-inline-css">{`
+            /* Hide ALL inactive panels under our root, regardless of library */
+            #gc-tabs-root [data-state="inactive"] { display: none !important; }
+            #gc-tabs-root [data-state="active"]   { display: block !important; }
+
+            /* Extra coverage if your lib doesn't set role or data-radix attrs consistently */
+            #gc-tabs-root [role="tabpanel"][hidden] { display: none !important; }
+            #gc-tabs-root [role="tabpanel"]:not([hidden]) { display: block !important; }
+          `}</style>
+
           {/* Tab Content with proper visibility control */}
-          <Tabs value={activeSection} onValueChange={(value) => {
-            userInitiatedRef.current = true;
-            if (value === 'chat') {
-              setIsChatroomManagerOpen(true);
-            } else {
-              setActiveSection(value);
-            }
-          }} className="w-full flex flex-col">
+          <div id="gc-tabs-root" data-gc-tabs-root>
+            <Tabs value={activeSection} onValueChange={(value) => {
+              userInitiatedRef.current = true;
+              if (value === 'chat') {
+                setIsChatroomManagerOpen(true);
+              } else {
+                setActiveSection(value);
+              }
+            }} className="w-full flex flex-col">
 
               <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8 data-[state=active]:block data-[state=inactive]:hidden">
                 <section id="live-rankings-arena" className="mt-0 space-y-6">
@@ -552,6 +579,7 @@ function GameAndChallengeContent() {
                 <HallOfFame champions={[]} challengeMode={challengeMode} />
               </TabsContent>
             </Tabs>
+          </div>
             
 
           {/* Challenge Creation Modals */}
