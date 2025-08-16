@@ -219,7 +219,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6" data-testid="arena-section-switcher">
               <TabsTrigger value="combined" className="flex items-center gap-2 text-xs">
                 {getTabIcon('combined')}
                 <span className="hidden sm:inline">Combined</span>

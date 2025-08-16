@@ -386,10 +386,11 @@ function GameAndChallengeContent() {
                   ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Show in Arena, Browse, and My Challenges */}
+            {/* Challenge Mode Toggle - Show in Browse and My Challenges, hide when Arena is active */}
             {(() => {
+              const isArenaActive = activeSection === 'ranking';
               const showCategoryFilters = ['ranking', 'challenges', 'my-challenges'].includes(activeSection);
-              return showCategoryFilters && (
+              return showCategoryFilters && !isArenaActive && (
                 <div className="flex justify-center mt-2">
                   <ToggleGroup 
                     type="single" 
@@ -402,6 +403,7 @@ function GameAndChallengeContent() {
                        }
                      }}
                     className="bg-muted/50 rounded-full p-1"
+                    data-testid="header-section-switcher"
                   >
                     <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
                     <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Exercise</ToggleGroupItem>
