@@ -4617,6 +4617,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_privacy_settings: {
+        Row: {
+          allow_challenge_friend_requests: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allow_challenge_friend_requests?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allow_challenge_friend_requests?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -6644,6 +6665,13 @@ export type Database = {
           shared_ranking_group: boolean
         }[]
       }
+      get_privacy_settings_for_users: {
+        Args: { target_ids: string[] }
+        Returns: {
+          allow_challenge_friend_requests: boolean
+          user_id: string
+        }[]
+      }
       get_security_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -7048,6 +7076,10 @@ export type Database = {
       }
       update_team_scores: {
         Args: { challenge_id_param: string }
+        Returns: undefined
+      }
+      upsert_privacy_settings: {
+        Args: { allow: boolean }
         Returns: undefined
       }
       validate_role_assignment: {
