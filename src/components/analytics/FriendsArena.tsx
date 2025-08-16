@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/auth';
 import ArenaSkeleton from '@/components/arena/ArenaSkeleton';
 import { ArenaErrorBanner } from '@/components/arena/ArenaErrorBanner';
 import { ArenaSmokeTester } from '@/components/arena/ArenaSmokeTester';
+import { arenaUiHeartbeat } from '@/lib/arenaDiag';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -144,6 +145,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     refresh();
     refreshSections();
   };
+  
+  // Mark UI as ready when challengeId is resolved
+  useEffect(() => {
+    if (!challengeId) return;
+    arenaUiHeartbeat?.(supabase, 'r20:ui:ready');
+  }, [challengeId]);
   
   React.useEffect(() => {
     let t: any;
