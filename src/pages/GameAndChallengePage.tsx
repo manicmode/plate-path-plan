@@ -109,6 +109,7 @@ interface ChatMessage {
 // All mock data removed - now using real data from Supabase
 
 export default function GameAndChallengePage() {
+  console.info('[ARENA TRACE] GameAndChallengePage (main export) mounted');
   return (
     <RewardsProvider>
       <ChatProvider>
@@ -130,6 +131,8 @@ function GameAndChallengeContent() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  // Runtime debugging
+  console.info('[ARENA TRACE] Page file = src/pages/GameAndChallengePage.tsx');
   
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -138,6 +141,7 @@ function GameAndChallengeContent() {
   });
 
   const [activeSection, setActiveSection] = useState('ranking');
+  console.info('[ARENA TRACE] Default activeSection:', 'ranking');
   const [chatMessage, setChatMessage] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(isMobile);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -293,6 +297,7 @@ function GameAndChallengeContent() {
 
   const onTabClick = (sectionId: string) => {
     console.log('[Header Section] activeSection:', sectionId, 'challengeMode:', challengeMode);
+    console.info('[ARENA TRACE] nav to', sectionId);
     userInitiatedRef.current = true;
     setActiveSection(sectionId);
     
@@ -361,8 +366,13 @@ function GameAndChallengeContent() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      {/* Sticky Header - Outside the main container */}
-<div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="relative bg-background border-b z-10">
+          {/* Page Watermark */}
+          {process.env.NODE_ENV !== "production" && (
+            <div className="absolute top-2 left-2 text-xs text-muted-foreground bg-background/80 px-1 rounded">
+              GC Page: GameAndChallengePage.tsx
+            </div>
+          )}
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
@@ -383,6 +393,7 @@ function GameAndChallengeContent() {
                       onClick={() => onTabClick(id)}
                       className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
                       size="sm"
+                      data-testid={id === 'ranking' ? 'nav-arena' : undefined}
                     >
                       <Icon className="h-6 w-6" />
                     </Button>
@@ -484,13 +495,35 @@ function GameAndChallengeContent() {
 
           {/* Main Content */}
           <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 pb-[90px] md:pb-[120px]">
+            
+            {/* ARENA HARDMOUNT - ALWAYS VISIBLE */}
+            <div className="space-y-6 mb-8">
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black p-4 rounded-lg text-center font-bold">
+                🏆 ARENA SECTION - HARDMOUNTED 🏆
+              </div>
+              
+              <div data-testid="arena-hardmount-top">
+                <React.Suspense fallback={<div className="p-4 text-center">Loading Arena...</div>}>
+                  <FriendsArena />
+                </React.Suspense>
+              </div>
+              
+              <div data-testid="arena-podium-hardmount">
+                <MonthlyTrophyPodium section={challengeMode} />
+              </div>
+              
+              <div data-testid="arena-hof-hardmount">
+                <HallOfFame champions={[]} challengeMode={challengeMode} />
+              </div>
+            </div>
+
             <div className={cn(
               "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
           
-
-          {/* Mobile-Optimized Tabs for All Sections */}
+          {/* Original Tab Content */}
           <Tabs value={activeSection} onValueChange={(value) => {
+            console.info('[ARENA TRACE] Tab changed to:', value);
             userInitiatedRef.current = true;
             if (value === 'chat') {
               setIsChatroomManagerOpen(true);
@@ -501,6 +534,10 @@ function GameAndChallengeContent() {
 
               <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
                 <section id="live-rankings-arena" className="mt-0">
+                  {/* Hardmount Test */}
+                  <div data-testid="arena-hardmount" className="fixed bottom-24 right-4 z-[80] p-2 rounded bg-pink-500 text-black text-xs">
+                    ARENA HARDMOUNT
+                  </div>
                   <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
                     <FriendsArena />
                   </React.Suspense>
@@ -585,6 +622,11 @@ function GameAndChallengeContent() {
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
+        
+        {/* Arena Hard Mount Test - Always Visible */}
+        <div data-testid="arena-hardmount-top" className="bg-red-500 text-white p-4 m-4 rounded-lg text-center font-bold">
+          ARENA SECTION HARDMOUNT TEST - Active Tab: {activeSection}
+        </div>
         
         {/* Arena Debug Badge - Dev Only */}
         {process.env.NODE_ENV !== "production" && (
