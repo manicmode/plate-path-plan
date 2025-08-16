@@ -92,7 +92,6 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5" />
                 🌎 Global Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -126,7 +125,6 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5" />
                 ⚡ Quick Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -160,7 +158,6 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
                 🔥 Trending Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -194,7 +191,6 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
                 ✨ New Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
