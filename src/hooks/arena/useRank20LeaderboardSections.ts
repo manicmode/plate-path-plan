@@ -53,29 +53,48 @@ export function useRank20LeaderboardSections(limit = 20, offset = 0) {
         supabase.rpc('my_rank20_leaderboard_recovery', { p_limit: limit, p_offset: offset })
       ]);
 
-      // Check for errors
-      if (combinedResult.error) throw combinedResult.error;
-      if (nutritionResult.error) throw nutritionResult.error;
-      if (exerciseResult.error) throw exerciseResult.error;
-      if (recoveryResult.error) throw recoveryResult.error;
+      // Per-section logging
+      if (combinedResult.error)   console.error('[Arena RPC error] combined:', combinedResult.error);
+      if (nutritionResult.error)  console.error('[Arena RPC error] nutrition:', nutritionResult.error);
+      if (exerciseResult.error)   console.error('[Arena RPC error] exercise:', exerciseResult.error);
+      if (recoveryResult.error)   console.error('[Arena RPC error] recovery:', recoveryResult.error);
 
-      setData({
-        combined: combinedResult.data || [],
-        nutrition: nutritionResult.data || [],
-        exercise: exerciseResult.data || [],
-        recovery: recoveryResult.data || []
+      // Coerce to arrays
+      const combinedRows  = combinedResult.data  ?? [];
+      const nutritionRows = nutritionResult.data ?? [];
+      const exerciseRows  = exerciseResult.data  ?? [];
+      const recoveryRows  = recoveryResult.data  ?? [];
+
+      // Determine partial success
+      const anyData  = [combinedRows, nutritionRows, exerciseRows, recoveryRows].some(a => a.length > 0);
+      const errors   = {
+        combined:  combinedResult.error?.message ?? null,
+        nutrition: nutritionResult.error?.message ?? null,
+        exercise:  exerciseResult.error?.message ?? null,
+        recovery:  recoveryResult.error?.message ?? null,
+      };
+      const anyError  = Object.values(errors).some(Boolean);
+      const showError = !anyData && anyError;
+
+      // Optional: quick visibility on counts
+      console.log('[Arena sections] counts', {
+        combined: combinedRows.length,
+        nutrition: nutritionRows.length,
+        exercise: exerciseRows.length,
+        recovery: recoveryRows.length,
       });
 
       // Log nutrition RPC rows for verification
-      console.log('[Nutrition RPC rows]', nutritionResult.data?.length || 0, (nutritionResult.data || []).slice(0, 2));
+      console.log('[Nutrition RPC rows]', nutritionRows.length, nutritionRows.slice(0, 2));
 
-      console.log('Leaderboard sections fetched:', {
-        combined: combinedResult.data?.length || 0,
-        nutrition: nutritionResult.data?.length || 0,
-        exercise: exerciseResult.data?.length || 0,
-        recovery: recoveryResult.data?.length || 0
+      setData({
+        combined: combinedRows,
+        nutrition: nutritionRows,
+        exercise: exerciseRows,
+        recovery: recoveryRows
       });
 
+      setError(showError ? 'Failed to fetch leaderboard sections' : null);
     } catch (err) {
       console.error('Error fetching leaderboard sections:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch leaderboard sections');
