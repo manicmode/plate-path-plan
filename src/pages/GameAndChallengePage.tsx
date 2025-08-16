@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ARENA_V2 } from '@/lib/featureFlags';
+import ArenaV2Panel from '@/components/arena/ArenaV2Panel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -115,9 +117,18 @@ const RankingTabContent = () => {
 
   return (
     <section id="live-rankings-arena" className="mt-0">
-      <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
-        <FriendsArena />
-      </React.Suspense>
+      {ARENA_V2 ? (
+        <ArenaV2Panel />
+      ) : (
+        <>
+          {/* existing (legacy) arena components stay here for fallback */}
+          <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
+            <FriendsArena />
+          </React.Suspense>
+          <MonthlyTrophyPodium />
+          <HallOfFame champions={[]} challengeMode="combined" />
+        </>
+      )}
     </section>
   );
 };
