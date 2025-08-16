@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_challenge_members_20250816: {
+        Row: {
+          challenge_id: string | null
+          joined_at: string | null
+          role: Database["public"]["Enums"]["member_role"] | null
+          status: Database["public"]["Enums"]["member_status"] | null
+          user_id: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["member_role"] | null
+          status?: Database["public"]["Enums"]["member_status"] | null
+          user_id?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["member_role"] | null
+          status?: Database["public"]["Enums"]["member_status"] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       _backup_challenge_messages_orphans: {
         Row: {
           challenge_id: string
@@ -47,6 +71,372 @@ export type Database = {
           timestamp?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      _backup_private_challenge_messages_20250816: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          private_challenge_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          private_challenge_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          private_challenge_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      _backup_private_challenge_participations_20250816: {
+        Row: {
+          completed_at: string | null
+          completed_days: number | null
+          completion_percentage: number | null
+          daily_completions: Json | null
+          id: string | null
+          is_creator: boolean | null
+          joined_at: string | null
+          last_progress_update: string | null
+          private_challenge_id: string | null
+          progress_value: number | null
+          streak_count: number | null
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_days?: number | null
+          completion_percentage?: number | null
+          daily_completions?: Json | null
+          id?: string | null
+          is_creator?: boolean | null
+          joined_at?: string | null
+          last_progress_update?: string | null
+          private_challenge_id?: string | null
+          progress_value?: number | null
+          streak_count?: number | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_days?: number | null
+          completion_percentage?: number | null
+          daily_completions?: Json | null
+          id?: string | null
+          is_creator?: boolean | null
+          joined_at?: string | null
+          last_progress_update?: string | null
+          private_challenge_id?: string | null
+          progress_value?: number | null
+          streak_count?: number | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      _backup_private_challenges_20250816: {
+        Row: {
+          auto_team_enabled: boolean | null
+          badge_icon: string | null
+          banner_image_url: string | null
+          brand_name: string | null
+          category: string | null
+          challenge_type: string | null
+          clicks: number | null
+          created_at: string | null
+          creator_id: string | null
+          description: string | null
+          duration_days: number | null
+          follower_only: boolean | null
+          id: string | null
+          invited_user_ids: string[] | null
+          is_sponsored: boolean | null
+          is_team_challenge: boolean | null
+          max_participants: number | null
+          product_url: string | null
+          promo_code: string | null
+          reward_description: string | null
+          reward_image_url: string | null
+          start_date: string | null
+          status: string | null
+          target_metric: string | null
+          target_unit: string | null
+          target_value: number | null
+          team_ranking_basis: string | null
+          team_size: number | null
+          title: string | null
+          updated_at: string | null
+          views: number | null
+        }
+        Insert: {
+          auto_team_enabled?: boolean | null
+          badge_icon?: string | null
+          banner_image_url?: string | null
+          brand_name?: string | null
+          category?: string | null
+          challenge_type?: string | null
+          clicks?: number | null
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          duration_days?: number | null
+          follower_only?: boolean | null
+          id?: string | null
+          invited_user_ids?: string[] | null
+          is_sponsored?: boolean | null
+          is_team_challenge?: boolean | null
+          max_participants?: number | null
+          product_url?: string | null
+          promo_code?: string | null
+          reward_description?: string | null
+          reward_image_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
+          title?: string | null
+          updated_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          auto_team_enabled?: boolean | null
+          badge_icon?: string | null
+          banner_image_url?: string | null
+          brand_name?: string | null
+          category?: string | null
+          challenge_type?: string | null
+          clicks?: number | null
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          duration_days?: number | null
+          follower_only?: boolean | null
+          id?: string | null
+          invited_user_ids?: string[] | null
+          is_sponsored?: boolean | null
+          is_team_challenge?: boolean | null
+          max_participants?: number | null
+          product_url?: string | null
+          promo_code?: string | null
+          reward_description?: string | null
+          reward_image_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
+          title?: string | null
+          updated_at?: string | null
+          views?: number | null
+        }
+        Relationships: []
+      }
+      _backup_public_challenge_messages_20250816: {
+        Row: {
+          challenge_id: string | null
+          created_at: string | null
+          emoji: string | null
+          id: string | null
+          tagged_users: string[] | null
+          text: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string | null
+          emoji?: string | null
+          id?: string | null
+          tagged_users?: string[] | null
+          text?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string | null
+          emoji?: string | null
+          id?: string | null
+          tagged_users?: string[] | null
+          text?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      _backup_public_challenge_participations_20250816: {
+        Row: {
+          challenge_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string | null
+          is_creator: boolean | null
+          joined_at: string | null
+          progress_value: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          joined_at?: string | null
+          progress_value?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          joined_at?: string | null
+          progress_value?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      _backup_public_challenges_20250816: {
+        Row: {
+          badge_icon: string | null
+          category: string | null
+          challenge_type: string | null
+          created_at: string | null
+          description: string | null
+          difficulty_level: string | null
+          duration_days: number | null
+          goal_description: string | null
+          id: string | null
+          is_active: boolean | null
+          is_limited_time: boolean | null
+          is_new: boolean | null
+          is_trending: boolean | null
+          limited_time_end: string | null
+          participant_count: number | null
+          target_metric: string | null
+          target_unit: string | null
+          target_value: number | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          badge_icon?: string | null
+          category?: string | null
+          challenge_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          duration_days?: number | null
+          goal_description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_limited_time?: boolean | null
+          is_new?: boolean | null
+          is_trending?: boolean | null
+          limited_time_end?: string | null
+          participant_count?: number | null
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          badge_icon?: string | null
+          category?: string | null
+          challenge_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          duration_days?: number | null
+          goal_description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_limited_time?: boolean | null
+          is_new?: boolean | null
+          is_trending?: boolean | null
+          limited_time_end?: string | null
+          participant_count?: number | null
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      _backup_user_challenge_participations_20250816: {
+        Row: {
+          best_streak: number | null
+          challenge_id: string | null
+          completed_at: string | null
+          completion_percentage: number | null
+          current_progress: number | null
+          daily_completions: Json | null
+          end_date: string | null
+          id: string | null
+          is_completed: boolean | null
+          joined_at: string | null
+          last_progress_update: string | null
+          start_date: string | null
+          streak_count: number | null
+          total_target: number | null
+          user_id: string | null
+        }
+        Insert: {
+          best_streak?: number | null
+          challenge_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          current_progress?: number | null
+          daily_completions?: Json | null
+          end_date?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          joined_at?: string | null
+          last_progress_update?: string | null
+          start_date?: string | null
+          streak_count?: number | null
+          total_target?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          best_streak?: number | null
+          challenge_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          current_progress?: number | null
+          daily_completions?: Json | null
+          end_date?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          joined_at?: string | null
+          last_progress_update?: string | null
+          start_date?: string | null
+          streak_count?: number | null
+          total_target?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
