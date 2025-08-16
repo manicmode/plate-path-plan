@@ -1,9 +1,9 @@
+import "./styles/radix-tabs.css";
 import { StrictMode } from "react";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import "./styles/radix-tabs.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
@@ -12,6 +12,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
 import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
+
+// Set proof class for tabs CSS loading verification
+if (typeof document !== "undefined") {
+  document.documentElement.classList.add("__tabs_css_loaded__");
+}
 
 // Apply security headers on app initialization
 applySecurityHeaders();

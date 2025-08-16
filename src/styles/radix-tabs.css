@@ -1,19 +1,12 @@
-/* Radix Tabs Visibility Control */
-/* Ensure only active tab content is visible */
+/* === Radix Tabs global visibility fix (bulletproof) === */
+[data-radix-tabs-content][data-state="inactive"],
+[role="tabpanel"][data-state="inactive"] { display: none !important; }
 
-[data-radix-tabs-content][data-state="inactive"] { 
-  display: none !important; 
-}
+[data-radix-tabs-content][data-state="active"],
+[role="tabpanel"][data-state="active"]   { display: block !important; }
 
-[data-radix-tabs-content][data-state="active"] { 
-  display: block; 
-}
-
-/* Fallback using role attribute */
-[role="tabpanel"][data-state="inactive"] { 
-  display: none !important; 
-}
-
-[role="tabpanel"][data-state="active"] { 
-  display: block; 
+/* Proof marker to confirm this file is loaded */
+html.__tabs_css_loaded__::before { 
+  content: "tabs-css-loaded"; 
+  display: none; 
 }
