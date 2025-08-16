@@ -7,7 +7,6 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { cn } from '@/lib/utils';
-import { RecoveryChallengeBanner } from './RecoveryChallengeBanner';
 import { filterByArenaSection, type ArenaSection } from '@/lib/arenaSections';
 
 interface PublicChallengesBrowseProps {
@@ -59,29 +58,15 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
   }
 
   return (
-    <div className={cn(
-      "space-y-6",
-      challengeMode === 'recovery' && "bg-gradient-to-br from-teal-50/30 to-purple-50/30 dark:from-teal-950/10 dark:to-purple-950/10 rounded-xl p-4"
-    )}>
+    <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className={cn(
-          "text-2xl font-bold",
-          challengeMode === 'recovery' 
-            ? "bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent"
-            : ""
-        )}>
-          Browse {challengeMode === 'recovery' ? '🧘‍♂️ Recovery' : challengeMode === 'combined' ? 'All' : challengeMode.charAt(0).toUpperCase() + challengeMode.slice(1)} Challenges
+        <h2 className="text-2xl font-bold">
+          Browse {challengeMode === 'combined' ? 'All' : challengeMode.charAt(0).toUpperCase() + challengeMode.slice(1)} Challenges
         </h2>
         <p className="text-muted-foreground">
-          {challengeMode === 'recovery' 
-            ? 'Join mindfulness challenges for meditation 🧘‍♀️, breathing 🌬️, yoga 🧎‍♀️, sleep 😴, and thermotherapy 🔥'
-            : 'Join challenges with people from around the world and build healthy habits together'
-          }
+          Join challenges with people from around the world and build healthy habits together
         </p>
       </div>
-
-      {/* Recovery Challenge Banner */}
-      {challengeMode === 'recovery' && <RecoveryChallengeBanner />}
 
       <Tabs defaultValue="global" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -108,22 +93,16 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5" />
-                {challengeMode === 'recovery' ? '🧘‍♂️ Global Recovery Challenges' : '🌎 Global Challenges'}
+                🌎 Global Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {challengeMode === 'recovery' 
-                  ? 'Long-term recovery challenges (7+ days) to build lasting mindfulness habits'
-                  : 'Long-term challenges (7+ days) to build lasting habits'
-                }
+                Long-term challenges (7+ days) to build lasting habits
               </p>
             </CardHeader>
             <CardContent>
               {filteredGlobalChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {challengeMode === 'recovery' 
-                    ? 'No global recovery challenges available right now'
-                    : 'No global challenges available right now'
-                  }
+                  No global challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -148,22 +127,16 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="w-5 h-5" />
-                {challengeMode === 'recovery' ? '⚡ Quick Recovery Challenges' : '⚡ Quick Challenges'}
+                ⚡ Quick Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {challengeMode === 'recovery' 
-                  ? 'Short recovery challenges (1-3 days) for quick mindfulness wins'
-                  : 'Short challenges (1-3 days) for fast engagement and instant wins'
-                }
+                Short challenges (1-3 days) for fast engagement and instant wins
               </p>
             </CardHeader>
             <CardContent>
               {filteredQuickChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {challengeMode === 'recovery' 
-                    ? 'No quick recovery challenges available right now'
-                    : 'No quick challenges available right now'
-                  }
+                  No quick challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -188,22 +161,16 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
-                {challengeMode === 'recovery' ? '🔥 Trending Recovery Challenges' : '🔥 Trending Challenges'}
+                🔥 Trending Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {challengeMode === 'recovery' 
-                  ? 'Most popular recovery challenges with high participation rates'
-                  : 'Most popular challenges with high participation rates'
-                }
+                Most popular challenges with high participation rates
               </p>
             </CardHeader>
             <CardContent>
               {filteredTrendingChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {challengeMode === 'recovery' 
-                    ? 'No trending recovery challenges right now'
-                    : 'No trending challenges right now'
-                  }
+                  No trending challenges right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -228,22 +195,16 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                {challengeMode === 'recovery' ? '✨ New Recovery Challenges' : '✨ New Challenges'}
+                ✨ New Challenges
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {challengeMode === 'recovery' 
-                  ? 'Recently launched recovery challenges waiting for you to explore'
-                  : 'Recently launched challenges waiting for you to explore'
-                }
+                Recently launched challenges waiting for you to explore
               </p>
             </CardHeader>
             <CardContent>
               {filteredNewChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {challengeMode === 'recovery' 
-                    ? 'No new recovery challenges available right now'
-                    : 'No new challenges available right now'
-                  }
+                  No new challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -265,15 +226,10 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
       </Tabs>
 
       {/* Stats Section */}
-      <Card className={cn(
-        challengeMode === 'recovery' && "border-teal-200/50 dark:border-teal-700/50 bg-gradient-to-br from-teal-50/30 to-purple-50/30 dark:from-teal-950/10 dark:to-purple-950/10"
-      )}>
+      <Card>
         <CardHeader>
-          <CardTitle className={cn(
-            "text-center",
-            challengeMode === 'recovery' && "text-teal-700 dark:text-teal-300"
-          )}>
-            {challengeMode === 'recovery' ? '🧘‍♂️ Recovery Challenge Statistics' : 'Challenge Statistics'}
+          <CardTitle className="text-center">
+            Challenge Statistics
           </CardTitle>
         </CardHeader>
         <CardContent>
