@@ -57,6 +57,25 @@ export default function ArenaTestPanel() {
     }
   }
 
+  async function awardAndRecompute() {
+    try {
+      // Award 1 point and then recompute rollups
+      await supabase.rpc('arena_award_points', { 
+        p_points: 1, 
+        p_kind: 'tap', 
+        p_challenge_id: null 
+      });
+      setLog(prev => prev + `\n[OK] Awarded 1 tap point`);
+      
+      await supabase.rpc('arena_recompute_rollups_monthly', {});
+      setLog(prev => prev + `\n[OK] Recomputed monthly rollups`);
+    } catch (e: any) {
+      setLog(prev => prev + `\n[ERR] ${e.message}`);
+    } finally {
+      await refreshEvents();
+    }
+  }
+
   return (
     <Card className="max-w-2xl">
       <CardHeader>
@@ -83,9 +102,10 @@ export default function ArenaTestPanel() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button onClick={doOnce}>Award Once</Button>
           <Button variant="secondary" onClick={doTwice}>Award Twice (dup test)</Button>
+          <Button variant="outline" onClick={awardAndRecompute}>Award + Recompute</Button>
           <Button variant="ghost" onClick={refreshEvents}>Refresh Events</Button>
         </div>
 

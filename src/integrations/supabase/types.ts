@@ -6205,6 +6205,16 @@ export type Database = {
         Args: { p_content: string }
         Returns: string
       }
+      arena_recompute_rollups_monthly: {
+        Args: {
+          p_challenge_id?: string
+          p_limit?: number
+          p_month?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: undefined
+      }
       arena_ui_server_smoketest: {
         Args: Record<PropertyKey, never>
         Returns: {
