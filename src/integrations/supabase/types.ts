@@ -734,6 +734,44 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_events: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          kind: string
+          occurred_at: string
+          points: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          occurred_at?: string
+          points: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          occurred_at?: string
+          points?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_events_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "arena_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arena_groups: {
         Row: {
           challenge_id: string
@@ -6074,6 +6112,10 @@ export type Database = {
           | { p_client_tz?: string; p_total_award: number; p_user_id: string }
           | { p_proposed_xp: number; p_user_id: string }
         Returns: number
+      }
+      arena_award_points: {
+        Args: { p_challenge_id?: string; p_kind: string; p_points: number }
+        Returns: undefined
       }
       arena_enroll_me: {
         Args: { p_challenge_id?: string }
