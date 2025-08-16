@@ -5947,6 +5947,50 @@ export type Database = {
           user_id: string
         }[]
       }
+      my_rank20_leaderboard_combined: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          streak: number
+          user_id: string
+        }[]
+      }
+      my_rank20_leaderboard_exercise: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          streak: number
+          user_id: string
+        }[]
+      }
+      my_rank20_leaderboard_nutrition: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          streak: number
+          user_id: string
+        }[]
+      }
+      my_rank20_leaderboard_recovery: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          streak: number
+          user_id: string
+        }[]
+      }
       my_rank20_members: {
         Args: Record<PropertyKey, never>
         Returns: {

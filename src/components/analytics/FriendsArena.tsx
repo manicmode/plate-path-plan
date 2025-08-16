@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
   TrendingUp, 
@@ -10,7 +11,10 @@ import {
   Flame,
   Crown,
   Medal,
-  MessageSquare
+  MessageSquare,
+  Apple,
+  Dumbbell,
+  Heart
 } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
@@ -19,6 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
 import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 import { useRank20Leaderboard } from '@/hooks/arena/useRank20Leaderboard';
+import { useRank20LeaderboardSections, type ArenaRow } from '@/hooks/arena/useRank20LeaderboardSections';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +57,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const membershipData = useArenaMembership();
   const { challengeId } = useRank20ChallengeId();
   const { data: rows, loading, error, refresh } = useRank20Leaderboard(20, 0);
+  const { combined, nutrition, exercise, recovery, loading: sectionsLoading, error: sectionsError, refresh: refreshSections } = useRank20LeaderboardSections(20, 0);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<null | {
@@ -62,10 +68,43 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   // Billboard modal state
   const [isBillboardOpen, setBillboardOpen] = useState(false);
+  // Tab state
+  const [activeTab, setActiveTab] = useState('combined');
 
   // Anti-flicker loading state with grace period
-  const ready = !loading && !membersLoading && !!challengeId && rows.length > 0;
+  const ready = !loading && !sectionsLoading && !membersLoading && !!challengeId && rows.length > 0;
   const [showContent, setShowContent] = React.useState(false);
+
+  const getCurrentData = (): ArenaRow[] => {
+    switch (activeTab) {
+      case 'nutrition':
+        return nutrition;
+      case 'exercise':
+        return exercise;
+      case 'recovery':
+        return recovery;
+      default:
+        return combined;
+    }
+  };
+
+  const getTabIcon = (tab: string) => {
+    switch (tab) {
+      case 'nutrition':
+        return <Apple className="h-4 w-4" />;
+      case 'exercise':
+        return <Dumbbell className="h-4 w-4" />;
+      case 'recovery':
+        return <Heart className="h-4 w-4" />;
+      default:
+        return <Trophy className="h-4 w-4" />;
+    }
+  };
+
+  const handleRefresh = () => {
+    refresh();
+    refreshSections();
+  };
   
   React.useEffect(() => {
     let t: any;
@@ -92,15 +131,15 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
     >
       {showContent ? (
         <>
-          {error ? (
-            <ArenaErrorBanner message={error.message} />
+          {(error || sectionsError) ? (
+            <ArenaErrorBanner message={error?.message || sectionsError || 'Unknown error'} />
           ) : !rows.length ? (
             <div className="text-center py-8">
               <div className="text-muted-foreground mb-4">
                 No contenders yet. Invite friends or start logging to climb the board.
               </div>
               <button
-                onClick={refresh}
+                onClick={handleRefresh}
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
               >
                 Refresh
@@ -157,7 +196,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 {rows.length} members
               </Badge>
               <button
-                onClick={refresh}
+                onClick={handleRefresh}
                 className="p-1 text-muted-foreground hover:text-foreground"
                 title="Refresh leaderboard"
               >
@@ -168,8 +207,29 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <div className="flex flex-col gap-5">
-          {rows.map((row) => (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="combined" className="flex items-center gap-2 text-xs">
+                {getTabIcon('combined')}
+                <span className="hidden sm:inline">Combined</span>
+              </TabsTrigger>
+              <TabsTrigger value="nutrition" className="flex items-center gap-2 text-xs">
+                {getTabIcon('nutrition')}
+                <span className="hidden sm:inline">Nutrition</span>
+              </TabsTrigger>
+              <TabsTrigger value="exercise" className="flex items-center gap-2 text-xs">
+                {getTabIcon('exercise')}
+                <span className="hidden sm:inline">Exercise</span>
+              </TabsTrigger>
+              <TabsTrigger value="recovery" className="flex items-center gap-2 text-xs">
+                {getTabIcon('recovery')}
+                <span className="hidden sm:inline">Recovery</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={activeTab}>
+              <div className="flex flex-col gap-5">
+                {getCurrentData().map((row) => (
             <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
               {/* Off-card rank badge */}
               <span
@@ -246,8 +306,18 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+                ))}
+                
+                {getCurrentData().length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm">No {activeTab} leaderboard data available</p>
+                    <p className="text-xs mt-1">Check back later or invite friends to join!</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
         
         {selected && (
