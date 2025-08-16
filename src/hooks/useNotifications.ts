@@ -15,6 +15,26 @@ export function useNotifications(limit = 20) {
     setLoading(false);
   }
 
+  async function markAsRead(notificationIds: string[]) {
+    const { error } = await supabase.rpc("app_notifs_mark_read", { 
+      p_ids: notificationIds 
+    });
+    if (!error) {
+      setRows(prev => prev.map(row => 
+        notificationIds.includes(row.id) ? { ...row, read_at: new Date().toISOString() } : row
+      ));
+    }
+    return { error };
+  }
+
+  async function markAllAsRead() {
+    const { error } = await supabase.rpc("app_notifs_mark_all_read");
+    if (!error) {
+      setRows(prev => prev.map(row => ({ ...row, read_at: new Date().toISOString() })));
+    }
+    return { error };
+  }
+
   useEffect(() => {
     let mounted = true;
     fetchNotifs();
@@ -35,6 +55,18 @@ export function useNotifications(limit = 20) {
             setRows(prev => [payload.new, ...prev].slice(0, limit));
           }
         )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "app_notifications" },
+          (payload) => {
+            if (!mounted) return;
+            // Update notification in place
+            if (payload.new.user_id !== user?.id) return;
+            setRows(prev => prev.map(row => 
+              row.id === payload.new.id ? payload.new : row
+            ));
+          }
+        )
         .subscribe();
 
       return () => { 
@@ -50,5 +82,11 @@ export function useNotifications(limit = 20) {
     };
   }, [limit]);
 
-  return { rows, loading, refresh: fetchNotifs };
+  return { 
+    rows, 
+    loading, 
+    refresh: fetchNotifs, 
+    markAsRead, 
+    markAllAsRead 
+  };
 }

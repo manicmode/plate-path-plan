@@ -6190,6 +6190,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      app_notifs_mark_all_read: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      app_notifs_mark_read: {
+        Args: { p_ids: string[] }
+        Returns: undefined
+      }
       app_notify: {
         Args: {
           p_body?: string
