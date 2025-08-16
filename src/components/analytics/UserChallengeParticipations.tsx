@@ -76,15 +76,23 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     };
   }).filter(Boolean);
 
-  const privateChallenges = activePrivateChallenges.map(challenge => ({
-    type: 'private',
-    challenge,
-    participation: { completion_percentage: 0 }, // Mock participation for now
-    onLeave: async (challengeId: string) => {
-      console.log('Leave private challenge:', challengeId);
-      return true;
-    }
-  }));
+  // TEMP: hide Arena challenge from personal list
+  const isArena = (c: any) =>
+    String(c?.title || '').toLowerCase().includes('rank of 20') ||
+    String(c?.challenge_type || '').toLowerCase().includes('arena') ||
+    String(c?.category || '').toLowerCase().includes('arena');
+
+  const privateChallenges = activePrivateChallenges
+    .filter(c => !isArena(c))
+    .map(challenge => ({
+      type: 'private',
+      challenge,
+      participation: { completion_percentage: 0 }, // Mock participation for now
+      onLeave: async (challengeId: string) => {
+        console.log('Leave private challenge:', challengeId);
+        return true;
+      }
+    }));
 
   // Filter challenges based on challenge mode
   const filterChallengesByMode = (challengeList: any[]) => {

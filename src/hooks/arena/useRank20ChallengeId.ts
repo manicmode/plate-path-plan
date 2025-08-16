@@ -32,7 +32,14 @@ export function useRank20ChallengeId() {
           return;
         }
         
-        setChallengeId(data || null);
+        // Fallback to current active challenge if chosen challenge is null
+        let challengeId = data;
+        if (!challengeId) {
+          const { data: fallbackId } = await supabase.rpc('current_rank20_challenge_id');
+          challengeId = fallbackId;
+        }
+        
+        setChallengeId(challengeId || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch challenge ID');
       } finally {
