@@ -1,0 +1,19 @@
+/* Radix Tabs Visibility Control */
+/* Ensure only active tab content is visible */
+
+[data-radix-tabs-content][data-state="inactive"] { 
+  display: none !important; 
+}
+
+[data-radix-tabs-content][data-state="active"] { 
+  display: block; 
+}
+
+/* Fallback using role attribute */
+[role="tabpanel"][data-state="inactive"] { 
+  display: none !important; 
+}
+
+[role="tabpanel"][data-state="active"] { 
+  display: block; 
+}
