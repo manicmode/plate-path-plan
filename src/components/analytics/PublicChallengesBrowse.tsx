@@ -70,20 +70,16 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
 
       <Tabs defaultValue="global" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="global" className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
+          <TabsTrigger value="global">
             Global
           </TabsTrigger>
-          <TabsTrigger value="quick" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
+          <TabsTrigger value="quick">
             Quick
           </TabsTrigger>
-          <TabsTrigger value="trending" className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
+          <TabsTrigger value="trending">
             Trending
           </TabsTrigger>
-          <TabsTrigger value="new" className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
+          <TabsTrigger value="new">
             New
           </TabsTrigger>
         </TabsList>
