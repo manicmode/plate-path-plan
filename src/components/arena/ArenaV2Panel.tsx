@@ -3,6 +3,7 @@ import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 
 function Initials({ name }: { name?: string|null }) {
   const t = (name ?? '').trim();
@@ -36,7 +37,17 @@ export default function ArenaV2Panel() {
               {enroll.isPending ? 'Joining…' : 'Join Arena'}
             </Button>
           ) : (
-            <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
+              {/* DEV: quick award + recompute */}
+              <Button size="sm" variant="secondary" onClick={async () => {
+                // use the 3-arg shim (server resolves active challenge)
+                await supabase.rpc("arena_award_points", { p_points: 1, p_kind: "tap", p_challenge_id: null });
+                await supabase.rpc("arena_recompute_rollups_monthly", {}); // uses current month + 'global'
+              }}>
+                +1 point & Recompute
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
