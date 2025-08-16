@@ -6115,13 +6115,13 @@ export type Database = {
       }
       arena_award_points: {
         Args:
-          | { p_challenge_id: string; p_kind: string; p_points: number }
           | {
-              p_challenge_id?: string
-              p_idem_key?: string
+              p_challenge_id: string
+              p_idem_key: string
               p_kind: string
               p_points: number
             }
+          | { p_challenge_id: string; p_kind: string; p_points: number }
         Returns: undefined
       }
       arena_enroll_me: {
