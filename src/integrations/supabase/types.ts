@@ -6114,6 +6114,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      arena_get_members: {
+        Args: { p_challenge_id?: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          joined_at: string
+          status: string
+          user_id: string
+        }[]
+      }
       arena_get_my_membership: {
         Args: { p_challenge_id?: string }
         Returns: {
