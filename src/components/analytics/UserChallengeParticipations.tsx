@@ -20,8 +20,10 @@ interface UserChallengeParticipationsProps {
 export const UserChallengeParticipations: React.FC<UserChallengeParticipationsProps> = ({ 
   challengeMode = 'combined' 
 }) => {
+  // Move ALL hooks to the top level
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { toast } = useToast();
+  const { selectChatroom } = useChatStore();
   
   const { 
     userParticipations, 
@@ -44,21 +46,20 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   //   return () => clearTimeout(timer);
   // }, [refreshData]);
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse">
-            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-t-2xl h-20"></div>
-            <div className="bg-card/80 backdrop-blur rounded-b-2xl p-4 space-y-3">
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
-            </div>
+  // Define the loading UI component - but don't return early
+  const LoadingUI = () => (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="animate-pulse">
+          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-t-2xl h-20"></div>
+          <div className="bg-card/80 backdrop-blur rounded-b-2xl p-4 space-y-3">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-1/2"></div>
           </div>
-        ))}
-      </div>
-    );
-  }
+        </div>
+      ))}
+    </div>
+  );
 
   // Process all user participations and categorize them properly
   const allPublicChallenges = userParticipations.map((participation) => {
@@ -132,7 +133,6 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     if (!item) return null;
     
     const { type, challenge, participation, onLeave } = item;
-    const { selectChatroom } = useChatStore();
     
     const progressPercentage = type === 'private'
       ? (participation as any).completion_percentage || 0
@@ -331,28 +331,36 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
 
   const hasAnyChallenges = filteredPrivateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
 
-  if (!hasAnyChallenges) {
-    return (
-      <div className="text-center py-12">
-        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">
-          {challengeMode === 'recovery' ? 'No Active Recovery Challenges' : 'No Active Challenges'}
-        </h3>
-        <p className="text-muted-foreground mb-6">
-          {challengeMode === 'recovery' 
-            ? 'Join recovery challenges for meditation, breathing, yoga, sleep, and thermotherapy!'
-            : 'Browse public challenges or create a private one with friends!'
-          }
-        </p>
-        <div className="flex gap-3 justify-center">
-          <Button variant="outline">Browse Public</Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Private
-          </Button>
-        </div>
+  // Define empty state UI component
+  const EmptyStateUI = () => (
+    <div className="text-center py-12">
+      <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+      <h3 className="text-lg font-semibold mb-2">
+        {challengeMode === 'recovery' ? 'No Active Recovery Challenges' : 'No Active Challenges'}
+      </h3>
+      <p className="text-muted-foreground mb-6">
+        {challengeMode === 'recovery' 
+          ? 'Join recovery challenges for meditation, breathing, yoga, sleep, and thermotherapy!'
+          : 'Browse public challenges or create a private one with friends!'
+        }
+      </p>
+      <div className="flex gap-3 justify-center">
+        <Button variant="outline">Browse Public</Button>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Private
+        </Button>
       </div>
-    );
+    </div>
+  );
+
+  // Render different content based on state, but always show the same structure
+  if (loading) {
+    return <LoadingUI />;
+  }
+
+  if (!hasAnyChallenges) {
+    return <EmptyStateUI />;
   }
 
   // If challenge mode is recovery, show specialized component
