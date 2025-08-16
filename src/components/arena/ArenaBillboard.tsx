@@ -20,7 +20,7 @@ export default function ArenaBillboard() {
                   <div className="flex items-center gap-2">
                     <span className="w-6 text-right">{r.rank}</span>
                     <img src={r.avatar_url ?? "/avatar.png"} className="w-6 h-6 rounded-full" />
-                    <span>{r.display_name ?? r.user_id}</span>
+                    <span>{r.display_name}</span>
                   </div>
                   <div className="font-semibold">{r.score}</div>
                 </li>

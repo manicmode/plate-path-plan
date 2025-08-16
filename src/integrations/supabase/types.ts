@@ -5875,6 +5875,16 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_billboard_with_profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          rank: number | null
+          score: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       arena_leaderboard_view: {
         Row: {
           avatar_url: string | null
@@ -6156,6 +6166,21 @@ export type Database = {
           slug: string
           starts_at: string
           title: string
+        }[]
+      }
+      arena_get_billboard: {
+        Args: {
+          p_limit?: number
+          p_month?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          rank: number
+          score: number
+          user_id: string
         }[]
       }
       arena_get_friends_leaderboard_with_profiles: {

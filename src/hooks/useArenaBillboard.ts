@@ -11,7 +11,7 @@ export function useArenaBillboard(limit = 10) {
     (async () => {
       setLoading(true); setErr(null);
       const { data, error } = await supabase
-        .from("arena_billboard")
+        .from("arena_billboard_with_profiles")
         .select("*")
         .limit(limit);
       if (!mounted) return;
