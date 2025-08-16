@@ -692,6 +692,157 @@ export type Database = {
           },
         ]
       }
+      arena_challenges: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          metadata: Json
+          season_month: number | null
+          season_year: number | null
+          slug: string | null
+          starts_at: string
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          season_month?: number | null
+          season_year?: number | null
+          slug?: string | null
+          starts_at?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          season_month?: number | null
+          season_year?: number | null
+          slug?: string | null
+          starts_at?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      arena_groups: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_groups_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "arena_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_leaderboard_rollups: {
+        Row: {
+          challenge_id: string
+          month: number
+          rank: number
+          score: number
+          section: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          challenge_id: string
+          month: number
+          rank: number
+          score?: number
+          section?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          challenge_id?: string
+          month?: number
+          rank?: number
+          score?: number
+          section?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_leaderboard_rollups_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "arena_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_memberships: {
+        Row: {
+          challenge_id: string
+          group_id: string | null
+          id: string
+          joined_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          group_id?: string | null
+          id?: string
+          joined_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          group_id?: string | null
+          id?: string
+          joined_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_memberships_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "arena_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arena_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "arena_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arena_ui_heartbeat: {
         Row: {
           at: string
