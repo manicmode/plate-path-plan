@@ -11,17 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { useAuth } from '@/contexts/auth';
 import { RecoveryMonthlyRankings } from './RecoveryMonthlyRankings';
-import { type ArenaSection } from '@/lib/arenaSections';
+import { type ArenaSection, mapAwardToSection, sectionMatches } from '@/lib/arenaSections';
 
 interface MonthlyTrophyPodiumProps {
   section?: ArenaSection;
 }
 
 export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ section = 'combined' }) => {
-  // Log filtering results
-  React.useEffect(() => {
-    console.log('[Awards] section:', section, 'filtered: N/A (Awards uses own data)', 'total: N/A');
-  }, [section]);
   const [selectedChallenge, setSelectedChallenge] = useState<CompletedChallenge | null>(null);
   const [winners, setWinners] = useState<PodiumWinner[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
@@ -43,7 +39,7 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
 
   useEffect(() => {
     loadCompletedChallenges();
-  }, [currentMonth]);
+  }, [currentMonth, section]); // Re-filter when section changes
 
   useEffect(() => {
     // Auto-show podium if it's end of month
@@ -60,7 +56,19 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
   const loadCompletedChallenges = async () => {
     try {
       const challenges = await getCompletedChallenges(currentMonth);
-      setCompletedChallenges(challenges);
+      
+      // Apply section filtering with text inference
+      const withSection = challenges.map(c => ({
+        ...c,
+        __section: mapAwardToSection(c)
+      }));
+      
+      const filtered = withSection.filter(c => sectionMatches(section, c.__section));
+      
+      // Update logging with actual filtered results
+      console.log('[Awards] section:', section, 'filtered:', filtered.length, 'total:', challenges.length);
+      
+      setCompletedChallenges(filtered);
     } catch (error) {
       toast({
         title: "Error",
@@ -74,11 +82,20 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
     try {
       setSelectedChallenge(challenge);
       const challengeWinners = await getPodiumWinners(challenge.challengeId, currentMonth);
-      setWinners(challengeWinners);
+      
+      // Apply section filtering to winners as well
+      const winnersWithSection = challengeWinners.map(w => ({
+        ...w,
+        __section: mapAwardToSection(w)
+      }));
+      
+      const filteredWinners = winnersWithSection.filter(w => sectionMatches(section, w.__section));
+      
+      setWinners(filteredWinners);
       setShowPodium(true);
       
       // Check if current user won and trigger celebration
-      const userWin = challengeWinners.find(w => w.userId === user?.id);
+      const userWin = filteredWinners.find(w => w.userId === user?.id);
       if (userWin && userWin.podiumPosition <= 3 && 
           !celebrationShown.has(`${challenge.challengeId}-${currentMonth.getMonth()}`)) {
         

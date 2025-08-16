@@ -12,7 +12,7 @@ import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/h
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useExerciseHallOfFame } from '@/hooks/useExerciseHallOfFame';
-import { type ArenaSection } from '@/lib/arenaSections';
+import { type ArenaSection, mapChampionToSection, sectionMatches } from '@/lib/arenaSections';
 
 interface HallOfFameEntry {
   id: number;
@@ -36,10 +36,20 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   champions,
   challengeMode = 'combined'
 }) => {
-  // Log filtering results
-  React.useEffect(() => {
-    console.log('[HallOfFame] section:', challengeMode, 'filtered:', champions.length, 'total:', champions.length);
-  }, [challengeMode, champions]);
+  // Apply section filtering to champions
+  const filteredChampions = React.useMemo(() => {
+    const withSection = champions.map(c => ({
+      ...c,
+      __section: mapChampionToSection(c)
+    }));
+    
+    const filtered = withSection.filter(c => sectionMatches(challengeMode, c.__section));
+    
+    // Log filtering results
+    console.log('[HallOfFame] section:', challengeMode, 'filtered:', filtered.length, 'total:', champions.length);
+    
+    return filtered;
+  }, [champions, challengeMode]);
   const { user } = useAuth();
   const { toast } = useToast();
   const { monthlyAwards, isLoading: exerciseLoading, error: exerciseError } = useExerciseHallOfFame();
@@ -50,7 +60,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const [celebratingCard, setCelebratingCard] = useState<number | null>(null);
 
   // Get the first (current year) champion for trophy showcase and tributes
-  const currentChampion = champions.find(c => c.trophy === 'gold') || champions[0];
+  const currentChampion = filteredChampions.find(c => c.trophy === 'gold') || filteredChampions[0];
   const championUserId = currentChampion?.user_id;
   
   // Debug logging to help identify issues
@@ -279,7 +289,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   };
 
   // Show first 6 in the preview
-  const previewChampions = champions.slice(0, 6);
+  const previewChampions = filteredChampions.slice(0, 6);
   const displayedTributes = showAllTributes ? tributes : tributes.slice(0, 3);
   const pinnedTributes = tributes.filter(t => t.isPinned);
   const unpinnedTributes = tributes.filter(t => !t.isPinned);
@@ -713,13 +723,13 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
             <DialogTitle className="flex items-center gap-3 text-2xl">
               <Trophy className="h-6 w-6 text-amber-600" />
               Complete Hall of Fame
-              <Badge variant="outline">{champions.length} Champions</Badge>
+              <Badge variant="outline">{filteredChampions.length} Champions</Badge>
             </DialogTitle>
           </DialogHeader>
           
           <ScrollArea className="h-[60vh]">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-              {champions.map((champion) => (
+              {filteredChampions.map((champion) => (
                 <div
                   key={champion.id}
                   className="p-4 rounded-lg border bg-background hover:shadow-lg transition-all duration-300"
