@@ -692,6 +692,39 @@ export type Database = {
           },
         ]
       }
+      app_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          meta: Json
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          meta?: Json
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          meta?: Json
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       arena_challenges: {
         Row: {
           created_at: string
@@ -880,6 +913,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      arena_rollups_hist: {
+        Row: {
+          challenge_id: string
+          month: number
+          rank: number
+          score: number
+          section: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          challenge_id: string
+          month: number
+          rank: number
+          score: number
+          section: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          challenge_id?: string
+          month?: number
+          rank?: number
+          score?: number
+          section?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
       }
       arena_ui_heartbeat: {
         Row: {
@@ -6127,6 +6190,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      app_notify: {
+        Args: {
+          p_body?: string
+          p_kind: string
+          p_meta?: Json
+          p_title: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       apply_daily_cap: {
         Args:
           | { p_client_tz?: string; p_total_award: number; p_user_id: string }
@@ -6270,6 +6343,16 @@ export type Database = {
         Returns: string
       }
       arena_recompute_rollups_monthly: {
+        Args: {
+          p_challenge_id?: string
+          p_limit?: number
+          p_month?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: undefined
+      }
+      arena_recompute_rollups_with_notifications: {
         Args: {
           p_challenge_id?: string
           p_limit?: number
