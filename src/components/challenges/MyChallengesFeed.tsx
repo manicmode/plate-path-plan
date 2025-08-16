@@ -76,8 +76,8 @@ export const MyChallengesFeed: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Challenges Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        /* Challenges List */
+        <div className="space-y-4">
           {challenges.map((challenge) => (
             <ChallengeCard
               key={challenge.id}
