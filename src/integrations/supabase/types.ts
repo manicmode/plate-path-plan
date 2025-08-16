@@ -5444,6 +5444,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      _arena_enroll_for: {
+        Args: { p_user: string }
+        Returns: {
+          challenge_id: string
+          group_id: string
+        }[]
+      }
       _current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -5451,6 +5458,10 @@ export type Database = {
       _ensure_rank20_challenge: {
         Args: { _group_id: string }
         Returns: string
+      }
+      _rank20_sync_group_flag: {
+        Args: { p_group_id: string }
+        Returns: undefined
       }
       accept_challenge_invitation: {
         Args: { invitation_id_param: string }
