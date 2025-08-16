@@ -585,6 +585,13 @@ function GameAndChallengeContent() {
         
         {/* Smart Team-Up Prompts */}
         <SmartTeamUpPrompt />
+        
+        {/* Arena Debug Badge - Dev Only */}
+        {process.env.NODE_ENV !== "production" && (
+          <div className="fixed bottom-20 sm:bottom-4 right-4 z-30 bg-green-500/90 text-white text-xs px-2 py-1 rounded-full shadow-lg font-mono">
+            Arena mounted: true
+          </div>
+        )}
       </div>
     </div>
   );

@@ -74,6 +74,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [isBillboardOpen, setBillboardOpen] = useState(false);
   // Tab state
   const [activeTab, setActiveTab] = useState('combined');
+
+  // Mount/unmount logging
+  useEffect(() => {
+    console.info('[ARENA] FriendsArena mounted');
+    return () => console.info('[ARENA] FriendsArena unmounted');
+  }, []);
   
   // Add logging for inner tabs
   const handleTabChange = (value: string) => {
@@ -139,6 +145,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
       aria-busy={!showContent}
       aria-live="polite"
       className="min-h-[420px]"
+      data-testid="arena-friends"
     >
       {showContent ? (
         <>

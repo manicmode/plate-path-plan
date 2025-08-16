@@ -37,6 +37,12 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
   const { playChallengeWin } = useSound();
   const { user } = useAuth();
 
+  // Mount/unmount logging
+  useEffect(() => {
+    console.info('[ARENA] MonthlyTrophyPodium mounted');
+    return () => console.info('[ARENA] MonthlyTrophyPodium unmounted');
+  }, []);
+
   useEffect(() => {
     loadCompletedChallenges();
   }, [currentMonth, section]); // Re-filter when section changes
@@ -157,7 +163,7 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="arena-podium">
       {/* Enhanced Header with AWARDS Title */}
       <div className="pt-8 mb-12 flex flex-col items-center gap-6">
         {/* Centered Title with Trophy Emojis */}
