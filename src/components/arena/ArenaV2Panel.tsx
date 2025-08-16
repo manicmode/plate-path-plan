@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboard } from '@/hooks/arenaV2/useArena';
+import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/arenaV2/useArena';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -19,7 +19,7 @@ export default function ArenaV2Panel() {
   const { data: me } = useArenaMyMembership(challengeId);
   const enroll = useArenaEnroll();
   const { data: members } = useArenaMembers(challengeId, 100, 0);
-  const { data: leaderboard } = useArenaLeaderboard({ challengeId, section:'global', limit:50 });
+  const { data: leaderboard } = useArenaLeaderboardWithProfiles({ challengeId, section:'global', limit:50 });
 
   return (
     <div className="space-y-6" data-testid="arena-v2">
@@ -51,9 +51,13 @@ export default function ArenaV2Panel() {
           ) : (
             <ul className="space-y-2">
               {leaderboard!.map(row => (
-                <li key={row.user_id} className="flex items-center justify-between">
+                <li key={row.user_id} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    {row.avatar_url ? <AvatarImage src={row.avatar_url} alt={row.display_name ?? ''}/> : null}
+                    <AvatarFallback>{(row.display_name ?? '?').slice(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                   <span className="text-xs w-6 tabular-nums">#{row.rank}</span>
-                  <span className="flex-1 truncate px-2">{row.user_id}</span>
+                  <span className="flex-1 truncate">{row.display_name ?? row.user_id}</span>
                   <span className="text-xs tabular-nums">{row.score}</span>
                 </li>
               ))}

@@ -90,3 +90,29 @@ export function useArenaLeaderboard(args?: {
     },
   });
 }
+
+export function useArenaLeaderboardWithProfiles(args?: {
+  challengeId?: string;
+  section?: 'global'|'friends'|'local';
+  year?: number;
+  month?: number;
+  limit?: number;
+  offset?: number;
+}) {
+  const { challengeId, section='global', year, month, limit=100, offset=0 } = args ?? {};
+  return useQuery({
+    queryKey: ['arena','leaderboard+profiles', challengeId ?? 'active', section, year, month, limit, offset],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
+        p_challenge_id: challengeId ?? null,
+        p_section: section,
+        p_year: year ?? undefined,
+        p_month: month ?? undefined,
+        p_limit: limit,
+        p_offset: offset,
+      });
+      if (error) throw error;
+      return data as Array<{ user_id:string; display_name:string|null; avatar_url:string|null; rank:number; score:number }>;
+    },
+  });
+}
