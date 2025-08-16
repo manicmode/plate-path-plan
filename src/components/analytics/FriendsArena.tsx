@@ -75,7 +75,8 @@ const DevBadge = () => {
       data-testid="arena-cid-badge"
       title={dbg.cidError || ''}
     >
-      {dbg.cidSource === 'fallback' ? 'fallback' : 'no-cid'}
+      {dbg.cidSource === 'fallback' ? 'fallback' : 
+       dbg.cidSource === 'rpc-safe' ? 'safe' : 'no-cid'}
     </div>
   );
 };

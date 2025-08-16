@@ -6324,6 +6324,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      my_rank20_chosen_challenge_id_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       my_rank20_group_members: {
         Args: Record<PropertyKey, never>
         Returns: {

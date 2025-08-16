@@ -26,7 +26,7 @@ export function useRank20ChallengeId() {
           return;
         }
         
-        let challengeIdSource: 'rpc' | 'fallback' | 'none' = 'none';
+        let challengeIdSource: 'rpc' | 'rpc-safe' | 'fallback' | 'none' = 'none';
         let lastErr: string | null = null;
 
         try {
@@ -37,26 +37,35 @@ export function useRank20ChallengeId() {
             arenaUiHeartbeat?.(supabase, 'r20:cid:rpc');
           } else {
             lastErr = error?.message ?? 'null id from rpc';
-            // DEV fallback
-            if (ARENA_SAFE_FALLBACK) {
-              const { data: rows, error: fErr } = await supabase
-                .from('private_challenges')
-                .select('id,title,status,start_date,challenge_type,category')
-                .eq('status', 'active')
-                .or('title.ilike.%rank%,challenge_type.ilike.%arena%,category.ilike.%arena%')
-                .order('start_date', { ascending: false })
-                .limit(1);
+            
+            // Try safe wrapper before fallback
+            const safe = await supabase.rpc('my_rank20_chosen_challenge_id_safe');
+            if (!safe.error && safe.data) {
+              setChallengeId(safe.data as string);
+              challengeIdSource = 'rpc-safe';
+              arenaUiHeartbeat?.(supabase, 'r20:cid:rpc-safe');
+            } else {
+              // DEV fallback
+              if (ARENA_SAFE_FALLBACK) {
+                const { data: rows, error: fErr } = await supabase
+                  .from('private_challenges')
+                  .select('id,title,status,start_date,challenge_type,category')
+                  .eq('status', 'active')
+                  .or('title.ilike.%rank%,challenge_type.ilike.%arena%,category.ilike.%arena%')
+                  .order('start_date', { ascending: false })
+                  .limit(1);
 
-              if (!fErr && rows && rows.length) {
-                setChallengeId(rows[0].id);
-                challengeIdSource = 'fallback';
-                arenaUiHeartbeat?.(supabase, 'r20:cid:fallback');
+                if (!fErr && rows && rows.length) {
+                  setChallengeId(rows[0].id);
+                  challengeIdSource = 'fallback';
+                  arenaUiHeartbeat?.(supabase, 'r20:cid:fallback');
+                } else {
+                  lastErr = fErr?.message ?? lastErr ?? 'fallback failed';
+                  arenaUiHeartbeat?.(supabase, 'r20:cid:none');
+                }
               } else {
-                lastErr = fErr?.message ?? lastErr ?? 'fallback failed';
                 arenaUiHeartbeat?.(supabase, 'r20:cid:none');
               }
-            } else {
-              arenaUiHeartbeat?.(supabase, 'r20:cid:none');
             }
           }
         } finally {
