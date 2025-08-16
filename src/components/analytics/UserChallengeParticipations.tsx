@@ -76,14 +76,16 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     };
   }).filter(Boolean);
 
-  // TEMP: hide Arena challenge from personal list
-  const isArena = (c: any) =>
-    String(c?.title || '').toLowerCase().includes('rank of 20') ||
-    String(c?.challenge_type || '').toLowerCase().includes('arena') ||
-    String(c?.category || '').toLowerCase().includes('arena');
+  // TEMP – hide Arena (system) from personal list
+  const isArenaSystem = (c: any) => {
+    const t  = String(c?.title || '').toLowerCase();
+    const ty = String(c?.challenge_type || '').toLowerCase();
+    const cat= String(c?.category || '').toLowerCase();
+    return t.includes('rank of 20') || ty.includes('arena') || cat.includes('arena');
+  };
 
-  const privateChallenges = activePrivateChallenges
-    .filter(c => !isArena(c))
+  const visibleItems = activePrivateChallenges.filter(c => !isArenaSystem(c));
+  const privateChallenges = visibleItems
     .map(challenge => ({
       type: 'private',
       challenge,
