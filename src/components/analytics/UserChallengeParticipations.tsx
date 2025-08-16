@@ -76,6 +76,13 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     };
   }).filter(Boolean);
 
+  // Filter out Arena challenges
+  const visible = allPublicChallenges.filter(item => {
+    if (!item?.challenge) return true;
+    const t = (item.challenge.title ?? '').toLowerCase();
+    return !(t.includes('rank of 20') || t.includes('arena — rank of 20'));
+  });
+
   // TEMP – hide Arena (system) from personal list
   const isArenaSystem = (c: any) => {
     const t  = String(c?.title || '').toLowerCase();
@@ -112,8 +119,8 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   };
 
   // Separate by type and apply filters
-  const quickChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'quick'));
-  const regularPublicChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'public'));
+  const quickChallenges = filterChallengesByMode(visible.filter(item => item?.type === 'quick'));
+  const regularPublicChallenges = filterChallengesByMode(visible.filter(item => item?.type === 'public'));
   const filteredPrivateChallenges = filterChallengesByMode(privateChallenges);
   
   // Log filtering results
