@@ -5865,6 +5865,16 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_billboard: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          rank: number | null
+          score: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       arena_leaderboard_view: {
         Row: {
           avatar_url: string | null
@@ -6216,6 +6226,18 @@ export type Database = {
           joined_at: string
           status: string
           user_id: string
+        }[]
+      }
+      arena_get_my_rank: {
+        Args: {
+          p_challenge_id?: string
+          p_month?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: {
+          rank: number
+          score: number
         }[]
       }
       arena_post_message: {
