@@ -387,12 +387,12 @@ function GameAndChallengeContent() {
                   ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Show for Awards/Hall of Fame when flag enabled, hidden for Arena */}
+            {/* Challenge Mode Toggle - Show for Awards/Hall of Fame/Browse/My Challenges when flags enabled, hidden for Arena */}
             {(() => {
-              if (!FLAGS.ARENA_HEADER_SECTION_TABS_FOR_AWARDS) return null;
-              
               const isArenaActive = activeSection === 'ranking';
-              const showHeaderSectionTabs = ['winners', 'hall-of-fame'].includes(activeSection);
+              const showForAwards = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_AWARDS && ['winners', 'hall-of-fame'].includes(activeSection);
+              const showForChallenges = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_CHALLENGES && ['challenges', 'my-challenges'].includes(activeSection);
+              const showHeaderSectionTabs = showForAwards || showForChallenges;
               
               if (showHeaderSectionTabs) {
                 console.log('[Header Tabs] visible for:', activeSection);

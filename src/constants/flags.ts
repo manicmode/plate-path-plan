@@ -18,6 +18,13 @@ export const FLAGS = {
   ARENA_HEADER_SECTION_TABS_FOR_AWARDS: true,
 
   /**
+   * Enable header section tabs for Challenge browse and management views.
+   * When true, shows Combined/Nutrition/Exercise/Recovery tabs at header level
+   * for challenges and my-challenges sections (Arena keeps inner tabs).
+   */
+  ARENA_HEADER_SECTION_TABS_FOR_CHALLENGES: true,
+
+  /**
    * XP demo flag (dev-friendly). Reads from Vite or Next-style envs.
    * Usage: import { FLAGS } and check FLAGS.ENABLE_XP.
    */
