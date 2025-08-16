@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2, Wind, Sparkles } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2, Wind, Sparkles, Vibrate } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSound } from '@/contexts/SoundContext';
+import { useHapticsPref } from '@/contexts/HapticsContext';
 import { useMeditationNudges } from '@/hooks/useMeditationNudges';
 import { useBreathingNudges } from '@/hooks/useBreathingNudges';
 import { useYogaNudges } from '@/hooks/useYogaNudges';
@@ -22,6 +23,7 @@ export const NotificationSettings = () => {
   const { preferences, updatePreferences } = useNotification();
   const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
   const { isEnabled: soundEnabled, setSoundEnabled } = useSound();
+  const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHapticsPref();
   const { nudgePreferences, updateNudgePreferences } = useMeditationNudges();
   const { nudgePreferences: breathingNudgePreferences, updateNudgePreferences: updateBreathingNudgePreferences } = useBreathingNudges();
   const { nudgePreferences: yogaNudgePreferences, updateNudgePreferences: updateYogaNudgePreferences } = useYogaNudges();
@@ -561,6 +563,28 @@ export const NotificationSettings = () => {
             <Switch
               checked={soundEnabled}
               onCheckedChange={setSoundEnabled}
+            />
+          </div>
+        </div>
+
+        {/* Haptics */}
+        <div className="space-y-3">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Vibrate className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+            <span>Haptics</span>
+          </h4>
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-50 dark:bg-purple-900/20">
+            <div className="flex-1">
+              <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                Enable Haptic Feedback
+              </div>
+              <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                Gentle vibration for tabs and interaction feedback
+              </div>
+            </div>
+            <Switch
+              checked={hapticsEnabled}
+              onCheckedChange={setHapticsEnabled}
             />
           </div>
         </div>

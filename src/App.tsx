@@ -15,6 +15,7 @@ import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import { SoundProvider } from '@/contexts/SoundContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
+import { HapticsProvider } from '@/contexts/HapticsContext';
 import Layout from '@/components/Layout';
 import { SmartLoadingScreen } from '@/components/SmartLoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -453,25 +454,27 @@ function App() {
         <React.Suspense fallback={<div style={{padding:16}}>Loading…</div>}>
           <ErrorBoundary>
             <ThemeProvider>
-              <SoundProvider>
-                <TooltipProvider>
-                  <IngredientAlertProvider>
-                    <BadgeProvider>
-                      <ChatModalProvider>
-                        <RewardsProvider>
-                          <LevelUpProvider>
-                            <WorkoutCompletionProviderSafe>
-                              <AppContent />
-                              
-                              <WorkoutCompletionModal />
-                            </WorkoutCompletionProviderSafe>
-                          </LevelUpProvider>
-                        </RewardsProvider>
-                      </ChatModalProvider>
-                    </BadgeProvider>
-                  </IngredientAlertProvider>
-                </TooltipProvider>
-              </SoundProvider>
+              <HapticsProvider>
+                <SoundProvider>
+                  <TooltipProvider>
+                    <IngredientAlertProvider>
+                      <BadgeProvider>
+                        <ChatModalProvider>
+                          <RewardsProvider>
+                            <LevelUpProvider>
+                              <WorkoutCompletionProviderSafe>
+                                <AppContent />
+                                
+                                <WorkoutCompletionModal />
+                              </WorkoutCompletionProviderSafe>
+                            </LevelUpProvider>
+                          </RewardsProvider>
+                        </ChatModalProvider>
+                      </BadgeProvider>
+                    </IngredientAlertProvider>
+                  </TooltipProvider>
+                </SoundProvider>
+              </HapticsProvider>
             </ThemeProvider>
           </ErrorBoundary>
         </React.Suspense>

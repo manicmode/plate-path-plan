@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Slider } from '@/components/ui/slider';
+import { selectionStart, selectionChanged, selectionEnd } from '@/lib/haptics';
 
 type Props = {
   min?: number;
@@ -17,6 +18,7 @@ export default function ValueSlider({
 }: Props) {
   const [local, setLocal] = React.useState(value);
   const [dragging, setDragging] = React.useState(false);
+  const lastIndexRef = React.useRef<number>(-1);
 
   React.useEffect(() => {
     if (!dragging) setLocal(value);
@@ -25,8 +27,9 @@ export default function ValueSlider({
   const commit = ([v]: number[]) => {
     setDragging(false);
     onChange(v);
-    // light haptic on mobile (safe no-op on web)
-    try { (navigator as any).vibrate?.(10); } catch {}
+    // End haptic feedback sequence
+    selectionEnd();
+    lastIndexRef.current = -1;
   };
 
   // requestAnimationFrame-based smoothing during drag
@@ -55,7 +58,20 @@ export default function ValueSlider({
         onPointerDown={(e: any) => {
           try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch {}
         }}
-        onValueChange={([v]) => { setSmooth(v); setDragging(true); }}
+        onValueChange={([v]) => { 
+          setSmooth(v); 
+          if (!dragging) {
+            setDragging(true);
+            selectionStart();
+          }
+          
+          // Trigger haptic feedback when crossing discrete steps
+          const currentIndex = Math.round((v - min) / step);
+          if (currentIndex !== lastIndexRef.current) {
+            selectionChanged();
+            lastIndexRef.current = currentIndex;
+          }
+        }}
         onValueCommit={commit}
         aria-label={ariaLabel}
         className="mood-slider"

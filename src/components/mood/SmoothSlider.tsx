@@ -1,6 +1,7 @@
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState, useCallback, useRef } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { selectionStart, selectionChanged, selectionEnd } from '@/lib/haptics';
 
 interface SmoothSliderProps {
   value: number;
@@ -25,11 +26,24 @@ export const SmoothSlider = memo<SmoothSliderProps>(({
 }) => {
   const [localValue, setLocalValue] = useState(value);
   const [isDragging, setIsDragging] = useState(false);
+  const lastIndexRef = useRef<number>(-1);
 
   const handleValueChange = useCallback((values: number[]) => {
-    setLocalValue(values[0]);
-    setIsDragging(true);
-  }, []);
+    const newValue = values[0];
+    setLocalValue(newValue);
+    
+    if (!isDragging) {
+      setIsDragging(true);
+      selectionStart();
+    }
+    
+    // Trigger haptic feedback when crossing discrete steps
+    const currentIndex = Math.round((newValue - min) / step);
+    if (currentIndex !== lastIndexRef.current) {
+      selectionChanged();
+      lastIndexRef.current = currentIndex;
+    }
+  }, [isDragging, min, step]);
 
   const handleValueCommit = useCallback((values: number[]) => {
     const newValue = values[0];
@@ -37,10 +51,9 @@ export const SmoothSlider = memo<SmoothSliderProps>(({
     onChange(newValue);
     setIsDragging(false);
     
-    // Light haptic feedback if available
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
-    }
+    // End haptic feedback sequence
+    selectionEnd();
+    lastIndexRef.current = -1;
   }, [onChange]);
 
   const displayValue = isDragging ? localValue : value;

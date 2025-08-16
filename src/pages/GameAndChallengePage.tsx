@@ -59,6 +59,7 @@ import { MyFriendsTab } from '@/components/social/MyFriendsTab';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
+import { lightTap } from '@/lib/haptics';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import ChatroomDropdown from '@/components/analytics/ChatroomDropdown';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
@@ -396,6 +397,7 @@ function GameAndChallengeContent() {
                      onValueChange={(value) => {
                        if (value) {
                          console.log('[Header Tabs] changed to', value);
+                         lightTap(); // Add haptic feedback
                          setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
                        }
                      }}

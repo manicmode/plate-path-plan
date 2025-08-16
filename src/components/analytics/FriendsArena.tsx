@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
+import { lightTap } from '@/lib/haptics';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
@@ -77,6 +78,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   // Add logging for inner tabs
   const handleTabChange = (value: string) => {
     console.log('[Inner Tabs] changed to', value);
+    lightTap(); // Add haptic feedback
     setActiveTab(value);
   };
 
