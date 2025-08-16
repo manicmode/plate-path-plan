@@ -1,19 +1,29 @@
 // NEW rollup-backed leaderboard (with graceful legacy fallback)
 import { supabase } from "@/integrations/supabase/client";
 
+export type LeaderboardMode = "global" | "friends";
+
 export async function fetchArenaLeaderboard(opts?: {
+  mode?: LeaderboardMode;      // NEW
   challengeId?: string | null;
-  section?: string;   // 'global' default
-  limit?: number;     // 20 default
+  section?: string;            // default 'global'
+  limit?: number;              // default 20
 }) {
   const section = opts?.section ?? "global";
-  const params = { p_challenge_id: opts?.challengeId ?? null, p_section: section };
+  const limit = opts?.limit ?? 20;
 
-  // Prefer server-side profile-joined RPC
-  const rpc = await supabase.rpc("arena_get_leaderboard_with_profiles", params);
+  const rpcName =
+    opts?.mode === "friends"
+      ? "arena_get_friends_leaderboard_with_profiles"
+      : "arena_get_leaderboard_with_profiles";
+
+  const rpc = await supabase.rpc(rpcName, {
+    p_challenge_id: opts?.challengeId ?? null,
+    p_section: section,
+    p_limit: limit,
+  });
   if (!rpc.error && Array.isArray(rpc.data)) {
-    const rows = (opts?.limit ? rpc.data.slice(0, opts.limit) : rpc.data) as any[];
-    return { rows, source: "rollups" as const };
+    return { rows: rpc.data ?? [], source: rpcName };
   }
 
   // Fallback (legacy live-sum path) — use only if needed

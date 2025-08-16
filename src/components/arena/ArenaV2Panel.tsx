@@ -47,6 +47,11 @@ export default function ArenaV2Panel() {
               }}>
                 +1 point & Recompute
               </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                await supabase.rpc("arena_recompute_rollups_monthly", {}); // current month/global
+              }}>
+                Recompute Rollups
+              </Button>
             </div>
           )}
         </CardContent>
