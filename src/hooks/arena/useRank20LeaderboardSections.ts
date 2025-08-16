@@ -66,6 +66,9 @@ export function useRank20LeaderboardSections(limit = 20, offset = 0) {
         recovery: recoveryResult.data || []
       });
 
+      // Log nutrition RPC rows for verification
+      console.log('[Nutrition RPC rows]', nutritionResult.data?.length || 0, (nutritionResult.data || []).slice(0, 2));
+
       console.log('Leaderboard sections fetched:', {
         combined: combinedResult.data?.length || 0,
         nutrition: nutritionResult.data?.length || 0,

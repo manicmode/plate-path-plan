@@ -37,6 +37,9 @@ import { ArenaSmokeTester } from '@/components/arena/ArenaSmokeTester';
 const nf = new Intl.NumberFormat();
 const formatNumber = (n?: number | null) => nf.format(Math.max(0, Number(n ?? 0)));
 
+// Format points with 2 decimal places (e.g., 12.34)
+const formatPoints = (n?: number | null) => Number(n ?? 0).toFixed(2);
+
 interface FriendsArenaProps {
   friends?: any[]; // Keep for compatibility but unused
 }
@@ -299,7 +302,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   <div className="ml-auto min-w-[84px] text-right tabular-nums mt-6">
                     <div className="inline-flex items-center gap-1">
                       <Target className="w-4 h-4" />
-                      <span className="font-semibold">{formatNumber(row.points)}</span>
+                      <span className="font-semibold">{formatPoints(row.points)}</span>
                       <span className="text-xs text-muted-foreground ml-1">pts</span>
                     </div>
                   </div>
