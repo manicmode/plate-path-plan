@@ -143,6 +143,31 @@ function GameAndChallengeContent() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  
+  const queryClient = useQueryClient();
+
+  // Prefetch challenge ID using safe server paths
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      // Try SAFE first (definer)
+      const safe = await supabase.rpc('my_rank20_chosen_challenge_id_safe');
+      if (!canceled && !safe.error && safe.data) {
+        queryClient.setQueryData(['r20:chosen-id'], safe.data as string);
+        arenaUiHeartbeat(supabase, 'r20:prefetch:rpc-safe');
+        return;
+      }
+      // Then server-side fallback (definer)
+      const fb = await supabase.rpc('my_rank20_active_challenge_id_fallback');
+      if (!canceled && !fb.error && fb.data) {
+        queryClient.setQueryData(['r20:chosen-id'], fb.data as string);
+        arenaUiHeartbeat(supabase, 'r20:prefetch:rpc-fallback');
+        return;
+      }
+      arenaUiHeartbeat(supabase, 'r20:prefetch:none');
+    })();
+    return () => { canceled = true; };
+  }, [queryClient]);
 
   
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
@@ -172,8 +197,6 @@ function GameAndChallengeContent() {
   const [searchParams] = useSearchParams();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const queryClient = useQueryClient();
   
   // Use the scroll-to-top hook
   useScrollToTop();
