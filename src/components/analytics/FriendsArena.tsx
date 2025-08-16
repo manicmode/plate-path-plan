@@ -158,7 +158,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             </div>
           ) : (
             <>
-              <div className="mt-8 mb-8">
+              <div className="my-6">
                 <button
                   type="button"
                   onClick={async () => {
