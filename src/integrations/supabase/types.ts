@@ -6075,6 +6075,56 @@ export type Database = {
           | { p_proposed_xp: number; p_user_id: string }
         Returns: number
       }
+      arena_enroll_me: {
+        Args: { p_challenge_id?: string }
+        Returns: {
+          challenge_id: string
+          group_id: string
+          id: string
+          joined_at: string
+          status: string
+          user_id: string
+        }[]
+      }
+      arena_get_active_challenge: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ends_at: string
+          id: string
+          metadata: Json
+          season_month: number
+          season_year: number
+          slug: string
+          starts_at: string
+          title: string
+        }[]
+      }
+      arena_get_leaderboard: {
+        Args: {
+          p_challenge_id?: string
+          p_limit?: number
+          p_month?: number
+          p_offset?: number
+          p_section?: string
+          p_year?: number
+        }
+        Returns: {
+          rank: number
+          score: number
+          user_id: string
+        }[]
+      }
+      arena_get_my_membership: {
+        Args: { p_challenge_id?: string }
+        Returns: {
+          challenge_id: string
+          group_id: string
+          id: string
+          joined_at: string
+          status: string
+          user_id: string
+        }[]
+      }
       arena_post_message: {
         Args: { p_content: string }
         Returns: string
