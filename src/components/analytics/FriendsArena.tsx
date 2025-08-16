@@ -73,6 +73,12 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [isBillboardOpen, setBillboardOpen] = useState(false);
   // Tab state
   const [activeTab, setActiveTab] = useState('combined');
+  
+  // Add logging for inner tabs
+  const handleTabChange = (value: string) => {
+    console.log('[Inner Tabs] changed to', value);
+    setActiveTab(value);
+  };
 
   // Anti-flicker loading state with grace period
   const ready = !loading && !sectionsLoading && !membersLoading && !!challengeId && rows.length > 0;
@@ -210,7 +216,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="combined" className="flex items-center gap-2 text-xs">
                 {getTabIcon('combined')}

@@ -86,6 +86,12 @@ export function useRank20LeaderboardSections(limit = 20, offset = 0) {
 
       // Log nutrition RPC rows for verification
       console.log('[Nutrition RPC rows]', nutritionRows.length, nutritionRows.slice(0, 2));
+      
+      // Log all section RPC completions
+      console.log('[Sections RPC] combined rows:', combinedRows.length);
+      console.log('[Sections RPC] nutrition rows:', nutritionRows.length);
+      console.log('[Sections RPC] exercise rows:', exerciseRows.length);
+      console.log('[Sections RPC] recovery rows:', recoveryRows.length);
 
       setData({
         combined: combinedRows,

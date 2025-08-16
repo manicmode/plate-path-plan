@@ -393,11 +393,12 @@ function GameAndChallengeContent() {
                   <ToggleGroup 
                     type="single" 
                     value={challengeMode} 
-                    onValueChange={(value) => {
-                      if (value) {
-                        setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
-                      }
-                    }}
+                     onValueChange={(value) => {
+                       if (value) {
+                         console.log('[Header Tabs] changed to', value);
+                         setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
+                       }
+                     }}
                     className="bg-muted/50 rounded-full p-1"
                   >
                     <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm">Nutrition</ToggleGroupItem>
