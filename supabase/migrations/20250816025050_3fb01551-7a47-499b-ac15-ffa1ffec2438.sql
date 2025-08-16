@@ -1,0 +1,3 @@
+-- Grant permissions for testing functions to all authenticated users
+GRANT EXECUTE ON FUNCTION public._active_rank20_challenge_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public._arena_enroll_for(uuid) TO authenticated;
