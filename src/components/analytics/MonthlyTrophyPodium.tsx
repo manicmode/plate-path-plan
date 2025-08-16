@@ -37,11 +37,6 @@ export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ sectio
   const { playChallengeWin } = useSound();
   const { user } = useAuth();
 
-  // Mount/unmount logging
-  useEffect(() => {
-    console.info('[ARENA] MonthlyTrophyPodium mounted');
-    return () => console.info('[ARENA] MonthlyTrophyPodium unmounted');
-  }, []);
 
   useEffect(() => {
     loadCompletedChallenges();

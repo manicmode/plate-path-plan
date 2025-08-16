@@ -36,11 +36,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   champions,
   challengeMode = 'combined'
 }) => {
-  // Mount/unmount logging
-  React.useEffect(() => {
-    console.info('[ARENA] HallOfFame mounted');
-    return () => console.info('[ARENA] HallOfFame unmounted');
-  }, []);
 
   // BYPASS SECTION FILTERING: Always show Hall of Fame regardless of section filter
   // This ensures Arena components render unconditionally

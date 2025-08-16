@@ -75,11 +75,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   // Tab state
   const [activeTab, setActiveTab] = useState('combined');
 
-  // Mount/unmount logging
-  useEffect(() => {
-    console.info('[ARENA] FriendsArena mounted');
-    return () => console.info('[ARENA] FriendsArena unmounted');
-  }, []);
   
   // Add logging for inner tabs
   const handleTabChange = (value: string) => {
