@@ -47,6 +47,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 const FriendsArena = React.lazy(() => import('@/components/analytics/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') })));
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
+import { arenaUiHeartbeat } from '@/lib/arenaDiag';
+import { supabase } from '@/integrations/supabase/client';
 import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreationModal';
 import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
@@ -72,7 +74,6 @@ import BillboardTab from '@/components/billboard/BillboardTab';
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Domain filtering utility
@@ -106,7 +107,20 @@ interface ChatMessage {
 
 // All mock data removed - now using real data from Supabase
 
-// All mock data removed - now using real data from Supabase
+// Component for ranking tab with dev heartbeat
+const RankingTabContent = () => {
+  useEffect(() => {
+    arenaUiHeartbeat(supabase, 'ranking-mounted');
+  }, []);
+
+  return (
+    <section id="live-rankings-arena" className="mt-0">
+      <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
+        <FriendsArena />
+      </React.Suspense>
+    </section>
+  );
+};
 
 export default function GameAndChallengePage() {
   return (
@@ -500,11 +514,7 @@ function GameAndChallengeContent() {
           }} className="w-full flex flex-col">
 
               <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
-                <section id="live-rankings-arena" className="mt-0">
-                  <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
-                    <FriendsArena />
-                  </React.Suspense>
-                </section>
+                <RankingTabContent />
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">

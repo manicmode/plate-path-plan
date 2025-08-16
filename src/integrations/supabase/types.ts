@@ -692,6 +692,24 @@ export type Database = {
           },
         ]
       }
+      arena_ui_heartbeat: {
+        Row: {
+          at: string
+          id: string
+          label: string
+        }
+        Insert: {
+          at?: string
+          id?: string
+          label: string
+        }
+        Update: {
+          at?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           created_at: string
