@@ -1,0 +1,1 @@
+ALTER FUNCTION public.my_rank20_active_challenge_id_fallback() OWNER TO postgres;
