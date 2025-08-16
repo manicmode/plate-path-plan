@@ -11,9 +11,10 @@ import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
 import { PrivateRecoveryChallenges } from './PrivateRecoveryChallenges';
 import { useToast } from '@/hooks/use-toast';
 import { useChatStore } from '@/store/chatStore';
+import { filterByArenaSection, type ArenaSection } from '@/lib/arenaSections';
 
 interface UserChallengeParticipationsProps {
-  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
+  challengeMode?: ArenaSection;
 }
 
 export const UserChallengeParticipations: React.FC<UserChallengeParticipationsProps> = ({ 
@@ -104,6 +105,12 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
   const regularPublicChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'public'));
   const filteredPrivateChallenges = filterChallengesByMode(privateChallenges);
   
+  // Log filtering results
+  React.useEffect(() => {
+    const totalChallenges = allPublicChallenges.length + privateChallenges.length;
+    const filteredTotal = quickChallenges.length + regularPublicChallenges.length + filteredPrivateChallenges.length;
+    console.log('[MyChallenges] section:', challengeMode, 'filtered:', filteredTotal, 'total:', totalChallenges);
+  }, [challengeMode, allPublicChallenges, privateChallenges, quickChallenges, regularPublicChallenges, filteredPrivateChallenges]);
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;

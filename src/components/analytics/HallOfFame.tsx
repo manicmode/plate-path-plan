@@ -12,6 +12,7 @@ import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/h
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useExerciseHallOfFame } from '@/hooks/useExerciseHallOfFame';
+import { type ArenaSection } from '@/lib/arenaSections';
 
 interface HallOfFameEntry {
   id: number;
@@ -28,13 +29,17 @@ interface HallOfFameEntry {
 
 interface HallOfFameProps {
   champions: HallOfFameEntry[];
-  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
+  challengeMode: ArenaSection;
 }
 
 export const HallOfFame: React.FC<HallOfFameProps> = ({ 
   champions,
-  challengeMode = 'nutrition'
+  challengeMode = 'combined'
 }) => {
+  // Log filtering results
+  React.useEffect(() => {
+    console.log('[HallOfFame] section:', challengeMode, 'filtered:', champions.length, 'total:', champions.length);
+  }, [challengeMode, champions]);
   const { user } = useAuth();
   const { toast } = useToast();
   const { monthlyAwards, isLoading: exerciseLoading, error: exerciseError } = useExerciseHallOfFame();

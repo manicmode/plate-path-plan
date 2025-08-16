@@ -66,6 +66,7 @@ import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useChatStore } from '@/store/chatStore';
 import { BILLBOARD_ENABLED } from '@/config/flags';
 import { FLAGS } from '@/constants/flags';
+import { type ArenaSection } from '@/lib/arenaSections';
 import BillboardTab from '@/components/billboard/BillboardTab';
 
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
@@ -151,7 +152,7 @@ function GameAndChallengeContent() {
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
   const [preselectedChatId, setPreselectedChatId] = useState<string | null>(null);
-  const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
+  const [challengeMode, setChallengeMode] = useState<ArenaSection>('combined');
   
   const { selectedChatroomId, selectChatroom } = useChatStore();
   const [searchParams] = useSearchParams();
@@ -291,6 +292,7 @@ function GameAndChallengeContent() {
   };
 
   const onTabClick = (sectionId: string) => {
+    console.log('[Header Section] activeSection:', sectionId, 'challengeMode:', challengeMode);
     userInitiatedRef.current = true;
     setActiveSection(sectionId);
     
@@ -405,9 +407,9 @@ function GameAndChallengeContent() {
                     value={challengeMode} 
                      onValueChange={(value) => {
                        if (value) {
-                         console.log('[Header Tabs] selection:', value);
+                         console.log('[Header Section] selected:', value);
                          lightTap(); // Add haptic feedback
-                         setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined');
+                         setChallengeMode(value as ArenaSection);
                        }
                      }}
                     className="bg-muted/50 rounded-full p-1"
@@ -538,7 +540,7 @@ function GameAndChallengeContent() {
               )}
 
               <TabsContent value="winners" className="mt-4">
-                <MonthlyTrophyPodium />
+                <MonthlyTrophyPodium section={challengeMode} />
               </TabsContent>
 
               <TabsContent value="my-friends" className="mt-4">

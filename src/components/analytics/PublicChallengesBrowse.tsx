@@ -8,9 +8,10 @@ import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { cn } from '@/lib/utils';
 import { RecoveryChallengeBanner } from './RecoveryChallengeBanner';
+import { filterByArenaSection, type ArenaSection } from '@/lib/arenaSections';
 
 interface PublicChallengesBrowseProps {
-  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
+  challengeMode?: ArenaSection;
 }
 
 export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({ 
@@ -45,6 +46,13 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
   const filteredQuickChallenges = getFilteredChallenges(quickChallenges);
   const filteredTrendingChallenges = getFilteredChallenges(trendingChallenges);
   const filteredNewChallenges = getFilteredChallenges(newChallenges);
+
+  // Log the filtering results
+  React.useEffect(() => {
+    const totalChallenges = globalChallenges.length + quickChallenges.length + trendingChallenges.length + newChallenges.length;
+    const filteredTotal = filteredGlobalChallenges.length + filteredQuickChallenges.length + filteredTrendingChallenges.length + filteredNewChallenges.length;
+    console.log('[BrowseChallenges] section:', challengeMode, 'filtered:', filteredTotal, 'total:', totalChallenges);
+  }, [challengeMode, globalChallenges, quickChallenges, trendingChallenges, newChallenges, filteredGlobalChallenges, filteredQuickChallenges, filteredTrendingChallenges, filteredNewChallenges]);
 
   if (loading) {
     return <LoadingScreen />;

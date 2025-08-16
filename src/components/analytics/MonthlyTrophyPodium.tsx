@@ -11,8 +11,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { useAuth } from '@/contexts/auth';
 import { RecoveryMonthlyRankings } from './RecoveryMonthlyRankings';
+import { type ArenaSection } from '@/lib/arenaSections';
 
-export const MonthlyTrophyPodium: React.FC = () => {
+interface MonthlyTrophyPodiumProps {
+  section?: ArenaSection;
+}
+
+export const MonthlyTrophyPodium: React.FC<MonthlyTrophyPodiumProps> = ({ section = 'combined' }) => {
+  // Log filtering results
+  React.useEffect(() => {
+    console.log('[Awards] section:', section, 'filtered: N/A (Awards uses own data)', 'total: N/A');
+  }, [section]);
   const [selectedChallenge, setSelectedChallenge] = useState<CompletedChallenge | null>(null);
   const [winners, setWinners] = useState<PodiumWinner[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
