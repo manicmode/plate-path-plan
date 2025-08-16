@@ -5452,6 +5452,17 @@ export type Database = {
         Args: { _group_id: string }
         Returns: string
       }
+      _probe_leaderboard_rpc: {
+        Args: { p_user: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          streak: number
+          user_id: string
+        }[]
+      }
       accept_challenge_invitation: {
         Args: { invitation_id_param: string }
         Returns: boolean
