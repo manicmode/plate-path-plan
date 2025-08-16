@@ -77,9 +77,8 @@ const { selectChatroom } = useChatStore();
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="w-full px-3 sm:px-0"
     >
-      <Card className="hover:shadow-lg transition-shadow relative w-full">
+      <Card className="hover:shadow-lg transition-shadow relative">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -179,10 +178,10 @@ const { selectChatroom } = useChatStore();
               onClick={handleChatClick}
               disabled={challenge.visibility === 'private' && !isParticipating}
               className="flex-1"
-              data-testid={`btn-billboard-${challenge.id}`}
+              data-testid={`btn-chat-${challenge.id}`}
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              Billboard
+              Billboard & Chat
             </Button>
             {challenge.user_role !== 'owner' && !challenge.is_creator && (
               isParticipating ? (

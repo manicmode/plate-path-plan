@@ -66,7 +66,11 @@ const YogaPage = lazy(() => import('@/pages/recovery/YogaPage'));
 const RecoveryAnalytics = lazy(() => import('@/pages/RecoveryAnalytics'));
 const RecoveryAnalyticsPage = lazy(() => import('@/pages/RecoveryAnalyticsPage'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
-const GameAndChallengePageStable = lazy(() => import('@/pages/GameAndChallengePageStable'));
+const GameAndChallengePage_Min = lazy(() => 
+  import('@/pages/GameAndChallengePage')
+    .then(module => ({ default: module.GameAndChallengePage_Min }))
+    .catch(() => ({ default: () => React.createElement('div', { style: { padding: 16 } }, 'Arena temporarily unavailable — try again shortly.') }))
+);
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
 const Hydration = lazy(() => import('@/pages/Hydration'));
@@ -272,7 +276,7 @@ function AppContent() {
                     } />
                     <Route path="/game-and-challenge" element={
                       <ProtectedRoute>
-                        <GameAndChallengePageStable />
+                        <GameAndChallengePage_Min />
                       </ProtectedRoute>
                     } />
                     <Route path="/supplement-hub" element={

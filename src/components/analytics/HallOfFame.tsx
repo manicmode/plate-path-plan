@@ -36,15 +36,20 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   champions,
   challengeMode = 'combined'
 }) => {
-
-  // BYPASS SECTION FILTERING: Always show Hall of Fame regardless of section filter
-  // This ensures Arena components render unconditionally
+  // Apply section filtering to champions
   const filteredChampions = React.useMemo(() => {
-    // Always return all champions - no filtering based on challengeMode
-    // This ensures Hall of Fame is visible even when other sections are filtered
-    console.log('[HallOfFame] Bypassing section filter - showing all champions:', champions.length);
-    return champions;
-  }, [champions]); // Removed challengeMode dependency
+    const withSection = champions.map(c => ({
+      ...c,
+      __section: mapChampionToSection(c)
+    }));
+    
+    const filtered = withSection.filter(c => sectionMatches(challengeMode, c.__section));
+    
+    // Log filtering results
+    console.log('[HallOfFame] section:', challengeMode, 'filtered:', filtered.length, 'total:', champions.length);
+    
+    return filtered;
+  }, [champions, challengeMode]);
   const { user } = useAuth();
   const { toast } = useToast();
   const { monthlyAwards, isLoading: exerciseLoading, error: exerciseError } = useExerciseHallOfFame();
@@ -291,7 +296,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
 
   return (
-    <div className="space-y-8" data-testid="arena-hof">
+    <div className="space-y-8">
       {/* Main Hall of Fame Card */}
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden p-6">

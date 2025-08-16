@@ -339,21 +339,6 @@ function GameAndChallengeContent() {
     }
   }, [messages]);
 
-  // Runtime verification for tab visibility fix
-  useEffect(() => {
-    const dump = (label) => {
-      const panels = Array.from(document.querySelectorAll('#gc-tabs-root [role="tabpanel"], #gc-tabs-root [data-radix-tabs-content]'));
-      console.info('[GC VERIFY]', label, panels.map(el => ({
-        value: el.getAttribute('data-value') || el.id || '(no-id)',
-        state: el.getAttribute('data-state'),
-        display: getComputedStyle(el).display
-      })));
-    };
-    dump('initial');
-    const triggers = Array.from(document.querySelectorAll('#gc-tabs-root [data-state="active"], #gc-tabs-root [role="tab"]'));
-    setTimeout(() => dump('after-timeout'), 200);
-  }, []);
-
   const quickEmojis = ['😆', '🔥', '👏', '🥦', '🍩', '💪', '🚀', '⭐'];
 
   const navigationItems = BILLBOARD_ENABLED ? [
@@ -376,7 +361,8 @@ function GameAndChallengeContent() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="relative bg-background border-b z-10">
+      {/* Sticky Header - Outside the main container */}
+<div id="gaming-sticky-header" className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
           {/* Unified mobile-style navigation for all sizes */}
           <div className="flex flex-col space-y-2 md:space-y-3 w-full">
@@ -397,7 +383,6 @@ function GameAndChallengeContent() {
                       onClick={() => onTabClick(id)}
                       className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
                       size="sm"
-                      data-testid={id === 'ranking' ? 'nav-arena' : undefined}
                     >
                       <Icon className="h-6 w-6" />
                     </Button>
@@ -503,50 +488,37 @@ function GameAndChallengeContent() {
               "space-y-6 sm:space-y-12 py-4 md:py-8"
             )}>
           
-          {/* Inline CSS for bulletproof tab visibility control */}
-          <style id="gc-tabs-inline-css">{`
-            /* Hide ALL inactive panels under our root, regardless of library */
-            #gc-tabs-root [data-state="inactive"] { display: none !important; }
-            #gc-tabs-root [data-state="active"]   { display: block !important; }
 
-            /* Extra coverage if your lib doesn't set role or data-radix attrs consistently */
-            #gc-tabs-root [role="tabpanel"][hidden] { display: none !important; }
-            #gc-tabs-root [role="tabpanel"]:not([hidden]) { display: block !important; }
-          `}</style>
+          {/* Mobile-Optimized Tabs for All Sections */}
+          <Tabs value={activeSection} onValueChange={(value) => {
+            userInitiatedRef.current = true;
+            if (value === 'chat') {
+              setIsChatroomManagerOpen(true);
+            } else {
+              setActiveSection(value);
+            }
+          }} className="w-full flex flex-col">
 
-          {/* Tab Content with proper visibility control */}
-          <div id="gc-tabs-root" data-gc-tabs-root>
-            <Tabs value={activeSection} onValueChange={(value) => {
-              userInitiatedRef.current = true;
-              if (value === 'chat') {
-                setIsChatroomManagerOpen(true);
-              } else {
-                setActiveSection(value);
-              }
-            }} className="w-full flex flex-col">
-
-              <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8 data-[state=active]:block data-[state=inactive]:hidden">
-                <section id="live-rankings-arena" className="mt-0 space-y-6">
-                  <React.Suspense fallback={<div className="p-4 text-center">Loading Arena...</div>}>
-                    <FriendsArena data-testid="arena-friends" />
+              <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
+                <section id="live-rankings-arena" className="mt-0">
+                  <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
+                    <FriendsArena />
                   </React.Suspense>
-                  <MonthlyTrophyPodium section={challengeMode} data-testid="arena-podium" />
-                  <HallOfFame champions={[]} challengeMode={challengeMode} data-testid="arena-hof" />
                 </section>
               </TabsContent>
 
-              <TabsContent value="challenges" className="mt-4 data-[state=active]:block data-[state=inactive]:hidden">
+              <TabsContent value="challenges" className="mt-4">
                 <PublicChallengesBrowse challengeMode={challengeMode} />
               </TabsContent>
 
-              <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full data-[state=active]:block data-[state=inactive]:hidden">
+              <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
                 <div className="space-y-8">
                   <UserChallengeParticipations challengeMode={challengeMode} />
                 </div>
               </TabsContent>
 
               {BILLBOARD_ENABLED ? (
-                <TabsContent value="billboard" className="mt-0 data-[state=active]:block data-[state=inactive]:hidden">
+                <TabsContent value="billboard" className="mt-0">
                   <BillboardTab />
                   {process.env.NODE_ENV !== "production" && (
                     <div className="text-xs text-muted-foreground px-4 py-2">
@@ -555,7 +527,7 @@ function GameAndChallengeContent() {
                   )}
                 </TabsContent>
               ) : (
-                <TabsContent value="chat" className="mt-0 data-[state=active]:block data-[state=inactive]:hidden">
+                <TabsContent value="chat" className="mt-0">
                   <div id="chat-tab-root" className="relative min-h-[100dvh] overflow-hidden">
                     <ChatroomManager
                       inline
@@ -567,19 +539,18 @@ function GameAndChallengeContent() {
                 </TabsContent>
               )}
 
-              <TabsContent value="winners" className="mt-4 data-[state=active]:block data-[state=inactive]:hidden">
+              <TabsContent value="winners" className="mt-4">
                 <MonthlyTrophyPodium section={challengeMode} />
               </TabsContent>
 
-              <TabsContent value="my-friends" className="mt-4 data-[state=active]:block data-[state=inactive]:hidden">
+              <TabsContent value="my-friends" className="mt-4">
                 <MyFriendsTab />
               </TabsContent>
 
-              <TabsContent value="hall-of-fame" className="mt-4 data-[state=active]:block data-[state=inactive]:hidden">
+              <TabsContent value="hall-of-fame" className="mt-4">
                 <HallOfFame champions={[]} challengeMode={challengeMode} />
               </TabsContent>
             </Tabs>
-          </div>
             
 
           {/* Challenge Creation Modals */}
