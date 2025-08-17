@@ -4,6 +4,49 @@ import { useState, useCallback } from 'react';
 import { useRuntimeFlag } from './useRuntimeFlag';
 import { toast } from '@/hooks/use-toast';
 
+// Helper function to enrich member data with user profiles
+async function enrichMembersWithProfiles(members: any[]) {
+  if (!members || members.length === 0) return members;
+  
+  const userIds = members.map(m => m.user_id).filter(Boolean);
+  if (userIds.length === 0) return members;
+  
+  console.debug('[enrichMembersWithProfiles] Fetching profiles for', userIds.length, 'users');
+  
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('user_id, first_name, last_name, avatar_url')
+    .in('user_id', userIds);
+  
+  console.debug('[enrichMembersWithProfiles] Found', profiles?.length || 0, 'profiles');
+  
+  const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+  
+  return members.map(member => {
+    const profile = profilesMap.get(member.user_id);
+    let avatarUrl = member.avatar_url || profile?.avatar_url;
+    
+    // Convert storage paths to public URLs
+    if (avatarUrl && !avatarUrl.startsWith('http')) {
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(avatarUrl);
+      avatarUrl = publicUrlData.publicUrl;
+    }
+    
+    // Create display name from first_name + last_name
+    const profileDisplayName = profile?.first_name || profile?.last_name 
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : '';
+    
+    return {
+      ...member,
+      display_name: profileDisplayName || member.display_name || `User ${member.user_id.slice(0, 8)}`,
+      avatar_url: avatarUrl,
+    };
+  });
+}
+
 // Re-export types for compatibility
 export type LeaderboardMode = "global" | "friends";
 
@@ -225,14 +268,14 @@ export function useArenaMembers(groupId?: string | null): {
       }
       console.debug('[useArenaMembers] Found', data?.length || 0, 'members');
       console.debug('[useArenaMembers] Raw member data:', data);
-      return (data || []).map((member: any) => {
-        console.debug('[useArenaMembers] Processing member:', member);
-        return {
-          user_id: member.user_id,
-          display_name: member.display_name || `User ${member.user_id.slice(0, 8)}`,
-          avatar_url: member.avatar_url,
-        };
-      });
+      
+      const basicMembers = (data || []).map((member: any) => ({
+        user_id: member.user_id,
+        display_name: member.display_name || `User ${member.user_id.slice(0, 8)}`,
+        avatar_url: member.avatar_url,
+      }));
+      
+      return await enrichMembersWithProfiles(basicMembers);
     },
   });
 
@@ -310,13 +353,16 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null): {
         throw error;
       }
       console.debug('[useArenaLeaderboardWithProfiles] Found', data?.length || 0, 'entries');
-      return (data || []).map((entry: any) => ({
+      
+      const basicEntries = (data || []).map((entry: any) => ({
         user_id: entry.user_id,
         score: entry.points || 0,
         display_name: entry.display_name || `User ${entry.user_id.slice(0, 8)}`,
         avatar_url: entry.avatar_url,
         rank: entry.rank || 0,
       }));
+      
+      return await enrichMembersWithProfiles(basicEntries);
     },
   });
 

@@ -82,8 +82,6 @@ export default function MemberTabsStack({
                     src={member.avatar_url || undefined} 
                     alt={member.display_name || "user"}
                     className="object-cover"
-                    onError={() => console.log(`Avatar failed to load for ${member.display_name}:`, member.avatar_url)}
-                    onLoad={() => console.log(`Avatar loaded for ${member.display_name}:`, member.avatar_url)}
                   />
                   <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
                     <Initials name={member.display_name} />
