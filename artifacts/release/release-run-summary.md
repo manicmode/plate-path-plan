@@ -1,22 +1,25 @@
 # Release Run Summary v2.0.0
 
 ## Tag Status
-- Tag v2.0.0: Manual creation required
-- Instructions: See artifacts/release/tag-instructions.txt
+SKIPPED: tag detection - no git access in Lovable environment
 
-## CI Workflow
-- Workflow: Release (tag) (.github/workflows/release-tag.yml)
-- Status: SKIPPED - no GH auth in Lovable environment
-- Jobs: build, smoke, e2e (conditional)
-- Actions URL: https://github.com/{owner}/{repo}/actions/workflows/release-tag.yml
+## Expected Actions After Manual Tag Push
+Execute the following commands to create and push the v2.0.0 tag:
 
-## Expected Behavior After Tag Push
-- Version injection: VITE_APP_VERSION=2.0.0
-- Build artifacts: web-build
-- E2E: Auto-skip if secrets missing
+```bash
+git tag -a v2.0.0 -m "Arena V2"
+git push origin v2.0.0
+```
 
-## Files Verified
-- ✅ release-tag.yml has "Derive version from tag" step
-- ✅ HealthCheck.tsx has env-driven APP_VERSION
-- ✅ Arena V2 identifier present
-- ✅ V1 code purged (only schema types remain)
+## CI Workflow Monitoring
+SKIPPED: no GH auth in Lovable environment
+
+**Actions URL:** https://github.com/{owner}/{repo}/actions/workflows/release-tag.yml
+
+## Expected Workflow Behavior
+- Job: build (inject VITE_APP_VERSION=2.0.0, build app, upload artifacts)
+- Job: smoke (static health validation)
+- Job: e2e (conditional on secrets, auto-skip if missing)
+
+## Next Steps
+After tag push, monitor the Actions URL above for workflow completion.

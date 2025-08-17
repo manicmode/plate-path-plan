@@ -1,0 +1,9 @@
+SKIPPED: no PREVIEW_URL - Expected JSON after deployment:
+
+{
+  "ok": true,
+  "version": "2.0.0",
+  "arena": "v2", 
+  "time": "2025-08-17T...",
+  "db": "reachable"
+}
