@@ -281,21 +281,28 @@ export function useArenaLeaderboard(args?: {
   });
 }
 
-// V2 Arena Leaderboard Hook (by group ID)
-export function useArenaLeaderboardWithProfiles(groupId?: string | null): { 
-  leaderboard: Array<{ user_id: string; score: number; display_name: string; avatar_url?: string; rank: number }>; 
+// V2 Arena Leaderboard Hook (by group ID) with facet support
+export function useArenaLeaderboardWithProfiles(
+  groupId?: string | null, 
+  facet: 'combined' | 'nutrition' | 'exercise' | 'recovery' = 'combined'
+): { 
+  leaderboard: Array<{ user_id: string; score: number; display_name: string; avatar_url?: string; rank: number; streak?: number }>; 
   isLoading: boolean; 
   error?: Error; 
 } {
   const query = useQuery({
-    queryKey: ['arena', 'leaderboard-v2', groupId],
+    queryKey: ['arena', 'leaderboard-v2', groupId, facet],
     enabled: !!groupId,
     queryFn: async () => {
       if (!groupId) return [];
-      console.debug('[useArenaLeaderboardWithProfiles] Fetching leaderboard for group:', groupId);
+      console.debug('[useArenaLeaderboardWithProfiles] Fetching leaderboard for group:', groupId, 'facet:', facet);
+      
+      // Map facet to section parameter for the RPC
+      const sectionParam = facet === 'combined' ? 'global' : facet;
+      
       const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
         challenge_id_param: null, // V2 uses group-based leaderboard
-        section_param: 'global',
+        section_param: sectionParam,
         year_param: null,
         month_param: null,
         limit_param: 100,
@@ -305,13 +312,14 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null): {
         console.error('[useArenaLeaderboardWithProfiles] RPC error:', error);
         throw error;
       }
-      console.debug('[useArenaLeaderboardWithProfiles] Found', data?.length || 0, 'entries');
+      console.debug('[useArenaLeaderboardWithProfiles] Found', data?.length || 0, 'entries for facet:', facet);
       return (data || []).map((entry: any) => ({
         user_id: entry.user_id,
         score: entry.points || 0,
         display_name: entry.display_name || `User ${entry.user_id.slice(0, 8)}`,
         avatar_url: entry.avatar_url,
         rank: entry.rank || 0,
+        streak: entry.streak || 0,
       }));
     },
   });
