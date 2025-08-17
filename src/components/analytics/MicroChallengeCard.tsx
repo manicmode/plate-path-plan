@@ -161,7 +161,7 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
               className="flex items-center gap-1"
             >
               <MessageCircle className="h-3 w-3" />
-              💬 Billboard & Chat
+              Billboard & Chat
             </Button>
           </div>
         </div>

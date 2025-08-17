@@ -249,7 +249,7 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
         className="w-full h-14 text-white font-medium text-lg bg-gradient-to-r from-purple-500 to-teal-500 hover:from-purple-600 hover:to-teal-600 rounded-2xl shadow-lg"
       >
         <MessageSquare className="h-5 w-5 mr-2" />
-        💬 Billboard & Chat
+        Billboard & Chat
       </Button>
 
       {/* Live Rankings Arena Card */}
