@@ -1,3 +1,5 @@
+import { getDisplayName } from '@/lib/displayName';
+
 // Arena helper functions for merging roster and leaderboard data
 
 export type RosterRow = { 
@@ -28,7 +30,13 @@ export function makeMembersForTabs(roster: RosterRow[], lb: LeaderboardRow[]): M
   
   return roster.map(r => {
     const m = lbById.get(r.user_id);
-    const name = r.display_name?.trim() || r.user_id;
+    const name = getDisplayName({
+      display_name: r.display_name,
+      first_name: null,
+      last_name: null,
+      email: null,
+      user_id: r.user_id,
+    });
     
     return {
       user_id: r.user_id,

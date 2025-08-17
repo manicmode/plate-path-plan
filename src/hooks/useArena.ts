@@ -1,3 +1,4 @@
+import { getDisplayName } from '@/lib/displayName';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useCallback } from 'react';
@@ -342,7 +343,6 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
     queryFn: async () => {
       if (!groupId) return [];
       
-      console.log('[Arena] fetch.start', { groupId, domain });
       
       try {
         const { data: leaderboardData, error } = await supabase.rpc(
@@ -361,11 +361,8 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         }
 
         if (!leaderboardData?.length) {
-          console.log('[Arena] fetch.done', { groupId, domain, rows: 0 });
           return [];
         }
-        
-        console.log('[Arena] fetch.done', { groupId, domain, rows: leaderboardData?.length ?? 0 });
 
         // Get user IDs for profile enrichment
         const userIds = leaderboardData.map((row: any) => row.user_id);
@@ -386,16 +383,14 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         const enrichedLeaderboard = leaderboardData.map((row: any) => {
           const profile = profiles?.find((p: any) => p.user_id === row.user_id);
           
-          // Merge fields in priority order: (first_name + last_name) || fallback
-          let displayName = '';
-          if (!displayName) {
-            const firstName = profile?.first_name || '';
-            const lastName = profile?.last_name || '';
-            displayName = `${firstName} ${lastName}`.trim();
-          }
-          if (!displayName) {
-            displayName = `User ${row.user_id.slice(0, 8)}`;
-          }
+          // Use unified display name logic
+          const displayName = getDisplayName({
+            display_name: null, // user_profiles doesn't have display_name
+            first_name: profile?.first_name,
+            last_name: profile?.last_name,
+            email: null, // user_profiles doesn't have email
+            user_id: row.user_id,
+          });
           
           // Resolve avatar URL from storage path to public URL
           let avatarUrl = profile?.avatar_url;

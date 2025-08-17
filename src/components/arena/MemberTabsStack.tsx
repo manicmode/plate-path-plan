@@ -1,34 +1,41 @@
-import React from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, Flame } from 'lucide-react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
-export type MemberTab = {
-  user_id: string;
-  display_name: string;
-  avatar_url?: string | null;
-  points?: number;
-  rank?: number | null;
+type Member = { user_id: string; display_name?: string; avatar_url?: string };
+type MemberTabsStackProps = {
+  members: Member[];
+  activeUserId?: string;
+  onSelect?: (userId: string) => void;
 };
 
-interface MemberTabsStackProps {
-  members: MemberTab[];
-  onOpenProfile: (member: MemberTab) => void;
-  onOpenEmojiTray?: (userId: string) => void; // Made optional
-  onPrefetchStats: (userId: string) => void;
+export default function MemberTabsStack({ members, activeUserId, onSelect }: MemberTabsStackProps) {
+  const items = useMemo(() => (members ?? []).slice(0, 12), [members]);
+
+  if (!items.length) return null;
+
+  return (
+    <div className="w-full overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 py-2">
+        {items.map(m => {
+          const active = m.user_id === activeUserId;
+          return (
+            <button
+              key={m.user_id}
+              onClick={() => onSelect?.(m.user_id)}
+              className={cn(
+                'px-3 py-1 rounded-full border text-sm whitespace-nowrap transition',
+                active ? 'border-primary bg-primary/10' : 'border-muted-foreground/20 hover:bg-muted/50'
+              )}
+              aria-pressed={active}
+            >
+              {m.display_name ?? m.user_id.slice(0, 6)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-function Initials({ name }: { name?: string | null }) {
-  const t = (name ?? '').trim();
-  if (!t) return <>{'?'}</>;
-  const parts = t.split(/\s+/);
-  const a = (parts[0]?.[0] ?? '').toUpperCase();
-  const b = (parts[1]?.[0] ?? '').toUpperCase();
-  return <>{(a + b || a || '?').slice(0, 2)}</>;
-}
-
-// TEMP HOTFIX: disable vertical list rendering (was imitating leaderboard rows)
-export default function MemberTabsStack(props: MemberTabsStackProps) {
-  return null;
-}
+// Legacy exports for compatibility
+export type MemberTab = Member;
