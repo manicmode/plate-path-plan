@@ -1,6 +1,7 @@
 // ⚠️ DEPRECATED IMPORT: Import ArenaPanel instead of ArenaV2Panel directly
 import * as React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/arenaV2/useArena';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,9 @@ import SectionDivider from '@/components/arena/SectionDivider';
 import { BillboardSkeleton } from '@/components/arena/ArenaSkeletons';
 import EmojiTray from '@/components/arena/EmojiTray';
 import { useEmojiReactions } from '@/hooks/useEmojiReactions';
+import MemberTabsStack, { type MemberTab } from '@/components/arena/MemberTabsStack';
+import { UserStatsModal } from '@/components/analytics/UserStatsModal';
+import { fetchUserStats } from '@/hooks/arena/useUserStats';
 
 function Initials({ name }: { name?: string|null }) {
   const t = (name ?? '').trim();
@@ -26,6 +30,12 @@ function Initials({ name }: { name?: string|null }) {
   return <>{(a+b||a||'?').slice(0,2)}</>;
 }
 
+type SelectedUser = {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string | null;
+} | null;
+
 export default function ArenaV2Panel() {
   // Add deprecation warning for direct imports in development
   React.useEffect(() => {
@@ -34,6 +44,7 @@ export default function ArenaV2Panel() {
     }
   }, []);
   
+  const queryClient = useQueryClient();
   const { data: active, isLoading: loadingActive } = useArenaActive();
   const challengeId = active?.id;
   const { data: me } = useArenaMyMembership(challengeId);
@@ -44,7 +55,12 @@ export default function ArenaV2Panel() {
   
   // Feature flags
   const { enabled: winnersRibbonEnabled } = useFeatureFlag('arena_winners_ribbon');
+  const { enabled: showWinnersRibbonBelowTabs } = useFeatureFlag('arena_show_winners_ribbon_below_tabs');
   const { enabled: emojiEnabled } = useFeatureFlag('arena_emoji_tray');
+  const { enabled: profileModalEnabled } = useFeatureFlag('arena_profile_modal');
+  
+  // Profile modal state
+  const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
   
   // Emoji reactions state
   const { addReaction, getReactions } = useEmojiReactions();
@@ -57,6 +73,82 @@ export default function ArenaV2Panel() {
     setTrayOpen(false);
     setActiveTarget(null);
   }, [activeTarget, addReaction]);
+
+  // Profile modal handlers
+  const prefetchUser = useCallback((userId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["userStats", userId],
+      queryFn: () => fetchUserStats(userId),
+      staleTime: 5 * 60 * 1000, // 5 min
+    }).catch(() => {});
+  }, [queryClient]);
+
+  const openUserProfile = useCallback((u: { user_id: string; display_name: string; avatar_url?: string | null }, source: "winners" | "leaderboard" | "members") => {
+    if (!profileModalEnabled) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("arena_profile_modal is disabled; ignoring openUserProfile", { source, u });
+      }
+      return;
+    }
+    setSelectedUser({ user_id: u.user_id, display_name: u.display_name, avatar_url: u.avatar_url ?? undefined });
+  }, [profileModalEnabled]);
+
+  const closeUserProfile = useCallback(() => setSelectedUser(null), []);
+
+  // Build members data for tabs stack
+  const membersForTabs: MemberTab[] = React.useMemo(() => {
+    if (!leaderboard?.length && !members?.length) return [];
+    
+    // Prefer leaderboard data (has points and rank)
+    const leaderboardMap = new Map(leaderboard?.map(l => [l.user_id, l]) || []);
+    
+    // Combine data, preferring leaderboard info when available
+    const allMembers = members?.map(member => {
+      const leaderboardEntry = leaderboardMap.get(member.user_id);
+      return {
+        user_id: member.user_id,
+        display_name: member.display_name,
+        avatar_url: member.avatar_url,
+        points: leaderboardEntry?.score || 0,
+        rank: leaderboardEntry?.rank || null,
+      };
+    }) || [];
+    
+    // Sort by rank (nulls last), then by points descending, then by name
+    return allMembers.sort((a, b) => {
+      if (a.rank && b.rank) return a.rank - b.rank;
+      if (a.rank && !b.rank) return -1;
+      if (!a.rank && b.rank) return 1;
+      if (a.points !== b.points) return (b.points || 0) - (a.points || 0);
+      return (a.display_name || '').localeCompare(b.display_name || '');
+    });
+  }, [leaderboard, members]);
+
+  // Real-time updates for new members
+  useEffect(() => {
+    if (!challengeId) return;
+
+    const channel = supabase
+      .channel('arena-members-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'arena_memberships'
+        },
+        () => {
+          // Invalidate both queries to refresh data
+          queryClient.invalidateQueries({ queryKey: ['arena', 'members'] });
+          queryClient.invalidateQueries({ queryKey: ['arena', 'leaderboard'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [challengeId, queryClient]);
 
   return (
     <div className="space-y-6" data-testid="arena-v2">
@@ -92,8 +184,20 @@ export default function ArenaV2Panel() {
             </div>
           </div>
           
-          {/* Winners Ribbon */}
-          {winnersRibbonEnabled && <WinnersRibbon />}
+          {/* Member Tabs Stack (replaces winners ribbon at top) */}
+          <MemberTabsStack
+            members={membersForTabs}
+            onOpenProfile={(member) => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "members")}
+            onOpenEmojiTray={(userId) => { setActiveTarget(`user:${userId}`); setTrayOpen(true); }}
+            onPrefetchStats={prefetchUser}
+          />
+
+          {/* Optional Winners Ribbon below tabs */}
+          {winnersRibbonEnabled && showWinnersRibbonBelowTabs && (
+            <div className="mt-4">
+              <WinnersRibbon />
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
@@ -139,9 +243,21 @@ export default function ArenaV2Panel() {
             <div className="space-y-3">
               {leaderboard!.map((row, index) => (
                 <div 
-                  key={row.user_id} 
-                  className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible"
+                  key={row.user_id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
+                    }
+                  }}
+                  onMouseEnter={() => prefetchUser(row.user_id)}
+                  onFocus={() => prefetchUser(row.user_id)}
+                  className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
                   style={{ animationDelay: `${index * 40}ms` }}
+                  aria-label={`Open profile for ${row.display_name || 'user'}`}
                 >
                   {/* Off-card rank badge */}
                   <span
@@ -191,8 +307,12 @@ export default function ArenaV2Panel() {
                         {/* Add reaction button */}
                         {emojiEnabled && (
                           <button
-                            onClick={() => { setActiveTarget(`user:${row.user_id}`); setTrayOpen(true); }}
-                            className="rounded-full p-1 hover:bg-white/10 transition"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setActiveTarget(`user:${row.user_id}`); 
+                              setTrayOpen(true); 
+                            }}
+                            className="rounded-full p-1 hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
                             aria-label="Add reaction"
                           >
                             <Plus className="h-4 w-4 text-white/80" />
@@ -222,7 +342,22 @@ export default function ArenaV2Panel() {
           ) : (
             <div className="grid grid-cols-4 gap-4">
               {members!.map(m => (
-                <div key={m.user_id} className="flex flex-col items-center text-center">
+                <div 
+                  key={m.user_id} 
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members")}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members");
+                    }
+                  }}
+                  onMouseEnter={() => prefetchUser(m.user_id)}
+                  onFocus={() => prefetchUser(m.user_id)}
+                  className="flex flex-col items-center text-center cursor-pointer hover:bg-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
+                  aria-label={`Open profile for ${m.display_name || 'member'}`}
+                >
                   <Avatar className="h-10 w-10">
                     {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name ?? ''}/> : null}
                     <AvatarFallback><Initials name={m.display_name}/></AvatarFallback>
@@ -243,6 +378,15 @@ export default function ArenaV2Panel() {
           onReact={handleReactUser}
         />
       )}
+
+      {/* Profile Modal */}
+      <UserStatsModal
+        open={!!selectedUser}
+        onClose={closeUserProfile}
+        userId={selectedUser?.user_id ?? ""}
+        displayName={selectedUser?.display_name ?? ""}
+        avatarUrl={selectedUser?.avatar_url ?? undefined}
+      />
     </div>
   );
 }
