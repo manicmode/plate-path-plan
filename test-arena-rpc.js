@@ -6,15 +6,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function testArenaRPC() {
-  const { data, error } = await supabase.rpc('arena_get_active_challenge');
-  console.log('RPC active raw:', JSON.stringify(data), 'typeof:', typeof data, 'isArray:', Array.isArray(data));
-  console.log('activeRow:', Array.isArray(data) ? data[0] : data);
-  console.log('activeRow.id:', (Array.isArray(data) ? data[0] : data)?.id);
-  console.log('session?', (await supabase.auth.getSession()).data.session?.user?.id);
-  
-  if (error) {
-    console.log('RPC error:', error);
-  }
+  const sess = (await supabase.auth.getSession()).data.session;
+  console.log('session user:', sess?.user?.id);
+  const { data, error } = await supabase.rpc('arena_get_members', { challenge_id_param: null, limit_param: 200, offset_param: 0 });
+  console.log('roster raw:', JSON.stringify(data), 'isArray:', Array.isArray(data), 'len:', Array.isArray(data) ? data.length : 'n/a', 'err:', error);
 }
 
 testArenaRPC();
