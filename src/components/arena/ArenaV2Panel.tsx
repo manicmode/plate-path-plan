@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/useArena';
 import { toast } from '@/hooks/use-toast';
 import { useArenaChat } from '@/hooks/useArenaChat';
+import { useRuntimeFlag } from '@/hooks/useRuntimeFlag';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, Sparkles } from 'lucide-react';
+import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, Sparkles, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -44,6 +45,9 @@ export default function ArenaV2Panel() {
   // Arena V2 implementation - unified arena functionality
   
   const queryClient = useQueryClient();
+  
+  // Check hard disable flag
+  const { enabled: hardDisabled } = useRuntimeFlag('arena_v2_hard_disable');
   
   // V2 Arena hooks
   const { groupId, isLoading: loadingActive } = useArenaActive();
@@ -188,6 +192,32 @@ export default function ArenaV2Panel() {
       supabase.removeChannel(channel);
     };
   }, [groupId, queryClient]);
+
+  // Show maintenance message if hard disabled
+  if (hardDisabled === true) {
+    return (
+      <div className="space-y-6" data-testid="arena-v2">
+        <Card className="overflow-visible border-2 shadow-xl relative dark:border-orange-500/30 border-orange-400/40 dark:bg-slate-900/40 bg-slate-50/40">
+          <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 p-6">
+            <CardTitle className="text-2xl font-bold flex items-center gap-3 justify-center">
+              <Wrench className="h-6 w-6 text-orange-500" />
+              Arena is temporarily unavailable
+              <Wrench className="h-6 w-6 text-orange-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="text-center py-12">
+              <Wrench className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Under Maintenance</h3>
+              <p className="text-muted-foreground">
+                We're performing maintenance. Please check back soon.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="arena-v2">

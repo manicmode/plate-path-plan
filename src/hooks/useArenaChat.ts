@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 export type ArenaChatMessage = {
   id: string;
@@ -18,7 +18,6 @@ export function useArenaChat(groupId?: string | null): {
   const [messages, setMessages] = useState<ArenaChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>();
-  const { toast } = useToast();
   
   // Refs for cleanup and debouncing
   const channelRef = useRef<any>(null);
@@ -207,6 +206,27 @@ export function useArenaChat(groupId?: string | null): {
     }
 
     try {
+      // Check hard disable flag before sending
+      try {
+        const { data: flagData } = await (supabase as any)
+          .from('runtime_flags')
+          .select('enabled')
+          .eq('name', 'arena_v2_hard_disable')
+          .maybeSingle();
+
+        if (flagData?.enabled === true) {
+          toast({
+            title: "Arena is under maintenance",
+            description: "Chat is temporarily disabled.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (flagError) {
+        // Ignore flag check errors, allow message to proceed
+        console.debug('[useArenaChat] Flag check failed, proceeding:', flagError);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
 

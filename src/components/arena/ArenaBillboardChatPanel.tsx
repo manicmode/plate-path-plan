@@ -15,6 +15,7 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 import { useArenaActive, useArenaMembers, useArenaEnroll } from '@/hooks/useArena';
 import { useArenaChat } from '@/hooks/useArenaChat';
+import { useRuntimeFlag } from '@/hooks/useRuntimeFlag';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,6 +52,9 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const { members } = useArenaMembers(groupId);
   const { messages, sendMessage, isLoading: chatLoading } = useArenaChat(groupId);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
+  
+  // Check hard disable flag
+  const { enabled: hardDisabled } = useRuntimeFlag('arena_v2_hard_disable');
 
   const handleJoinArena = async () => {
     const enrolledGroupId = await enroll();
@@ -330,21 +334,22 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     ref={inputRef}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your message..."
+                    placeholder={hardDisabled ? "Chat disabled during maintenance" : "Type your message..."}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendMessage();
                       }
                     }}
-                    disabled={!isAuthenticated}
+                    disabled={!isAuthenticated || hardDisabled}
                     data-testid="arena-chat-input"
                   />
                   <Button 
                     onClick={handleSendMessage} 
-                    disabled={!newMessage.trim() || !isAuthenticated}
+                    disabled={!newMessage.trim() || !isAuthenticated || hardDisabled}
                     size="icon"
                     data-testid="arena-chat-send"
+                    title={hardDisabled ? "Disabled by maintenance" : "Send message"}
                   >
                     <Send className="h-4 w-4" />
                   </Button>

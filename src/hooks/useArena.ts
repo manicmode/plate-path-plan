@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useCallback } from 'react';
+import { useRuntimeFlag } from './useRuntimeFlag';
+import { toast } from '@/hooks/use-toast';
 
 // Re-export types for compatibility
 export type LeaderboardMode = "global" | "friends";
@@ -119,16 +121,38 @@ export function useArenaEnroll(): {
   const queryClient = useQueryClient();
 
   const enroll = useCallback(async (): Promise<string | null> => {
+    setIsEnrolling(true);
+    setError(undefined);
+
     try {
-      setIsEnrolling(true);
-      setError(undefined);
+      // Check hard disable flag before enrollment
+      try {
+        const { data: flagData } = await (supabase as any)
+          .from('runtime_flags')
+          .select('enabled')
+          .eq('name', 'arena_v2_hard_disable')
+          .maybeSingle();
+
+        if (flagData?.enabled === true) {
+          toast({
+            title: "Arena is under maintenance",
+            description: "Please try again later.",
+            variant: "destructive",
+          });
+          return null;
+        }
+      } catch (flagError) {
+        // Ignore flag check errors, allow enrollment to proceed
+        console.debug('[useArenaEnroll] Flag check failed, proceeding:', flagError);
+      }
+
+      console.debug('[useArenaEnroll] Starting enrollment');
+      const { data, error } = await supabase.rpc('arena_enroll_me');
       
-      const { data, error: rpcError } = await supabase.rpc('arena_enroll_me');
-      
-      if (rpcError) {
+      if (error) {
         const { ArenaEvents } = await import('@/lib/telemetry');
-        ArenaEvents.enroll(false, undefined, rpcError.message);
-        throw new Error(rpcError.message);
+        ArenaEvents.enroll(false, undefined, error.message);
+        throw new Error(error.message);
       }
       
       // Handle the response - V2 arena_enroll_me returns UUID directly

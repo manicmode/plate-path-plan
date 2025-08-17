@@ -13,6 +13,7 @@ interface HealthStatus {
   arena: string;
   time: string;
   db: 'reachable' | 'error';
+  hardDisabled: boolean;
 }
 
 export default function HealthCheck() {
@@ -21,22 +22,32 @@ export default function HealthCheck() {
     version: APP_VERSION,
     arena: 'v2',
     time: new Date().toISOString(),
-    db: 'reachable'
+    db: 'reachable',
+    hardDisabled: false
   });
 
   useEffect(() => {
-    const checkDbHealth = async () => {
+    const checkHealth = async () => {
       try {
-        // Lightweight DB check - try to call Arena V2 function
+        // Check DB and flag status
         await supabase.rpc('arena_get_active_group_id');
         setHealth(prev => ({ ...prev, db: 'reachable' }));
+        
+        // Check hard disable flag
+        const { data: flagData } = await (supabase as any)
+          .from('runtime_flags')
+          .select('enabled')
+          .eq('name', 'arena_v2_hard_disable')
+          .maybeSingle();
+        
+        setHealth(prev => ({ ...prev, hardDisabled: flagData?.enabled ?? false }));
       } catch (error) {
         console.warn('[health] DB check failed:', error);
         setHealth(prev => ({ ...prev, db: 'error' }));
       }
     };
 
-    checkDbHealth();
+    checkHealth();
   }, []);
 
   return (

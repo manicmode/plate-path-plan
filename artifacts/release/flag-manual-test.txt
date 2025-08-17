@@ -1,0 +1,27 @@
+# Manual Testing SQL Commands
+
+## Enable hard disable flag:
+```sql
+insert into public.runtime_flags (name, enabled)
+values ('arena_v2_hard_disable', true)
+on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+```
+
+**Expected UI behavior:**
+- Arena panel shows "Arena is temporarily unavailable" maintenance message
+- Chat input disabled with "Chat disabled during maintenance" placeholder
+- Enrollment blocked with "Arena is under maintenance" toast
+- /healthz returns `"hardDisabled": true`
+
+## Disable flag (restore normal behavior):
+```sql
+insert into public.runtime_flags (name, enabled)
+values ('arena_v2_hard_disable', false)
+on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+```
+
+**Expected UI behavior:**
+- Normal Arena functionality restored
+- Chat input enabled
+- Enrollment works normally
+- /healthz returns `"hardDisabled": false`
