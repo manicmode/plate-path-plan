@@ -183,6 +183,55 @@ Any attempt to import V1 code will fail CI builds.
 - **Backwards Compatibility**: None - hard migration to V2 only
 - **Data**: V1 database tables remain for historical data only
 
+## E2E Tests & CI
+
+### Running E2E Tests Locally
+
+```bash
+# Requires authentication secrets
+npm run e2e:seed  # Seeds test users (if SUPABASE_SERVICE_ROLE_KEY available)
+npm run e2e:test  # Runs Playwright tests
+npm run e2e       # Seed + test combined
+```
+
+### Required Secrets
+
+**Option 1: Service Role Key** (preferred):
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY` 
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+**Option 2: Test User Credentials**:
+- `E2E_USER_A_EMAIL` / `E2E_USER_A_PASSWORD`
+- `E2E_USER_B_EMAIL` / `E2E_USER_B_PASSWORD`
+
+### What E2E Tests Cover
+
+1. **Two-User Enrollment**: Both users join same Arena group
+2. **Realtime Chat**: Message exchange across user sessions  
+3. **Network Proof**: No legacy V1 calls, only V2 endpoints
+4. **Leaderboard Rendering**: UI components mount correctly
+5. **Authentication Flow**: Sign-in → enrollment → functionality
+
+### CI Integration
+
+- Runs on all PRs and main branch pushes
+- Auto-skips if secrets missing (doesn't fail CI)
+- Captures screenshots/videos on failure
+- Uploads artifacts for debugging
+
+### E2E Troubleshooting
+
+**Tests auto-skip**: Add required secrets to repository settings
+
+**Auth failures**: Verify test user credentials or service role key
+
+**RLS errors**: Check user has arena membership after enrollment
+
+**Chat timeout**: Ensure real-time subscriptions are working
+
+**Network assertion fails**: Legacy V1 code may still exist
+
 ## Support
 
 For Arena V2 issues:
@@ -190,3 +239,4 @@ For Arena V2 issues:
 2. Verify RLS policies via Supabase dashboard  
 3. Run verification checklist above
 4. Check network calls match expected V2 patterns
+5. Run E2E tests locally to isolate issues
