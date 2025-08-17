@@ -65,26 +65,45 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
 
-  // 🔎 DEBUG: Step 0 - Print IDs when component loads
+  // 🔎 FORENSIC STEP 0: Runtime Snapshot Logging
   useEffect(() => {
-    if (groupId) {
-      console.log('🔎 Arena Debug - GroupId:', groupId);
-      console.log('🔎 Arena Debug - Challenge Mode:', challengeMode);
+    if (groupId && (members || leaderboard)) {
+      console.log('arena.snapshot ->', {
+        groupId,
+        domain: challengeMode,
+        members: members?.map(m => m.user_id) || [],
+        leaderboard: leaderboard?.map(l => l.user_id) || []
+      });
     }
-  }, [groupId, challengeMode]);
+  }, [groupId, challengeMode, members, leaderboard]);
 
-  // 🔎 DEBUG: Step 4 - Print member and leaderboard data
-  useEffect(() => {
-    if (members?.length) {
-      console.log('🔎 arena.members.rows', members.length, members.map(r => r.user_id));
-    }
-  }, [members]);
-
+  // 🔎 FORENSIC STEP 3: UI Rendering Check
   useEffect(() => {
     if (leaderboard?.length) {
-      console.log('🔎 arena.leaderboard.rows', leaderboard.length, leaderboard.map(r => ({id:r.user_id, score:r.score})));
+      console.log('arena.render ->', {
+        rows: leaderboard.length,
+        ids: leaderboard.map(r => r.user_id)
+      });
     }
   }, [leaderboard]);
+
+  // 🔎 FORENSIC STEP 5: Authentication Context
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        console.log('arena.auth -> NOT_AUTHENTICATED');
+      } else {
+        console.log('arena.auth ->', { uid: user.id, email: user.email });
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // 🔎 FORENSIC STEP 6: Section Change Logging
+  useEffect(() => {
+    console.log('arena.section.changed ->', { domain: challengeMode });
+  }, [challengeMode]);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
 
   const handleJoinArena = async () => {

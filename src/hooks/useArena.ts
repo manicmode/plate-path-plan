@@ -341,30 +341,92 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
     enabled: !!groupId,
     queryFn: async () => {
       if (!groupId) return [];
-      console.debug('[useArenaLeaderboardWithProfiles] Fetching leaderboard for group:', groupId);
-      const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
-        challenge_id_param: null, // V2 uses group-based leaderboard
-        section_param: 'global',
-        year_param: null,
-        month_param: null,
-        limit_param: 100,
-        offset_param: 0,
-      });
-      if (error) {
-        console.error('[useArenaLeaderboardWithProfiles] RPC error:', error);
+      
+      // 🔎 FORENSIC STEP 6: Fetch logging
+      console.log('arena.leaderboard.fetch.start ->', { groupId, domain });
+      
+      try {
+        console.log('Calling arena_get_leaderboard_by_domain with:', { groupId, domain });
+        const { data: leaderboardData, error } = await supabase.rpc(
+          'arena_get_leaderboard_by_domain',
+          { 
+            p_group_id: groupId, 
+            p_domain: domain || 'combined',
+            p_limit: 50,
+            p_offset: 0
+          }
+        );
+        
+        if (error) {
+          console.error('Leaderboard RPC error:', error);
+          throw error;
+        }
+
+        if (!leaderboardData?.length) {
+          console.log('arena.leaderboard.fetch.done ->', { groupId, domain, rows: 0 });
+          return [];
+        }
+
+        console.log('Raw leaderboard data:', leaderboardData);
+
+        // Get user IDs for profile enrichment
+        const userIds = leaderboardData.map((row: any) => row.user_id);
+        console.log('Fetching profiles for users:', userIds);
+
+        // Fetch user profiles in a single query
+        const { data: profiles, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('user_id, first_name, last_name, avatar_url')
+          .in('user_id', userIds);
+
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+          throw profileError;
+        }
+
+        console.log('Profile data:', profiles);
+
+        // Create enriched leaderboard
+        const enrichedLeaderboard = leaderboardData.map((row: any) => {
+          const profile = profiles?.find((p: any) => p.user_id === row.user_id);
+          const displayName = profile ? 
+            `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown' :
+            'Unknown';
+          
+          let avatarUrl = profile?.avatar_url;
+          if (avatarUrl && avatarUrl.startsWith('users/')) {
+            avatarUrl = supabase.storage.from('avatars').getPublicUrl(avatarUrl).data.publicUrl;
+          }
+
+          // 🔎 FORENSIC STEP 4: Avatar enrichment logging for Deborah
+          if (row.user_id === 'ea6022e7-0947-4322-ab30-bfff6774b334') {
+            console.log('arena.profile.enriched ->', {
+              user_id: row.user_id,
+              display_name: displayName,
+              avatar_url_resolved: avatarUrl
+            });
+          }
+
+          return {
+            user_id: row.user_id,
+            score: Number(row.score) || 0,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+            rank: Number(row.rank) || 0
+          };
+        });
+
+        console.log('arena.leaderboard.fetch.done ->', { 
+          groupId, 
+          domain, 
+          rows: enrichedLeaderboard.length 
+        });
+        
+        return enrichedLeaderboard;
+      } catch (error) {
+        console.error('Leaderboard fetch failed:', error);
         throw error;
       }
-      console.debug('[useArenaLeaderboardWithProfiles] Found', data?.length || 0, 'entries');
-      
-      const basicEntries = (data || []).map((entry: any) => ({
-        user_id: entry.user_id,
-        score: entry.points || 0,
-        display_name: entry.display_name || `User ${entry.user_id.slice(0, 8)}`,
-        avatar_url: entry.avatar_url,
-        rank: entry.rank || 0,
-      }));
-      
-      return await enrichMembersWithProfiles(basicEntries);
     },
   });
 
