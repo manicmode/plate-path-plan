@@ -2006,6 +2006,127 @@ export type Database = {
         }
         Relationships: []
       }
+      habit: {
+        Row: {
+          category: string | null
+          created_at: string
+          end_date: string | null
+          goal_target: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id: string
+          min_viable: boolean
+          name: string
+          start_date: string
+          status: Database["public"]["Enums"]["habit_status"]
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          end_date?: string | null
+          goal_target?: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id?: string
+          min_viable?: boolean
+          name: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["habit_status"]
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          end_date?: string | null
+          goal_target?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"]
+          id?: string
+          min_viable?: boolean
+          name?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["habit_status"]
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habit_log: {
+        Row: {
+          client_log_id: string
+          created_at: string
+          habit_id: string
+          id: string
+          note: string | null
+          partial: number | null
+          source: string
+          ts: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          client_log_id: string
+          created_at?: string
+          habit_id: string
+          id?: string
+          note?: string | null
+          partial?: number | null
+          source?: string
+          ts: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          client_log_id?: string
+          created_at?: string
+          habit_id?: string
+          id?: string
+          note?: string | null
+          partial?: number | null
+          source?: string
+          ts?: string
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_log_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_strength: {
+        Row: {
+          habit_id: string
+          last_recalc_at: string | null
+          score: number
+        }
+        Insert: {
+          habit_id: string
+          last_recalc_at?: string | null
+          score?: number
+        }
+        Update: {
+          habit_id?: string
+          last_recalc_at?: string | null
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_strength_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: true
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hall_of_fame_tributes: {
         Row: {
           champion_user_id: string
@@ -2853,6 +2974,50 @@ export type Database = {
         }
         Relationships: []
       }
+      nudge_event: {
+        Row: {
+          created_at: string
+          habit_id: string | null
+          id: string
+          result: string | null
+          scheduled_at: string
+          sent_at: string | null
+          trigger: string
+          type: Database["public"]["Enums"]["nudge_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          habit_id?: string | null
+          id?: string
+          result?: string | null
+          scheduled_at: string
+          sent_at?: string | null
+          trigger: string
+          type: Database["public"]["Enums"]["nudge_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          habit_id?: string | null
+          id?: string
+          result?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          trigger?: string
+          type?: Database["public"]["Enums"]["nudge_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nudge_event_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
@@ -3659,6 +3824,44 @@ export type Database = {
         }
         Relationships: []
       }
+      reminder: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          habit_id: string
+          id: string
+          kind: Database["public"]["Enums"]["reminder_kind"]
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          habit_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["reminder_kind"]
+          payload: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          habit_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["reminder_kind"]
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminder_logs: {
         Row: {
           id: string
@@ -3911,6 +4114,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      schedule_rule: {
+        Row: {
+          created_at: string
+          habit_id: string
+          id: string
+          params: Json
+          time_windows: Json[] | null
+          type: string
+          tz: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          habit_id: string
+          id?: string
+          params?: Json
+          time_windows?: Json[] | null
+          type: string
+          tz?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          habit_id?: string
+          id?: string
+          params?: Json
+          time_windows?: Json[] | null
+          type?: string
+          tz?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_rule_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_events: {
         Row: {
@@ -4202,6 +4446,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      streak_state: {
+        Row: {
+          current_len: number
+          frozen_until: string | null
+          habit_id: string
+          id: string
+          last_log_date: string | null
+          longest_len: number
+          repair_tokens: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_len?: number
+          frozen_until?: string | null
+          habit_id: string
+          id?: string
+          last_log_date?: string | null
+          longest_len?: number
+          repair_tokens?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_len?: number
+          frozen_until?: string | null
+          habit_id?: string
+          id?: string
+          last_log_date?: string | null
+          longest_len?: number
+          repair_tokens?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_state_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: true
+            referencedRelation: "habit"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplement_logs: {
         Row: {
@@ -7261,8 +7549,12 @@ export type Database = {
         | "recovery_challenge_participant"
         | "influencer"
       challenge_visibility: "public" | "private"
+      habit_goal_type: "bool" | "count" | "duration"
+      habit_status: "active" | "paused" | "archived"
       member_role: "owner" | "member"
       member_status: "joined" | "left" | "banned"
+      nudge_type: "reminder" | "encourage" | "recovery" | "celebration"
+      reminder_kind: "time" | "event"
       suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
@@ -7399,8 +7691,12 @@ export const Constants = {
         "influencer",
       ],
       challenge_visibility: ["public", "private"],
+      habit_goal_type: ["bool", "count", "duration"],
+      habit_status: ["active", "paused", "archived"],
       member_role: ["owner", "member"],
       member_status: ["joined", "left", "banned"],
+      nudge_type: ["reminder", "encourage", "recovery", "celebration"],
+      reminder_kind: ["time", "event"],
       suggestion_type: ["praise", "warning", "tip"],
     },
   },
