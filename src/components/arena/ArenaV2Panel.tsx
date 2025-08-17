@@ -47,7 +47,11 @@ export default function ArenaV2Panel() {
   const queryClient = useQueryClient();
   
   // Check hard disable flag
-  const { enabled: hardDisabled } = useRuntimeFlag('arena_v2_hard_disable');
+  const { value: hardDisabled, loading: flagLoading } = useRuntimeFlag('arena_v2_hard_disable', {
+    defaultValue: false,
+    subscribe: true,
+    refreshOnFocus: true,
+  });
   
   // V2 Arena hooks
   const { groupId, isLoading: loadingActive } = useArenaActive();
@@ -193,8 +197,8 @@ export default function ArenaV2Panel() {
     };
   }, [groupId, queryClient]);
 
-  // Show maintenance message if hard disabled
-  if (hardDisabled === true) {
+  // Show maintenance message if hard disabled (only when flag is resolved to true, not during loading)
+  if (!flagLoading && hardDisabled) {
     return (
       <div className="space-y-6" data-testid="arena-v2">
         <Card className="overflow-visible border-2 shadow-xl relative dark:border-orange-500/30 border-orange-400/40 dark:bg-slate-900/40 bg-slate-50/40">

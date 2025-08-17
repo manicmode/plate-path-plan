@@ -54,7 +54,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
   
   // Check hard disable flag
-  const { enabled: hardDisabled } = useRuntimeFlag('arena_v2_hard_disable');
+  const { value: hardDisabled, loading: flagLoading } = useRuntimeFlag('arena_v2_hard_disable');
 
   const handleJoinArena = async () => {
     const enrolledGroupId = await enroll();
@@ -334,22 +334,22 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     ref={inputRef}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={hardDisabled ? "Chat disabled during maintenance" : "Type your message..."}
+                    placeholder={(!flagLoading && hardDisabled) ? "Chat disabled during maintenance" : "Type your message..."}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendMessage();
                       }
                     }}
-                    disabled={!isAuthenticated || hardDisabled}
+                    disabled={!isAuthenticated || (!flagLoading && hardDisabled)}
                     data-testid="arena-chat-input"
                   />
                   <Button 
                     onClick={handleSendMessage} 
-                    disabled={!newMessage.trim() || !isAuthenticated || hardDisabled}
+                    disabled={!newMessage.trim() || !isAuthenticated || (!flagLoading && hardDisabled)}
                     size="icon"
                     data-testid="arena-chat-send"
-                    title={hardDisabled ? "Disabled by maintenance" : "Send message"}
+                    title={(!flagLoading && hardDisabled) ? "Disabled by maintenance" : "Send message"}
                   >
                     <Send className="h-4 w-4" />
                   </Button>
