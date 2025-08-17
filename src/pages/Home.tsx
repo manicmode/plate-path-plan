@@ -1743,9 +1743,9 @@ const Home = () => {
                 animatedGradient: 'bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-600',
               },
               {
-                id: 'my-reports',
-                title: 'My Reports',
-                emoji: '📄',
+                id: 'habit-central',
+                title: 'Habit Central',
+                emoji: '⏳',
                 color: 'from-emerald-500 via-emerald-400 to-teal-600',
                 shadowColor: 'shadow-emerald-500/40',
                 glowColor: 'hover:shadow-emerald-400/60',
@@ -1765,8 +1765,8 @@ const Home = () => {
                   setIsComingSoonOpen(true);
                 } else if (tileId === 'exercise-hub') {
                   navigate('/exercise-hub');
-                } else if (tileId === 'my-reports') {
-                  navigate('/my-reports');
+                } else if (tileId === 'habit-central') {
+                  navigate('/habit');
                 }
               };
 
