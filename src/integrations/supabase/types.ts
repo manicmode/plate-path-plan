@@ -6439,13 +6439,15 @@ export type Database = {
         Returns: string
       }
       arena_recompute_and_refresh: {
-        Args: {
-          p_challenge_id?: string
-          p_limit?: number
-          p_month?: number
-          p_section?: string
-          p_year?: number
-        }
+        Args:
+          | Record<PropertyKey, never>
+          | {
+              p_challenge_id?: string
+              p_limit?: number
+              p_month?: number
+              p_section?: string
+              p_year?: number
+            }
         Returns: undefined
       }
       arena_recompute_rollups_monthly: {

@@ -426,11 +426,7 @@ function AppContent() {
                           <DevChallengesPage />
                         </ProtectedRoute>
                        } />
-                      <Route path="/arena-debug" element={
-                        <ProtectedRoute>
-                          <ArenaDebug />
-                        </ProtectedRoute>
-                       } />
+                       {/* Temporarily disabled arena debug route */}
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>
