@@ -14,10 +14,14 @@ async function enrichMembersWithProfiles(members: any[]) {
   
   console.debug('[enrichMembersWithProfiles] Fetching profiles for', userIds.length, 'users');
   
-  const { data: profiles } = await supabase
+  console.log('[ArenaProfiles] table', 'user_profiles');
+  const q = supabase
     .from('user_profiles')
     .select('user_id, first_name, last_name, avatar_url')
     .in('user_id', userIds);
+
+  const { data: profiles, error } = await q;
+  console.log('[ArenaProfiles] rows', profiles?.length ?? 0, 'error', error?.message ?? null);
   
   console.debug('[enrichMembersWithProfiles] Found', profiles?.length || 0, 'profiles');
   
@@ -368,10 +372,13 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         const userIds = leaderboardData.map((row: any) => row.user_id);
 
         // Fetch user profiles in a single query
-        const { data: profiles, error: profileError } = await supabase
+        console.log('[ArenaProfiles] table', 'user_profiles');
+        const q = supabase
           .from('user_profiles')
           .select('user_id, first_name, last_name, avatar_url')
           .in('user_id', userIds);
+
+        const { data: profiles, error: profileError } = await q;
 
         if (profileError) {
           console.error('Profile fetch error:', profileError);
