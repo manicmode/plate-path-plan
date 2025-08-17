@@ -18,6 +18,7 @@ import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { TrackerSelection } from '@/components/profile/TrackerSelection';
 import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
+import { PrivacySettings } from '@/components/profile/PrivacySettings';
 import { MoodCheckinSettings } from '@/components/mood/MoodCheckinSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
@@ -330,6 +331,9 @@ const ProfileContent = () => {
 
       {/* Notification Settings */}
       <NotificationSettings />
+
+      {/* Privacy Settings */}
+      <PrivacySettings />
 
       {/* Mood Check-In Settings */}
       <MoodCheckinSettings />
