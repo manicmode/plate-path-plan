@@ -64,6 +64,27 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
+
+  // 🔎 DEBUG: Step 0 - Print IDs when component loads
+  useEffect(() => {
+    if (groupId) {
+      console.log('🔎 Arena Debug - GroupId:', groupId);
+      console.log('🔎 Arena Debug - Challenge Mode:', challengeMode);
+    }
+  }, [groupId, challengeMode]);
+
+  // 🔎 DEBUG: Step 4 - Print member and leaderboard data
+  useEffect(() => {
+    if (members?.length) {
+      console.log('🔎 arena.members.rows', members.length, members.map(r => r.user_id));
+    }
+  }, [members]);
+
+  useEffect(() => {
+    if (leaderboard?.length) {
+      console.log('🔎 arena.leaderboard.rows', leaderboard.length, leaderboard.map(r => ({id:r.user_id, score:r.score})));
+    }
+  }, [leaderboard]);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
 
   const handleJoinArena = async () => {

@@ -69,6 +69,8 @@ export function useArenaActive(): {
           throw error;
         }
         console.debug('[useArenaActive] Active group ID:', data);
+        // 🔎 DEBUG: Step 0 - Print groupId to console
+        console.log('🔎 DEBUG - Active Group ID:', data);
         const { ArenaEvents } = await import('@/lib/telemetry');
         ArenaEvents.activeResolve(true, data);
         return data as string | null;
