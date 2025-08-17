@@ -39,6 +39,7 @@ import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
+import WinnersRibbon from '@/components/arena/WinnersRibbon';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -129,6 +130,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   
   // Feature flag for friend CTAs
   const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
+  
+  // Feature flag for winners ribbon
+  const { enabled: winnersRibbonEnabled } = useFeatureFlag('arena_winners_ribbon');
 
   // Friend status management with realtime updates
   useFriendRealtime({
@@ -279,6 +283,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
               </button>
             </div>
           </div>
+          
+          {/* Winners Ribbon */}
+          {winnersRibbonEnabled && <WinnersRibbon />}
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
