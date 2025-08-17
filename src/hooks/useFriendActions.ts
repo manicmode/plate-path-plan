@@ -33,14 +33,9 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
     }
 
     // Analytics tracking
-    if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_CLICK_SEND', { targetUserId });
-    } else {
-      try {
-        (window as any).analytics?.track?.('friend_cta_send', { 
-          target_user_id: targetUserId 
-        });
-      } catch {}
+    const friendCtasEnabled = (window as any).featureFlags?.friend_ctas;
+    if (friendCtasEnabled) {
+      (window as any).analytics?.track('friend_cta_click_send', { targetUserId });
     }
 
     setPending(prev => new Set(prev).add(targetUserId));
@@ -96,15 +91,9 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
     }
 
     // Analytics tracking
-    if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_ACCEPT', { requestId });
-    } else {
-      try {
-        (window as any).analytics?.track?.('friend_cta_accept', { 
-          request_id: requestId,
-          user_id: userId 
-        });
-      } catch {}
+    const friendCtasEnabled = (window as any).featureFlags?.friend_ctas;
+    if (friendCtasEnabled) {
+      (window as any).analytics?.track('friend_cta_accept', { targetUserId: userId, requestId });
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -148,15 +137,9 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
     }
 
     // Analytics tracking
-    if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_REJECT', { requestId });
-    } else {
-      try {
-        (window as any).analytics?.track?.('friend_cta_reject', { 
-          request_id: requestId,
-          user_id: userId 
-        });
-      } catch {}
+    const friendCtasEnabled = (window as any).featureFlags?.friend_ctas;
+    if (friendCtasEnabled) {
+      (window as any).analytics?.track('friend_cta_reject', { targetUserId: userId, requestId });
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -200,15 +183,9 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
     }
 
     // Analytics tracking
-    if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_CANCEL', { requestId });
-    } else {
-      try {
-        (window as any).analytics?.track?.('friend_cta_cancel', { 
-          request_id: requestId,
-          target_user_id: userId 
-        });
-      } catch {}
+    const friendCtasEnabled = (window as any).featureFlags?.friend_ctas;
+    if (friendCtasEnabled) {
+      (window as any).analytics?.track('friend_cta_cancel', { targetUserId: userId, requestId });
     }
 
     setPending(prev => new Set(prev).add(userId));
