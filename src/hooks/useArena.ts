@@ -344,7 +344,6 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
       
       
       try {
-        console.log('Calling arena_get_leaderboard_by_domain with:', { groupId, domain });
         const { data: leaderboardData, error } = await supabase.rpc(
           'arena_get_leaderboard_by_domain',
           { 
@@ -361,15 +360,11 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         }
 
         if (!leaderboardData?.length) {
-          console.log('arena.leaderboard.fetch.done ->', { groupId, domain, rows: 0 });
           return [];
         }
 
-        console.log('Raw leaderboard data:', leaderboardData);
-
         // Get user IDs for profile enrichment
         const userIds = leaderboardData.map((row: any) => row.user_id);
-        console.log('Fetching profiles for users:', userIds);
 
         // Fetch user profiles in a single query
         const { data: profiles, error: profileError } = await supabase
@@ -382,7 +377,6 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
           throw profileError;
         }
 
-        console.log('Profile data:', profiles);
 
         // Create enriched leaderboard with proper name resolution
         const enrichedLeaderboard = leaderboardData.map((row: any) => {

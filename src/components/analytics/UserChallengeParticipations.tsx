@@ -12,6 +12,7 @@ import { PrivateRecoveryChallenges } from './PrivateRecoveryChallenges';
 import { useToast } from '@/hooks/use-toast';
 import { useChatStore } from '@/store/chatStore';
 import { filterByArenaSection, type ArenaSection } from '@/lib/arenaSections';
+import SectionDivider from '@/components/ui/SectionDivider';
 
 interface UserChallengeParticipationsProps {
   challengeMode?: ArenaSection;
@@ -387,6 +388,8 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
 
   return (
     <div className="space-y-6">
+      <SectionDivider label="My Active Challenges" />
+      
       {/* Create Challenge Button - Centered */}
       <div className="flex justify-center">
         <Button 
@@ -398,6 +401,7 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
           Create Challenge
         </Button>
       </div>
+      
       
       <div className="space-y-8 min-h-screen">
 

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useExerciseHallOfFame } from '@/hooks/useExerciseHallOfFame';
 import { type ArenaSection, mapChampionToSection, sectionMatches } from '@/lib/arenaSections';
+import SectionDivider from '@/components/ui/SectionDivider';
 
 interface HallOfFameEntry {
   id: number;
@@ -297,6 +298,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
 
   return (
     <div className="space-y-8">
+      <SectionDivider label="Awards & Hall of Fame" />
+      
       {/* Main Hall of Fame Card */}
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden p-6">

@@ -64,8 +64,32 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
-
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
+
+  // Forensic logs (temporary)
+  useEffect(() => {
+    console.log('arena.section.changed ->', { domain: challengeMode });
+  }, [challengeMode]);
+
+  useEffect(() => {
+    if (groupId && (members || leaderboard)) {
+      console.log('arena.snapshot ->', {
+        groupId,
+        domain: challengeMode,
+        members: members?.map(m => m.user_id) || [],
+        leaderboard: leaderboard?.map(l => l.user_id) || []
+      });
+    }
+  }, [groupId, challengeMode, members, leaderboard]);
+
+  useEffect(() => {
+    if (leaderboard?.length) {
+      console.log('arena.render ->', {
+        rows: leaderboard.length,
+        ids: leaderboard.map(r => r.user_id)
+      });
+    }
+  }, [leaderboard]);
 
   const handleJoinArena = async () => {
     const enrolledGroupId = await enroll();

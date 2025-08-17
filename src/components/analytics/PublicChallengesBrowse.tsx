@@ -8,6 +8,7 @@ import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { cn } from '@/lib/utils';
 import { filterByArenaSection, type ArenaSection } from '@/lib/arenaSections';
+import SectionDivider from '@/components/ui/SectionDivider';
 
 interface PublicChallengesBrowseProps {
   challengeMode?: ArenaSection;
@@ -67,6 +68,8 @@ export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({
           Join challenges with people from around the world and build healthy habits together
         </p>
       </div>
+
+      <SectionDivider label="Browse All Challenges" />
 
       <Tabs defaultValue="global" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
