@@ -240,16 +240,10 @@ export default function ArenaV2Panel() {
 
       {/* Live Rankings Arena Card */}
       <Card className="bg-slate-800/60 border-slate-700/70 rounded-xl shadow-xl">
-        <CardHeader className="text-center space-y-2 pb-4">
+        <CardHeader className="text-center space-y-4 pb-4">
           <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
-            <Trophy className="h-6 w-6 text-yellow-500" />
             🏆 Live Rankings Arena 🏆
-            <Trophy className="h-6 w-6 text-yellow-500" />
           </CardTitle>
-          <Badge variant="secondary" className="flex items-center gap-1 bg-slate-700/60 text-slate-300 border-slate-600">
-            <Users className="h-3 w-3" />
-            👥 {members?.length ?? 0} members
-          </Badge>
         </CardHeader>
 
         {/* Member Tabs Stack - User Avatar Chips */}
@@ -289,8 +283,8 @@ export default function ArenaV2Panel() {
                 <BillboardSkeleton rows={3} />
               ) : (leaderboard?.length ?? 0) === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-slate-400 mb-4">
-                    {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
+                  <div className="text-slate-500 text-sm">
+                    Start earning points to see rankings!
                   </div>
                 </div>
               ) : (
