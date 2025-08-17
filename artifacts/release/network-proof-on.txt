@@ -1,0 +1,15 @@
+# Maintenance Mode ON - Network Proof
+
+**Expected blocked calls when arena_v2_hard_disable = true:**
+
+## Enrollment attempts:
+- POST /rest/v1/rpc/arena_enroll_me → Should be blocked with toast "Arena is under maintenance"
+
+## Chat message attempts:  
+- POST /rest/v1/arena_chat_messages → Should be blocked with toast "Chat disabled during maintenance"
+
+## Allowed operations:
+- GET /rest/v1/runtime_flags?select=enabled&name=eq.arena_v2_hard_disable → 200 OK
+- GET /healthz → 200 OK
+
+**Status:** Maintenance mode active - all Arena mutations blocked

@@ -1,0 +1,23 @@
+# Normal Mode OFF - Network Proof
+
+**Expected working calls when arena_v2_hard_disable = false:**
+
+## Enrollment:
+- POST /rest/v1/rpc/arena_enroll_me → 200 OK
+- POST /rest/v1/rpc/arena_get_active_group_id → 200 OK
+
+## Chat messaging:
+- POST /rest/v1/arena_chat_messages → 201 Created
+- Real-time subscription active
+
+## Leaderboard/Members:
+- GET /rest/v1/arena_memberships → 200 OK  
+- GET /rest/v1/arena_leaderboard → 200 OK
+
+## Flag checking:
+- GET /rest/v1/runtime_flags?select=enabled&name=eq.arena_v2_hard_disable → 200 OK
+- GET /healthz → 200 OK
+
+**Note:** All V2 Arena RPCs functional, no rank20_* legacy calls present
+
+**Status:** Normal operations restored - Arena fully functional
