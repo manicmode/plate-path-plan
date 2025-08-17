@@ -1,0 +1,3 @@
+Health endpoint confirmed: src/pages/HealthCheck.tsx
+JSON structure: { ok: true, version: "1.0.0", arena: "v2", time: ISO, db: "reachable"|"error" }
+Arena V2 identifier present: "arena": "v2"

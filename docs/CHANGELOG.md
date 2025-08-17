@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.0.0 — Arena V2 Release (2025-08-17)
+- Single-source Arena V2 (enrollment, realtime chat, leaderboard)
+- V1 (`rank20_*`) fully removed; ESLint guardrails added to prevent regressions
+- Health endpoint (/healthz), E2E two-user tests, post-merge smoke, soft rollback script
+- Security: RLS enforced on `arena_chat_messages` (members can read/write own group)
+- Breaking: V1 hooks/routes removed
+
 ## [Arena V2] - 2025-01-17
 
 ### Added

@@ -1,0 +1,6 @@
+Manual tag creation (no GITHUB_TOKEN available):
+
+git tag -a v2.0.0 -m "Arena V2"
+git push origin v2.0.0
+
+After pushing the tag, the release-tag.yml workflow will trigger automatically.
