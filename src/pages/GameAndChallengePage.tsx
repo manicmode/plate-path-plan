@@ -48,9 +48,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 // Legacy Arena import - deprecated, do not use
 const FriendsArena = React.lazy(() => {
   if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ DEPRECATED: FriendsArena imported. Use ArenaPanel instead.');
+    console.error('⚠️ DEPRECATED: FriendsArena imported from _deprecated/arena/. Use ArenaPanel instead.');
   }
-  return import('@/components/analytics/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') }));
+  return import('@/_deprecated/arena/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') }));
 });
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';

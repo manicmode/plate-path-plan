@@ -23,10 +23,10 @@ import { cn } from '@/lib/utils';
 import { lightTap } from '@/lib/haptics';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
-import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
-import { useRank20Leaderboard } from '@/hooks/arena/useRank20Leaderboard';
-import { useRank20LeaderboardSections, type ArenaRow } from '@/hooks/arena/useRank20LeaderboardSections';
+import { useRank20Members, useArenaMembership } from '@/_deprecated/arena/useRank20Members';
+import { useRank20ChallengeId } from '@/_deprecated/arena/useRank20ChallengeId';
+import { useRank20Leaderboard } from '@/_deprecated/arena/useRank20Leaderboard';
+import { useRank20LeaderboardSections, type ArenaRow } from '@/_deprecated/arena/useRank20LeaderboardSections';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats, type UserStats } from '@/hooks/arena/useUserStats';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,7 +99,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   // Add deprecation warning in development
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ DEPRECATED: FriendsArena is deprecated. Use ArenaPanel instead.');
+      console.error('⚠️ DEPRECATED: FriendsArena is deprecated and moved to _deprecated/arena/. Use ArenaPanel instead.');
     }
   }, []);
   
