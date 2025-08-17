@@ -34,6 +34,9 @@ import ArenaSkeleton from '@/components/arena/ArenaSkeleton';
 import { ArenaErrorBanner } from '@/components/arena/ArenaErrorBanner';
 import { ArenaSmokeTester } from '@/components/arena/ArenaSmokeTester';
 import { arenaUiHeartbeat } from '@/lib/arenaDiag';
+import { useFriendStatuses } from '@/hooks/useFriendStatuses';
+import { useFriendActions } from '@/hooks/useFriendActions';
+import { FriendCTA } from '@/components/social/FriendCTA';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -103,17 +106,6 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const [isBillboardOpen, setBillboardOpen] = useState(false);
   // Tab state
   const [activeTab, setActiveTab] = useState('combined');
-  
-  // Add logging for inner tabs
-  const handleTabChange = (value: string) => {
-    console.log('[Inner Tabs] changed to', value);
-    lightTap(); // Add haptic feedback
-    setActiveTab(value);
-  };
-
-  // Anti-flicker loading state with grace period
-  const ready = !loading && !sectionsLoading && !membersLoading && !!challengeId && rows.length > 0;
-  const [showContent, setShowContent] = React.useState(false);
 
   const getCurrentData = (): ArenaRow[] => {
     switch (activeTab) {
@@ -127,6 +119,22 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         return combined;
     }
   };
+
+  // Friend management
+  const userIds = useMemo(() => getCurrentData().map(row => row.user_id), [activeTab, combined, nutrition, exercise, recovery]);
+  const { statusMap, loading: friendStatusLoading, updateStatus } = useFriendStatuses(userIds);
+  const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
+
+  // Add logging for inner tabs
+  const handleTabChange = (value: string) => {
+    console.log('[Inner Tabs] changed to', value);
+    lightTap(); // Add haptic feedback
+    setActiveTab(value);
+  };
+
+  // Anti-flicker loading state with grace period
+  const ready = !loading && !sectionsLoading && !membersLoading && !!challengeId && rows.length > 0;
+  const [showContent, setShowContent] = React.useState(false);
 
   const getTabIcon = (tab: string) => {
     switch (tab) {
@@ -342,12 +350,28 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                     </div>
                   </div>
                   
-                  {/* Robust points layout */}
-                  <div className="ml-auto min-w-[84px] text-right tabular-nums mt-6">
-                    <div className="inline-flex items-center gap-1">
-                      <Target className="w-4 h-4" />
-                      <span className="font-semibold">{formatPoints(row.points)}</span>
-                      <span className="text-xs text-muted-foreground ml-1">pts</span>
+                  {/* Points and Friend CTA */}
+                  <div className="ml-auto flex items-center gap-3">
+                    {/* Friend CTA */}
+                    <FriendCTA
+                      userId={row.user_id}
+                      relation={statusMap.get(row.user_id)?.relation || 'none'}
+                      requestId={statusMap.get(row.user_id)?.requestId}
+                      variant="compact"
+                      onSendRequest={friendActions.sendFriendRequest}
+                      onAcceptRequest={friendActions.acceptFriendRequest}
+                      onRejectRequest={friendActions.rejectFriendRequest}
+                      isPending={friendActions.isPending(row.user_id)}
+                      isOnCooldown={friendActions.isOnCooldown(row.user_id)}
+                    />
+                    
+                    {/* Points */}
+                    <div className="min-w-[84px] text-right tabular-nums">
+                      <div className="inline-flex items-center gap-1">
+                        <Target className="w-4 h-4" />
+                        <span className="font-semibold">{formatPoints(row.points)}</span>
+                        <span className="text-xs text-muted-foreground ml-1">pts</span>
+                      </div>
                     </div>
                   </div>
                 </div>
