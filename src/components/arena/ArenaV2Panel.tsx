@@ -282,11 +282,7 @@ export default function ArenaV2Panel() {
               {leaderboardLoading ? (
                 <BillboardSkeleton rows={3} />
               ) : (leaderboard?.length ?? 0) === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-slate-500 text-sm">
-                    Start earning points to see rankings!
-                  </div>
-                </div>
+                <div className="py-8"></div>
               ) : (
                 <div className="space-y-3">
                   {leaderboard!.slice(0, 3).map((row, index) => {
