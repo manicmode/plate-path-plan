@@ -938,6 +938,36 @@ export type Database = {
           },
         ]
       }
+      arena_monthly_winners: {
+        Row: {
+          created_at: string
+          id: number
+          rank: number
+          score: number
+          season_month: string
+          trophy_level: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          rank: number
+          score: number
+          season_month: string
+          trophy_level: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          rank?: number
+          score?: number
+          season_month?: string
+          trophy_level?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       arena_rollups_hist: {
         Row: {
           challenge_id: string
@@ -6022,6 +6052,18 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_last_month_winners: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          rank: number | null
+          score: number | null
+          season_month: string | null
+          trophy_level: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       arena_leaderboard_view: {
         Row: {
           avatar_url: string | null
@@ -6297,6 +6339,10 @@ export type Database = {
               p_points: number
             }
           | { p_challenge_id: string; p_kind: string; p_points: number }
+        Returns: undefined
+      }
+      arena_close_previous_month: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       arena_debug_award_points: {

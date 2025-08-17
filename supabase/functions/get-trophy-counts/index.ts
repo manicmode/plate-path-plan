@@ -1,127 +1,179 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
+
+interface Database {
+  public: {
+    Tables: {
+      arena_monthly_winners: {
+        Row: {
+          id: number
+          season_month: string
+          user_id: string
+          rank: number
+          score: number
+          trophy_level: 'gold' | 'silver' | 'bronze'
+          created_at: string
+        }
+      }
+    }
+  }
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Get Supabase credentials from environment
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing Supabase environment variables');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Create Supabase client with user's auth token
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-      auth: {
-        persistSession: false,
-      },
-    });
-
-    // Verify user authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    console.log(`Getting trophy counts for user: ${user.id}`);
-
-    // Query monthly_summaries for the user's rankings
-    const { data: summaries, error: queryError } = await supabase
-      .from('monthly_summaries')
-      .select('ranking_position')
-      .eq('user_id', user.id)
-      .not('ranking_position', 'is', null);
-
-    if (queryError) {
-      console.error('Database query error:', queryError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch trophy data' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Count trophies by ranking position
-    const trophyCounts = {
-      gold: 0,   // 1st place
-      silver: 0, // 2nd place
-      bronze: 0  // 3rd place
-    };
-
-    summaries?.forEach(summary => {
-      switch (summary.ranking_position) {
-        case 1:
-          trophyCounts.gold++;
-          break;
-        case 2:
-          trophyCounts.silver++;
-          break;
-        case 3:
-          trophyCounts.bronze++;
-          break;
+    // Create Supabase client
+    const supabaseClient = createClient<Database>(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
       }
-    });
+    )
 
-    console.log(`Trophy counts for user ${user.id}:`, trophyCounts);
+    const url = new URL(req.url)
+    const userId = url.searchParams.get('user_id')
+
+    if (req.method === 'GET') {
+      if (userId) {
+        // Get trophy counts for a specific user
+        const { data: trophies, error } = await supabaseClient
+          .from('arena_monthly_winners')
+          .select('trophy_level, season_month')
+          .eq('user_id', userId)
+          .order('season_month', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching user trophies:', error)
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch user trophies' }),
+            { 
+              status: 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+
+        // Count trophies by type
+        const trophyCounts = {
+          gold: trophies?.filter(t => t.trophy_level === 'gold').length || 0,
+          silver: trophies?.filter(t => t.trophy_level === 'silver').length || 0,
+          bronze: trophies?.filter(t => t.trophy_level === 'bronze').length || 0,
+          total: trophies?.length || 0,
+          recent: trophies?.slice(0, 5) || [] // Last 5 trophies
+        }
+
+        console.log(`User ${userId} trophy counts:`, trophyCounts)
+
+        return new Response(
+          JSON.stringify({ success: true, trophies: trophyCounts }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      } else {
+        // Get overall trophy statistics
+        const { data: allTrophies, error } = await supabaseClient
+          .from('arena_monthly_winners')
+          .select('trophy_level, season_month, user_id')
+          .order('season_month', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching all trophies:', error)
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch trophy statistics' }),
+            { 
+              status: 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+
+        // Calculate overall statistics
+        const stats = {
+          totalTrophies: allTrophies?.length || 0,
+          goldCount: allTrophies?.filter(t => t.trophy_level === 'gold').length || 0,
+          silverCount: allTrophies?.filter(t => t.trophy_level === 'silver').length || 0,
+          bronzeCount: allTrophies?.filter(t => t.trophy_level === 'bronze').length || 0,
+          uniqueWinners: new Set(allTrophies?.map(t => t.user_id)).size,
+          monthsWithTrophies: new Set(allTrophies?.map(t => t.season_month)).size,
+          recentMonths: [...new Set(allTrophies?.map(t => t.season_month))].slice(0, 6)
+        }
+
+        console.log('Arena trophy statistics:', stats)
+
+        return new Response(
+          JSON.stringify({ success: true, stats }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+    }
+
+    // Handle manual trophy closure (for testing/admin)
+    if (req.method === 'POST') {
+      const { action } = await req.json()
+      
+      if (action === 'close_previous_month') {
+        console.log('Manually triggering arena_close_previous_month()')
+        
+        const { error } = await supabaseClient.rpc('arena_close_previous_month')
+        
+        if (error) {
+          console.error('Error closing previous month:', error)
+          return new Response(
+            JSON.stringify({ error: 'Failed to close previous month' }),
+            { 
+              status: 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+
+        console.log('Successfully closed previous month and awarded trophies')
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Previous month closed and trophies awarded' 
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+    }
 
     return new Response(
-      JSON.stringify(trophyCounts),
+      JSON.stringify({ error: 'Method not allowed' }),
       { 
-        status: 200, 
+        status: 405, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
   }
-});
+})
