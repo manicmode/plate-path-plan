@@ -48,13 +48,8 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
         const { data: user } = await supabase.auth.getUser();
         console.info('[diag] user', user?.user?.id);
 
-        // Test diagnostics RPC (if available)
-        try {
-          const d = await supabase.rpc('diag_rank20');
-          console.info('[diag] diag_rank20', d.error, d.data);
-        } catch (err) {
-          console.info('[diag] diag_rank20 RPC not available');
-        }
+        // V2: No more legacy diag_rank20 diagnostics needed
+        console.info('[diag] Billboard V2 - using arena groups');
 
       if (!finalChallengeId) {
         setChallengeInfo(null);
@@ -241,16 +236,9 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
               {showDebug && (
                 <button
                   className="text-xs underline opacity-70"
-                  onClick={async () => {
-                    try {
-                      const { data, error } = await supabase.rpc('diag_rank20');
-                      console.debug('[diag] diag_rank20', { data, error });
-                    } catch (diagError) {
-                      console.debug('[diag] diag_rank20 unavailable - optional feature', diagError);
-                    }
-                  }}
+                  onClick={() => console.debug('[diag] Arena V2 diagnostics - see Arena panel')}
                 >
-                  Run Rank-of-20 diagnostics
+                  Arena V2 diagnostics
                 </button>
               )}
               {!finalChallengeId && (

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/useArena';
+import { useArenaChat } from '@/hooks/useArenaChat';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -42,11 +43,16 @@ export default function ArenaV2Panel() {
   // Arena V2 implementation - unified arena functionality
   
   const queryClient = useQueryClient();
-  const { data: active, isLoading: loadingActive } = useArenaActive();
-  const challengeId = active?.id;
-  const { data: me } = useArenaMyMembership(challengeId);
-  const { data: members } = useArenaMembers(challengeId, 100, 0);
-  const { data: leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles({ challengeId, section:'global', limit:50 });
+  
+  // V2 Arena hooks
+  const { groupId, isLoading: loadingActive } = useArenaActive();
+  const { data: me } = useArenaMyMembership(); // Legacy membership check
+  const { members, isLoading: membersLoading } = useArenaMembers(groupId);
+  const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId);
+  const { messages } = useArenaChat(groupId);
+  
+  // Diagnostics state
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const isMobile = useIsMobile();
   
   // Feature flags
@@ -95,8 +101,9 @@ export default function ArenaV2Panel() {
     (async () => {
       try {
         await supabase.rpc('arena_enroll_me', { challenge_id_param: null });
+        console.debug('[ArenaV2Panel] Auto-enrolled in arena');
       } catch (error) {
-        // Silently ignore enrollment errors
+        console.debug('[ArenaV2Panel] Auto-enroll failed (may already be enrolled):', error);
       }
       if (!cancelled) {
         queryClient.invalidateQueries({ queryKey: ['arena'] });
@@ -104,6 +111,19 @@ export default function ArenaV2Panel() {
     })();
     return () => { cancelled = true; };
   }, [queryClient]);
+
+  // Diagnostics drawer keyboard shortcut (Ctrl/Cmd+D)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        setDiagnosticsOpen(prev => !prev);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Build members data for tabs stack using helper function
   const membersForTabs: MemberTab[] = React.useMemo(() => {
@@ -115,8 +135,8 @@ export default function ArenaV2Panel() {
         user_id: l.user_id, 
         display_name: l.display_name, 
         avatar_url: l.avatar_url, 
-        points: l.points, 
-        streak: l.streak, 
+        points: l.score || 0, 
+        streak: 0, // V2 leaderboard doesn't have streak yet
         rank: l.rank 
       })) || []
     );
@@ -124,12 +144,13 @@ export default function ArenaV2Panel() {
     return mergedMembers;
   }, [leaderboard, members]);
 
-  // Real-time updates for new members
+  // Real-time updates for new members (V2)
   useEffect(() => {
-    if (!challengeId) return;
+    if (!groupId) return;
 
+    console.debug('[ArenaV2Panel] Setting up realtime for group:', groupId);
     const channel = supabase
-      .channel('arena-members-updates')
+      .channel('arena-members-updates-v2')
       .on(
         'postgres_changes',
         {
@@ -138,9 +159,9 @@ export default function ArenaV2Panel() {
           table: 'arena_memberships'
         },
         () => {
-          // Invalidate both queries to refresh data
-          queryClient.invalidateQueries({ queryKey: ['arena', 'members'] });
-          queryClient.invalidateQueries({ queryKey: ['arena', 'leaderboard'] });
+          console.debug('[ArenaV2Panel] Arena membership changed, invalidating queries');
+          queryClient.invalidateQueries({ queryKey: ['arena', 'members-v2'] });
+          queryClient.invalidateQueries({ queryKey: ['arena', 'leaderboard-v2'] });
         }
       )
       .subscribe();
@@ -148,7 +169,7 @@ export default function ArenaV2Panel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [challengeId, queryClient]);
+  }, [groupId, queryClient]);
 
   return (
     <div className="space-y-6" data-testid="arena-v2">
@@ -166,7 +187,7 @@ export default function ArenaV2Panel() {
               isMobile ? "text-xl text-center" : "text-3xl gap-3"
             )}>
               <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-              {active?.title ?? 'Live Rankings Arena'}
+              Arena V2
               <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
             </CardTitle>
             
@@ -203,7 +224,7 @@ export default function ArenaV2Panel() {
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="text-sm opacity-80">
-              {loadingActive ? 'Loading…' : active ? `Season ${active.season}.${String(active.month).padStart(2,'0')}` : 'No active arena'}
+              {loadingActive ? 'Loading…' : groupId ? `Group ${groupId.slice(0, 8)}` : 'No active arena'}
             </div>
             <div className="flex items-center gap-2">
               {me && (
@@ -321,12 +342,8 @@ export default function ArenaV2Panel() {
                             {/* Mini-stats inline */}
                             <div className="flex items-center gap-3 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
-                                <Flame className="h-3 w-3 text-orange-500" />
-                                <span>{row.streak ?? 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
                                 <Target className="h-3 w-3 text-blue-500" />
-                                <span className="font-medium">{row.points} pts</span>
+                                <span className="font-medium">{row.score} pts</span>
                               </div>
                             </div>
                           </div>
@@ -387,6 +404,40 @@ export default function ArenaV2Panel() {
           onToggle={() => setTrayOpen(v => !v)}
           onReact={handleReactUser}
         />
+      )}
+
+      {/* Diagnostics Drawer */}
+      {diagnosticsOpen && (
+        <Card className="mt-4 border-dashed border-orange-400">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Arena V2 Diagnostics
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => setDiagnosticsOpen(false)}
+                className="ml-auto h-6 w-6 p-0"
+              >
+                ×
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs space-y-2">
+            <div><strong>Group ID:</strong> {groupId || 'null'}</div>
+            <div><strong>Members Count:</strong> {members?.length || 0}</div>
+            <div><strong>Leaderboard Count:</strong> {leaderboard?.length || 0}</div>
+            <div><strong>Chat Messages Count:</strong> {messages?.length || 0}</div>
+            <div><strong>Last Message:</strong> {
+              messages?.length > 0 
+                ? new Date(messages[messages.length - 1].created_at).toLocaleTimeString()
+                : 'No messages'
+            }</div>
+            <div className="text-muted-foreground pt-2">
+              Press Ctrl/⌘+D to toggle this panel
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Profile Modal */}

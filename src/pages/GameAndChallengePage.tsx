@@ -149,21 +149,8 @@ function GameAndChallengeContent() {
   useEffect(() => {
     let canceled = false;
     (async () => {
-      // Try SAFE first (definer)
-      const safe = await supabase.rpc('my_rank20_chosen_challenge_id_safe');
-      if (!canceled && !safe.error && safe.data) {
-        queryClient.setQueryData(['r20:chosen-id'], safe.data as string);
-        arenaUiHeartbeat(supabase, 'r20:prefetch:rpc-safe');
-        return;
-      }
-      // Then server-side fallback (definer)
-      const fb = await supabase.rpc('my_rank20_active_challenge_id_fallback');
-      if (!canceled && !fb.error && fb.data) {
-        queryClient.setQueryData(['r20:chosen-id'], fb.data as string);
-        arenaUiHeartbeat(supabase, 'r20:prefetch:rpc-fallback');
-        return;
-      }
-      arenaUiHeartbeat(supabase, 'r20:prefetch:none');
+      // V2: No more legacy rank20 prefetching
+      arenaUiHeartbeat(supabase, 'arena-v2:loaded');
     })();
     return () => { canceled = true; };
   }, [queryClient]);

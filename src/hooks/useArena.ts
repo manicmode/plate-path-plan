@@ -4,6 +4,35 @@ import { supabase } from '@/integrations/supabase/client';
 // Re-export types for compatibility
 export type LeaderboardMode = "global" | "friends";
 
+// V2 Active Arena Hook
+export function useArenaActive(): { 
+  groupId: string | null; 
+  isLoading: boolean; 
+  error?: Error; 
+} {
+  const query = useQuery({
+    queryKey: ['arena', 'active-group'],
+    queryFn: async () => {
+      console.debug('[useArenaActive] Fetching active group ID');
+      const { data, error } = await supabase.rpc('arena_get_active_group_id');
+      if (error) {
+        console.error('[useArenaActive] RPC error:', error);
+        throw error;
+      }
+      console.debug('[useArenaActive] Active group ID:', data);
+      return data as string | null;
+    },
+    retry: 2,
+    staleTime: 30000, // 30 seconds
+  });
+
+  return {
+    groupId: query.data || null,
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error : undefined,
+  };
+}
+
 export async function fetchArenaLeaderboard(opts?: {
   mode?: LeaderboardMode;
   challengeId?: string | null;
@@ -43,7 +72,8 @@ export type ArenaActive = {
   end_date: string;
 };
 
-export function useArenaActive() {
+// Legacy Arena Active (rename to avoid conflicts)
+export function useArenaActiveChallenge() {
   return useQuery({
     queryKey: ['arena','active'],
     queryFn: async () => {
@@ -81,7 +111,45 @@ export function useArenaEnroll() {
   });
 }
 
-export function useArenaMembers(challengeId?: string, limit = 200, offset = 0) {
+// V2 Arena Members Hook (by group ID)
+export function useArenaMembers(groupId?: string | null): { 
+  members: Array<{ user_id: string; display_name: string; avatar_url?: string }>; 
+  isLoading: boolean; 
+  error?: Error; 
+} {
+  const query = useQuery({
+    queryKey: ['arena', 'members-v2', groupId],
+    enabled: !!groupId,
+    queryFn: async () => {
+      if (!groupId) return [];
+      console.debug('[useArenaMembers] Fetching members for group:', groupId);
+      const { data, error } = await supabase.rpc('arena_get_members', {
+        challenge_id_param: null, // V2 uses group-based membership
+        limit_param: 200,
+        offset_param: 0,
+      });
+      if (error) {
+        console.error('[useArenaMembers] RPC error:', error);
+        throw error;
+      }
+      console.debug('[useArenaMembers] Found', data?.length || 0, 'members');
+      return (data || []).map((member: any) => ({
+        user_id: member.user_id,
+        display_name: member.display_name || `User ${member.user_id.slice(0, 8)}`,
+        avatar_url: member.avatar_url,
+      }));
+    },
+  });
+
+  return {
+    members: query.data || [],
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error : undefined,
+  };
+}
+
+// Legacy Arena Members Hook (by challenge ID)
+export function useArenaLegacyMembers(challengeId?: string, limit = 200, offset = 0) {
   return useQuery({
     queryKey: ['arena','members', challengeId ?? 'active', limit, offset],
     queryFn: async () => {
@@ -122,7 +190,50 @@ export function useArenaLeaderboard(args?: {
   });
 }
 
-export function useArenaLeaderboardWithProfiles(args?: {
+// V2 Arena Leaderboard Hook (by group ID)
+export function useArenaLeaderboardWithProfiles(groupId?: string | null): { 
+  leaderboard: Array<{ user_id: string; score: number; display_name: string; avatar_url?: string; rank: number }>; 
+  isLoading: boolean; 
+  error?: Error; 
+} {
+  const query = useQuery({
+    queryKey: ['arena', 'leaderboard-v2', groupId],
+    enabled: !!groupId,
+    queryFn: async () => {
+      if (!groupId) return [];
+      console.debug('[useArenaLeaderboardWithProfiles] Fetching leaderboard for group:', groupId);
+      const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
+        challenge_id_param: null, // V2 uses group-based leaderboard
+        section_param: 'global',
+        year_param: null,
+        month_param: null,
+        limit_param: 100,
+        offset_param: 0,
+      });
+      if (error) {
+        console.error('[useArenaLeaderboardWithProfiles] RPC error:', error);
+        throw error;
+      }
+      console.debug('[useArenaLeaderboardWithProfiles] Found', data?.length || 0, 'entries');
+      return (data || []).map((entry: any) => ({
+        user_id: entry.user_id,
+        score: entry.points || 0,
+        display_name: entry.display_name || `User ${entry.user_id.slice(0, 8)}`,
+        avatar_url: entry.avatar_url,
+        rank: entry.rank || 0,
+      }));
+    },
+  });
+
+  return {
+    leaderboard: query.data || [],
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error : undefined,
+  };
+}
+
+// Legacy Arena Leaderboard Hook (by challenge ID)  
+export function useArenaLegacyLeaderboardWithProfiles(args?: {
   challengeId?: string;
   section?: 'global'|'friends'|'local';
   year?: number;
