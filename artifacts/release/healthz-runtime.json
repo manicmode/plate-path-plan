@@ -1,9 +1,10 @@
-SKIPPED: no PREVIEW_URL - Expected JSON after deployment:
+SKIPPED: no PREVIEW_URL/PROD_URL available
 
+Expected JSON after deployment with v2.0.0 tag:
 {
   "ok": true,
   "version": "2.0.0",
-  "arena": "v2", 
+  "arena": "v2",
   "time": "2025-08-17T...",
   "db": "reachable"
 }
