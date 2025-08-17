@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ARENA_V2 } from '@/lib/featureFlags';
-import ArenaV2Panel from '@/components/arena/ArenaV2Panel';
+import ArenaPanel from '@/components/arena/ArenaPanel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -46,7 +45,13 @@ import {
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-const FriendsArena = React.lazy(() => import('@/components/analytics/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') })));
+// Legacy Arena import - deprecated, do not use
+const FriendsArena = React.lazy(() => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ DEPRECATED: FriendsArena imported. Use ArenaPanel instead.');
+  }
+  return import('@/components/analytics/FriendsArena').then(m => ({ default: m.FriendsArena })).catch(() => ({ default: () => React.createElement('div', {}, 'Arena temporarily unavailable — try again shortly.') }));
+});
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
 import { arenaUiHeartbeat } from '@/lib/arenaDiag';
@@ -117,18 +122,7 @@ const RankingTabContent = () => {
 
   return (
     <section id="live-rankings-arena" className="mt-0">
-      {ARENA_V2 ? (
-        <ArenaV2Panel />
-      ) : (
-        <>
-          {/* existing (legacy) arena components stay here for fallback */}
-          <React.Suspense fallback={<div style={{padding:16}}>Loading Arena...</div>}>
-            <FriendsArena />
-          </React.Suspense>
-          <MonthlyTrophyPodium />
-          <HallOfFame champions={[]} challengeMode="combined" />
-        </>
-      )}
+      <ArenaPanel />
     </section>
   );
 };

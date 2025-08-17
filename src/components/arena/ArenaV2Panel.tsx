@@ -1,3 +1,4 @@
+// ⚠️ DEPRECATED IMPORT: Import ArenaPanel instead of ArenaV2Panel directly
 import * as React from 'react';
 import { useState, useCallback } from 'react';
 import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/arenaV2/useArena';
@@ -26,6 +27,13 @@ function Initials({ name }: { name?: string|null }) {
 }
 
 export default function ArenaV2Panel() {
+  // Add deprecation warning for direct imports in development
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ DEPRECATED: Direct ArenaV2Panel import detected. Use ArenaPanel instead.');
+    }
+  }, []);
+  
   const { data: active, isLoading: loadingActive } = useArenaActive();
   const challengeId = active?.id;
   const { data: me } = useArenaMyMembership(challengeId);

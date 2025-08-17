@@ -1,3 +1,4 @@
+// ⚠️ DEPRECATED: This component is deprecated. Use ArenaPanel instead.
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +96,13 @@ const DevBadge = () => {
 };
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
+  // Add deprecation warning in development
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ DEPRECATED: FriendsArena is deprecated. Use ArenaPanel instead.');
+    }
+  }, []);
+  
   const { user } = useAuth();
   const membership = useRank20Members(user?.id);
   const { data: members = [], isLoading: membersLoading, error: membersError } = membership;
