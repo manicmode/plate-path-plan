@@ -1,4 +1,8 @@
 git tag -a v2.0.0 -m "Arena V2"
 git push origin v2.0.0
 
-After pushing the tag, the release-tag.yml workflow will trigger and inject the version into the build environment.
+# This will trigger the Release (tag) workflow which will:
+# 1. Export VITE_APP_VERSION=2.0.0 to build environment
+# 2. Build the app with version injection
+# 3. Run smoke tests and conditional E2E tests
+# 4. Upload build artifacts
