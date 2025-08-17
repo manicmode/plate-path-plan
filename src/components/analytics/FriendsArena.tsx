@@ -38,6 +38,7 @@ import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -128,6 +129,21 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   
   // Feature flag for friend CTAs
   const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
+
+  // Friend status management with realtime updates
+  useFriendRealtime({
+    onUserIdsChanged: (userIds) => {
+      // Refresh statuses for affected users if they're in our current data
+      const currentData = getCurrentData();
+      const affectedIds = userIds.filter(id => currentData.some(row => row.user_id === id));
+      if (affectedIds.length > 0) {
+        // The useFriendStatuses hook will automatically refresh when targetIds change
+        // Since we're using the same targetIds array, we trigger a manual refresh
+        refresh();
+      }
+    },
+    enabled: friendCtasEnabled
+  });
 
   // Add logging for inner tabs
   const handleTabChange = (value: string) => {

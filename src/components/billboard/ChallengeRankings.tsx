@@ -8,6 +8,7 @@ import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 
 interface ChallengeRankingsProps {
   challengeId: string | null;
@@ -18,6 +19,19 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
   
   // Feature flag for friend CTAs
   const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
+
+  // Friend status management with realtime updates
+  useFriendRealtime({
+    onUserIdsChanged: (userIds) => {
+      // Refresh statuses for affected users if they're in our participants
+      const affectedIds = userIds.filter(id => participants.some(p => p.user_id === id));
+      if (affectedIds.length > 0) {
+        // Trigger a re-render by updating the friend statuses
+        updateStatus('__refresh__', 'none');
+      }
+    },
+    enabled: friendCtasEnabled
+  });
 
   // Friend management
   const participantIds = React.useMemo(() => participants.map(p => p.user_id), [participants]);

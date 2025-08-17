@@ -32,6 +32,7 @@ import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 import { useChatStore } from '@/store/chatStore';
 
 interface ChallengeCardProps {
@@ -65,6 +66,19 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   
   // Feature flag for friend CTAs
   const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
+
+  // Friend status management with realtime updates
+  useFriendRealtime({
+    onUserIdsChanged: (userIds) => {
+      // Refresh statuses for affected users if they're in our participants
+      const affectedIds = userIds.filter(id => participantIds.includes(id));
+      if (affectedIds.length > 0) {
+        // Trigger a re-render by updating the friend statuses
+        updateStatus('__refresh__', 'none');
+      }
+    },
+    enabled: friendCtasEnabled
+  });
 
   // Calculate time remaining
   useEffect(() => {
