@@ -44,6 +44,10 @@ const Explore = () => {
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'influencers') {
         setIsComingSoonOpen(true);
+      } else if (tileId === 'habit-central') {
+        setNavigationInProgress(true);
+        navigate('/habit');
+        setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'my-reports') {
         setNavigationInProgress(true);
         navigate('/my-reports');
@@ -94,9 +98,9 @@ const Explore = () => {
       shadowColor: 'shadow-cyan-500/30',
     },
     {
-      id: 'my-reports',
-      title: 'My Reports',
-      emoji: '📄',
+      id: 'habit-central',
+      title: 'Habit Central',
+      emoji: '✅',
       color: 'from-emerald-500 via-emerald-400 to-teal-600',
       shadowColor: 'shadow-emerald-500/30',
     },
@@ -144,14 +148,46 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Reduced bottom margin */}
-      <div className="w-full mb-2 relative z-30">
+      {/* Bottom Row - My Reports and Profile Tabs */}
+      <div className="w-full mb-2 relative z-30 grid grid-cols-2 gap-4">
+        {/* My Reports Tab */}
+        <Button
+          onClick={() => handleTileClick('my-reports')}
+          disabled={navigationInProgress}
+          variant="ghost"
+          className={`
+            group relative h-16 p-3 rounded-2xl 
+            transition-all duration-500 ease-out
+            bg-gradient-to-br from-slate-300 to-slate-600 
+            hover:scale-105 active:scale-95 active:rotate-1
+            shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] shadow-slate-500/20 hover:shadow-2xl
+            border-0 text-white hover:text-white
+            flex items-center justify-center
+            ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+        >
+          <div className="flex items-center justify-center w-full">
+            {/* My Reports Icon */}
+            <div className={`mr-2 ${safeIsMobile ? 'text-xl' : 'text-2xl'} 
+              group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
+              filter drop-shadow-lg`}>
+              📄
+            </div>
+            {/* My Reports Text */}
+            <span className={`text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
+              font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
+              My Reports
+            </span>
+          </div>
+        </Button>
+
+        {/* Profile Tab */}
         <Button
           onClick={() => handleTileClick('profile')}
           disabled={navigationInProgress}
           variant="ghost"
           className={`
-            group relative w-full h-16 p-3 rounded-2xl 
+            group relative h-16 p-3 rounded-2xl 
             transition-all duration-500 ease-out
             bg-gradient-to-br from-slate-300 to-slate-600 
             hover:scale-105 active:scale-95 active:rotate-1
