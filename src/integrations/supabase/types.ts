@@ -6653,6 +6653,13 @@ export type Database = {
           is_following: boolean
         }[]
       }
+      get_mutual_counts: {
+        Args: { target_ids: string[] }
+        Returns: {
+          mutuals: number
+          target_id: string
+        }[]
+      }
       get_mutual_friends: {
         Args: { current_user_id: string }
         Returns: {

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Check, X, UserPlus, Users } from 'lucide-react';
 import { useFriendRequests, type FriendRequest } from '@/hooks/useFriendRequests';
 import { useFriendActions } from '@/hooks/useFriendActions';
+import { useMutualFriends } from '@/hooks/useMutualFriends';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,8 @@ function RequestItem({
   onAccept, 
   onReject, 
   onCancel, 
-  isPending 
+  isPending,
+  mutualCount 
 }: {
   request: FriendRequest;
   type: 'incoming' | 'outgoing';
@@ -40,6 +42,7 @@ function RequestItem({
   onReject?: (requestId: string, userId: string) => void;
   onCancel?: (requestId: string, userId: string) => void;
   isPending: boolean;
+  mutualCount?: number;
 }) {
   const profile = type === 'incoming' ? request.user_profile : request.friend_profile;
   const targetUserId = type === 'incoming' ? request.user_id : request.friend_id;
@@ -62,9 +65,16 @@ function RequestItem({
       </Avatar>
       
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-foreground truncate">
-          {displayName}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium text-foreground truncate">
+            {displayName}
+          </h3>
+          {mutualCount && mutualCount > 0 && (
+            <span className="text-xs text-muted-foreground">
+              · {mutualCount} mutual
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
         </p>
@@ -145,6 +155,15 @@ export default function Friends() {
     }
   });
 
+  // Get mutual friends for all request users
+  const allRequestUserIds = React.useMemo(() => {
+    const incoming = incomingRequests.map(r => r.user_id);
+    const outgoing = outgoingRequests.map(r => r.friend_id);
+    return [...incoming, ...outgoing];
+  }, [incomingRequests, outgoingRequests]);
+  
+  const { getMutualCount } = useMutualFriends(allRequestUserIds);
+
   const handleAccept = async (requestId: string, userId: string) => {
     await acceptFriendRequest(requestId, userId);
   };
@@ -213,6 +232,7 @@ export default function Friends() {
                       onAccept={handleAccept}
                       onReject={handleReject}
                       isPending={isPending(request.user_id)}
+                      mutualCount={getMutualCount(request.user_id)}
                     />
                   ))}
                 </div>
@@ -237,6 +257,7 @@ export default function Friends() {
                       type="outgoing"
                       onCancel={handleCancel}
                       isPending={isPending(request.friend_id)}
+                      mutualCount={getMutualCount(request.friend_id)}
                     />
                   ))}
                 </div>

@@ -9,6 +9,7 @@ import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
+import { useMutualFriends } from '@/hooks/useMutualFriends';
 
 interface ChallengeRankingsProps {
   challengeId: string | null;
@@ -37,6 +38,9 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
   const participantIds = React.useMemo(() => participants.map(p => p.user_id), [participants]);
   const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(participantIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
+  
+  // Mutual friends
+  const { getMutualCount } = useMutualFriends(participantIds);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -124,9 +128,19 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
 
                 {/* User Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate text-sm">
-                    {participant.user_email}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate text-sm">
+                      {participant.user_email}
+                    </p>
+                    {(() => {
+                      const mutualCount = getMutualCount(participant.user_id);
+                      return mutualCount > 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                          · {mutualCount} mutual
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Participant
                   </p>
