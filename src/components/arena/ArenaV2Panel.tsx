@@ -319,7 +319,11 @@ export default function ArenaV2Panel() {
                           {/* Left side: Avatar + Name + Streak */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <Avatar className="h-12 w-12 flex-shrink-0">
-                              <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                              <AvatarImage 
+                                src={row.avatar_url || undefined} 
+                                alt={row.display_name || "user"}
+                                className="object-cover"
+                              />
                               <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
                                 <Initials name={row.display_name} />
                               </AvatarFallback>

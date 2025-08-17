@@ -78,7 +78,11 @@ export default function MemberTabsStack({
               {/* Left side: Avatar + Name + Streak */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-12 w-12 flex-shrink-0">
-                  <AvatarImage src={member.avatar_url ?? undefined} alt={member.display_name ?? "user"} />
+                  <AvatarImage 
+                    src={member.avatar_url || undefined} 
+                    alt={member.display_name || "user"}
+                    className="object-cover"
+                  />
                   <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
                     <Initials name={member.display_name} />
                   </AvatarFallback>
