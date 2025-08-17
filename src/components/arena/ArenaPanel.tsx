@@ -1,2 +1,3 @@
 // Unified Arena component - single source of truth for Arena functionality
-export { default } from './ArenaV2Panel';
+import ArenaV2Panel from './ArenaV2Panel';
+export default ArenaV2Panel;

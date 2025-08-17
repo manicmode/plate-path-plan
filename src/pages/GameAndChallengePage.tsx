@@ -109,14 +109,14 @@ interface ChatMessage {
 // All mock data removed - now using real data from Supabase
 
 // Component for ranking tab with dev heartbeat
-const RankingTabContent = () => {
+const RankingTabContent = ({ challengeMode }: { challengeMode: ArenaSection }) => {
   useEffect(() => {
     arenaUiHeartbeat(supabase, 'ranking-mounted');
   }, []);
 
   return (
     <section id="live-rankings-arena" className="mt-0">
-      <ArenaPanel />
+      <ArenaPanel challengeMode={challengeMode} />
     </section>
   );
 };
@@ -437,9 +437,9 @@ function GameAndChallengeContent() {
                   <ToggleGroup 
                     type="single" 
                     value={challengeMode} 
-                     onValueChange={(value) => {
+                      onValueChange={(value) => {
                        if (value) {
-                         console.log('[Header Section] selected:', value);
+                         console.log('[ArenaV2] arena.section.changed ->', { domain: value });
                          lightTap(); // Add haptic feedback
                          setChallengeMode(value as ArenaSection);
                        }

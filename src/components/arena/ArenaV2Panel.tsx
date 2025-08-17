@@ -42,7 +42,11 @@ type SelectedUser = {
   avatar_url?: string | null;
 } | null;
 
-export default function ArenaV2Panel() {
+interface ArenaV2PanelProps {
+  challengeMode?: string;
+}
+
+export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2PanelProps) {
   // Arena V2 implementation - unified arena functionality
   
   const queryClient = useQueryClient();
@@ -58,7 +62,7 @@ export default function ArenaV2Panel() {
   const { groupId, isLoading: loadingActive } = useArenaActive();
   const { data: me } = useArenaMyMembership(); // Legacy membership check
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
-  const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId);
+  const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
 
