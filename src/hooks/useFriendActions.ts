@@ -91,7 +91,7 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
 
     // Dev metrics
     if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_ACCEPT', { requestId, userId });
+      console.info('FRIEND_CTA_ACCEPT', { requestId });
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -136,7 +136,7 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
 
     // Dev metrics
     if (import.meta.env.DEV) {
-      console.info('FRIEND_CTA_REJECT', { requestId, userId });
+      console.info('FRIEND_CTA_REJECT', { requestId });
     }
 
     setPending(prev => new Set(prev).add(userId));

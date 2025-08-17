@@ -1,33 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useFeatureFlag = (key: string) => {
-  const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+export function useFeatureFlag(key: string) {
+  const [enabled, setEnabled] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const checkFeatureFlag = async () => {
-      try {
-        const { data, error } = await supabase.rpc('is_feature_enabled', { 
-          feature_key: key 
-        });
-        
-        if (error) {
-          console.error('Feature flag check failed:', error);
-          setEnabled(false);
-        } else {
-          setEnabled(data || false);
-        }
-      } catch (error) {
-        console.error('Feature flag error:', error);
-        setEnabled(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkFeatureFlag();
+    let active = true;
+    (async () => {
+      const { data, error } = await supabase.rpc('is_feature_enabled', { feature_key: key });
+      if (!active) return;
+      if (!error && typeof data === 'boolean') setEnabled(data);
+      setLoading(false);
+    })();
+    return () => { active = false; };
   }, [key]);
 
   return { enabled, loading };
-};
+}

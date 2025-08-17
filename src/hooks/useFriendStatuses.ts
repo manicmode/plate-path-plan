@@ -115,10 +115,10 @@ export const useFriendStatuses = (targetIds: string[]) => {
       setStatusMap(newStatusMap);
       setError(null);
       
-      // Dev metrics for load time
+      // Dev metrics for batch load
       if (import.meta.env.DEV) {
         const loadTime = performance.now() - startTime;
-        console.info(`FRIEND_STATUS_LOAD_TIME: ${loadTime.toFixed(2)}ms for ${targetIds.length} users`);
+        console.info('FRIEND_STATUS_BATCH', { count: targetIds.length, ms: Math.round(loadTime) });
       }
     } catch (err) {
       console.error('Error loading friend statuses:', err);
