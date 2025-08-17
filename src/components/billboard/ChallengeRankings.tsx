@@ -1,9 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Users, Copy } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Trophy, Medal, Award, Users } from 'lucide-react';
 // V2: Use Arena hooks instead of legacy useChallengeRankings
 import { useArenaLeaderboardWithProfiles } from '@/hooks/useArena';
 import { cn } from '@/lib/utils';
@@ -66,9 +64,9 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
-      case 1: return <Medal className="h-4 w-4 text-yellow-400" />;
-      case 2: return <Medal className="h-4 w-4 text-slate-300" />;
-      case 3: return <Medal className="h-4 w-4 text-amber-600" />;
+      case 1: return <Trophy className="h-4 w-4 text-yellow-500" />;
+      case 2: return <Medal className="h-4 w-4 text-gray-400" />;
+      case 3: return <Award className="h-4 w-4 text-amber-600" />;
       default: return <span className="text-xs font-medium text-muted-foreground">#{rank}</span>;
     }
   };
@@ -111,38 +109,21 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
   }
 
   return (
-    <Card className="rounded-2xl shadow-sm bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-primary" />
           Live Rankings
+          <Badge variant="outline" className="ml-auto">
+            <Users className="h-3 w-3 mr-1" />
+            {participants.length} members
+          </Badge>
         </CardTitle>
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <div className="inline-flex items-center gap-2">
-            <span className="font-semibold">Live Ranking</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5">
-              <Users className="h-3.5 w-3.5" /> {participants.length} members
-            </span>
-          </div>
-          {challengeId ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-foreground/60"
-              onClick={() => { 
-                navigator.clipboard.writeText(challengeId); 
-                toast({ title: "Group ID copied" }); 
-              }}
-            >
-              <Copy className="mr-1 h-3.5 w-3.5" /> {String(challengeId).slice(0, 8)}
-            </Button>
-          ) : null}
-        </div>
       </CardHeader>
       <CardContent>
         {participants.length === 0 ? (
-          <div className="bg-foreground/5 rounded-xl p-4 text-center py-8 text-muted-foreground">
-            Leaderboard will appear once members start earning points.
+          <div className="text-center py-8 text-muted-foreground">
+            No participants yet
           </div>
         ) : (
           <div className="space-y-3">

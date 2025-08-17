@@ -13,17 +13,17 @@ export function useArenaChat(groupId?: string | null): {
   messages: ArenaChatMessage[];
   sendMessage: (text: string) => Promise<void>;
   isLoading: boolean;
-  isSending: boolean;
   error?: Error;
 } {
   const [messages, setMessages] = useState<ArenaChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<Error | undefined>();
   
-  // Refs for cleanup and rate limiting
+  // Refs for cleanup and debouncing
   const channelRef = useRef<any>(null);
-  const lastSends = useRef<number[]>([]);
+  const lastSendTime = useRef(0);
+  const sendCount = useRef(0);
+  const sendCountResetRef = useRef<NodeJS.Timeout | null>(null);
   const hasWarnedRef = useRef(false);
 
   // Clear messages when groupId changes
@@ -138,13 +138,20 @@ export function useArenaChat(groupId?: string | null): {
   const checkRateLimit = useCallback(() => {
     const now = Date.now();
     
-    // Filter out sends older than 10 seconds
-    lastSends.current = lastSends.current.filter(x => now - x < 10000);
+    // Reset counter every 10 seconds
+    if (sendCountResetRef.current) {
+      clearTimeout(sendCountResetRef.current);
+    }
+    sendCountResetRef.current = setTimeout(() => {
+      sendCount.current = 0;
+    }, 10000);
+
+    sendCount.current += 1;
     
-    if (lastSends.current.length >= 5) {
+    if (sendCount.current > 5) {
       toast({
-        title: "Slow down 😅",
-        description: "Please wait a few seconds.",
+        title: "Slow down! 🚦",
+        description: "Max 5 messages per 10 seconds. Give others a chance to chat!",
         variant: "destructive",
       });
       return false;
@@ -152,6 +159,16 @@ export function useArenaChat(groupId?: string | null): {
     
     return true;
   }, [toast]);
+
+  // 2-second debounce
+  const checkDebounce = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSendTime.current < 2000) {
+      return false;
+    }
+    lastSendTime.current = now;
+    return true;
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmedText = text.trim();
@@ -173,12 +190,20 @@ export function useArenaChat(groupId?: string | null): {
       return;
     }
 
-    // Check rate limit first
-    if (!checkRateLimit()) {
+    // Check debounce
+    if (!checkDebounce()) {
+      toast({
+        title: "Too fast! ⚡",
+        description: "Please wait 2 seconds between messages.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsSending(true);
+    // Check rate limit
+    if (!checkRateLimit()) {
+      return;
+    }
 
     try {
       // Check hard disable flag before sending
@@ -253,9 +278,6 @@ export function useArenaChat(groupId?: string | null): {
 
       console.debug('[useArenaChat] Message sent successfully:', data.id);
       
-      // Record successful send for rate limiting
-      lastSends.current.push(Date.now());
-      
       // Add telemetry for successful sends
       import('@/lib/telemetry').then(({ ArenaEvents }) => {
         ArenaEvents.chatSend(true, trimmedText.length);
@@ -268,16 +290,22 @@ export function useArenaChat(groupId?: string | null): {
         description: "Please check your connection and try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSending(false);
     }
-  }, [groupId, toast, checkRateLimit]);
+  }, [groupId, toast, checkDebounce, checkRateLimit]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (sendCountResetRef.current) {
+        clearTimeout(sendCountResetRef.current);
+      }
+    };
+  }, []);
 
   return {
     messages,
     sendMessage,
     isLoading,
-    isSending,
     error,
   };
 }

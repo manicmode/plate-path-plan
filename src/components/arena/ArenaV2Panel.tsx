@@ -17,7 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { ARENA_DEBUG_CONTROLS } from '@/lib/featureFlags';
 import WinnersRibbon from '@/components/arena/WinnersRibbon';
-import SectionDivider from '@/components/ui/SectionDivider';
+import SectionDivider from '@/components/arena/SectionDivider';
 import { BillboardSkeleton } from '@/components/arena/ArenaSkeletons';
 import EmojiTray from '@/components/arena/EmojiTray';
 import { useEmojiReactions } from '@/hooks/useEmojiReactions';
@@ -324,7 +324,7 @@ export default function ArenaV2Panel() {
                 </div>
               </div>
 
-              <SectionDivider label="LIVE LEADERBOARD" />
+              <SectionDivider title="Live Leaderboard" />
           
               {leaderboardLoading ? (
                 <BillboardSkeleton rows={10} />
@@ -430,7 +430,7 @@ export default function ArenaV2Panel() {
                 </div>
               )}
 
-              <SectionDivider label="GROUP CHAT" />
+              <SectionDivider title="Arena Members" />
           
               {membersForTabs.length === 0 ? (
                 <div className="text-center py-8">

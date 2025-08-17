@@ -16,7 +16,7 @@ import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 import { useArenaActive, useArenaMembers, useArenaEnroll } from '@/hooks/useArena';
 import { useArenaChat } from '@/hooks/useArenaChat';
 import { useRuntimeFlag } from '@/hooks/useRuntimeFlag';
-import SectionDivider from '@/components/ui/SectionDivider';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Announcement {
@@ -50,7 +50,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   // V2 Arena hooks
   const { groupId, isLoading: loadingGroupId } = useArenaActive();
   const { members } = useArenaMembers(groupId);
-  const { messages, sendMessage, isLoading: chatLoading, isSending } = useArenaChat(groupId);
+  const { messages, sendMessage, isLoading: chatLoading } = useArenaChat(groupId);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
   
   // Check hard disable flag
@@ -172,7 +172,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
 
   // Handle send message using V2 chat hook
   const handleSendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !isAuthenticated || !sendMessage || isSending) return;
+    if (!newMessage.trim() || !isAuthenticated || !sendMessage) return;
 
     try {
       await sendMessage(newMessage);
@@ -184,7 +184,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       // Error handling is done in the useArenaChat hook
       console.debug('[ArenaBillboardChatPanel] Send message handled by hook');
     }
-  }, [newMessage, isAuthenticated, sendMessage, isSending]);
+  }, [newMessage, isAuthenticated, sendMessage]);
 
   // Scroll to bottom
   const scrollToBottom = useCallback((force = false) => {
@@ -286,7 +286,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                         >
                           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                             <span className="text-xs font-medium text-primary">
-                              {userDisplay?.display_name?.charAt(0)?.toUpperCase() || message.user_id.charAt(0)?.toUpperCase()}
+                              {userDisplay?.display_name?.slice(0, 2) || message.user_id.slice(0, 2)}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -317,9 +317,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                                  </div>
                               )}
                             </div>
-                            <div className="bg-foreground/5 p-2.5 rounded-2xl">
-                              <p className="text-sm break-words">{message.message}</p>
-                            </div>
+                            <p className="text-sm break-words">{message.message}</p>
                           </div>
                         </motion.div>
                       )
@@ -329,8 +327,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                 </div>
               </ScrollArea>
 
-              <SectionDivider label="GROUP CHAT" />
-
               {/* Message Input */}
               <div className="p-6 pt-0">
                 <div className="flex gap-2">
@@ -338,31 +334,25 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     ref={inputRef}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={(!flagLoading && hardDisabled) ? "Chat disabled during maintenance" : "Message your group… (⌘/Ctrl+Enter to send)"}
-                    maxLength={500}
+                    placeholder={(!flagLoading && hardDisabled) ? "Chat disabled during maintenance" : "Type your message..."}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendMessage();
                       }
                     }}
-                    disabled={!isAuthenticated || (!flagLoading && hardDisabled) || isSending}
+                    disabled={!isAuthenticated || (!flagLoading && hardDisabled)}
                     data-testid="arena-chat-input"
                   />
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {500 - newMessage.length}
-                    </span>
-                    <Button 
-                      onClick={handleSendMessage} 
-                      disabled={!newMessage.trim() || !isAuthenticated || (!flagLoading && hardDisabled) || isSending}
-                      size="icon"
-                      data-testid="arena-chat-send"
-                      title={(!flagLoading && hardDisabled) ? "Disabled by maintenance" : "Send message"}
-                    >
-                      {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={!newMessage.trim() || !isAuthenticated || (!flagLoading && hardDisabled)}
+                    size="icon"
+                    data-testid="arena-chat-send"
+                    title={(!flagLoading && hardDisabled) ? "Disabled by maintenance" : "Send message"}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </>
