@@ -64,6 +64,9 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
+  
+  console.log('[Arena] roster ids', (members ?? []).map(m => m.user_id));
+  console.log('[Arena] merged lb ids', (leaderboard ?? []).map(r => r.user_id));
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
 
   const handleJoinArena = async () => {

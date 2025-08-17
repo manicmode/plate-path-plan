@@ -13,6 +13,7 @@ async function enrichMembersWithProfiles(members: any[]) {
   if (userIds.length === 0) return members;
   
   console.debug('[enrichMembersWithProfiles] Fetching profiles for', userIds.length, 'users');
+  console.log('[ArenaProfiles] sources', { usingUserProfiles: true, usingProfiles: false });
   
   const { data: profiles, error } = await supabase
     .from('user_profiles')
@@ -368,6 +369,7 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         const userIds = leaderboardData.map((row: any) => row.user_id);
 
         // Fetch user profiles in a single query
+        console.log('[ArenaProfiles] sources', { usingUserProfiles: true, usingProfiles: false });
         const { data: profiles, error: profileError } = await supabase
           .from('user_profiles')
           .select('user_id, first_name, last_name, avatar_url')
@@ -394,8 +396,11 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
           
           // Resolve avatar URL from storage path to public URL
           let avatarUrl = profile?.avatar_url;
-          if (avatarUrl && !avatarUrl.startsWith('http')) {
-            avatarUrl = supabase.storage.from('avatars').getPublicUrl(avatarUrl).data.publicUrl;
+          if (avatarUrl) {
+            console.log('[ArenaProfiles] example avatar url', avatarUrl);
+            if (!avatarUrl.startsWith('http')) {
+              avatarUrl = supabase.storage.from('avatars').getPublicUrl(avatarUrl).data.publicUrl;
+            }
           }
 
 
