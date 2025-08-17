@@ -290,6 +290,7 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
         </CardHeader>
 
         {/* Member Tabs Stack - User Avatar Chips */}
+        {/* TODO: re-enable once chips UI is implemented (PR #tabs-chips) */}
         <div className="px-6 pb-4">
           {(() => { console.log('[Arena] RENDER_PATH', 'member-tabs-header-mount'); return null; })()}
           <MemberTabsStack
