@@ -251,6 +251,16 @@ export default function ArenaV2Panel() {
             👥 {members?.length ?? 0} members
           </Badge>
         </CardHeader>
+
+        {/* Member Tabs Stack - User Avatar Chips */}
+        <div className="px-6 pb-4">
+          <MemberTabsStack
+            members={membersForTabs}
+            onOpenProfile={(member) => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "members")}
+            onOpenEmojiTray={undefined} // Remove emoji functionality
+            onPrefetchStats={prefetchUser}
+          />
+        </div>
         
         <CardContent className="p-6">
           {/* No Group State - Join Arena */}
