@@ -10,6 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
+import { useFriendStatuses } from '@/hooks/useFriendStatuses';
+import { useFriendActions } from '@/hooks/useFriendActions';
+import { FriendCTA } from '@/components/social/FriendCTA';
 
 interface Announcement {
   id: string;
@@ -78,6 +81,19 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   type ReactionCount = { message_id: string; emoji: string; count: number };
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
   
+  // Friend status management
+  const chatUserIds = useMemo(() => {
+    const uniqueUserIds = [...new Set(chatMessages.map(msg => msg.user_id))];
+    return uniqueUserIds;
+  }, [chatMessages]);
+
+  const { statusMap, loading: friendStatusLoading } = useFriendStatuses(chatUserIds);
+  const { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, isPending, isOnCooldown } = useFriendActions({
+    onStatusUpdate: (userId, relation, requestId) => {
+      // Status updates are handled by the useFriendStatuses hook
+    }
+  });
+
   // RPC logging utility
   const logRpc = useCallback((name: string, err: any) => {
     console.error('[RPC]', name, { 
@@ -303,13 +319,28 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium">
-                        {message.display_name || `User ${message.user_id.slice(0, 8)}`}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                      </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium truncate">
+                          {message.display_name || `User ${message.user_id.slice(0, 8)}`}
+                        </span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <div className="flex-shrink-0 ml-2">
+                        <FriendCTA
+                          userId={message.user_id}
+                          relation={statusMap.get(message.user_id)?.relation || 'none'}
+                          requestId={statusMap.get(message.user_id)?.requestId}
+                          variant="icon"
+                          onSendRequest={sendFriendRequest}
+                          onAcceptRequest={acceptFriendRequest}
+                          onRejectRequest={rejectFriendRequest}
+                          isPending={isPending(message.user_id)}
+                          isOnCooldown={isOnCooldown(message.user_id)}
+                        />
+                      </div>
                     </div>
                     <p className="text-sm break-words">{message.body}</p>
                   </div>
