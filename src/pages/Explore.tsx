@@ -174,7 +174,7 @@ const Explore = () => {
               📄
             </div>
             {/* My Reports Text */}
-            <span className={`text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
+            <span className={`text-center ${safeIsMobile ? 'text-sm' : 'text-base'} 
               font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
               My Reports
             </span>
@@ -205,7 +205,7 @@ const Explore = () => {
               👤
             </div>
             {/* Profile Text */}
-            <span className={`text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
+            <span className={`text-center ${safeIsMobile ? 'text-sm' : 'text-base'} 
               font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
               Profile
             </span>
