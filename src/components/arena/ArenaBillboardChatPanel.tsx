@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 interface Announcement {
   id: string;
@@ -81,6 +82,19 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   type ReactionCount = { message_id: string; emoji: string; count: number };
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
   
+  // RPC logging utility
+  const logRpc = useCallback((name: string, err: any) => {
+    console.error('[RPC]', name, { 
+      code: err?.code, 
+      message: err?.message, 
+      details: err?.details, 
+      hint: err?.hint 
+    });
+  }, []);
+
+  // Feature flag for friend CTAs
+  const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
+
   // Friend status management
   const chatUserIds = useMemo(() => {
     const uniqueUserIds = [...new Set(chatMessages.map(msg => msg.user_id))];
@@ -93,16 +107,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
       // Status updates are handled by the useFriendStatuses hook
     }
   });
-
-  // RPC logging utility
-  const logRpc = useCallback((name: string, err: any) => {
-    console.error('[RPC]', name, { 
-      code: err?.code, 
-      message: err?.message, 
-      details: err?.details, 
-      hint: err?.hint 
-    });
-  }, []);
 
   // Arena initialization with proper session guard
   useEffect(() => {
@@ -328,20 +332,22 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                           {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                         </span>
                       </div>
-                      <div className="flex-shrink-0 ml-2">
-                        <FriendCTA
-                          userId={message.user_id}
-                          relation={statusMap.get(message.user_id)?.relation || 'none'}
-                          requestId={statusMap.get(message.user_id)?.requestId}
-                          variant="icon"
-                          onSendRequest={sendFriendRequest}
-                          onAcceptRequest={acceptFriendRequest}
-                          onRejectRequest={rejectFriendRequest}
-                          isPending={isPending(message.user_id)}
-                          isOnCooldown={isOnCooldown(message.user_id)}
-                          isLoading={friendStatusLoading}
-                        />
-                      </div>
+                      {friendCtasEnabled && (
+                        <div className="flex-shrink-0 ml-2">
+                          <FriendCTA
+                            userId={message.user_id}
+                            relation={statusMap.get(message.user_id)?.relation || 'none'}
+                            requestId={statusMap.get(message.user_id)?.requestId}
+                            variant="icon"
+                            onSendRequest={sendFriendRequest}
+                            onAcceptRequest={acceptFriendRequest}
+                            onRejectRequest={rejectFriendRequest}
+                            isPending={isPending(message.user_id)}
+                            isOnCooldown={isOnCooldown(message.user_id)}
+                            isLoading={friendStatusLoading}
+                          />
+                        </div>
+                      )}
                     </div>
                     <p className="text-sm break-words">{message.body}</p>
                   </div>

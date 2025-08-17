@@ -32,6 +32,11 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
+    // Dev metrics
+    if (import.meta.env.DEV) {
+      console.info('FRIEND_CTA_CLICK_SEND', { targetUserId });
+    }
+
     setPending(prev => new Set(prev).add(targetUserId));
     
     // Optimistic update
@@ -84,6 +89,11 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
+    // Dev metrics
+    if (import.meta.env.DEV) {
+      console.info('FRIEND_CTA_ACCEPT', { requestId, userId });
+    }
+
     setPending(prev => new Set(prev).add(userId));
     
     // Optimistic update
@@ -122,6 +132,11 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
   const rejectFriendRequest = useCallback(async (requestId: string, userId: string) => {
     if (pending.has(userId)) {
       return false;
+    }
+
+    // Dev metrics
+    if (import.meta.env.DEV) {
+      console.info('FRIEND_CTA_REJECT', { requestId, userId });
     }
 
     setPending(prev => new Set(prev).add(userId));

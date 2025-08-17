@@ -3,7 +3,7 @@ import { MessageCircle } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
-import ChallengeRankings from "./ChallengeRankings";
+import { ChallengeRankings } from "./ChallengeRankings";
 import { seedBillboardForChallenge, seedBillboardDemoEventsFor } from "@/dev/seedBillboard";
 import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
 import { isDev } from "@/utils/dev";

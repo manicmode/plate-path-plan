@@ -37,6 +37,7 @@ import { arenaUiHeartbeat } from '@/lib/arenaDiag';
 import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -124,6 +125,9 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   const userIds = useMemo(() => getCurrentData().map(row => row.user_id), [activeTab, combined, nutrition, exercise, recovery]);
   const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(userIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
+  
+  // Feature flag for friend CTAs
+  const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
 
   // Add logging for inner tabs
   const handleTabChange = (value: string) => {
@@ -353,18 +357,20 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   {/* Points and Friend CTA */}
                   <div className="ml-auto flex items-center gap-3">
                     {/* Friend CTA */}
-                    <FriendCTA
-                      userId={row.user_id}
-                      relation={statusMap.get(row.user_id)?.relation || 'none'}
-                      requestId={statusMap.get(row.user_id)?.requestId}
-                      variant="compact"
-                      onSendRequest={friendActions.sendFriendRequest}
-                      onAcceptRequest={friendActions.acceptFriendRequest}
-                      onRejectRequest={friendActions.rejectFriendRequest}
-                      isPending={friendActions.isPending(row.user_id)}
-                      isOnCooldown={friendActions.isOnCooldown(row.user_id)}
-                      isLoading={statusLoading}
-                    />
+                    {friendCtasEnabled && (
+                      <FriendCTA
+                        userId={row.user_id}
+                        relation={statusMap.get(row.user_id)?.relation || 'none'}
+                        requestId={statusMap.get(row.user_id)?.requestId}
+                        variant="compact"
+                        onSendRequest={friendActions.sendFriendRequest}
+                        onAcceptRequest={friendActions.acceptFriendRequest}
+                        onRejectRequest={friendActions.rejectFriendRequest}
+                        isPending={friendActions.isPending(row.user_id)}
+                        isOnCooldown={friendActions.isOnCooldown(row.user_id)}
+                        isLoading={statusLoading}
+                      />
+                    )}
                     
                     {/* Points */}
                     <div className="min-w-[84px] text-right tabular-nums">

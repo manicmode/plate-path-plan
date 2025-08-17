@@ -7,13 +7,17 @@ import { cn } from '@/lib/utils';
 import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 interface ChallengeRankingsProps {
   challengeId: string | null;
 }
 
-export default function ChallengeRankings({ challengeId }: ChallengeRankingsProps) {
+export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeId }) => {
   const { participants, loading } = useChallengeRankings(challengeId);
+  
+  // Feature flag for friend CTAs
+  const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
 
   // Friend management
   const participantIds = React.useMemo(() => participants.map(p => p.user_id), [participants]);
@@ -117,18 +121,20 @@ export default function ChallengeRankings({ challengeId }: ChallengeRankingsProp
                 {/* Score and Friend CTA */}
                 <div className="flex items-center gap-3">
                   {/* Friend CTA */}
-                  <FriendCTA
-                    userId={participant.user_id}
-                    relation={statusMap.get(participant.user_id)?.relation || 'none'}
-                    requestId={statusMap.get(participant.user_id)?.requestId}
-                    variant="compact"
-                    onSendRequest={friendActions.sendFriendRequest}
-                    onAcceptRequest={friendActions.acceptFriendRequest}
-                    onRejectRequest={friendActions.rejectFriendRequest}
-                    isPending={friendActions.isPending(participant.user_id)}
-                    isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
-                    isLoading={statusLoading}
-                  />
+                  {friendCtasEnabled && (
+                    <FriendCTA
+                      userId={participant.user_id}
+                      relation={statusMap.get(participant.user_id)?.relation || 'none'}
+                      requestId={statusMap.get(participant.user_id)?.requestId}
+                      variant="compact"
+                      onSendRequest={friendActions.sendFriendRequest}
+                      onAcceptRequest={friendActions.acceptFriendRequest}
+                      onRejectRequest={friendActions.rejectFriendRequest}
+                      isPending={friendActions.isPending(participant.user_id)}
+                      isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
+                      isLoading={statusLoading}
+                    />
+                  )}
                   
                   {/* Score */}
                   <div className="text-right">

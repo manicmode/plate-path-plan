@@ -31,6 +31,7 @@ import { ShareComposer } from '@/components/share/ShareComposer';
 import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useChatStore } from '@/store/chatStore';
 
 interface ChallengeCardProps {
@@ -61,6 +62,9 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const participantIds = React.useMemo(() => challenge.participants, [challenge.participants]);
   const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(participantIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
+  
+  // Feature flag for friend CTAs
+  const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');
 
   // Calculate time remaining
   useEffect(() => {
@@ -287,20 +291,22 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                       <div className="text-muted-foreground">{progress}% complete</div>
                       
                       {/* Friend CTA in tooltip */}
-                      <div className="mt-2 flex justify-center">
-                        <FriendCTA
-                          userId={participantId}
-                          relation={statusMap.get(participantId)?.relation || 'none'}
-                          requestId={statusMap.get(participantId)?.requestId}
-                          variant="compact"
-                          onSendRequest={friendActions.sendFriendRequest}
-                          onAcceptRequest={friendActions.acceptFriendRequest}
-                          onRejectRequest={friendActions.rejectFriendRequest}
-                          isPending={friendActions.isPending(participantId)}
-                          isOnCooldown={friendActions.isOnCooldown(participantId)}
-                          isLoading={statusLoading}
-                        />
-                      </div>
+                      {friendCtasEnabled && (
+                        <div className="mt-2 flex justify-center">
+                          <FriendCTA
+                            userId={participantId}
+                            relation={statusMap.get(participantId)?.relation || 'none'}
+                            requestId={statusMap.get(participantId)?.requestId}
+                            variant="compact"
+                            onSendRequest={friendActions.sendFriendRequest}
+                            onAcceptRequest={friendActions.acceptFriendRequest}
+                            onRejectRequest={friendActions.rejectFriendRequest}
+                            isPending={friendActions.isPending(participantId)}
+                            isOnCooldown={friendActions.isOnCooldown(participantId)}
+                            isLoading={statusLoading}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

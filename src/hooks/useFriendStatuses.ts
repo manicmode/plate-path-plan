@@ -38,6 +38,8 @@ export const useFriendStatuses = (targetIds: string[]) => {
       return;
     }
 
+    const startTime = performance.now();
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -112,6 +114,12 @@ export const useFriendStatuses = (targetIds: string[]) => {
 
       setStatusMap(newStatusMap);
       setError(null);
+      
+      // Dev metrics for load time
+      if (import.meta.env.DEV) {
+        const loadTime = performance.now() - startTime;
+        console.info(`FRIEND_STATUS_LOAD_TIME: ${loadTime.toFixed(2)}ms for ${targetIds.length} users`);
+      }
     } catch (err) {
       console.error('Error loading friend statuses:', err);
       setError('Failed to load friend status');

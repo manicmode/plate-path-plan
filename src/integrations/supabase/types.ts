@@ -1859,6 +1859,24 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       follower_notifications_queue: {
         Row: {
           challenge_id: string
@@ -6753,6 +6771,10 @@ export type Database = {
       increment_challenge_views: {
         Args: { challenge_id_param: string }
         Returns: undefined
+      }
+      is_feature_enabled: {
+        Args: { feature_key: string }
+        Returns: boolean
       }
       is_member_of_rank20_group: {
         Args: { group_id_param: string; uid?: string }
