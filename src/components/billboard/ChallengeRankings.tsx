@@ -4,6 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award, Users } from 'lucide-react';
 import { useChallengeRankings, ChallengeParticipant } from '@/hooks/useChallengeRankings';
 import { cn } from '@/lib/utils';
+import { useFriendStatuses } from '@/hooks/useFriendStatuses';
+import { useFriendActions } from '@/hooks/useFriendActions';
+import { FriendCTA } from '@/components/social/FriendCTA';
 
 interface ChallengeRankingsProps {
   challengeId: string | null;
@@ -11,6 +14,11 @@ interface ChallengeRankingsProps {
 
 export default function ChallengeRankings({ challengeId }: ChallengeRankingsProps) {
   const { participants, loading } = useChallengeRankings(challengeId);
+
+  // Friend management
+  const participantIds = React.useMemo(() => participants.map(p => p.user_id), [participants]);
+  const { statusMap, updateStatus } = useFriendStatuses(participantIds);
+  const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -106,14 +114,30 @@ export default function ChallengeRankings({ challengeId }: ChallengeRankingsProp
                   </p>
                 </div>
 
-                {/* Score */}
-                <div className="text-right">
-                  <p className="text-sm font-bold text-primary">
-                    {participant.score.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    points
-                  </p>
+                {/* Score and Friend CTA */}
+                <div className="flex items-center gap-3">
+                  {/* Friend CTA */}
+                  <FriendCTA
+                    userId={participant.user_id}
+                    relation={statusMap.get(participant.user_id)?.relation || 'none'}
+                    requestId={statusMap.get(participant.user_id)?.requestId}
+                    variant="compact"
+                    onSendRequest={friendActions.sendFriendRequest}
+                    onAcceptRequest={friendActions.acceptFriendRequest}
+                    onRejectRequest={friendActions.rejectFriendRequest}
+                    isPending={friendActions.isPending(participant.user_id)}
+                    isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
+                  />
+                  
+                  {/* Score */}
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-primary">
+                      {participant.score.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      points
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}

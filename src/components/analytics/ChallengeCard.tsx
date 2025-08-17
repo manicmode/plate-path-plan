@@ -28,6 +28,9 @@ import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { ShareComposer } from '@/components/share/ShareComposer';
+import { useFriendStatuses } from '@/hooks/useFriendStatuses';
+import { useFriendActions } from '@/hooks/useFriendActions';
+import { FriendCTA } from '@/components/social/FriendCTA';
 import { useChatStore } from '@/store/chatStore';
 
 interface ChallengeCardProps {
@@ -53,6 +56,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const isCreator = challenge.creatorId === currentUserId;
   const canJoin = challenge.type === 'public' && !isParticipant && 
     (!challenge.maxParticipants || challenge.participants.length < challenge.maxParticipants);
+
+  // Friend management for participant avatars
+  const participantIds = React.useMemo(() => challenge.participants, [challenge.participants]);
+  const { statusMap, updateStatus } = useFriendStatuses(participantIds);
+  const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
 
   // Calculate time remaining
   useEffect(() => {
@@ -277,6 +285,21 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border rounded-lg p-2 text-xs whitespace-nowrap shadow-lg z-10">
                       <div className="font-medium">{participant?.name || 'Unknown'}</div>
                       <div className="text-muted-foreground">{progress}% complete</div>
+                      
+                      {/* Friend CTA in tooltip */}
+                      <div className="mt-2 flex justify-center">
+                        <FriendCTA
+                          userId={participantId}
+                          relation={statusMap.get(participantId)?.relation || 'none'}
+                          requestId={statusMap.get(participantId)?.requestId}
+                          variant="compact"
+                          onSendRequest={friendActions.sendFriendRequest}
+                          onAcceptRequest={friendActions.acceptFriendRequest}
+                          onRejectRequest={friendActions.rejectFriendRequest}
+                          isPending={friendActions.isPending(participantId)}
+                          isOnCooldown={friendActions.isOnCooldown(participantId)}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
