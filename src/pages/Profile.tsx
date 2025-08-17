@@ -7,8 +7,10 @@ import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StreakBadgesSection } from '@/components/analytics/StreakBadgesSection';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 import './profile.css';
 
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -56,6 +58,7 @@ const ProfileContent = () => {
   const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -260,11 +263,24 @@ const ProfileContent = () => {
   return (
     <div id="AppScrollRoot" className="AppScrollRoot">
       <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''} ProfilePageRoot ${editingSection ? 'isEditing' : ''}`}>
+        {/* Back Button */}
+        <div className="flex items-start">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+
         {/* Page Title - At the very top */}
-      <div className="text-center">
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
-        <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
-      </div>
+        <div className="text-center">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
+          <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
+        </div>
 
       {/* Avatar Hero Card */}
       <AvatarHeroCard user={user} />
