@@ -767,6 +767,30 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_chat_messages: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       arena_events: {
         Row: {
           challenge_id: string
@@ -6374,6 +6398,10 @@ export type Database = {
           title: string
           year: number
         }[]
+      }
+      arena_get_active_group_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       arena_get_billboard: {
         Args: {
