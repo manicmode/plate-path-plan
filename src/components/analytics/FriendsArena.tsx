@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Apple,
   Dumbbell,
-  Heart
+  Heart,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
@@ -40,6 +41,10 @@ import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 import WinnersRibbon from '@/components/arena/WinnersRibbon';
+import SectionDivider from '@/components/arena/SectionDivider';
+import { BillboardSkeleton } from '@/components/arena/ArenaSkeletons';
+import EmojiTray from '@/components/arena/EmojiTray';
+import { useEmojiReactions } from '@/hooks/useEmojiReactions';
 
 // Pretty numbers (e.g., 2,432)
 const nf = new Intl.NumberFormat();
@@ -133,6 +138,21 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
   
   // Feature flag for winners ribbon
   const { enabled: winnersRibbonEnabled } = useFeatureFlag('arena_winners_ribbon');
+  
+  // Feature flag for emoji tray
+  const { enabled: emojiEnabled } = useFeatureFlag('arena_emoji_tray');
+  
+  // Emoji reactions state
+  const { addReaction, getReactions } = useEmojiReactions();
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [activeTarget, setActiveTarget] = useState<string | null>(null);
+
+  const handleReactUser = useCallback((emoji: string) => {
+    if (!activeTarget) return;
+    addReaction(activeTarget, emoji);
+    setTrayOpen(false);
+    setActiveTarget(null);
+  }, [activeTarget, addReaction]);
 
   // Friend status management with realtime updates
   useFriendRealtime({
@@ -289,6 +309,8 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
+          <SectionDivider title="Live Leaderboard" />
+          
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6" data-testid="arena-section-switcher">
               <TabsTrigger value="combined" className="flex items-center gap-2 text-xs">
@@ -310,8 +332,11 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
             </TabsList>
             
             <TabsContent value={activeTab}>
-              <div className="flex flex-col gap-5">
-                {getCurrentData().map((row) => (
+              {sectionsLoading ? (
+                <BillboardSkeleton rows={10} />
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {getCurrentData().map((row, index) => (
             <div key={row.user_id} className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible">
               {/* Off-card rank badge */}
               <span
@@ -377,50 +402,69 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                     </div>
                   </div>
                   
-                  {/* Points and Friend CTA */}
-                  <div className="ml-auto flex items-center gap-3">
-                    {/* Friend CTA */}
-                     {friendCtasEnabled && (
-                       <FriendCTA
-                         userId={row.user_id}
-                         relation={statusMap.get(row.user_id)?.relation || 'none'}
-                         requestId={statusMap.get(row.user_id)?.requestId}
-                         variant="compact"
-                         onSendRequest={friendActions.sendFriendRequest}
-                         onAcceptRequest={friendActions.acceptFriendRequest}
-                         onRejectRequest={friendActions.rejectFriendRequest}
-                         onCancelRequest={friendActions.cancelFriendRequest}
-                         isPending={friendActions.isPending(row.user_id)}
-                         isOnCooldown={friendActions.isOnCooldown(row.user_id)}
-                         isLoading={statusLoading}
-                       />
+                   {/* Points and Actions */}
+                   <div className="ml-auto flex items-center gap-3">
+                     {/* Reactions */}
+                     {Object.entries(getReactions(`user:${row.user_id}`)).map(([emoji, count]) => (
+                       <div key={emoji} className="rounded-full bg-white/10 px-2 py-0.5 text-sm ring-1 ring-white/10">
+                         {emoji} <span className="text-white/70">{count}</span>
+                       </div>
+                     ))}
+                     
+                     {/* Add reaction button */}
+                     {emojiEnabled && (
+                       <button
+                         onClick={() => { setActiveTarget(`user:${row.user_id}`); setTrayOpen(true); }}
+                         className="rounded-full p-1 hover:bg-white/10 transition"
+                         aria-label="Add reaction"
+                       >
+                         <Plus className="h-4 w-4 text-white/80" />
+                       </button>
                      )}
-                    
-                    {/* Points */}
-                    <div className="min-w-[84px] text-right tabular-nums">
-                      <div className="inline-flex items-center gap-1">
-                        <Target className="w-4 h-4" />
-                        <span className="font-semibold">{formatPoints(row.points)}</span>
-                        <span className="text-xs text-muted-foreground ml-1">pts</span>
-                      </div>
-                    </div>
-                  </div>
+                     
+                     {/* Friend CTA */}
+                      {friendCtasEnabled && (
+                        <FriendCTA
+                          userId={row.user_id}
+                          relation={statusMap.get(row.user_id)?.relation || 'none'}
+                          requestId={statusMap.get(row.user_id)?.requestId}
+                          variant="compact"
+                          onSendRequest={friendActions.sendFriendRequest}
+                          onAcceptRequest={friendActions.acceptFriendRequest}
+                          onRejectRequest={friendActions.rejectFriendRequest}
+                          onCancelRequest={friendActions.cancelFriendRequest}
+                          isPending={friendActions.isPending(row.user_id)}
+                          isOnCooldown={friendActions.isOnCooldown(row.user_id)}
+                          isLoading={statusLoading}
+                        />
+                      )}
+                     
+                     {/* Points */}
+                     <div className="min-w-[84px] text-right tabular-nums">
+                       <div className="inline-flex items-center gap-1">
+                         <Target className="w-4 h-4" />
+                         <span className="font-semibold">{formatPoints(row.points)}</span>
+                         <span className="text-xs text-muted-foreground ml-1">pts</span>
+                       </div>
+                     </div>
+                   </div>
                 </div>
               </div>
             </div>
-                ))}
-                
-                {getCurrentData().length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">No {activeTab} leaderboard data available</p>
-                    <p className="text-xs mt-1">Check back later or invite friends to join!</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
+                   ))}
+                   
+                   {getCurrentData().length === 0 && (
+                     <div className="text-center py-8 text-muted-foreground">
+                       <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                       <p className="text-sm">No {activeTab} leaderboard data available</p>
+                       <p className="text-xs mt-1">Check back later or invite friends to join!</p>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </TabsContent>
+           </Tabs>
+         </CardContent>
         
         {selected && (
           <UserStatsModal
@@ -439,6 +483,15 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                 onClose={() => setBillboardOpen(false)}
                 privateChallengeId={challengeId}
               />
+              
+              {/* Emoji Tray */}
+              {emojiEnabled && (
+                <EmojiTray
+                  open={trayOpen}
+                  onToggle={() => setTrayOpen(v => !v)}
+                  onReact={handleReactUser}
+                />
+              )}
             </>
           )}
         </>
