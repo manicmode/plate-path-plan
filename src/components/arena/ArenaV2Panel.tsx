@@ -22,10 +22,10 @@ import SectionDivider from '@/components/ui/SectionDivider';
 import { BillboardSkeleton } from '@/components/arena/ArenaSkeletons';
 import EmojiTray from '@/components/arena/EmojiTray';
 import { useEmojiReactions } from '@/hooks/useEmojiReactions';
-import MemberTabsStack, { type MemberTab } from '@/components/arena/MemberTabsStack';
+
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 // User stats functionality moved to V2 implementation
-import { makeMembersForTabs } from '@/utils/arenaHelpers';
+
 
 function Initials({ name }: { name?: string|null }) {
   const t = (name ?? '').trim();
@@ -159,24 +159,6 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Build members data for tabs stack using helper function
-  const membersForTabs: MemberTab[] = React.useMemo(() => {
-    if (!members?.length) return [];
-    
-    const mergedMembers = makeMembersForTabs(
-      members.map(m => ({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url })),
-      leaderboard?.map(l => ({ 
-        user_id: l.user_id, 
-        display_name: l.display_name, 
-        avatar_url: l.avatar_url, 
-        points: l.score || 0, 
-        streak: 0, // V2 leaderboard doesn't have streak yet
-        rank: l.rank 
-      })) || []
-    );
-    
-    return mergedMembers;
-  }, [leaderboard, members]);
 
   // Real-time updates for new members (V2)
   useEffect(() => {
@@ -250,14 +232,6 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
           </CardTitle>
         </CardHeader>
 
-        {/* Member Tabs Stack - User Avatar Chips */}
-        {/* TODO: re-enable once chips UI is implemented (PR #tabs-chips) */}
-        <div className="px-6 pb-4">
-          <MemberTabsStack
-            members={membersForTabs}
-            onSelect={(uid) => {/* Handle chip selection */}}
-          />
-        </div>
         
         <CardContent className="p-6">
           {/* No Group State - Join Arena */}
