@@ -114,10 +114,32 @@ export function useArenaEnroll(): {
       setError(undefined);
       
       const { data, error: rpcError } = await supabase.rpc('arena_enroll_me');
-      const groupId = data;
       
       if (rpcError) {
         throw new Error(rpcError.message);
+      }
+      
+      // Handle the response - extract group_id from the returned data
+      let groupId: string | null = null;
+      if (data) {
+        // If data is a string UUID, use it directly
+        if (typeof data === 'string') {
+          groupId = data;
+        }
+        // If data is an array, get the first result and extract string value
+        else if (Array.isArray(data) && data.length > 0) {
+          const firstItem = data[0];
+          if (typeof firstItem === 'string') {
+            groupId = firstItem;
+          } else if (typeof firstItem === 'object' && firstItem !== null) {
+            // Extract group_id from object or use any UUID-like property
+            groupId = (firstItem as any).group_id || (firstItem as any).id || null;
+          }
+        }
+        // If data is an object with group_id property
+        else if (typeof data === 'object' && data !== null && 'group_id' in data) {
+          groupId = (data as any).group_id;
+        }
       }
       
       if (!groupId) {

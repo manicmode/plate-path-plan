@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, Megaphone, Wifi, WifiOff, Smile, MoreHorizontal, Loader2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -240,97 +240,118 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
         </DialogHeader>
         
         <div className="flex-1 flex flex-col h-full">
-          {/* Chat Messages */}
-          <ScrollArea 
-            ref={scrollAreaRef}
-            className="flex-1 px-6"
-          >
-            <div className="space-y-4 py-4">
-              {messages.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No messages yet. Say hi to your group 👋</p>
-                </div>
-              ) : (
-                messages.map((message) => {
-                  const userDisplay = userDisplayMap.get(message.user_id);
-                  return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex gap-3"
-                    >
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium text-primary">
-                          {userDisplay?.display_name?.slice(0, 2) || message.user_id.slice(0, 2)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-sm font-medium truncate">
-                              {userDisplay?.display_name || `User ${message.user_id.slice(0, 8)}`}
-                            </span>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+          {/* No Group State - Join Arena */}
+          {!loadingGroupId && !groupId ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  Join the Arena to see member activity and chat!
+                </p>
+                <Button 
+                  onClick={handleJoinArena} 
+                  disabled={isEnrolling}
+                  size="sm"
+                >
+                  {isEnrolling ? "Joining..." : "Join Arena"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Chat Messages */}
+              <ScrollArea 
+                ref={scrollAreaRef}
+                className="flex-1 px-6"
+              >
+                <div className="space-y-4 py-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No messages yet. Say hi to your group 👋</p>
+                    </div>
+                  ) : (
+                    messages.map((message) => {
+                      const userDisplay = userDisplayMap.get(message.user_id);
+                      return (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex gap-3"
+                        >
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-medium text-primary">
+                              {userDisplay?.display_name?.slice(0, 2) || message.user_id.slice(0, 2)}
                             </span>
                           </div>
-                          {friendCtasEnabled && (
-                             <div className="flex-shrink-0 ml-2">
-                               <FriendCTA
-                                 userId={message.user_id}
-                                 relation={statusMap.get(message.user_id)?.relation || 'none'}
-                                 requestId={statusMap.get(message.user_id)?.requestId}
-                                 variant="icon"
-                                 onSendRequest={sendFriendRequest}
-                                 onAcceptRequest={acceptFriendRequest}
-                                 onRejectRequest={rejectFriendRequest}
-                                 onCancelRequest={cancelFriendRequest}
-                                 isPending={isPending(message.user_id)}
-                                 isOnCooldown={isOnCooldown(message.user_id)}
-                                 isLoading={friendStatusLoading}
-                               />
-                             </div>
-                          )}
-                        </div>
-                        <p className="text-sm break-words">{message.message}</p>
-                      </div>
-                    </motion.div>
-                  )
-                })
-              )}
-              <div ref={bottomAnchorRef} />
-            </div>
-          </ScrollArea>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-medium truncate">
+                                  {userDisplay?.display_name || `User ${message.user_id.slice(0, 8)}`}
+                                </span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                              {friendCtasEnabled && (
+                                 <div className="flex-shrink-0 ml-2">
+                                   <FriendCTA
+                                     userId={message.user_id}
+                                     relation={statusMap.get(message.user_id)?.relation || 'none'}
+                                     requestId={statusMap.get(message.user_id)?.requestId}
+                                     variant="icon"
+                                     onSendRequest={sendFriendRequest}
+                                     onAcceptRequest={acceptFriendRequest}
+                                     onRejectRequest={rejectFriendRequest}
+                                     onCancelRequest={cancelFriendRequest}
+                                     isPending={isPending(message.user_id)}
+                                     isOnCooldown={isOnCooldown(message.user_id)}
+                                     isLoading={friendStatusLoading}
+                                   />
+                                 </div>
+                              )}
+                            </div>
+                            <p className="text-sm break-words">{message.message}</p>
+                          </div>
+                        </motion.div>
+                      )
+                    })
+                  )}
+                  <div ref={bottomAnchorRef} />
+                </div>
+              </ScrollArea>
 
-          {/* Message Input */}
-          <div className="p-6 pt-0">
-            <div className="flex gap-2">
-              <Input
-                ref={inputRef}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={!isAuthenticated}
-                data-testid="arena-chat-input"
-              />
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!newMessage.trim() || !isAuthenticated}
-                size="icon"
-                data-testid="arena-chat-send"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+              {/* Message Input */}
+              <div className="p-6 pt-0">
+                <div className="flex gap-2">
+                  <Input
+                    ref={inputRef}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    disabled={!isAuthenticated}
+                    data-testid="arena-chat-input"
+                  />
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={!newMessage.trim() || !isAuthenticated}
+                    size="icon"
+                    data-testid="arena-chat-send"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
