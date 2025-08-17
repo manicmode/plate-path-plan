@@ -105,6 +105,7 @@ const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfi
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
+const ArenaDebug = lazy(() => import('@/pages/ArenaDebug'));
 
 
 // Prefetch critical components after initial load
@@ -420,13 +421,18 @@ function AppContent() {
                         <ChallengePreview />
                       </ProtectedRoute>
                     } />
-                     <Route path="/dev/challenges" element={
-                       <ProtectedRoute>
-                         <DevChallengesPage />
-                       </ProtectedRoute>
-                      } />
-                     
-                     <Route path="*" element={<NotFound />} />
+                      <Route path="/dev/challenges" element={
+                        <ProtectedRoute>
+                          <DevChallengesPage />
+                        </ProtectedRoute>
+                       } />
+                      <Route path="/arena-debug" element={
+                        <ProtectedRoute>
+                          <ArenaDebug />
+                        </ProtectedRoute>
+                       } />
+                      
+                      <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Layout>
               } />
