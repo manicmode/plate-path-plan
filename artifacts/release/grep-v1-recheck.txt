@@ -1,0 +1,20 @@
+# V1 Regression Check
+
+## Checking for rank20_ references in runtime code:
+
+```bash
+git grep -n "rank20_" src || echo OK
+```
+
+**Expected Output:** OK (no matches found)
+
+## Checking for diag_rank20 references:
+
+```bash  
+git grep -n "diag_rank20" src || echo OK
+```
+
+**Expected Output:** OK (no matches found)
+
+**Status:** Manual verification required
+**Note:** These greps verify no V1 Arena code remains in the runtime source files, ensuring clean V2 implementation.

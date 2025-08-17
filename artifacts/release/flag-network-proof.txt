@@ -1,0 +1,26 @@
+# Network Proof for Flag E2E Testing
+
+## Maintenance Mode (Flag ON - arena_v2_hard_disable = true)
+
+**Expected Blocked Calls:**
+- POST /rest/v1/rpc/arena_enroll_me (enrollment should be blocked)
+- POST /rest/v1/arena_chat_messages (chat sends should be blocked)
+
+**Allowed Calls:**
+- GET /rest/v1/runtime_flags (flag checking)
+- GET /healthz (health check endpoint)
+
+## Normal Mode (Flag OFF - arena_v2_hard_disable = false)
+
+**Expected Working Calls:**
+- POST /rest/v1/rpc/arena_enroll_me (200 OK)
+- POST /rest/v1/arena_chat_messages (201 Created)
+- GET /rest/v1/runtime_flags (flag checking)
+- GET /healthz (health check endpoint)
+
+**Status:** Ready for manual verification
+**Instructions:** 
+1. Open browser DevTools > Network tab
+2. Navigate to /game-and-challenge  
+3. Attempt arena operations
+4. Record actual network calls and status codes

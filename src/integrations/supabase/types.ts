@@ -3894,6 +3894,24 @@ export type Database = {
         }
         Relationships: []
       }
+      runtime_flags: {
+        Row: {
+          enabled: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
