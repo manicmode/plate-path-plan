@@ -46,6 +46,9 @@ export default function ArenaV2Panel() {
     }
   }, []);
   
+  // Arena nav state
+  const [activeTab, setActiveTab] = useState<'Billboard' | 'Chat' | 'Rankings'>('Rankings');
+  
   const queryClient = useQueryClient();
   const { data: active, isLoading: loadingActive } = useArenaActive();
   const challengeId = active?.id;
@@ -160,226 +163,188 @@ export default function ArenaV2Panel() {
 
   return (
     <div className="space-y-6" data-testid="arena-v2">
+      {/* Arena Navigation */}
+      <div className="flex items-center justify-center gap-1 p-1 bg-muted/50 rounded-lg w-fit mx-auto">
+        {(['Billboard', 'Chat', 'Rankings'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-md transition-all duration-200",
+              activeTab === tab
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+            )}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Subtle divider */}
+      <SectionDivider title="" />
+
       <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
         <CardHeader className={cn(
           "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
           isMobile ? "p-4" : "p-6"
         )}>
-          <div className={cn(
-            "flex items-center",
-            isMobile ? "flex-col space-y-2" : "justify-between"
-          )}>
-            <CardTitle className={cn(
-              "font-bold flex items-center gap-2",
-              isMobile ? "text-xl text-center" : "text-3xl gap-3"
-            )}>
-              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+          {/* Clean header with title and member count */}
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold">
               {active?.title ?? 'Live Rankings Arena'}
-              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
             </CardTitle>
             
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {members?.length ?? 0} members
-              </Badge>
-              <button
-                className="p-1 text-muted-foreground hover:text-foreground"
-                title="Refresh leaderboard"
-              >
-                <TrendingUp className="h-4 w-4" />
-              </button>
-            </div>
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {members?.length ?? 0} members
+            </Badge>
           </div>
           
-          {/* Member Tabs Stack (replaces winners ribbon at top) */}
-          <MemberTabsStack
-            members={membersForTabs}
-            onOpenProfile={(member) => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "members")}
-            onOpenEmojiTray={(userId) => { setActiveTarget(`user:${userId}`); setTrayOpen(true); }}
-            onPrefetchStats={prefetchUser}
-          />
-
-          {/* Optional Winners Ribbon below tabs */}
-          {winnersRibbonEnabled && showWinnersRibbonBelowTabs && (
-            <div className="mt-4">
-              <WinnersRibbon />
-            </div>
-          )}
+          {/* Season info */}
+          <div className="text-xs text-muted-foreground">
+            {loadingActive ? 'Loading…' : active ? `Season ${active.year}.${String(active.month).padStart(2,'0')}` : 'No active arena'}
+          </div>
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div className="text-sm opacity-80">
-              {loadingActive ? 'Loading…' : active ? `Season ${active.season}.${String(active.month).padStart(2,'0')}` : 'No active arena'}
+          {/* Tab Content */}
+          {activeTab === 'Billboard' && (
+            <div className="text-center py-8 text-muted-foreground">
+              Billboard feature coming soon...
             </div>
-            <div className="flex items-center gap-2">
-              {me && (
-                <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
-              )}
-              {/* DEV: quick award + recompute - only show if debug controls enabled */}
-              {ARENA_DEBUG_CONTROLS && (
-                <>
+          )}
+
+          {activeTab === 'Chat' && (
+            <div className="text-center py-8 text-muted-foreground">
+              Chat feature coming soon...
+            </div>
+          )}
+
+          {activeTab === 'Rankings' && (
+            <>
+              {/* Debug controls */}
+              {debugControlsEnabled && me && (
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
                   <Button size="sm" variant="secondary" onClick={async () => {
-                    // TODO: Replace with actual arena_award_points RPC when available
                     console.log('Would award points here');
                   }}>
                     +1 point & Recompute
                   </Button>
                   <Button size="sm" variant="outline" onClick={async () => {
-                    // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
                     console.log('Would recompute rollups here');
                   }}>
                     Recompute Rollups
                   </Button>
-                </>
+                </div>
               )}
-            </div>
-          </div>
 
-          <SectionDivider title="Live Leaderboard" />
-          
-          {leaderboardLoading ? (
-            <BillboardSkeleton rows={10} />
-          ) : (leaderboard?.length ?? 0) === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-muted-foreground mb-4">
-                {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {leaderboard!.map((row, index) => (
-                <div 
-                  key={row.user_id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
-                    }
-                  }}
-                  onMouseEnter={() => prefetchUser(row.user_id)}
-                  onFocus={() => prefetchUser(row.user_id)}
-                  className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                  style={{ animationDelay: `${index * 40}ms` }}
-                  aria-label={`Open profile for ${row.display_name || 'user'}`}
-                >
-                  {/* Off-card rank badge */}
-                  <span
-                    aria-label={`Rank ${row.rank}`}
-                    className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
-                  >
-                    #{row.rank}
-                  </span>
-
-                  {/* Rising chip */}
-                  <div className="absolute top-3 right-3 z-10">
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                      Rising
-                    </Badge>
+              {/* Rankings content */}
+              {leaderboardLoading ? (
+                <BillboardSkeleton rows={10} />
+              ) : (leaderboard?.length ?? 0) === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground mb-4">
+                    {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {leaderboard!.map((row, index) => (
+                    <div 
+                      key={row.user_id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
+                        }
+                      }}
+                      onMouseEnter={() => prefetchUser(row.user_id)}
+                      onFocus={() => prefetchUser(row.user_id)}
+                      className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
+                      style={{ animationDelay: `${index * 40}ms` }}
+                      aria-label={`Open profile for ${row.display_name || 'user'}`}
+                    >
+                      {/* Off-card rank badge */}
+                      <span
+                        aria-label={`Rank ${row.rank}`}
+                        className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
+                      >
+                        #{row.rank}
+                      </span>
 
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 pl-2">
-                        <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "z-10")}>
-                          <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            <Initials name={row.display_name} />
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            {row.display_name ?? row.user_id}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Member
-                          </div>
-                        </div>
+                      {/* Rising chip */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 text-green-500" />
+                          Rising
+                        </Badge>
                       </div>
-                      
-                      {/* Actions and Points */}
-                      <div className="ml-auto flex items-center gap-3">
-                        {/* Reactions */}
-                        {Object.entries(getReactions(`user:${row.user_id}`)).map(([emoji, count]) => (
-                          <div key={emoji} className="rounded-full bg-white/10 px-2 py-0.5 text-sm ring-1 ring-white/10">
-                            {emoji} <span className="text-white/70">{count}</span>
+
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 pl-2">
+                            <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "z-10")}>
+                              <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                <Initials name={row.display_name} />
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div>
+                              <div className="font-semibold text-foreground">
+                                {row.display_name ?? row.user_id}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Member
+                              </div>
+                            </div>
                           </div>
-                        ))}
-                        
-                        {/* Add reaction button */}
-                        {emojiEnabled && (
-                          <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setActiveTarget(`user:${row.user_id}`); 
-                              setTrayOpen(true); 
-                            }}
-                            className="rounded-full p-1 hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
-                            aria-label="Add reaction"
-                          >
-                            <Plus className="h-4 w-4 text-white/80" />
-                          </button>
-                        )}
-                        
-                        {/* Points */}
-                        <div className="min-w-[84px] text-right tabular-nums">
-                          <div className="inline-flex items-center gap-1">
-                            <Target className="w-4 h-4" />
-                            <span className="font-semibold">{row.points}</span>
-                            <span className="text-xs text-muted-foreground ml-1">pts</span>
+                          
+                          {/* Actions and Points */}
+                          <div className="ml-auto flex items-center gap-3">
+                            {/* Reactions */}
+                            {Object.entries(getReactions(`user:${row.user_id}`)).map(([emoji, count]) => (
+                              <div key={emoji} className="rounded-full bg-white/10 px-2 py-0.5 text-sm ring-1 ring-white/10">
+                                {emoji} <span className="text-white/70">{count}</span>
+                              </div>
+                            ))}
+                            
+                            {/* Add reaction button */}
+                            {emojiEnabled && (
+                              <button
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setActiveTarget(`user:${row.user_id}`); 
+                                  setTrayOpen(true); 
+                                }}
+                                className="rounded-full p-1 hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+                                aria-label="Add reaction"
+                              >
+                                <Plus className="h-4 w-4 text-white/80" />
+                              </button>
+                            )}
+                            
+                            {/* Points */}
+                            <div className="min-w-[84px] text-right tabular-nums">
+                              <div className="inline-flex items-center gap-1">
+                                <Target className="w-4 h-4" />
+                                <span className="font-semibold">{row.points}</span>
+                                <span className="text-xs text-muted-foreground ml-1">pts</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-
-          <SectionDivider title="Arena Members" />
-          
-          {membersForTabs.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="animate-pulse">
-                <div className="w-12 h-12 bg-muted rounded-full mx-auto mb-4"></div>
-                <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
-                <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-4">
-              {members!.map(m => (
-                <div 
-                  key={m.user_id} 
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members")}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members");
-                    }
-                  }}
-                  onMouseEnter={() => prefetchUser(m.user_id)}
-                  onFocus={() => prefetchUser(m.user_id)}
-                  className="flex flex-col items-center text-center cursor-pointer hover:bg-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                  aria-label={`Open profile for ${m.display_name || 'member'}`}
-                >
-                  <Avatar className="h-10 w-10">
-                    {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name ?? ''}/> : null}
-                    <AvatarFallback><Initials name={m.display_name}/></AvatarFallback>
-                  </Avatar>
-                  <div className="mt-1 text-xs truncate w-full">{m.display_name ?? 'Player'}</div>
-                </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
