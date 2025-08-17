@@ -6463,6 +6463,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      arena_get_leaderboard_by_domain: {
+        Args: {
+          p_domain: string
+          p_group_id: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          rank: number
+          score: number
+          user_id: string
+        }[]
+      }
       arena_get_leaderboard_with_profiles: {
         Args: {
           challenge_id_param?: string
