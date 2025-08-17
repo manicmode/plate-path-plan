@@ -1,10 +1,13 @@
-SKIPPED: no PREVIEW_URL/PROD_URL available
+SKIPPED: no PREVIEW_URL/PROD_URL environment variables available
 
-Expected JSON after deployment with v2.0.0 tag:
+Expected JSON for successful v2.0.0 deployment:
 {
   "ok": true,
-  "version": "2.0.0",
+  "version": "2.0.0", 
   "arena": "v2",
   "time": "2025-08-17T...",
   "db": "reachable"
 }
+
+To verify manually:
+curl ${DEPLOY_URL}/healthz

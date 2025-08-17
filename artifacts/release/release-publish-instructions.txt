@@ -1,11 +1,11 @@
-gh release create v2.0.0 --draft --title "Arena V2 (v2.0.0)" --notes-file .github/release-draft.md
+gh release create v2.0.0 --title "Arena V2 (v2.0.0)" --notes-file .github/release-draft.md
 
-# Optionally include build artifacts after CI completes:
+# Optionally include build artifacts:
 gh release upload v2.0.0 dist/** --clobber
 
 # Or attach CI artifacts:
-# 1. Download web-build artifact from Actions workflow
+# 1. Download web-build.zip from Actions workflow
 # 2. Upload: gh release upload v2.0.0 web-build.zip --clobber
 
-# To publish (remove draft status):
-gh release edit v2.0.0 --draft=false
+# To publish immediately (remove draft status):
+gh release create v2.0.0 --title "Arena V2 (v2.0.0)" --notes-file .github/release-draft.md --latest

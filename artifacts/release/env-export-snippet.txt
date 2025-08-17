@@ -1,10 +1,7 @@
-SKIPPED: no GitHub auth - Expected in build logs after tag push:
+SKIPPED: no GitHub auth - Expected env exports from successful build:
 
-echo "VITE_APP_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-echo "NEXT_PUBLIC_APP_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV  
-echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-
-Expected output:
 VITE_APP_VERSION=2.0.0
 NEXT_PUBLIC_APP_VERSION=2.0.0
 APP_VERSION=2.0.0
+
+These should appear in the "Derive version from tag" step of the build job logs.
