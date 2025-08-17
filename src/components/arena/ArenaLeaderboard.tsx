@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchArenaLeaderboard, type LeaderboardMode } from "@/hooks/useArenaLeaderboard";
+import { fetchArenaLeaderboard, type LeaderboardMode } from "@/hooks/useArena";
 import { Button } from "@/components/ui/button";
 
 export default function ArenaLeaderboard() {

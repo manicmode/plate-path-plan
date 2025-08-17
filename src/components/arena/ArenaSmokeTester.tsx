@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
-import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
-import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
+import { useArenaMembers, useArenaActive } from '@/hooks/useArena';
 
 interface SmokeTestResult {
   pageRenders: boolean;
@@ -16,9 +15,9 @@ export const ArenaSmokeTester: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const membership = useRank20Members(user?.id);
-  const membershipData = useArenaMembership();
-  const { challengeId } = useRank20ChallengeId();
+  const { data: activeArena } = useArenaActive();
+  const { data: members, isLoading: membersLoading, isError: membersError } = useArenaMembers(activeArena?.id);
+  const challengeId = activeArena?.id;
   const [testResult, setTestResult] = useState<SmokeTestResult>({
     pageRenders: false,
     noRedirectTo404: false,
@@ -32,12 +31,12 @@ export const ArenaSmokeTester: React.FC = () => {
         pageRenders: true, // If this runs, page rendered
         noRedirectTo404: !location.pathname.includes('/404'),
         arenaComponentMounts: true, // If this component mounts, Arena mounted
-        noBannerWhenRPCSucceeds: !membershipData.data?.error && !membershipData.isError,
+        noBannerWhenRPCSucceeds: !membersError,
       };
 
       // Check for any errors
-      if (membershipData.isError || membershipData.data?.error) {
-        result.errorMessage = membershipData.data?.error || 'Unknown membership error';
+      if (membersError) {
+        result.errorMessage = 'Members fetch error';
       }
 
       setTestResult(result);
@@ -48,7 +47,7 @@ export const ArenaSmokeTester: React.FC = () => {
         noRedirectTo404: result.noRedirectTo404,
         arenaComponentMounts: result.arenaComponentMounts,
         noBannerWhenRPCSucceeds: result.noBannerWhenRPCSucceeds,
-        membershipLoading: membership.isLoading,
+        membersLoading: membersLoading,
         challengeId: challengeId,
         errorMessage: result.errorMessage,
       });
@@ -57,7 +56,7 @@ export const ArenaSmokeTester: React.FC = () => {
     // Run test after a short delay to allow hooks to settle
     const timer = setTimeout(runSmokeTest, 1000);
     return () => clearTimeout(timer);
-  }, [membershipData, challengeId, location.pathname]);
+  }, [membersError, challengeId, location.pathname]);
 
   if (process.env.NODE_ENV === 'production') {
     return null; // Don't render in production

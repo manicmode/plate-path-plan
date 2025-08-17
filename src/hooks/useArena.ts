@@ -1,6 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Re-export types for compatibility
+export type LeaderboardMode = "global" | "friends";
+
+export async function fetchArenaLeaderboard(opts?: {
+  mode?: LeaderboardMode;
+  challengeId?: string | null;
+  section?: string;
+  limit?: number;
+}) {
+  const section = opts?.section ?? "global";
+  const limit = opts?.limit ?? 20;
+
+  const rpcName =
+    opts?.mode === "friends"
+      ? "arena_get_friends_leaderboard_with_profiles"
+      : "arena_get_leaderboard_with_profiles";
+
+  const { data, error } = await supabase.rpc(rpcName, {
+    challenge_id_param: opts?.challengeId ?? null,
+    section_param: section,
+    limit_param: limit,
+  });
+  
+  if (error) {
+    console.warn("[Arena] RPC error:", error.message);
+    throw error;
+  }
+  
+  return { rows: data ?? [], source: rpcName };
+}
+
 export type ArenaActive = {
   id: string;
   slug: string | null;
