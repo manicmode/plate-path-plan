@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const APP_VERSION =
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_APP_VERSION) ||
+  (typeof process !== "undefined" && (process as any).env?.NEXT_PUBLIC_APP_VERSION) ||
+  (typeof process !== "undefined" && (process as any).env?.APP_VERSION) ||
+  "0.0.0";
+
 interface HealthStatus {
   ok: boolean;
   version: string;
@@ -12,7 +18,7 @@ interface HealthStatus {
 export default function HealthCheck() {
   const [health, setHealth] = useState<HealthStatus>({
     ok: true,
-    version: '1.0.0',
+    version: APP_VERSION,
     arena: 'v2',
     time: new Date().toISOString(),
     db: 'reachable'

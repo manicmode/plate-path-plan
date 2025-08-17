@@ -10,6 +10,9 @@
 **Breaking Changes**
 - All V1 hooks/routes removed. Use V2 hooks: `useArenaActive`, `useArenaEnroll`, `useArenaMembers`, `useArenaLeaderboardWithProfiles`, `useArenaChat`.
 
+**Upgrade Notes**
+- Version is read from the Git tag via VITE_APP_VERSION/NEXT_PUBLIC_APP_VERSION. package.json remains read-only. /healthz reflects the tag value.
+
 **Security / RLS**
 - `arena_chat_messages` protected by RLS; only members of a group can read/write that group's messages.
 

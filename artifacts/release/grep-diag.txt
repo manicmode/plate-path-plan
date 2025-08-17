@@ -1,1 +1,1 @@
-OK
+OK - Only found in read-only src/integrations/supabase/types.ts (schema definitions)
