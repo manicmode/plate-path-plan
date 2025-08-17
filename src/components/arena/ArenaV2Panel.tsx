@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Users, TrendingUp, Target, Plus, MessageSquare, Sparkles } from 'lucide-react';
+import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -249,97 +249,101 @@ export default function ArenaV2Panel() {
             </div>
           ) : (
             <div className="space-y-3">
-              {leaderboard!.map((row, index) => (
-                <div 
-                  key={row.user_id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
-                    }
-                  }}
-                  onMouseEnter={() => prefetchUser(row.user_id)}
-                  onFocus={() => prefetchUser(row.user_id)}
-                  className="relative rounded-2xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                  style={{ animationDelay: `${index * 40}ms` }}
-                  aria-label={`Open profile for ${row.display_name || 'user'}`}
-                >
-                  {/* Off-card rank badge */}
-                  <span
-                    aria-label={`Rank ${row.rank}`}
-                    className="pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold text-black shadow-md bg-gradient-to-r from-amber-400 to-orange-500"
+              {leaderboard!.map((row, index) => {
+                // Determine rank badge styling (gold/silver/bronze for top 3)
+                const getRankBadgeStyle = (rank: number) => {
+                  if (rank === 1) return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-950";
+                  if (rank === 2) return "bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900";
+                  if (rank === 3) return "bg-gradient-to-r from-amber-600 to-orange-700 text-orange-100";
+                  return "bg-gradient-to-r from-slate-400 to-slate-600 text-slate-100";
+                };
+
+                // Mock trend logic (you'll replace with actual trend data)
+                const getTrendChip = () => {
+                  // For demo: randomly show rising/falling/unchanged
+                  const trendType = Math.random();
+                  if (trendType < 0.4) {
+                    return { type: 'rising', icon: TrendingUp, text: 'Rising', color: 'text-green-600' };
+                  } else if (trendType < 0.7) {
+                    return { type: 'falling', icon: TrendingDown, text: 'Falling', color: 'text-red-600' };
+                  }
+                  return null; // unchanged - hidden
+                };
+
+                const trend = getTrendChip();
+
+                return (
+                  <div 
+                    key={row.user_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
+                      }
+                    }}
+                    onMouseEnter={() => prefetchUser(row.user_id)}
+                    onFocus={() => prefetchUser(row.user_id)}
+                    className="relative rounded-xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
+                    style={{ animationDelay: `${index * 40}ms` }}
+                    aria-label={`Open profile for ${row.display_name || 'user'}`}
                   >
-                    #{row.rank}
-                  </span>
+                    {/* Rank badge (left side) */}
+                    <span
+                      aria-label={`Rank ${row.rank}`}
+                      className={cn(
+                        "pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold shadow-md",
+                        getRankBadgeStyle(row.rank)
+                      )}
+                    >
+                      #{row.rank}
+                    </span>
 
-                  {/* Rising chip */}
-                  <div className="absolute top-3 right-3 z-10">
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                      Rising
-                    </Badge>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 pl-2">
-                        <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "z-10")}>
-                          <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            <Initials name={row.display_name} />
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            {row.display_name ?? row.user_id}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Member
-                          </div>
-                        </div>
+                    {/* Trend chip (right side) - only if there's a trend */}
+                    {trend && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="outline" className={cn("flex items-center gap-1", trend.color)}>
+                          <trend.icon className="h-3 w-3" />
+                          {trend.text}
+                        </Badge>
                       </div>
-                      
-                      {/* Actions and Points */}
-                      <div className="ml-auto flex items-center gap-3">
-                        {/* Reactions */}
-                        {Object.entries(getReactions(`user:${row.user_id}`)).map(([emoji, count]) => (
-                          <div key={emoji} className="rounded-full bg-white/10 px-2 py-0.5 text-sm ring-1 ring-white/10">
-                            {emoji} <span className="text-white/70">{count}</span>
-                          </div>
-                        ))}
-                        
-                        {/* Add reaction button */}
-                        {emojiEnabled && (
-                          <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setActiveTarget(`user:${row.user_id}`); 
-                              setTrayOpen(true); 
-                            }}
-                            className="rounded-full p-1 hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
-                            aria-label="Add reaction"
-                          >
-                            <Plus className="h-4 w-4 text-white/80" />
-                          </button>
-                        )}
-                        
-                        {/* Points */}
-                        <div className="min-w-[84px] text-right tabular-nums">
-                          <div className="inline-flex items-center gap-1">
-                            <Target className="w-4 h-4" />
-                            <span className="font-semibold">{row.points}</span>
-                            <span className="text-xs text-muted-foreground ml-1">pts</span>
+                    )}
+
+                    <div className="p-4">
+                      <div className="flex items-center justify-between">
+                        {/* Left side: Avatar + Name + Mini-stats */}
+                        <div className="flex items-center gap-3 pl-2 flex-1 min-w-0">
+                          <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "flex-shrink-0")}>
+                            <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                              <Initials name={row.display_name} />
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-foreground truncate">
+                              {row.display_name ?? row.user_id}
+                            </div>
+                            {/* Mini-stats inline */}
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Flame className="h-3 w-3 text-orange-500" />
+                                <span>{row.streak ?? 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Target className="h-3 w-3 text-blue-500" />
+                                <span className="font-medium">{row.points} pts</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
