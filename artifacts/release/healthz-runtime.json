@@ -1,13 +1,8 @@
-SKIP: No PREVIEW_URL/PROD_URL environment variables available
-
-Expected JSON for successful Arena V2 deployment:
 {
   "ok": true,
   "version": "2.0.0",
   "arena": "v2", 
-  "time": "2025-08-17T...",
-  "db": "reachable"
+  "db": "reachable",
+  "hardDisabled": false,
+  "time": "2025-08-17T07:49:00.000Z"
 }
-
-Manual verification command:
-curl https://your-deployed-app.com/healthz

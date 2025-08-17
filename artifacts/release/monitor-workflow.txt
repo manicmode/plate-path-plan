@@ -1,51 +1,31 @@
-name: Monitor Arena Health
+# Monitor Workflow Configuration
 
-on:
-  schedule:
-    # Every 15 minutes
-    - cron: '*/15 * * * *'
-  workflow_dispatch:
+## Required Secret
 
-jobs:
-  health-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Check for HEALTHZ_URL secret
-        id: check-secret
-        run: |
-          if [[ -z "${{ secrets.HEALTHZ_URL }}" ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "HEALTHZ_URL secret not configured"
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
+Add repository secret for health monitoring:
 
-      - name: Monitor health endpoint
-        if: steps.check-secret.outputs.skip == 'false'
-        run: |
-          response=$(curl -s -w "\n%{http_code}" "${{ secrets.HEALTHZ_URL }}/healthz")
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n -1)
-          
-          echo "HTTP Status: $http_code"
-          echo "Response: $body"
-          
-          if [[ "$http_code" != "200" ]]; then
-            echo "❌ Health check failed - HTTP $http_code"
-            echo "$body" > healthz-monitor.json
-            exit 1
-          fi
-          
-          # Validate JSON structure
-          arena=$(echo "$body" | jq -r '.arena // empty')
-          version=$(echo "$body" | jq -r '.version // empty')
-          
-          if [[ "$arena" != "v2" ]]; then
-            echo "❌ Arena version mismatch: expected 'v2', got '$arena'"
-            echo "$body" > healthz-monitor.json
-            exit 1
-          fi
-          
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+```
+HEALTHZ_URL = https://<your-domain>/healthz
+```
+
+## Setup Instructions
+
+1. Go to GitHub repository Settings
+2. Navigate to Secrets and variables → Actions
+3. Add new repository secret:
+   - Name: `HEALTHZ_URL`
+   - Value: Your production health check endpoint
+4. Re-run monitor workflow: `.github/workflows/monitor-arena.yml`
+
+## Expected Health Response
+
+The monitor expects JSON response:
+```json
+{
+  "ok": true,
+  "version": "2.0.0", 
+  "arena": "v2",
+  "db": "reachable",
+  "hardDisabled": false
+}
+```

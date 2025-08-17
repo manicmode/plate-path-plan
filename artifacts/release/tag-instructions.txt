@@ -1,8 +1,29 @@
-git tag -a v2.0.0 -m "Arena V2"
-git push origin v2.0.0
+# Arena V2 Tag Creation Instructions
 
-# This will trigger the Release (tag) workflow which will:
-# 1. Export VITE_APP_VERSION=2.0.0 to build environment
-# 2. Build the app with version injection
-# 3. Run smoke tests and conditional E2E tests
-# 4. Upload build artifacts
+## Commands to Create v2.0.0 Tag
+
+```bash
+# Create annotated tag
+git tag -a v2.0.0 -m "Arena V2 - Enhanced Security & Real-time Features"
+
+# Push tag to origin
+git push origin v2.0.0
+```
+
+## Tag Details
+
+- **Version**: v2.0.0
+- **Features**: 
+  - Runtime flags with real-time updates
+  - Enhanced chat security (blocked mutations)
+  - Improved RLS policies
+  - Arena enrollment & leaderboards
+- **Security**: Hardened database access controls
+- **Breaking Changes**: None (backward compatible)
+
+## Post-Tag Actions
+
+1. GitHub Actions will automatically trigger release workflow
+2. Monitor deployment logs for any issues
+3. Run post-deployment smoke tests
+4. Verify health endpoint responds correctly
