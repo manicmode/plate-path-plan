@@ -100,7 +100,7 @@ const Explore = () => {
     {
       id: 'habit-central',
       title: 'Habit Central',
-      emoji: '✅',
+      emoji: '⏳',
       color: 'from-emerald-500 via-emerald-400 to-teal-600',
       shadowColor: 'shadow-emerald-500/30',
     },
