@@ -296,35 +296,23 @@ export default function ArenaV2Panel() {
           {/* Arena Content */}
           {!loadingActive && groupId && (
             <>
-              <div className="flex items-center justify-between gap-3 mb-6">
-                <div className="text-sm opacity-80">
-                  Group {groupId.slice(0, 8)}
+              {/* Debug controls only if enabled */}
+              {ARENA_DEBUG_CONTROLS && (
+                <div className="flex items-center justify-end gap-2 mb-6">
+                  <Button size="sm" variant="secondary" onClick={async () => {
+                    // TODO: Replace with actual arena_award_points RPC when available
+                    console.log('Would award points here');
+                  }}>
+                    +1 point & Recompute
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
+                    console.log('Would recompute rollups here');
+                  }}>
+                    Recompute Rollups
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  {me && (
-                    <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
-                  )}
-                  {/* DEV: quick award + recompute - only show if debug controls enabled */}
-                  {ARENA_DEBUG_CONTROLS && (
-                    <>
-                      <Button size="sm" variant="secondary" onClick={async () => {
-                        // TODO: Replace with actual arena_award_points RPC when available
-                        console.log('Would award points here');
-                      }}>
-                        +1 point & Recompute
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={async () => {
-                        // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
-                        console.log('Would recompute rollups here');
-                      }}>
-                        Recompute Rollups
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <SectionDivider label="LIVE LEADERBOARD" />
+              )}
           
               {leaderboardLoading ? (
                 <BillboardSkeleton rows={10} />
@@ -427,45 +415,6 @@ export default function ArenaV2Panel() {
                       </div>
                     );
                   })}
-                </div>
-              )}
-
-              <SectionDivider label="GROUP CHAT" />
-          
-              {membersForTabs.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="animate-pulse">
-                    <div className="w-12 h-12 bg-muted rounded-full mx-auto mb-4"></div>
-                    <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
-                    <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 gap-4">
-                  {members!.map(m => (
-                    <div 
-                      key={m.user_id} 
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members")}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members");
-                        }
-                      }}
-                      onMouseEnter={() => prefetchUser(m.user_id)}
-                      onFocus={() => prefetchUser(m.user_id)}
-                      className="flex flex-col items-center text-center cursor-pointer hover:bg-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                      aria-label={`Open profile for ${m.display_name || 'member'}`}
-                    >
-                      <Avatar className="h-10 w-10">
-                        {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name ?? ''}/> : null}
-                        <AvatarFallback><Initials name={m.display_name}/></AvatarFallback>
-                      </Avatar>
-                      <div className="mt-1 text-xs truncate w-full">{m.display_name ?? 'Player'}</div>
-                    </div>
-                  ))}
                 </div>
               )}
             </>

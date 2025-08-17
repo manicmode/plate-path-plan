@@ -424,18 +424,15 @@ function GameAndChallengeContent() {
                   ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Show for Awards/Hall of Fame/Browse/My Challenges when flags enabled, hidden for Arena */}
+            {/* Challenge Mode Toggle - Show for all sections including ranking */}
             {(() => {
-              const isArenaActive = activeSection === 'ranking';
-              const showForAwards = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_AWARDS && ['winners', 'hall-of-fame'].includes(activeSection);
-              const showForChallenges = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_CHALLENGES && ['challenges', 'my-challenges'].includes(activeSection);
-              const showHeaderSectionTabs = showForAwards || showForChallenges;
+              const showHeaderSectionTabs = ['ranking', 'winners', 'hall-of-fame', 'challenges', 'my-challenges'].includes(activeSection);
               
               if (showHeaderSectionTabs) {
                 console.log('[Header Tabs] visible for:', activeSection);
               }
               
-              return showHeaderSectionTabs && !isArenaActive && (
+              return showHeaderSectionTabs && (
                 <div className="flex justify-center mt-2">
                   <ToggleGroup 
                     type="single" 
