@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
-import { useRank20Members, useArenaMembership } from '@/_deprecated/arena/useRank20Members';
-import { useRank20ChallengeId } from '@/_deprecated/arena/useRank20ChallengeId';
+import { useRank20Members, useArenaMembership } from '@/hooks/arena/useRank20Members';
+import { useRank20ChallengeId } from '@/hooks/arena/useRank20ChallengeId';
 
 interface SmokeTestResult {
   pageRenders: boolean;
