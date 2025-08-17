@@ -46,6 +46,7 @@ const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const Index = lazy(() => import('@/pages/Index'));
 const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
+const Friends = lazy(() => import('@/pages/Friends'));
 const CoachMain = lazy(() => import('@/pages/CoachMain'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
@@ -223,7 +224,12 @@ function AppContent() {
                       <ProtectedRoute>
                         <Explore />
                       </ProtectedRoute>
-                    } />
+                     } />
+                     <Route path="/friends" element={
+                       <ProtectedRoute>
+                         <Friends />
+                       </ProtectedRoute>
+                     } />
                     <Route path="/exercise-hub" element={
                       <ProtectedRoute>
                         <ExerciseHub />
