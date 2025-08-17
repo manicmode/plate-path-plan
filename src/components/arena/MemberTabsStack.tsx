@@ -1,7 +1,7 @@
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Plus } from 'lucide-react';
+import { TrendingUp, Target, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type MemberTab = {
@@ -15,7 +15,7 @@ export type MemberTab = {
 interface MemberTabsStackProps {
   members: MemberTab[];
   onOpenProfile: (member: MemberTab) => void;
-  onOpenEmojiTray: (userId: string) => void;
+  onOpenEmojiTray?: (userId: string) => void; // Made optional
   onPrefetchStats: (userId: string) => void;
 }
 
@@ -43,12 +43,15 @@ export default function MemberTabsStack({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-muted-foreground mb-3">
-        Live Ranking ({members.length} members)
-      </div>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {members.map((member) => (
+    <div className="space-y-3">
+      {members.slice(0, 6).map((member, index) => {
+        const rank = index + 1;
+        // Format points with comma separator
+        const formatPoints = (points: number) => {
+          return points.toLocaleString();
+        };
+
+        return (
           <div
             key={member.user_id}
             role="button"
@@ -62,86 +65,52 @@ export default function MemberTabsStack({
             }}
             onMouseEnter={() => onPrefetchStats(member.user_id)}
             onFocus={() => onPrefetchStats(member.user_id)}
-            className={cn(
-              "group flex w-full items-center gap-3 rounded-xl p-3",
-              "min-h-11 bg-gradient-to-r from-slate-50/50 to-slate-100/50",
-              "dark:from-slate-800/50 dark:to-slate-700/50",
-              "border border-slate-200/50 dark:border-slate-600/50",
-              "hover:bg-accent hover:border-accent-foreground/20",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-              "transition-all duration-200 cursor-pointer",
-              "shadow-sm hover:shadow-md"
-            )}
-            aria-label={`Open profile for ${member.display_name || 'member'}`}
+            className="relative rounded-xl bg-slate-700/60 border-slate-600/70 border p-4 cursor-pointer hover:bg-slate-700/80 transition-all duration-200 min-h-[80px]"
           >
-            {/* Rank Badge */}
-            {member.rank && (
-              <div className="flex-shrink-0">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs font-bold px-2 py-0.5",
-                    member.rank === 1 && "bg-yellow-100 text-yellow-800 border-yellow-300",
-                    member.rank === 2 && "bg-gray-100 text-gray-800 border-gray-300",
-                    member.rank === 3 && "bg-amber-100 text-amber-800 border-amber-300"
-                  )}
-                >
-                  #{member.rank}
-                </Badge>
+            {/* Orange rank badge (left side) */}
+            <span
+              className="absolute -left-3 -top-3 z-20 rounded-full px-2.5 py-1 text-sm font-bold shadow-md bg-orange-500 text-black"
+            >
+              #{rank}
+            </span>
+
+            <div className="flex items-center justify-between pl-4">
+              {/* Left side: Avatar + Name + Streak */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Avatar className="h-12 w-12 flex-shrink-0">
+                  <AvatarImage src={member.avatar_url ?? undefined} alt={member.display_name ?? "user"} />
+                  <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
+                    <Initials name={member.display_name} />
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-white text-base truncate">
+                    {member.display_name ?? member.user_id}
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-slate-400">
+                    <Flame className="h-3 w-3 text-orange-500" />
+                    <span>0 streak</span>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={member.avatar_url ?? undefined}
-                  alt={member.display_name ?? 'user'}
-                />
-                <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
-                  <Initials name={member.display_name} />
-                </AvatarFallback>
-              </Avatar>
-            </div>
-
-            {/* Name */}
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm text-foreground truncate">
-                {member.display_name || 'Anonymous'}
+              {/* Right side: Rising indicator + Points */}
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1 text-xs text-green-400">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>↗︎ Rising</span>
+                </div>
+                <div className="flex items-center gap-1 text-white">
+                  <Target className="h-4 w-4 text-slate-400" />
+                  <span className="text-lg font-bold">{formatPoints(member.points || 0)}</span>
+                  <span className="text-sm text-slate-400">pts</span>
+                </div>
               </div>
-            </div>
-
-            {/* Points */}
-            <div className="flex-shrink-0">
-              <Badge
-                variant="secondary"
-                className="text-xs font-medium px-2 py-0.5 bg-muted text-muted-foreground"
-              >
-                {member.points === 0 ? '0 pts' : `${member.points || 0} pts`}
-              </Badge>
-            </div>
-
-            {/* Emoji Button */}
-            <div className="flex-shrink-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEmojiTray(member.user_id);
-                }}
-                className={cn(
-                  "rounded-full p-1.5 hover:bg-white/20 dark:hover:bg-black/20",
-                  "transition-colors duration-200",
-                  "opacity-70 hover:opacity-100",
-                  "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
-                )}
-                aria-label={`Add reaction for ${member.display_name || 'user'}`}
-              >
-                <Plus className="h-3 w-3 text-muted-foreground" />
-              </button>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
