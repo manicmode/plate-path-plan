@@ -6605,6 +6605,10 @@ export type Database = {
           group_id: string
         }[]
       }
+      expire_stale_friend_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       find_user_friends: {
         Args: { contact_hashes: string[] }
         Returns: {
