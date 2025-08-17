@@ -65,7 +65,7 @@ export default function MemberTabsStack({
             }}
             onMouseEnter={() => onPrefetchStats(member.user_id)}
             onFocus={() => onPrefetchStats(member.user_id)}
-            className="relative rounded-xl bg-slate-700/60 border-slate-600/70 border p-4 cursor-pointer hover:bg-slate-700/80 transition-all duration-200 min-h-[80px]"
+            className="relative rounded-xl bg-muted/50 border border-border p-4 cursor-pointer hover:bg-muted transition-all duration-200 min-h-[80px]"
           >
             {/* Orange rank badge (left side) */}
             <span
@@ -85,10 +85,10 @@ export default function MemberTabsStack({
                 </Avatar>
                 
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-white text-base truncate">
+                  <div className="font-semibold text-foreground text-base truncate">
                     {member.display_name ?? member.user_id}
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-slate-400">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Flame className="h-3 w-3 text-orange-500" />
                     <span>0 streak</span>
                   </div>
@@ -101,10 +101,10 @@ export default function MemberTabsStack({
                   <TrendingUp className="h-3 w-3" />
                   <span>↗︎ Rising</span>
                 </div>
-                <div className="flex items-center gap-1 text-white">
-                  <Target className="h-4 w-4 text-slate-400" />
-                  <span className="text-lg font-bold">{formatPoints(member.points || 0)}</span>
-                  <span className="text-sm text-slate-400">pts</span>
+                <div className="flex items-center gap-1 text-foreground">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-lg font-bold text-foreground">{formatPoints(member.points || 0)}</span>
+                  <span className="text-sm text-muted-foreground">pts</span>
                 </div>
               </div>
             </div>

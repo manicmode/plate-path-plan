@@ -239,9 +239,9 @@ export default function ArenaV2Panel() {
       </Button>
 
       {/* Live Rankings Arena Card */}
-      <Card className="bg-slate-800/60 border-slate-700/70 rounded-xl shadow-xl">
+      <Card className="border-2 shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader className="text-center space-y-4 pb-4">
-          <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
+          <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
             🏆 Live Rankings Arena 🏆
           </CardTitle>
         </CardHeader>
@@ -303,7 +303,7 @@ export default function ArenaV2Panel() {
                         role="button"
                         tabIndex={0}
                         onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
-                        className="relative rounded-xl bg-slate-700/60 border-slate-600/70 border p-4 cursor-pointer hover:bg-slate-700/80 transition-all duration-200"
+                        className="relative rounded-xl bg-muted/50 border border-border p-4 cursor-pointer hover:bg-muted transition-all duration-200"
                       >
                         {/* Orange rank badge (left side) */}
                         <span
@@ -326,10 +326,10 @@ export default function ArenaV2Panel() {
                             </Avatar>
                             
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-white text-base truncate">
+                              <div className="font-semibold text-foreground text-base truncate">
                                 {row.display_name ?? row.user_id}
                               </div>
-                              <div className="flex items-center gap-1 text-sm text-slate-400">
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Flame className="h-3 w-3 text-orange-500" />
                                 <span>0 streak</span>
                               </div>
@@ -342,10 +342,10 @@ export default function ArenaV2Panel() {
                               <TrendingUp className="h-3 w-3" />
                               <span>↗︎ Rising</span>
                             </div>
-                            <div className="flex items-center gap-1 text-white">
-                              <Target className="h-4 w-4 text-slate-400" />
+                            <div className="flex items-center gap-1 text-foreground">
+                              <Target className="h-4 w-4 text-muted-foreground" />
                               <span className="text-lg font-bold">{formatPoints(row.score || 0)}</span>
-                              <span className="text-sm text-slate-400">pts</span>
+                              <span className="text-sm text-muted-foreground">pts</span>
                             </div>
                           </div>
                         </div>
