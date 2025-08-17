@@ -50,7 +50,6 @@ export default function ArenaV2Panel() {
   const { data: active, isLoading: loadingActive } = useArenaActive();
   const challengeId = active?.id;
   const { data: me } = useArenaMyMembership(challengeId);
-  const enroll = useArenaEnroll();
   const { data: members } = useArenaMembers(challengeId, 100, 0);
   const { data: leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles({ challengeId, section:'global', limit:50 });
   const isMobile = useIsMobile();
@@ -100,18 +99,19 @@ export default function ArenaV2Panel() {
 
   // Auto-enroll on mount (safe/idempotent)
   useEffect(() => {
-    if (challengeId) {
-      (async () => {
-        try {
-          await supabase.rpc('arena_enroll_me', { challenge_id_param: null });
-          queryClient.invalidateQueries({ queryKey: ['arena', 'members'] });
-          queryClient.invalidateQueries({ queryKey: ['arena', 'leaderboard'] });
-        } catch (error) {
-          console.error('Failed to auto-enroll in arena:', error);
-        }
-      })();
-    }
-  }, [challengeId, queryClient]);
+    let cancelled = false;
+    (async () => {
+      try {
+        await supabase.rpc('arena_enroll_me', { challenge_id_param: null });
+      } catch (error) {
+        // Silently ignore enrollment errors
+      }
+      if (!cancelled) {
+        queryClient.invalidateQueries({ queryKey: ['arena'] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [queryClient]);
 
   // Build members data for tabs stack using helper function
   const membersForTabs: MemberTab[] = React.useMemo(() => {
@@ -213,32 +213,28 @@ export default function ArenaV2Panel() {
             <div className="text-sm opacity-80">
               {loadingActive ? 'Loading…' : active ? `Season ${active.season}.${String(active.month).padStart(2,'0')}` : 'No active arena'}
             </div>
-            {!me ? (
-              <Button size="sm" onClick={() => enroll.mutate(challengeId)} disabled={enroll.isPending}>
-                {enroll.isPending ? 'Joining…' : 'Join Arena'}
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {me && (
                 <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
-                {/* DEV: quick award + recompute - only show if debug controls enabled */}
-                {(debugControlsEnabled || ARENA_DEBUG_CONTROLS) && (
-                  <>
-                    <Button size="sm" variant="secondary" onClick={async () => {
-                      // TODO: Replace with actual arena_award_points RPC when available
-                      console.log('Would award points here');
-                    }}>
-                      +1 point & Recompute
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={async () => {
-                      // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
-                      console.log('Would recompute rollups here');
-                    }}>
-                      Recompute Rollups
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
+              )}
+              {/* DEV: quick award + recompute - only show if debug controls enabled */}
+              {ARENA_DEBUG_CONTROLS && (
+                <>
+                  <Button size="sm" variant="secondary" onClick={async () => {
+                    // TODO: Replace with actual arena_award_points RPC when available
+                    console.log('Would award points here');
+                  }}>
+                    +1 point & Recompute
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
+                    console.log('Would recompute rollups here');
+                  }}>
+                    Recompute Rollups
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           <SectionDivider title="Live Leaderboard" />
@@ -350,7 +346,13 @@ export default function ArenaV2Panel() {
           <SectionDivider title="Arena Members" />
           
           {membersForTabs.length === 0 ? (
-            <div className="text-sm opacity-70 text-center py-4">Be the first to join the arena!</div>
+            <div className="text-center py-8">
+              <div className="animate-pulse">
+                <div className="w-12 h-12 bg-muted rounded-full mx-auto mb-4"></div>
+                <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
+                <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-4">
               {members!.map(m => (
