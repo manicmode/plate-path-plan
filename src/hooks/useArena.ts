@@ -224,11 +224,15 @@ export function useArenaMembers(groupId?: string | null): {
         throw error;
       }
       console.debug('[useArenaMembers] Found', data?.length || 0, 'members');
-      return (data || []).map((member: any) => ({
-        user_id: member.user_id,
-        display_name: member.display_name || `User ${member.user_id.slice(0, 8)}`,
-        avatar_url: member.avatar_url,
-      }));
+      console.debug('[useArenaMembers] Raw member data:', data);
+      return (data || []).map((member: any) => {
+        console.debug('[useArenaMembers] Processing member:', member);
+        return {
+          user_id: member.user_id,
+          display_name: member.display_name || `User ${member.user_id.slice(0, 8)}`,
+          avatar_url: member.avatar_url,
+        };
+      });
     },
   });
 
