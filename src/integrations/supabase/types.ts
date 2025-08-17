@@ -7171,6 +7171,10 @@ export type Database = {
           step: string
         }[]
       }
+      same_group: {
+        Args: { u: string; v: string }
+        Returns: boolean
+      }
       search_users_by_username_email: {
         Args: { search_term: string }
         Returns: {
