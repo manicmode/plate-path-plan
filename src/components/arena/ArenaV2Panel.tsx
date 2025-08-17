@@ -64,10 +64,35 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
-  
-  console.log('[Arena] roster ids', (members ?? []).map(m => m.user_id));
-  console.log('[Arena] merged lb ids', (leaderboard ?? []).map(r => r.user_id));
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
+
+  // --- Forensics: snapshot of inputs ---
+  console.log('[Arena] snapshot', {
+    groupId,
+    domain: challengeMode,
+    leaderboardLen: leaderboard?.length ?? 0,
+    membersLen: members?.length ?? 0,
+  });
+
+  // --- Forensics: data from hooks (what we actually got) ---
+  console.log('[Arena] data.members', {
+    groupId,
+    domain: challengeMode,
+    count: (members ?? []).length,
+    ids: (members ?? []).map(m => m.user_id),
+  });
+
+  console.log('[Arena] data.leaderboard', {
+    groupId,
+    domain: challengeMode,
+    count: (leaderboard ?? []).length,
+    ids: (leaderboard ?? []).map(r => r.user_id),
+  });
+
+  // (Optional) first avatar url to verify bucket
+  if (leaderboard?.[0]?.avatar_url) {
+    console.log('[Arena] avatar.sample', leaderboard[0].avatar_url);
+  }
 
   const handleJoinArena = async () => {
     const enrolledGroupId = await enroll();
@@ -274,6 +299,11 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                         return null;
                       }
                       
+                      // BEFORE the members-fallback .map(...)
+                      console.log('[Arena] RENDER_PATH', 'members-fallback-list', {
+                        ids: (members ?? []).map(m => m.user_id),
+                      });
+                      
                       return members.map((member, index) => {
                     const rank = index + 1;
                     const getRankBadgeStyle = () => "bg-orange-500 text-black";
@@ -343,8 +373,13 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
               ) : (
                 <>
                   <div className="space-y-3">
-                    {leaderboard!.map((row, index) => {
-                    const rank = row.rank || (index + 1);
+                    {(() => {
+                      // BEFORE the leaderboard .map(...)
+                      console.log('[Arena] RENDER_PATH', 'leaderboard-list', {
+                        ids: (leaderboard ?? []).map(r => r.user_id),
+                      });
+                      return leaderboard!.map((row, index) => {
+                        const rank = row.rank || (index + 1);
                     // Orange rank badge styling
                     const getRankBadgeStyle = () => {
                       return "bg-orange-500 text-black";
@@ -412,8 +447,9 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                           </div>
                         </div>
                       </div>
-                    );
-                    })}
+                      );
+                      });
+                    })()}
                   </div>
                 </>
               )}

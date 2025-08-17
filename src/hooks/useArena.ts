@@ -283,6 +283,12 @@ export function useArenaMembers(groupId?: string | null): {
     },
   });
 
+  // --- Forensics: hook result ---
+  console.log('[Arena] hook.members', {
+    count: (query.data ?? []).length,
+    ids: (query.data ?? []).map(m => m.user_id),
+  });
+
   return {
     members: query.data || [],
     isLoading: query.isLoading,
@@ -413,6 +419,11 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
           };
         });
 
+        // --- Forensics: hook result ---
+        console.log('[Arena] hook.leaderboard', {
+          count: (enrichedLeaderboard ?? []).length,
+          ids: (enrichedLeaderboard ?? []).map(r => r.user_id),
+        });
         
         return enrichedLeaderboard;
       } catch (error) {
