@@ -336,3 +336,32 @@ WHERE tablename = 'arena_chat_messages';
 - E2E tests verify no legacy `rank20_*` calls
 - Expected V2 calls: `arena_get_active_group_id`, `arena_enroll_me`, `arena_chat_messages`
 - Use browser DevTools Network tab to verify during development
+
+## Operations & Monitoring
+
+### Health Monitoring
+- **Automated Monitor:** `.github/workflows/monitor-arena.yml` runs every 15 minutes
+- **Manual Check:** `curl https://your-app.com/healthz` should return `{ arena: "v2", version: "x.y.z", db: "reachable" }`
+- **Required Secret:** Set `HEALTHZ_URL` in repository secrets to enable automated monitoring
+
+### Runbook & Troubleshooting
+- **Operations Guide:** `docs/arena-v2-runbook.md` contains common issues, fixes, and escalation procedures
+- **SLOs:** 99.9% uptime, p95 response < 300ms
+- **Monitoring:** Check `[telemetry]` logs for Arena operations
+
+### Rollback Procedures
+- **Soft Rollback (Preferred):** `sql/rollback/arena_v2_soft_rollback.sql`
+  - Disables realtime chat
+  - Backs up recent messages
+  - Preserves all data
+- **Hard Rollback (Emergency):** `sql/rollback/arena_v2_hard_rollback.sql`
+  - Sets `arena_v2_hard_disable` feature flag
+  - Requires code deployment to respect flag
+  - Use only for critical security issues
+
+### Feature Flags
+Arena V2 supports runtime feature flags via the `runtime_flags` table:
+```typescript
+const isDisabled = useFeatureFlag('arena_v2_hard_disable');
+if (isDisabled) return null; // Hide Arena UI
+```

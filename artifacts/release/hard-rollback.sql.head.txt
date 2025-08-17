@@ -1,0 +1,42 @@
+-- Arena V2 Hard Rollback (Emergency UI Disable)
+-- WARNING: This is for critical issues only. Use soft rollback first.
+-- This script creates a feature flag to hide Arena UI but requires code deployment to respect the flag.
+
+BEGIN;
+
+-- Create runtime flags table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.runtime_flags (
+  name TEXT PRIMARY KEY,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  description TEXT
+);
+
+-- Enable RLS on runtime flags
+ALTER TABLE public.runtime_flags ENABLE ROW LEVEL SECURITY;
+
+-- Allow all authenticated users to read flags (for UI)
+CREATE POLICY IF NOT EXISTS "Anyone can read runtime flags" 
+ON public.runtime_flags FOR SELECT 
+USING (true);
+
+-- Only service role can modify flags
+CREATE POLICY IF NOT EXISTS "Only service role can modify runtime flags"
+ON public.runtime_flags FOR ALL
+USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Create update trigger for updated_at
+CREATE OR REPLACE FUNCTION public.update_runtime_flags_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER IF NOT EXISTS trigger_update_runtime_flags_updated_at
+  BEFORE UPDATE ON public.runtime_flags
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_runtime_flags_updated_at();
+
+-- Set the hard disable flag

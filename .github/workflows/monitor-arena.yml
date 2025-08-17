@@ -1,0 +1,71 @@
+name: Monitor Arena Health
+
+on:
+  schedule:
+    # Every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for HEALTHZ_URL secret
+        id: check-secret
+        run: |
+          if [[ -z "${{ secrets.HEALTHZ_URL }}" ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "HEALTHZ_URL secret not configured"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Monitor health endpoint
+        if: steps.check-secret.outputs.skip == 'false'
+        run: |
+          response=$(curl -s -w "\n%{http_code}" "${{ secrets.HEALTHZ_URL }}/healthz")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [[ "$http_code" != "200" ]]; then
+            echo "❌ Health check failed - HTTP $http_code"
+            echo "$body" > healthz-monitor.json
+            exit 1
+          fi
+          
+          # Validate JSON structure
+          arena=$(echo "$body" | jq -r '.arena // empty')
+          version=$(echo "$body" | jq -r '.version // empty')
+          
+          if [[ "$arena" != "v2" ]]; then
+            echo "❌ Arena version mismatch: expected 'v2', got '$arena'"
+            echo "$body" > healthz-monitor.json
+            exit 1
+          fi
+          
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Version format invalid: '$version'"
+            echo "$body" > healthz-monitor.json
+            exit 1
+          fi
+          
+          echo "✅ Health check passed - Arena V2 at version $version"
+          echo "$body" > healthz-monitor.json
+
+      - name: Skip monitoring (no HEALTHZ_URL)
+        if: steps.check-secret.outputs.skip == 'true'
+        run: |
+          echo '{"status":"SKIPPED","reason":"HEALTHZ_URL not configured","timestamp":"'$(date -Iseconds)'"}' > healthz-monitor.json
+          echo "⚠️ Health monitoring skipped - HEALTHZ_URL secret not set"
+
+      - name: Upload health check result
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthz-monitor-${{ github.run_number }}
+          path: healthz-monitor.json

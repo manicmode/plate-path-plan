@@ -1,0 +1,4 @@
+docs/arena-v2-runbook.md
+SHA: Created
+Line count: 188 lines
+Content: Operations runbook with health checks, troubleshooting, rollback procedures, SLOs, and recovery playbooks

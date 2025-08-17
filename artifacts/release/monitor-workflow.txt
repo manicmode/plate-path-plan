@@ -1,0 +1,36 @@
+name: Monitor Arena Health
+
+on:
+  schedule:
+    # Every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for HEALTHZ_URL secret
+        id: check-secret
+        run: |
+          if [[ -z "${{ secrets.HEALTHZ_URL }}" ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "HEALTHZ_URL secret not configured"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Monitor health endpoint
+        if: steps.check-secret.outputs.skip == 'false'
+        run: |
+          response=$(curl -s -w "\n%{http_code}" "${{ secrets.HEALTHZ_URL }}/healthz")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [[ "$http_code" != "200" ]]; then
+            echo "❌ Health check failed - HTTP $http_code"
