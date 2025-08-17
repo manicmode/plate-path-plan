@@ -329,13 +329,13 @@ export function useArenaLeaderboard(args?: {
 }
 
 // V2 Arena Leaderboard Hook (by group ID)
-export function useArenaLeaderboardWithProfiles(groupId?: string | null): { 
+export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?: string): { 
   leaderboard: Array<{ user_id: string; score: number; display_name: string; avatar_url?: string; rank: number }>; 
   isLoading: boolean; 
   error?: Error; 
 } {
   const query = useQuery({
-    queryKey: ['arena', 'leaderboard-v2', groupId],
+    queryKey: ['arena', 'leaderboard-v2', groupId, domain],
     enabled: !!groupId,
     queryFn: async () => {
       if (!groupId) return [];

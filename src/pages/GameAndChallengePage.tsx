@@ -532,7 +532,7 @@ function GameAndChallengeContent() {
           }} className="w-full flex flex-col">
 
               <TabsContent value="ranking" className="mt-0 -mx-4 sm:-mx-4 md:-mx-6 lg:-mx-8">
-                <RankingTabContent />
+                <RankingTabContent challengeMode={challengeMode} />
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
