@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, Sparkles, Wrench } from 'lucide-react';
+import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -90,6 +91,9 @@ export default function ArenaV2Panel() {
   
   // Profile modal state
   const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
+  
+  // Billboard & Chat modal state
+  const [billboardChatOpen, setBillboardChatOpen] = useState(false);
   
   // Emoji reactions state
   const { addReaction, getReactions } = useEmojiReactions();
@@ -225,55 +229,30 @@ export default function ArenaV2Panel() {
 
   return (
     <div className="space-y-6" data-testid="arena-v2">
-      <Card className="overflow-visible border-2 shadow-xl relative dark:border-emerald-500/30 border-emerald-400/40 dark:bg-slate-900/40 bg-slate-50/40 hover:border-emerald-500/60 transition-all duration-300">
-        <CardHeader className={cn(
-          "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
-          isMobile ? "p-4" : "p-6"
-        )}>
-          <div className={cn(
-            "flex items-center",
-            isMobile ? "flex-col space-y-2" : "justify-between"
-          )}>
-            <CardTitle className={cn(
-              "font-bold flex items-center gap-2",
-              isMobile ? "text-xl text-center" : "text-3xl gap-3"
-            )}>
-              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-              Arena
-              <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-            </CardTitle>
-            
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {members?.length ?? 0} members
-              </Badge>
-              <button
-                className="p-1 text-muted-foreground hover:text-foreground"
-                title="Refresh leaderboard"
-              >
-                <TrendingUp className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          
-          {/* Member Tabs Stack (replaces winners ribbon at top) */}
-          <MemberTabsStack
-            members={membersForTabs}
-            onOpenProfile={(member) => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "members")}
-            onOpenEmojiTray={(userId) => { setActiveTarget(`user:${userId}`); setTrayOpen(true); }}
-            onPrefetchStats={prefetchUser}
-          />
+      {/* Billboard & Chat Pill Button */}
+      <Button
+        onClick={() => setBillboardChatOpen(true)}
+        className="w-full h-14 text-white font-medium text-lg bg-gradient-to-r from-purple-500 to-teal-500 hover:from-purple-600 hover:to-teal-600 rounded-2xl shadow-lg"
+      >
+        <MessageSquare className="h-5 w-5 mr-2" />
+        💬 Billboard & Chat
+      </Button>
 
-          {/* Optional Winners Ribbon below tabs */}
-          {winnersRibbonEnabled && showWinnersRibbonBelowTabs && (
-            <div className="mt-4">
-              <WinnersRibbon />
-            </div>
-          )}
+      {/* Live Rankings Arena Card */}
+      <Card className="bg-slate-800/60 border-slate-700/70 rounded-xl shadow-xl">
+        <CardHeader className="text-center space-y-2 pb-4">
+          <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
+            <Trophy className="h-6 w-6 text-yellow-500" />
+            🏆 Live Rankings Arena 🏆
+            <Trophy className="h-6 w-6 text-yellow-500" />
+          </CardTitle>
+          <Badge variant="secondary" className="flex items-center gap-1 bg-slate-700/60 text-slate-300 border-slate-600">
+            <Users className="h-3 w-3" />
+            👥 {members?.length ?? 0} members
+          </Badge>
         </CardHeader>
         
-        <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
+        <CardContent className="p-6">
           {/* No Group State - Join Arena */}
           {!loadingActive && !groupId && (
             <div className="text-center py-12">
@@ -296,56 +275,27 @@ export default function ArenaV2Panel() {
           {/* Arena Content */}
           {!loadingActive && groupId && (
             <>
-              {/* Debug controls only if enabled */}
-              {ARENA_DEBUG_CONTROLS && (
-                <div className="flex items-center justify-end gap-2 mb-6">
-                  <Button size="sm" variant="secondary" onClick={async () => {
-                    // TODO: Replace with actual arena_award_points RPC when available
-                    console.log('Would award points here');
-                  }}>
-                    +1 point & Recompute
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={async () => {
-                    // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
-                    console.log('Would recompute rollups here');
-                  }}>
-                    Recompute Rollups
-                  </Button>
-                </div>
-              )}
-          
               {leaderboardLoading ? (
-                <BillboardSkeleton rows={10} />
+                <BillboardSkeleton rows={3} />
               ) : (leaderboard?.length ?? 0) === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-muted-foreground mb-4">
+                  <div className="text-slate-400 mb-4">
                     {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {leaderboard!.map((row, index) => {
-                    // Determine rank badge styling (gold/silver/bronze for top 3)
-                    const getRankBadgeStyle = (rank: number) => {
-                      if (rank === 1) return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-950";
-                      if (rank === 2) return "bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900";
-                      if (rank === 3) return "bg-gradient-to-r from-amber-600 to-orange-700 text-orange-100";
-                      return "bg-gradient-to-r from-slate-400 to-slate-600 text-slate-100";
+                  {leaderboard!.slice(0, 3).map((row, index) => {
+                    const rank = index + 1;
+                    // Orange rank badge styling
+                    const getRankBadgeStyle = () => {
+                      return "bg-orange-500 text-black";
                     };
 
-                    // Mock trend logic (you'll replace with actual trend data)
-                    const getTrendChip = () => {
-                      // For demo: randomly show rising/falling/unchanged
-                      const trendType = Math.random();
-                      if (trendType < 0.4) {
-                        return { type: 'rising', icon: TrendingUp, text: 'Rising', color: 'text-green-600' };
-                      } else if (trendType < 0.7) {
-                        return { type: 'falling', icon: TrendingDown, text: 'Falling', color: 'text-red-600' };
-                      }
-                      return null; // unchanged - hidden
+                    // Format points with comma separator
+                    const formatPoints = (points: number) => {
+                      return points.toLocaleString();
                     };
-
-                    const trend = getTrendChip();
 
                     return (
                       <div 
@@ -353,62 +303,49 @@ export default function ArenaV2Panel() {
                         role="button"
                         tabIndex={0}
                         onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
-                          }
-                        }}
-                        onMouseEnter={() => prefetchUser(row.user_id)}
-                        onFocus={() => prefetchUser(row.user_id)}
-                        className="relative rounded-xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                        style={{ animationDelay: `${index * 40}ms` }}
-                        aria-label={`Open profile for ${row.display_name || 'user'}`}
+                        className="relative rounded-xl bg-slate-700/60 border-slate-600/70 border p-4 cursor-pointer hover:bg-slate-700/80 transition-all duration-200"
                       >
-                        {/* Rank badge (left side) */}
+                        {/* Orange rank badge (left side) */}
                         <span
-                          aria-label={`Rank ${row.rank}`}
                           className={cn(
-                            "pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold shadow-md",
-                            getRankBadgeStyle(row.rank)
+                            "absolute -left-3 -top-3 z-20 rounded-full px-2.5 py-1 text-sm font-bold shadow-md",
+                            getRankBadgeStyle()
                           )}
                         >
-                          #{row.rank}
+                          #{rank}
                         </span>
 
-                        {/* Trend chip (right side) - only if there's a trend */}
-                        {trend && (
-                          <div className="absolute top-3 right-3 z-10">
-                            <Badge variant="outline" className={cn("flex items-center gap-1", trend.color)}>
-                              <trend.icon className="h-3 w-3" />
-                              {trend.text}
-                            </Badge>
-                          </div>
-                        )}
-
-                        <div className="p-4">
-                          <div className="flex items-center justify-between">
-                            {/* Left side: Avatar + Name + Mini-stats */}
-                            <div className="flex items-center gap-3 pl-2 flex-1 min-w-0">
-                              <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "flex-shrink-0")}>
-                                <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                  <Initials name={row.display_name} />
-                                </AvatarFallback>
-                              </Avatar>
-                              
-                              <div className="min-w-0 flex-1">
-                                <div className="font-semibold text-foreground truncate">
-                                  {row.display_name ?? row.user_id}
-                                </div>
-                                {/* Mini-stats inline */}
-                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Target className="h-3 w-3 text-blue-500" />
-                                    <span className="font-medium">{row.score} pts</span>
-                                  </div>
-                                </div>
+                        <div className="flex items-center justify-between pl-4">
+                          {/* Left side: Avatar + Name + Streak */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <Avatar className="h-12 w-12 flex-shrink-0">
+                              <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                              <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
+                                <Initials name={row.display_name} />
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-white text-base truncate">
+                                {row.display_name ?? row.user_id}
                               </div>
+                              <div className="flex items-center gap-1 text-sm text-slate-400">
+                                <Flame className="h-3 w-3 text-orange-500" />
+                                <span>0 streak</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side: Rising indicator + Points */}
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>↗︎ Rising</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-white">
+                              <Target className="h-4 w-4 text-slate-400" />
+                              <span className="text-lg font-bold">{formatPoints(row.score || 0)}</span>
+                              <span className="text-sm text-slate-400">pts</span>
                             </div>
                           </div>
                         </div>
@@ -464,6 +401,12 @@ export default function ArenaV2Panel() {
           </CardContent>
         </Card>
       )}
+
+      {/* Billboard & Chat Modal */}
+      <ArenaBillboardChatPanel
+        isOpen={billboardChatOpen}
+        onClose={() => setBillboardChatOpen(false)}
+      />
 
       {/* Profile Modal */}
       <UserStatsModal
