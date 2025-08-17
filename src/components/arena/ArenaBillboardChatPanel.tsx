@@ -18,7 +18,6 @@ import { useArenaChat } from '@/hooks/useArenaChat';
 import { useRuntimeFlag } from '@/hooks/useRuntimeFlag';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import SectionDivider from '@/components/arena/SectionDivider';
 
 interface Announcement {
   id: string;
@@ -264,11 +263,6 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
             </div>
           ) : (
             <>
-              {/* Section Divider for Chat */}
-              <div className="px-6">
-                <SectionDivider title="GROUP CHAT" />
-              </div>
-              
               {/* Chat Messages */}
               <ScrollArea 
                 ref={scrollAreaRef}

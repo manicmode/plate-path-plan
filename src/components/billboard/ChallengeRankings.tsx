@@ -26,7 +26,7 @@ interface ChallengeRankingsProps {
 
 export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeId }) => {
   // V2: Use Arena leaderboard instead of legacy challenge rankings
-  const { leaderboard, isLoading: loading } = useArenaLeaderboardWithProfiles(challengeId, 'combined');
+  const { leaderboard, isLoading: loading } = useArenaLeaderboardWithProfiles(challengeId);
   
   // Transform Arena leaderboard data to match legacy participant interface
   const participants = React.useMemo(() => {
