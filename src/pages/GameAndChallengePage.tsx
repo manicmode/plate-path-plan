@@ -424,40 +424,29 @@ function GameAndChallengeContent() {
                   ))}
               </div>
             </ScrollArea>
-            {/* Challenge Mode Toggle - Show for Awards/Hall of Fame/Browse/My Challenges when flags enabled, hidden for Arena */}
-            {(() => {
-              const isArenaActive = activeSection === 'ranking';
-              const showForAwards = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_AWARDS && ['winners', 'hall-of-fame'].includes(activeSection);
-              const showForChallenges = FLAGS.ARENA_HEADER_SECTION_TABS_FOR_CHALLENGES && ['challenges', 'my-challenges'].includes(activeSection);
-              const showHeaderSectionTabs = showForAwards || showForChallenges;
-              
-              if (showHeaderSectionTabs) {
-                console.log('[Header Tabs] visible for:', activeSection);
-              }
-              
-              return showHeaderSectionTabs && !isArenaActive && (
-                <div className="flex justify-center mt-2">
-                  <ToggleGroup 
-                    type="single" 
-                    value={challengeMode} 
-                     onValueChange={(value) => {
-                       if (value) {
-                         console.log('[Header Section] selected:', value);
-                         lightTap(); // Add haptic feedback
-                         setChallengeMode(value as ArenaSection);
-                       }
-                     }}
-                    className="bg-muted/50 rounded-full p-1"
-                    data-testid="gc-header-section-tabs"
-                  >
-                    <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-combined">Combined</ToggleGroupItem>
-                    <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-nutrition">Nutrition</ToggleGroupItem>
-                    <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-exercise">Exercise</ToggleGroupItem>
-                    <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-recovery">Recovery</ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-              );
-            })()}
+            {/* Segmented Control - Always show when on ranking tab */}
+            {activeSection === 'ranking' && (
+              <div className="flex justify-center mt-2">
+                <ToggleGroup 
+                  type="single" 
+                  value={challengeMode} 
+                   onValueChange={(value) => {
+                     if (value) {
+                       console.log('[Header Section] selected:', value);
+                       lightTap(); // Add haptic feedback
+                       setChallengeMode(value as ArenaSection);
+                     }
+                   }}
+                  className="bg-muted/50 rounded-full p-1"
+                  data-testid="gc-header-section-tabs"
+                >
+                  <ToggleGroupItem value="nutrition" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-muted-foreground data-[state=on]:text-muted data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-nutrition">Nutrition</ToggleGroupItem>
+                  <ToggleGroupItem value="exercise" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-muted-foreground data-[state=on]:text-muted data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-exercise">Exercise</ToggleGroupItem>
+                  <ToggleGroupItem value="recovery" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-muted-foreground data-[state=on]:text-muted data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-recovery">Recovery</ToggleGroupItem>
+                  <ToggleGroupItem value="combined" className="rounded-full text-xs md:text-sm px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-gradient-to-r data-[state=on]:from-cyan-400 data-[state=on]:to-cyan-500 data-[state=on]:text-white data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm" data-testid="gc-header-tab-combined">Combined</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )}
           </div>
           
           {/* Sort Controls - Responsive */}
