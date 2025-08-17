@@ -8,8 +8,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function testArenaRPC() {
   const sess = (await supabase.auth.getSession()).data.session;
   console.log('session user:', sess?.user?.id);
-  const { data, error } = await supabase.rpc('arena_get_members', { challenge_id_param: null, limit_param: 200, offset_param: 0 });
-  console.log('roster raw:', JSON.stringify(data), 'isArray:', Array.isArray(data), 'len:', Array.isArray(data) ? data.length : 'n/a', 'err:', error);
+  const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', { challenge_id_param: null, section_param: 'global' });
+  console.log('lb raw:', JSON.stringify(data), 'isArray:', Array.isArray(data), 'len:', Array.isArray(data) ? data.length : 'n/a', 'err:', error);
 }
 
 testArenaRPC();
