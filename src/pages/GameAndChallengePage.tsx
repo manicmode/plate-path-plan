@@ -439,8 +439,7 @@ function GameAndChallengeContent() {
                     value={challengeMode} 
                       onValueChange={(value) => {
                        if (value) {
-                         console.log('[ArenaV2] arena.section.changed ->', { domain: value });
-                         lightTap(); // Add haptic feedback
+                          lightTap(); // Add haptic feedback
                          setChallengeMode(value as ArenaSection);
                        }
                      }}

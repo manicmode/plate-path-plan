@@ -255,7 +255,7 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
         <div className="px-6 pb-4">
           <MemberTabsStack
             members={membersForTabs}
-            onSelect={(uid) => console.log('[Arena] chip.select', uid)}
+            onSelect={(uid) => {/* Handle chip selection */}}
           />
         </div>
         
