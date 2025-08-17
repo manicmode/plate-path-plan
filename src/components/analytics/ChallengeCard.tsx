@@ -292,20 +292,21 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                       
                       {/* Friend CTA in tooltip */}
                       {friendCtasEnabled && (
-                        <div className="mt-2 flex justify-center">
-                          <FriendCTA
-                            userId={participantId}
-                            relation={statusMap.get(participantId)?.relation || 'none'}
-                            requestId={statusMap.get(participantId)?.requestId}
-                            variant="compact"
-                            onSendRequest={friendActions.sendFriendRequest}
-                            onAcceptRequest={friendActions.acceptFriendRequest}
-                            onRejectRequest={friendActions.rejectFriendRequest}
-                            isPending={friendActions.isPending(participantId)}
-                            isOnCooldown={friendActions.isOnCooldown(participantId)}
-                            isLoading={statusLoading}
-                          />
-                        </div>
+                         <div className="mt-2 flex justify-center">
+                           <FriendCTA
+                             userId={participantId}
+                             relation={statusMap.get(participantId)?.relation || 'none'}
+                             requestId={statusMap.get(participantId)?.requestId}
+                             variant="compact"
+                             onSendRequest={friendActions.sendFriendRequest}
+                             onAcceptRequest={friendActions.acceptFriendRequest}
+                             onRejectRequest={friendActions.rejectFriendRequest}
+                             onCancelRequest={friendActions.cancelFriendRequest}
+                             isPending={friendActions.isPending(participantId)}
+                             isOnCooldown={friendActions.isOnCooldown(participantId)}
+                             isLoading={statusLoading}
+                           />
+                         </div>
                       )}
                     </div>
                   </div>

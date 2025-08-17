@@ -102,7 +102,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   }, [chatMessages]);
 
   const { statusMap, loading: friendStatusLoading } = useFriendStatuses(chatUserIds);
-  const { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, isPending, isOnCooldown } = useFriendActions({
+  const { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest, isPending, isOnCooldown } = useFriendActions({
     onStatusUpdate: (userId, relation, requestId) => {
       // Status updates are handled by the useFriendStatuses hook
     }
@@ -333,20 +333,21 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                         </span>
                       </div>
                       {friendCtasEnabled && (
-                        <div className="flex-shrink-0 ml-2">
-                          <FriendCTA
-                            userId={message.user_id}
-                            relation={statusMap.get(message.user_id)?.relation || 'none'}
-                            requestId={statusMap.get(message.user_id)?.requestId}
-                            variant="icon"
-                            onSendRequest={sendFriendRequest}
-                            onAcceptRequest={acceptFriendRequest}
-                            onRejectRequest={rejectFriendRequest}
-                            isPending={isPending(message.user_id)}
-                            isOnCooldown={isOnCooldown(message.user_id)}
-                            isLoading={friendStatusLoading}
-                          />
-                        </div>
+                         <div className="flex-shrink-0 ml-2">
+                           <FriendCTA
+                             userId={message.user_id}
+                             relation={statusMap.get(message.user_id)?.relation || 'none'}
+                             requestId={statusMap.get(message.user_id)?.requestId}
+                             variant="icon"
+                             onSendRequest={sendFriendRequest}
+                             onAcceptRequest={acceptFriendRequest}
+                             onRejectRequest={rejectFriendRequest}
+                             onCancelRequest={cancelFriendRequest}
+                             isPending={isPending(message.user_id)}
+                             isOnCooldown={isOnCooldown(message.user_id)}
+                             isLoading={friendStatusLoading}
+                           />
+                         </div>
                       )}
                     </div>
                     <p className="text-sm break-words">{message.body}</p>

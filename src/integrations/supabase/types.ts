@@ -6570,6 +6570,10 @@ export type Database = {
         Args: { target_user_id: string; target_year: number }
         Returns: number
       }
+      cancel_friend_request: {
+        Args: { request_id: string }
+        Returns: boolean
+      }
       check_and_award_all_badges: {
         Args: { target_user_id: string }
         Returns: Json

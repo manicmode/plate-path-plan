@@ -121,20 +121,21 @@ export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeI
                 {/* Score and Friend CTA */}
                 <div className="flex items-center gap-3">
                   {/* Friend CTA */}
-                  {friendCtasEnabled && (
-                    <FriendCTA
-                      userId={participant.user_id}
-                      relation={statusMap.get(participant.user_id)?.relation || 'none'}
-                      requestId={statusMap.get(participant.user_id)?.requestId}
-                      variant="compact"
-                      onSendRequest={friendActions.sendFriendRequest}
-                      onAcceptRequest={friendActions.acceptFriendRequest}
-                      onRejectRequest={friendActions.rejectFriendRequest}
-                      isPending={friendActions.isPending(participant.user_id)}
-                      isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
-                      isLoading={statusLoading}
-                    />
-                  )}
+                   {friendCtasEnabled && (
+                     <FriendCTA
+                       userId={participant.user_id}
+                       relation={statusMap.get(participant.user_id)?.relation || 'none'}
+                       requestId={statusMap.get(participant.user_id)?.requestId}
+                       variant="compact"
+                       onSendRequest={friendActions.sendFriendRequest}
+                       onAcceptRequest={friendActions.acceptFriendRequest}
+                       onRejectRequest={friendActions.rejectFriendRequest}
+                       onCancelRequest={friendActions.cancelFriendRequest}
+                       isPending={friendActions.isPending(participant.user_id)}
+                       isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
+                       isLoading={statusLoading}
+                     />
+                   )}
                   
                   {/* Score */}
                   <div className="text-right">

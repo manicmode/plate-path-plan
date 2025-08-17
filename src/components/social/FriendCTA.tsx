@@ -14,6 +14,7 @@ interface FriendCTAProps {
   onSendRequest: (userId: string) => void;
   onAcceptRequest: (requestId: string, userId: string) => void;
   onRejectRequest: (requestId: string, userId: string) => void;
+  onCancelRequest?: (requestId: string, userId: string) => void;
   isPending?: boolean;
   isOnCooldown?: boolean;
   isLoading?: boolean;
@@ -27,6 +28,7 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
   onSendRequest,
   onAcceptRequest,
   onRejectRequest,
+  onCancelRequest,
   isPending = false,
   isOnCooldown = false,
   isLoading = false
@@ -69,6 +71,12 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
     }
   };
 
+  const handleCancel = () => {
+    if (requestId && !isPending && onCancelRequest) {
+      onCancelRequest(requestId, userId);
+    }
+  };
+
   switch (relation) {
     case 'friends':
       return (
@@ -95,16 +103,34 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
 
     case 'outgoing_pending':
       return (
-        <Badge 
-          variant="outline" 
-          className={cn(
-            "text-muted-foreground bg-muted/50",
-            isCompact ? "px-2 py-0.5 text-xs" : "px-3 py-1"
+        <div className={cn("flex items-center gap-1", isCompact && "flex-col")}>
+          <Badge 
+            variant="outline" 
+            className={cn(
+              "text-muted-foreground bg-muted/50",
+              isCompact ? "px-2 py-0.5 text-xs" : "px-3 py-1"
+            )}
+            title="Friend request sent"
+          >
+            {!isIconOnly && "Requested"}
+          </Badge>
+          {onCancelRequest && requestId && (
+            <Button
+              size={isCompact ? "sm" : "default"}
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={isPending}
+              className={cn(
+                "text-muted-foreground hover:text-red-600 hover:bg-red-50",
+                isIconOnly ? "p-1 h-6 w-6" : isCompact ? "px-1 py-1 text-xs h-6" : "px-2"
+              )}
+              title="Cancel friend request"
+            >
+              <X className={cn(isIconOnly ? "h-3 w-3" : "h-4 w-4")} />
+              {!isIconOnly && !isCompact && "Cancel"}
+            </Button>
           )}
-          title="Friend request sent"
-        >
-          {!isIconOnly && "Requested"}
-        </Badge>
+        </div>
       );
 
     case 'incoming_pending':

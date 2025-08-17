@@ -174,10 +174,56 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
     }
   }, [pending, onStatusUpdate]);
 
+  const cancelFriendRequest = useCallback(async (requestId: string, userId: string) => {
+    if (pending.has(userId)) {
+      return false;
+    }
+
+    // Dev metrics
+    if (import.meta.env.DEV) {
+      console.info('FRIEND_CTA_CANCEL', { requestId });
+    }
+
+    setPending(prev => new Set(prev).add(userId));
+    
+    // Optimistic update
+    onStatusUpdate(userId, 'none');
+
+    try {
+      const { error } = await supabase.rpc('cancel_friend_request', {
+        request_id: requestId
+      });
+
+      if (error) {
+        console.error('Error canceling friend request:', error);
+        toast.error('Failed to cancel friend request');
+        // Rollback optimistic update
+        onStatusUpdate(userId, 'outgoing_pending', requestId);
+        return false;
+      }
+
+      toast.success('Friend request canceled');
+      return true;
+    } catch (err) {
+      console.error('Error canceling friend request:', err);
+      toast.error('Failed to cancel friend request');
+      // Rollback optimistic update
+      onStatusUpdate(userId, 'outgoing_pending', requestId);
+      return false;
+    } finally {
+      setPending(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  }, [pending, onStatusUpdate]);
+
   return {
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
+    cancelFriendRequest,
     isPending: (userId: string) => pending.has(userId),
     isOnCooldown: (userId: string) => cooldowns.has(userId)
   };

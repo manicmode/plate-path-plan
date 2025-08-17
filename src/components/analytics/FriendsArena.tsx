@@ -357,20 +357,21 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                   {/* Points and Friend CTA */}
                   <div className="ml-auto flex items-center gap-3">
                     {/* Friend CTA */}
-                    {friendCtasEnabled && (
-                      <FriendCTA
-                        userId={row.user_id}
-                        relation={statusMap.get(row.user_id)?.relation || 'none'}
-                        requestId={statusMap.get(row.user_id)?.requestId}
-                        variant="compact"
-                        onSendRequest={friendActions.sendFriendRequest}
-                        onAcceptRequest={friendActions.acceptFriendRequest}
-                        onRejectRequest={friendActions.rejectFriendRequest}
-                        isPending={friendActions.isPending(row.user_id)}
-                        isOnCooldown={friendActions.isOnCooldown(row.user_id)}
-                        isLoading={statusLoading}
-                      />
-                    )}
+                     {friendCtasEnabled && (
+                       <FriendCTA
+                         userId={row.user_id}
+                         relation={statusMap.get(row.user_id)?.relation || 'none'}
+                         requestId={statusMap.get(row.user_id)?.requestId}
+                         variant="compact"
+                         onSendRequest={friendActions.sendFriendRequest}
+                         onAcceptRequest={friendActions.acceptFriendRequest}
+                         onRejectRequest={friendActions.rejectFriendRequest}
+                         onCancelRequest={friendActions.cancelFriendRequest}
+                         isPending={friendActions.isPending(row.user_id)}
+                         isOnCooldown={friendActions.isOnCooldown(row.user_id)}
+                         isLoading={statusLoading}
+                       />
+                     )}
                     
                     {/* Points */}
                     <div className="min-w-[84px] text-right tabular-nums">
