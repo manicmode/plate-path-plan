@@ -119,12 +119,17 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
               size={isCompact ? "sm" : "default"}
               variant="ghost"
               onClick={handleCancel}
-              disabled={isPending}
+              disabled={isPending || isOnCooldown}
               className={cn(
                 "text-muted-foreground hover:text-red-600 hover:bg-red-50",
+                (isPending || isOnCooldown) && "opacity-50 cursor-not-allowed",
                 isIconOnly ? "p-1 h-6 w-6" : isCompact ? "px-1 py-1 text-xs h-6" : "px-2"
               )}
-              title="Cancel friend request"
+              title={
+                isPending ? "Canceling..." : 
+                isOnCooldown ? "Please wait before taking another action" : 
+                "Cancel friend request"
+              }
             >
               <X className={cn(isIconOnly ? "h-3 w-3" : "h-4 w-4")} />
               {!isIconOnly && !isCompact && "Cancel"}

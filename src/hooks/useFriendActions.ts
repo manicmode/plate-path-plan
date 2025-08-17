@@ -32,9 +32,15 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
-    // Dev metrics
+    // Analytics tracking
     if (import.meta.env.DEV) {
       console.info('FRIEND_CTA_CLICK_SEND', { targetUserId });
+    } else {
+      try {
+        (window as any).analytics?.track?.('friend_cta_send', { 
+          target_user_id: targetUserId 
+        });
+      } catch {}
     }
 
     setPending(prev => new Set(prev).add(targetUserId));
@@ -89,9 +95,16 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
-    // Dev metrics
+    // Analytics tracking
     if (import.meta.env.DEV) {
       console.info('FRIEND_CTA_ACCEPT', { requestId });
+    } else {
+      try {
+        (window as any).analytics?.track?.('friend_cta_accept', { 
+          request_id: requestId,
+          user_id: userId 
+        });
+      } catch {}
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -134,9 +147,16 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
-    // Dev metrics
+    // Analytics tracking
     if (import.meta.env.DEV) {
       console.info('FRIEND_CTA_REJECT', { requestId });
+    } else {
+      try {
+        (window as any).analytics?.track?.('friend_cta_reject', { 
+          request_id: requestId,
+          user_id: userId 
+        });
+      } catch {}
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -179,9 +199,16 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
       return false;
     }
 
-    // Dev metrics
+    // Analytics tracking
     if (import.meta.env.DEV) {
       console.info('FRIEND_CTA_CANCEL', { requestId });
+    } else {
+      try {
+        (window as any).analytics?.track?.('friend_cta_cancel', { 
+          request_id: requestId,
+          target_user_id: userId 
+        });
+      } catch {}
     }
 
     setPending(prev => new Set(prev).add(userId));
@@ -202,6 +229,8 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
         return false;
       }
 
+      // Add 10-second cooldown after successful cancel
+      addCooldown(userId);
       toast.success('Friend request canceled');
       return true;
     } catch (err) {
@@ -217,7 +246,7 @@ export const useFriendActions = ({ onStatusUpdate }: UseFriendActionsProps) => {
         return newSet;
       });
     }
-  }, [pending, onStatusUpdate]);
+  }, [pending, onStatusUpdate, addCooldown]);
 
   return {
     sendFriendRequest,
