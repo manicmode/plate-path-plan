@@ -5,11 +5,11 @@ export type ArenaActive = {
   id: string;
   slug: string | null;
   title: string;
-  season_year: number | null;
-  season_month: number | null;
-  starts_at: string | null;
-  ends_at: string | null;
-  metadata: any;
+  season: number;
+  year: number;
+  month: number;
+  start_date: string;
+  end_date: string;
 };
 
 export function useArenaActive() {
@@ -29,7 +29,7 @@ export function useArenaMyMembership(challengeId?: string) {
     queryKey: ['arena','me','membership', challengeId ?? 'active'],
     enabled: true,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('arena_get_my_membership', { p_challenge_id: challengeId ?? null });
+      const { data, error } = await supabase.rpc('arena_get_my_membership', { challenge_id_param: challengeId ?? null });
       if (error) throw error;
       return Array.isArray(data) ? data[0] : data; // one row or null
     },
@@ -40,7 +40,7 @@ export function useArenaEnroll() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (challengeId?: string) => {
-      const { data, error } = await supabase.rpc('arena_enroll_me', { p_challenge_id: challengeId ?? null });
+      const { data, error } = await supabase.rpc('arena_enroll_me', { challenge_id_param: challengeId ?? null });
       if (error) throw error;
       return Array.isArray(data) ? data[0] : data;
     },
@@ -55,12 +55,12 @@ export function useArenaMembers(challengeId?: string, limit = 200, offset = 0) {
     queryKey: ['arena','members', challengeId ?? 'active', limit, offset],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('arena_get_members', {
-        p_challenge_id: challengeId ?? null,
-        p_limit: limit,
-        p_offset: offset,
+        challenge_id_param: challengeId ?? null,
+        limit_param: limit,
+        offset_param: offset,
       });
       if (error) throw error;
-      return data as Array<{user_id:string; display_name:string|null; avatar_url:string|null; joined_at:string; status:string;}>;
+      return data as Array<{user_id:string; display_name:string|null; avatar_url:string|null;}>;
     },
   });
 }
@@ -78,15 +78,15 @@ export function useArenaLeaderboard(args?: {
     queryKey: ['arena','leaderboard', challengeId ?? 'active', section, year, month, limit, offset],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
-        p_challenge_id: challengeId ?? null,
-        p_section: section,
-        p_year: year ?? new Date().getFullYear(),
-        p_month: month ?? new Date().getMonth() + 1,
-        p_limit: limit,
-        p_offset: offset,
+        challenge_id_param: challengeId ?? null,
+        section_param: section,
+        year_param: year ?? null,
+        month_param: month ?? null,
+        limit_param: limit,
+        offset_param: offset,
       });
       if (error) throw error;
-      return data as Array<{ user_id:string; display_name:string; avatar_url:string; rank:number; score:number }>;
+      return data as Array<{ user_id:string; display_name:string; avatar_url:string; rank:number; points:number; streak:number }>;
     },
   });
 }
@@ -104,15 +104,15 @@ export function useArenaLeaderboardWithProfiles(args?: {
     queryKey: ['arena','leaderboard+profiles', challengeId ?? 'active', section, year, month, limit, offset],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('arena_get_leaderboard_with_profiles', {
-        p_challenge_id: challengeId ?? null,
-        p_section: section,
-        p_year: year ?? undefined,
-        p_month: month ?? undefined,
-        p_limit: limit,
-        p_offset: offset,
+        challenge_id_param: challengeId ?? null,
+        section_param: section,
+        year_param: year ?? null,
+        month_param: month ?? null,
+        limit_param: limit,
+        offset_param: offset,
       });
       if (error) throw error;
-      return data as Array<{ user_id:string; display_name:string|null; avatar_url:string|null; rank:number; score:number }>;
+      return data as Array<{ user_id:string; display_name:string|null; avatar_url:string|null; rank:number; points:number; streak:number }>;
     },
   });
 }

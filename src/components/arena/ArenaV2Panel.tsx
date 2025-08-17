@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { ARENA_DEBUG_CONTROLS } from '@/lib/featureFlags';
 import WinnersRibbon from '@/components/arena/WinnersRibbon';
 import SectionDivider from '@/components/arena/SectionDivider';
 import { BillboardSkeleton } from '@/components/arena/ArenaSkeletons';
@@ -20,6 +21,7 @@ import { useEmojiReactions } from '@/hooks/useEmojiReactions';
 import MemberTabsStack, { type MemberTab } from '@/components/arena/MemberTabsStack';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { fetchUserStats } from '@/hooks/arena/useUserStats';
+import { makeMembersForTabs } from '@/utils/arenaHelpers';
 
 function Initials({ name }: { name?: string|null }) {
   const t = (name ?? '').trim();
@@ -58,6 +60,7 @@ export default function ArenaV2Panel() {
   const { enabled: showWinnersRibbonBelowTabs } = useFeatureFlag('arena_show_winners_ribbon_below_tabs');
   const { enabled: emojiEnabled } = useFeatureFlag('arena_emoji_tray');
   const { enabled: profileModalEnabled } = useFeatureFlag('arena_profile_modal');
+  const { enabled: debugControlsEnabled } = useFeatureFlag('arena_debug_controls');
   
   // Profile modal state
   const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
@@ -95,33 +98,38 @@ export default function ArenaV2Panel() {
 
   const closeUserProfile = useCallback(() => setSelectedUser(null), []);
 
-  // Build members data for tabs stack
+  // Auto-enroll on mount (safe/idempotent)
+  useEffect(() => {
+    if (challengeId) {
+      (async () => {
+        try {
+          await supabase.rpc('arena_enroll_me', { challenge_id_param: null });
+          queryClient.invalidateQueries({ queryKey: ['arena', 'members'] });
+          queryClient.invalidateQueries({ queryKey: ['arena', 'leaderboard'] });
+        } catch (error) {
+          console.error('Failed to auto-enroll in arena:', error);
+        }
+      })();
+    }
+  }, [challengeId, queryClient]);
+
+  // Build members data for tabs stack using helper function
   const membersForTabs: MemberTab[] = React.useMemo(() => {
-    if (!leaderboard?.length && !members?.length) return [];
+    if (!members?.length) return [];
     
-    // Prefer leaderboard data (has points and rank)
-    const leaderboardMap = new Map(leaderboard?.map(l => [l.user_id, l]) || []);
+    const mergedMembers = makeMembersForTabs(
+      members.map(m => ({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url })),
+      leaderboard?.map(l => ({ 
+        user_id: l.user_id, 
+        display_name: l.display_name, 
+        avatar_url: l.avatar_url, 
+        points: l.points, 
+        streak: l.streak, 
+        rank: l.rank 
+      })) || []
+    );
     
-    // Combine data, preferring leaderboard info when available
-    const allMembers = members?.map(member => {
-      const leaderboardEntry = leaderboardMap.get(member.user_id);
-      return {
-        user_id: member.user_id,
-        display_name: member.display_name,
-        avatar_url: member.avatar_url,
-        points: leaderboardEntry?.score || 0,
-        rank: leaderboardEntry?.rank || null,
-      };
-    }) || [];
-    
-    // Sort by rank (nulls last), then by points descending, then by name
-    return allMembers.sort((a, b) => {
-      if (a.rank && b.rank) return a.rank - b.rank;
-      if (a.rank && !b.rank) return -1;
-      if (!a.rank && b.rank) return 1;
-      if (a.points !== b.points) return (b.points || 0) - (a.points || 0);
-      return (a.display_name || '').localeCompare(b.display_name || '');
-    });
+    return mergedMembers;
   }, [leaderboard, members]);
 
   // Real-time updates for new members
@@ -203,7 +211,7 @@ export default function ArenaV2Panel() {
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="text-sm opacity-80">
-              {loadingActive ? 'Loading…' : active ? `Season ${active.season_year}.${String(active.season_month).padStart(2,'0')}` : 'No active arena'}
+              {loadingActive ? 'Loading…' : active ? `Season ${active.season}.${String(active.month).padStart(2,'0')}` : 'No active arena'}
             </div>
             {!me ? (
               <Button size="sm" onClick={() => enroll.mutate(challengeId)} disabled={enroll.isPending}>
@@ -212,19 +220,23 @@ export default function ArenaV2Panel() {
             ) : (
               <div className="flex items-center gap-2">
                 <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
-                {/* DEV: quick award + recompute */}
-                <Button size="sm" variant="secondary" onClick={async () => {
-                  // use the 3-arg shim (server resolves active challenge)
-                  await supabase.rpc("arena_award_points", { p_points: 1, p_kind: "tap", p_challenge_id: null });
-                  await supabase.rpc("arena_recompute_rollups_monthly", {}); // uses current month + 'global'
-                }}>
-                  +1 point & Recompute
-                </Button>
-                <Button size="sm" variant="outline" onClick={async () => {
-                  await supabase.rpc("arena_recompute_rollups_monthly", {}); // current month/global
-                }}>
-                  Recompute Rollups
-                </Button>
+                {/* DEV: quick award + recompute - only show if debug controls enabled */}
+                {(debugControlsEnabled || ARENA_DEBUG_CONTROLS) && (
+                  <>
+                    <Button size="sm" variant="secondary" onClick={async () => {
+                      // TODO: Replace with actual arena_award_points RPC when available
+                      console.log('Would award points here');
+                    }}>
+                      +1 point & Recompute
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
+                      console.log('Would recompute rollups here');
+                    }}>
+                      Recompute Rollups
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -236,7 +248,7 @@ export default function ArenaV2Panel() {
           ) : (leaderboard?.length ?? 0) === 0 ? (
             <div className="text-center py-8">
               <div className="text-muted-foreground mb-4">
-                No contenders yet. Invite friends or start logging to climb the board.
+                {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
               </div>
             </div>
           ) : (
@@ -323,7 +335,7 @@ export default function ArenaV2Panel() {
                         <div className="min-w-[84px] text-right tabular-nums">
                           <div className="inline-flex items-center gap-1">
                             <Target className="w-4 h-4" />
-                            <span className="font-semibold">{row.score}</span>
+                            <span className="font-semibold">{row.points}</span>
                             <span className="text-xs text-muted-foreground ml-1">pts</span>
                           </div>
                         </div>
@@ -337,8 +349,8 @@ export default function ArenaV2Panel() {
 
           <SectionDivider title="Arena Members" />
           
-          {(members?.length ?? 0) === 0 ? (
-            <div className="text-sm opacity-70 text-center py-4">No members yet.</div>
+          {membersForTabs.length === 0 ? (
+            <div className="text-sm opacity-70 text-center py-4">Be the first to join the arena!</div>
           ) : (
             <div className="grid grid-cols-4 gap-4">
               {members!.map(m => (
