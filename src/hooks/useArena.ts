@@ -342,6 +342,7 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
     queryFn: async () => {
       if (!groupId) return [];
       
+      console.log('[Arena] fetch.start', { groupId, domain });
       
       try {
         const { data: leaderboardData, error } = await supabase.rpc(
@@ -360,8 +361,11 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
         }
 
         if (!leaderboardData?.length) {
+          console.log('[Arena] fetch.done', { groupId, domain, rows: 0 });
           return [];
         }
+        
+        console.log('[Arena] fetch.done', { groupId, domain, rows: leaderboardData?.length ?? 0 });
 
         // Get user IDs for profile enrichment
         const userIds = leaderboardData.map((row: any) => row.user_id);

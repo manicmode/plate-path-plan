@@ -49,6 +49,10 @@ interface ArenaV2PanelProps {
 export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2PanelProps) {
   // Arena V2 implementation - unified arena functionality
   
+  console.log('[Arena] mounted');
+  console.log('[Preflight] commit', import.meta.env?.VITE_GIT_COMMIT_HASH ?? (window as any).COMMIT_HASH ?? 'unknown');
+  console.log('[Preflight] route', location?.pathname);
+  
   const queryClient = useQueryClient();
   
   // Check hard disable flag
@@ -256,6 +260,16 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
     );
   }
 
+  console.log('[Arena] render', {
+    groupId,
+    domain: challengeMode,
+    hasLeaderboard: !!(leaderboard?.length),
+    leaderboardLen: leaderboard?.length ?? 0,
+    hasMembers: !!(members?.length),
+    membersLen: members?.length ?? 0,
+    isFetching: leaderboardLoading,
+  });
+
   return (
     <div className="space-y-6" data-testid="arena-v2">
       {/* Billboard & Chat Pill Button */}
@@ -277,6 +291,7 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
 
         {/* Member Tabs Stack - User Avatar Chips */}
         <div className="px-6 pb-4">
+          {(() => { console.log('[Arena] RENDER_PATH', 'member-tabs-header-mount'); return null; })()}
           <MemberTabsStack
             members={membersForTabs}
             onOpenProfile={(member) => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "members")}
@@ -312,8 +327,10 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                 <BillboardSkeleton rows={3} />
               ) : (leaderboard?.length ?? 0) === 0 && members?.length > 0 ? (
                 // Show members with 0 scores when no leaderboard data exists
-                <div className="space-y-3">
-                  {members.map((member, index) => {
+                <>
+                  {(() => { console.log('[Arena] RENDER_PATH', 'members-fallback-list', { ids: members?.map(m => m.user_id) }); return null; })()}
+                  <div className="space-y-3">
+                    {members.map((member, index) => {
                     const rank = index + 1;
                     const getRankBadgeStyle = () => "bg-orange-500 text-black";
                     const formatPoints = (points: number) => points.toLocaleString();
@@ -373,13 +390,16 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                    })}
+                  </div>
+                </>
               ) : (leaderboard?.length ?? 0) === 0 ? (
                 <div className="py-8"></div>
               ) : (
-                <div className="space-y-3">
-                  {leaderboard!.map((row, index) => {
+                <>
+                  {(() => { console.log('[Arena] RENDER_PATH', 'leaderboard-list', { ids: leaderboard?.map(r => r.user_id) }); return null; })()}
+                  <div className="space-y-3">
+                    {leaderboard!.map((row, index) => {
                     const rank = row.rank || (index + 1);
                     // Orange rank badge styling
                     const getRankBadgeStyle = () => {
@@ -449,8 +469,9 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                    })}
+                  </div>
+                </>
               )}
             </>
           )}

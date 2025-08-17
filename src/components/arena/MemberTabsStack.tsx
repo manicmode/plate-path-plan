@@ -34,6 +34,7 @@ export default function MemberTabsStack({
   onOpenEmojiTray,
   onPrefetchStats,
 }: MemberTabsStackProps) {
+  console.log('[Tabs] render', { ids: members?.map(x => x.user_id) });
   if (members.length === 0) {
     return (
       <div className="text-center py-4 text-muted-foreground">
