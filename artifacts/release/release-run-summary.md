@@ -6,11 +6,11 @@
 
 ## CI Workflow
 - Workflow: Release (tag) (.github/workflows/release-tag.yml)
-- Status: Will trigger on tag push
+- Status: SKIPPED - no GH auth in Lovable environment
 - Jobs: build, smoke, e2e (conditional)
-- Skip reason: No access to GitHub CLI in Lovable environment
+- Actions URL: https://github.com/{owner}/{repo}/actions/workflows/release-tag.yml
 
-## Expected Behavior
+## Expected Behavior After Tag Push
 - Version injection: VITE_APP_VERSION=2.0.0
 - Build artifacts: web-build
 - E2E: Auto-skip if secrets missing
@@ -19,3 +19,4 @@
 - ✅ release-tag.yml has "Derive version from tag" step
 - ✅ HealthCheck.tsx has env-driven APP_VERSION
 - ✅ Arena V2 identifier present
+- ✅ V1 code purged (only schema types remain)
