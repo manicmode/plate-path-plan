@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export type FriendUIRelation =
@@ -27,7 +27,8 @@ export const useFriendStatuses = (targetIds: string[]) => {
   const [statusMap, setStatusMap] = useState<Map<string, FriendStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const targetIdsStr = useMemo(() => targetIds.sort().join(','), [targetIds]);
 
   const loadStatuses = async () => {
@@ -119,9 +120,26 @@ export const useFriendStatuses = (targetIds: string[]) => {
     }
   };
 
-  useEffect(() => {
-    loadStatuses();
+  // Debounced status loading to handle fast re-renders
+  const debouncedLoadStatuses = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      loadStatuses();
+    }, 200); // 200ms debounce
   }, [targetIdsStr]);
+
+  useEffect(() => {
+    debouncedLoadStatuses();
+    
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [debouncedLoadStatuses]);
 
   const updateStatus = (userId: string, relation: FriendUIRelation, requestId?: string) => {
     setStatusMap(prev => new Map(prev.set(userId, { userId, relation, requestId })));

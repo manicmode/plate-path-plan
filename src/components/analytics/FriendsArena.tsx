@@ -122,7 +122,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
 
   // Friend management
   const userIds = useMemo(() => getCurrentData().map(row => row.user_id), [activeTab, combined, nutrition, exercise, recovery]);
-  const { statusMap, loading: friendStatusLoading, updateStatus } = useFriendStatuses(userIds);
+  const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(userIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
 
   // Add logging for inner tabs
@@ -363,6 +363,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends = [] }) => {
                       onRejectRequest={friendActions.rejectFriendRequest}
                       isPending={friendActions.isPending(row.user_id)}
                       isOnCooldown={friendActions.isOnCooldown(row.user_id)}
+                      isLoading={statusLoading}
                     />
                     
                     {/* Points */}

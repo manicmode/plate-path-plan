@@ -339,6 +339,7 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                           onRejectRequest={rejectFriendRequest}
                           isPending={isPending(message.user_id)}
                           isOnCooldown={isOnCooldown(message.user_id)}
+                          isLoading={friendStatusLoading}
                         />
                       </div>
                     </div>

@@ -17,7 +17,7 @@ export default function ChallengeRankings({ challengeId }: ChallengeRankingsProp
 
   // Friend management
   const participantIds = React.useMemo(() => participants.map(p => p.user_id), [participants]);
-  const { statusMap, updateStatus } = useFriendStatuses(participantIds);
+  const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(participantIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
 
   const getRankIcon = (rank: number) => {
@@ -127,6 +127,7 @@ export default function ChallengeRankings({ challengeId }: ChallengeRankingsProp
                     onRejectRequest={friendActions.rejectFriendRequest}
                     isPending={friendActions.isPending(participant.user_id)}
                     isOnCooldown={friendActions.isOnCooldown(participant.user_id)}
+                    isLoading={statusLoading}
                   />
                   
                   {/* Score */}

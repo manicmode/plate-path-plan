@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserPlus, Check, X, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FriendUIRelation } from '@/hooks/useFriendStatuses';
@@ -15,6 +16,7 @@ interface FriendCTAProps {
   onRejectRequest: (requestId: string, userId: string) => void;
   isPending?: boolean;
   isOnCooldown?: boolean;
+  isLoading?: boolean;
 }
 
 export const FriendCTA: React.FC<FriendCTAProps> = ({
@@ -26,10 +28,23 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
   onAcceptRequest,
   onRejectRequest,
   isPending = false,
-  isOnCooldown = false
+  isOnCooldown = false,
+  isLoading = false
 }) => {
   const isCompact = variant === 'compact' || variant === 'icon';
   const isIconOnly = variant === 'icon';
+
+  // Show skeleton while loading
+  if (isLoading) {
+    return (
+      <div 
+        className={cn(
+          "animate-pulse bg-muted rounded",
+          isIconOnly ? "h-6 w-6" : isCompact ? "h-6 w-16" : "h-8 w-20"
+        )}
+      />
+    );
+  }
 
   // Don't render for self or hidden users
   if (relation === 'self' || relation === 'hidden_by_privacy') {
@@ -57,17 +72,25 @@ export const FriendCTA: React.FC<FriendCTAProps> = ({
   switch (relation) {
     case 'friends':
       return (
-        <Badge 
-          variant="secondary" 
-          className={cn(
-            "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/20 dark:border-green-800",
-            isCompact ? "px-2 py-0.5 text-xs" : "px-3 py-1"
-          )}
-          title="You're friends"
-        >
-          <Users className={cn("mr-1", isCompact ? "h-3 w-3" : "h-4 w-4")} />
-          {!isIconOnly && "Friends ✓"}
-        </Badge>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="secondary" 
+                className={cn(
+                  "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/20 dark:border-green-800 cursor-default",
+                  isCompact ? "px-2 py-0.5 text-xs" : "px-3 py-1"
+                )}
+              >
+                <Users className={cn("mr-1", isCompact ? "h-3 w-3" : "h-4 w-4")} />
+                {!isIconOnly && "Friends ✓"}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>You're friends</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
 
     case 'outgoing_pending':

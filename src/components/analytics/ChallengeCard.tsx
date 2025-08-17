@@ -59,7 +59,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 
   // Friend management for participant avatars
   const participantIds = React.useMemo(() => challenge.participants, [challenge.participants]);
-  const { statusMap, updateStatus } = useFriendStatuses(participantIds);
+  const { statusMap, loading: statusLoading, updateStatus } = useFriendStatuses(participantIds);
   const friendActions = useFriendActions({ onStatusUpdate: updateStatus });
 
   // Calculate time remaining
@@ -298,6 +298,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                           onRejectRequest={friendActions.rejectFriendRequest}
                           isPending={friendActions.isPending(participantId)}
                           isOnCooldown={friendActions.isOnCooldown(participantId)}
+                          isLoading={statusLoading}
                         />
                       </div>
                     </div>
