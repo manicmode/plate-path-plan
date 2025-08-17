@@ -6358,6 +6358,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      arena_ensure_active_challenge: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       arena_get_active_challenge: {
         Args: Record<PropertyKey, never>
         Returns: {
