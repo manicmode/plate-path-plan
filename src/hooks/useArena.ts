@@ -342,8 +342,6 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
     queryFn: async () => {
       if (!groupId) return [];
       
-      // 🔎 FORENSIC STEP 6: Fetch logging
-      console.log('arena.leaderboard.fetch.start ->', { groupId, domain });
       
       try {
         console.log('Calling arena_get_leaderboard_by_domain with:', { groupId, domain });
@@ -386,26 +384,27 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
 
         console.log('Profile data:', profiles);
 
-        // Create enriched leaderboard
+        // Create enriched leaderboard with proper name resolution
         const enrichedLeaderboard = leaderboardData.map((row: any) => {
           const profile = profiles?.find((p: any) => p.user_id === row.user_id);
-          const displayName = profile ? 
-            `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown' :
-            'Unknown';
           
+          // Merge fields in priority order: (first_name + last_name) || fallback
+          let displayName = '';
+          if (!displayName) {
+            const firstName = profile?.first_name || '';
+            const lastName = profile?.last_name || '';
+            displayName = `${firstName} ${lastName}`.trim();
+          }
+          if (!displayName) {
+            displayName = `User ${row.user_id.slice(0, 8)}`;
+          }
+          
+          // Resolve avatar URL from storage path to public URL
           let avatarUrl = profile?.avatar_url;
-          if (avatarUrl && avatarUrl.startsWith('users/')) {
+          if (avatarUrl && !avatarUrl.startsWith('http')) {
             avatarUrl = supabase.storage.from('avatars').getPublicUrl(avatarUrl).data.publicUrl;
           }
 
-          // 🔎 FORENSIC STEP 4: Avatar enrichment logging for Deborah
-          if (row.user_id === 'ea6022e7-0947-4322-ab30-bfff6774b334') {
-            console.log('arena.profile.enriched ->', {
-              user_id: row.user_id,
-              display_name: displayName,
-              avatar_url_resolved: avatarUrl
-            });
-          }
 
           return {
             user_id: row.user_id,
@@ -416,11 +415,6 @@ export function useArenaLeaderboardWithProfiles(groupId?: string | null, domain?
           };
         });
 
-        console.log('arena.leaderboard.fetch.done ->', { 
-          groupId, 
-          domain, 
-          rows: enrichedLeaderboard.length 
-        });
         
         return enrichedLeaderboard;
       } catch (error) {

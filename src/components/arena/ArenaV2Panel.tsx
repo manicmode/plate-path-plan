@@ -65,45 +65,6 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId, challengeMode);
   const { messages } = useArenaChat(groupId);
 
-  // 🔎 FORENSIC STEP 0: Runtime Snapshot Logging
-  useEffect(() => {
-    if (groupId && (members || leaderboard)) {
-      console.log('arena.snapshot ->', {
-        groupId,
-        domain: challengeMode,
-        members: members?.map(m => m.user_id) || [],
-        leaderboard: leaderboard?.map(l => l.user_id) || []
-      });
-    }
-  }, [groupId, challengeMode, members, leaderboard]);
-
-  // 🔎 FORENSIC STEP 3: UI Rendering Check
-  useEffect(() => {
-    if (leaderboard?.length) {
-      console.log('arena.render ->', {
-        rows: leaderboard.length,
-        ids: leaderboard.map(r => r.user_id)
-      });
-    }
-  }, [leaderboard]);
-
-  // 🔎 FORENSIC STEP 5: Authentication Context
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) {
-        console.log('arena.auth -> NOT_AUTHENTICATED');
-      } else {
-        console.log('arena.auth ->', { uid: user.id, email: user.email });
-      }
-    };
-    checkAuth();
-  }, []);
-
-  // 🔎 FORENSIC STEP 6: Section Change Logging
-  useEffect(() => {
-    console.log('arena.section.changed ->', { domain: challengeMode });
-  }, [challengeMode]);
   const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
 
   const handleJoinArena = async () => {
@@ -325,12 +286,77 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
             <>
               {leaderboardLoading ? (
                 <BillboardSkeleton rows={3} />
+              ) : (leaderboard?.length ?? 0) === 0 && members?.length > 0 ? (
+                // Show members with 0 scores when no leaderboard data exists
+                <div className="space-y-3">
+                  {members.map((member, index) => {
+                    const rank = index + 1;
+                    const getRankBadgeStyle = () => "bg-orange-500 text-black";
+                    const formatPoints = (points: number) => points.toLocaleString();
+
+                    return (
+                      <div 
+                        key={member.user_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openUserProfile({ user_id: member.user_id, display_name: member.display_name, avatar_url: member.avatar_url }, "leaderboard")}
+                        className="relative rounded-xl bg-muted/50 border border-border p-4 cursor-pointer hover:bg-muted transition-all duration-200"
+                      >
+                        <span
+                          className={cn(
+                            "absolute -left-3 -top-3 z-20 rounded-full px-2.5 py-1 text-sm font-bold shadow-md",
+                            getRankBadgeStyle()
+                          )}
+                        >
+                          #{rank}
+                        </span>
+
+                        <div className="flex items-center justify-between pl-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <Avatar className="h-12 w-12 flex-shrink-0">
+                              <AvatarImage 
+                                src={member.avatar_url || undefined} 
+                                alt={member.display_name || "user"}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
+                                <Initials name={member.display_name} />
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-foreground text-base truncate">
+                                {member.display_name ?? member.user_id}
+                              </div>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Flame className="h-3 w-3 text-orange-500" />
+                                <span>0 streak</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>↗︎ Rising</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-foreground">
+                              <Target className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-lg font-bold">{formatPoints(0)}</span>
+                              <span className="text-sm text-muted-foreground">pts</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (leaderboard?.length ?? 0) === 0 ? (
                 <div className="py-8"></div>
               ) : (
                 <div className="space-y-3">
-                  {leaderboard!.slice(0, 3).map((row, index) => {
-                    const rank = index + 1;
+                  {leaderboard!.map((row, index) => {
+                    const rank = row.rank || (index + 1);
                     // Orange rank badge styling
                     const getRankBadgeStyle = () => {
                       return "bg-orange-500 text-black";
