@@ -6014,10 +6014,11 @@ export type Database = {
       arena_billboard_with_profiles: {
         Row: {
           avatar_url: string | null
-          display_name: string | null
+          points: number | null
           rank: number | null
-          score: number | null
+          season_at: string | null
           user_id: string | null
+          username: string | null
         }
         Relationships: []
       }
