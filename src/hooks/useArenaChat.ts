@@ -100,8 +100,10 @@ export function useArenaChat(groupId?: string | null): {
               }
             }
           )
-          .subscribe((status) => {
+          .subscribe(async (status) => {
             console.debug('[useArenaChat] Realtime status:', status);
+            const { ArenaEvents } = await import('@/lib/telemetry');
+            ArenaEvents.chatSubscribe(status === 'SUBSCRIBED', groupId);
           });
 
         channelRef.current = channel;
@@ -125,6 +127,10 @@ export function useArenaChat(groupId?: string | null): {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
+        // Add telemetry for unsubscribe
+        import('@/lib/telemetry').then(({ ArenaEvents }) => {
+          ArenaEvents.chatUnsubscribe(groupId);
+        });
       }
     };
   }, [groupId]);
@@ -228,6 +234,11 @@ export function useArenaChat(groupId?: string | null): {
       if (error) {
         console.error('[useArenaChat] Send error:', error);
         
+        // Add telemetry for send failures
+        import('@/lib/telemetry').then(({ ArenaEvents }) => {
+          ArenaEvents.chatSend(false, trimmedText.length, error.message);
+        });
+        
         // Handle RLS errors with friendly messages
         if (error.code === '42501' || error.message.includes('permission denied')) {
           toast({
@@ -246,6 +257,11 @@ export function useArenaChat(groupId?: string | null): {
       }
 
       console.debug('[useArenaChat] Message sent successfully:', data.id);
+      
+      // Add telemetry for successful sends
+      import('@/lib/telemetry').then(({ ArenaEvents }) => {
+        ArenaEvents.chatSend(true, trimmedText.length);
+      });
 
     } catch (err) {
       console.error('[useArenaChat] Send message error:', err);

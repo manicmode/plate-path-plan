@@ -1,0 +1,79 @@
+name: Post-Merge Smoke Tests
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Start preview server
+      run: npm run preview &
+      
+    - name: Wait for server
+      run: |
+        timeout 30 bash -c 'until curl -f http://localhost:4173/healthz; do sleep 2; done'
+        
+    - name: Health check
+      run: |
+        response=$(curl -s http://localhost:4173/healthz)
+        echo "Health response: $response"
+        
+        # Check if response contains arena: "v2"
+        if echo "$response" | grep -q '"arena":"v2"'; then
+          echo "✅ Arena V2 health check passed"
+        else
+          echo "❌ Arena V2 health check failed"
+          exit 1
+        fi
+        
+        # Check if response contains ok: true
+        if echo "$response" | grep -q '"ok":true'; then
+          echo "✅ Service health check passed"
+        else
+          echo "❌ Service health check failed"
+          exit 1
+        fi
+    
+    - name: Arena page smoke test
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://uzoiiijqtahohfafqirm.supabase.co' }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw' }}
+      run: |
+        # Basic Arena page accessibility test
+        response=$(curl -s http://localhost:4173/game-and-challenge)
+        
+        if echo "$response" | grep -q "Arena"; then
+          echo "✅ Arena page renders with header"
+        else
+          echo "❌ Arena page missing header"
+          exit 1
+        fi
+        
+        echo "✅ Post-merge smoke tests completed successfully"
+    
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-test-logs
+        path: |
+          /tmp/
+          ~/.npm/_logs/
+        retention-days: 7

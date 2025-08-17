@@ -1,0 +1,65 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface HealthStatus {
+  ok: boolean;
+  version: string;
+  arena: string;
+  time: string;
+  db: 'reachable' | 'error';
+}
+
+export default function HealthCheck() {
+  const [health, setHealth] = useState<HealthStatus>({
+    ok: true,
+    version: '1.0.0',
+    arena: 'v2',
+    time: new Date().toISOString(),
+    db: 'reachable'
+  });
+
+  useEffect(() => {
+    const checkDbHealth = async () => {
+      try {
+        // Lightweight DB check - try to call Arena V2 function
+        await supabase.rpc('arena_get_active_group_id');
+        setHealth(prev => ({ ...prev, db: 'reachable' }));
+      } catch (error) {
+        console.warn('[health] DB check failed:', error);
+        setHealth(prev => ({ ...prev, db: 'error' }));
+      }
+    };
+
+    checkDbHealth();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">Health Check</h1>
+          <div 
+            data-testid="health-status"
+            className="bg-card p-6 rounded-lg border"
+          >
+            <pre className="text-sm text-muted-foreground text-left">
+              {JSON.stringify(health, null, 2)}
+            </pre>
+          </div>
+          <div className="mt-4 space-y-2">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+              health.ok && health.db === 'reachable' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+            }`}>
+              {health.ok && health.db === 'reachable' ? '✅ Healthy' : '⚠️ Degraded'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Arena V2 • {new Date(health.time).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

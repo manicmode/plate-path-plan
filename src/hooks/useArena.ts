@@ -15,13 +15,23 @@ export function useArenaActive(): {
     queryKey: ['arena', 'active-group'],
     queryFn: async () => {
       console.debug('[useArenaActive] Fetching active group ID');
-      const { data, error } = await supabase.rpc('arena_get_active_group_id');
-      if (error) {
-        console.error('[useArenaActive] RPC error:', error);
+      try {
+        const { data, error } = await supabase.rpc('arena_get_active_group_id');
+        if (error) {
+          console.error('[useArenaActive] RPC error:', error);
+          const { ArenaEvents } = await import('@/lib/telemetry');
+          ArenaEvents.activeResolve(false, null);
+          throw error;
+        }
+        console.debug('[useArenaActive] Active group ID:', data);
+        const { ArenaEvents } = await import('@/lib/telemetry');
+        ArenaEvents.activeResolve(true, data);
+        return data as string | null;
+      } catch (error) {
+        const { ArenaEvents } = await import('@/lib/telemetry');
+        ArenaEvents.activeResolve(false, null);
         throw error;
       }
-      console.debug('[useArenaActive] Active group ID:', data);
-      return data as string | null;
     },
     retry: 2,
     staleTime: 30000, // 30 seconds
@@ -116,6 +126,8 @@ export function useArenaEnroll(): {
       const { data, error: rpcError } = await supabase.rpc('arena_enroll_me');
       
       if (rpcError) {
+        const { ArenaEvents } = await import('@/lib/telemetry');
+        ArenaEvents.enroll(false, undefined, rpcError.message);
         throw new Error(rpcError.message);
       }
       
@@ -127,8 +139,13 @@ export function useArenaEnroll(): {
       }
       
       if (!groupId) {
+        const { ArenaEvents } = await import('@/lib/telemetry');
+        ArenaEvents.enroll(false, undefined, 'No group ID returned');
         throw new Error('Enrollment failed: no group ID returned');
       }
+      
+      const { ArenaEvents } = await import('@/lib/telemetry');
+      ArenaEvents.enroll(true, groupId);
       
       // Immediately revalidate useArenaActive so groupId becomes non-null
       await queryClient.invalidateQueries({ queryKey: ['arena', 'active-group'] });

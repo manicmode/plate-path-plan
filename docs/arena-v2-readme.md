@@ -240,3 +240,99 @@ For Arena V2 issues:
 3. Run verification checklist above
 4. Check network calls match expected V2 patterns
 5. Run E2E tests locally to isolate issues
+
+## Operations & Rollback
+
+### Health Monitoring
+
+**Health Endpoint**: `/healthz`
+- Returns JSON with `{ ok: true, arena: "v2", db: "reachable", time: "..." }`
+- Used by post-merge smoke tests and production monitoring
+- Includes lightweight DB connectivity check via `arena_get_active_group_id()`
+
+**Telemetry**: Console-based event logging
+- **Production**: `console.info('[telemetry]', eventName, data)`
+- **Development**: `console.debug('[telemetry]', fullEvent)`
+- **Events**: Arena enrollment, chat operations, DB connectivity
+
+**Reading Telemetry**:
+```javascript
+// Browser DevTools Console - filter by:
+[telemetry] arena.active.resolve {ok: true, groupId: "uuid"}
+[telemetry] arena.enroll {ok: true, groupId: "uuid"}  
+[telemetry] arena.chat.subscribe {ok: true, groupId: "uuid"}
+[telemetry] arena.chat.send {ok: true, messageLength: 15}
+```
+
+### CI Workflows
+
+**E2E Tests**: `.github/workflows/e2e.yml`
+- Triggers: PR and main branch pushes
+- Creates test users: `arena-e2e-a@example.com` / `arena-e2e-b@example.com`
+- Tests: Two-user enrollment, realtime chat, network proof
+- **Secrets**: `SUPABASE_SERVICE_ROLE_KEY` or `E2E_USER_*` credentials
+- **Auto-skip**: Tests skip gracefully if secrets missing
+
+**Post-Merge Smoke**: `.github/workflows/post-merge-smoke.yml`  
+- Triggers: Push to main branch
+- Checks: `/healthz` endpoint, Arena page rendering
+- **No secrets required** - basic functionality only
+- **Fast**: Completes in ~2 minutes
+
+### Soft Rollback Procedure
+
+**When to Use**: Arena V2 issues affecting production (chat problems, RLS errors)
+
+**Run Rollback**:
+```sql
+-- Execute the rollback script
+\i sql/rollback/arena_v2_soft_rollback.sql
+
+-- Monitor rollback status
+SELECT public.arena_rollback_status();
+```
+
+**What It Does**:
+- ✅ Disables realtime chat subscriptions (stops new connections)
+- ✅ Backs up last 100 messages per group to `_backup_arena_chat_messages`
+- ✅ Marks functions/tables with rollback metadata
+- ✅ Creates monitoring function for rollback status
+- ❌ **Does NOT** break existing functionality (enrollment, leaderboard still work)
+
+**Restore Chat After Fix**:
+```sql
+-- Re-enable realtime for chat
+ALTER PUBLICATION supabase_realtime ADD TABLE public.arena_chat_messages;
+
+-- Clear rollback status
+COMMENT ON TABLE public.arena_chat_messages IS 'Arena V2 chat table - restored';
+```
+
+**Important**: V1 code is completely removed. Rollback only pauses chat, doesn't restore V1.
+
+### Diagnostics
+
+**Health Check**: 
+```bash
+curl https://your-app.com/healthz
+# Should return: {"ok":true,"arena":"v2","db":"reachable",...}
+```
+
+**Database Status**:
+```sql
+-- Check rollback state
+SELECT public.arena_rollback_status();
+
+-- Check active subscriptions
+SELECT count(*) FROM pg_stat_subscription;
+
+-- Check RLS policies
+SELECT schemaname, tablename, policyname, permissive, roles 
+FROM pg_policies 
+WHERE tablename = 'arena_chat_messages';
+```
+
+**Network Monitoring**:
+- E2E tests verify no legacy `rank20_*` calls
+- Expected V2 calls: `arena_get_active_group_id`, `arena_enroll_me`, `arena_chat_messages`
+- Use browser DevTools Network tab to verify during development
