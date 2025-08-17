@@ -24,6 +24,18 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // ---- Arena V1 Ban (rank20_* legacy code) ----
+      "no-restricted-imports": ["error", {
+        "paths": [
+          { "name": "@/hooks/useEnsureRank20", "message": "DEPRECATED: Use useArenaEnroll() from @/hooks/useArena instead" },
+          { "name": "@/hooks/useChallengeRankings", "message": "DEPRECATED: Use useArenaLeaderboardWithProfiles() from @/hooks/useArena instead" }
+        ],
+        "patterns": [
+          "*rank20*",
+          "*ensureRank20*", 
+          "*diag_rank20*"
+        ]
+      }],
     },
   },
   // ---- Production console guard ----

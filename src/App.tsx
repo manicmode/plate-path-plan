@@ -105,7 +105,7 @@ const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfi
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
-const ArenaDebug = lazy(() => import('@/pages/ArenaDebug'));
+// ArenaDebug removed - V1 legacy
 
 
 // Prefetch critical components after initial load

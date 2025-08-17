@@ -2,7 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award, Users } from 'lucide-react';
-import { useChallengeRankings, ChallengeParticipant } from '@/hooks/useChallengeRankings';
+// V2: Use Arena hooks instead of legacy useChallengeRankings
+import { useArenaLeaderboardWithProfiles } from '@/hooks/useArena';
 import { cn } from '@/lib/utils';
 import { useFriendStatuses } from '@/hooks/useFriendStatuses';
 import { useFriendActions } from '@/hooks/useFriendActions';
@@ -11,12 +12,31 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
 import { useMutualFriends } from '@/hooks/useMutualFriends';
 
+// Legacy interface maintained for compatibility
+export interface ChallengeParticipant {
+  user_id: string;
+  user_email: string;
+  score: number;
+  rank: number;
+}
+
 interface ChallengeRankingsProps {
   challengeId: string | null;
 }
 
 export const ChallengeRankings: React.FC<ChallengeRankingsProps> = ({ challengeId }) => {
-  const { participants, loading } = useChallengeRankings(challengeId);
+  // V2: Use Arena leaderboard instead of legacy challenge rankings
+  const { leaderboard, isLoading: loading } = useArenaLeaderboardWithProfiles(challengeId);
+  
+  // Transform Arena leaderboard data to match legacy participant interface
+  const participants = React.useMemo(() => {
+    return leaderboard.map(entry => ({
+      user_id: entry.user_id,
+      user_email: entry.display_name || `User ${entry.user_id.slice(0, 8)}`,
+      score: entry.score,
+      rank: entry.rank
+    }));
+  }, [leaderboard]);
   
   // Feature flag for friend CTAs
   const { enabled: friendCtasEnabled } = useFeatureFlag('friend_ctas');

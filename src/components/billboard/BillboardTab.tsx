@@ -5,7 +5,7 @@ import { useBillboardEvents } from "./useBillboard";
 import BillboardCard from "./BillboardCard";
 import { ChallengeRankings } from "./ChallengeRankings";
 import { seedBillboardForChallenge, seedBillboardDemoEventsFor } from "@/dev/seedBillboard";
-import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
+// V2: No legacy rank20 imports needed
 import { isDev } from "@/utils/dev";
 import { supabase } from "@/integrations/supabase/client";
 import { requireSession } from "@/lib/ensureAuth";
@@ -48,7 +48,7 @@ export default function BillboardTab(props: BillboardTabProps = {}) {
         const { data: user } = await supabase.auth.getUser();
         console.info('[diag] user', user?.user?.id);
 
-        // V2: No more legacy diag_rank20 diagnostics needed
+        // V2: Arena groups integration active
         console.info('[diag] Billboard V2 - using arena groups');
 
       if (!finalChallengeId) {

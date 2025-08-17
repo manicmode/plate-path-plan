@@ -72,7 +72,7 @@ import { FLAGS } from '@/constants/flags';
 import { type ArenaSection } from '@/lib/arenaSections';
 import BillboardTab from '@/components/billboard/BillboardTab';
 
-import { ensureRank20ChallengeForMe } from "@/hooks/useEnsureRank20";
+// V2: Arena enrollment handled by useArenaEnroll() hook
 import { toast } from "sonner";
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -199,10 +199,10 @@ function GameAndChallengeContent() {
     }
   }, [activeSection]);
 
-  // Cache hygiene for Arena
+  // Cache hygiene for Arena V2
   useEffect(() => {
     // Keep Arena cache separate from domain lists
-    queryClient.invalidateQueries({ queryKey: ['rank20Members'] });
+    queryClient.invalidateQueries({ queryKey: ['arena'] });
   }, [currentUser?.id, queryClient]);
 
   // Update chat modal state in context when chatroom manager opens/closes

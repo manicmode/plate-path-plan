@@ -118,7 +118,7 @@ export default function ArenaV2Panel() {
     let cancelled = false;
     (async () => {
       try {
-        await supabase.rpc('arena_enroll_me', { challenge_id_param: null });
+        await supabase.rpc('arena_enroll_me');
         console.debug('[ArenaV2Panel] Auto-enrolled in arena');
       } catch (error) {
         console.debug('[ArenaV2Panel] Auto-enroll failed (may already be enrolled):', error);
