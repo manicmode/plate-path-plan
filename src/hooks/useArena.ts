@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useState, useCallback } from 'react';
 
 // Re-export types for compatibility
 export type LeaderboardMode = "global" | "friends";
@@ -97,7 +98,50 @@ export function useArenaMyMembership(challengeId?: string) {
   });
 }
 
-export function useArenaEnroll() {
+// V2 Enrollment hook
+export function useArenaEnroll(): {
+  enroll: () => Promise<string | null>;
+  isEnrolling: boolean;
+  error?: Error;
+} {
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [error, setError] = useState<Error | undefined>();
+  const queryClient = useQueryClient();
+
+  const enroll = useCallback(async (): Promise<string | null> => {
+    try {
+      setIsEnrolling(true);
+      setError(undefined);
+      
+      const { data, error: rpcError } = await supabase.rpc('arena_enroll_me');
+      const groupId = data;
+      
+      if (rpcError) {
+        throw new Error(rpcError.message);
+      }
+      
+      if (!groupId) {
+        throw new Error('Enrollment failed: no group ID returned');
+      }
+      
+      // Immediately revalidate useArenaActive so groupId becomes non-null
+      await queryClient.invalidateQueries({ queryKey: ['arena', 'active-group'] });
+      
+      return groupId;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Enrollment failed');
+      setError(error);
+      return null;
+    } finally {
+      setIsEnrolling(false);
+    }
+  }, [queryClient]);
+
+  return { enroll, isEnrolling, error };
+}
+
+// Legacy enrollment hook
+export function useArenaEnrollLegacy() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (challengeId?: string) => {

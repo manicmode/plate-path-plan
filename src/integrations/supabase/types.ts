@@ -6374,7 +6374,7 @@ export type Database = {
         Returns: undefined
       }
       arena_enroll_me: {
-        Args: { challenge_id_param?: string }
+        Args: Record<PropertyKey, never> | { challenge_id_param?: string }
         Returns: {
           challenge_id: string
           message: string

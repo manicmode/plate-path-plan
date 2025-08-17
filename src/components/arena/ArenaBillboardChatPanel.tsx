@@ -13,8 +13,9 @@ import { useFriendActions } from '@/hooks/useFriendActions';
 import { FriendCTA } from '@/components/social/FriendCTA';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useFriendRealtime } from '@/hooks/useFriendRealtime';
-import { useArenaActive, useArenaMembers } from '@/hooks/useArena';
+import { useArenaActive, useArenaMembers, useArenaEnroll } from '@/hooks/useArena';
 import { useArenaChat } from '@/hooks/useArenaChat';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Announcement {
@@ -49,6 +50,23 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
   const { groupId, isLoading: loadingGroupId } = useArenaActive();
   const { members } = useArenaMembers(groupId);
   const { messages, sendMessage, isLoading: chatLoading } = useArenaChat(groupId);
+  const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
+
+  const handleJoinArena = async () => {
+    const enrolledGroupId = await enroll();
+    if (enrolledGroupId) {
+      toast({
+        title: "Joined Arena!",
+        description: "Welcome to your Arena group. You can now chat with other members!",
+      });
+    } else if (enrollError) {
+      toast({
+        title: "Failed to join Arena",
+        description: enrollError.message,
+        variant: "destructive",
+      });
+    }
+  };
   
   // Local state
   const [newMessage, setNewMessage] = useState('');

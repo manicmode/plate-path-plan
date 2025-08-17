@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArenaActive, useArenaMyMembership, useArenaEnroll, useArenaMembers, useArenaLeaderboardWithProfiles } from '@/hooks/useArena';
+import { toast } from '@/hooks/use-toast';
 import { useArenaChat } from '@/hooks/useArenaChat';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,23 @@ export default function ArenaV2Panel() {
   const { members, isLoading: membersLoading } = useArenaMembers(groupId);
   const { leaderboard, isLoading: leaderboardLoading } = useArenaLeaderboardWithProfiles(groupId);
   const { messages } = useArenaChat(groupId);
+  const { enroll, isEnrolling, error: enrollError } = useArenaEnroll();
+
+  const handleJoinArena = async () => {
+    const enrolledGroupId = await enroll();
+    if (enrolledGroupId) {
+      toast({
+        title: "Joined Arena!",
+        description: "Welcome to your Arena group. Start tracking to compete with others!",
+      });
+    } else if (enrollError) {
+      toast({
+        title: "Failed to join Arena",
+        description: enrollError.message,
+        variant: "destructive",
+      });
+    }
+  };
   
   // Diagnostics state
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
@@ -187,7 +205,7 @@ export default function ArenaV2Panel() {
               isMobile ? "text-xl text-center" : "text-3xl gap-3"
             )}>
               <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-              Arena V2
+              Arena
               <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
             </CardTitle>
             
@@ -222,177 +240,201 @@ export default function ArenaV2Panel() {
         </CardHeader>
         
         <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div className="text-sm opacity-80">
-              {loadingActive ? 'Loading…' : groupId ? `Group ${groupId.slice(0, 8)}` : 'No active arena'}
+          {/* No Group State - Join Arena */}
+          {!loadingActive && !groupId && (
+            <div className="text-center py-12">
+              <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Join the Arena</h3>
+              <p className="text-muted-foreground mb-6">
+                Compete with others in fitness challenges!
+              </p>
+              <Button 
+                onClick={handleJoinArena} 
+                disabled={isEnrolling}
+                size="lg"
+                className="min-w-32"
+              >
+                {isEnrolling ? "Joining..." : "Join Arena"}
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              {me && (
-                <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
-              )}
-              {/* DEV: quick award + recompute - only show if debug controls enabled */}
-              {ARENA_DEBUG_CONTROLS && (
-                <>
-                  <Button size="sm" variant="secondary" onClick={async () => {
-                    // TODO: Replace with actual arena_award_points RPC when available
-                    console.log('Would award points here');
-                  }}>
-                    +1 point & Recompute
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={async () => {
-                    // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
-                    console.log('Would recompute rollups here');
-                  }}>
-                    Recompute Rollups
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
-          <SectionDivider title="Live Leaderboard" />
-          
-          {leaderboardLoading ? (
-            <BillboardSkeleton rows={10} />
-          ) : (leaderboard?.length ?? 0) === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-muted-foreground mb-4">
-                {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
+          {/* Arena Content */}
+          {!loadingActive && groupId && (
+            <>
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="text-sm opacity-80">
+                  Group {groupId.slice(0, 8)}
+                </div>
+                <div className="flex items-center gap-2">
+                  {me && (
+                    <div className="text-xs rounded-full px-2 py-1 bg-emerald-600/10 text-emerald-700">Enrolled</div>
+                  )}
+                  {/* DEV: quick award + recompute - only show if debug controls enabled */}
+                  {ARENA_DEBUG_CONTROLS && (
+                    <>
+                      <Button size="sm" variant="secondary" onClick={async () => {
+                        // TODO: Replace with actual arena_award_points RPC when available
+                        console.log('Would award points here');
+                      }}>
+                        +1 point & Recompute
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        // TODO: Replace with actual arena_recompute_rollups_monthly RPC when available
+                        console.log('Would recompute rollups here');
+                      }}>
+                        Recompute Rollups
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {leaderboard!.map((row, index) => {
-                // Determine rank badge styling (gold/silver/bronze for top 3)
-                const getRankBadgeStyle = (rank: number) => {
-                  if (rank === 1) return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-950";
-                  if (rank === 2) return "bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900";
-                  if (rank === 3) return "bg-gradient-to-r from-amber-600 to-orange-700 text-orange-100";
-                  return "bg-gradient-to-r from-slate-400 to-slate-600 text-slate-100";
-                };
 
-                // Mock trend logic (you'll replace with actual trend data)
-                const getTrendChip = () => {
-                  // For demo: randomly show rising/falling/unchanged
-                  const trendType = Math.random();
-                  if (trendType < 0.4) {
-                    return { type: 'rising', icon: TrendingUp, text: 'Rising', color: 'text-green-600' };
-                  } else if (trendType < 0.7) {
-                    return { type: 'falling', icon: TrendingDown, text: 'Falling', color: 'text-red-600' };
-                  }
-                  return null; // unchanged - hidden
-                };
+              <SectionDivider title="Live Leaderboard" />
+          
+              {leaderboardLoading ? (
+                <BillboardSkeleton rows={10} />
+              ) : (leaderboard?.length ?? 0) === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground mb-4">
+                    {membersForTabs.length > 0 ? "Leaderboard will appear once members start earning points." : "No contenders yet. Invite friends or start logging to climb the board."}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {leaderboard!.map((row, index) => {
+                    // Determine rank badge styling (gold/silver/bronze for top 3)
+                    const getRankBadgeStyle = (rank: number) => {
+                      if (rank === 1) return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-950";
+                      if (rank === 2) return "bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900";
+                      if (rank === 3) return "bg-gradient-to-r from-amber-600 to-orange-700 text-orange-100";
+                      return "bg-gradient-to-r from-slate-400 to-slate-600 text-slate-100";
+                    };
 
-                const trend = getTrendChip();
-
-                return (
-                  <div 
-                    key={row.user_id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
+                    // Mock trend logic (you'll replace with actual trend data)
+                    const getTrendChip = () => {
+                      // For demo: randomly show rising/falling/unchanged
+                      const trendType = Math.random();
+                      if (trendType < 0.4) {
+                        return { type: 'rising', icon: TrendingUp, text: 'Rising', color: 'text-green-600' };
+                      } else if (trendType < 0.7) {
+                        return { type: 'falling', icon: TrendingDown, text: 'Falling', color: 'text-red-600' };
                       }
-                    }}
-                    onMouseEnter={() => prefetchUser(row.user_id)}
-                    onFocus={() => prefetchUser(row.user_id)}
-                    className="relative rounded-xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                    style={{ animationDelay: `${index * 40}ms` }}
-                    aria-label={`Open profile for ${row.display_name || 'user'}`}
-                  >
-                    {/* Rank badge (left side) */}
-                    <span
-                      aria-label={`Rank ${row.rank}`}
-                      className={cn(
-                        "pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold shadow-md",
-                        getRankBadgeStyle(row.rank)
-                      )}
-                    >
-                      #{row.rank}
-                    </span>
+                      return null; // unchanged - hidden
+                    };
 
-                    {/* Trend chip (right side) - only if there's a trend */}
-                    {trend && (
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="outline" className={cn("flex items-center gap-1", trend.color)}>
-                          <trend.icon className="h-3 w-3" />
-                          {trend.text}
-                        </Badge>
-                      </div>
-                    )}
+                    const trend = getTrendChip();
 
-                    <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        {/* Left side: Avatar + Name + Mini-stats */}
-                        <div className="flex items-center gap-3 pl-2 flex-1 min-w-0">
-                          <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "flex-shrink-0")}>
-                            <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              <Initials name={row.display_name} />
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-foreground truncate">
-                              {row.display_name ?? row.user_id}
-                            </div>
-                            {/* Mini-stats inline */}
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Target className="h-3 w-3 text-blue-500" />
-                                <span className="font-medium">{row.score} pts</span>
+                    return (
+                      <div 
+                        key={row.user_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard")}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openUserProfile({ user_id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url }, "leaderboard");
+                          }
+                        }}
+                        onMouseEnter={() => prefetchUser(row.user_id)}
+                        onFocus={() => prefetchUser(row.user_id)}
+                        className="relative rounded-xl dark:bg-slate-800/60 bg-slate-100/60 border dark:border-slate-700/70 border-slate-200/70 overflow-visible cursor-pointer hover:bg-accent hover:border-accent-foreground/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
+                        style={{ animationDelay: `${index * 40}ms` }}
+                        aria-label={`Open profile for ${row.display_name || 'user'}`}
+                      >
+                        {/* Rank badge (left side) */}
+                        <span
+                          aria-label={`Rank ${row.rank}`}
+                          className={cn(
+                            "pointer-events-none absolute -left-3 -top-3 z-20 select-none rounded-full px-2 py-0.5 text-xs font-bold shadow-md",
+                            getRankBadgeStyle(row.rank)
+                          )}
+                        >
+                          #{row.rank}
+                        </span>
+
+                        {/* Trend chip (right side) - only if there's a trend */}
+                        {trend && (
+                          <div className="absolute top-3 right-3 z-10">
+                            <Badge variant="outline" className={cn("flex items-center gap-1", trend.color)}>
+                              <trend.icon className="h-3 w-3" />
+                              {trend.text}
+                            </Badge>
+                          </div>
+                        )}
+
+                        <div className="p-4">
+                          <div className="flex items-center justify-between">
+                            {/* Left side: Avatar + Name + Mini-stats */}
+                            <div className="flex items-center gap-3 pl-2 flex-1 min-w-0">
+                              <Avatar className={cn(isMobile ? "h-10 w-10" : "h-12 w-12", "flex-shrink-0")}>
+                                <AvatarImage src={row.avatar_url ?? undefined} alt={row.display_name ?? "user"} />
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  <Initials name={row.display_name} />
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-foreground truncate">
+                                  {row.display_name ?? row.user_id}
+                                </div>
+                                {/* Mini-stats inline */}
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Target className="h-3 w-3 text-blue-500" />
+                                    <span className="font-medium">{row.score} pts</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <SectionDivider title="Arena Members" />
-          
-          {membersForTabs.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="animate-pulse">
-                <div className="w-12 h-12 bg-muted rounded-full mx-auto mb-4"></div>
-                <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
-                <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-4">
-              {members!.map(m => (
-                <div 
-                  key={m.user_id} 
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members")}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members");
-                    }
-                  }}
-                  onMouseEnter={() => prefetchUser(m.user_id)}
-                  onFocus={() => prefetchUser(m.user_id)}
-                  className="flex flex-col items-center text-center cursor-pointer hover:bg-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
-                  aria-label={`Open profile for ${m.display_name || 'member'}`}
-                >
-                  <Avatar className="h-10 w-10">
-                    {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name ?? ''}/> : null}
-                    <AvatarFallback><Initials name={m.display_name}/></AvatarFallback>
-                  </Avatar>
-                  <div className="mt-1 text-xs truncate w-full">{m.display_name ?? 'Player'}</div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              )}
+
+              <SectionDivider title="Arena Members" />
+          
+              {membersForTabs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="animate-pulse">
+                    <div className="w-12 h-12 bg-muted rounded-full mx-auto mb-4"></div>
+                    <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
+                    <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  {members!.map(m => (
+                    <div 
+                      key={m.user_id} 
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members")}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openUserProfile({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }, "members");
+                        }
+                      }}
+                      onMouseEnter={() => prefetchUser(m.user_id)}
+                      onFocus={() => prefetchUser(m.user_id)}
+                      className="flex flex-col items-center text-center cursor-pointer hover:bg-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200"
+                      aria-label={`Open profile for ${m.display_name || 'member'}`}
+                    >
+                      <Avatar className="h-10 w-10">
+                        {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name ?? ''}/> : null}
+                        <AvatarFallback><Initials name={m.display_name}/></AvatarFallback>
+                      </Avatar>
+                      <div className="mt-1 text-xs truncate w-full">{m.display_name ?? 'Player'}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
