@@ -6350,27 +6350,25 @@ export type Database = {
         Returns: undefined
       }
       arena_enroll_me: {
-        Args: { p_challenge_id?: string }
+        Args: { challenge_id_param?: string }
         Returns: {
           challenge_id: string
-          group_id: string
-          id: string
-          joined_at: string
-          status: string
+          message: string
+          success: boolean
           user_id: string
         }[]
       }
       arena_get_active_challenge: {
         Args: Record<PropertyKey, never>
         Returns: {
-          ends_at: string
+          end_date: string
           id: string
-          metadata: Json
-          season_month: number
-          season_year: number
+          month: number
+          season: number
           slug: string
-          starts_at: string
+          start_date: string
           title: string
+          year: number
         }[]
       }
       arena_get_billboard: {
@@ -6422,39 +6420,40 @@ export type Database = {
       }
       arena_get_leaderboard_with_profiles: {
         Args: {
-          p_challenge_id?: string
-          p_limit?: number
-          p_month?: number
-          p_offset?: number
-          p_section?: string
-          p_year?: number
+          challenge_id_param?: string
+          limit_param?: number
+          month_param?: number
+          offset_param?: number
+          section_param?: string
+          year_param?: number
         }
         Returns: {
           avatar_url: string
           display_name: string
+          points: number
           rank: number
-          score: number
+          streak: number
           user_id: string
         }[]
       }
       arena_get_members: {
-        Args: { p_challenge_id?: string; p_limit?: number; p_offset?: number }
+        Args: {
+          challenge_id_param?: string
+          limit_param?: number
+          offset_param?: number
+        }
         Returns: {
           avatar_url: string
           display_name: string
-          joined_at: string
-          status: string
           user_id: string
         }[]
       }
       arena_get_my_membership: {
-        Args: { p_challenge_id?: string }
+        Args: { challenge_id_param?: string }
         Returns: {
           challenge_id: string
-          group_id: string
-          id: string
+          is_enrolled: boolean
           joined_at: string
-          status: string
           user_id: string
         }[]
       }
