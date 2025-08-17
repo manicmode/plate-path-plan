@@ -15,9 +15,9 @@ export const ArenaSmokeTester: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { data: activeArena } = useArenaActive();
-  const { data: members, isLoading: membersLoading, isError: membersError } = useArenaMembers(activeArena?.id);
-  const challengeId = activeArena?.id;
+  const { groupId } = useArenaActive();
+  const { members, isLoading: membersLoading, error: membersError } = useArenaMembers(groupId);
+  const challengeId = groupId;
   const [testResult, setTestResult] = useState<SmokeTestResult>({
     pageRenders: false,
     noRedirectTo404: false,

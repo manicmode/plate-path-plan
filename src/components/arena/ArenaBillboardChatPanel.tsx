@@ -209,15 +209,13 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
             <Megaphone className="h-5 w-5" />
             Arena Chat
             <div className="flex items-center gap-1 ml-auto">
-              {connectionStatus === 'connected' ? (
+              {!chatLoading ? (
                 <Wifi className="h-4 w-4 text-green-500" />
-              ) : connectionStatus === 'reconnecting' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
               ) : (
-                <WifiOff className="h-4 w-4 text-red-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
               )}
-              <span className="text-xs text-muted-foreground capitalize">
-                {connectionStatus}
+              <span className="text-xs text-muted-foreground">
+                {!chatLoading ? 'Connected' : 'Loading'}
               </span>
             </div>
           </DialogTitle>
