@@ -48,3 +48,6 @@ verify_jwt = true
 
 [functions.get-trophy-counts]
 verify_jwt = false
+
+[functions.admin-synonyms]
+verify_jwt = true
