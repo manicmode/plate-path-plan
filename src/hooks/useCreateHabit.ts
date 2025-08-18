@@ -11,6 +11,7 @@ interface CreateHabitData {
   suggested_rules?: any[];
   min_viable?: string;
   tags?: string;
+  template_id?: string; // Add template_id for duplicate prevention
 }
 
 export const useCreateHabit = () => {
@@ -33,6 +34,7 @@ export const useCreateHabit = () => {
           user_id: user.id,
           name: habitData.name,
           category: habitData.domain,
+          template_id: habitData.template_id || null,
           goal_type: habitData.goal_type,
           goal_target: habitData.target_value || null,
           min_viable: false, // This seems to be boolean in the schema
@@ -43,6 +45,15 @@ export const useCreateHabit = () => {
         .single();
 
       if (error) {
+        // Handle unique constraint violation (duplicate habit)
+        if (error.code === '23505' && error.message.includes('user_habit_unique')) {
+          toast({
+            title: "Already Added",
+            description: "This habit is already in your list",
+            variant: "default",
+          });
+          return null; // Don't throw, just return null for duplicates
+        }
         throw error;
       }
 

@@ -79,6 +79,7 @@ export default function HabitCentralPage() {
         suggested_rules: template.suggested_rules,
         min_viable: template.min_viable,
         tags: template.tags,
+        template_id: template.id, // Link to template for duplicate prevention
       });
     } catch (error) {
       // Remove from added set if there was an error
