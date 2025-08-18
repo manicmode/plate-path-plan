@@ -14,6 +14,8 @@ import { useCreateHabit } from '@/hooks/useCreateHabit';
 import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { CoachToneSelector } from '@/components/CoachToneSelector';
+import { useCoachTone } from '@/hooks/useCoachTone';
 
 // Custom hook for debouncing
 const useDebounce = (value: string, delay: number) => {
@@ -49,6 +51,7 @@ type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
 
 export default function HabitCentralPage() {
   const { user } = useAuth();
+  const { getCoachContent } = useCoachTone();
   const [selectedDomain, setSelectedDomain] = useState<HabitDomain | undefined>('nutrition');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -225,7 +228,7 @@ export default function HabitCentralPage() {
                 </div>
               )}
             </div>
-          {template.coach_copy && (
+          {(template.coach_copy || template.coach_tones) && (
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -235,30 +238,62 @@ export default function HabitCentralPage() {
               <PopoverContent className="w-80">
                 <div className="space-y-3">
                   <h4 className="font-medium">Coach Copy</h4>
-                  {template.coach_copy.reminder_line && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Reminder:</p>
-                      <p className="text-sm">{template.coach_copy.reminder_line}</p>
-                    </div>
-                  )}
-                  {template.coach_copy.encourage_line && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Encouragement:</p>
-                      <p className="text-sm">{template.coach_copy.encourage_line}</p>
-                    </div>
-                  )}
-                  {template.coach_copy.recovery_line && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Recovery:</p>
-                      <p className="text-sm">{template.coach_copy.recovery_line}</p>
-                    </div>
-                  )}
-                  {template.coach_copy.celebration_line && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Celebration:</p>
-                      <p className="text-sm">{template.coach_copy.celebration_line}</p>
-                    </div>
-                  )}
+                  {/* Show coach tones content if available, otherwise fallback to coach_copy */}
+                  {template.coach_tones ? (
+                    <>
+                      {getCoachContent(template.coach_tones, 'reminder') && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Reminder:</p>
+                          <p className="text-sm">{getCoachContent(template.coach_tones, 'reminder')}</p>
+                        </div>
+                      )}
+                      {getCoachContent(template.coach_tones, 'encourage') && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Encouragement:</p>
+                          <p className="text-sm">{getCoachContent(template.coach_tones, 'encourage')}</p>
+                        </div>
+                      )}
+                      {getCoachContent(template.coach_tones, 'recovery') && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Recovery:</p>
+                          <p className="text-sm">{getCoachContent(template.coach_tones, 'recovery')}</p>
+                        </div>
+                      )}
+                      {getCoachContent(template.coach_tones, 'celebration') && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Celebration:</p>
+                          <p className="text-sm">{getCoachContent(template.coach_tones, 'celebration')}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : template.coach_copy ? (
+                    <>
+                      {template.coach_copy.reminder_line && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Reminder:</p>
+                          <p className="text-sm">{template.coach_copy.reminder_line}</p>
+                        </div>
+                      )}
+                      {template.coach_copy.encourage_line && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Encouragement:</p>
+                          <p className="text-sm">{template.coach_copy.encourage_line}</p>
+                        </div>
+                      )}
+                      {template.coach_copy.recovery_line && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Recovery:</p>
+                          <p className="text-sm">{template.coach_copy.recovery_line}</p>
+                        </div>
+                      )}
+                      {template.coach_copy.celebration_line && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Celebration:</p>
+                          <p className="text-sm">{template.coach_copy.celebration_line}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : null}
                 </div>
               </PopoverContent>
             </Popover>
@@ -308,11 +343,18 @@ export default function HabitCentralPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Habit Central</h1>
-        <p className="text-muted-foreground mt-2">
-          Discover proven habit templates to build your perfect routine
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Habit Central</h1>
+            <p className="text-muted-foreground mt-2">
+              Discover proven habit templates to build your perfect routine
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <CoachToneSelector />
+          </div>
         </div>
+      </div>
 
       {/* Suggested for You Ribbon */}
       <div className="mb-8">

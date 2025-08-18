@@ -27,6 +27,14 @@ export interface HabitTemplate {
     recovery_line?: string;
     celebration_line?: string;
   } | null;
+  coach_tones: {
+    [tone: string]: {
+      reminder_line?: string;
+      encourage_line?: string;
+      recovery_line?: string;
+      celebration_line?: string;
+    };
+  } | null;
   tags: string | null;
   sources: string | null;
   created_at: string;
