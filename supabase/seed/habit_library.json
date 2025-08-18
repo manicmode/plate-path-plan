@@ -4,7 +4,7 @@
     "name": "Daily Water Intake",
     "domain": "nutrition",
     "category": "Hydration",
-    "summary": "Track your daily water consumption to stay properly hydrated",
+    "summary": "Track your daily water consumption to stay properly hydrated throughout the day",
     "goal_type": "count",
     "default_target": 8,
     "min_viable": "4 glasses per day",
@@ -28,7 +28,7 @@
       "recovery_line": "Don't worry, tomorrow is a fresh start for hydration",
       "celebration_line": "Amazing! You've mastered hydration!"
     },
-    "tags": "hydration, health, daily",
+    "tags": "hydration, health, daily, wellness",
     "sources": "Mayo Clinic hydration guidelines"
   },
   {
@@ -36,7 +36,7 @@
     "name": "Morning Push-ups",
     "domain": "exercise",
     "category": "Strength Training",
-    "summary": "Start your day with a set of push-ups to build upper body strength",
+    "summary": "Start your day with a set of push-ups to build upper body strength and energy",
     "goal_type": "count",
     "default_target": 10,
     "min_viable": "5 push-ups",
@@ -58,7 +58,7 @@
       "recovery_line": "Recovery is part of the process - you've got this!",
       "celebration_line": "You're a push-up champion!"
     },
-    "tags": "strength, morning, bodyweight",
+    "tags": "strength, morning, bodyweight, energy",
     "sources": "American Council on Exercise"
   },
   {
@@ -89,7 +89,161 @@
       "recovery_line": "Missing meditation is normal - start fresh tomorrow",
       "celebration_line": "You've found your zen! Amazing consistency!"
     },
-    "tags": "mindfulness, stress-relief, daily",
+    "tags": "mindfulness, stress-relief, daily, mental-health",
     "sources": "Mindfulness-Based Stress Reduction research"
+  },
+  {
+    "slug": "protein-tracking",
+    "name": "Protein Tracking",
+    "domain": "nutrition",
+    "category": "Macronutrients",
+    "summary": "Monitor your daily protein intake to support muscle growth and recovery",
+    "goal_type": "count",
+    "default_target": 120,
+    "min_viable": "80g protein per day",
+    "time_windows": [
+      {"start": "07:00", "end": "09:00"},
+      {"start": "12:00", "end": "14:00"},
+      {"start": "18:00", "end": "20:00"}
+    ],
+    "suggested_rules": [
+      {"type": "meal_distribution", "params": {"per_meal": 25}},
+      {"type": "tracking_reminder", "params": {"after_meals": true}}
+    ],
+    "cues_and_stacking": "Log protein immediately after each meal",
+    "equipment": "Food scale, tracking app",
+    "contraindications": "Consult nutritionist if you have kidney disease",
+    "difficulty": "medium",
+    "estimated_minutes": 5,
+    "coach_copy": {
+      "reminder_line": "Fuel your muscles! 🥩",
+      "encourage_line": "Perfect protein timing!",
+      "recovery_line": "Every meal is a new chance to fuel right",
+      "celebration_line": "Protein master! Your muscles thank you!"
+    },
+    "tags": "nutrition, protein, muscle-building, tracking",
+    "sources": "International Society of Sports Nutrition"
+  },
+  {
+    "slug": "evening-stretching",
+    "name": "Evening Stretching",
+    "domain": "recovery",
+    "category": "Flexibility",
+    "summary": "Wind down with gentle stretching to improve flexibility and sleep quality",
+    "goal_type": "duration",
+    "default_target": 15,
+    "min_viable": "5 minutes basic stretches",
+    "time_windows": [
+      {"start": "19:00", "end": "22:00"}
+    ],
+    "suggested_rules": [
+      {"type": "pre_sleep", "params": {"before_bed": 30}},
+      {"type": "gentle_progression", "params": {"hold_time": 30}}
+    ],
+    "cues_and_stacking": "Stretch after changing into pajamas, before reading",
+    "equipment": "Yoga mat (optional)",
+    "contraindications": "Avoid aggressive stretching if injured",
+    "difficulty": "easy",
+    "estimated_minutes": 15,
+    "coach_copy": {
+      "reminder_line": "Time to unwind and stretch 🤸",
+      "encourage_line": "Your body feels more flexible each day!",
+      "recovery_line": "Tomorrow's stretch will feel even better",
+      "celebration_line": "Flexibility master! Sweet dreams ahead!"
+    },
+    "tags": "flexibility, evening, sleep-prep, recovery",
+    "sources": "American Physical Therapy Association"
+  },
+  {
+    "slug": "steps-goal",
+    "name": "Daily Steps Goal",
+    "domain": "exercise",
+    "category": "Cardio",
+    "summary": "Achieve your daily step count to improve cardiovascular health and energy",
+    "goal_type": "count",
+    "default_target": 8000,
+    "min_viable": "5000 steps per day",
+    "time_windows": [
+      {"start": "00:00", "end": "23:59"}
+    ],
+    "suggested_rules": [
+      {"type": "hourly_check", "params": {"reminder_frequency": "hourly"}},
+      {"type": "parking_farther", "params": {"extra_steps": true}}
+    ],
+    "cues_and_stacking": "Take stairs instead of elevator, park farther away",
+    "equipment": "Smartphone or fitness tracker",
+    "contraindications": "Start with lower goal if sedentary",
+    "difficulty": "easy",
+    "estimated_minutes": 60,
+    "coach_copy": {
+      "reminder_line": "Every step counts! 👟",
+      "encourage_line": "You're moving towards better health!",
+      "recovery_line": "Tomorrow's steps start with the first one",
+      "celebration_line": "Step champion! Your heart is stronger!"
+    },
+    "tags": "cardio, walking, daily-activity, heart-health",
+    "sources": "American Heart Association guidelines"
+  },
+  {
+    "slug": "gratitude-journal",
+    "name": "Gratitude Journal",
+    "domain": "recovery",
+    "category": "Mental Wellness",
+    "summary": "Write down three things you're grateful for to boost mood and perspective",
+    "goal_type": "boolean",
+    "min_viable": "Write one thing you're grateful for",
+    "time_windows": [
+      {"start": "06:00", "end": "08:00"},
+      {"start": "20:00", "end": "22:00"}
+    ],
+    "suggested_rules": [
+      {"type": "specific_prompts", "params": {"variety": true}},
+      {"type": "reflection", "params": {"depth": "medium"}}
+    ],
+    "cues_and_stacking": "Write in journal right after morning coffee or before bed",
+    "equipment": "Journal and pen or smartphone app",
+    "contraindications": "None - suitable for everyone",
+    "difficulty": "easy",
+    "estimated_minutes": 5,
+    "coach_copy": {
+      "reminder_line": "What are you grateful for today? 🙏",
+      "encourage_line": "Your positive mindset is growing stronger!",
+      "recovery_line": "There's always something to be grateful for",
+      "celebration_line": "Gratitude guru! Your perspective is beautiful!"
+    },
+    "tags": "gratitude, mental-health, journaling, mindfulness",
+    "sources": "Positive Psychology research"
+  },
+  {
+    "slug": "deep-breathing",
+    "name": "Deep Breathing Exercise",
+    "domain": "recovery",
+    "category": "Stress Management",
+    "summary": "Practice deep breathing techniques to reduce stress and anxiety",
+    "goal_type": "duration",
+    "default_target": 5,
+    "min_viable": "2 minutes of deep breathing",
+    "time_windows": [
+      {"start": "12:00", "end": "14:00"},
+      {"start": "15:00", "end": "17:00"},
+      {"start": "20:00", "end": "22:00"}
+    ],
+    "suggested_rules": [
+      {"type": "4_7_8_technique", "params": {"cycles": 4}},
+      {"type": "stress_response", "params": {"as_needed": true}}
+    ],
+    "cues_and_stacking": "Practice deep breathing when feeling stressed or before important meetings",
+    "equipment": "None",
+    "contraindications": "Stop if you feel dizzy",
+    "difficulty": "easy",
+    "estimated_minutes": 5,
+    "coach_copy": {
+      "reminder_line": "Breathe deeply and reset 🌬️",
+      "encourage_line": "Your calm energy is inspiring!",
+      "recovery_line": "Each breath brings you back to center",
+      "celebration_line": "Breathing master! You've found your calm!"
+    },
+    "tags": "breathing, stress-relief, anxiety, calm",
+    "sources": "Harvard Medical School breathing techniques"
   }
 ]

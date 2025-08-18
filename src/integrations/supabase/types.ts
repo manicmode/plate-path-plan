@@ -7529,6 +7529,10 @@ export type Database = {
         Args: { request_id: string }
         Returns: boolean
       }
+      rpc_upsert_habit_templates: {
+        Args: { p_templates: Json }
+        Returns: number
+      }
       run_arena_chat_healthcheck: {
         Args: { p_user_id?: string }
         Returns: {
