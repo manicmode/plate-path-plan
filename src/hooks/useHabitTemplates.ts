@@ -30,6 +30,7 @@ export interface HabitTemplate {
   tags: string | null;
   sources: string | null;
   created_at: string;
+  score?: number; // Added for search results
 }
 
 interface UseHabitTemplatesParams {
@@ -42,7 +43,7 @@ interface UseHabitTemplatesParams {
 
 interface UseHabitTemplatesReturn {
   data: HabitTemplate[];
-  count: number | null;
+  count: number | undefined; // undefined for RPC results
   loading: boolean;
   error: string | null;
   categories: string[];
@@ -56,7 +57,7 @@ export const useHabitTemplates = ({
   offset = 0
 }: UseHabitTemplatesParams = {}): UseHabitTemplatesReturn => {
   const [data, setData] = useState<HabitTemplate[]>([]);
-  const [count, setCount] = useState<number | null>(null);
+  const [count, setCount] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -67,47 +68,58 @@ export const useHabitTemplates = ({
         setLoading(true);
         setError(null);
 
-        let query = supabase
-          .from('habit_template')
-          .select('*', { count: 'exact' })
-          .order('name', { ascending: true })
-          .range(offset, offset + limit - 1);
+        // Use RPC search when query length >= 2, else fallback to table query
+        if (q && q.length >= 2) {
+          // Use RPC search function
+          const { data: templates, error: queryError } = await supabase.rpc(
+            'habit_template_search',
+            {
+              p_q: q,
+              p_domain: domain || null,
+              p_category: category || null,
+              p_limit: limit,
+              p_offset: offset
+            }
+          );
 
-        // Apply filters
-        if (domain) {
-          query = query.eq('domain', domain);
-        }
-
-        if (category) {
-          query = query.ilike('category', `%${category}%`);
-        }
-
-        if (q) {
-          // Use full-text search if available, otherwise fallback to ilike
-          try {
-            query = query.textSearch('habit_template_search_idx', q, { 
-              type: 'websearch' 
-            });
-          } catch {
-            // Fallback to simple text matching
-            query = query.or(`name.ilike.%${q}%,tags.ilike.%${q}%,summary.ilike.%${q}%`);
+          if (queryError) {
+            throw queryError;
           }
+
+          setData(templates as HabitTemplate[] || []);
+          setCount(undefined); // RPC doesn't return count
+
+        } else {
+          // Fallback to regular table query
+          let query = supabase
+            .from('habit_template')
+            .select('*', { count: 'exact' })
+            .order('name', { ascending: true })
+            .range(offset, offset + limit - 1);
+
+          // Apply filters
+          if (domain) {
+            query = query.eq('domain', domain);
+          }
+
+          if (category) {
+            query = query.ilike('category', `%${category}%`);
+          }
+
+          const { data: templates, error: queryError, count: totalCount } = await query;
+
+          if (queryError) {
+            throw queryError;
+          }
+
+          setData(templates as HabitTemplate[] || []);
+          setCount(totalCount);
         }
 
-        const { data: templates, error: queryError, count: totalCount } = await query;
-
-        if (queryError) {
-          throw queryError;
-        }
-
-        setData(templates as HabitTemplate[] || []);
-        setCount(totalCount);
-
-        // Get unique categories for filter dropdown (domain-specific)
+        // Get categories from the view (domain-specific)
         let categoryQuery = supabase
-          .from('habit_template')
-          .select('domain, category')
-          .not('category', 'is', null);
+          .from('habit_template_categories')
+          .select('domain, category');
         
         if (domain) {
           categoryQuery = categoryQuery.eq('domain', domain);

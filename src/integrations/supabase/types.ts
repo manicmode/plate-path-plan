@@ -7266,6 +7266,38 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      habit_template_search: {
+        Args: {
+          p_category?: string
+          p_domain?: Database["public"]["Enums"]["habit_domain"]
+          p_limit?: number
+          p_offset?: number
+          p_q: string
+        }
+        Returns: {
+          category: string
+          coach_copy: Json
+          contraindications: string
+          created_at: string
+          cues_and_stacking: string
+          default_target: number
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          equipment: string
+          estimated_minutes: number
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id: string
+          min_viable: string
+          name: string
+          score: number
+          slug: string
+          sources: string
+          suggested_rules: Json
+          summary: string
+          tags: string
+          time_windows: Json
+        }[]
+      }
       habit_template_upsert_many: {
         Args: { payloads: Json }
         Returns: number
