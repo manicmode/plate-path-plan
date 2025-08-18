@@ -2101,6 +2101,30 @@ export type Database = {
           },
         ]
       }
+      habit_search_synonyms: {
+        Row: {
+          created_at: string
+          id: number
+          synonym: string
+          term: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          synonym: string
+          term: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          synonym?: string
+          term?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       habit_strength: {
         Row: {
           habit_id: string
