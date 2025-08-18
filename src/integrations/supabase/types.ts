@@ -6668,6 +6668,30 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_template_health: {
+        Row: {
+          bad_bool_target: boolean | null
+          bad_minutes: boolean | null
+          missing_target: boolean | null
+          name: string | null
+          slug: string | null
+        }
+        Insert: {
+          bad_bool_target?: never
+          bad_minutes?: never
+          missing_target?: never
+          name?: string | null
+          slug?: string | null
+        }
+        Update: {
+          bad_bool_target?: never
+          bad_minutes?: never
+          missing_target?: never
+          name?: string | null
+          slug?: string | null
+        }
+        Relationships: []
+      }
       muscle_group_trends: {
         Row: {
           avg_sets_per_exercise: number | null
