@@ -2054,6 +2054,68 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_completion_log: {
+        Row: {
+          amount: number | null
+          completed: boolean
+          duration_min: number | null
+          id: string
+          logged_at: string
+          meta: Json | null
+          slug: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          completed?: boolean
+          duration_min?: number | null
+          id?: string
+          logged_at?: string
+          meta?: Json | null
+          slug: string
+          user_id?: string
+        }
+        Update: {
+          amount?: number | null
+          completed?: boolean
+          duration_min?: number | null
+          id?: string
+          logged_at?: string
+          meta?: Json | null
+          slug?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       habit_log: {
         Row: {
           client_log_id: string
@@ -5121,6 +5183,77 @@ export type Database = {
         }
         Relationships: []
       }
+      user_habit: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          reminder_at: string | null
+          schedule: Json
+          slug: string
+          start_date: string
+          status: string
+          target: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reminder_at?: string | null
+          schedule?: Json
+          slug: string
+          start_date?: string
+          status?: string
+          target?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reminder_at?: string | null
+          schedule?: Json
+          slug?: string
+          start_date?: string
+          status?: string
+          target?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       user_levels: {
         Row: {
           current_xp: number
@@ -6848,6 +6981,84 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_habit_progress_month: {
+        Row: {
+          completions: number | null
+          minutes: number | null
+          period_start: string | null
+          slug: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      vw_habit_progress_week: {
+        Row: {
+          completions: number | null
+          minutes: number | null
+          period_start: string | null
+          slug: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       workout_intensity_distribution: {
         Row: {
           avg_duration_seconds: number | null
@@ -7879,6 +8090,35 @@ export type Database = {
       reject_friend_request: {
         Args: { request_id: string }
         Returns: boolean
+      }
+      rpc_add_user_habit: {
+        Args: {
+          p_notes?: string
+          p_reminder_at?: string
+          p_schedule?: Json
+          p_slug: string
+          p_target?: number
+        }
+        Returns: string
+      }
+      rpc_log_habit: {
+        Args: {
+          p_amount?: number
+          p_completed?: boolean
+          p_duration_min?: number
+          p_meta?: Json
+          p_slug: string
+        }
+        Returns: string
+      }
+      rpc_recommend_habits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          domain: string
+          name: string
+          reason: string
+          slug: string
+        }[]
       }
       rpc_upsert_habit_templates: {
         Args: { p_templates: Json }
