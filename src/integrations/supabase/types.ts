@@ -7266,6 +7266,29 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      habit_template_recommend: {
+        Args: {
+          p_domain?: Database["public"]["Enums"]["habit_domain"]
+          p_limit?: number
+          p_max_difficulty?: string
+          p_max_minutes?: number
+          p_user: string
+        }
+        Returns: {
+          category: string
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          estimated_minutes: number
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id: string
+          name: string
+          reason: string
+          score: number
+          slug: string
+          summary: string
+          tags: string
+        }[]
+      }
       habit_template_search: {
         Args: {
           p_category?: string
