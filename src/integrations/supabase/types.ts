@@ -6532,6 +6532,13 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_template_categories: {
+        Row: {
+          category: string | null
+          domain: Database["public"]["Enums"]["habit_domain"] | null
+        }
+        Relationships: []
+      }
       muscle_group_trends: {
         Row: {
           avg_sets_per_exercise: number | null
@@ -7239,6 +7246,26 @@ export type Database = {
           start_utc: string
         }[]
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       habit_template_upsert_many: {
         Args: { payloads: Json }
         Returns: number
@@ -7565,6 +7592,18 @@ export type Database = {
       send_friend_request: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
       track_coach_interaction: {
         Args: {
