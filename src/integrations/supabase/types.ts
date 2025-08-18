@@ -2256,6 +2256,39 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_template_audit: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          changed_role: string | null
+          id: number
+          new_row: Json | null
+          old_row: Json | null
+          slug: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_role?: string | null
+          id?: number
+          new_row?: Json | null
+          old_row?: Json | null
+          slug?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_role?: string | null
+          id?: number
+          new_row?: Json | null
+          old_row?: Json | null
+          slug?: string | null
+        }
+        Relationships: []
+      }
       habit_user_preferences: {
         Row: {
           created_at: string | null
