@@ -166,7 +166,7 @@ const Explore = () => {
       </div>
 
       {/* Bottom Row - My Reports and Profile Tabs */}
-      <div className="w-full mb-2 relative z-30 grid grid-cols-2 gap-4">
+      <div className="w-full mb-4 relative z-30 grid grid-cols-2 gap-4">
         {/* My Reports Tab */}
         <Button
           data-testid="tile-my-reports"
