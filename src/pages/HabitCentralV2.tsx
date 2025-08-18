@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, Search } from 'lucide-react';
 import { FiltersBar } from '@/components/habit-central/FiltersBar';
 import { SearchBar } from '@/components/habit-central/SearchBar';
 import { HabitsList } from '@/components/habit-central/HabitsList';
@@ -8,6 +11,10 @@ import { BulkActionsBar } from '@/components/habit-central/BulkActionsBar';
 import { useHabitTemplatesV2, HabitTemplate, HabitTemplateFilters } from '@/hooks/useHabitTemplatesV2';
 import { YourHabitsRail } from '@/components/YourHabitsRail';
 import { StartHabitSheet } from '@/components/StartHabitSheet';
+import { HeroHabitRotator } from '@/components/HeroHabitRotator';
+import { SuggestionsForYou } from '@/components/SuggestionsForYou';
+import { DomainCarousel } from '@/components/DomainCarousel';
+import { HabitProgressPanel } from '@/components/HabitProgressPanel';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 export default function HabitCentralV2() {
@@ -29,6 +36,9 @@ export default function HabitCentralV2() {
   const [startHabitTemplate, setStartHabitTemplate] = useState<HabitTemplate | null>(null);
   const [startHabitOpen, setStartHabitOpen] = useState(false);
   const [habitsRailKey, setHabitsRailKey] = useState(0); // For refreshing rail
+  
+  // Browse all collapsible state
+  const [browseAllOpen, setBrowseAllOpen] = useState(false);
 
   // Sync state with URL params on mount
   useEffect(() => {
@@ -197,31 +207,20 @@ export default function HabitCentralV2() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Habit Central</h1>
-          <p className="text-muted-foreground mt-2">
-            Browse and discover evidence-based habit templates
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold">Habit Central</h1>
+          <p className="text-lg text-muted-foreground">
+            Build better habits with proven templates and smart tracking
           </p>
         </div>
 
-        {/* Search */}
-        <SearchBar
-          value={searchQuery}
-          onChange={handleSearchChange}
-          resultsCount={totalCount}
-          loading={loading}
-        />
+        {/* Hero Rotator */}
+        <HeroHabitRotator onStartHabit={handleStartHabit} />
 
-        {/* Filters */}
-        <FiltersBar
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          categories={categories}
-          equipmentOptions={equipmentOptions}
-          allTags={allTags}
-        />
+        {/* AI Suggestions */}
+        <SuggestionsForYou onStartHabit={handleStartHabit} />
 
         {/* Your Habits Rail */}
         <YourHabitsRail
@@ -230,31 +229,85 @@ export default function HabitCentralV2() {
           onStartHabit={handleStartHabit}
         />
 
-        {/* Bulk Actions - Show only for admins */}
-        {isAdmin && (
-          <BulkActionsBar
-            selectedItems={selectedItems}
-            currentPageItems={templates}
-            onSelectionChange={handleBulkSelectionChange}
-            allItemsData={allLoadedTemplates}
-          />
-        )}
-
-        {/* Results */}
-        <HabitsList
-          templates={templates}
-          loading={loading}
-          error={error}
-          hasMore={hasMore}
-          searchQuery={searchQuery}
-          selectedItems={selectedItems}
-          onSelectionChange={handleSelectionChange}
-          onDetailsClick={handleDetailsClick}
+        {/* Domain Carousels */}
+        <DomainCarousel
+          domain="nutrition"
+          title="Nutrition"
           onStartHabit={handleStartHabit}
-          showAdminActions={isAdmin}
-          onLoadMore={handleLoadMore}
-          onRetry={handleRetry}
+          onDetailsClick={handleDetailsClick}
         />
+
+        <DomainCarousel
+          domain="exercise"
+          title="Exercise"
+          onStartHabit={handleStartHabit}
+          onDetailsClick={handleDetailsClick}
+        />
+
+        <DomainCarousel
+          domain="recovery"
+          title="Recovery"
+          onStartHabit={handleStartHabit}
+          onDetailsClick={handleDetailsClick}
+        />
+
+        {/* Progress Panel */}
+        <HabitProgressPanel />
+
+        {/* Browse All (Collapsible) */}
+        <Collapsible open={browseAllOpen} onOpenChange={setBrowseAllOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full">
+              <Search className="mr-2 h-4 w-4" />
+              Browse all habit templates
+              <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${browseAllOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-6 pt-6">
+            {/* Search */}
+            <SearchBar
+              value={searchQuery}
+              onChange={handleSearchChange}
+              resultsCount={totalCount}
+              loading={loading}
+            />
+
+            {/* Filters */}
+            <FiltersBar
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              categories={categories}
+              equipmentOptions={equipmentOptions}
+              allTags={allTags}
+            />
+
+            {/* Bulk Actions - Show only for admins */}
+            {isAdmin && (
+              <BulkActionsBar
+                selectedItems={selectedItems}
+                currentPageItems={templates}
+                onSelectionChange={handleBulkSelectionChange}
+                allItemsData={allLoadedTemplates}
+              />
+            )}
+
+            {/* Results */}
+            <HabitsList
+              templates={templates}
+              loading={loading}
+              error={error}
+              hasMore={hasMore}
+              searchQuery={searchQuery}
+              selectedItems={selectedItems}
+              onSelectionChange={handleSelectionChange}
+              onDetailsClick={handleDetailsClick}
+              onStartHabit={handleStartHabit}
+              showAdminActions={isAdmin}
+              onLoadMore={handleLoadMore}
+              onRetry={handleRetry}
+            />
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Details Drawer */}
         <DetailsDrawer
