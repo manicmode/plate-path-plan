@@ -6692,6 +6692,78 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_templates: {
+        Row: {
+          category: string | null
+          coach_copy: Json | null
+          coach_tones: Json | null
+          contraindications: string | null
+          created_at: string | null
+          cues_and_stacking: string | null
+          default_target: number | null
+          difficulty: string | null
+          domain: Database["public"]["Enums"]["habit_domain"] | null
+          equipment: string | null
+          estimated_minutes: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"] | null
+          id: string | null
+          min_viable: string | null
+          name: string | null
+          slug: string | null
+          sources: string | null
+          suggested_rules: Json | null
+          summary: string | null
+          tags: string | null
+          time_windows: Json | null
+        }
+        Insert: {
+          category?: string | null
+          coach_copy?: Json | null
+          coach_tones?: Json | null
+          contraindications?: string | null
+          created_at?: string | null
+          cues_and_stacking?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          equipment?: string | null
+          estimated_minutes?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"] | null
+          id?: string | null
+          min_viable?: string | null
+          name?: string | null
+          slug?: string | null
+          sources?: string | null
+          suggested_rules?: Json | null
+          summary?: string | null
+          tags?: string | null
+          time_windows?: Json | null
+        }
+        Update: {
+          category?: string | null
+          coach_copy?: Json | null
+          coach_tones?: Json | null
+          contraindications?: string | null
+          created_at?: string | null
+          cues_and_stacking?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          equipment?: string | null
+          estimated_minutes?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"] | null
+          id?: string | null
+          min_viable?: string | null
+          name?: string | null
+          slug?: string | null
+          sources?: string | null
+          suggested_rules?: Json | null
+          summary?: string | null
+          tags?: string | null
+          time_windows?: Json | null
+        }
+        Relationships: []
+      }
       muscle_group_trends: {
         Row: {
           avg_sets_per_exercise: number | null

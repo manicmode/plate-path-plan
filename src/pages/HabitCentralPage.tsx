@@ -364,16 +364,38 @@ export default function HabitCentralPage() {
                 </div>
               )}
             </div>
-          {(template.coach_copy || template.coach_tones) && (
+          {(template.coach_copy || template.coach_tones || template.min_viable) && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" title={template.min_viable ? `Min viable: ${template.min_viable}` : "More info"}>
                   <Info className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80">
                 <div className="space-y-3">
-                  <h4 className="font-medium">Coach Copy</h4>
+                  {template.min_viable && (
+                    <div>
+                      <h4 className="font-medium">Min Viable</h4>
+                      <p className="text-sm text-muted-foreground">{template.min_viable}</p>
+                    </div>
+                  )}
+                  {template.suggested_rules && template.suggested_rules.length > 0 && (
+                    <div>
+                      <h4 className="font-medium">Suggested Rules</h4>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {template.suggested_rules.map((rule: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {rule.type === 'daily' ? 'Daily' : 
+                             rule.type === 'weekly' ? `Weekly (${rule.params?.days_per_week || 'x'} days)` :
+                             rule.type}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(template.coach_copy || template.coach_tones) && (
+                    <div>
+                      <h4 className="font-medium">Coach Copy</h4>
                   {/* Show coach tones content if available, otherwise fallback to coach_copy */}
                   {template.coach_tones ? (
                     <>
@@ -401,35 +423,37 @@ export default function HabitCentralPage() {
                           <p className="text-sm">{getCoachContent(template.coach_tones, 'celebration')}</p>
                         </div>
                       )}
-                    </>
-                  ) : template.coach_copy ? (
-                    <>
-                      {template.coach_copy.reminder_line && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Reminder:</p>
-                          <p className="text-sm">{template.coach_copy.reminder_line}</p>
-                        </div>
-                      )}
-                      {template.coach_copy.encourage_line && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Encouragement:</p>
-                          <p className="text-sm">{template.coach_copy.encourage_line}</p>
-                        </div>
-                      )}
-                      {template.coach_copy.recovery_line && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Recovery:</p>
-                          <p className="text-sm">{template.coach_copy.recovery_line}</p>
-                        </div>
-                      )}
-                      {template.coach_copy.celebration_line && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Celebration:</p>
-                          <p className="text-sm">{template.coach_copy.celebration_line}</p>
-                        </div>
-                      )}
-                    </>
-                  ) : null}
+                     </>
+                   ) : template.coach_copy ? (
+                     <>
+                       {template.coach_copy.reminder_line && (
+                         <div>
+                           <p className="text-sm font-medium text-muted-foreground">Reminder:</p>
+                           <p className="text-sm">{template.coach_copy.reminder_line}</p>
+                         </div>
+                       )}
+                       {template.coach_copy.encourage_line && (
+                         <div>
+                           <p className="text-sm font-medium text-muted-foreground">Encouragement:</p>
+                           <p className="text-sm">{template.coach_copy.encourage_line}</p>
+                         </div>
+                       )}
+                       {template.coach_copy.recovery_line && (
+                         <div>
+                           <p className="text-sm font-medium text-muted-foreground">Recovery:</p>
+                           <p className="text-sm">{template.coach_copy.recovery_line}</p>
+                         </div>
+                       )}
+                       {template.coach_copy.celebration_line && (
+                         <div>
+                           <p className="text-sm font-medium text-muted-foreground">Celebration:</p>
+                           <p className="text-sm">{template.coach_copy.celebration_line}</p>
+                         </div>
+                       )}
+                     </>
+                   ) : null}
+                    </div>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
@@ -488,7 +512,7 @@ export default function HabitCentralPage() {
           </div>
           <div className="flex items-center gap-3">
             <CoachToneSelector />
-            {isAdmin && healthIssues > 0 && (
+            {isAdmin && (
               <Dialog open={healthModalOpen} onOpenChange={setHealthModalOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -496,10 +520,13 @@ export default function HabitCentralPage() {
                     variant="outline"
                     size="sm"
                     data-testid="health-badge"
-                    className="h-9 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/20"
+                    className={healthIssues > 0 
+                      ? "h-9 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/20"
+                      : "h-9 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                    }
                   >
                     <AlertTriangle className="h-4 w-4 mr-2" />
-                    Health ⚠️
+                    {healthIssues > 0 ? `Health ⚠️ (${healthIssues})` : "Health ✅"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh]" data-testid="health-modal">
@@ -528,7 +555,7 @@ export default function HabitCentralPage() {
                       </Table>
                     ) : healthData.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <p>No health issues found.</p>
+                        <p>No health issues found. All templates are valid!</p>
                       </div>
                     ) : (
                       <Table>
