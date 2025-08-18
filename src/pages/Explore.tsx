@@ -91,18 +91,18 @@ const Explore = () => {
       shadowColor: 'shadow-blue-500/30',
     },
     {
-      id: 'habit-central',
-      title: 'Habit Central',
-      emoji: '📋',
-      color: 'from-purple-600 via-purple-400 to-pink-600',
-      shadowColor: 'shadow-purple-500/30',
-    },
-    {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
       color: 'from-blue-600 via-cyan-400 to-cyan-600',
       shadowColor: 'shadow-cyan-500/30',
+    },
+    {
+      id: 'habit-central',
+      title: 'Habit Central',
+      emoji: '⏳',
+      color: 'from-green-500 via-emerald-400 to-green-600',
+      shadowColor: 'shadow-green-500/30',
     },
   ];
 
