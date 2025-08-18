@@ -12,11 +12,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     storage: localStorage,
     persistSession: true,
-    detectSessionInUrl: true,
     autoRefreshToken: true,
   }
 });
-
-// One-time logging to verify project connection
-console.log('SUPABASE_URL', SUPABASE_URL);
-console.log('SUPABASE_ANON_KEY', SUPABASE_PUBLISHABLE_KEY.slice(0, 8) + '…');
