@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Calendar, TrendingUp, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 interface WeeklyProgress {
   user_id: string;
@@ -26,11 +28,23 @@ interface HabitProgressPanelProps {}
 
 export function HabitProgressPanel({}: HabitProgressPanelProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [habitNames, setHabitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    // Check for reduced motion preference
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const fetchProgressData = async () => {
@@ -83,7 +97,9 @@ export function HabitProgressPanel({}: HabitProgressPanelProps) {
 
         // Process weekly data for chart
         const weeklyChartData = (weeklyProgress || []).map((item: WeeklyProgress) => ({
-          name: namesMap[item.slug]?.slice(0, 20) || item.slug,
+          name: (namesMap[item.slug] || item.slug).slice(0, 12) + 
+                (namesMap[item.slug]?.length > 12 ? '...' : ''),
+          fullName: namesMap[item.slug] || item.slug,
           completions: item.completions || 0,
           minutes: Math.round(item.minutes || 0)
         }));
@@ -130,13 +146,18 @@ export function HabitProgressPanel({}: HabitProgressPanelProps) {
 
       } catch (error) {
         console.error('Error fetching progress data:', error);
+        toast({
+          title: "Couldn't load progress",
+          description: "Please retry.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchProgressData();
-  }, [user]);
+  }, [user, toast]);
 
   if (!user) return null;
 
@@ -171,88 +192,125 @@ export function HabitProgressPanel({}: HabitProgressPanelProps) {
 
   if (!hasData) {
     return (
-      <div className="text-center py-12">
+      <motion.div 
+        className="text-center py-12"
+        initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-          <Sparkles className="h-8 w-8 text-muted-foreground" />
+          <span className="text-2xl">🟡</span>
         </div>
-        <h3 className="text-lg font-medium mb-2">Your first check-in will light up this chart ✨</h3>
+        <h3 className="text-lg font-medium mb-2">Your first check-in will light up this chart</h3>
         <p className="text-muted-foreground">
           Start logging your habits to see beautiful progress visualizations here.
         </p>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      className="space-y-6"
+      initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       <div className="flex items-center gap-2">
         <TrendingUp className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold">Your Progress</h2>
+        <h2 className="text-xl font-semibold">Your progress</h2>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Weekly Progress */}
         {weeklyData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                This Week
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value, name) => [value, name === 'completions' ? 'Check-ins' : 'Minutes']}
-                    labelFormatter={(label) => `Habit: ${label}`}
-                  />
-                  <Bar dataKey="completions" fill="hsl(var(--primary))" name="completions" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  This Week
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Completions by habit (this week)</p>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value, name) => [value, name === 'completions' ? 'Completions' : 'Minutes']}
+                      labelFormatter={(label, payload) => {
+                        const data = payload?.[0]?.payload;
+                        return `Habit: ${data?.fullName || label}`;
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="completions" fill="hsl(var(--primary))" name="completions" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* Monthly Progress */}
         {monthlyData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Last 3 Months
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value) => [value, 'Total Check-ins']}
-                    labelFormatter={(label) => `Month: ${label}`}
-                  />
-                  <Bar dataKey="total" fill="hsl(var(--primary))" name="total" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Last 3 Months
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Completions (last 3 months)</p>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value) => [value, 'Total Completions']}
+                      labelFormatter={(label) => `Month: ${label}`}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="total" fill="hsl(var(--primary))" name="total" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
