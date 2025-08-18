@@ -7386,6 +7386,17 @@ export type Database = {
         Args: { payload: Json }
         Returns: string
       }
+      habit_templates_trending_fn: {
+        Args: { p_limit?: number }
+        Returns: {
+          adds_last_14d: number
+          category: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

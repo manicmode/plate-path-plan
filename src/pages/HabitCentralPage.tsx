@@ -58,6 +58,10 @@ export default function HabitCentralPage() {
   const [maxMinutes, setMaxMinutes] = useState<number>(20);
   const [maxDifficulty, setMaxDifficulty] = useState<HabitDifficulty>('medium');
   
+  // Trending habits state
+  const [trendingHabits, setTrendingHabits] = useState<any[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(false);
+  
   // Debounce search query (250ms)
   const debouncedSearchQuery = useDebounce(searchQuery, 250);
   
@@ -79,6 +83,29 @@ export default function HabitCentralPage() {
     maxDifficulty,
     limit: 12
   });
+
+  // Fetch trending habits on mount
+  React.useEffect(() => {
+    const fetchTrendingHabits = async () => {
+      setTrendingLoading(true);
+      try {
+        const { data, error } = await supabase.rpc('habit_templates_trending_fn', { p_limit: 8 });
+        if (error) {
+          console.error('Error fetching trending habits:', error);
+        } else {
+          // Only include habits with actual adds in the last 14 days
+          const filtered = (data || []).filter(habit => habit.adds_last_14d > 0);
+          setTrendingHabits(filtered);
+        }
+      } catch (error) {
+        console.error('Error fetching trending habits:', error);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    fetchTrendingHabits();
+  }, []);
 
   // 1B) Search Analytics Logging
   React.useEffect(() => {
@@ -402,6 +429,84 @@ export default function HabitCentralPage() {
           )}
         </div>
       </div>
+
+      {/* Trending Habits Section */}
+      {trendingHabits.length > 0 && (
+        <div data-testid="trending-section" className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Trending (14 days)</h2>
+          <div className="overflow-x-auto pb-4">
+            {trendingLoading ? (
+              <div className="flex gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex-shrink-0 w-64">
+                    <Card className="h-48">
+                      <CardHeader>
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-6 w-20" />
+                          <Skeleton className="h-8 w-full" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                {trendingHabits.map((trending) => {
+                  const isAdded = addedHabits.has(trending.id);
+                  return (
+                    <div key={trending.id} className="flex-shrink-0 w-64">
+                      <Card className="h-48">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between">
+                            <CardTitle className="text-base leading-tight flex-1">{trending.name}</CardTitle>
+                            <Badge variant="secondary" className="text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 ml-2">
+                              🔥 {trending.adds_last_14d} adds
+                            </Badge>
+                          </div>
+                          {trending.category && (
+                            <CardDescription className="text-xs">
+                              {trending.category}
+                            </CardDescription>
+                          )}
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex gap-1 flex-wrap">
+                            <Badge variant="outline" className="text-xs">
+                              {trending.domain}
+                            </Badge>
+                          </div>
+                          <Button 
+                            onClick={() => handleAddToMyHabits({
+                              id: trending.id,
+                              name: trending.name,
+                              domain: trending.domain,
+                              goal_type: 'bool', // Default for trending
+                              slug: trending.slug,
+                              category: trending.category,
+                            } as HabitTemplate)}
+                            className="w-full"
+                            size="sm"
+                            disabled={creating || isAdded}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            {isAdded ? 'Added!' : creating ? 'Adding...' : 'Add to My Habits'}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-6 space-y-4">
