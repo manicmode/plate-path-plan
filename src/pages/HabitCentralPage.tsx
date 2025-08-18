@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Clock, Target, Info, Plus, Award } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
 import { useCreateHabit } from '@/hooks/useCreateHabit';
+import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
 
 // Custom hook for debouncing
 const useDebounce = (value: string, delay: number) => {
@@ -48,6 +51,10 @@ export default function HabitCentralPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
   
+  // Recommendations state
+  const [maxMinutes, setMaxMinutes] = useState<number>(20);
+  const [maxDifficulty, setMaxDifficulty] = useState<HabitDifficulty>('medium');
+  
   // Debounce search query (250ms)
   const debouncedSearchQuery = useDebounce(searchQuery, 250);
   
@@ -61,6 +68,14 @@ export default function HabitCentralPage() {
   });
 
   const { createHabit, loading: creating } = useCreateHabit();
+  
+  // Fetch recommendations
+  const { data: recommendations, loading: recLoading, error: recError } = useHabitRecommendations({
+    domain: selectedDomain,
+    maxMinutes,
+    maxDifficulty,
+    limit: 12
+  });
 
   const handleAddToMyHabits = async (template: HabitTemplate) => {
     if (addedHabits.has(template.id) || creating) {
@@ -86,6 +101,30 @@ export default function HabitCentralPage() {
       setAddedHabits(prev => {
         const newSet = new Set(prev);
         newSet.delete(template.id);
+        return newSet;
+      });
+      console.error('Failed to add habit:', error);
+    }
+  };
+
+  const handleAddRecommendation = async (recommendation: any) => {
+    if (addedHabits.has(recommendation.id) || creating) {
+      return;
+    }
+
+    try {
+      setAddedHabits(prev => new Set(prev).add(recommendation.id));
+      
+      await createHabit({
+        name: recommendation.name,
+        domain: recommendation.domain,
+        goal_type: recommendation.goal_type,
+        template_id: recommendation.id,
+      });
+    } catch (error) {
+      setAddedHabits(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recommendation.id);
         return newSet;
       });
       console.error('Failed to add habit:', error);
@@ -211,6 +250,122 @@ export default function HabitCentralPage() {
         <p className="text-muted-foreground mt-2">
           Discover proven habit templates to build your perfect routine
         </p>
+        </div>
+
+      {/* Suggested for You Ribbon */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Suggested for You</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span>Time:</span>
+              <div className="w-24">
+                <Slider
+                  data-testid="recs-time"
+                  value={[maxMinutes]}
+                  onValueChange={(value) => setMaxMinutes(value[0])}
+                  min={5}
+                  max={45}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+              <span className="text-muted-foreground">{maxMinutes}m</span>
+            </div>
+            <div className="flex rounded-md border">
+              <button
+                data-testid="recs-difficulty"
+                onClick={() => setMaxDifficulty('easy')}
+                className={`px-3 py-1 text-sm border-r ${maxDifficulty === 'easy' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+              >
+                Easy
+              </button>
+              <button
+                onClick={() => setMaxDifficulty('medium')}
+                className={`px-3 py-1 text-sm border-r ${maxDifficulty === 'medium' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+              >
+                Medium
+              </button>
+              <button
+                onClick={() => setMaxDifficulty('hard')}
+                className={`px-3 py-1 text-sm ${maxDifficulty === 'hard' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+              >
+                Hard
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="recs-ribbon" className="overflow-x-auto pb-4">
+          {recLoading ? (
+            <div className="flex gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-64">
+                  <Card className="h-48">
+                    <CardHeader>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          ) : recommendations && recommendations.length > 0 ? (
+            <div className="flex gap-4">
+              {recommendations.map((rec) => {
+                const isAdded = addedHabits.has(rec.id);
+                return (
+                  <div key={rec.id} className="flex-shrink-0 w-64">
+                    <Card className="h-48">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base leading-tight">{rec.name}</CardTitle>
+                        {rec.summary && (
+                          <CardDescription className="text-xs line-clamp-2">
+                            {rec.summary}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {rec.reason && (
+                            <Badge variant="outline" className="text-xs">
+                              {rec.reason}
+                            </Badge>
+                          )}
+                          {rec.category && (
+                            <Badge variant="secondary" className="text-xs">
+                              {rec.category}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button 
+                          onClick={() => handleAddRecommendation(rec)}
+                          className="w-full"
+                          size="sm"
+                          disabled={creating || isAdded}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          {isAdded ? 'Added!' : creating ? 'Adding...' : 'Add to My Habits'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No suggestions match your filters — try more time or higher difficulty.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
