@@ -3,12 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, CheckCircle, Plus } from 'lucide-react';
+import { Clock, CheckCircle, Plus, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { QuickLogSheet } from './QuickLogSheet';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserHabit {
   id: string;
@@ -64,6 +65,17 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
   const [loading, setLoading] = useState(true);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<{ template: HabitTemplate; userHabit: UserHabit } | null>(null);
+  const [animatingHabits, setAnimatingHabits] = useState<Set<string>>(new Set());
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const fetchUserHabits = async () => {
     if (!user) return;
@@ -124,8 +136,8 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
     } catch (error) {
       console.error('Error fetching user habits:', error);
       toast({
-        title: "Failed to load habits",
-        description: "Please try again.",
+        title: "Couldn't load habits",
+        description: "Please retry.",
         variant: "destructive",
       });
     } finally {
@@ -151,9 +163,18 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
 
         if (error) throw error;
 
+        // Animate count bump
+        setAnimatingHabits(prev => new Set(prev).add(userHabit.id));
+        setTimeout(() => {
+          setAnimatingHabits(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(userHabit.id);
+            return newSet;
+          });
+        }, 500);
+
         toast({
-          title: "Logged!",
-          description: `Logged "${template.name}" successfully.`,
+          title: "Logged • Nice work!",
         });
 
         // Refresh progress
@@ -162,7 +183,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
         console.error('Error logging habit:', error);
         toast({
           title: "Failed to log habit",
-          description: "Please try again.",
+          description: error instanceof Error ? error.message : "Please try again.",
           variant: "destructive",
         });
       }
@@ -210,42 +231,25 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
     );
   }
 
+  const scrollToSuggestions = () => {
+    const suggestionsElement = document.querySelector('[aria-label="Suggested habits for you"]');
+    if (suggestionsElement) {
+      suggestionsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   if (userHabits.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="text-center py-8">
-          <h3 className="text-lg font-medium mb-2">No habits yet — start one below</h3>
-          <p className="text-sm text-muted-foreground mb-4">Here are some great habits to get you started:</p>
-          
-          {recommendations.length > 0 && (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
-              {recommendations.slice(0, 6).map((recommendation) => (
-                <Card key={recommendation.slug} className="text-left">
-                  <CardContent className="p-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">{recommendation.name}</h4>
-                        <Badge className={getDomainColor(recommendation.domain)}>
-                          {recommendation.domain}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {recommendation.reason}
-                      </p>
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleRecommendationStart(recommendation)}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Start
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+        <div className="text-center py-12">
+          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Sparkles className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">You haven't started any habits yet</h3>
+          <p className="text-sm text-muted-foreground mb-6">Pick one from 'For you' to get rolling.</p>
+          <Button onClick={scrollToSuggestions} variant="outline">
+            See suggestions
+          </Button>
         </div>
       </div>
     );
@@ -290,10 +294,17 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
                     </div>
 
                     {/* Weekly progress chip */}
-                    <div className="text-xs bg-muted rounded-md px-2 py-1">
-                      This week: {progress?.completions || 0} logged
+                    <motion.div 
+                      className="text-xs bg-muted rounded-md px-2 py-1"
+                      animate={animatingHabits.has(userHabit.id) && !prefersReducedMotion ? {
+                        scale: [1, 1.1, 1],
+                        backgroundColor: ['hsl(var(--muted))', 'hsl(var(--primary) / 0.1)', 'hsl(var(--muted))']
+                      } : {}}
+                      transition={{ duration: 0.5, type: 'spring' }}
+                    >
+                      This week: {progress?.completions || 0}
                       {progress?.minutes && ` (${Math.round(progress.minutes)}m)`}
-                    </div>
+                    </motion.div>
 
                     {/* Quick log button */}
                     <Button
@@ -319,6 +330,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailP
         template={selectedHabit?.template || null}
         userHabit={selectedHabit?.userHabit || null}
         onSuccess={() => {
+          toast({ title: "Logged • Nice work!" });
           fetchUserHabits();
           setSelectedHabit(null);
         }}

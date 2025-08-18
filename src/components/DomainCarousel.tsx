@@ -5,6 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate, HabitDomain } from '@/hooks/useHabitTemplatesV2';
 import { HabitCard } from '@/components/habit-central/HabitCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 interface DomainCarouselProps {
   domain: HabitDomain;
@@ -14,12 +17,23 @@ interface DomainCarouselProps {
 }
 
 export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: DomainCarouselProps) {
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<HabitTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItems] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -37,6 +51,11 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
         setTemplates(data as HabitTemplate[] || []);
       } catch (error) {
         console.error(`Error fetching ${domain} templates:`, error);
+        toast({
+          title: `Couldn't load ${domain}`,
+          description: "Please retry.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -60,7 +79,23 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
     if (container) {
       checkScrollability();
       container.addEventListener('scroll', checkScrollability);
-      return () => container.removeEventListener('scroll', checkScrollability);
+      
+      // Keyboard navigation
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handleScroll('left');
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleScroll('right');
+        }
+      };
+      
+      container.addEventListener('keydown', handleKeyDown);
+      return () => {
+        container.removeEventListener('scroll', checkScrollability);
+        container.removeEventListener('keydown', handleKeyDown);
+      };
     }
   }, [templates]);
 
@@ -106,17 +141,21 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
 
   if (templates.length === 0) {
     return (
-      <div className="space-y-4">
+      <section className="space-y-4" role="region" aria-label={`${title} habits`}>
         <h2 className="text-xl font-semibold">{title}</h2>
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No {domain} habits found.</p>
-        </div>
-      </div>
+        <Card className="p-6 text-center">
+          <CardContent>
+            <p className="text-muted-foreground">
+              No {domain} habits yet — try another domain or search.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4" role="region" aria-label={`${title} habits`}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">{title}</h2>
         
@@ -126,7 +165,8 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
             size="sm"
             onClick={() => handleScroll('left')}
             disabled={!canScrollLeft}
-            className="h-8 w-8 p-0"
+            aria-label={`Previous ${title.toLowerCase()} habits`}
+            className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -135,7 +175,8 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
             size="sm"
             onClick={() => handleScroll('right')}
             disabled={!canScrollRight}
-            className="h-8 w-8 p-0"
+            aria-label={`Next ${title.toLowerCase()} habits`}
+            className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -146,23 +187,32 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
         ref={scrollContainerRef}
         className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide pb-2"
         style={{ scrollSnapType: 'x mandatory' }}
+        tabIndex={0}
       >
-        {templates.map((template) => (
-          <div 
-            key={template.id} 
+        {templates.map((template, index) => (
+          <motion.div
+            key={template.id}
+            initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: index * 0.05 }}
             className="w-80 flex-shrink-0 snap-center"
           >
-            <HabitCard
-              template={template}
-              isSelected={selectedItems.has(template.id)}
-              onSelectionChange={handleSelectionChange}
-              onDetailsClick={() => onDetailsClick(template)}
-              onStartHabit={() => onStartHabit(template)}
-              showAdminActions={false}
-            />
-          </div>
+            <div className="relative">
+              <HabitCard
+                template={template}
+                isSelected={selectedItems.has(template.id)}
+                onSelectionChange={handleSelectionChange}
+                onDetailsClick={() => onDetailsClick(template)}
+                onStartHabit={() => onStartHabit(template)}
+                showAdminActions={false}
+              />
+              <div className="mt-2 text-center">
+                <p className="text-xs text-muted-foreground">We'll remind & track for you</p>
+              </div>
+            </div>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

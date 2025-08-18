@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, PlayCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PlayCircle, Pause, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeroHabitRotatorProps {
   onStartHabit: (template: HabitTemplate) => void;
@@ -32,7 +33,18 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
   const [templates, setTemplates] = useState<HabitTemplate[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -60,16 +72,32 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
     fetchTemplates();
   }, []);
 
-  // Auto-advance every 6 seconds (paused on hover)
+  // Auto-advance every 6 seconds (pause on hover/focus)
   useEffect(() => {
-    if (isHovered || templates.length === 0) return;
+    if (isHovered || isPaused || templates.length === 0 || prefersReducedMotion) return;
 
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % templates.length);
     }, 6000);
 
     return () => clearInterval(interval);
-  }, [isHovered, templates.length]);
+  }, [isHovered, isPaused, templates.length, prefersReducedMotion]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevious();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [templates.length]);
 
   const handlePrevious = () => {
     setCurrentIndex(prev => (prev - 1 + templates.length) % templates.length);
@@ -77,6 +105,15 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
 
   const handleNext = () => {
     setCurrentIndex(prev => (prev + 1) % templates.length);
+  };
+
+  const togglePause = () => {
+    setIsPaused(!isPaused);
+  };
+
+  const truncateText = (text: string, maxLength: number = 140) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '...';
   };
 
   if (loading) {
@@ -104,51 +141,76 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
       className="relative w-full h-64 md:h-80 group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
+      role="region"
+      aria-label="Featured habit rotator"
+      aria-live="polite"
     >
       <Card className="h-full overflow-hidden bg-gradient-to-br from-background to-muted/30">
-        <CardContent className="h-full p-6 md:p-8 flex flex-col md:flex-row items-center justify-between">
-          {/* Content */}
-          <div className="flex-1 space-y-4 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-3">
-              <span className="text-4xl">{getDomainEmoji(currentTemplate.domain)}</span>
-              <Badge className={getDomainColor(currentTemplate.domain)}>
-                {currentTemplate.domain}
-              </Badge>
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-2xl md:text-3xl font-bold line-clamp-2 animate-fade-in">
-                {currentTemplate.name}
-              </h2>
-              {currentTemplate.summary && (
-                <p className="text-lg text-muted-foreground line-clamp-2 animate-fade-in">
-                  {currentTemplate.summary}
-                </p>
-              )}
-            </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={prefersReducedMotion ? {} : { opacity: 0, x: -8 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
+            <CardContent className="h-full p-6 md:p-8 flex flex-col md:flex-row items-center justify-between">
+              {/* Content */}
+              <div className="flex-1 space-y-4 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-3">
+                  <span className="text-4xl">{getDomainEmoji(currentTemplate.domain)}</span>
+                  <Badge className={getDomainColor(currentTemplate.domain)}>
+                    {currentTemplate.domain}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-2xl md:text-3xl font-bold line-clamp-2">
+                    {currentTemplate.name}
+                  </h2>
+                  {currentTemplate.summary && (
+                    <p className="text-lg text-muted-foreground line-clamp-2">
+                      <span className="font-medium">Why it helps:</span> {truncateText(currentTemplate.summary)}
+                    </p>
+                  )}
+                </div>
 
-            <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground">
-              {currentTemplate.estimated_minutes && (
-                <span>~{currentTemplate.estimated_minutes} min</span>
-              )}
-              {currentTemplate.difficulty && (
-                <span className="capitalize">{currentTemplate.difficulty} level</span>
-              )}
-            </div>
-          </div>
+                <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground">
+                  {currentTemplate.estimated_minutes && (
+                    <span>~{currentTemplate.estimated_minutes} min</span>
+                  )}
+                  {currentTemplate.difficulty && (
+                    <span className="capitalize">{currentTemplate.difficulty} level</span>
+                  )}
+                </div>
 
-          {/* CTA */}
-          <div className="mt-6 md:mt-0 md:ml-8">
-            <Button 
-              size="lg" 
-              onClick={() => onStartHabit(currentTemplate)}
-              className="text-lg px-8 py-6 hover-scale animate-scale-in"
-            >
-              <PlayCircle className="mr-2 h-5 w-5" />
-              Start this habit
-            </Button>
-          </div>
-        </CardContent>
+                {/* Learn more link */}
+                <button className="text-sm text-primary hover:underline story-link">
+                  Learn more
+                </button>
+              </div>
+
+              {/* CTA */}
+              <div className="mt-6 md:mt-0 md:ml-8 space-y-2">
+                <motion.div
+                  whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
+                  whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
+                >
+                  <Button 
+                    size="lg" 
+                    onClick={() => onStartHabit(currentTemplate)}
+                    className="text-lg px-8 py-6 transition-all duration-200 hover:shadow-lg"
+                  >
+                    <PlayCircle className="mr-2 h-5 w-5" />
+                    Start in 10s
+                  </Button>
+                </motion.div>
+              </div>
+            </CardContent>
+          </motion.div>
+        </AnimatePresence>
       </Card>
 
       {/* Navigation Controls */}
@@ -157,18 +219,29 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
           variant="ghost"
           size="sm"
           onClick={handlePrevious}
-          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Previous habit"
+          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="absolute inset-y-0 right-4 flex items-center">
+      <div className="absolute inset-y-0 right-4 flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={togglePause}
+          aria-label={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
+          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleNext}
-          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Next habit"
+          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

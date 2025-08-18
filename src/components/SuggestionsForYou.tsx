@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Sparkles, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { useAuth } from '@/contexts/auth';
+import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 interface Recommendation {
   slug: string;
@@ -29,10 +31,21 @@ const getDomainColor = (domain: string) => {
 
 export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [templates, setTemplates] = useState<Record<string, HabitTemplate>>({});
   const [loading, setLoading] = useState(true);
   const [scrollIndex, setScrollIndex] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -68,6 +81,11 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
         }
       } catch (error) {
         console.error('Error fetching recommendations:', error);
+        toast({
+          title: "Couldn't load suggestions",
+          description: "Please retry.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -118,12 +136,15 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   if (recommendations.length === 0) return null;
 
   return (
-    <div className="space-y-4">
+    <section 
+      className="space-y-4"
+      role="region"
+      aria-label="Suggested habits for you"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">For You</h2>
-          <Badge variant="secondary" className="text-xs">AI picked</Badge>
+          <h2 className="text-xl font-semibold">For you</h2>
         </div>
         
         {recommendations.length > 3 && (
@@ -133,7 +154,8 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
               size="sm"
               onClick={() => handleScroll('left')}
               disabled={scrollIndex === 0}
-              className="h-8 w-8 p-0"
+              aria-label="Previous suggestions"
+              className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -142,7 +164,8 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
               size="sm"
               onClick={() => handleScroll('right')}
               disabled={scrollIndex >= recommendations.length - 3}
-              className="h-8 w-8 p-0"
+              aria-label="Next suggestions"
+              className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -155,37 +178,42 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
         className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide pb-2"
         style={{ scrollSnapType: 'x mandatory' }}
       >
-        {recommendations.slice(0, 6).map((recommendation) => (
-          <Card 
-            key={recommendation.slug} 
-            className="w-80 flex-shrink-0 snap-center hover-scale transition-all duration-200"
+        {recommendations.slice(0, 6).map((recommendation, index) => (
+          <motion.div
+            key={recommendation.slug}
+            initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: index * 0.1 }}
+            className="w-80 flex-shrink-0 snap-center"
           >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="text-base line-clamp-2 flex-1">
-                  {recommendation.name}
-                </CardTitle>
-                <Badge className={getDomainColor(recommendation.domain)}>
-                  {recommendation.domain}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {recommendation.reason}
-              </p>
-              <Button 
-                onClick={() => handleStartRecommendation(recommendation)}
-                className="w-full"
-                size="sm"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Start this habit
-              </Button>
-            </CardContent>
-          </Card>
+            <Card className="h-full hover-scale transition-all duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base line-clamp-2 flex-1">
+                    {recommendation.name}
+                  </CardTitle>
+                  <Badge className={getDomainColor(recommendation.domain)}>
+                    {recommendation.domain}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground italic line-clamp-2">
+                  {recommendation.reason}
+                </p>
+                <Button 
+                  onClick={() => handleStartRecommendation(recommendation)}
+                  className="w-full"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Start this habit
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

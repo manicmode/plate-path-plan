@@ -74,8 +74,7 @@ export function StartHabitSheet({ open, onOpenChange, template, onSuccess }: Sta
       if (error) throw error;
 
       toast({
-        title: "Habit started!",
-        description: `"${template.name}" has been added to your habits.`,
+        title: "Added • We'll remind & track it",
       });
 
       // Reset form
@@ -87,6 +86,14 @@ export function StartHabitSheet({ open, onOpenChange, template, onSuccess }: Sta
       
       onSuccess();
       onOpenChange(false);
+
+      // Smooth scroll to Your Habits section
+      setTimeout(() => {
+        const yourHabitsElement = document.querySelector('h2:has-text("Your Habits"), [aria-label*="habits"]');
+        if (yourHabitsElement) {
+          yourHabitsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch (error) {
       console.error('Error starting habit:', error);
       toast({
