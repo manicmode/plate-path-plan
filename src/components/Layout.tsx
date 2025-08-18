@@ -153,7 +153,7 @@ const Layout = ({ children }: LayoutProps) => {
         className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
           shouldShowNavigation ? (
             isExplorePage 
-              ? 'pb-20' // Reduced padding for explore page
+              ? 'pb-[88px]' // Slightly increased padding to move tiles higher
               : 'pb-[max(env(safe-area-inset-bottom),var(--tabbar-height))]'
           ) : 'pb-8'
         } ${
