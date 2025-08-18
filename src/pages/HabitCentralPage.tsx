@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Clock, Target, Info, Plus, Award, X } from 'lucide-react';
+import { Search, Clock, Target, Info, Plus, Award, X, Download } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
 import { useCreateHabit } from '@/hooks/useCreateHabit';
 import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { CoachToneSelector } from '@/components/CoachToneSelector';
 import { useCoachTone } from '@/hooks/useCoachTone';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { useToast } from '@/hooks/use-toast';
 
 // Custom hook for debouncing
 const useDebounce = (value: string, delay: number) => {
@@ -49,13 +51,47 @@ const highlightText = (text: string, query: string) => {
 
 type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
 
+// CSV utility functions
+function toCSV(rows: any[]) {
+  if (!rows?.length) return '';
+  const headers = Object.keys(rows[0]);
+  const esc = (v: any) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(',')];
+  for (const r of rows) lines.push(headers.map(h => esc(r[h])).join(','));
+  return lines.join('\n');
+}
+
+async function downloadTemplatesCSV(supabase: any) {
+  const { data, error } = await supabase
+    .from('habit_template_export')
+    .select('*');
+  if (error) throw error;
+  const csv = toCSV(data || []);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `habit_templates_${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function HabitCentralPage() {
   const { user } = useAuth();
   const { getCoachContent } = useCoachTone();
+  const { isAdmin } = useIsAdmin();
+  const { toast } = useToast();
   const [selectedDomain, setSelectedDomain] = useState<HabitDomain | undefined>('nutrition');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
+  const [exportingCSV, setExportingCSV] = useState<boolean>(false);
   
   // Recommendations state
   const [maxMinutes, setMaxMinutes] = useState<number>(20);
@@ -188,6 +224,28 @@ export default function HabitCentralPage() {
         return newSet;
       });
       console.error('Failed to add habit:', error);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (exportingCSV) return;
+    
+    setExportingCSV(true);
+    try {
+      await downloadTemplatesCSV(supabase);
+      toast({
+        title: "Export successful",
+        description: "Habit templates CSV has been downloaded.",
+      });
+    } catch (error) {
+      console.error('CSV export error:', error);
+      toast({
+        title: "Failed to export CSV",
+        description: "There was an error exporting the habit templates.",
+        variant: "destructive"
+      });
+    } finally {
+      setExportingCSV(false);
     }
   };
 
@@ -352,6 +410,19 @@ export default function HabitCentralPage() {
           </div>
           <div className="flex items-center gap-3">
             <CoachToneSelector />
+            {isAdmin && (
+              <Button
+                onClick={handleExportCSV}
+                variant="outline"
+                size="sm"
+                disabled={exportingCSV}
+                data-testid="export-csv"
+                className="h-9"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {exportingCSV ? 'Exporting...' : 'Download CSV'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
