@@ -2188,6 +2188,7 @@ export type Database = {
         Row: {
           category: string | null
           coach_copy: Json | null
+          coach_tones: Json | null
           contraindications: string | null
           created_at: string
           cues_and_stacking: string | null
@@ -2210,6 +2211,7 @@ export type Database = {
         Insert: {
           category?: string | null
           coach_copy?: Json | null
+          coach_tones?: Json | null
           contraindications?: string | null
           created_at?: string
           cues_and_stacking?: string | null
@@ -2232,6 +2234,7 @@ export type Database = {
         Update: {
           category?: string | null
           coach_copy?: Json | null
+          coach_tones?: Json | null
           contraindications?: string | null
           created_at?: string
           cues_and_stacking?: string | null
