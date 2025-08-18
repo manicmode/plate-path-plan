@@ -43,7 +43,6 @@ interface UseHabitTemplatesParams {
 
 interface UseHabitTemplatesReturn {
   data: HabitTemplate[];
-  count: number | undefined; // undefined for RPC results
   loading: boolean;
   error: string | null;
   categories: string[];
@@ -57,7 +56,6 @@ export const useHabitTemplates = ({
   offset = 0
 }: UseHabitTemplatesParams = {}): UseHabitTemplatesReturn => {
   const [data, setData] = useState<HabitTemplate[]>([]);
-  const [count, setCount] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -69,14 +67,14 @@ export const useHabitTemplates = ({
         setError(null);
 
         // Use RPC search when query length >= 2, else fallback to table query
-        if (q && q.length >= 2) {
+        if (q && q.trim().length >= 2) {
           // Use RPC search function
           const { data: templates, error: queryError } = await supabase.rpc(
             'habit_template_search',
             {
-              p_q: q,
-              p_domain: domain || null,
-              p_category: category || null,
+              p_q: q.trim(),
+              p_domain: domain ?? null,
+              p_category: category ?? null,
               p_limit: limit,
               p_offset: offset
             }
@@ -87,7 +85,6 @@ export const useHabitTemplates = ({
           }
 
           setData(templates as HabitTemplate[] || []);
-          setCount(undefined); // RPC doesn't return count
 
         } else {
           // Fallback to regular table query
@@ -113,7 +110,6 @@ export const useHabitTemplates = ({
           }
 
           setData(templates as HabitTemplate[] || []);
-          setCount(totalCount);
         }
 
         // Get categories from the view (domain-specific)
@@ -144,5 +140,5 @@ export const useHabitTemplates = ({
     fetchTemplates();
   }, [domain, category, q, limit, offset]);
 
-  return { data, count, loading, error, categories };
+  return { data, loading, error, categories };
 };

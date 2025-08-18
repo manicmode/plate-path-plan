@@ -29,14 +29,14 @@ const useDebounce = (value: string, delay: number) => {
 
 // Text highlighting utility
 const highlightText = (text: string, query: string) => {
-  if (!query || query.length < 2) return text;
+  if (!query || query.trim().length < 2) return text;
   
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escapedQuery})`, 'gi');
   const parts = text.split(regex);
   
   return parts.map((part, index) => 
-    regex.test(part) ? <mark key={index} className="bg-yellow-200 dark:bg-yellow-900">{part}</mark> : part
+    regex.test(part) ? <mark key={index} className="bg-yellow-200 dark:bg-yellow-900 px-0.5 rounded">{part}</mark> : part
   );
 };
 
@@ -46,12 +46,13 @@ export default function HabitCentralPage() {
   const [selectedDomain, setSelectedDomain] = useState<HabitDomain | undefined>('nutrition');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
   
   // Debounce search query (250ms)
   const debouncedSearchQuery = useDebounce(searchQuery, 250);
   
   // Use debounced query for API calls, but only if >= 2 chars
-  const effectiveQuery = debouncedSearchQuery.length >= 2 ? debouncedSearchQuery : undefined;
+  const effectiveQuery = debouncedSearchQuery.trim().length >= 2 ? debouncedSearchQuery : undefined;
 
   const { data: templates, loading, error, categories } = useHabitTemplates({
     domain: selectedDomain,
@@ -59,34 +60,16 @@ export default function HabitCentralPage() {
     q: effectiveQuery,
   });
 
-  // Handle immediate search on Enter
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.length >= 2) {
-      // Force immediate search by manually triggering the query
-      // This is handled by updating effectiveQuery directly
-      // We'll just trigger immediate search by setting the debounced value
-      // For simplicity, immediate Enter search is handled by the existing debounce logic
-    }
-  };
-
-  // Analytics event (console log)
-  React.useEffect(() => {
-    if (effectiveQuery) {
-      console.log('Analytics:', {
-        page: 'HabitCentral',
-        action: 'search',
-        q: effectiveQuery,
-        domain: selectedDomain,
-        category: selectedCategory || undefined,
-        results: templates.length
-      });
-    }
-  }, [effectiveQuery, selectedDomain, selectedCategory, templates.length]);
-
   const { createHabit, loading: creating } = useCreateHabit();
 
   const handleAddToMyHabits = async (template: HabitTemplate) => {
+    if (addedHabits.has(template.id) || creating) {
+      return; // Prevent double-clicking
+    }
+
     try {
+      setAddedHabits(prev => new Set(prev).add(template.id));
+      
       await createHabit({
         name: template.name,
         domain: template.domain,
@@ -98,40 +81,48 @@ export default function HabitCentralPage() {
         tags: template.tags,
       });
     } catch (error) {
-      // Error handling is done in the hook
+      // Remove from added set if there was an error
+      setAddedHabits(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(template.id);
+        return newSet;
+      });
       console.error('Failed to add habit:', error);
     }
   };
 
-  const renderTemplateCard = (template: HabitTemplate) => (
-    <Card key={template.id} className="h-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">
-                {highlightText(template.name, debouncedSearchQuery)}
-              </CardTitle>
-              {template.score && template.score >= 1.2 && (
-                <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                  <Award className="h-3 w-3" />
-                  Best match
-                </Badge>
+  const renderTemplateCard = (template: HabitTemplate) => {
+    const isAdded = addedHabits.has(template.id);
+    
+    return (
+      <Card key={template.id} className="h-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-lg">
+                  {highlightText(template.name, debouncedSearchQuery)}
+                </CardTitle>
+                {template.score && template.score >= 1.2 && (
+                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                    <Award className="h-3 w-3" />
+                    Best match
+                  </Badge>
+                )}
+              </div>
+              {template.summary && (
+                <CardDescription className="mt-1 text-sm">
+                  {highlightText(template.summary, debouncedSearchQuery)}
+                </CardDescription>
+              )}
+              {template.category && (
+                <div className="mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    {highlightText(template.category, debouncedSearchQuery)}
+                  </Badge>
+                </div>
               )}
             </div>
-            {template.summary && (
-              <CardDescription className="mt-1 text-sm">
-                {highlightText(template.summary, debouncedSearchQuery)}
-              </CardDescription>
-            )}
-            {template.category && (
-              <div className="mt-1">
-                <Badge variant="outline" className="text-xs">
-                  {highlightText(template.category, debouncedSearchQuery)}
-                </Badge>
-              </div>
-            )}
-          </div>
           {template.coach_copy && (
             <Popover>
               <PopoverTrigger asChild>
@@ -202,14 +193,15 @@ export default function HabitCentralPage() {
           onClick={() => handleAddToMyHabits(template)}
           className="w-full"
           size="sm"
-          disabled={creating}
+          disabled={creating || isAdded}
         >
           <Plus className="h-4 w-4 mr-2" />
-          {creating ? 'Adding...' : 'Add to My Habits'}
+          {isAdded ? 'Added!' : creating ? 'Adding...' : 'Add to My Habits'}
         </Button>
       </CardContent>
     </Card>
   );
+};
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -244,12 +236,11 @@ export default function HabitCentralPage() {
                 placeholder="Search habits..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
                 className="pl-10"
               />
               {searchQuery.length === 1 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Type at least 2 letters to search
+                  Type 2+ letters to search
                 </p>
               )}
             </div>
