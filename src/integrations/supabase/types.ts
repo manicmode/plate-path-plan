@@ -7876,6 +7876,10 @@ export type Database = {
           username: string
         }[]
       }
+      secure_upsert_habit_templates: {
+        Args: { payload: Json }
+        Returns: undefined
+      }
       seed_billboard_events: {
         Args: { _challenge_id: string }
         Returns: undefined
