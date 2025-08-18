@@ -121,6 +121,12 @@ export default function HabitCentralPage() {
     q: effectiveQuery,
   });
 
+  // Sanitize categories to prevent empty string options
+  const safeCategories = useMemo(() => {
+    return Array.from(new Set(categories))
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  }, [categories]);
+
   const { createHabit, loading: creating } = useCreateHabit();
   
   // Fetch recommendations
@@ -839,13 +845,18 @@ export default function HabitCentralPage() {
             </div>
           </div>
           
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select 
+            value={selectedCategory || undefined} 
+            onValueChange={(v) => {
+              setSelectedCategory(v === "__ALL__" ? "" : v);
+            }}
+          >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
-              {categories.map((category) => (
+              <SelectItem value="__ALL__">All categories</SelectItem>
+              {safeCategories.map((category) => (
                 <SelectItem key={category} value={category}>
                   {category}
                 </SelectItem>
