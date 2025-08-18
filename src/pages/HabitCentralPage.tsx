@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Clock, Target, Info, Plus, Award } from 'lucide-react';
+import { Search, Clock, Target, Info, Plus, Award, X } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
 import { useCreateHabit } from '@/hooks/useCreateHabit';
 import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
@@ -143,10 +143,15 @@ export default function HabitCentralPage() {
                 <CardTitle className="text-lg">
                   {highlightText(template.name, debouncedSearchQuery)}
                 </CardTitle>
-                {template.score && template.score >= 1.2 && (
+                {template.score && template.score >= 1.4 && (
                   <Badge variant="secondary" className="text-xs flex items-center gap-1">
                     <Award className="h-3 w-3" />
                     Best match
+                  </Badge>
+                )}
+                {template.created_at && new Date(template.created_at) >= new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                    New
                   </Badge>
                 )}
               </div>
@@ -392,8 +397,21 @@ export default function HabitCentralPage() {
                 placeholder="Search habits..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-8"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    const input = document.querySelector('input[placeholder="Search habits..."]') as HTMLInputElement;
+                    input?.focus();
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               {searchQuery.length === 1 && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Type 2+ letters to search
