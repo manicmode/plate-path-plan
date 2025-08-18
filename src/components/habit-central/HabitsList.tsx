@@ -14,6 +14,8 @@ interface HabitsListProps {
   selectedItems: Set<string>;
   onSelectionChange: (id: string, selected: boolean) => void;
   onDetailsClick: (template: HabitTemplate) => void;
+  onStartHabit?: (template: HabitTemplate) => void;
+  showAdminActions?: boolean;
   onLoadMore?: () => void;
   onRetry?: () => void;
 }
@@ -27,6 +29,8 @@ export function HabitsList({
   selectedItems,
   onSelectionChange,
   onDetailsClick,
+  onStartHabit,
+  showAdminActions = false,
   onLoadMore,
   onRetry
 }: HabitsListProps) {
@@ -73,6 +77,8 @@ export function HabitsList({
             isSelected={selectedItems.has(template.id)}
             onSelectionChange={(selected) => onSelectionChange(template.id, selected)}
             onDetailsClick={() => onDetailsClick(template)}
+            onStartHabit={onStartHabit}
+            showAdminActions={showAdminActions}
           />
         ))}
         

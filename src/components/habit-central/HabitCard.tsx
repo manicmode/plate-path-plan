@@ -13,6 +13,8 @@ interface HabitCardProps {
   isSelected: boolean;
   onSelectionChange: (selected: boolean) => void;
   onDetailsClick: () => void;
+  onStartHabit?: (template: HabitTemplate) => void;
+  showAdminActions?: boolean;
 }
 
 // Text highlighting utility
@@ -55,7 +57,7 @@ const getGoalTypeLabel = (goalType: string) => {
   }
 };
 
-export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick }: HabitCardProps) {
+export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false }: HabitCardProps) {
   const { toast } = useToast();
 
   const handleCopySlug = () => {
@@ -135,21 +137,39 @@ export function HabitCard({ template, searchQuery, isSelected, onSelectionChange
       </CardHeader>
       
       <CardContent className="pt-0">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={onDetailsClick}>
-            <Info className="mr-1 h-3 w-3" />
-            Details
-          </Button>
+        <div className="space-y-3">
+          {/* Primary CTA - Start this habit */}
+          {onStartHabit && (
+            <Button 
+              onClick={() => onStartHabit(template)}
+              className="w-full"
+            >
+              Start this habit
+            </Button>
+          )}
           
-          <Button variant="outline" size="sm" onClick={handleCopySlug}>
-            <Copy className="mr-1 h-3 w-3" />
-            Copy slug
-          </Button>
-          
-          <Button variant="outline" size="sm" onClick={handleCopyJSON}>
-            <Copy className="mr-1 h-3 w-3" />
-            Copy JSON
-          </Button>
+          {/* Secondary actions */}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={onDetailsClick}>
+              <Info className="mr-1 h-3 w-3" />
+              Details
+            </Button>
+            
+            {/* Admin-only copy actions */}
+            {showAdminActions && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleCopySlug}>
+                  <Copy className="mr-1 h-3 w-3" />
+                  Copy slug
+                </Button>
+                
+                <Button variant="outline" size="sm" onClick={handleCopyJSON}>
+                  <Copy className="mr-1 h-3 w-3" />
+                  Copy JSON
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

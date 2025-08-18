@@ -6,9 +6,13 @@ import { HabitsList } from '@/components/habit-central/HabitsList';
 import { DetailsDrawer } from '@/components/habit-central/DetailsDrawer';
 import { BulkActionsBar } from '@/components/habit-central/BulkActionsBar';
 import { useHabitTemplatesV2, HabitTemplate, HabitTemplateFilters } from '@/hooks/useHabitTemplatesV2';
+import { YourHabitsRail } from '@/components/YourHabitsRail';
+import { StartHabitSheet } from '@/components/StartHabitSheet';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 export default function HabitCentralV2() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isAdmin } = useIsAdmin();
   
   // State for filters, search, and pagination
   const [filters, setFilters] = useState<HabitTemplateFilters>({});
@@ -20,6 +24,11 @@ export default function HabitCentralV2() {
   
   // Store all loaded templates for bulk operations
   const [allLoadedTemplates, setAllLoadedTemplates] = useState<HabitTemplate[]>([]);
+  
+  // Start habit state
+  const [startHabitTemplate, setStartHabitTemplate] = useState<HabitTemplate | null>(null);
+  const [startHabitOpen, setStartHabitOpen] = useState(false);
+  const [habitsRailKey, setHabitsRailKey] = useState(0); // For refreshing rail
 
   // Sync state with URL params on mount
   useEffect(() => {
@@ -175,6 +184,17 @@ export default function HabitCentralV2() {
     setDetailsOpen(true);
   };
 
+  // Handle start habit
+  const handleStartHabit = (template: HabitTemplate) => {
+    setStartHabitTemplate(template);
+    setStartHabitOpen(true);
+  };
+
+  // Handle habit started successfully
+  const handleHabitStarted = () => {
+    setHabitsRailKey(prev => prev + 1); // Refresh the rail
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="space-y-6">
@@ -203,13 +223,22 @@ export default function HabitCentralV2() {
           allTags={allTags}
         />
 
-        {/* Bulk Actions */}
-        <BulkActionsBar
-          selectedItems={selectedItems}
-          currentPageItems={templates}
-          onSelectionChange={handleBulkSelectionChange}
-          allItemsData={allLoadedTemplates}
+        {/* Your Habits Rail */}
+        <YourHabitsRail
+          key={habitsRailKey}
+          onHabitStarted={handleHabitStarted}
+          onStartHabit={handleStartHabit}
         />
+
+        {/* Bulk Actions - Show only for admins */}
+        {isAdmin && (
+          <BulkActionsBar
+            selectedItems={selectedItems}
+            currentPageItems={templates}
+            onSelectionChange={handleBulkSelectionChange}
+            allItemsData={allLoadedTemplates}
+          />
+        )}
 
         {/* Results */}
         <HabitsList
@@ -221,6 +250,8 @@ export default function HabitCentralV2() {
           selectedItems={selectedItems}
           onSelectionChange={handleSelectionChange}
           onDetailsClick={handleDetailsClick}
+          onStartHabit={handleStartHabit}
+          showAdminActions={isAdmin}
           onLoadMore={handleLoadMore}
           onRetry={handleRetry}
         />
@@ -230,6 +261,14 @@ export default function HabitCentralV2() {
           template={detailsTemplate}
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
+        />
+
+        {/* Start Habit Sheet */}
+        <StartHabitSheet
+          open={startHabitOpen}
+          onOpenChange={setStartHabitOpen}
+          template={startHabitTemplate}
+          onSuccess={handleHabitStarted}
         />
       </div>
     </div>
