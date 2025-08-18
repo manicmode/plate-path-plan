@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1005,6 +1005,27 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Link to="/admin/security-logs">
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
+                    <Shield className="w-6 h-6" />
+                    <span>Security Logs</span>
+                  </Button>
+                </Link>
+                
+                <Link to="/admin/synonyms">
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
+                    <Search className="w-6 h-6" />
+                    <span>Search Synonyms</span>
+                  </Button>
+                </Link>
+                
+                <Link to="/admin/search-insights">
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
+                    <BarChart3 className="w-6 h-6" />
+                    <span>Search Insights</span>
+                  </Button>
+                </Link>
+                
                 <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
                   <Database className="w-6 h-6" />
                   <span>Clear Test Data</span>

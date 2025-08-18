@@ -94,6 +94,8 @@ const BodyScanResult = lazy(() => import('@/pages/BodyScanResult'));
 const BodyScanCompare = lazy(() => import('@/pages/BodyScanCompare'));
 const BodyScanHistory = lazy(() => import('@/pages/BodyScanHistory'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
+const SynonymsPage = lazy(() => import('@/pages/admin/SynonymsPage'));
+const SearchInsightsPage = lazy(() => import('@/pages/admin/SearchInsightsPage'));
 const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
 const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
@@ -412,11 +414,21 @@ function AppContent() {
                         <InfluencerDashboard />
                       </ProtectedRoute>
                     } />
-                    <Route path="/admin/security-logs" element={
-                      <ProtectedRoute>
-                        <SecurityLogsPage />
-                      </ProtectedRoute>
-                    } />
+                     <Route path="/admin/security-logs" element={
+                       <ProtectedRoute>
+                         <SecurityLogsPage />
+                       </ProtectedRoute>
+                     } />
+                     <Route path="/admin/synonyms" element={
+                       <ProtectedRoute>
+                         <SynonymsPage />
+                       </ProtectedRoute>
+                     } />
+                     <Route path="/admin/search-insights" element={
+                       <ProtectedRoute>
+                         <SearchInsightsPage />
+                       </ProtectedRoute>
+                     } />
                     <Route path="/influencer-portal" element={
                       <ProtectedRoute>
                         <InfluencerPortal />
