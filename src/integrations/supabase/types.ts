@@ -6623,6 +6623,51 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_template_export: {
+        Row: {
+          category: string | null
+          default_target: number | null
+          difficulty: string | null
+          domain: Database["public"]["Enums"]["habit_domain"] | null
+          estimated_minutes: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"] | null
+          min_viable: string | null
+          name: string | null
+          slug: string | null
+          sources: string | null
+          summary: string | null
+          tags: string | null
+        }
+        Insert: {
+          category?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          estimated_minutes?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"] | null
+          min_viable?: string | null
+          name?: string | null
+          slug?: string | null
+          sources?: string | null
+          summary?: string | null
+          tags?: string | null
+        }
+        Update: {
+          category?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          estimated_minutes?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"] | null
+          min_viable?: string | null
+          name?: string | null
+          slug?: string | null
+          sources?: string | null
+          summary?: string | null
+          tags?: string | null
+        }
+        Relationships: []
+      }
       muscle_group_trends: {
         Row: {
           avg_sets_per_exercise: number | null
