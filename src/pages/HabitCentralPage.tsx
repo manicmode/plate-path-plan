@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Clock, Target, Info, Plus, Award, X, Download } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, Clock, Target, Info, Plus, Award, X, Download, AlertTriangle } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
 import { useCreateHabit } from '@/hooks/useCreateHabit';
 import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
@@ -93,6 +95,12 @@ export default function HabitCentralPage() {
   const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
   const [exportingCSV, setExportingCSV] = useState<boolean>(false);
   
+  // Health check state
+  const [healthIssues, setHealthIssues] = useState<number>(0);
+  const [healthModalOpen, setHealthModalOpen] = useState<boolean>(false);
+  const [healthData, setHealthData] = useState<any[]>([]);
+  const [healthLoading, setHealthLoading] = useState<boolean>(false);
+  
   // Recommendations state
   const [maxMinutes, setMaxMinutes] = useState<number>(20);
   const [maxDifficulty, setMaxDifficulty] = useState<HabitDifficulty>('medium');
@@ -123,7 +131,7 @@ export default function HabitCentralPage() {
     limit: 12
   });
 
-  // Fetch trending habits on mount
+  // Fetch trending habits and health check on mount
   React.useEffect(() => {
     const fetchTrendingHabits = async () => {
       setTrendingLoading(true);
@@ -143,8 +151,27 @@ export default function HabitCentralPage() {
       }
     };
 
+    const fetchHealthCheck = async () => {
+      if (!isAdmin) return;
+      
+      try {
+        const { count, error } = await supabase
+          .from('habit_template_health')
+          .select('*', { count: 'exact', head: true });
+        
+        if (error) {
+          console.error('Error fetching health check:', error);
+        } else {
+          setHealthIssues(count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching health check:', error);
+      }
+    };
+
     fetchTrendingHabits();
-  }, []);
+    fetchHealthCheck();
+  }, [isAdmin]);
 
   // 1B) Search Analytics Logging
   React.useEffect(() => {
@@ -246,6 +273,57 @@ export default function HabitCentralPage() {
       });
     } finally {
       setExportingCSV(false);
+    }
+  };
+
+  const handleHealthModalOpen = async () => {
+    if (!isAdmin || healthLoading) return;
+    
+    setHealthLoading(true);
+    setHealthModalOpen(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('habit_template_health')
+        .select(`
+          slug,
+          name,
+          bad_bool_target,
+          missing_target,
+          bad_minutes
+        `)
+        .order('slug');
+      
+      if (error) {
+        console.error('Error fetching health data:', error);
+        toast({
+          title: "Failed to load health data",
+          description: "There was an error loading the health check data.",
+          variant: "destructive"
+        });
+        setHealthData([]);
+      } else {
+        // Format issues string for each row
+        const formattedData = (data || []).map(row => ({
+          ...row,
+          issues: [
+            row.bad_bool_target ? 'bool has target' : '',
+            row.missing_target ? 'missing target' : '',
+            row.bad_minutes ? 'negative minutes' : ''
+          ].filter(Boolean).join('; ')
+        }));
+        setHealthData(formattedData);
+      }
+    } catch (error) {
+      console.error('Error fetching health data:', error);
+      toast({
+        title: "Failed to load health data",
+        description: "There was an error loading the health check data.",
+        variant: "destructive"
+      });
+      setHealthData([]);
+    } finally {
+      setHealthLoading(false);
     }
   };
 
@@ -410,6 +488,72 @@ export default function HabitCentralPage() {
           </div>
           <div className="flex items-center gap-3">
             <CoachToneSelector />
+            {isAdmin && healthIssues > 0 && (
+              <Dialog open={healthModalOpen} onOpenChange={setHealthModalOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={handleHealthModalOpen}
+                    variant="outline"
+                    size="sm"
+                    data-testid="health-badge"
+                    className="h-9 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/20"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Health ⚠️
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh]" data-testid="health-modal">
+                  <DialogHeader>
+                    <DialogTitle>Habit Template Health Check</DialogTitle>
+                  </DialogHeader>
+                  <div className="overflow-auto">
+                    {healthLoading ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Slug</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Issues</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <TableRow key={i}>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : healthData.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>No health issues found.</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Slug</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Issues</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {healthData.map((row, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-mono text-sm">{row.slug}</TableCell>
+                              <TableCell>{row.name}</TableCell>
+                              <TableCell className="text-amber-600 dark:text-amber-400">{row.issues}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             {isAdmin && (
               <Button
                 onClick={handleExportCSV}
