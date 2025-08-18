@@ -2127,6 +2127,75 @@ export type Database = {
           },
         ]
       }
+      habit_template: {
+        Row: {
+          category: string | null
+          coach_copy: Json | null
+          contraindications: string | null
+          created_at: string
+          cues_and_stacking: string | null
+          default_target: number | null
+          difficulty: string | null
+          domain: Database["public"]["Enums"]["habit_domain"]
+          equipment: string | null
+          estimated_minutes: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id: string
+          min_viable: string | null
+          name: string
+          slug: string
+          sources: string | null
+          suggested_rules: Json | null
+          summary: string | null
+          tags: string | null
+          time_windows: Json | null
+        }
+        Insert: {
+          category?: string | null
+          coach_copy?: Json | null
+          contraindications?: string | null
+          created_at?: string
+          cues_and_stacking?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain: Database["public"]["Enums"]["habit_domain"]
+          equipment?: string | null
+          estimated_minutes?: number | null
+          goal_type: Database["public"]["Enums"]["habit_goal_type"]
+          id?: string
+          min_viable?: string | null
+          name: string
+          slug: string
+          sources?: string | null
+          suggested_rules?: Json | null
+          summary?: string | null
+          tags?: string | null
+          time_windows?: Json | null
+        }
+        Update: {
+          category?: string | null
+          coach_copy?: Json | null
+          contraindications?: string | null
+          created_at?: string
+          cues_and_stacking?: string | null
+          default_target?: number | null
+          difficulty?: string | null
+          domain?: Database["public"]["Enums"]["habit_domain"]
+          equipment?: string | null
+          estimated_minutes?: number | null
+          goal_type?: Database["public"]["Enums"]["habit_goal_type"]
+          id?: string
+          min_viable?: string | null
+          name?: string
+          slug?: string
+          sources?: string | null
+          suggested_rules?: Json | null
+          summary?: string | null
+          tags?: string | null
+          time_windows?: Json | null
+        }
+        Relationships: []
+      }
       hall_of_fame_tributes: {
         Row: {
           champion_user_id: string
@@ -7170,6 +7239,14 @@ export type Database = {
           start_utc: string
         }[]
       }
+      habit_template_upsert_many: {
+        Args: { payloads: Json }
+        Returns: number
+      }
+      habit_template_upsert_one: {
+        Args: { payload: Json }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -7549,6 +7626,7 @@ export type Database = {
         | "recovery_challenge_participant"
         | "influencer"
       challenge_visibility: "public" | "private"
+      habit_domain: "nutrition" | "exercise" | "recovery"
       habit_goal_type: "bool" | "count" | "duration"
       habit_status: "active" | "paused" | "archived"
       member_role: "owner" | "member"
@@ -7691,6 +7769,7 @@ export const Constants = {
         "influencer",
       ],
       challenge_visibility: ["public", "private"],
+      habit_domain: ["nutrition", "exercise", "recovery"],
       habit_goal_type: ["bool", "count", "duration"],
       habit_status: ["active", "paused", "archived"],
       member_role: ["owner", "member"],

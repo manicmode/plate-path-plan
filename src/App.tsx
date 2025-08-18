@@ -105,6 +105,7 @@ const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfi
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
+const HabitCentralPage = lazy(() => import('@/pages/HabitCentralPage'));
 // ArenaDebug removed - V1 legacy
 
 
@@ -281,11 +282,16 @@ function AppContent() {
                         <Profile />
                       </ProtectedRoute>
                     } />
-                    <Route path="/game-and-challenge" element={
-                      <ProtectedRoute>
-                        <GameAndChallengePage_Min />
-                      </ProtectedRoute>
-                    } />
+                     <Route path="/game-and-challenge" element={
+                       <ProtectedRoute>
+                         <GameAndChallengePage_Min />
+                       </ProtectedRoute>
+                     } />
+                     <Route path="/habit" element={
+                       <ProtectedRoute>
+                         <HabitCentralPage />
+                       </ProtectedRoute>
+                     } />
                     <Route path="/supplement-hub" element={
                       <ProtectedRoute>
                         <SupplementHub />

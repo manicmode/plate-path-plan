@@ -1,0 +1,95 @@
+[
+  {
+    "slug": "daily-water-intake",
+    "name": "Daily Water Intake",
+    "domain": "nutrition",
+    "category": "Hydration",
+    "summary": "Track your daily water consumption to stay properly hydrated",
+    "goal_type": "count",
+    "default_target": 8,
+    "min_viable": "4 glasses per day",
+    "time_windows": [
+      {"start": "06:00", "end": "08:00"},
+      {"start": "12:00", "end": "14:00"},
+      {"start": "18:00", "end": "20:00"}
+    ],
+    "suggested_rules": [
+      {"type": "reminder", "params": {"frequency": "every_3_hours"}},
+      {"type": "streak_bonus", "params": {"days": 7}}
+    ],
+    "cues_and_stacking": "Keep a water bottle visible on your desk. Drink water before each meal.",
+    "equipment": "Water bottle",
+    "contraindications": "Consult doctor if you have kidney issues",
+    "difficulty": "easy",
+    "estimated_minutes": 2,
+    "coach_copy": {
+      "reminder_line": "Time to hydrate! 💧",
+      "encourage_line": "Great job staying hydrated!",
+      "recovery_line": "Don't worry, tomorrow is a fresh start for hydration",
+      "celebration_line": "Amazing! You've mastered hydration!"
+    },
+    "tags": "hydration, health, daily",
+    "sources": "Mayo Clinic hydration guidelines"
+  },
+  {
+    "slug": "morning-pushups",
+    "name": "Morning Push-ups",
+    "domain": "exercise",
+    "category": "Strength Training",
+    "summary": "Start your day with a set of push-ups to build upper body strength",
+    "goal_type": "count",
+    "default_target": 10,
+    "min_viable": "5 push-ups",
+    "time_windows": [
+      {"start": "06:00", "end": "09:00"}
+    ],
+    "suggested_rules": [
+      {"type": "progressive_overload", "params": {"increment": 1, "frequency": "weekly"}},
+      {"type": "rest_day", "params": {"frequency": "weekly"}}
+    ],
+    "cues_and_stacking": "Do push-ups right after getting out of bed, before checking your phone",
+    "equipment": "None (bodyweight)",
+    "contraindications": "Avoid if you have wrist or shoulder injuries",
+    "difficulty": "medium",
+    "estimated_minutes": 3,
+    "coach_copy": {
+      "reminder_line": "Time to get strong! 💪",
+      "encourage_line": "You're building incredible strength!",
+      "recovery_line": "Recovery is part of the process - you've got this!",
+      "celebration_line": "You're a push-up champion!"
+    },
+    "tags": "strength, morning, bodyweight",
+    "sources": "American Council on Exercise"
+  },
+  {
+    "slug": "meditation-session",
+    "name": "Daily Meditation",
+    "domain": "recovery",
+    "category": "Mindfulness",
+    "summary": "Practice mindfulness meditation to reduce stress and improve focus",
+    "goal_type": "duration",
+    "default_target": 10,
+    "min_viable": "5 minutes of breathing",
+    "time_windows": [
+      {"start": "06:00", "end": "08:00"},
+      {"start": "19:00", "end": "22:00"}
+    ],
+    "suggested_rules": [
+      {"type": "consistency_bonus", "params": {"same_time": true}},
+      {"type": "environment", "params": {"quiet_space": true}}
+    ],
+    "cues_and_stacking": "Meditate immediately after your morning coffee, in the same quiet spot",
+    "equipment": "Meditation cushion (optional)",
+    "contraindications": "Start with shorter sessions if you have anxiety",
+    "difficulty": "easy",
+    "estimated_minutes": 10,
+    "coach_copy": {
+      "reminder_line": "Time for inner peace 🧘",
+      "encourage_line": "Your mind is becoming clearer each day!",
+      "recovery_line": "Missing meditation is normal - start fresh tomorrow",
+      "celebration_line": "You've found your zen! Amazing consistency!"
+    },
+    "tags": "mindfulness, stress-relief, daily",
+    "sources": "Mindfulness-Based Stress Reduction research"
+  }
+]
