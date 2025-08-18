@@ -91,18 +91,35 @@ const Explore = () => {
       shadowColor: 'shadow-blue-500/30',
     },
     {
+      id: 'habit-central',
+      title: 'Habit Central',
+      emoji: '📋',
+      color: 'from-purple-600 via-purple-400 to-pink-600',
+      shadowColor: 'shadow-purple-500/30',
+    },
+    {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
       color: 'from-blue-600 via-cyan-400 to-cyan-600',
       shadowColor: 'shadow-cyan-500/30',
     },
+  ];
+
+  const profileRowTiles = [
     {
-      id: 'habit-central',
-      title: 'Habit Central',
-      emoji: '⏳',
-      color: 'from-emerald-500 via-emerald-400 to-teal-600',
-      shadowColor: 'shadow-emerald-500/30',
+      id: 'my-reports',
+      title: 'My Reports',
+      emoji: '📊',
+      color: 'from-gray-600 via-gray-400 to-gray-600',
+      shadowColor: 'shadow-gray-500/30',
+    },
+    {
+      id: 'profile',
+      title: 'Profile',
+      emoji: '👤',
+      color: 'from-gray-600 via-gray-400 to-gray-600',
+      shadowColor: 'shadow-gray-500/30',
     },
   ];
 
@@ -116,7 +133,7 @@ const Explore = () => {
         {mainTiles.map((tile) => {
           return (
             <Button
-              key={tile.id}
+              data-testid={`tile-${tile.id}`}
               onClick={() => handleTileClick(tile.id)}
               disabled={navigationInProgress}
               variant="ghost"
@@ -152,6 +169,7 @@ const Explore = () => {
       <div className="w-full mb-2 relative z-30 grid grid-cols-2 gap-4">
         {/* My Reports Tab */}
         <Button
+          data-testid="tile-my-reports"
           onClick={() => handleTileClick('my-reports')}
           disabled={navigationInProgress}
           variant="ghost"
@@ -183,6 +201,7 @@ const Explore = () => {
 
         {/* Profile Tab */}
         <Button
+          data-testid="tile-profile"
           onClick={() => handleTileClick('profile')}
           disabled={navigationInProgress}
           variant="ghost"

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
-type HabitGoalType = 'count' | 'duration' | 'boolean';
+type HabitGoalType = 'count' | 'duration' | 'bool';
 
 export interface HabitTemplate {
   id: string;
@@ -103,14 +103,20 @@ export const useHabitTemplates = ({
         setData(templates as HabitTemplate[] || []);
         setCount(totalCount);
 
-        // Get unique categories for filter dropdown
-        const { data: allTemplates } = await supabase
+        // Get unique categories for filter dropdown (domain-specific)
+        let categoryQuery = supabase
           .from('habit_template')
-          .select('category')
+          .select('domain, category')
           .not('category', 'is', null);
+        
+        if (domain) {
+          categoryQuery = categoryQuery.eq('domain', domain);
+        }
+
+        const { data: categoryData } = await categoryQuery;
 
         const uniqueCategories = Array.from(
-          new Set(allTemplates?.map(t => t.category).filter(Boolean))
+          new Set(categoryData?.map(t => t.category).filter(Boolean))
         ).sort() as string[];
 
         setCategories(uniqueCategories);

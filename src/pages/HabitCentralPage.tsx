@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Clock, Target, Info, Plus } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
+import { useCreateHabit } from '@/hooks/useCreateHabit';
 
 type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
 
@@ -22,9 +23,24 @@ export default function HabitCentralPage() {
     q: searchQuery || undefined,
   });
 
-  const handleAddToMyHabits = (template: HabitTemplate) => {
-    // TODO: Open habit creation flow with prefilled data
-    console.log('Adding template to habits:', template);
+  const { createHabit, loading: creating } = useCreateHabit();
+
+  const handleAddToMyHabits = async (template: HabitTemplate) => {
+    try {
+      await createHabit({
+        name: template.name,
+        domain: template.domain,
+        goal_type: template.goal_type,
+        target_value: template.goal_type !== 'bool' ? template.default_target || undefined : undefined,
+        time_windows: template.time_windows,
+        suggested_rules: template.suggested_rules,
+        min_viable: template.min_viable,
+        tags: template.tags,
+      });
+    } catch (error) {
+      // Error handling is done in the hook
+      console.error('Failed to add habit:', error);
+    }
   };
 
   const renderTemplateCard = (template: HabitTemplate) => (
@@ -109,9 +125,10 @@ export default function HabitCentralPage() {
           onClick={() => handleAddToMyHabits(template)}
           className="w-full"
           size="sm"
+          disabled={creating}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add to My Habits
+          {creating ? 'Adding...' : 'Add to My Habits'}
         </Button>
       </CardContent>
     </Card>
