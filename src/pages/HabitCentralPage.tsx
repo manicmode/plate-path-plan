@@ -12,6 +12,8 @@ import { Search, Clock, Target, Info, Plus, Award, X } from 'lucide-react';
 import { useHabitTemplates, HabitTemplate } from '@/hooks/useHabitTemplates';
 import { useCreateHabit } from '@/hooks/useCreateHabit';
 import { useHabitRecommendations, HabitDifficulty } from '@/hooks/useHabitRecommendations';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 // Custom hook for debouncing
 const useDebounce = (value: string, delay: number) => {
@@ -46,6 +48,7 @@ const highlightText = (text: string, query: string) => {
 type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
 
 export default function HabitCentralPage() {
+  const { user } = useAuth();
   const [selectedDomain, setSelectedDomain] = useState<HabitDomain | undefined>('nutrition');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -76,6 +79,33 @@ export default function HabitCentralPage() {
     maxDifficulty,
     limit: 12
   });
+
+  // 1B) Search Analytics Logging
+  React.useEffect(() => {
+    // Log search analytics after search results come back
+    const logSearchEvent = async () => {
+      try {
+        if (effectiveQuery?.trim()?.length >= 2 && user?.id) {
+          const topTemplate = templates?.[0];
+          await supabase.from('habit_search_events').insert({
+            user_id: user.id,
+            q: effectiveQuery.trim(),
+            domain: selectedDomain ?? null,
+            category: selectedCategory || null,
+            results: templates?.length ?? 0,
+            top_slug: topTemplate?.slug ?? null,
+          });
+        }
+      } catch {
+        // ignore analytics failures - non-blocking
+      }
+    };
+
+    // Only log when we have search results and are not in loading state
+    if (!loading && effectiveQuery && templates) {
+      logSearchEvent();
+    }
+  }, [effectiveQuery, selectedDomain, selectedCategory, templates, loading, user?.id]);
 
   const handleAddToMyHabits = async (template: HabitTemplate) => {
     if (addedHabits.has(template.id) || creating) {

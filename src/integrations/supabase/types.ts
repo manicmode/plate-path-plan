@@ -2101,6 +2101,39 @@ export type Database = {
           },
         ]
       }
+      habit_search_events: {
+        Row: {
+          category: string | null
+          created_at: string
+          domain: Database["public"]["Enums"]["habit_domain"] | null
+          id: number
+          q: string
+          results: number | null
+          top_slug: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          id?: number
+          q: string
+          results?: number | null
+          top_slug?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          domain?: Database["public"]["Enums"]["habit_domain"] | null
+          id?: number
+          q?: string
+          results?: number | null
+          top_slug?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       habit_search_synonyms: {
         Row: {
           created_at: string
