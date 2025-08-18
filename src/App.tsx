@@ -107,7 +107,7 @@ const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfi
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
-const HabitCentralPage = lazy(() => import('@/pages/HabitCentralPage'));
+const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 // ArenaDebug removed - V1 legacy
 
 
