@@ -16,10 +16,12 @@ import { SuggestionsForYou } from '@/components/SuggestionsForYou';
 import { DomainCarousel } from '@/components/DomainCarousel';
 import { HabitProgressPanel } from '@/components/HabitProgressPanel';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function HabitCentralV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin } = useIsAdmin();
+  const [userActiveHabits, setUserActiveHabits] = useState<string[]>([]);
   
   // State for filters, search, and pagination
   const [filters, setFilters] = useState<HabitTemplateFilters>({});
@@ -34,6 +36,7 @@ export default function HabitCentralV2() {
   
   // Start habit state
   const [startHabitTemplate, setStartHabitTemplate] = useState<HabitTemplate | null>(null);
+  const [startHabitUserHabit, setStartHabitUserHabit] = useState<any>(null);
   const [startHabitOpen, setStartHabitOpen] = useState(false);
   const [habitsRailKey, setHabitsRailKey] = useState(0); // For refreshing rail
   
@@ -197,6 +200,13 @@ export default function HabitCentralV2() {
   // Handle start habit
   const handleStartHabit = (template: HabitTemplate) => {
     setStartHabitTemplate(template);
+    setStartHabitUserHabit(null); // Clear edit mode
+    setStartHabitOpen(true);
+  };
+
+  const handleEditHabit = (template: HabitTemplate, userHabit: any) => {
+    setStartHabitTemplate(template);
+    setStartHabitUserHabit(userHabit);
     setStartHabitOpen(true);
   };
 
@@ -321,6 +331,7 @@ export default function HabitCentralV2() {
           open={startHabitOpen}
           onOpenChange={setStartHabitOpen}
           template={startHabitTemplate}
+          userHabit={startHabitUserHabit}
           onSuccess={handleHabitStarted}
         />
       </div>

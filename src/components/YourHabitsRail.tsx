@@ -43,6 +43,7 @@ interface Recommendation {
 interface YourHabitsRailProps {
   onHabitStarted: () => void;
   onStartHabit: (template: HabitTemplate) => void;
+  onEditHabit?: (template: HabitTemplate, userHabit: UserHabit) => void;
 }
 
 const getDomainColor = (domain: string) => {
@@ -54,7 +55,7 @@ const getDomainColor = (domain: string) => {
   }
 };
 
-export function YourHabitsRail({ onHabitStarted, onStartHabit }: YourHabitsRailProps) {
+export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: YourHabitsRailProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   

@@ -10,11 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { Clock } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface StartHabitSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: HabitTemplate | null;
+  userHabit?: any; // For edit mode
   onSuccess: () => void;
 }
 
@@ -28,15 +30,36 @@ const WEEKDAYS = [
   { value: 'sun', label: 'Sun' },
 ];
 
-export function StartHabitSheet({ open, onOpenChange, template, onSuccess }: StartHabitSheetProps) {
+export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuccess }: StartHabitSheetProps) {
   const [scheduleType, setScheduleType] = useState<'daily' | 'weekly'>('daily');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [reminderTime, setReminderTime] = useState<string>('');
+  const [reminderTime, setReminderTime] = useState<string>('08:00');
   const [target, setTarget] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ reminderTime?: string }>({});
+  
+  const isEditMode = !!userHabit;
   
   const { toast } = useToast();
+
+  // Pre-fill form when in edit mode
+  useEffect(() => {
+    if (isEditMode && userHabit) {
+      setScheduleType(userHabit.schedule?.type || 'daily');
+      setSelectedDays(userHabit.schedule?.days || []);
+      setReminderTime(userHabit.reminder_at || '08:00');
+      setTarget(userHabit.target?.toString() || '');
+      setNotes(userHabit.notes || '');
+    } else if (template) {
+      // Reset to defaults for new habit
+      setScheduleType('daily');
+      setSelectedDays([]);
+      setReminderTime('08:00');
+      setTarget(template.default_target?.toString() || '');
+      setNotes('');
+    }
+  }, [isEditMode, userHabit, template]);
 
   const handleDayToggle = (day: string, pressed: boolean) => {
     setSelectedDays(prev => 
@@ -221,7 +244,7 @@ export function StartHabitSheet({ open, onOpenChange, template, onSuccess }: Sta
               disabled={isSubmitting || (scheduleType === 'weekly' && selectedDays.length === 0)}
               className="flex-1"
             >
-              {isSubmitting ? 'Starting...' : 'Start habit'}
+              {isSubmitting ? (isEditMode ? 'Saving...' : 'Starting...') : (isEditMode ? 'Save changes' : 'Start habit')}
             </Button>
           </div>
         </div>

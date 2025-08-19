@@ -15,6 +15,7 @@ interface HabitCardProps {
   onDetailsClick: () => void;
   onStartHabit?: (template: HabitTemplate) => void;
   showAdminActions?: boolean;
+  userActiveHabits?: string[]; // Array of slugs for active habits
 }
 
 // Text highlighting utility
@@ -57,7 +58,7 @@ const getGoalTypeLabel = (goalType: string) => {
   }
 };
 
-export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false }: HabitCardProps) {
+export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false, userActiveHabits = [] }: HabitCardProps) {
   const { toast } = useToast();
 
   const handleCopySlug = () => {
@@ -74,6 +75,9 @@ export function HabitCard({ template, searchQuery, isSelected, onSelectionChange
   const parsedTags = template.tags 
     ? template.tags.split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 3)
     : [];
+
+  // Check if user already has this habit active
+  const isHabitActive = userActiveHabits.includes(template.slug);
 
   return (
     <Card className="h-full">
@@ -138,13 +142,14 @@ export function HabitCard({ template, searchQuery, isSelected, onSelectionChange
       
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {/* Primary CTA - Start this habit */}
+          {/* Primary CTA - Start this habit or Log now */}
           {onStartHabit && (
             <Button 
               onClick={() => onStartHabit(template)}
               className="w-full"
+              variant={isHabitActive ? "outline" : "default"}
             >
-              Start this habit
+              {isHabitActive ? "Log now" : "Start this habit"}
             </Button>
           )}
           

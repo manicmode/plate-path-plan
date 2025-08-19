@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { useHabitManagement } from '@/hooks/useHabitManagement';
 
 interface DueHabit {
   user_habit_id: string;
@@ -17,9 +18,20 @@ interface DueHabit {
 
 export default function ReminderBell() {
   const { user } = useAuth();
+  const { logHabit } = useHabitManagement();
   const [dueHabits, setDueHabits] = useState<DueHabit[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const fetchDueHabits = useCallback(async () => {
     if (!user) return;
@@ -37,13 +49,15 @@ export default function ReminderBell() {
     }
   }, [user]);
 
-  // Poll every 60 seconds and on window focus
+  // Poll every 60 seconds and on window focus (respecting reduced motion)
   useEffect(() => {
     if (!user) return;
 
     fetchDueHabits();
     
-    const interval = setInterval(fetchDueHabits, 60000);
+    // Respect reduced motion preferences for polling frequency
+    const pollInterval = prefersReducedMotion ? 120000 : 60000; // 2min vs 1min
+    const interval = setInterval(fetchDueHabits, pollInterval);
     
     const handleFocus = () => fetchDueHabits();
     window.addEventListener('focus', handleFocus);
@@ -56,22 +70,17 @@ export default function ReminderBell() {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [user, fetchDueHabits]);
+  }, [user, fetchDueHabits, prefersReducedMotion]);
 
   const handleLogNow = async (habit: DueHabit) => {
     if (isLoading) return;
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.rpc('rpc_log_habit', {
-        p_slug: habit.slug,
-        p_completed: true
-      });
-      
-      if (error) throw error;
-      
-      toast.success('Logged • Nice work!');
-      setDueHabits(prev => prev.filter(h => h.user_habit_id !== habit.user_habit_id));
+      const success = await logHabit(habit.slug, true);
+      if (success) {
+        setDueHabits(prev => prev.filter(h => h.user_habit_id !== habit.user_habit_id));
+      }
     } catch (error) {
       console.error('Error logging habit:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to log habit');
@@ -85,10 +94,12 @@ export default function ReminderBell() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.rpc('rpc_snooze_habit', {
-        p_user_habit_id: habit.user_habit_id,
-        p_minutes: 10
-      });
+      // Update snooze_until to 10 minutes from now
+      const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from('user_habit')
+        .update({ snooze_until: snoozeUntil })
+        .eq('id', habit.user_habit_id);
       
       if (error) throw error;
       
