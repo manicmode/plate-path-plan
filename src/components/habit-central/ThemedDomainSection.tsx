@@ -19,6 +19,7 @@ interface ThemedDomainSectionProps {
   addedHabits: Set<string>;
   onInfo: (habit: HabitTemplate) => void;
   onAdd: (habit: HabitTemplate) => void;
+  hideHeader?: boolean;
 }
 
 // Dynamic sub-domain categories - these come from the database
@@ -62,7 +63,8 @@ export function ThemedDomainSection({
   emoji, 
   addedHabits, 
   onInfo, 
-  onAdd 
+  onAdd,
+  hideHeader = false
 }: ThemedDomainSectionProps) {
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ export function ThemedDomainSection({
       {/* Themed Domain Window */}
       <div className={cn(
         "relative rounded-3xl border-2 backdrop-blur-xl overflow-hidden",
-        "bg-background/40 p-8 shadow-2xl",
+        "bg-background/40 shadow-2xl",
         theme.border,
         theme.shadow
       )}>
@@ -153,38 +155,40 @@ export function ThemedDomainSection({
         )} />
         
         {/* Content */}
-        <div className="relative z-10 space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-3">
-            <motion.div 
-              className="text-6xl"
-              animate={{ 
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
-              }}
-              transition={{ 
-                duration: 3, 
-                repeat: Infinity, 
-                repeatType: "reverse",
-                ease: "easeInOut"
-              }}
-            >
-              {emoji}
-            </motion.div>
-            <div>
-              <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                {title}
-              </h2>
-              <p className="text-lg text-muted-foreground">{subtitle}</p>
+        <div className="relative z-10 space-y-6 p-6">
+          {/* Header (conditionally hidden) */}
+          {!hideHeader && (
+            <div className="text-center space-y-3">
+              <motion.div 
+                className="text-6xl"
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  repeatType: "reverse",
+                  ease: "easeInOut"
+                }}
+              >
+                {emoji}
+              </motion.div>
+              <div>
+                <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  {title}
+                </h2>
+                <p className="text-lg text-muted-foreground">{subtitle}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Dropdown Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Difficulty</label>
+          {/* Horizontal Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty</label>
               <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                <SelectTrigger className="bg-background/60 backdrop-blur-sm border-border/50">
+                <SelectTrigger className="h-9 bg-background/60 backdrop-blur-sm border-border/50 rounded-full px-4">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -197,10 +201,10 @@ export function ThemedDomainSection({
               </Select>
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Category</label>
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="bg-background/60 backdrop-blur-sm border-border/50">
+                <SelectTrigger className="h-9 bg-background/60 backdrop-blur-sm border-border/50 rounded-full px-4">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,9 +246,9 @@ export function ThemedDomainSection({
             </div>
           ) : (
             <div className="relative">
-              {/* Large Carousel */}
-              <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-px-6 pb-2">
-                <div className="flex gap-6 px-2">
+              {/* Enhanced Carousel with better proportions */}
+              <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-px-4 pb-2">
+                <div className="flex gap-4 px-1">
                   {filteredHabits.map((habit, index) => (
                     <ThemedHabitCard
                       key={habit.id}
@@ -258,12 +262,12 @@ export function ThemedDomainSection({
                 </div>
               </div>
 
-              {/* Desktop scroll indicators */}
-              <div className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -left-4 -right-4 justify-between pointer-events-none">
-                <div className="p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-lg border">
+              {/* Desktop scroll indicators with better styling */}
+              <div className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -left-6 -right-6 justify-between pointer-events-none">
+                <div className="p-3 bg-background/90 backdrop-blur-sm rounded-full shadow-xl border-2 border-border/20">
                   <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-lg border">
+                <div className="p-3 bg-background/90 backdrop-blur-sm rounded-full shadow-xl border-2 border-border/20">
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
               </div>

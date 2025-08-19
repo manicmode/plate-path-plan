@@ -646,100 +646,191 @@ export default function HabitCentralV2() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 pb-[calc(72px+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Aurora background effect */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-cyan-500/5 blur-3xl" />
+        <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-2/3 right-1/4 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
+      </div>
+
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center space-x-3">
+              <motion.h1 
+                className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                Habit Central
+              </motion.h1>
+              <motion.p 
+                className="text-sm text-muted-foreground hidden sm:block"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                Science-backed habits for better health
+              </motion.p>
+            </div>
+            
+            {/* Tab Icons in Header */}
+            <div className="flex items-center space-x-1">
+              <Button
+                variant={activeTab === 'browse' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabChange('browse')}
+                className="h-9 px-3"
+              >
+                <Compass className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Browse</span>
+              </Button>
+              <Button
+                variant={activeTab === 'my-habits' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabChange('my-habits')}
+                className="h-9 px-3"
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">My Habits</span>
+              </Button>
+              <Button
+                variant={activeTab === 'reminders' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabChange('reminders')}
+                className="h-9 px-3"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Reminders</span>
+              </Button>
+              <Button
+                variant={activeTab === 'analytics' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabChange('analytics')}
+                className="h-9 px-3"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Progress</span>
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant={activeTab === 'admin' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleTabChange('admin')}
+                  className="h-9 px-3"
+                >
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Emoji Rain Animation */}
       <EmojiRain
         emoji={emojiRainEmoji}
         trigger={emojiRainTrigger}
         onComplete={() => setEmojiRainTrigger(false)}
       />
-      
-      <motion.div
-        initial="hidden" 
-        animate="visible" 
-        variants={staggerContainer}
-        className="space-y-4 sm:space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={fadeInUp} className="text-center space-y-2 py-6 sm:py-8">
-          <h1 className="text-2xl font-bold md:text-4xl">Habit Central</h1>
-          <p className="text-sm text-muted-foreground md:text-lg">
-            Build better habits with proven templates and smart tracking
-          </p>
-        </motion.div>
 
-        {/* 5-Tab Interface */}
-        <motion.div variants={fadeInUp}>
+      {/* Main container */}
+      <div className="relative z-10 mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 pb-[calc(84px+env(safe-area-inset-bottom))]">
+        <motion.div
+          initial="hidden" 
+          animate="visible" 
+          variants={staggerContainer}
+          className="space-y-8 pt-8"
+        >
+          {/* Tab Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
-              <TabsList className="flex w-max min-w-full md:grid md:w-full md:grid-cols-5">
-                <TabsTrigger value="browse" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
-                  <Compass className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Browse</span>
-                </TabsTrigger>
-                <TabsTrigger value="my-habits" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
-                  <CheckSquare className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">My Habits</span>
-                </TabsTrigger>
-                <TabsTrigger value="reminders" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
-                  <Bell className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Reminders</span>
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
-                  <BarChart3 className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Analytics</span>
-                </TabsTrigger>
-                {isAdmin && (
-                  <TabsTrigger value="admin" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
-                    <ShieldAlert className="h-3 w-3 md:h-4 md:w-4" />
-                    <span className="hidden sm:inline">Admin</span>
-                  </TabsTrigger>
-                )}
-              </TabsList>
-            </div>
 
-            {/* Browse Tab - Redesigned Habit Research */}
             <TabsContent value="browse" className="space-y-12">
-              {/* Background Aurora Effect */}
-              <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
-                <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-                <div className="absolute bottom-1/4 left-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-              </div>
-              
-              <div className="relative z-10 space-y-16">
-                <ThemedDomainSection
-                  domain="nutrition"
-                  title="Nutrition Habits"
-                  subtitle="Fuel your body with smart nutrition habits"
-                  emoji="🥗"
-                  addedHabits={addedHabits}
-                  onInfo={setSelectedHabitForInfo}
-                  onAdd={setSelectedHabitForAdd}
-                />
-                
-                <ThemedDomainSection
-                  domain="exercise"
-                  title="Exercise Habits"
-                  subtitle="Stay active with movement and fitness habits"
-                  emoji="💪"
-                  addedHabits={addedHabits}
-                  onInfo={setSelectedHabitForInfo}
-                  onAdd={setSelectedHabitForAdd}
-                />
-                
-                <ThemedDomainSection
-                  domain="recovery"
-                  title="Recovery Habits"
-                  subtitle="Rest, recharge and maintain mental wellness"
-                  emoji="🧘"
-                  addedHabits={addedHabits}
-                  onInfo={setSelectedHabitForInfo}
-                  onAdd={setSelectedHabitForAdd}
-                />
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer}
+                className="space-y-12"
+              >
+                {/* Nutrition Section */}
+                <motion.div variants={fadeInUp} className="space-y-6">
+                  {/* Section Title Outside Window */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-5xl">🍎</div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Nutrition Habits</h2>
+                      <p className="text-muted-foreground">Fuel your body with smart nutrition choices</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-gradient-to-r from-emerald-500/50 via-emerald-300/30 to-transparent" />
+                  
+                  <ThemedDomainSection
+                    domain="nutrition"
+                    title="Nutrition Habits"
+                    subtitle="Fuel your body with smart nutrition choices"
+                    emoji="🍎"
+                    addedHabits={addedHabits}
+                    onInfo={setSelectedHabitForInfo}
+                    onAdd={setSelectedHabitForAdd}
+                    hideHeader={true}
+                  />
+                </motion.div>
+
+                {/* Exercise Section */}
+                <motion.div variants={fadeInUp} className="space-y-6">
+                  {/* Section Title Outside Window */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-5xl">💪</div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Exercise Habits</h2>
+                      <p className="text-muted-foreground">Build strength and endurance with movement</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-gradient-to-r from-orange-500/50 via-orange-300/30 to-transparent" />
+                  
+                  <ThemedDomainSection
+                    domain="exercise"
+                    title="Exercise Habits"
+                    subtitle="Build strength and endurance with movement"
+                    emoji="💪"
+                    addedHabits={addedHabits}
+                    onInfo={setSelectedHabitForInfo}
+                    onAdd={setSelectedHabitForAdd}
+                    hideHeader={true}
+                  />
+                </motion.div>
+
+                {/* Recovery Section */}
+                <motion.div variants={fadeInUp} className="space-y-6">
+                  {/* Section Title Outside Window */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-5xl">🧘</div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Recovery Habits</h2>
+                      <p className="text-muted-foreground">Rest, restore, and recharge your mind and body</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-gradient-to-r from-purple-500/50 via-purple-300/30 to-transparent" />
+                  
+                  <ThemedDomainSection
+                    domain="recovery"
+                    title="Recovery Habits"
+                    subtitle="Rest, restore, and recharge your mind and body"
+                    emoji="🧘"
+                    addedHabits={addedHabits}
+                    onInfo={setSelectedHabitForInfo}
+                    onAdd={setSelectedHabitForAdd}
+                    hideHeader={true}
+                  />
+                </motion.div>
                 
                 <ProTip tab="browse" />
-              </div>
+              </motion.div>
             </TabsContent>
             
             {/* Modals */}
@@ -1133,7 +1224,7 @@ export default function HabitCentralV2() {
             )}
           </Tabs>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }
