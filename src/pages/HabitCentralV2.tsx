@@ -272,6 +272,37 @@ export default function HabitCentralV2() {
       if (activeTab === 'my-habits') await loadMyHabits();
       if (activeTab === 'analytics') await loadProgress(progressWindow);
       
+      // Check for new badges earned
+      try {
+        const { data: badges } = await supabase.rpc('rpc_check_and_award_badges_by_slug', { 
+          p_habit_slug: slug 
+        });
+        
+        if (Array.isArray(badges) && badges.length > 0) {
+          badges.forEach((badge: any) => {
+            toast({ 
+              title: `Level up! ${badge.badge.toUpperCase()} at ${badge.count} logs 🏅`,
+              description: "Achievement unlocked!"
+            });
+            
+            // Bigger confetti for Silver/Gold badges
+            if (badge.badge === 'silver' || badge.badge === 'gold') {
+              confetti({
+                particleCount: 100,
+                spread: 100,
+                origin: { y: 0.6 },
+                colors: badge.badge === 'gold' 
+                  ? ['#FFD700', '#FFA500', '#FFFF00'] 
+                  : ['#C0C0C0', '#A8A8A8', '#E5E5E5']
+              });
+            }
+          });
+        }
+      } catch (badgeError) {
+        console.error('Error checking badges:', badgeError);
+        // Don't let badge errors break the logging flow
+      }
+      
       // Get updated habit for delight features
       const updatedHabit = myHabits.find(h => h.habit_slug === slug) || currentHabit;
       const newCount = (updatedHabit?.last_30d_count || 0);
