@@ -2170,6 +2170,7 @@ export type Database = {
           habit_slug: string
           id: string
           meta: Json | null
+          scheduled_date: string
           scheduled_for: string
           sent_at: string | null
           user_id: string
@@ -2180,6 +2181,7 @@ export type Database = {
           habit_slug: string
           id?: string
           meta?: Json | null
+          scheduled_date: string
           scheduled_for?: string
           sent_at?: string | null
           user_id: string
@@ -2190,6 +2192,7 @@ export type Database = {
           habit_slug?: string
           id?: string
           meta?: Json | null
+          scheduled_date?: string
           scheduled_for?: string
           sent_at?: string | null
           user_id?: string
@@ -8222,6 +8225,10 @@ export type Database = {
         }[]
       }
       rpc_dispatch_habit_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      rpc_dispatch_habit_reminders_sql: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
