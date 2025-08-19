@@ -17,11 +17,16 @@ import { DomainCarousel } from '@/components/DomainCarousel';
 import { HabitProgressPanel } from '@/components/HabitProgressPanel';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { supabase } from '@/integrations/supabase/client';
+import { useHabitManagement } from '@/hooks/useHabitManagement';
+import { useToast } from '@/hooks/use-toast';
 
 export default function HabitCentralV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin } = useIsAdmin();
+  const { addHabit, logHabit, loading: habitManagementLoading } = useHabitManagement();
+  const { toast } = useToast();
   const [userActiveHabits, setUserActiveHabits] = useState<string[]>([]);
+  const [isSeeding, setIsSeeding] = useState(false);
   
   // State for filters, search, and pagination
   const [filters, setFilters] = useState<HabitTemplateFilters>({});
@@ -215,6 +220,65 @@ export default function HabitCentralV2() {
     setHabitsRailKey(prev => prev + 1); // Refresh the rail
   };
 
+  // Demo seed functionality (dev only)
+  const handleSeedDemoHabits = async () => {
+    if (!import.meta.env.DEV) return;
+    
+    setIsSeeding(true);
+    try {
+      const demoHabits = [
+        { slug: 'morning-sunlight-5min', reminder: '08:00' },
+        { slug: 'zone2-cardio-20', reminder: '12:30' },
+        { slug: 'dark-chocolate-70-10g', reminder: '20:30' }
+      ];
+
+      // Start habits
+      for (const habit of demoHabits) {
+        await addHabit(
+          habit.slug,
+          { type: 'daily' },
+          habit.reminder,
+          null,
+          null,
+          null,
+          'demo_seed'
+        );
+      }
+
+      // Create backdated logs
+      const today = new Date();
+      for (const habit of demoHabits) {
+        for (let i = 0; i < 5; i++) {
+          const daysAgo = Math.floor(Math.random() * 10) + 1;
+          await logHabit(
+            habit.slug,
+            true,
+            null,
+            null,
+            null,
+            'demo_seed',
+            { backfill: true }
+          );
+        }
+      }
+
+      toast({
+        title: "Seeded demo habits • Open Reports to see charts",
+        duration: 4000
+      });
+
+      setHabitsRailKey(prev => prev + 1); // Refresh the rail
+    } catch (error) {
+      console.error('Error seeding demo habits:', error);
+      toast({
+        title: "Failed to seed demo habits",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="space-y-8">
@@ -224,6 +288,20 @@ export default function HabitCentralV2() {
           <p className="text-lg text-muted-foreground">
             Build better habits with proven templates and smart tracking
           </p>
+          
+          {/* Demo Seed Button (dev only) */}
+          {import.meta.env.DEV && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeedDemoHabits}
+                disabled={isSeeding || habitManagementLoading}
+              >
+                {isSeeding ? "Seeding..." : "Seed demo habits"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Hero Rotator */}

@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { Clock } from 'lucide-react';
 import { useEffect } from 'react';
+import { useHabitManagement } from '@/hooks/useHabitManagement';
 
 interface StartHabitSheetProps {
   open: boolean;
@@ -36,11 +37,11 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
   const [reminderTime, setReminderTime] = useState<string>('08:00');
   const [target, setTarget] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [errors, setErrors] = useState<{ reminderTime?: string; schedule?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ reminderTime?: string }>({});
   
   const isEditMode = !!userHabit;
-  
+  const { addHabit, updateHabit, loading } = useHabitManagement();
   const { toast } = useToast();
 
   // Pre-fill form when in edit mode
@@ -279,10 +280,10 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || (scheduleType === 'weekly' && selectedDays.length === 0)}
+              disabled={loading || (scheduleType === 'weekly' && selectedDays.length === 0)}
               className="flex-1"
             >
-              {isSubmitting ? (isEditMode ? 'Saving...' : 'Starting...') : (isEditMode ? 'Save changes' : 'Start habit')}
+              {loading ? (isEditMode ? 'Saving...' : 'Starting...') : (isEditMode ? 'Save changes' : 'Start habit')}
             </Button>
           </div>
         </div>
