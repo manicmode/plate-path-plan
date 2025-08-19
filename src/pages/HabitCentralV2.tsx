@@ -125,9 +125,9 @@ export default function HabitCentralV2() {
   const [loading, setLoading] = useState(false);
   const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
   
-  // Filters and search
-  const [domainFilter, setDomainFilter] = useState<string>('');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('');
+  // Filters and search with proper sentinels
+  const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [progressWindow, setProgressWindow] = useState<'last_7d' | 'last_30d'>('last_30d');
   
   // Admin health check
@@ -142,22 +142,27 @@ export default function HabitCentralV2() {
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
 
-  // Load active habits on browse tab with client-side filtering
-  const loadHabits = useCallback(async (domain?: string) => {
+  // Load active habits on browse tab with normalized domain filtering
+  const loadHabits = useCallback(async (domainUi?: string) => {
     if (!user) return;
     
     setLoading(true);
     try {
-      const domainParam = domain && ['nutrition', 'exercise', 'recovery'].includes(domain) 
-        ? domain as 'nutrition' | 'exercise' | 'recovery' 
-        : null;
+      type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
+      const p_domain: HabitDomain | null = 
+        domainUi === 'all' || !domainUi ? null : (domainUi as HabitDomain);
       
       const { data, error } = await supabase.rpc('rpc_list_active_habits', {
-        p_domain: domainParam
+        p_domain
       });
       
-      if (error) throw error;
-      setHabits(data || []);
+      if (error) {
+        console.error('rpc_list_active_habits error:', error);
+        setHabits([]);
+        setLoading(false);
+        return;
+      }
+      setHabits(data ?? []);
     } catch (error) {
       console.error('Error loading habits:', error);
       triggerHaptics('selection');
@@ -166,6 +171,7 @@ export default function HabitCentralV2() {
         variant: "destructive",
         description: error instanceof Error ? error.message.slice(0, 100) : undefined
       });
+      setHabits([]);
     } finally {
       setLoading(false);
     }
@@ -513,18 +519,19 @@ export default function HabitCentralV2() {
     if (value === 'admin' && isAdmin) loadHealthData();
   }, [debouncedDomainFilter, loadHabits, loadMyHabits, loadReminders, loadProgress, progressWindow, loadHealthData, isAdmin]);
 
-  // Reset filters
+  // Reset filters with proper sentinels
   const resetFilters = useCallback(() => {
-    setDomainFilter('');
-    setDifficultyFilter('');
-    loadHabits();
+    setDomainFilter('all');
+    setDifficultyFilter('all');
+    loadHabits('all');
   }, [loadHabits]);
 
-  // Filter habits by difficulty on client side
+  // Robust client-side difficulty filter with normalized sentinels
   const filteredHabits = useMemo(() => {
-    if (!difficultyFilter) return habits;
+    const effDifficulty = difficultyFilter === 'all' ? null : difficultyFilter?.toLowerCase() ?? null;
+    if (!effDifficulty) return habits;
     return habits.filter(habit => 
-      habit.difficulty?.toLowerCase() === difficultyFilter.toLowerCase()
+      (habit.difficulty ?? '').toLowerCase() === effDifficulty
     );
   }, [habits, difficultyFilter]);
 
@@ -697,7 +704,7 @@ export default function HabitCentralV2() {
                 className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-3 -m-3 rounded-lg border md:p-4 md:-m-4"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                  <Select value={domainFilter || "all"} onValueChange={(value) => setDomainFilter(value === "all" ? "" : value)}>
+                  <Select value={domainFilter || "all"} onValueChange={(value) => setDomainFilter(value)}>
                     <SelectTrigger className="w-full md:w-48">
                       <SelectValue placeholder="All domains" />
                     </SelectTrigger>
@@ -709,7 +716,7 @@ export default function HabitCentralV2() {
                     </SelectContent>
                   </Select>
                   
-                  <Select value={difficultyFilter || "all"} onValueChange={(value) => setDifficultyFilter(value === "all" ? "" : value)}>
+                  <Select value={difficultyFilter || "all"} onValueChange={(value) => setDifficultyFilter(value)}>
                     <SelectTrigger className="w-full md:w-48">
                       <SelectValue placeholder="All difficulties" />
                     </SelectTrigger>
@@ -731,6 +738,20 @@ export default function HabitCentralV2() {
                     <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${loading ? 'animate-spin' : ''}`} />
                     <span className="ml-2 md:sr-only">Refresh</span>
                   </Button>
+                  
+                  <Button 
+                    onClick={resetFilters}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full md:w-auto text-xs"
+                  >
+                    Reset
+                  </Button>
+                </div>
+                
+                {/* Results badge for visibility */}
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {filteredHabits.length} habit{filteredHabits.length !== 1 ? 's' : ''} found
                 </div>
               </motion.div>
 
