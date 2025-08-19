@@ -22,10 +22,10 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { EmojiRain } from '@/components/habit-central/EmojiRain';
 import { ProTip } from '@/components/habit-central/ProTip';
-import { DomainCarousel } from '@/components/habit-central/DomainCarousel';
+import { ThemedDomainSection } from '@/components/habit-central/ThemedDomainSection';
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
-import { HabitTemplate } from '@/components/habit-central/CarouselHabitCard';
+import type { HabitTemplate as ImportedHabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
 
 // Helper functions
@@ -76,15 +76,7 @@ const staggerContainer = {
 };
 
 // Types for our data
-interface HabitTemplate {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  domain: 'nutrition' | 'exercise' | 'recovery';
-  difficulty: string;
-  category: string;
-}
+type HabitTemplate = ImportedHabitTemplate;
 
 interface UserHabit {
   habit_slug: string;
@@ -144,8 +136,8 @@ export default function HabitCentralV2() {
   const [emojiRainEmoji, setEmojiRainEmoji] = useState('🎉');
   
   // Modal state
-  const [selectedHabitForInfo, setSelectedHabitForInfo] = useState<HabitTemplate | null>(null);
-  const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<HabitTemplate | null>(null);
+  const [selectedHabitForInfo, setSelectedHabitForInfo] = useState<ImportedHabitTemplate | null>(null);
+  const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<ImportedHabitTemplate | null>(null);
   const [isAddingHabit, setIsAddingHabit] = useState(false);
 
   // Debounced filter update
@@ -706,39 +698,48 @@ export default function HabitCentralV2() {
               </TabsList>
             </div>
 
-            {/* Browse Tab - Habit Research with 3 Carousels */}
-            <TabsContent value="browse" className="space-y-8">
-              <DomainCarousel
-                domain="nutrition"
-                title="Nutrition Habits"
-                subtitle="Build healthy eating and hydration habits"
-                emoji="🥗"
-                addedHabits={addedHabits}
-                onInfo={setSelectedHabitForInfo}
-                onAdd={setSelectedHabitForAdd}
-              />
+            {/* Browse Tab - Redesigned Habit Research */}
+            <TabsContent value="browse" className="space-y-12">
+              {/* Background Aurora Effect */}
+              <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+                <div className="absolute bottom-1/4 left-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+              </div>
               
-              <DomainCarousel
-                domain="exercise"
-                title="Exercise Habits"
-                subtitle="Stay active with movement and fitness habits"
-                emoji="💪"
-                addedHabits={addedHabits}
-                onInfo={setSelectedHabitForInfo}
-                onAdd={setSelectedHabitForAdd}
-              />
-              
-              <DomainCarousel
-                domain="recovery"
-                title="Recovery Habits"
-                subtitle="Rest, recharge and maintain mental wellness"
-                emoji="🧘"
-                addedHabits={addedHabits}
-                onInfo={setSelectedHabitForInfo}
-                onAdd={setSelectedHabitForAdd}
-              />
-              
-              <ProTip tab="browse" />
+              <div className="relative z-10 space-y-16">
+                <ThemedDomainSection
+                  domain="nutrition"
+                  title="Nutrition Habits"
+                  subtitle="Fuel your body with smart nutrition habits"
+                  emoji="🥗"
+                  addedHabits={addedHabits}
+                  onInfo={setSelectedHabitForInfo}
+                  onAdd={setSelectedHabitForAdd}
+                />
+                
+                <ThemedDomainSection
+                  domain="exercise"
+                  title="Exercise Habits"
+                  subtitle="Stay active with movement and fitness habits"
+                  emoji="💪"
+                  addedHabits={addedHabits}
+                  onInfo={setSelectedHabitForInfo}
+                  onAdd={setSelectedHabitForAdd}
+                />
+                
+                <ThemedDomainSection
+                  domain="recovery"
+                  title="Recovery Habits"
+                  subtitle="Rest, recharge and maintain mental wellness"
+                  emoji="🧘"
+                  addedHabits={addedHabits}
+                  onInfo={setSelectedHabitForInfo}
+                  onAdd={setSelectedHabitForAdd}
+                />
+                
+                <ProTip tab="browse" />
+              </div>
             </TabsContent>
             
             {/* Modals */}
