@@ -18,6 +18,13 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate CRON_TOKEN authorization
+  const ok = req.headers.get('authorization') === `Bearer ${Deno.env.get('CRON_TOKEN')}`;
+  if (!ok) {
+    console.log('❌ Unauthorized request to deliverHabitNudges');
+    return new Response('forbidden', { status: 403 });
+  }
+
   console.log('🚀 Starting habit nudge delivery job...');
 
   try {
