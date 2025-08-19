@@ -22,6 +22,10 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { EmojiRain } from '@/components/habit-central/EmojiRain';
 import { ProTip } from '@/components/habit-central/ProTip';
+import { DomainCarousel } from '@/components/habit-central/DomainCarousel';
+import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
+import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
+import { HabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
 
 // Helper functions
@@ -138,6 +142,11 @@ export default function HabitCentralV2() {
   // Delight features state
   const [emojiRainTrigger, setEmojiRainTrigger] = useState(false);
   const [emojiRainEmoji, setEmojiRainEmoji] = useState('🎉');
+  
+  // Modal state
+  const [selectedHabitForInfo, setSelectedHabitForInfo] = useState<HabitTemplate | null>(null);
+  const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<HabitTemplate | null>(null);
+  const [isAddingHabit, setIsAddingHabit] = useState(false);
 
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
@@ -697,132 +706,77 @@ export default function HabitCentralV2() {
               </TabsList>
             </div>
 
-            {/* Browse Tab */}
-            <TabsContent value="browse" className="space-y-4">
-              {/* Filters */}
-              <motion.div 
-                variants={fadeInUp}
-                className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-3 -m-3 rounded-lg border md:p-4 md:-m-4"
-              >
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                  <Select value={domainFilter || "all"} onValueChange={(value) => setDomainFilter(value)}>
-                    <SelectTrigger className="w-full md:w-48">
-                      <SelectValue placeholder="All domains" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All domains</SelectItem>
-                      <SelectItem value="nutrition">🍎 Nutrition</SelectItem>
-                      <SelectItem value="exercise">🏃 Exercise</SelectItem>
-                      <SelectItem value="recovery">🌙 Recovery</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={difficultyFilter || "all"} onValueChange={(value) => setDifficultyFilter(value)}>
-                    <SelectTrigger className="w-full md:w-48">
-                      <SelectValue placeholder="All difficulties" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All difficulties</SelectItem>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Button 
-                    onClick={() => loadHabits(domainFilter)} 
-                    disabled={loading}
-                    variant="outline"
-                    size="sm"
-                    className="w-full md:w-auto"
-                  >
-                    <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${loading ? 'animate-spin' : ''}`} />
-                    <span className="ml-2 md:sr-only">Refresh</span>
-                  </Button>
-                  
-                  <Button 
-                    onClick={resetFilters}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full md:w-auto text-xs"
-                  >
-                    Reset
-                  </Button>
-                </div>
-                
-                {/* Results badge for visibility */}
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {filteredHabits.length} habit{filteredHabits.length !== 1 ? 's' : ''} found
-                </div>
-              </motion.div>
-
-              {/* Habits grid */}
-              {loading ? (
-                <motion.div variants={fadeInUp} className="text-center py-8">
-                  <div className="animate-pulse text-sm md:text-base">Loading habits...</div>
-                </motion.div>
-              ) : filteredHabits.length === 0 ? (
-                <BrowseEmptyState />
-              ) : (
-                <motion.div 
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="visible"
-                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4"
-                >
-                  {filteredHabits.map((habit, index) => (
-                    <motion.div
-                      key={habit.id}
-                      variants={fadeInUp}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Card className="relative h-full w-full rounded-2xl">
-                        <CardHeader className="pb-3">
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="text-lg">{getDomainEmoji(habit.domain)}</span>
-                              <CardTitle className="text-base line-clamp-2 md:text-lg">{habit.title}</CardTitle>
-                            </div>
-                            <Badge variant="secondary" className="text-xs shrink-0">{habit.domain}</Badge>
-                          </div>
-                          <CardDescription className="line-clamp-3 text-xs md:text-sm">
-                            {habit.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="flex justify-between items-center gap-2">
-                            <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
-                              {habit.difficulty}
-                            </Badge>
-                            
-                            {addedHabits.has(habit.slug) ? (
-                              <Button size="sm" variant="outline" disabled className="h-10 text-sm">
-                                <Check className="h-3 w-3 mr-1 md:h-4 md:w-4" />
-                                Added ✓
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleAddHabit(habit.slug, 5)}
-                                aria-label={`Add ${habit.title} to my habits`}
-                                className="h-10 text-sm"
-                              >
-                                <Plus className="h-3 w-3 mr-1 md:h-4 md:w-4" />
-                                Add
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+            {/* Browse Tab - Habit Research with 3 Carousels */}
+            <TabsContent value="browse" className="space-y-8">
+              <DomainCarousel
+                domain="nutrition"
+                title="Nutrition Habits"
+                subtitle="Build healthy eating and hydration habits"
+                emoji="🥗"
+                addedHabits={addedHabits}
+                onInfo={setSelectedHabitForInfo}
+                onAdd={setSelectedHabitForAdd}
+              />
               
-              {/* Pro Tip for Browse */}
+              <DomainCarousel
+                domain="exercise"
+                title="Exercise Habits"
+                subtitle="Stay active with movement and fitness habits"
+                emoji="💪"
+                addedHabits={addedHabits}
+                onInfo={setSelectedHabitForInfo}
+                onAdd={setSelectedHabitForAdd}
+              />
+              
+              <DomainCarousel
+                domain="recovery"
+                title="Recovery Habits"
+                subtitle="Rest, recharge and maintain mental wellness"
+                emoji="🧘"
+                addedHabits={addedHabits}
+                onInfo={setSelectedHabitForInfo}
+                onAdd={setSelectedHabitForAdd}
+              />
+              
               <ProTip tab="browse" />
             </TabsContent>
+            
+            {/* Modals */}
+            <HabitInfoModal
+              habit={selectedHabitForInfo}
+              open={!!selectedHabitForInfo}
+              onClose={() => setSelectedHabitForInfo(null)}
+              onAdd={() => {
+                if (selectedHabitForInfo) {
+                  setSelectedHabitForAdd(selectedHabitForInfo);
+                  setSelectedHabitForInfo(null);
+                }
+              }}
+              isAdded={selectedHabitForInfo ? addedHabits.has(selectedHabitForInfo.slug) : false}
+            />
+            
+            <HabitAddModal
+              habit={selectedHabitForAdd}
+              open={!!selectedHabitForAdd}
+              onClose={() => setSelectedHabitForAdd(null)}
+              onConfirm={async (config: HabitConfig) => {
+                if (!selectedHabitForAdd) return;
+                setIsAddingHabit(true);
+                try {
+                  await handleAddHabit(selectedHabitForAdd.slug, config.targetPerWeek);
+                  setSelectedHabitForAdd(null);
+                  triggerHaptics('light');
+                  if (config.isAuto) {
+                    confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } });
+                  }
+                } catch (error) {
+                  console.error('Error adding habit:', error);
+                } finally {
+                  setIsAddingHabit(false);
+                }
+              }}
+              isAdding={isAddingHabit}
+            />
 
             {/* My Habits Tab */}
             <TabsContent value="my-habits" className="space-y-4">
