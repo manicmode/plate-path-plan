@@ -7582,6 +7582,10 @@ export type Database = {
           group_id: string
         }[]
       }
+      ensure_user_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       expire_stale_friend_requests: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -8142,6 +8146,10 @@ export type Database = {
           user_habit_id: string
         }[]
       }
+      rpc_ensure_user_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       rpc_get_due_habits: {
         Args: { p_after_minutes?: number; p_before_minutes?: number }
         Returns: {
@@ -8280,6 +8288,22 @@ export type Database = {
       show_trgm: {
         Args: { "": string }
         Returns: string[]
+      }
+      test_recommendation_performance: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          execution_time: string
+          result: string
+          test_name: string
+        }[]
+      }
+      test_user_profile_rls: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          details: string
+          result: string
+          test_name: string
+        }[]
       }
       track_coach_interaction: {
         Args: {

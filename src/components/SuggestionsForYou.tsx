@@ -68,6 +68,12 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       }
 
       try {
+        // Ensure user profile exists first
+        const { error: ensureError } = await supabase.rpc('rpc_ensure_user_profile');
+        if (ensureError) {
+          console.warn('Failed to ensure user profile:', ensureError);
+        }
+        
         // Load user profile from database
         const { data: profileData } = await supabase
           .from('user_profile')
