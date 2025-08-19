@@ -417,7 +417,6 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
             domain: selectedRecommendation.domain as 'nutrition' | 'exercise' | 'recovery',
             estimated_minutes: templates[selectedRecommendation.slug]?.estimated_minutes,
             equipment: templates[selectedRecommendation.slug]?.equipment,
-            description: templates[selectedRecommendation.slug]?.description,
             reason: selectedRecommendation.reason,
             score: selectedRecommendation.score
           }}

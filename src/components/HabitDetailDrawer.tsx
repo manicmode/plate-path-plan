@@ -78,7 +78,7 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
         if (error) throw error;
         
         if (data) {
-          setHabitStatus(data.status);
+          setHabitStatus(data.status as 'active' | 'paused');
           setReminderTime(data.reminder_at || '');
         } else {
           setHabitStatus(null);
