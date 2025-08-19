@@ -5341,6 +5341,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profile: {
+        Row: {
+          constraints: Json
+          goals: Json
+          preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          constraints?: Json
+          goals?: Json
+          preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          constraints?: Json
+          goals?: Json
+          preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -8203,6 +8227,10 @@ export type Database = {
       rpc_upsert_habit_templates: {
         Args: { p_templates: Json }
         Returns: number
+      }
+      rpc_upsert_user_profile: {
+        Args: { p_constraints?: Json; p_goals?: Json; p_preferences?: Json }
+        Returns: undefined
       }
       run_arena_chat_healthcheck: {
         Args: { p_user_id?: string }

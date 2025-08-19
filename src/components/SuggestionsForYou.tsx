@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Sparkles, Plus, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Plus, CheckCircle, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { QuickLogSheet } from '@/components/QuickLogSheet';
+import { ProfilePrefsSheet } from '@/components/ProfilePrefsSheet';
 import { useAuth } from '@/contexts/auth';
 import { useUserHabits } from '@/hooks/useUserHabits';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
@@ -44,6 +45,7 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   const [scrollIndex, setScrollIndex] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<{ template: HabitTemplate; userHabit: any } | null>(null);
   
   const { hasHabit, getUserHabit, fetchUserHabits } = useUserHabits();
@@ -66,12 +68,18 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       }
 
       try {
-        // Build lightweight profile object from available user data
-        const profile = {
-          goals: (user as any)?.goals ?? [],
-          constraints: (user as any)?.constraints ?? [],
-          preferences: (user as any)?.preferences ?? [],
-        };
+        // Load user profile from database
+        const { data: profileData } = await supabase
+          .from('user_profile')
+          .select('goals, constraints, preferences')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const profile = profileData ? {
+          goals: Array.isArray(profileData.goals) ? profileData.goals as string[] : [],
+          constraints: Array.isArray(profileData.constraints) ? profileData.constraints as string[] : [],
+          preferences: Array.isArray(profileData.preferences) ? profileData.preferences as string[] : []
+        } : { goals: [], constraints: [], preferences: [] };
 
         // Try v2 first with personalization
         let recommendations: Recommendation[] = [];
@@ -220,14 +228,22 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
           <Sparkles className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-semibold">For you</h2>
         </div>
-        <Card className="w-80">
-          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-            <Sparkles className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-              No picks yet—try browsing below
-            </p>
-          </CardContent>
-        </Card>
+         <Card className="w-80">
+           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+             <Sparkles className="h-8 w-8 text-muted-foreground mb-2" />
+             <p className="text-sm text-muted-foreground mb-3">
+               No picks yet—try browsing below
+             </p>
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={() => setProfileSheetOpen(true)}
+               className="text-xs"
+             >
+               Improve suggestions
+             </Button>
+           </CardContent>
+         </Card>
       </section>
     );
   }
@@ -246,30 +262,42 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
           <h2 className="text-xl font-semibold">For you</h2>
         </div>
         
-        {recommendations.length > 3 && (
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleScroll('left')}
-              disabled={scrollIndex === 0}
-              aria-label="Previous suggestions"
-              className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleScroll('right')}
-              disabled={scrollIndex >= recommendations.length - 3}
-              aria-label="Next suggestions"
-              className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setProfileSheetOpen(true)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Target className="h-4 w-4 mr-1" />
+            Tune
+          </Button>
+        
+          {recommendations.length > 3 && (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleScroll('left')}
+                disabled={scrollIndex === 0}
+                aria-label="Previous suggestions"
+                className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleScroll('right')}
+                disabled={scrollIndex >= recommendations.length - 3}
+                aria-label="Next suggestions"
+                className="h-8 w-8 p-0 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div 
@@ -340,6 +368,50 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
           setQuickLogOpen(false);
           setSelectedTemplate(null);
           fetchUserHabits();
+        }}
+      />
+
+      {/* Profile Preferences Sheet */}
+      <ProfilePrefsSheet
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
+        onSaved={() => {
+          // Refetch recommendations with new profile
+          const initializeData = async () => {
+            setLoading(true);
+            try {
+              const { data: profileData } = await supabase
+                .from('user_profile')
+                .select('goals, constraints, preferences')
+                .eq('user_id', user!.id)
+                .maybeSingle();
+
+              const profile = profileData ? {
+                goals: Array.isArray(profileData.goals) ? profileData.goals as string[] : [],
+                constraints: Array.isArray(profileData.constraints) ? profileData.constraints as string[] : [],
+                preferences: Array.isArray(profileData.preferences) ? profileData.preferences as string[] : []
+              } : { goals: [], constraints: [], preferences: [] };
+
+              const { data: v2 } = await supabase
+                .rpc('rpc_recommend_habits_v2', { p_profile: profile, p_per_domain: 3 });
+              
+              if (v2?.length) {
+                setRecommendations(v2);
+                setPersonalized(true);
+                track('habit_recs_loaded', { 
+                  source: 'for_you', 
+                  personalized: true, 
+                  per_domain: 3,
+                  count: v2.length
+                });
+              }
+            } catch (error) {
+              console.error('Error refetching recommendations:', error);
+            } finally {
+              setLoading(false);
+            }
+          };
+          initializeData();
         }}
       />
     </section>
