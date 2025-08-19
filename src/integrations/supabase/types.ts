@@ -5394,6 +5394,30 @@ export type Database = {
           },
         ]
       }
+      user_habit_badges: {
+        Row: {
+          awarded_at: string
+          badge: string
+          habit_slug: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          badge: string
+          habit_slug: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          badge?: string
+          habit_slug?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_levels: {
         Row: {
           current_xp: number
@@ -8410,6 +8434,10 @@ export type Database = {
           user_habit_id: string
         }[]
       }
+      rpc_check_and_award_badges_by_slug: {
+        Args: { p_habit_slug: string }
+        Returns: Json
+      }
       rpc_claim_nudges: {
         Args: { p_limit?: number }
         Returns: {
@@ -8498,6 +8526,14 @@ export type Database = {
           id: string
           slug: string
           title: string
+        }[]
+      }
+      rpc_list_my_badges: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          awarded_at: string
+          badge: string
+          habit_slug: string
         }[]
       }
       rpc_log_habit: {
