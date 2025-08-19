@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// ✅ Robust import pattern: never resolves to null
+import * as React from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -694,24 +696,24 @@ export default function HabitCentralV2() {
                 className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-4 -m-4 rounded-lg border"
               >
                 <div className="flex gap-4 items-center">
-                  <Select value={domainFilter} onValueChange={setDomainFilter}>
+                  <Select value={domainFilter || "all"} onValueChange={(value) => setDomainFilter(value === "all" ? "" : value)}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="All domains" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All domains</SelectItem>
+                      <SelectItem value="all">All domains</SelectItem>
                       <SelectItem value="nutrition">🍎 Nutrition</SelectItem>
                       <SelectItem value="exercise">🏃 Exercise</SelectItem>
                       <SelectItem value="recovery">🌙 Recovery</SelectItem>
                     </SelectContent>
                   </Select>
                   
-                  <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                  <Select value={difficultyFilter || "all"} onValueChange={(value) => setDifficultyFilter(value === "all" ? "" : value)}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="All difficulties" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All difficulties</SelectItem>
+                      <SelectItem value="all">All difficulties</SelectItem>
                       <SelectItem value="easy">Easy</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="hard">Hard</SelectItem>
