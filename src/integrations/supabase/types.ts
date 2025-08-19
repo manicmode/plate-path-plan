@@ -8122,6 +8122,34 @@ export type Database = {
           user_habit_id: string
         }[]
       }
+      rpc_habit_kpis: {
+        Args: { p_start?: string; period?: string }
+        Returns: {
+          active_habits: number
+          overall_adherence_pct: number
+          streak_leader_days: number
+          streak_leader_slug: string
+          total_completions: number
+          total_expected: number
+          total_minutes: number
+        }[]
+      }
+      rpc_habit_report: {
+        Args: { p_start?: string; period?: string }
+        Returns: {
+          adherence_pct: number
+          completions: number
+          current_streak: number
+          domain: string
+          expected_count: number
+          last_logged_at: string
+          minutes: number
+          name: string
+          reminder_at: string
+          slug: string
+          user_habit_id: string
+        }[]
+      }
       rpc_log_habit: {
         Args: {
           p_amount?: number

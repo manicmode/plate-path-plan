@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
+import { HabitReportSection } from "@/components/habits-report/HabitReportSection";
 
 interface ReportData {
   id: string;
@@ -235,6 +236,12 @@ export default function MyReportsPage() {
           <p className="text-lg text-muted-foreground font-medium">
             Your personalized health and wellness insights
           </p>
+        </div>
+
+        {/* Habit Reports Sections */}
+        <div className="space-y-6 mb-8">
+          <HabitReportSection period="week" />
+          <HabitReportSection period="month" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
