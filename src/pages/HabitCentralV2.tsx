@@ -142,15 +142,13 @@ export default function HabitCentralV2() {
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
 
-  // Load active habits on browse tab with normalized domain filtering
+  // Load active habits - templates are public, no auth needed
   const loadHabits = useCallback(async (domainUi?: string) => {
-    if (!user) return;
-    
     setLoading(true);
     try {
       type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
       const p_domain: HabitDomain | null = 
-        domainUi === 'all' || !domainUi ? null : (domainUi as HabitDomain);
+        !domainUi || domainUi === 'all' ? null : (domainUi as HabitDomain);
       
       const { data, error } = await supabase.rpc('rpc_list_active_habits', {
         p_domain
@@ -159,7 +157,6 @@ export default function HabitCentralV2() {
       if (error) {
         console.error('rpc_list_active_habits error:', error);
         setHabits([]);
-        setLoading(false);
         return;
       }
       setHabits(data ?? []);
@@ -175,7 +172,7 @@ export default function HabitCentralV2() {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [toast]);
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
@@ -535,12 +532,16 @@ export default function HabitCentralV2() {
     );
   }, [habits, difficultyFilter]);
 
-  // Initial load
+  // Load habits on mount and when filters change
   useEffect(() => {
-    if (user && activeTab === 'browse') {
-      loadHabits(debouncedDomainFilter);
+    loadHabits('all');
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'browse') {
+      loadHabits(domainFilter);
     }
-  }, [user, debouncedDomainFilter, activeTab, loadHabits]);
+  }, [domainFilter, activeTab, loadHabits]);
 
   // Empty state components
   const BrowseEmptyState = () => (
