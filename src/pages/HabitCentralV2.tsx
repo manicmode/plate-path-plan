@@ -112,12 +112,14 @@ interface Reminder {
 }
 
 export default function HabitCentralV2() {
+  console.log('[Browse] mount');
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
   
   // Tab and data state
   const [activeTab, setActiveTab] = useState('browse');
+  console.log('[Browse] activeTab at mount', activeTab);
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [myHabits, setMyHabits] = useState<UserHabit[]>([]);
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
@@ -157,7 +159,20 @@ export default function HabitCentralV2() {
         p_domain
       });
       
-      console.log('[Browse] rpc result', { count: data?.length, error });
+      console.log('[Browse] rpc result', { count: data?.length ?? -1, error: error?.message });
+      
+      // Direct table plumbing test
+      const probe = await supabase
+        .from('habit_template')
+        .select('slug,name,domain,difficulty,is_active')
+        .eq('is_active', true)
+        .limit(3);
+      
+      console.log('[Browse] direct table probe', {
+        error: probe.error?.message,
+        count: probe.data?.length ?? 0,
+        sample: probe.data?.[0]
+      });
       
       if (error) {
         console.error('rpc_list_active_habits error:', error);
@@ -165,7 +180,7 @@ export default function HabitCentralV2() {
         return;
       }
       
-      console.log('[Browse] setHabits', { prevLen: habits.length, nextLen: data?.length ?? 0 });
+      console.log('[Browse] setHabits', { nextLen: data?.length ?? 0 });
       setHabits(data ?? []);
     } catch (error) {
       console.error('Error loading habits:', error);
@@ -179,7 +194,7 @@ export default function HabitCentralV2() {
     } finally {
       setLoading(false);
     }
-  }, [toast, habits.length]);
+  }, [toast]);
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
@@ -541,12 +556,14 @@ export default function HabitCentralV2() {
 
   // Load habits on mount and when filters change
   useEffect(() => {
-    loadHabits('all');
+    console.log('[Browse] useEffect initial -> calling loadHabits("all")');
+    void loadHabits('all');
   }, []);
 
   useEffect(() => {
+    console.log('[Browse] domainFilter changed', { domainFilter });
     if (activeTab === 'browse') {
-      loadHabits(domainFilter);
+      void loadHabits(domainFilter);
     }
   }, [domainFilter, activeTab, loadHabits]);
 
@@ -765,10 +782,12 @@ export default function HabitCentralV2() {
 
               {/* Habits grid */}
               {(() => {
-                console.log('[Browse] render', {
+                console.log('[Browse] render snapshot', {
                   habitsLen: habits?.length ?? -1,
                   filteredLen: filteredHabits?.length ?? -1,
-                  domainFilter, difficultyFilter, loading
+                  domainFilter,
+                  difficultyFilter,
+                  loading
                 });
                 return null;
               })()}
