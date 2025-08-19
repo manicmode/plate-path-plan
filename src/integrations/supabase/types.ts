@@ -7085,6 +7085,46 @@ export type Database = {
           },
         ]
       }
+      v_habit_streaks: {
+        Row: {
+          current_streak: number | null
+          done_today: boolean | null
+          habit_slug: string | null
+          last_done_on: string | null
+          longest_streak: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       vw_habit_progress_month: {
         Row: {
           completions: number | null

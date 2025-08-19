@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Circle, TrendingUp } from 'lucide-react';
+import { CheckCircle, Circle, TrendingUp, Flame } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { getStreaksBySlug } from '@/lib/streaks';
+import { StreakMap } from '@/types/streaks';
 
 interface HabitProgress {
   slug: string;
@@ -11,6 +13,7 @@ interface HabitProgress {
   done_today: boolean;
   done_30d: number;
   window_days: number;
+  current_streak: number;
 }
 
 export function MiniProgressRow() {
@@ -76,18 +79,23 @@ export function MiniProgressRow() {
         const completedTodayIds = new Set(todayLogs?.map(log => log.habit_id) || []);
         const habitIdMap = new Map(habitIds?.map(h => [h.slug, h.id]) || []);
 
+        // Get streak data
+        const streaks: StreakMap = await getStreaksBySlug();
+
         // Combine data
         const progressData: HabitProgress[] = userHabits.map(habit => {
           const consistency = consistencyData?.find(c => c.habit_slug === habit.slug);
           const habitId = habitIdMap.get(habit.slug);
           const doneToday = habitId ? completedTodayIds.has(habitId) : false;
+          const streak = streaks[habit.slug];
 
           return {
             slug: habit.slug,
             name: habit.habit_templates.name,
             done_today: doneToday,
             done_30d: consistency?.done_30d || 0,
-            window_days: consistency?.window_days || 30
+            window_days: consistency?.window_days || 30,
+            current_streak: streak?.current_streak || 0
           };
         });
 
@@ -142,8 +150,16 @@ export function MiniProgressRow() {
                 )}
               </div>
               
-              <div className="text-xs text-muted-foreground">
-                {habit.done_30d}/{habit.window_days} days this month
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {habit.done_30d}/{habit.window_days} days this month
+                </span>
+                {habit.current_streak > 0 && (
+                  <Badge variant="secondary" className="px-1 py-0 text-xs h-4">
+                    <Flame className="h-2.5 w-2.5 mr-1" />
+                    {habit.current_streak}d
+                  </Badge>
+                )}
               </div>
               
               <div className="w-full bg-muted rounded-full h-1">

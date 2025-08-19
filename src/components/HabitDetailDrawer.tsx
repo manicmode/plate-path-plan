@@ -14,13 +14,17 @@ import {
   Settings,
   Star,
   Minus,
-  Plus
+  Plus,
+  Flame,
+  Trophy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { track } from '@/lib/analytics';
 import { startHabit, pauseHabit, resumeHabit, setHabitReminder, markHabitDone } from '@/lib/habits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { getStreakBySlug, formatLastDone } from '@/lib/streaks';
+import { StreakRow } from '@/types/streaks';
 
 type HabitDetailProps = {
   habit: {
@@ -55,13 +59,15 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
   const [habitStatus, setHabitStatus] = useState<'active' | 'paused' | null>(null);
   const [reminderTime, setReminderTime] = useState('');
   const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
+  const [streakData, setStreakData] = useState<StreakRow | null>(null);
 
-  // Check if habit is already adopted
+  // Check if habit is already adopted and get streak data
   useEffect(() => {
-    const checkHabitStatus = async () => {
+    const loadHabitData = async () => {
       if (!user || !habit?.slug) return;
       
       try {
+        // Check habit status
         const { data, error } = await supabase
           .from('user_habit')
           .select('status, reminder_at')
@@ -77,13 +83,21 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
         } else {
           setHabitStatus(null);
         }
+
+        // Get streak data if habit is adopted
+        if (data) {
+          const streak = await getStreakBySlug(habit.slug);
+          setStreakData(streak);
+        } else {
+          setStreakData(null);
+        }
       } catch (error) {
-        console.error('Error checking habit status:', error);
+        console.error('Error loading habit data:', error);
       }
     };
     
     if (open) {
-      checkHabitStatus();
+      loadHabitData();
     }
   }, [user, habit?.slug, open]);
 
@@ -209,6 +223,34 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
     try {
       await markHabitDone(habit.slug);
       
+      // Optimistically update streak if transitioning from not done today to done today
+      if (streakData && !streakData.done_today) {
+        const newCurrentStreak = streakData.current_streak + 1;
+        const isNewBest = newCurrentStreak > streakData.longest_streak;
+        
+        // Track streak analytics
+        track('streak_bumped', { 
+          habit_slug: habit.slug,
+          new_current_streak: newCurrentStreak
+        });
+        
+        if (isNewBest) {
+          track('streak_new_best', { 
+            habit_slug: habit.slug,
+            new_best_streak: newCurrentStreak
+          });
+        }
+        
+        // Update local state optimistically
+        setStreakData({
+          ...streakData,
+          current_streak: newCurrentStreak,
+          longest_streak: Math.max(streakData.longest_streak, newCurrentStreak),
+          done_today: true,
+          last_done_on: new Date().toISOString().split('T')[0]
+        });
+      }
+      
       track('habit_logged', { habit_slug: habit.slug });
       
       toast({
@@ -271,6 +313,22 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
               </Badge>
             </div>
             
+            {/* Streak display for adopted habits */}
+            {habitStatus && streakData && (
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  <span className="font-medium">{streakData.current_streak} days</span>
+                  <span className="text-muted-foreground">current</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                  <span className="font-medium">{streakData.longest_streak} days</span>
+                  <span className="text-muted-foreground">best</span>
+                </div>
+              </div>
+            )}
+            
             {habit.estimated_minutes && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
@@ -303,6 +361,21 @@ export function HabitDetailDrawer({ habit, adoptionId, onChanged, open, onOpenCh
 
           {/* Why this habit */}
           {renderReasonBullets()}
+
+          {/* Streak progress for adopted habits */}
+          {habitStatus && streakData && (
+            <Card>
+              <CardContent className="pt-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  <h4 className="text-sm font-medium">Progress</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {formatLastDone(streakData.last_done_on, streakData.done_today)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Reminder Settings (if habit is started or starting) */}
           {(habitStatus || !habitStatus) && (
