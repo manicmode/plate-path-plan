@@ -5187,10 +5187,12 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          next_due_at: string | null
           notes: string | null
           reminder_at: string | null
           schedule: Json
           slug: string
+          snooze_until: string | null
           start_date: string
           status: string
           target: number | null
@@ -5200,10 +5202,12 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          next_due_at?: string | null
           notes?: string | null
           reminder_at?: string | null
           schedule?: Json
           slug: string
+          snooze_until?: string | null
           start_date?: string
           status?: string
           target?: number | null
@@ -5213,10 +5217,12 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          next_due_at?: string | null
           notes?: string | null
           reminder_at?: string | null
           schedule?: Json
           slug?: string
+          snooze_until?: string | null
           start_date?: string
           status?: string
           target?: number | null
@@ -7529,6 +7535,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      compute_next_due_at: {
+        Args: { p_reminder_at: string; p_schedule: Json; p_start_date: string }
+        Returns: string
+      }
       current_rank20_challenge_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -8101,6 +8111,17 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_get_due_habits: {
+        Args: { p_after_minutes?: number; p_before_minutes?: number }
+        Returns: {
+          domain: string
+          name: string
+          next_due_at: string
+          slug: string
+          summary: string
+          user_habit_id: string
+        }[]
+      }
       rpc_log_habit: {
         Args: {
           p_amount?: number
@@ -8119,6 +8140,10 @@ export type Database = {
           reason: string
           slug: string
         }[]
+      }
+      rpc_snooze_habit: {
+        Args: { p_minutes?: number; p_user_habit_id: string }
+        Returns: undefined
       }
       rpc_upsert_habit_templates: {
         Args: { p_templates: Json }

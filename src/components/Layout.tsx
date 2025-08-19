@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useChatModal } from '@/contexts/ChatModalContext';
+import ReminderBell from '@/components/ReminderBell';
 
 
 interface LayoutProps {
@@ -134,6 +135,9 @@ const Layout = ({ children }: LayoutProps) => {
           
           {/* Enhanced Dark Mode Toggle */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Reminder Bell */}
+            {isAuthenticated && <ReminderBell />}
+            
             <div className={`flex items-center space-x-1 sm:space-x-2 bg-gray-100 dark:bg-gray-800 ${isMobile ? 'px-2 py-1' : 'px-4 py-2'} rounded-xl border-2 border-gray-400 dark:border-gray-600`}>
               <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${!isDarkMode ? 'text-yellow-500' : 'text-gray-400'}`} />
               <Switch
