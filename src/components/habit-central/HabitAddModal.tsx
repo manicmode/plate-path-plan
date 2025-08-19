@@ -91,49 +91,59 @@ export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: Hab
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">{DOMAIN_EMOJIS[habit.domain]}</span>
-            <div className="flex-1">
-              <DialogTitle className="text-left">Add {habit.title}</DialogTitle>
-              <Badge variant="secondary" className="mt-1 text-xs">
-                Set up your reminder
-              </Badge>
+      <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-xl border-border/60 shadow-2xl">
+        <DialogHeader className="pb-6">
+          <DialogTitle className="flex items-center gap-4 text-2xl">
+            <span className="text-4xl">{DOMAIN_EMOJIS[habit.domain]}</span>
+            <div>
+              <div className="text-2xl font-bold">Add "{habit.title}"</div>
+              <div className="text-sm text-muted-foreground font-normal mt-1">Set up your reminder preferences</div>
             </div>
-          </div>
+          </DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="auto">Auto reminder</TabsTrigger>
-            <TabsTrigger value="manual">Manual setup</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-muted/30 p-1 rounded-xl">
+            <TabsTrigger 
+              value="auto" 
+              className="rounded-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+            >
+              Auto reminder
+            </TabsTrigger>
+            <TabsTrigger 
+              value="manual" 
+              className="rounded-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+            >
+              Manual setup
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="auto" className="space-y-4 mt-6">
-            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Recommended plan
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Frequency:</span>
-                  <span>Daily</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Time:</span>
-                  <span>{suggestedTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Target:</span>
-                  <span>5 times per week</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                💡 You can edit this later in Reminders
+          <TabsContent value="auto" className="space-y-6 py-4">
+            <div className="text-center space-y-3">
+              <h3 className="text-xl font-bold">Recommended Plan</h3>
+              <p className="text-muted-foreground">
+                We'll set smart reminders based on your habit type
               </p>
             </div>
+            
+            <div className="bg-muted/40 rounded-xl p-6 space-y-4 border border-border/40 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-base">Frequency:</span>
+                <span className="text-base">Daily</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-base">Time:</span>
+                <span className="text-base font-medium text-primary">{suggestedTime}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-base">Target per week:</span>
+                <span className="text-base">5 times</span>
+              </div>
+            </div>
+            
+            <p className="text-sm text-muted-foreground text-center bg-muted/20 rounded-lg p-3">
+              💡 You can always adjust these settings later in Reminders
+            </p>
           </TabsContent>
 
           <TabsContent value="manual" className="space-y-6 mt-6">
@@ -227,11 +237,13 @@ export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: Hab
           </TabsContent>
         </Tabs>
 
-        {/* Actions */}
-        <div className="pt-4 border-t">
+        <div className="flex gap-4 pt-8 border-t border-border/40">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-12 text-base font-medium rounded-xl">
+            Cancel
+          </Button>
           <Button 
             onClick={handleConfirm} 
-            className="w-full" 
+            className="flex-1 h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
             disabled={isAdding}
           >
             {isAdding 

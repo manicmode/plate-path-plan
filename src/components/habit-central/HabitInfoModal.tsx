@@ -1,8 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Target, Lightbulb } from 'lucide-react';
+import { Clock, Target, Lightbulb, Check, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { HabitTemplate } from './CarouselHabitCard';
 
 interface HabitInfoModalProps {
@@ -95,111 +96,117 @@ export function HabitInfoModal({ habit, open, onClose, onAdd, isAdded }: HabitIn
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">{DOMAIN_EMOJIS[habit.domain]}</span>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-border/60 shadow-2xl">
+        <DialogHeader className="space-y-4 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">{DOMAIN_EMOJIS[habit.domain]}</div>
             <div className="flex-1">
-              <DialogTitle className="text-left">{habit.title}</DialogTitle>
-              <Badge variant="secondary" className="mt-1 text-xs">
-                {habit.domain} • {habit.difficulty}
+              <DialogTitle className="text-3xl font-bold mb-3 leading-tight">{habit.title}</DialogTitle>
+              <Badge className={cn(
+                "text-sm font-semibold px-4 py-2",
+                habit.difficulty === 'easy' && "bg-emerald-100/80 text-emerald-800 border-emerald-300/50 dark:bg-emerald-900/30 dark:text-emerald-300",
+                habit.difficulty === 'medium' && "bg-amber-100/80 text-amber-800 border-amber-300/50 dark:bg-amber-900/30 dark:text-amber-300",
+                habit.difficulty === 'hard' && "bg-red-100/80 text-red-800 border-red-300/50 dark:bg-red-900/30 dark:text-red-300"
+              )}>
+                {habit.difficulty} difficulty
               </Badge>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* What */}
-          <section>
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              What it is
+        <div className="space-y-8 py-4">
+          {/* What it is */}
+          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+              <span className="text-2xl">💡</span> What it is
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {habit.description}
-            </p>
-          </section>
+            <p className="text-foreground/90 leading-relaxed text-base">{habit.description}</p>
+          </div>
 
           {/* Why it matters */}
-          <section>
-            <h3 className="font-semibold mb-3">Why it matters</h3>
-            <ul className="space-y-2">
-              {whyPoints.map((point, i) => (
+          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
+              <span className="text-2xl">🎯</span> Why it matters
+            </h3>
+            <ul className="space-y-3">
+              {whyPoints.map((point, index) => (
                 <motion.li
-                  key={i}
+                  key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-start gap-2 text-sm"
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-3 text-foreground/80"
                 >
-                  <span className="text-primary font-bold">•</span>
-                  <span className="text-muted-foreground">{point}</span>
+                  <span className="text-emerald-500 text-lg mt-0.5">•</span>
+                  <span className="text-base leading-relaxed">{point}</span>
                 </motion.li>
               ))}
             </ul>
-          </section>
+          </div>
 
           {/* How to do it */}
-          <section>
-            <h3 className="font-semibold mb-3">How to do it</h3>
-            <ol className="space-y-2">
-              {howSteps.map((step, i) => (
+          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
+              <span className="text-2xl">📋</span> How to do it
+            </h3>
+            <ol className="space-y-4">
+              {howSteps.map((step, index) => (
                 <motion.li
-                  key={i}
+                  key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-start gap-3 text-sm"
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-4 text-foreground/80"
                 >
-                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5">
-                    {i + 1}
+                  <span className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mt-0.5 shrink-0">
+                    {index + 1}
                   </span>
-                  <span className="text-muted-foreground">{step}</span>
+                  <span className="text-base leading-relaxed">{step}</span>
                 </motion.li>
               ))}
             </ol>
-          </section>
+          </div>
 
-          {/* Time estimate */}
-          <section>
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              Time needed
+          {/* Time needed */}
+          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+              <span className="text-2xl">⏱️</span> Time needed
             </h3>
-            <p className="text-sm text-muted-foreground">{timeEstimate}</p>
-          </section>
+            <p className="text-foreground/80 text-base leading-relaxed">{timeEstimate}</p>
+          </div>
 
-          {/* Tips */}
-          <section>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-primary" />
-              Pro tips
+          {/* Pro tips */}
+          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
+              <span className="text-2xl">✨</span> Pro tips
             </h3>
-            <ul className="space-y-2">
-              {tips.map((tip, i) => (
+            <ul className="space-y-3">
+              {tips.map((tip, index) => (
                 <motion.li
-                  key={i}
+                  key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-start gap-2 text-sm"
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-3 text-foreground/80"
                 >
-                  <span className="text-primary font-bold">💡</span>
-                  <span className="text-muted-foreground">{tip}</span>
+                  <span className="text-amber-500 text-lg mt-0.5">💡</span>
+                  <span className="text-base leading-relaxed">{tip}</span>
                 </motion.li>
               ))}
             </ul>
-          </section>
+          </div>
         </div>
 
-        {/* Action */}
-        <div className="pt-4 border-t">
+        {/* Add button */}
+        <div className="pt-8 border-t border-border/40">
           {isAdded ? (
-            <Button disabled className="w-full">
-              Already Added ✓
+            <Button disabled className="w-full h-14 text-base font-semibold rounded-xl" variant="outline">
+              <Check className="w-5 h-5 mr-2" />
+              Already Added
             </Button>
           ) : (
-            <Button onClick={onAdd} className="w-full">
+            <Button onClick={onAdd} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all">
+              <Plus className="w-5 h-5 mr-2" />
               Add this habit
             </Button>
           )}

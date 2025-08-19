@@ -184,14 +184,14 @@ export function ThemedDomainSection({
           )}
 
           {/* Horizontal Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-            <div className="flex-1 space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty</label>
+          <div className="flex gap-4 max-w-lg mx-auto">
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Difficulty</label>
               <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                <SelectTrigger className="h-9 bg-background/60 backdrop-blur-sm border-border/50 rounded-full px-4">
+                <SelectTrigger className="h-10 bg-background/80 backdrop-blur-sm border-border/60 rounded-xl px-4 shadow-sm hover:shadow-md transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background/95 backdrop-blur-xl border-border/60">
                   {DIFFICULTY_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
@@ -201,13 +201,13 @@ export function ThemedDomainSection({
               </Select>
             </div>
             
-            <div className="flex-1 space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Category</label>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-9 bg-background/60 backdrop-blur-sm border-border/50 rounded-full px-4">
+                <SelectTrigger className="h-10 bg-background/80 backdrop-blur-sm border-border/60 rounded-xl px-4 shadow-sm hover:shadow-md transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background/95 backdrop-blur-xl border-border/60">
                   {categoryOptions.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}

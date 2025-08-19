@@ -62,7 +62,7 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
         scale: 1.02,
         transition: { duration: 0.2 }
       }}
-      className="min-w-[280px] sm:min-w-[320px] md:min-w-[280px] flex-shrink-0 snap-center"
+      className="min-w-[300px] sm:min-w-[340px] md:min-w-[320px] flex-shrink-0 snap-center"
     >
       <div className={cn(
         "relative rounded-3xl backdrop-blur-xl border-2 transition-all duration-300",
@@ -83,19 +83,19 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
         </div>
         
         {/* Content - Taller vertical layout */}
-        <div className="relative z-10 p-6 h-full flex flex-col min-h-[320px]">
-          {/* Header - More compact */}
-          <div className="flex items-start gap-3 mb-4">
-            <div className="text-3xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+        <div className="relative z-10 p-7 h-full flex flex-col min-h-[380px]">
+          {/* Header - More prominent */}
+          <div className="flex items-start gap-4 mb-5">
+            <div className="text-4xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
               {DOMAIN_EMOJIS[habit.domain]}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-base leading-tight mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+              <h3 className="font-bold text-lg leading-tight mb-3 line-clamp-2 group-hover:text-primary transition-colors">
                 {habit.title}
               </h3>
               <Badge 
                 className={cn(
-                  "text-xs font-medium border shadow-sm",
+                  "text-xs font-semibold border shadow-sm px-3 py-1",
                   getDifficultyColor(habit.difficulty)
                 )}
               >
@@ -105,17 +105,17 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
           </div>
 
           {/* Description - More space */}
-          <p className="text-sm text-muted-foreground line-clamp-4 mb-6 flex-1 leading-relaxed">
+          <p className="text-base text-muted-foreground line-clamp-4 mb-8 flex-1 leading-relaxed">
             {habit.description}
           </p>
 
           {/* Actions - Better button layout */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               onClick={onInfo}
-              className="w-full h-10 text-sm backdrop-blur-sm bg-background/50 hover:bg-background/80 border-border/50 hover:border-border transition-all duration-200"
+              className="w-full h-12 text-sm font-medium backdrop-blur-sm bg-background/70 hover:bg-background/90 border-border/60 hover:border-border transition-all duration-200 rounded-xl"
             >
               <Info className="h-4 w-4 mr-2" />
               ℹ Learn More
@@ -124,25 +124,25 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
             {isAdded ? (
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 disabled
-                className="w-full h-11 text-sm bg-emerald-50/50 border-emerald-200/50 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800/50 dark:text-emerald-300"
+                className="w-full h-14 text-base font-medium bg-emerald-50/80 border-emerald-200/60 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800/50 dark:text-emerald-300 rounded-xl"
               >
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="h-5 w-5 mr-2" />
                 Added ✓
               </Button>
             ) : (
               <Button
-                size="sm"
+                size="default"
                 onClick={onAdd}
                 className={cn(
-                  "w-full h-11 text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-200",
-                  habit.domain === 'nutrition' && "bg-emerald-600 hover:bg-emerald-700 text-white",
-                  habit.domain === 'exercise' && "bg-orange-600 hover:bg-orange-700 text-white",
-                  habit.domain === 'recovery' && "bg-purple-600 hover:bg-purple-700 text-white"
+                  "w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl",
+                  habit.domain === 'nutrition' && "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02]",
+                  habit.domain === 'exercise' && "bg-orange-600 hover:bg-orange-700 text-white hover:scale-[1.02]",
+                  habit.domain === 'recovery' && "bg-purple-600 hover:bg-purple-700 text-white hover:scale-[1.02]"
                 )}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-5 w-5 mr-2" />
                 + Add Habit
               </Button>
             )}
