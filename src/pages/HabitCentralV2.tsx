@@ -144,21 +144,28 @@ export default function HabitCentralV2() {
 
   // Load active habits - templates are public, no auth needed
   const loadHabits = useCallback(async (domainUi?: string) => {
+    console.log('[Browse] loadHabits:start', { domainUi });
     setLoading(true);
     try {
       type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
       const p_domain: HabitDomain | null = 
         !domainUi || domainUi === 'all' ? null : (domainUi as HabitDomain);
       
+      console.log('[Browse] rpc params', { p_domain });
+      
       const { data, error } = await supabase.rpc('rpc_list_active_habits', {
         p_domain
       });
+      
+      console.log('[Browse] rpc result', { count: data?.length, error });
       
       if (error) {
         console.error('rpc_list_active_habits error:', error);
         setHabits([]);
         return;
       }
+      
+      console.log('[Browse] setHabits', { prevLen: habits.length, nextLen: data?.length ?? 0 });
       setHabits(data ?? []);
     } catch (error) {
       console.error('Error loading habits:', error);
@@ -172,7 +179,7 @@ export default function HabitCentralV2() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, habits.length]);
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
@@ -757,6 +764,14 @@ export default function HabitCentralV2() {
               </motion.div>
 
               {/* Habits grid */}
+              {(() => {
+                console.log('[Browse] render', {
+                  habitsLen: habits?.length ?? -1,
+                  filteredLen: filteredHabits?.length ?? -1,
+                  domainFilter, difficultyFilter, loading
+                });
+                return null;
+              })()}
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
                   <div className="animate-pulse text-sm md:text-base">Loading habits...</div>
