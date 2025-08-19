@@ -72,8 +72,20 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
   const handleSubmit = async () => {
     if (!template) return;
 
+    // Validation
+    if (scheduleType === 'weekly' && selectedDays.length === 0) {
+      return; // Button should be disabled, but extra safety
+    }
+
+    // Validate time format
+    if (reminderTime && !/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(reminderTime)) {
+      setErrors({ reminderTime: 'Please enter a valid time format (HH:MM)' });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      setErrors({});
 
       // Build schedule object
       const schedule = scheduleType === 'daily' 
@@ -86,41 +98,59 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
       // Parse reminder time
       const reminderAt = reminderTime || null;
 
-      const { data, error } = await supabase.rpc('rpc_add_user_habit', {
-        p_slug: template.slug,
-        p_schedule: schedule,
-        p_reminder_at: reminderAt,
-        p_target: targetValue,
-        p_notes: notes || null
-      });
+      if (isEditMode && userHabit) {
+        // Update existing habit
+        const { error } = await supabase.rpc('rpc_update_user_habit', {
+          p_user_habit_id: userHabit.id,
+          p_schedule: schedule,
+          p_reminder_at: reminderAt,
+          p_target: targetValue,
+          p_notes: notes || null
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Added • We'll remind & track it",
-      });
+        toast({
+          title: "Saved • Schedule & reminders updated",
+        });
+      } else {
+        // Add new habit
+        const { error } = await supabase.rpc('rpc_add_user_habit', {
+          p_slug: template.slug,
+          p_schedule: schedule,
+          p_reminder_at: reminderAt,
+          p_target: targetValue,
+          p_notes: notes || null
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Added • We'll remind & track it",
+        });
+
+        // Smooth scroll to Your Habits section after adding
+        setTimeout(() => {
+          const yourHabitsElement = document.querySelector('h2:has-text("Your Habits"), [aria-label*="habits"]');
+          if (yourHabitsElement) {
+            yourHabitsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
 
       // Reset form
       setScheduleType('daily');
       setSelectedDays([]);
-      setReminderTime('');
+      setReminderTime('08:00');
       setTarget('');
       setNotes('');
       
       onSuccess();
       onOpenChange(false);
-
-      // Smooth scroll to Your Habits section
-      setTimeout(() => {
-        const yourHabitsElement = document.querySelector('h2:has-text("Your Habits"), [aria-label*="habits"]');
-        if (yourHabitsElement) {
-          yourHabitsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
     } catch (error) {
-      console.error('Error starting habit:', error);
+      console.error('Error saving habit:', error);
       toast({
-        title: "Failed to start habit",
+        title: isEditMode ? "Failed to update habit" : "Failed to start habit",
         description: "Please try again.",
         variant: "destructive",
       });
@@ -190,11 +220,19 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
                 id="reminder"
                 type="time"
                 value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                className="pl-10"
+                onChange={(e) => {
+                  setReminderTime(e.target.value);
+                  if (errors.reminderTime) {
+                    setErrors({ ...errors, reminderTime: undefined });
+                  }
+                }}
+                className={`pl-10 ${errors.reminderTime ? 'border-destructive' : ''}`}
                 placeholder="HH:MM"
               />
             </div>
+            {errors.reminderTime && (
+              <p className="text-sm text-destructive mt-1">{errors.reminderTime}</p>
+            )}
           </div>
 
           {/* Target */}

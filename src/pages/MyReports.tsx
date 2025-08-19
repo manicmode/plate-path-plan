@@ -242,6 +242,17 @@ export default function MyReportsPage() {
         <div className="space-y-6 mb-8">
           <HabitReportSection period="week" />
           <HabitReportSection period="month" />
+          
+          {/* View Reports Link */}
+          <div className="text-center">
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/habit'}
+              className="bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-primary/20 hover:border-primary/40"
+            >
+              📊 View Habit Central
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

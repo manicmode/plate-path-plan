@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, PlayCircle, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PlayCircle, Pause, Play, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
+import { QuickLogSheet } from '@/components/QuickLogSheet';
+import { useUserHabits } from '@/hooks/useUserHabits';
+import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeroHabitRotatorProps {
@@ -36,6 +39,10 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  
+  const { hasHabit, getUserHabit, fetchUserHabits } = useUserHabits();
+  const { logHabit } = useHabitManagement();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -47,19 +54,23 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
   }, []);
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const initializeData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('habit_templates')
-          .select('slug, name, summary, domain, goal_type, default_target, difficulty, estimated_minutes')
-          .order('difficulty', { ascending: true })
-          .order('name', { ascending: true })
-          .limit(12);
+        // Fetch templates and user habits in parallel
+        const [templatesResponse] = await Promise.all([
+          supabase
+            .from('habit_templates')
+            .select('slug, name, summary, domain, goal_type, default_target, difficulty, estimated_minutes')
+            .order('difficulty', { ascending: true })
+            .order('name', { ascending: true })
+            .limit(12),
+          fetchUserHabits()
+        ]);
 
-        if (error) throw error;
+        if (templatesResponse.error) throw templatesResponse.error;
 
         // Randomize initial order
-        const shuffled = (data || []).sort(() => Math.random() - 0.5);
+        const shuffled = (templatesResponse.data || []).sort(() => Math.random() - 0.5);
         setTemplates(shuffled as HabitTemplate[]);
         setCurrentIndex(Math.floor(Math.random() * shuffled.length));
       } catch (error) {
@@ -69,8 +80,8 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
       }
     };
 
-    fetchTemplates();
-  }, []);
+    initializeData();
+  }, [fetchUserHabits]);
 
   // Auto-advance every 6 seconds (pause on hover/focus)
   useEffect(() => {
@@ -111,6 +122,19 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
     setIsPaused(!isPaused);
   };
 
+  const handleLogNow = async (template: HabitTemplate) => {
+    if (template.goal_type === 'bool') {
+      // Direct log for boolean habits
+      const success = await logHabit(template.slug, true);
+      if (success) {
+        await fetchUserHabits(); // Refresh to update state
+      }
+    } else {
+      // Open QuickLogSheet for duration/count habits
+      setQuickLogOpen(true);
+    }
+  };
+
   const truncateText = (text: string, maxLength: number = 140) => {
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength).trim() + '...';
@@ -135,6 +159,8 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
   if (templates.length === 0) return null;
 
   const currentTemplate = templates[currentIndex];
+  const userHabit = getUserHabit(currentTemplate.slug);
+  const isActive = hasHabit(currentTemplate.slug);
 
   return (
     <div 
@@ -198,14 +224,26 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
                   whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
                   whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
                 >
-                  <Button 
-                    size="lg" 
-                    onClick={() => onStartHabit(currentTemplate)}
-                    className="text-lg px-8 py-6 transition-all duration-200 hover:shadow-lg"
-                  >
-                    <PlayCircle className="mr-2 h-5 w-5" />
-                    Start in 10s
-                  </Button>
+                  {isActive ? (
+                    <Button 
+                      size="lg" 
+                      onClick={() => handleLogNow(currentTemplate)}
+                      className="text-lg px-8 py-6 transition-all duration-200 hover:shadow-lg"
+                      variant="secondary"
+                    >
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Log now
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="lg" 
+                      onClick={() => onStartHabit(currentTemplate)}
+                      className="text-lg px-8 py-6 transition-all duration-200 hover:shadow-lg"
+                    >
+                      <PlayCircle className="mr-2 h-5 w-5" />
+                      Start this habit
+                    </Button>
+                  )}
                 </motion.div>
               </div>
             </CardContent>
@@ -261,6 +299,18 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
           />
         ))}
       </div>
+
+      {/* Quick Log Sheet */}
+      <QuickLogSheet
+        open={quickLogOpen}
+        onOpenChange={setQuickLogOpen}
+        template={currentTemplate}
+        userHabit={userHabit || null}
+        onSuccess={() => {
+          setQuickLogOpen(false);
+          fetchUserHabits(); // Refresh user habits after logging
+        }}
+      />
     </div>
   );
 }

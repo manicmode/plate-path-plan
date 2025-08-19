@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Sparkles, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Plus, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
+import { QuickLogSheet } from '@/components/QuickLogSheet';
 import { useAuth } from '@/contexts/auth';
+import { useUserHabits } from '@/hooks/useUserHabits';
+import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +40,11 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   const [loading, setLoading] = useState(true);
   const [scrollIndex, setScrollIndex] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<{ template: HabitTemplate; userHabit: any } | null>(null);
+  
+  const { hasHabit, getUserHabit, fetchUserHabits } = useUserHabits();
+  const { logHabit } = useHabitManagement();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -48,23 +56,26 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   }, []);
 
   useEffect(() => {
-    const fetchRecommendations = async () => {
+    const initializeData = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        // Fetch AI recommendations
-        const { data: recs, error: recsError } = await supabase.rpc('rpc_recommend_habits');
+        // Fetch recommendations and user habits in parallel
+        const [recsResponse] = await Promise.all([
+          supabase.rpc('rpc_recommend_habits'),
+          fetchUserHabits()
+        ]);
         
-        if (recsError) throw recsError;
+        if (recsResponse.error) throw recsResponse.error;
 
-        if (recs && recs.length > 0) {
-          setRecommendations(recs);
+        if (recsResponse.data && recsResponse.data.length > 0) {
+          setRecommendations(recsResponse.data);
 
           // Fetch full template data for these recommendations
-          const slugs = recs.map((rec: Recommendation) => rec.slug);
+          const slugs = recsResponse.data.map((rec: Recommendation) => rec.slug);
           const { data: templateData, error: templatesError } = await supabase
             .from('habit_templates')
             .select('*')
@@ -91,13 +102,29 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       }
     };
 
-    fetchRecommendations();
-  }, [user]);
+    initializeData();
+  }, [user, fetchUserHabits]);
 
-  const handleStartRecommendation = (recommendation: Recommendation) => {
+  const handleRecommendationClick = async (recommendation: Recommendation) => {
     const template = templates[recommendation.slug];
+    const userHabit = getUserHabit(recommendation.slug);
+    
     if (template) {
-      onStartHabit(template);
+      if (hasHabit(recommendation.slug)) {
+        // Handle logging for active habit
+        if (template.goal_type === 'bool') {
+          const success = await logHabit(template.slug, true);
+          if (success) {
+            await fetchUserHabits();
+          }
+        } else {
+          setSelectedTemplate({ template, userHabit });
+          setQuickLogOpen(true);
+        }
+      } else {
+        // Start new habit
+        onStartHabit(template);
+      }
     }
   };
 
@@ -178,42 +205,70 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
         className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide pb-2"
         style={{ scrollSnapType: 'x mandatory' }}
       >
-        {recommendations.slice(0, 6).map((recommendation, index) => (
-          <motion.div
-            key={recommendation.slug}
-            initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: index * 0.1 }}
-            className="w-80 flex-shrink-0 snap-center"
-          >
-            <Card className="h-full hover-scale transition-all duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base line-clamp-2 flex-1">
-                    {recommendation.name}
-                  </CardTitle>
-                  <Badge className={getDomainColor(recommendation.domain)}>
-                    {recommendation.domain}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground italic line-clamp-2">
-                  {recommendation.reason}
-                </p>
-                <Button 
-                  onClick={() => handleStartRecommendation(recommendation)}
-                  className="w-full"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Start this habit
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+        {recommendations.slice(0, 6).map((recommendation, index) => {
+          const isActive = hasHabit(recommendation.slug);
+          const template = templates[recommendation.slug];
+          
+          return (
+            <motion.div
+              key={recommendation.slug}
+              initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: index * 0.1 }}
+              className="w-80 flex-shrink-0 snap-center"
+            >
+              <Card className="h-full hover-scale transition-all duration-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base line-clamp-2 flex-1">
+                      {recommendation.name}
+                    </CardTitle>
+                    <Badge className={getDomainColor(recommendation.domain)}>
+                      {recommendation.domain}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground italic line-clamp-2">
+                    {recommendation.reason}
+                  </p>
+                  <Button 
+                    onClick={() => handleRecommendationClick(recommendation)}
+                    className="w-full"
+                    size="sm"
+                    variant={isActive ? "secondary" : "default"}
+                  >
+                    {isActive ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Log now
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Start this habit
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
+
+      {/* Quick Log Sheet */}
+      <QuickLogSheet
+        open={quickLogOpen}
+        onOpenChange={setQuickLogOpen}
+        template={selectedTemplate?.template || null}
+        userHabit={selectedTemplate?.userHabit || null}
+        onSuccess={() => {
+          setQuickLogOpen(false);
+          setSelectedTemplate(null);
+          fetchUserHabits();
+        }}
+      />
     </section>
   );
 }

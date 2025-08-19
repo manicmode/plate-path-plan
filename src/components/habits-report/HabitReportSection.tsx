@@ -189,8 +189,26 @@ export function HabitReportSection({ period }: HabitReportSectionProps) {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">Log Now</Button>
-                        <Button size="sm" variant="ghost">Snooze</Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            // Navigate to habit central with focus on this habit
+                            window.location.href = `/habit#${habit.slug}`;
+                          }}
+                        >
+                          Log Now
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => {
+                            // Could implement snooze functionality
+                            window.location.href = `/habit#${habit.slug}`;
+                          }}
+                        >
+                          View
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -250,8 +268,24 @@ export function HabitReportSection({ period }: HabitReportSectionProps) {
                     </div>
                     
                     <div className="flex gap-2 ml-4">
-                      <Button size="sm" variant="outline">Log</Button>
-                      <Button size="sm" variant="ghost">View</Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          window.location.href = `/habit#${habit.slug}`;
+                        }}
+                      >
+                        Log
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => {
+                          window.location.href = `/habit#${habit.slug}`;
+                        }}
+                      >
+                        View
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

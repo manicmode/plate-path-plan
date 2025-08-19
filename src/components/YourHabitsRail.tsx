@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
+import { HabitManagementMenu } from '@/components/habits/HabitManagementMenu';
 import { QuickLogSheet } from './QuickLogSheet';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -276,47 +277,55 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
             return (
               <Card key={userHabit.id} className="flex-shrink-0 w-64">
                 <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-sm line-clamp-2">{template.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={getDomainColor(template.domain)}>
-                            {template.domain}
-                          </Badge>
-                          {userHabit.reminder_at && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {userHabit.reminder_at}
-                            </div>
-                          )}
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-sm line-clamp-2">{template.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={getDomainColor(template.domain)}>
+                              {template.domain}
+                            </Badge>
+                            {userHabit.reminder_at && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {userHabit.reminder_at}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        
+                        {/* Management Menu */}
+                        <HabitManagementMenu
+                          userHabit={userHabit}
+                          template={template}
+                          onEdit={onEditHabit}
+                          onStatusChanged={fetchUserHabits}
+                        />
                       </div>
+
+                      {/* Weekly progress chip */}
+                      <motion.div 
+                        className="text-xs bg-muted rounded-md px-2 py-1"
+                        animate={animatingHabits.has(userHabit.id) && !prefersReducedMotion ? {
+                          scale: [1, 1.1, 1],
+                          backgroundColor: ['hsl(var(--muted))', 'hsl(var(--primary) / 0.1)', 'hsl(var(--muted))']
+                        } : {}}
+                        transition={{ duration: 0.5, type: 'spring' }}
+                      >
+                        This week: {progress?.completions || 0}
+                        {progress?.minutes && ` (${Math.round(progress.minutes)}m)`}
+                      </motion.div>
+
+                      {/* Quick log button */}
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleQuickLog(userHabit, template)}
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Log now
+                      </Button>
                     </div>
-
-                    {/* Weekly progress chip */}
-                    <motion.div 
-                      className="text-xs bg-muted rounded-md px-2 py-1"
-                      animate={animatingHabits.has(userHabit.id) && !prefersReducedMotion ? {
-                        scale: [1, 1.1, 1],
-                        backgroundColor: ['hsl(var(--muted))', 'hsl(var(--primary) / 0.1)', 'hsl(var(--muted))']
-                      } : {}}
-                      transition={{ duration: 0.5, type: 'spring' }}
-                    >
-                      This week: {progress?.completions || 0}
-                      {progress?.minutes && ` (${Math.round(progress.minutes)}m)`}
-                    </motion.div>
-
-                    {/* Quick log button */}
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handleQuickLog(userHabit, template)}
-                    >
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Log now
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             );

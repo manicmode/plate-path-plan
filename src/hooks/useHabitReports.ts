@@ -1,67 +1,63 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/auth";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 export interface HabitReportData {
   user_habit_id: string;
   slug: string;
   name: string;
   domain: string;
-  expected_count: number;
   completions: number;
-  minutes: number;
+  expected_count: number;
   adherence_pct: number;
+  minutes: number;
   current_streak: number;
   last_logged_at: string | null;
-  reminder_at: string | null;
 }
 
-export interface HabitKPIs {
-  active_habits: number;
-  total_expected: number;
-  total_completions: number;
+export interface HabitKPIsData {
   overall_adherence_pct: number;
+  active_habits: number;
+  total_completions: number;
   total_minutes: number;
   streak_leader_slug: string | null;
   streak_leader_days: number;
 }
 
-export const useHabitReport = (period: 'week' | 'month', startDate?: string) => {
+export const useHabitReport = (period: 'week' | 'month') => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['habit-report', period, startDate, user?.id],
+    queryKey: ['habit-report', period, user?.id],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
+      if (!user) return [];
+
       const { data, error } = await supabase.rpc('rpc_habit_report', {
-        period,
-        p_start: startDate || null
+        p_period: period
       });
 
       if (error) throw error;
       return data as HabitReportData[];
     },
-    enabled: !!user,
+    enabled: !!user
   });
 };
 
-export const useHabitKPIs = (period: 'week' | 'month', startDate?: string) => {
+export const useHabitKPIs = (period: 'week' | 'month') => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['habit-kpis', period, startDate, user?.id],
+    queryKey: ['habit-kpis', period, user?.id],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
+      if (!user) return null;
+
       const { data, error } = await supabase.rpc('rpc_habit_kpis', {
-        period,
-        p_start: startDate || null
+        p_period: period
       });
 
       if (error) throw error;
-      return data[0] as HabitKPIs;
+      return data as HabitKPIsData;
     },
-    enabled: !!user,
+    enabled: !!user
   });
 };

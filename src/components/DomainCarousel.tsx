@@ -6,6 +6,8 @@ import { HabitTemplate, HabitDomain } from '@/hooks/useHabitTemplatesV2';
 import { HabitCard } from '@/components/habit-central/HabitCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { useUserHabits } from '@/hooks/useUserHabits';
+import { useAuth } from '@/contexts/auth';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +20,7 @@ interface DomainCarouselProps {
 
 export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: DomainCarouselProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [templates, setTemplates] = useState<HabitTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItems] = useState<Set<string>>(new Set());
@@ -25,6 +28,8 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  
+  const { hasHabit, fetchUserHabits } = useUserHabits();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -36,19 +41,23 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
   }, []);
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const initializeData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('habit_templates')
-          .select('*')
-          .eq('domain', domain)
-          .order('difficulty', { ascending: true })
-          .order('name', { ascending: true })
-          .limit(24);
+        // Fetch templates and user habits in parallel
+        const [templatesResponse] = await Promise.all([
+          supabase
+            .from('habit_templates')
+            .select('*')
+            .eq('domain', domain)
+            .order('difficulty', { ascending: true })
+            .order('name', { ascending: true })
+            .limit(24),
+          user ? fetchUserHabits() : Promise.resolve()
+        ]);
 
-        if (error) throw error;
+        if (templatesResponse.error) throw templatesResponse.error;
 
-        setTemplates(data as HabitTemplate[] || []);
+        setTemplates(templatesResponse.data as HabitTemplate[] || []);
       } catch (error) {
         console.error(`Error fetching ${domain} templates:`, error);
         toast({
@@ -61,8 +70,8 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
       }
     };
 
-    fetchTemplates();
-  }, [domain]);
+    initializeData();
+  }, [domain, user, fetchUserHabits]);
 
   useEffect(() => {
     const checkScrollability = () => {
@@ -205,6 +214,7 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
                 onDetailsClick={() => onDetailsClick(template)}
                 onStartHabit={() => onStartHabit(template)}
                 showAdminActions={false}
+                isActive={hasHabit(template.slug)}
               />
               <div className="mt-2 text-center">
                 <p className="text-xs text-muted-foreground">We'll remind & track for you</p>
