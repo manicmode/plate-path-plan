@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Calendar, Target, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { HabitTemplate } from './CarouselHabitCard';
 
 interface HabitAddModalProps {
@@ -91,32 +92,44 @@ export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: Hab
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-xl border-border/60 shadow-2xl">
-        <DialogHeader className="pb-6">
-          <DialogTitle className="flex items-center gap-4 text-2xl">
-            <span className="text-4xl">{DOMAIN_EMOJIS[habit.domain]}</span>
-            <div>
-              <div className="text-2xl font-bold">Add "{habit.title}"</div>
-              <div className="text-sm text-muted-foreground font-normal mt-1">Set up your reminder preferences</div>
-            </div>
+      <DialogContent className="mx-auto w-[92vw] max-w-[420px] rounded-3xl bg-[rgba(16,18,28,.6)] backdrop-blur-2xl shadow-2xl border border-white/10">
+        <DialogHeader className="pb-6 text-center">
+          <div className="mx-auto mb-2 h-12 w-12 rounded-full grid place-items-center bg-white/10 border border-white/15">
+            <span className="text-2xl">{DOMAIN_EMOJIS[habit.domain]}</span>
+          </div>
+          <DialogTitle className="text-xl font-bold text-center">
+            Add "{habit.title}"
           </DialogTitle>
+          <p className="text-sm text-muted-foreground text-center">
+            Set up your reminder preferences
+          </p>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-muted/30 p-1 rounded-xl">
-            <TabsTrigger 
-              value="auto" 
-              className="rounded-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+          <div className="inline-flex w-full rounded-2xl bg-white/5 p-1 border border-white/10">
+            <button
+              onClick={() => setActiveTab('auto')}
+              className={cn(
+                "flex-1 h-10 rounded-xl font-semibold text-sm transition-all",
+                activeTab === 'auto' 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "hover:bg-white/10"
+              )}
             >
               Auto reminder
-            </TabsTrigger>
-            <TabsTrigger 
-              value="manual" 
-              className="rounded-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+            </button>
+            <button
+              onClick={() => setActiveTab('manual')}
+              className={cn(
+                "flex-1 h-10 rounded-xl font-semibold text-sm transition-all",
+                activeTab === 'manual' 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "hover:bg-white/10"
+              )}
             >
               Manual setup
-            </TabsTrigger>
-          </TabsList>
+            </button>
+          </div>
 
           <TabsContent value="auto" className="space-y-6 py-4">
             <div className="text-center space-y-3">
@@ -146,104 +159,108 @@ export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: Hab
             </p>
           </TabsContent>
 
-          <TabsContent value="manual" className="space-y-6 mt-6">
-            {/* Frequency */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                Frequency
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {['daily', 'weekly', 'custom'].map((freq) => (
-                  <button
-                    key={freq}
-                    onClick={() => setFrequency(freq as any)}
-                    className={`p-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                      frequency === freq
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    {freq}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {activeTab === 'manual' && (
+            <div className="w-full min-w-0 space-y-4 mt-6">
+              {/* Frequency */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    Frequency
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['daily', 'weekly', 'custom'].map((freq) => (
+                      <button
+                        key={freq}
+                        onClick={() => setFrequency(freq as any)}
+                        className={`p-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                          frequency === freq
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Days (for weekly/custom) */}
-            {(frequency === 'weekly' || frequency === 'custom') && (
-              <div>
-                <h4 className="font-medium mb-3">Days of the week</h4>
-                <div className="flex gap-2">
-                  {WEEKDAYS.map((day) => (
-                    <button
-                      key={day.value}
-                      onClick={() => toggleDay(day.value)}
-                      className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
-                        selectedDays.includes(day.value)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
+                {/* Days (for weekly/custom) */}
+                {(frequency === 'weekly' || frequency === 'custom') && (
+                  <div>
+                    <h4 className="font-medium mb-3">Days of the week</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {WEEKDAYS.map((day) => (
+                        <button
+                          key={day.value}
+                          onClick={() => toggleDay(day.value)}
+                          className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
+                            selectedDays.includes(day.value)
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Time */}
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    Reminder time
+                  </h3>
+                  <input
+                    type="time"
+                    value={timeLocal || suggestedTime}
+                    onChange={(e) => setTimeLocal(e.target.value)}
+                    className="w-full p-2 rounded-lg border bg-background"
+                  />
+                </div>
+
+                {/* Target per week */}
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    Target per week
+                  </h3>
+                  <div className="flex items-center gap-3 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTargetPerWeek(Math.max(1, targetPerWeek - 1))}
+                      disabled={targetPerWeek <= 1}
                     >
-                      {day.label}
-                    </button>
-                  ))}
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="font-semibold text-lg w-8 text-center">
+                      {targetPerWeek}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTargetPerWeek(Math.min(7, targetPerWeek + 1))}
+                      disabled={targetPerWeek >= 7}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            )}
-
-            {/* Time */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Reminder time
-              </h3>
-              <input
-                type="time"
-                value={timeLocal || suggestedTime}
-                onChange={(e) => setTimeLocal(e.target.value)}
-                className="w-full p-2 rounded-lg border bg-background"
-              />
             </div>
-
-            {/* Target per week */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Target per week
-              </h3>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTargetPerWeek(Math.max(1, targetPerWeek - 1))}
-                  disabled={targetPerWeek <= 1}
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="font-semibold text-lg w-8 text-center">
-                  {targetPerWeek}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTargetPerWeek(Math.min(7, targetPerWeek + 1))}
-                  disabled={targetPerWeek >= 7}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
+          )}
         </Tabs>
 
-        <div className="flex gap-4 pt-8 border-t border-border/40">
-          <Button variant="outline" onClick={onClose} className="flex-1 h-12 text-base font-medium rounded-xl">
+        <div className="flex flex-col gap-3 pt-6">
+          <Button variant="outline" onClick={onClose} className="w-full h-12 text-sm font-medium rounded-xl">
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm} 
-            className="flex-1 h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
+            className="w-full h-12 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
             disabled={isAdding}
           >
             {isAdding 
