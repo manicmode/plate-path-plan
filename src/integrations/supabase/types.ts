@@ -2163,6 +2163,39 @@ export type Database = {
           },
         ]
       }
+      habit_nudges: {
+        Row: {
+          channel: string | null
+          created_at: string
+          habit_slug: string
+          id: string
+          meta: Json | null
+          scheduled_for: string
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          habit_slug: string
+          id?: string
+          meta?: Json | null
+          scheduled_for?: string
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          habit_slug?: string
+          id?: string
+          meta?: Json | null
+          scheduled_for?: string
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       habit_search_events: {
         Row: {
           category: string | null
@@ -8187,6 +8220,10 @@ export type Database = {
           slug: string
           user_habit_id: string
         }[]
+      }
+      rpc_dispatch_habit_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       rpc_ensure_user_profile: {
         Args: Record<PropertyKey, never>

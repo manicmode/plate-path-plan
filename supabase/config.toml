@@ -1,1 +1,4 @@
 project_id = "uzoiiijqtahohfafqirm"
+
+[functions.dispatchHabitReminders]
+verify_jwt = false
