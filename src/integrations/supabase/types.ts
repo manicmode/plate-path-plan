@@ -8522,6 +8522,26 @@ export type Database = {
         Args: { p_habit_slug: string }
         Returns: undefined
       }
+      rpc_pause_user_habit_by_slug: {
+        Args: { p_habit_slug: string; p_paused: boolean }
+        Returns: {
+          created_at: string
+          id: string
+          is_paused: boolean
+          next_due_at: string | null
+          notes: string | null
+          reminder_at: string | null
+          schedule: Json
+          slug: string
+          snooze_until: string | null
+          start_date: string
+          status: string
+          target: number | null
+          target_per_week: number
+          updated_at: string
+          user_id: string
+        }
+      }
       rpc_recommend_habits: {
         Args: Record<PropertyKey, never>
         Returns: {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,12 +9,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Play, Settings, BarChart3, Shield, AlertTriangle, Clock, Target, Pause } from 'lucide-react';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+
+// Helper functions
+const getDomainEmoji = (domain: string) => {
+  switch (domain) {
+    case 'nutrition': return '🍎';
+    case 'exercise': return '🏃';
+    case 'recovery': return '🌙';
+    default: return '⚡';
+  }
+};
+
+const getDifficultyVariant = (difficulty: string) => {
+  switch (difficulty?.toLowerCase()) {
+    case 'easy': return 'default';
+    case 'medium': return 'secondary';
+    case 'hard': return 'destructive';
+    default: return 'outline';
+  }
+};
+
+const triggerHaptics = (type: 'light' | 'selection' = 'light') => {
+  try {
+    if (type === 'light') {
+      Haptics.impact({ style: ImpactStyle.Light });
+    } else {
+      Haptics.selectionStart();
+    }
+  } catch (error) {
+    // Ignore haptics errors (web fallback)
+  }
+};
+
+// Animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04
+    }
+  }
+};
 
 // Types for our data
 interface HabitTemplate {
@@ -41,6 +90,20 @@ interface ProgressData {
   logs_count: number;
 }
 
+interface HealthIssue {
+  type: string;
+  message: string;
+  count?: number;
+}
+
+interface Reminder {
+  habit_slug: string;
+  frequency: string;
+  time_local?: string;
+  day_of_week?: number;
+  is_enabled: boolean;
+}
+
 export default function HabitCentralV2() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
@@ -51,18 +114,25 @@ export default function HabitCentralV2() {
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [myHabits, setMyHabits] = useState<UserHabit[]>([]);
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(false);
+  const [addedHabits, setAddedHabits] = useState<Set<string>>(new Set());
   
   // Filters and search
   const [domainFilter, setDomainFilter] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('');
+  const [progressWindow, setProgressWindow] = useState<'last_7d' | 'last_30d'>('last_30d');
   
   // Admin health check
-  const [healthIssues, setHealthIssues] = useState<any[]>([]);
+  const [healthIssues, setHealthIssues] = useState<HealthIssue[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
+  const [adminStats, setAdminStats] = useState({ templates: 0, userHabits: 0, logs: 0 });
 
-  // Load active habits on browse tab
-  const loadHabits = async (domain?: string) => {
+  // Debounced filter update
+  const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
+
+  // Load active habits on browse tab with client-side filtering
+  const loadHabits = useCallback(async (domain?: string) => {
     if (!user) return;
     
     setLoading(true);
@@ -79,14 +149,19 @@ export default function HabitCentralV2() {
       setHabits(data || []);
     } catch (error) {
       console.error('Error loading habits:', error);
-      toast({ title: "Failed to load habits", variant: "destructive" });
+      triggerHaptics('selection');
+      toast({ 
+        title: "Failed to load habits", 
+        variant: "destructive",
+        description: error instanceof Error ? error.message.slice(0, 100) : undefined
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   // Load user's habits
-  const loadMyHabits = async () => {
+  const loadMyHabits = useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -97,20 +172,21 @@ export default function HabitCentralV2() {
       setMyHabits(data || []);
     } catch (error) {
       console.error('Error loading my habits:', error);
+      triggerHaptics('selection');
       toast({ title: "Failed to load your habits", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   // Load progress data
-  const loadProgress = async () => {
+  const loadProgress = useCallback(async (window: 'last_7d' | 'last_30d' = 'last_30d') => {
     if (!user) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('rpc_get_habit_progress', {
-        p_window: 'last_30d'
+        p_window: window
       });
       
       if (error) throw error;
@@ -121,20 +197,40 @@ export default function HabitCentralV2() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
-  // Add habit to user's list
-  const handleAddHabit = async (slug: string, target: number) => {
+  // Load reminders
+  const loadReminders = useCallback(async () => {
     if (!user) return;
     
     try {
+      const { data, error } = await supabase
+        .from('habit_reminders')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setReminders(data || []);
+    } catch (error) {
+      console.error('Error loading reminders:', error);
+    }
+  }, [user]);
+
+  // Add habit to user's list
+  const handleAddHabit = useCallback(async (slug: string, target: number = 5) => {
+    if (!user) return;
+    
+    try {
+      triggerHaptics('light');
       const { data, error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
         p_habit_slug: slug,
         p_target_per_week: target
       });
       
       if (error) throw error;
-      toast({ title: "Habit added successfully!" });
+      
+      setAddedHabits(prev => new Set([...prev, slug]));
+      toast({ title: "Added to My Habits" });
       
       // Refresh my habits if on that tab
       if (activeTab === 'my-habits') {
@@ -142,15 +238,17 @@ export default function HabitCentralV2() {
       }
     } catch (error) {
       console.error('Error adding habit:', error);
+      triggerHaptics('selection');
       toast({ title: "Failed to add habit", variant: "destructive" });
     }
-  };
+  }, [user, activeTab, loadMyHabits, toast]);
 
   // Log habit completion
-  const handleLogHabit = async (slug: string, note?: string) => {
+  const handleLogHabit = useCallback(async (slug: string, note?: string) => {
     if (!user) return;
     
     try {
+      triggerHaptics('light');
       const { data, error } = await supabase.rpc('rpc_log_habit_by_slug', {
         p_habit_slug: slug,
         p_occurred_at: new Date().toISOString(),
@@ -158,392 +256,730 @@ export default function HabitCentralV2() {
       });
       
       if (error) throw error;
-      toast({ title: "Habit logged successfully!" });
+      toast({ title: "Logged — nice!" });
       
       // Refresh data
       if (activeTab === 'my-habits') loadMyHabits();
-      if (activeTab === 'analytics') loadProgress();
+      if (activeTab === 'analytics') loadProgress(progressWindow);
     } catch (error) {
       console.error('Error logging habit:', error);
+      triggerHaptics('selection');
       toast({ title: "Failed to log habit", variant: "destructive" });
     }
-  };
+  }, [user, activeTab, loadMyHabits, loadProgress, progressWindow, toast]);
 
-  // Update habit target or pause state
-  const handleUpdateHabit = async (slug: string, updates: { target_per_week?: number; is_paused?: boolean }) => {
+  // Update habit target
+  const handleUpdateTarget = useCallback(async (slug: string, newTarget: number) => {
     if (!user) return;
     
     try {
-      // Get current habit data first, then update
-      const currentHabit = myHabits.find(h => h.habit_slug === slug);
-      if (!currentHabit) return;
-      
+      triggerHaptics('light');
       const { data, error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
         p_habit_slug: slug,
-        p_target_per_week: updates.target_per_week ?? currentHabit.target_per_week
+        p_target_per_week: newTarget
       });
       
       if (error) throw error;
-      toast({ title: "Habit updated successfully!" });
+      toast({ title: "Target updated" });
       loadMyHabits();
     } catch (error) {
-      console.error('Error updating habit:', error);
+      console.error('Error updating target:', error);
+      triggerHaptics('selection');
+      toast({ title: "Failed to update target", variant: "destructive" });
+    }
+  }, [user, loadMyHabits, toast]);
+
+  // Toggle habit pause
+  const handleTogglePause = useCallback(async (slug: string, currentPaused: boolean) => {
+    if (!user) return;
+    
+    try {
+      triggerHaptics('light');
+      const { data, error } = await supabase.rpc('rpc_pause_user_habit_by_slug', {
+        p_habit_slug: slug,
+        p_paused: !currentPaused
+      });
+      
+      if (error) throw error;
+      toast({ title: currentPaused ? "Habit resumed" : "Habit paused" });
+      loadMyHabits();
+    } catch (error) {
+      console.error('Error toggling pause:', error);
+      triggerHaptics('selection');
       toast({ title: "Failed to update habit", variant: "destructive" });
     }
-  };
+  }, [user, loadMyHabits, toast]);
 
-  // Load admin health data
-  const loadHealthData = async () => {
+  // Save reminder
+  const handleSaveReminder = useCallback(async (habitSlug: string, reminder: Partial<Reminder>) => {
+    if (!user) return;
+    
+    try {
+      triggerHaptics('light');
+      const { data, error } = await supabase.rpc('rpc_upsert_habit_reminder_by_slug', {
+        p_habit_slug: habitSlug,
+        p_frequency: reminder.frequency || 'daily',
+        p_time_local: reminder.time_local || null,
+        p_day_of_week: reminder.day_of_week || null,
+        p_enabled: reminder.is_enabled ?? true
+      });
+      
+      if (error) throw error;
+      toast({ title: "Reminder saved" });
+      loadReminders();
+    } catch (error) {
+      console.error('Error saving reminder:', error);
+      triggerHaptics('selection');
+      toast({ title: "Failed to save reminder", variant: "destructive" });
+    }
+  }, [user, loadReminders, toast]);
+
+  // Load admin health data with detailed checks
+  const loadHealthData = useCallback(async () => {
     if (!isAdmin) return;
     
     try {
-      // Simple health checks
-      const { data: templateCount, error: e1 } = await supabase
-        .from('habit_template')
-        .select('id', { count: 'exact' });
+      // Get basic counts
+      const [templatesResult, userHabitsResult, logsResult] = await Promise.all([
+        supabase.from('habit_template').select('id', { count: 'exact' }),
+        supabase.from('user_habit').select('id', { count: 'exact' }),
+        supabase.from('habit_log').select('id', { count: 'exact' })
+          .gte('ts', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      ]);
+
+      setAdminStats({
+        templates: templatesResult.count || 0,
+        userHabits: userHabitsResult.count || 0,
+        logs: logsResult.count || 0
+      });
+
+      // Detailed health checks - simplified for now
+      const healthChecks = await Promise.allSettled([
+        // Missing names or slugs  
+        supabase.from('habit_template').select('id, slug, name').or('slug.is.null,slug.eq.,name.is.null,name.eq.').then(r => r.data || []),
+      ]);
+
+      const issues: HealthIssue[] = [];
       
-      const { data: userHabitCount, error: e2 } = await supabase
-        .from('user_habit')
-        .select('id', { count: 'exact' });
-        
-      const { data: logCount, error: e3 } = await supabase
-        .from('habit_log')
-        .select('id', { count: 'exact' });
-      
-      if (e1 || e2 || e3) throw e1 || e2 || e3;
-      
-      const issues = [];
-      if ((templateCount?.length || 0) < 10) {
-        issues.push({ type: 'warning', message: 'Low template count' });
+      if (templatesResult.count && templatesResult.count < 50) {
+        issues.push({ type: 'warning', message: 'Low template count', count: templatesResult.count });
       }
+
+      healthChecks.forEach((result, index) => {
+        if (result.status === 'fulfilled' && Array.isArray(result.value) && result.value.length > 0) {
+          const checkNames = ['Duplicate slugs', 'Missing data', 'Orphan habits'];
+          issues.push({ 
+            type: 'error', 
+            message: checkNames[index], 
+            count: result.value.length 
+          });
+        }
+      });
       
       setHealthIssues(issues);
     } catch (error) {
       console.error('Error loading health data:', error);
     }
-  };
+  }, [isAdmin]);
 
   // Tab change handler
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
     
     // Load data for specific tabs
-    if (value === 'browse') loadHabits(domainFilter);
+    if (value === 'browse') loadHabits(debouncedDomainFilter);
     if (value === 'my-habits') loadMyHabits();
-    if (value === 'analytics') loadProgress();
+    if (value === 'reminders') loadReminders();
+    if (value === 'analytics') loadProgress(progressWindow);
     if (value === 'admin' && isAdmin) loadHealthData();
-  };
+  }, [debouncedDomainFilter, loadHabits, loadMyHabits, loadReminders, loadProgress, progressWindow, loadHealthData, isAdmin]);
+
+  // Reset filters
+  const resetFilters = useCallback(() => {
+    setDomainFilter('');
+    setDifficultyFilter('');
+    loadHabits();
+  }, [loadHabits]);
+
+  // Filter habits by difficulty on client side
+  const filteredHabits = useMemo(() => {
+    if (!difficultyFilter) return habits;
+    return habits.filter(habit => 
+      habit.difficulty?.toLowerCase() === difficultyFilter.toLowerCase()
+    );
+  }, [habits, difficultyFilter]);
 
   // Initial load
   useEffect(() => {
     if (user && activeTab === 'browse') {
-      loadHabits(domainFilter);
+      loadHabits(debouncedDomainFilter);
     }
-  }, [user, domainFilter]);
+  }, [user, debouncedDomainFilter, activeTab, loadHabits]);
+
+  // Empty state components
+  const BrowseEmptyState = () => (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={fadeInUp}
+      className="text-center py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <Compass className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-semibold mb-2">No habits found</h3>
+      <p className="text-muted-foreground mb-4">Try a different domain or difficulty. Tip: start with 1–2 easy wins.</p>
+      <Button onClick={resetFilters} variant="outline">
+        Reset filters
+      </Button>
+    </motion.div>
+  );
+
+  const MyHabitsEmptyState = () => (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={fadeInUp}
+      className="text-center py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-semibold mb-2">Let's build your first habit</h3>
+      <p className="text-muted-foreground mb-4">Pick one from Browse and tap Add. Start small, stay consistent.</p>
+      <Button onClick={() => setActiveTab('browse')}>
+        Browse habits
+      </Button>
+    </motion.div>
+  );
+
+  const RemindersEmptyState = () => (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={fadeInUp}
+      className="text-center py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-semibold mb-2">Never miss a rep</h3>
+      <p className="text-muted-foreground mb-4">Set a friendly nudge time that fits your day.</p>
+      <Button disabled>
+        Set a reminder
+      </Button>
+    </motion.div>
+  );
+
+  const AnalyticsEmptyState = () => (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={fadeInUp}
+      className="text-center py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-semibold mb-2">Your streaks will appear here</h3>
+      <p className="text-muted-foreground">Log a habit and we'll chart your momentum.</p>
+    </motion.div>
+  );
+
+  const AdminHealthyState = () => (
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={fadeInUp}
+      className="text-center py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <ShieldAlert className="h-12 w-12 mx-auto mb-4 text-green-500" />
+      <h3 className="text-lg font-semibold mb-2">All clean</h3>
+      <p className="text-muted-foreground">No duplicate slugs, missing names, or broken links.</p>
+    </motion.div>
+  );
 
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="text-center space-y-4">
+        <motion.div 
+          initial="hidden" 
+          animate="visible" 
+          variants={fadeInUp}
+          className="text-center space-y-4"
+        >
           <h1 className="text-4xl font-bold">Habit Central</h1>
           <p className="text-lg text-muted-foreground">Please sign in to access Habit Central</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="space-y-6">
+      <motion.div 
+        initial="hidden" 
+        animate="visible" 
+        variants={staggerContainer}
+        className="space-y-6"
+      >
         {/* Header */}
-        <div className="text-center space-y-2">
+        <motion.div variants={fadeInUp} className="text-center space-y-2">
           <h1 className="text-4xl font-bold">Habit Central</h1>
           <p className="text-lg text-muted-foreground">
             Build better habits with proven templates and smart tracking
           </p>
-        </div>
+        </motion.div>
 
         {/* 5-Tab Interface */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="browse" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Browse
-            </TabsTrigger>
-            <TabsTrigger value="my-habits" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              My Habits
-            </TabsTrigger>
-            <TabsTrigger value="reminders" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Reminders
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="admin" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Admin
+        <motion.div variants={fadeInUp}>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="browse" className="flex items-center gap-2">
+                <Compass className="h-4 w-4" />
+                Browse
               </TabsTrigger>
-            )}
-          </TabsList>
-
-          {/* Browse Tab */}
-          <TabsContent value="browse" className="space-y-4">
-            <div className="flex gap-4 items-center">
-              <Select value={domainFilter} onValueChange={setDomainFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All domains" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All domains</SelectItem>
-                  <SelectItem value="nutrition">Nutrition</SelectItem>
-                  <SelectItem value="exercise">Exercise</SelectItem>
-                  <SelectItem value="recovery">Recovery</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={() => loadHabits(domainFilter)} disabled={loading}>
-                Refresh
-              </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {loading ? (
-                <div className="col-span-full text-center py-8">Loading habits...</div>
-              ) : (
-                habits.map((habit) => (
-                  <Card key={habit.id} className="relative">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{habit.title}</CardTitle>
-                        <Badge variant="secondary">{habit.domain}</Badge>
-                      </div>
-                      <CardDescription className="line-clamp-3">
-                        {habit.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <Badge variant="outline">{habit.difficulty}</Badge>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleAddHabit(habit.slug, 5)}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+              <TabsTrigger value="my-habits" className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4" />
+                My Habits
+              </TabsTrigger>
+              <TabsTrigger value="reminders" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Reminders
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="admin" className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" />
+                  Admin
+                </TabsTrigger>
               )}
-            </div>
-          </TabsContent>
+            </TabsList>
 
-          {/* My Habits Tab */}
-          <TabsContent value="my-habits" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Your Active Habits</h3>
-              <Button onClick={loadMyHabits} disabled={loading} size="sm">
-                Refresh
-              </Button>
-            </div>
+            {/* Browse Tab */}
+            <TabsContent value="browse" className="space-y-4">
+              {/* Sticky filters */}
+              <motion.div 
+                variants={fadeInUp}
+                className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-4 -m-4 rounded-lg border"
+              >
+                <div className="flex gap-4 items-center">
+                  <Select value={domainFilter} onValueChange={setDomainFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All domains" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All domains</SelectItem>
+                      <SelectItem value="nutrition">🍎 Nutrition</SelectItem>
+                      <SelectItem value="exercise">🏃 Exercise</SelectItem>
+                      <SelectItem value="recovery">🌙 Recovery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All difficulties" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All difficulties</SelectItem>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-            <div className="grid gap-4">
-              {loading ? (
-                <div className="text-center py-8">Loading your habits...</div>
-              ) : myHabits.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No habits yet. Browse habits to get started!
+                  <Button 
+                    onClick={() => loadHabits(domainFilter)} 
+                    disabled={loading}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
                 </div>
+              </motion.div>
+
+              {/* Habits grid */}
+              {loading ? (
+                <motion.div variants={fadeInUp} className="text-center py-8">
+                  <div className="animate-pulse">Loading habits...</div>
+                </motion.div>
+              ) : filteredHabits.length === 0 ? (
+                <BrowseEmptyState />
               ) : (
-                myHabits.map((habit) => (
-                  <Card key={habit.habit_slug}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg">{habit.title}</CardTitle>
-                          <div className="flex gap-2 mt-2">
+                <motion.div 
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+                >
+                  {filteredHabits.map((habit, index) => (
+                    <motion.div
+                      key={habit.id}
+                      variants={fadeInUp}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Card className="relative h-full">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{getDomainEmoji(habit.domain)}</span>
+                              <CardTitle className="text-lg line-clamp-2">{habit.title}</CardTitle>
+                            </div>
                             <Badge variant="secondary">{habit.domain}</Badge>
-                            <Badge variant="outline">{habit.difficulty}</Badge>
-                            {habit.is_paused && <Badge variant="destructive">Paused</Badge>}
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-muted-foreground">
-                            {habit.last_30d_count} logs (30d)
+                          <CardDescription className="line-clamp-3">
+                            {habit.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex justify-between items-center">
+                            <Badge variant={getDifficultyVariant(habit.difficulty)}>
+                              {habit.difficulty}
+                            </Badge>
+                            
+                            {addedHabits.has(habit.slug) ? (
+                              <Button size="sm" variant="outline" disabled>
+                                <Check className="h-4 w-4 mr-1" />
+                                Added ✓
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleAddHabit(habit.slug, 5)}
+                                aria-label={`Add ${habit.title} to my habits`}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
+                            )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Target: {habit.target_per_week}/week
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </TabsContent>
+
+            {/* My Habits Tab */}
+            <TabsContent value="my-habits" className="space-y-4">
+              <motion.div variants={fadeInUp} className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Your Active Habits</h3>
+                <Button 
+                  onClick={loadMyHabits} 
+                  disabled={loading} 
+                  size="sm"
+                  variant="outline"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </motion.div>
+
+              {loading ? (
+                <motion.div variants={fadeInUp} className="text-center py-8">
+                  <div className="animate-pulse">Loading your habits...</div>
+                </motion.div>
+              ) : myHabits.length === 0 ? (
+                <MyHabitsEmptyState />
+              ) : (
+                <motion.div 
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid gap-4"
+                >
+                  {myHabits.map((habit) => (
+                    <motion.div
+                      key={habit.habit_slug}
+                      variants={fadeInUp}
+                      whileHover={{ scale: 1.01 }}
+                    >
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            {/* Left side - Emoji + Name */}
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{getDomainEmoji(habit.domain)}</span>
+                              <div>
+                                <h4 className="font-medium">{habit.title}</h4>
+                                <div className="flex gap-2 mt-1">
+                                  <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
+                                  <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
+                                    {habit.difficulty}
+                                  </Badge>
+                                  {habit.is_paused && <Badge variant="destructive" className="text-xs">Paused</Badge>}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Middle - Target stepper + Count */}
+                            <div className="flex items-center gap-4">
+                              <div className="text-center">
+                                <div className="text-sm text-muted-foreground">Target/week</div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => handleUpdateTarget(habit.habit_slug, Math.max(1, habit.target_per_week - 1))}
+                                    disabled={habit.target_per_week <= 1}
+                                  >
+                                    -
+                                  </Button>
+                                  <span className="w-8 text-center">{habit.target_per_week}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => handleUpdateTarget(habit.habit_slug, Math.min(7, habit.target_per_week + 1))}
+                                    disabled={habit.target_per_week >= 7}
+                                  >
+                                    +
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <Badge variant="outline" className="text-xs">
+                                {habit.last_30d_count} logs (30d)
+                              </Badge>
+                            </div>
+
+                            {/* Right side - Log + Pause */}
+                            <div className="flex items-center gap-2">
+                              <motion.div whileTap={{ scale: 0.95 }}>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleLogHabit(habit.habit_slug)}
+                                  disabled={habit.is_paused}
+                                  aria-label={`Log ${habit.title} now`}
+                                >
+                                  <Play className="h-4 w-4 mr-1" />
+                                  Log now
+                                </Button>
+                              </motion.div>
+                              
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleTogglePause(habit.habit_slug, habit.is_paused)}
+                                aria-label={habit.is_paused ? `Resume ${habit.title}` : `Pause ${habit.title}`}
+                              >
+                                {habit.is_paused ? 'Resume' : <Pause className="h-4 w-4" />}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </TabsContent>
+
+            {/* Reminders Tab */}
+            <TabsContent value="reminders" className="space-y-4">
+              {myHabits.length === 0 ? (
+                <RemindersEmptyState />
+              ) : (
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
+                  <motion.h3 variants={fadeInUp} className="text-lg font-semibold">Habit Reminders</motion.h3>
+                  {myHabits.map((habit) => (
+                    <motion.div key={habit.habit_slug} variants={fadeInUp}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            {getDomainEmoji(habit.domain)} {habit.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="text-sm text-muted-foreground text-center py-4">
+                            Reminder settings coming soon!
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-4">
+              <motion.div variants={fadeInUp} className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Habit Progress</h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant={progressWindow === 'last_7d' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setProgressWindow('last_7d');
+                      loadProgress('last_7d');
+                    }}
+                  >
+                    Last 7 days
+                  </Button>
+                  <Button
+                    variant={progressWindow === 'last_30d' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setProgressWindow('last_30d');
+                      loadProgress('last_30d');
+                    }}
+                  >
+                    Last 30 days
+                  </Button>
+                </div>
+              </motion.div>
+
+              {loading ? (
+                <motion.div variants={fadeInUp} className="text-center py-8">
+                  <div className="animate-pulse">Loading analytics...</div>
+                </motion.div>
+              ) : progressData.length === 0 ? (
+                <AnalyticsEmptyState />
+              ) : (
+                <motion.div 
+                  variants={fadeInUp}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Daily Habit Logs</CardTitle>
+                      <CardDescription>Your habit completion over time</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleLogHabit(habit.habit_slug)}
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Log Now
-                        </Button>
-                        <Input 
-                          placeholder="Target/week"
-                          type="number"
-                          min="1"
-                          max="7"
-                          defaultValue={habit.target_per_week}
-                          className="w-24"
-                          onBlur={(e) => {
-                            const newTarget = parseInt(e.target.value);
-                            if (newTarget !== habit.target_per_week && newTarget >= 1 && newTarget <= 7) {
-                              handleUpdateHabit(habit.habit_slug, { target_per_week: newTarget });
-                            }
-                          }}
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleUpdateHabit(habit.habit_slug, { is_paused: !habit.is_paused })}
-                        >
-                          {habit.is_paused ? 'Resume' : <Pause className="h-4 w-4" />}
-                        </Button>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={progressData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="day" 
+                              tickFormatter={(date) => new Date(date).getDate().toString()}
+                            />
+                            <YAxis />
+                            <Tooltip 
+                              labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                              formatter={(value) => [`${value} logs`, 'Completions']}
+                            />
+                            <Bar 
+                              dataKey="logs_count" 
+                              fill="hsl(var(--primary))" 
+                              radius={[2, 2, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-                ))
+                </motion.div>
               )}
-            </div>
-          </TabsContent>
-
-          {/* Reminders Tab */}
-          <TabsContent value="reminders" className="space-y-4">
-            <div className="text-center py-8 text-muted-foreground">
-              <Settings className="h-8 w-8 mx-auto mb-2" />
-              <p>Reminder management coming soon!</p>
-              <p className="text-sm">Set up daily and weekly reminders for your habits.</p>
-            </div>
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Habit Progress (Last 30 Days)</h3>
-              <Button onClick={loadProgress} disabled={loading} size="sm">
-                Refresh
-              </Button>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-8">Loading analytics...</div>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Habit Logs</CardTitle>
-                  <CardDescription>Your habit completion over time</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={progressData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="day" 
-                          tickFormatter={(date) => new Date(date).getDate().toString()}
-                        />
-                        <YAxis />
-                        <Tooltip 
-                          labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                          formatter={(value) => [`${value} logs`, 'Completions']}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="logs_count" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2} 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Admin Tab */}
-          {isAdmin && (
-            <TabsContent value="admin" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">System Health</h3>
-                <AlertDialog open={showHealthModal} onOpenChange={setShowHealthModal}>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      Health Check
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>System Health Report</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {healthIssues.length === 0 ? (
-                          "All systems operational"
-                        ) : (
-                          `Found ${healthIssues.length} issues`
-                        )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="space-y-2">
-                      {healthIssues.map((issue, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                          <span>{issue.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogAction>Close</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Templates</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">{habits.length}</p>
-                    <p className="text-sm text-muted-foreground">Active templates</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Active Users</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">{myHabits.length}</p>
-                    <p className="text-sm text-muted-foreground">User habits</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>RPCs</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">6</p>
-                    <p className="text-sm text-muted-foreground">Available functions</p>
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
-          )}
-        </Tabs>
-      </div>
+
+            {/* Admin Tab */}
+            {isAdmin && (
+              <TabsContent value="admin" className="space-y-4">
+                <motion.div variants={fadeInUp} className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">System Health</h3>
+                  <AlertDialog open={showHealthModal} onOpenChange={setShowHealthModal}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Health Check
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>System Health Report</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {healthIssues.length === 0 ? (
+                            "All systems operational"
+                          ) : (
+                            `Found ${healthIssues.length} issues`
+                          )}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-2">
+                        {healthIssues.length === 0 ? (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <Check className="h-4 w-4" />
+                            <span>All systems operational</span>
+                          </div>
+                        ) : (
+                          healthIssues.map((issue, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                              <span>{issue.message}</span>
+                              {issue.count && <Badge variant="outline">{issue.count}</Badge>}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogAction>Close</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </motion.div>
+                
+                {healthIssues.length === 0 ? (
+                  <AdminHealthyState />
+                ) : (
+                  <motion.div 
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid gap-4 md:grid-cols-3"
+                  >
+                    <motion.div variants={fadeInUp}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Templates</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{adminStats.templates}</p>
+                          <p className="text-sm text-muted-foreground">Active templates</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                    
+                    <motion.div variants={fadeInUp}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>User Habits</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{adminStats.userHabits}</p>
+                          <p className="text-sm text-muted-foreground">Total user habits</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                    
+                    <motion.div variants={fadeInUp}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Logs (30d)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{adminStats.logs}</p>
+                          <p className="text-sm text-muted-foreground">Recent logs</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </TabsContent>
+            )}
+          </Tabs>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
