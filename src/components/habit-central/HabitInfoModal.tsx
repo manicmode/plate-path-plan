@@ -1,7 +1,7 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Target, Lightbulb, Check, Plus } from 'lucide-react';
+import { X, Check, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { HabitTemplate } from './CarouselHabitCard';
@@ -96,101 +96,124 @@ export function HabitInfoModal({ habit, open, onClose, onAdd, isAdded }: HabitIn
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-border/60 shadow-2xl">
-        <DialogHeader className="space-y-4 pb-6">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">{DOMAIN_EMOJIS[habit.domain]}</div>
-            <div className="flex-1">
-              <DialogTitle className="text-3xl font-bold mb-3 leading-tight">{habit.title}</DialogTitle>
-              <Badge className={cn(
-                "text-sm font-semibold px-4 py-2",
-                habit.difficulty === 'easy' && "bg-emerald-100/80 text-emerald-800 border-emerald-300/50 dark:bg-emerald-900/30 dark:text-emerald-300",
-                habit.difficulty === 'medium' && "bg-amber-100/80 text-amber-800 border-amber-300/50 dark:bg-amber-900/30 dark:text-amber-300",
-                habit.difficulty === 'hard' && "bg-red-100/80 text-red-800 border-red-300/50 dark:bg-red-900/30 dark:text-red-300"
-              )}>
-                {habit.difficulty} difficulty
-              </Badge>
+      {/* Centered modal overlay */}
+      <div className="fixed inset-0 z-[100] grid place-items-center p-4">
+        {/* Backdrop */}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        
+        {/* Modal panel */}
+        <DialogContent className={cn(
+          "w-[min(92vw,560px)] rounded-3xl bg-slate-950/75 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden",
+          "relative z-10 max-h-[90vh] overflow-y-auto"
+        )}>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-4 w-4 text-white" />
+          </button>
+          
+          {/* Centered header */}
+          <div className="flex flex-col items-center gap-3 pt-6 pb-6">
+            {/* Centered icon */}
+            <div className="w-12 h-12 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-2xl">
+              {DOMAIN_EMOJIS[habit.domain]}
             </div>
+            
+            {/* Centered title */}
+            <DialogTitle className="text-2xl font-extrabold leading-tight text-center tracking-tight text-white">
+              {habit.title}
+            </DialogTitle>
+            
+            {/* Centered difficulty pill */}
+            <Badge className={cn(
+              "text-xs px-2 py-1 rounded-full bg-white/10 border border-white/15",
+              habit.difficulty === 'easy' && "text-emerald-300",
+              habit.difficulty === 'medium' && "text-amber-300", 
+              habit.difficulty === 'hard' && "text-red-300"
+            )}>
+              {habit.difficulty} difficulty
+            </Badge>
           </div>
-        </DialogHeader>
 
-        <div className="space-y-8 py-4">
+        <div className="space-y-6 px-6">
           {/* What it is */}
-          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
-              <span className="text-2xl">💡</span> What it is
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-3 text-white">
+              <span className="text-xl">💡</span> What it is
             </h3>
-            <p className="text-foreground/90 leading-relaxed text-base">{habit.description}</p>
+            <p className="text-white/80 leading-relaxed text-sm">{habit.description}</p>
           </div>
 
           {/* Why it matters */}
-          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
-              <span className="text-2xl">🎯</span> Why it matters
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-3 text-white">
+              <span className="text-xl">🎯</span> Why it matters
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {whyPoints.map((point, index) => (
                 <motion.li
                   key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-3 text-foreground/80"
+                  className="flex items-start gap-3 text-white/70"
                 >
-                  <span className="text-emerald-500 text-lg mt-0.5">•</span>
-                  <span className="text-base leading-relaxed">{point}</span>
+                  <span className="text-emerald-400 text-sm mt-1">•</span>
+                  <span className="text-sm leading-relaxed">{point}</span>
                 </motion.li>
               ))}
             </ul>
           </div>
 
           {/* How to do it */}
-          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
-              <span className="text-2xl">📋</span> How to do it
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-3 text-white">
+              <span className="text-xl">📋</span> How to do it
             </h3>
-            <ol className="space-y-4">
+            <ol className="space-y-3">
               {howSteps.map((step, index) => (
                 <motion.li
                   key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4 text-foreground/80"
+                  className="flex items-start gap-3 text-white/70"
                 >
-                  <span className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mt-0.5 shrink-0">
+                  <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                     {index + 1}
                   </span>
-                  <span className="text-base leading-relaxed">{step}</span>
+                  <span className="text-sm leading-relaxed">{step}</span>
                 </motion.li>
               ))}
             </ol>
           </div>
 
           {/* Time needed */}
-          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
-              <span className="text-2xl">⏱️</span> Time needed
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-3 text-white">
+              <span className="text-xl">⏱️</span> Time needed
             </h3>
-            <p className="text-foreground/80 text-base leading-relaxed">{timeEstimate}</p>
+            <p className="text-white/70 text-sm leading-relaxed">{timeEstimate}</p>
           </div>
 
           {/* Pro tips */}
-          <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-            <h3 className="text-xl font-bold mb-5 flex items-center gap-3">
-              <span className="text-2xl">✨</span> Pro tips
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-3 text-white">
+              <span className="text-xl">✨</span> Pro tips
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {tips.map((tip, index) => (
                 <motion.li
                   key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-3 text-foreground/80"
+                  className="flex items-start gap-3 text-white/70"
                 >
-                  <span className="text-amber-500 text-lg mt-0.5">💡</span>
-                  <span className="text-base leading-relaxed">{tip}</span>
+                  <span className="text-amber-400 text-sm mt-1">💡</span>
+                  <span className="text-sm leading-relaxed">{tip}</span>
                 </motion.li>
               ))}
             </ul>
@@ -198,20 +221,21 @@ export function HabitInfoModal({ habit, open, onClose, onAdd, isAdded }: HabitIn
         </div>
 
         {/* Add button */}
-        <div className="pt-8 border-t border-border/40">
+        <div className="px-6 pb-6 pt-4">
           {isAdded ? (
-            <Button disabled className="w-full h-14 text-base font-semibold rounded-xl" variant="outline">
-              <Check className="w-5 h-5 mr-2" />
+            <Button disabled className="w-full h-12 text-sm font-semibold rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30" variant="outline">
+              <Check className="w-4 h-4 mr-2" />
               Already Added
             </Button>
           ) : (
-            <Button onClick={onAdd} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all">
-              <Plus className="w-5 h-5 mr-2" />
+            <Button onClick={onAdd} className="w-full h-12 text-sm font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all">
+              <Plus className="w-4 h-4 mr-2" />
               Add this habit
             </Button>
           )}
         </div>
-      </DialogContent>
+        </DialogContent>
+      </div>
     </Dialog>
   );
 }
