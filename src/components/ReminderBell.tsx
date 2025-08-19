@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
+import { HabitEvents } from '@/lib/analytics';
+import { toastOnce } from '@/lib/toastOnce';
+import { QuickLogSheet } from '@/components/QuickLogSheet';
 
 interface DueHabit {
   user_habit_id: string;
@@ -13,6 +15,7 @@ interface DueHabit {
   name: string;
   domain: string;
   summary: string;
+  goal_type?: string; // Optional since RPC might not include it
   next_due_at: string;
 }
 
@@ -23,6 +26,8 @@ export default function ReminderBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [showQuickLog, setShowQuickLog] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<DueHabit | null>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -72,20 +77,40 @@ export default function ReminderBell() {
     };
   }, [user, fetchDueHabits, prefersReducedMotion]);
 
+  // Track analytics when bell opens
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && dueHabits.length > 0) {
+      HabitEvents.habitReminderOpened({ 
+        due_count: dueHabits.length,
+        due_slugs: dueHabits.map(h => h.slug).join(',')
+      });
+    }
+  };
+
   const handleLogNow = async (habit: DueHabit) => {
     if (isLoading) return;
-    setIsLoading(true);
     
-    try {
-      const success = await logHabit(habit.slug, true);
-      if (success) {
-        setDueHabits(prev => prev.filter(h => h.user_habit_id !== habit.user_habit_id));
+    // For boolean habits, log directly (default to true if goal_type not provided)
+    if (habit.goal_type === 'bool' || !habit.goal_type) {
+      setIsLoading(true);
+      try {
+        const success = await logHabit(habit.slug, true, null, null, habit, 'bell');
+        if (success) {
+          setDueHabits(prev => prev.filter(h => h.user_habit_id !== habit.user_habit_id));
+          toastOnce('success', 'Logged • Nice work.');
+        }
+      } catch (error) {
+        console.error('Error logging habit:', error);
+        toastOnce('error', 'Failed to log habit');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error logging habit:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to log habit');
-    } finally {
-      setIsLoading(false);
+    } else {
+      // For duration/count habits, open QuickLogSheet
+      setSelectedHabit(habit);
+      setShowQuickLog(true);
+      setIsOpen(false); // Close the bell
     }
   };
 
@@ -103,13 +128,29 @@ export default function ReminderBell() {
       
       if (error) throw error;
       
-      toast.success('Snoozed for 10 min');
+      // Track analytics
+      HabitEvents.habitSnoozed({ 
+        user_habit_id: habit.user_habit_id,
+        slug: habit.slug, 
+        minutes: 10 
+      });
+      
+      toastOnce('success', 'Snoozed • We\'ll remind you later.');
       setDueHabits(prev => prev.filter(h => h.user_habit_id !== habit.user_habit_id));
     } catch (error) {
       console.error('Error snoozing habit:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to snooze habit');
+      toastOnce('error', 'Failed to snooze habit');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleQuickLogSuccess = () => {
+    setShowQuickLog(false);
+    setSelectedHabit(null);
+    // Remove the logged habit from due list
+    if (selectedHabit) {
+      setDueHabits(prev => prev.filter(h => h.user_habit_id !== selectedHabit.user_habit_id));
     }
   };
 
@@ -121,8 +162,9 @@ export default function ReminderBell() {
   if (!user) return null;
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
+    <>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
         <Button 
           variant="ghost" 
           size="sm" 
@@ -178,5 +220,20 @@ export default function ReminderBell() {
         </div>
       </PopoverContent>
     </Popover>
+
+    {/* QuickLogSheet for duration/count habits */}
+    <QuickLogSheet
+      open={showQuickLog}
+      onOpenChange={setShowQuickLog}
+      template={selectedHabit ? {
+        slug: selectedHabit.slug,
+        name: selectedHabit.name,
+        goal_type: selectedHabit.goal_type as any,
+        domain: selectedHabit.domain as any
+      } as any : null}
+      userHabit={selectedHabit}
+      onSuccess={handleQuickLogSuccess}
+    />
+  </>
   );
 }

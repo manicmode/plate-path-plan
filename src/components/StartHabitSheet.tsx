@@ -12,6 +12,7 @@ import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { Clock } from 'lucide-react';
 import { useEffect } from 'react';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
+import { toastOnce } from '@/lib/toastOnce';
 
 interface StartHabitSheetProps {
   open: boolean;
@@ -111,9 +112,7 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
 
         if (error) throw error;
 
-        toast({
-          title: "Saved • Schedule & reminders updated",
-        });
+        toastOnce('success', 'Updated • Changes saved.');
       } else {
         // Add new habit
         const { error } = await supabase.rpc('rpc_add_user_habit', {
@@ -126,9 +125,7 @@ export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuc
 
         if (error) throw error;
 
-        toast({
-          title: "Added • We'll remind & track it",
-        });
+        toastOnce('success', 'Added • We\'ll remind & track it.');
 
         // Smooth scroll to Your Habits section after adding
         setTimeout(() => {

@@ -114,7 +114,7 @@ export default function HabitCentralV2() {
     }
 
     setSearchParams(newParams, { replace: true });
-  }, [filters, searchQuery, currentPage, setSearchParams]);
+  }, [filters.domains, filters.category, filters.difficulty, filters.goalType, filters.equipment, filters.tags, searchQuery, currentPage, setSearchParams]);
 
   // Prepare filters for API call
   const apiFilters = useMemo(() => {

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
+import { toastOnce } from '@/lib/toastOnce';
 
 interface QuickLogSheetProps {
   open: boolean;
@@ -49,10 +50,7 @@ export function QuickLogSheet({ open, onOpenChange, template, userHabit, onSucce
 
       if (error) throw error;
 
-      toast({
-        title: "Logged!",
-        description: `Logged "${template.name}" successfully.`,
-      });
+      toastOnce('success', 'Logged • Nice work.');
 
       // Reset form
       setAmount('');

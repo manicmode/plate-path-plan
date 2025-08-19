@@ -11,6 +11,8 @@ import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { HabitManagementMenu } from '@/components/habits/HabitManagementMenu';
 import { QuickLogSheet } from './QuickLogSheet';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { toastOnce } from '@/lib/toastOnce';
 
 interface UserHabit {
   id: string;
@@ -49,6 +51,10 @@ interface YourHabitsRailProps {
   onEditHabit?: (template: HabitTemplate, userHabit: import('@/hooks/useHabitManagement').UserHabit) => void;
 }
 
+// Focus management and aria-live refs
+const ariaLiveRef = React.createRef<HTMLDivElement>();
+const railRef = React.createRef<HTMLDivElement>();
+
 const getDomainColor = (domain: string) => {
   switch (domain) {
     case 'nutrition': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -79,6 +85,30 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
     const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Focus the newly added habit chip
+  const focusNewHabit = (slug: string) => {
+    setTimeout(() => {
+      const newChip = document.querySelector(`[data-habit-slug="${slug}"]`);
+      if (newChip instanceof HTMLElement) {
+        newChip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        newChip.focus();
+        
+        // Announce via aria-live
+        if (ariaLiveRef.current) {
+          ariaLiveRef.current.textContent = 'Added to Your Habits';
+        }
+      }
+    }, 100);
+  };
+
+  // Expose focus function to parent (when habit is started)
+  React.useEffect(() => {
+    (window as any).focusNewHabit = focusNewHabit;
+    return () => {
+      delete (window as any).focusNewHabit;
+    };
   }, []);
 
   const fetchUserHabits = async () => {
@@ -177,9 +207,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
           });
         }, 500);
 
-        toast({
-          title: "Logged • Nice work!",
-        });
+        toastOnce('success', 'Logged • Nice work.');
 
         // Refresh progress
         fetchUserHabits();
@@ -244,32 +272,65 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
 
   if (userHabits.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-            <Sparkles className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">You haven't started any habits yet</h3>
-          <p className="text-sm text-muted-foreground mb-6">Pick one from 'For you' to get rolling.</p>
-          <Button onClick={scrollToSuggestions} variant="outline">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Your Habits</h2>
+          <Link 
+            to="/reports#habits" 
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            View reports
+          </Link>
+        </div>
+
+        {/* Aria-live region for announcements */}
+        <div 
+          ref={ariaLiveRef}
+          aria-live="polite" 
+          aria-atomic="true" 
+          className="sr-only"
+        />
+
+        <div className="text-center py-12 space-y-4">
+          <p className="text-muted-foreground">No habits yet</p>
+          <Button 
+            variant="default"
+            onClick={() => {
+              const suggestionsSection = document.querySelector('[data-section="suggestions"]');
+              if (suggestionsSection) {
+                suggestionsSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+          >
             See suggestions
           </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Your Habits</h2>
-          <span className="text-sm text-muted-foreground">
-            {userHabits.length} active
-          </span>
+          <Link 
+            to="/reports#habits" 
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            View reports
+          </Link>
         </div>
+
+        {/* Aria-live region for announcements */}
+        <div 
+          ref={ariaLiveRef}
+          aria-live="polite" 
+          aria-atomic="true" 
+          className="sr-only"
+        />
         
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div ref={railRef} className="flex gap-3 overflow-x-auto pb-2">
           {userHabits.map((userHabit) => {
             const template = habitTemplates[userHabit.slug];
             const progress = weeklyProgress[userHabit.slug];
@@ -279,7 +340,11 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
             return (
               <Card key={userHabit.id} className="flex-shrink-0 w-64">
                 <CardContent className="p-4">
-                    <div className="space-y-3">
+                  <div 
+                    className="space-y-3"
+                    data-habit-slug={userHabit.slug}
+                    tabIndex={-1}
+                  >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="font-medium text-sm line-clamp-2">{template.name}</h3>
@@ -333,7 +398,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
             );
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Quick log sheet */}
       <QuickLogSheet
@@ -342,7 +407,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
         template={selectedHabit?.template || null}
         userHabit={selectedHabit?.userHabit || null}
         onSuccess={() => {
-          toast({ title: "Logged • Nice work!" });
+          toastOnce('success', 'Logged • Nice work.');
           fetchUserHabits();
           setSelectedHabit(null);
         }}
