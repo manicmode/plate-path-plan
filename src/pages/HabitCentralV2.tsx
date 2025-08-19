@@ -16,12 +16,13 @@ import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, 
 import { useAuth } from '@/contexts/auth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { EmojiRain } from '@/components/habit-central/EmojiRain';
 import { ProTip } from '@/components/habit-central/ProTip';
-import { CronStatusWidget } from '@/components/habit-central/CronStatusWidget';
+const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
 
 // Helper functions
 const getDomainEmoji = (domain: string) => {
@@ -374,10 +375,8 @@ export default function HabitCentralV2() {
         toast({
           title: "Logged — nice!",
           description: "5 seconds to undo",
-          action: {
-            label: "Undo",
-            onClick: undoAction,
-          },
+          action: <ToastAction altText="Undo" onClick={undoAction}>Undo</ToastAction>,
+          duration: 5000,
         });
       }
       
@@ -1071,7 +1070,9 @@ export default function HabitCentralV2() {
                 {healthIssues.length === 0 ? (
                   <div className="grid gap-4 md:grid-cols-2">
                     <AdminHealthyState />
-                    <CronStatusWidget />
+                    <React.Suspense fallback={null}>
+                      <CronStatusWidget />
+                    </React.Suspense>
                   </div>
                 ) : (
                   <motion.div 
@@ -1121,7 +1122,9 @@ export default function HabitCentralV2() {
                 {/* Always show cron status when there are health issues */}
                 {healthIssues.length > 0 && (
                   <motion.div variants={fadeInUp}>
-                    <CronStatusWidget />
+                    <React.Suspense fallback={null}>
+                      <CronStatusWidget />
+                    </React.Suspense>
                   </motion.div>
                 )}
               </TabsContent>
