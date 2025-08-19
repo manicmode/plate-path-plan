@@ -5343,23 +5343,23 @@ export type Database = {
       }
       user_profile: {
         Row: {
-          constraints: Json
-          goals: Json
-          preferences: Json
+          constraints: string[]
+          goals: string[]
+          preferences: string[]
           updated_at: string
           user_id: string
         }
         Insert: {
-          constraints?: Json
-          goals?: Json
-          preferences?: Json
+          constraints?: string[]
+          goals?: string[]
+          preferences?: string[]
           updated_at?: string
           user_id?: string
         }
         Update: {
-          constraints?: Json
-          goals?: Json
-          preferences?: Json
+          constraints?: string[]
+          goals?: string[]
+          preferences?: string[]
           updated_at?: string
           user_id?: string
         }
