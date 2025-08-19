@@ -8176,6 +8176,16 @@ export type Database = {
           slug: string
         }[]
       }
+      rpc_recommend_habits_v2: {
+        Args: { p_per_domain?: number; p_profile?: Json }
+        Returns: {
+          domain: string
+          name: string
+          reason: string
+          score: number
+          slug: string
+        }[]
+      }
       rpc_snooze_habit: {
         Args: { p_minutes?: number; p_user_habit_id: string }
         Returns: undefined

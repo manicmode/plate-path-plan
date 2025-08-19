@@ -11,12 +11,14 @@ import { useUserHabits } from '@/hooks/useUserHabits';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { track } from '@/lib/analytics';
 
 interface Recommendation {
   slug: string;
   name: string;
   domain: string;
   reason: string;
+  score?: number;
 }
 
 interface SuggestionsForYouProps {
@@ -38,6 +40,7 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [templates, setTemplates] = useState<Record<string, HabitTemplate>>({});
   const [loading, setLoading] = useState(true);
+  const [personalized, setPersonalized] = useState(false);
   const [scrollIndex, setScrollIndex] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -63,16 +66,49 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       }
 
       try {
-        // Fetch recommendations and user habits in parallel
-        const [recsResponse] = await Promise.all([
-          supabase.rpc('rpc_recommend_habits'),
-          fetchUserHabits()
-        ]);
+        // Build lightweight profile object (you can expand this based on user_profiles table)
+        const profile = {
+          goals: [], // Could be from user preferences/profile
+          constraints: [], 
+          preferences: []
+        };
+
+        // Try v2 first with personalization, fallback to v1
+        let recsResponse;
+        let isPersonalized = false;
+        
+        try {
+          recsResponse = await supabase.rpc('rpc_recommend_habits_v2', {
+            p_profile: profile,
+            p_per_domain: 3
+          });
+          
+          if (recsResponse.data && recsResponse.data.length > 0) {
+            isPersonalized = true;
+          } else {
+            throw new Error('v2 returned no data');
+          }
+        } catch (v2Error) {
+          console.log('Falling back to v1 recommendations:', v2Error);
+          recsResponse = await supabase.rpc('rpc_recommend_habits');
+        }
+
+        // Fetch user habits in parallel
+        await fetchUserHabits();
         
         if (recsResponse.error) throw recsResponse.error;
 
         if (recsResponse.data && recsResponse.data.length > 0) {
           setRecommendations(recsResponse.data);
+          setPersonalized(isPersonalized);
+
+          // Track analytics
+          track('habit_recs_loaded', { 
+            source: 'for_you', 
+            personalized: isPersonalized, 
+            per_domain: 3,
+            count: recsResponse.data.length
+          });
 
           // Fetch full template data for these recommendations
           const slugs = recsResponse.data.map((rec: Recommendation) => rec.slug);
@@ -122,7 +158,13 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
           setQuickLogOpen(true);
         }
       } else {
-        // Start new habit
+        // Start new habit with analytics
+        track('habit_started', { 
+          slug: recommendation.slug, 
+          source: 'for_you', 
+          personalized,
+          domain: recommendation.domain
+        });
         onStartHabit(template);
       }
     }
