@@ -11,8 +11,9 @@ import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { HabitManagementMenu } from '@/components/habits/HabitManagementMenu';
 import { QuickLogSheet } from './QuickLogSheet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { toastOnce } from '@/lib/toastOnce';
+import { Link } from 'react-router-dom';
+import { HabitEvents as EventNames } from '@/lib/events';
 
 interface UserHabit {
   id: string;
@@ -87,28 +88,29 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Focus the newly added habit chip
-  const focusNewHabit = (slug: string) => {
-    setTimeout(() => {
-      const newChip = document.querySelector(`[data-habit-slug="${slug}"]`);
-      if (newChip instanceof HTMLElement) {
-        newChip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        newChip.focus();
-        
-        // Announce via aria-live
-        if (ariaLiveRef.current) {
-          ariaLiveRef.current.textContent = 'Added to Your Habits';
+  // Focus management after habit creation
+  useEffect(() => {
+    function onHabitStarted(e: Event) {
+      const { slug } = (e as CustomEvent).detail || {};
+      if (!slug) return;
+      
+      // Wait for component to re-render with new habit
+      setTimeout(() => {
+        const chipElement = document.querySelector(`[data-habit-slug="${slug}"]`);
+        if (chipElement instanceof HTMLElement) {
+          chipElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          chipElement.focus();
+          
+          // Update aria-live region
+          if (ariaLiveRef.current) {
+            ariaLiveRef.current.textContent = 'Added to Your Habits';
+          }
         }
-      }
-    }, 100);
-  };
-
-  // Expose focus function to parent (when habit is started)
-  React.useEffect(() => {
-    (window as any).focusNewHabit = focusNewHabit;
-    return () => {
-      delete (window as any).focusNewHabit;
-    };
+      }, 200);
+    }
+    
+    window.addEventListener(EventNames.started, onHabitStarted);
+    return () => window.removeEventListener(EventNames.started, onHabitStarted);
   }, []);
 
   const fetchUserHabits = async () => {
@@ -406,6 +408,7 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
         onOpenChange={setQuickLogOpen}
         template={selectedHabit?.template || null}
         userHabit={selectedHabit?.userHabit || null}
+        source="rail"
         onSuccess={() => {
           toastOnce('success', 'Logged • Nice work.');
           fetchUserHabits();

@@ -411,6 +411,7 @@ export default function HabitCentralV2() {
           template={startHabitTemplate}
           userHabit={startHabitUserHabit}
           onSuccess={handleHabitStarted}
+          source="sheet"
         />
       </div>
     </div>

@@ -132,7 +132,8 @@ export default function ReminderBell() {
       HabitEvents.habitSnoozed({ 
         user_habit_id: habit.user_habit_id,
         slug: habit.slug, 
-        minutes: 10 
+        minutes: 10,
+        source: 'bell'
       });
       
       toastOnce('success', 'Snoozed • We\'ll remind you later.');

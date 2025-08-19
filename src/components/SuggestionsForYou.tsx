@@ -164,6 +164,8 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
 
   return (
     <section 
+      id="suggestions"
+      data-section="suggestions"
       className="space-y-4"
       role="region"
       aria-label="Suggested habits for you"
@@ -263,6 +265,7 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
         onOpenChange={setQuickLogOpen}
         template={selectedTemplate?.template || null}
         userHabit={selectedTemplate?.userHabit || null}
+        source="for_you"
         onSuccess={() => {
           setQuickLogOpen(false);
           setSelectedTemplate(null);

@@ -8,7 +8,7 @@ interface AnalyticsEventProps {
   domain?: string;
   goal_type?: string;
   difficulty?: string;
-  source?: 'hero' | 'for_you' | 'carousel' | 'list' | 'rail';
+  source?: 'hero' | 'for_you' | 'carousel' | 'list' | 'rail' | 'bell' | 'sheet';
   [key: string]: any;
 }
 

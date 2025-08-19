@@ -76,10 +76,11 @@ export function HabitsList({
             searchQuery={searchQuery}
             isSelected={selectedItems.has(template.id)}
             onSelectionChange={(selected) => onSelectionChange(template.id, selected)}
-            onDetailsClick={() => onDetailsClick(template)}
-            onStartHabit={onStartHabit}
-            showAdminActions={showAdminActions}
-          />
+              onDetailsClick={() => onDetailsClick(template)}
+              onStartHabit={onStartHabit}
+              showAdminActions={showAdminActions}
+              source="list"
+            />
         ))}
         
         {/* Loading skeletons */}

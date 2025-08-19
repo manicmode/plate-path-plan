@@ -17,6 +17,7 @@ interface HabitCardProps {
   showAdminActions?: boolean;
   userActiveHabits?: string[]; // Array of slugs for active habits
   isActive?: boolean; // Whether user has this habit active
+  source?: 'hero' | 'for_you' | 'carousel' | 'list' | 'rail';
 }
 
 // Text highlighting utility
@@ -59,7 +60,7 @@ const getGoalTypeLabel = (goalType: string) => {
   }
 };
 
-export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false, userActiveHabits = [], isActive = false }: HabitCardProps) {
+export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false, userActiveHabits = [], isActive = false, source }: HabitCardProps) {
   const { toast } = useToast();
 
   const handleCopySlug = () => {

@@ -13,6 +13,8 @@ import { Clock } from 'lucide-react';
 import { useEffect } from 'react';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { toastOnce } from '@/lib/toastOnce';
+import { emitHabitStarted } from '@/lib/events';
+import { track } from '@/lib/analytics';
 
 interface StartHabitSheetProps {
   open: boolean;
@@ -20,6 +22,7 @@ interface StartHabitSheetProps {
   template: HabitTemplate | null;
   userHabit?: any; // For edit mode
   onSuccess: () => void;
+  source?: 'hero' | 'for_you' | 'carousel' | 'list' | 'rail' | 'sheet';
 }
 
 const WEEKDAYS = [
@@ -32,7 +35,7 @@ const WEEKDAYS = [
   { value: 'sun', label: 'Sun' },
 ];
 
-export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuccess }: StartHabitSheetProps) {
+export function StartHabitSheet({ open, onOpenChange, template, userHabit, onSuccess, source }: StartHabitSheetProps) {
   const [scheduleType, setScheduleType] = useState<'daily' | 'weekly'>('daily');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [reminderTime, setReminderTime] = useState<string>('08:00');

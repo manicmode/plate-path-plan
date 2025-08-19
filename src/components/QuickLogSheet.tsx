@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { toastOnce } from '@/lib/toastOnce';
+import { track } from '@/lib/analytics';
 
 interface QuickLogSheetProps {
   open: boolean;
@@ -14,12 +15,13 @@ interface QuickLogSheetProps {
   template: HabitTemplate | null;
   userHabit: any;
   onSuccess: () => void;
+  source?: 'hero' | 'for_you' | 'carousel' | 'list' | 'rail' | 'bell';
 }
 
 const QUICK_PICKS_DURATION = [15, 30, 60];
 const QUICK_PICKS_COUNT = [1, 5, 10];
 
-export function QuickLogSheet({ open, onOpenChange, template, userHabit, onSuccess }: QuickLogSheetProps) {
+export function QuickLogSheet({ open, onOpenChange, template, userHabit, onSuccess, source }: QuickLogSheetProps) {
   const [amount, setAmount] = useState<string>('');
   const [durationMin, setDurationMin] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +52,7 @@ export function QuickLogSheet({ open, onOpenChange, template, userHabit, onSucce
 
       if (error) throw error;
 
+      track('habit_logged', { slug: template.slug, source: source || 'sheet' });
       toastOnce('success', 'Logged • Nice work.');
 
       // Reset form
