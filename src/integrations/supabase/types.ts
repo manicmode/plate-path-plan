@@ -2165,8 +2165,10 @@ export type Database = {
       }
       habit_nudges: {
         Row: {
+          attempts: number
           channel: string | null
           created_at: string
+          error: string | null
           habit_slug: string
           id: string
           meta: Json | null
@@ -2176,8 +2178,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempts?: number
           channel?: string | null
           created_at?: string
+          error?: string | null
           habit_slug: string
           id?: string
           meta?: Json | null
@@ -2187,8 +2191,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempts?: number
           channel?: string | null
           created_at?: string
+          error?: string | null
           habit_slug?: string
           id?: string
           meta?: Json | null
@@ -5432,6 +5438,7 @@ export type Database = {
           exercise_frequency: string | null
           exercise_types: string[] | null
           fasting_schedule: string | null
+          fcm_token: string | null
           first_name: string
           followers_count: number | null
           following_count: number | null
@@ -5523,6 +5530,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
+          fcm_token?: string | null
           first_name?: string
           followers_count?: number | null
           following_count?: number | null
@@ -5614,6 +5622,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
+          fcm_token?: string | null
           first_name?: string
           followers_count?: number | null
           following_count?: number | null
@@ -7996,6 +8005,14 @@ export type Database = {
         Args: { details: string; metadata?: Json; violation_type: string }
         Returns: undefined
       }
+      mark_nudge_error: {
+        Args: { p_err: string; p_id: string }
+        Returns: undefined
+      }
+      mark_nudge_sent: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       my_active_private_challenges: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -8262,6 +8279,14 @@ export type Database = {
         Returns: {
           slug: string
           user_habit_id: string
+        }[]
+      }
+      rpc_claim_nudges: {
+        Args: { p_limit?: number }
+        Returns: {
+          habit_slug: string
+          id: string
+          user_id: string
         }[]
       }
       rpc_dispatch_habit_reminders: {
