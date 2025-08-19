@@ -66,52 +66,57 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       }
 
       try {
-        // Build lightweight profile object (you can expand this based on user_profiles table)
+        // Build lightweight profile object from available user data
         const profile = {
-          goals: [], // Could be from user preferences/profile
-          constraints: [], 
-          preferences: []
+          goals: (user as any)?.goals ?? [],
+          constraints: (user as any)?.constraints ?? [],
+          preferences: (user as any)?.preferences ?? [],
         };
 
-        // Try v2 first with personalization, fallback to v1
-        let recsResponse;
+        // Try v2 first with personalization
+        let recommendations: Recommendation[] = [];
         let isPersonalized = false;
         
-        try {
-          recsResponse = await supabase.rpc('rpc_recommend_habits_v2', {
-            p_profile: profile,
-            p_per_domain: 3
-          });
+        const { data: v2, error: e2 } = await supabase
+          .rpc('rpc_recommend_habits_v2', { p_profile: profile, p_per_domain: 3 });
+        
+        if (!e2 && v2?.length) {
+          // v2 success - data already has proper format with reasons
+          recommendations = v2;
+          isPersonalized = true;
+        } else {
+          // Fallback to v1
+          console.log('Falling back to v1 recommendations:', e2);
+          const { data: v1 } = await supabase.rpc('rpc_recommend_habits');
           
-          if (recsResponse.data && recsResponse.data.length > 0) {
-            isPersonalized = true;
-          } else {
-            throw new Error('v2 returned no data');
-          }
-        } catch (v2Error) {
-          console.log('Falling back to v1 recommendations:', v2Error);
-          recsResponse = await supabase.rpc('rpc_recommend_habits');
+          // Normalize v1 data to include generic reasons
+          recommendations = (v1 || []).map((rec: any) => ({
+            slug: rec.slug,
+            name: rec.name,
+            domain: rec.domain,
+            reason: "Great starter pick in this domain."
+          }));
         }
 
         // Fetch user habits in parallel
         await fetchUserHabits();
-        
-        if (recsResponse.error) throw recsResponse.error;
 
-        if (recsResponse.data && recsResponse.data.length > 0) {
-          setRecommendations(recsResponse.data);
+        if (recommendations.length > 0) {
+          setRecommendations(recommendations);
           setPersonalized(isPersonalized);
 
-          // Track analytics
-          track('habit_recs_loaded', { 
-            source: 'for_you', 
-            personalized: isPersonalized, 
-            per_domain: 3,
-            count: recsResponse.data.length
-          });
+          // Track analytics for successful load
+          if (isPersonalized) {
+            track('habit_recs_loaded', { 
+              source: 'for_you', 
+              personalized: true, 
+              per_domain: 3,
+              count: recommendations.length
+            });
+          }
 
           // Fetch full template data for these recommendations
-          const slugs = recsResponse.data.map((rec: Recommendation) => rec.slug);
+          const slugs = recommendations.map((rec: Recommendation) => rec.slug);
           const { data: templateData, error: templatesError } = await supabase
             .from('habit_templates')
             .select('*')
@@ -202,7 +207,30 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
     ) : null;
   }
 
-  if (recommendations.length === 0) return null;
+  if (recommendations.length === 0) {
+    return (
+      <section 
+        id="suggestions"
+        data-section="suggestions"
+        className="space-y-4"
+        role="region"
+        aria-label="Suggested habits for you"
+      >
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">For you</h2>
+        </div>
+        <Card className="w-80">
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <Sparkles className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
+              No picks yet—try browsing below
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
 
   return (
     <section 
