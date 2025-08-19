@@ -45,17 +45,17 @@ export const ProTip: React.FC<ProTipProps> = ({ tab }) => {
       transition={{ duration: 0.4, delay: 0.1 }}
       className="mt-6"
     >
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-        <CardContent className="p-4">
+      <Card className="w-full rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 md:h-5 md:w-5" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1 md:text-base">
                 Pro Tip
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-200">
+              <p className="text-sm text-blue-700 dark:text-blue-200 md:text-base">
                 {tip}
               </p>
             </div>

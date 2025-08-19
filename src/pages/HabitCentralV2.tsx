@@ -541,14 +541,14 @@ export default function HabitCentralV2() {
       initial="hidden" 
       animate="visible" 
       variants={fadeInUp}
-      className="text-center py-12"
+      className="text-center py-12 sm:py-16 md:py-24"
       role="status"
       aria-live="polite"
     >
-      <Compass className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">No habits found</h3>
-      <p className="text-muted-foreground mb-4">Try a different domain or difficulty. Tip: start with 1–2 easy wins.</p>
-      <Button onClick={resetFilters} variant="outline">
+      <Compass className="h-12 w-12 mx-auto mb-4 text-muted-foreground md:h-16 md:w-16" />
+      <h3 className="text-lg font-semibold mb-2 md:text-xl">No habits found</h3>
+      <p className="text-sm text-muted-foreground mb-4 md:text-base">Try a different domain or difficulty. Tip: start with 1–2 easy wins.</p>
+      <Button onClick={resetFilters} variant="outline" className="h-10 text-sm md:h-11 md:text-base">
         Reset filters
       </Button>
     </motion.div>
@@ -559,14 +559,14 @@ export default function HabitCentralV2() {
       initial="hidden" 
       animate="visible" 
       variants={fadeInUp}
-      className="text-center py-12"
+      className="text-center py-12 sm:py-16 md:py-24"
       role="status"
       aria-live="polite"
     >
-      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">Let's build your first habit</h3>
-      <p className="text-muted-foreground mb-4">Pick one from Browse and tap Add. Start small, stay consistent.</p>
-      <Button onClick={() => setActiveTab('browse')}>
+      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground md:h-16 md:w-16" />
+      <h3 className="text-lg font-semibold mb-2 md:text-xl">Let's build your first habit</h3>
+      <p className="text-sm text-muted-foreground mb-4 md:text-base">Pick one from Browse and tap Add. Start small, stay consistent.</p>
+      <Button onClick={() => setActiveTab('browse')} className="h-10 text-sm md:h-11 md:text-base">
         Browse habits
       </Button>
     </motion.div>
@@ -622,22 +622,22 @@ export default function HabitCentralV2() {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 py-12 sm:py-16 md:py-24">
         <motion.div 
           initial="hidden" 
           animate="visible" 
           variants={fadeInUp}
           className="text-center space-y-4"
         >
-          <h1 className="text-4xl font-bold">Habit Central</h1>
-          <p className="text-lg text-muted-foreground">Please sign in to access Habit Central</p>
+          <h1 className="text-2xl font-bold md:text-4xl">Habit Central</h1>
+          <p className="text-sm text-muted-foreground md:text-lg">Please sign in to access Habit Central</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 pb-[calc(72px+env(safe-area-inset-bottom))]">
       {/* Emoji Rain Animation */}
       <EmojiRain
         emoji={emojiRainEmoji}
@@ -649,12 +649,12 @@ export default function HabitCentralV2() {
         initial="hidden" 
         animate="visible" 
         variants={staggerContainer}
-        className="space-y-6"
+        className="space-y-4 sm:space-y-6"
       >
         {/* Header */}
-        <motion.div variants={fadeInUp} className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">Habit Central</h1>
-          <p className="text-lg text-muted-foreground">
+        <motion.div variants={fadeInUp} className="text-center space-y-2 py-6 sm:py-8">
+          <h1 className="text-2xl font-bold md:text-4xl">Habit Central</h1>
+          <p className="text-sm text-muted-foreground md:text-lg">
             Build better habits with proven templates and smart tracking
           </p>
         </motion.div>
@@ -662,41 +662,43 @@ export default function HabitCentralV2() {
         {/* 5-Tab Interface */}
         <motion.div variants={fadeInUp}>
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="browse" className="flex items-center gap-2">
-                <Compass className="h-4 w-4" />
-                Browse
-              </TabsTrigger>
-              <TabsTrigger value="my-habits" className="flex items-center gap-2">
-                <CheckSquare className="h-4 w-4" />
-                My Habits
-              </TabsTrigger>
-              <TabsTrigger value="reminders" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Reminders
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Analytics
-              </TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="admin" className="flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4" />
-                  Admin
+            <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+              <TabsList className="flex w-max min-w-full md:grid md:w-full md:grid-cols-5">
+                <TabsTrigger value="browse" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
+                  <Compass className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Browse</span>
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger value="my-habits" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
+                  <CheckSquare className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">My Habits</span>
+                </TabsTrigger>
+                <TabsTrigger value="reminders" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
+                  <Bell className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Reminders</span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
+                  <BarChart3 className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Analytics</span>
+                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="admin" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs md:text-sm md:px-4">
+                    <ShieldAlert className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Browse Tab */}
             <TabsContent value="browse" className="space-y-4">
-              {/* Sticky filters */}
+              {/* Filters */}
               <motion.div 
                 variants={fadeInUp}
-                className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-4 -m-4 rounded-lg border"
+                className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 p-3 -m-3 rounded-lg border md:p-4 md:-m-4"
               >
-                <div className="flex gap-4 items-center">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
                   <Select value={domainFilter || "all"} onValueChange={(value) => setDomainFilter(value === "all" ? "" : value)}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full md:w-48">
                       <SelectValue placeholder="All domains" />
                     </SelectTrigger>
                     <SelectContent>
@@ -708,7 +710,7 @@ export default function HabitCentralV2() {
                   </Select>
                   
                   <Select value={difficultyFilter || "all"} onValueChange={(value) => setDifficultyFilter(value === "all" ? "" : value)}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full md:w-48">
                       <SelectValue placeholder="All difficulties" />
                     </SelectTrigger>
                     <SelectContent>
@@ -724,8 +726,10 @@ export default function HabitCentralV2() {
                     disabled={loading}
                     variant="outline"
                     size="sm"
+                    className="w-full md:w-auto"
                   >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span className="ml-2 md:sr-only">Refresh</span>
                   </Button>
                 </div>
               </motion.div>
@@ -733,7 +737,7 @@ export default function HabitCentralV2() {
               {/* Habits grid */}
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
-                  <div className="animate-pulse">Loading habits...</div>
+                  <div className="animate-pulse text-sm md:text-base">Loading habits...</div>
                 </motion.div>
               ) : filteredHabits.length === 0 ? (
                 <BrowseEmptyState />
@@ -742,7 +746,7 @@ export default function HabitCentralV2() {
                   variants={staggerContainer}
                   initial="hidden"
                   animate="visible"
-                  className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4"
                 >
                   {filteredHabits.map((habit, index) => (
                     <motion.div
@@ -751,28 +755,28 @@ export default function HabitCentralV2() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <Card className="relative h-full">
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
+                      <Card className="relative h-full w-full rounded-2xl">
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               <span className="text-lg">{getDomainEmoji(habit.domain)}</span>
-                              <CardTitle className="text-lg line-clamp-2">{habit.title}</CardTitle>
+                              <CardTitle className="text-base line-clamp-2 md:text-lg">{habit.title}</CardTitle>
                             </div>
-                            <Badge variant="secondary">{habit.domain}</Badge>
+                            <Badge variant="secondary" className="text-xs shrink-0">{habit.domain}</Badge>
                           </div>
-                          <CardDescription className="line-clamp-3">
+                          <CardDescription className="line-clamp-3 text-xs md:text-sm">
                             {habit.description}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <div className="flex justify-between items-center">
-                            <Badge variant={getDifficultyVariant(habit.difficulty)}>
+                        <CardContent className="pt-0">
+                          <div className="flex justify-between items-center gap-2">
+                            <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
                               {habit.difficulty}
                             </Badge>
                             
                             {addedHabits.has(habit.slug) ? (
-                              <Button size="sm" variant="outline" disabled>
-                                <Check className="h-4 w-4 mr-1" />
+                              <Button size="sm" variant="outline" disabled className="h-10 text-sm">
+                                <Check className="h-3 w-3 mr-1 md:h-4 md:w-4" />
                                 Added ✓
                               </Button>
                             ) : (
@@ -780,8 +784,9 @@ export default function HabitCentralV2() {
                                 size="sm" 
                                 onClick={() => handleAddHabit(habit.slug, 5)}
                                 aria-label={`Add ${habit.title} to my habits`}
+                                className="h-10 text-sm"
                               >
-                                <Plus className="h-4 w-4 mr-1" />
+                                <Plus className="h-3 w-3 mr-1 md:h-4 md:w-4" />
                                 Add
                               </Button>
                             )}
@@ -799,21 +804,23 @@ export default function HabitCentralV2() {
 
             {/* My Habits Tab */}
             <TabsContent value="my-habits" className="space-y-4">
-              <motion.div variants={fadeInUp} className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Your Active Habits</h3>
+              <motion.div variants={fadeInUp} className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                <h3 className="text-lg font-semibold md:text-xl">Your Active Habits</h3>
                 <Button 
                   onClick={loadMyHabits} 
                   disabled={loading} 
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto h-10 text-sm md:h-11 md:text-base"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="ml-2 sm:sr-only">Refresh</span>
                 </Button>
               </motion.div>
 
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
-                  <div className="animate-pulse">Loading your habits...</div>
+                  <div className="animate-pulse text-sm md:text-base">Loading your habits...</div>
                 </motion.div>
               ) : myHabits.length === 0 ? (
                 <MyHabitsEmptyState />
@@ -822,7 +829,7 @@ export default function HabitCentralV2() {
                   variants={staggerContainer}
                   initial="hidden"
                   animate="visible"
-                  className="grid gap-4"
+                  className="space-y-3 sm:space-y-4"
                 >
                   {myHabits.map((habit) => (
                     <motion.div
@@ -830,15 +837,15 @@ export default function HabitCentralV2() {
                       variants={fadeInUp}
                       whileHover={{ scale: 1.01 }}
                     >
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            {/* Left side - Emoji + Name */}
-                            <div className="flex items-center gap-3">
-                              <span className="text-2xl">{getDomainEmoji(habit.domain)}</span>
-                              <div>
-                                <h4 className="font-medium">{habit.title}</h4>
-                                <div className="flex gap-2 mt-1">
+                      <Card className="w-full rounded-2xl">
+                        <CardContent className="p-4 sm:p-6">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            {/* Top row on mobile - Emoji + Name */}
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <span className="text-xl sm:text-2xl">{getDomainEmoji(habit.domain)}</span>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-medium text-sm sm:text-base line-clamp-1">{habit.title}</h4>
+                                <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
                                   <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
                                   <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
                                     {habit.difficulty}
@@ -848,60 +855,68 @@ export default function HabitCentralV2() {
                               </div>
                             </div>
 
-                            {/* Middle - Target stepper + Count */}
-                            <div className="flex items-center gap-4">
-                              <div className="text-center">
-                                <div className="text-sm text-muted-foreground">Target/week</div>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 p-0"
-                                    onClick={() => handleUpdateTarget(habit.habit_slug, Math.max(1, habit.target_per_week - 1))}
-                                    disabled={habit.target_per_week <= 1}
-                                  >
-                                    -
-                                  </Button>
-                                  <span className="w-8 text-center">{habit.target_per_week}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 p-0"
-                                    onClick={() => handleUpdateTarget(habit.habit_slug, Math.min(7, habit.target_per_week + 1))}
-                                    disabled={habit.target_per_week >= 7}
-                                  >
-                                    +
-                                  </Button>
+                            {/* Bottom row on mobile - Controls */}
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                              {/* Target stepper + Count */}
+                              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-4">
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground sm:text-sm">Target/week</div>
+                                  <div className="flex items-center gap-1 justify-center">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => handleUpdateTarget(habit.habit_slug, Math.max(1, habit.target_per_week - 1))}
+                                      disabled={habit.target_per_week <= 1}
+                                    >
+                                      -
+                                    </Button>
+                                    <span className="w-8 text-center text-sm">{habit.target_per_week}</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => handleUpdateTarget(habit.habit_slug, Math.min(7, habit.target_per_week + 1))}
+                                      disabled={habit.target_per_week >= 7}
+                                    >
+                                      +
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground sm:text-sm">30d logs</div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {habit.last_30d_count}
+                                  </Badge>
                                 </div>
                               </div>
-                              
-                              <Badge variant="outline" className="text-xs">
-                                {habit.last_30d_count} logs (30d)
-                              </Badge>
-                            </div>
 
-                            {/* Right side - Log + Pause */}
-                            <div className="flex items-center gap-2">
-                              <motion.div whileTap={{ scale: 0.95 }}>
+                              {/* Action buttons */}
+                              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+                                <motion.div whileTap={{ scale: 0.95 }} className="min-w-0">
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => handleLogHabit(habit.habit_slug)}
+                                    disabled={habit.is_paused}
+                                    aria-label={`Log ${habit.title} now`}
+                                    className="w-full h-10 text-sm md:h-11 md:text-base"
+                                  >
+                                    <Play className="h-3 w-3 mr-1 md:h-4 md:w-4" />
+                                    Log now
+                                  </Button>
+                                </motion.div>
+                                
                                 <Button 
-                                  size="sm" 
-                                  onClick={() => handleLogHabit(habit.habit_slug)}
-                                  disabled={habit.is_paused}
-                                  aria-label={`Log ${habit.title} now`}
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleTogglePause(habit.habit_slug, habit.is_paused)}
+                                  aria-label={habit.is_paused ? `Resume ${habit.title}` : `Pause ${habit.title}`}
+                                  className="w-full h-10 text-sm md:h-11 md:text-base"
                                 >
-                                  <Play className="h-4 w-4 mr-1" />
-                                  Log now
+                                  {habit.is_paused ? 'Resume' : <Pause className="h-3 w-3 md:h-4 md:w-4" />}
                                 </Button>
-                              </motion.div>
-                              
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleTogglePause(habit.habit_slug, habit.is_paused)}
-                                aria-label={habit.is_paused ? `Resume ${habit.title}` : `Pause ${habit.title}`}
-                              >
-                                {habit.is_paused ? 'Resume' : <Pause className="h-4 w-4" />}
-                              </Button>
+                              </div>
                             </div>
                           </div>
                         </CardContent>
@@ -947,9 +962,9 @@ export default function HabitCentralV2() {
 
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="space-y-4">
-              <motion.div variants={fadeInUp} className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Habit Progress</h3>
-                <div className="flex gap-2">
+              <motion.div variants={fadeInUp} className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                <h3 className="text-lg font-semibold md:text-xl">Habit Progress</h3>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
                   <Button
                     variant={progressWindow === 'last_7d' ? 'default' : 'outline'}
                     size="sm"
@@ -957,6 +972,7 @@ export default function HabitCentralV2() {
                       setProgressWindow('last_7d');
                       loadProgress('last_7d');
                     }}
+                    className="h-10 text-sm md:h-11 md:text-base"
                   >
                     Last 7 days
                   </Button>
@@ -967,6 +983,7 @@ export default function HabitCentralV2() {
                       setProgressWindow('last_30d');
                       loadProgress('last_30d');
                     }}
+                    className="h-10 text-sm md:h-11 md:text-base"
                   >
                     Last 30 days
                   </Button>
@@ -975,7 +992,7 @@ export default function HabitCentralV2() {
 
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
-                  <div className="animate-pulse">Loading analytics...</div>
+                  <div className="animate-pulse text-sm md:text-base">Loading analytics...</div>
                 </motion.div>
               ) : progressData.length === 0 ? (
                 <AnalyticsEmptyState />
@@ -985,24 +1002,32 @@ export default function HabitCentralV2() {
                   initial="hidden"
                   animate="visible"
                 >
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Daily Habit Logs</CardTitle>
-                      <CardDescription>Your habit completion over time</CardDescription>
+                  <Card className="w-full rounded-2xl">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-base md:text-lg">Daily Habit Logs</CardTitle>
+                      <CardDescription className="text-xs md:text-sm">Your habit completion over time</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-64">
+                      <div className="h-[220px] sm:h-[260px] md:h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={progressData}>
-                            <CartesianGrid strokeDasharray="3 3" />
+                          <BarChart data={progressData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                             <XAxis 
                               dataKey="day" 
                               tickFormatter={(date) => new Date(date).getDate().toString()}
+                              fontSize={12}
+                              tick={{ fontSize: 12 }}
                             />
-                            <YAxis />
+                            <YAxis fontSize={12} tick={{ fontSize: 12 }} />
                             <Tooltip 
                               labelFormatter={(date) => new Date(date).toLocaleDateString()}
                               formatter={(value) => [`${value} logs`, 'Completions']}
+                              contentStyle={{ 
+                                backgroundColor: 'hsl(var(--background))', 
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                                fontSize: '12px'
+                              }}
                             />
                             <Bar 
                               dataKey="logs_count" 
