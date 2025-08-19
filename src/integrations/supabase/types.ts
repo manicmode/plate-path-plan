@@ -8173,6 +8173,16 @@ export type Database = {
         Args: { p_minutes?: number; p_user_habit_id: string }
         Returns: undefined
       }
+      rpc_update_user_habit: {
+        Args: {
+          p_notes?: string
+          p_reminder_at?: string
+          p_schedule?: Json
+          p_target?: number
+          p_user_habit_id: string
+        }
+        Returns: undefined
+      }
       rpc_upsert_habit_templates: {
         Args: { p_templates: Json }
         Returns: number
