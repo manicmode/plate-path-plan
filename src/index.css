@@ -499,6 +499,16 @@
       0 0 0 1px rgba(107, 114, 128, 0.08);
   }
 
+  /* Scrollbar utilities */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Mood Modal Safe Area & Smooth Sliders */
   .mood-modal {
     padding-top: max(env(safe-area-inset-top), 16px);

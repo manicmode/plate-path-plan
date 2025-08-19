@@ -246,9 +246,9 @@ export function ThemedDomainSection({
             </div>
           ) : (
             <div className="relative">
-              {/* Enhanced Carousel with better proportions */}
-              <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-px-4 pb-2">
-                <div className="flex gap-4 px-1">
+              {/* Mobile-first carousel */}
+              <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory px-2">
+                <div className="flex gap-4">
                   {filteredHabits.map((habit, index) => (
                     <ThemedHabitCard
                       key={habit.id}
