@@ -2114,6 +2114,13 @@ export type Database = {
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
           },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
+          },
         ]
       }
       habit_log: {
@@ -2264,6 +2271,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "fk_habit_reminders_slug"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
           },
         ]
       }
@@ -5371,6 +5385,13 @@ export type Database = {
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
           },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
+          },
         ]
       }
       user_levels: {
@@ -7163,7 +7184,23 @@ export type Database = {
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
           },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
+          },
         ]
+      }
+      v_habit_logs_norm: {
+        Row: {
+          habit_slug: string | null
+          note: string | null
+          occurred_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
       }
       v_habit_streaks: {
         Row: {
@@ -7202,6 +7239,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
           },
         ]
       }
@@ -7242,6 +7286,13 @@ export type Database = {
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
           },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
+          },
         ]
       }
       vw_habit_progress_week: {
@@ -7280,6 +7331,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "habit_templates"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "habit_completion_log_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "v_habit_logs_norm"
+            referencedColumns: ["habit_slug"]
           },
         ]
       }
@@ -8383,6 +8441,25 @@ export type Database = {
           user_habit_id: string
         }[]
       }
+      rpc_get_habit_progress: {
+        Args: { p_window?: string }
+        Returns: {
+          day: string
+          logs_count: number
+        }[]
+      }
+      rpc_get_my_habits_with_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          habit_slug: string
+          is_paused: boolean
+          last_30d_count: number
+          target_per_week: number
+          title: string
+        }[]
+      }
       rpc_habit_kpis: {
         Args: { p_start?: string; period?: string }
         Returns: {
@@ -8411,6 +8488,18 @@ export type Database = {
           user_habit_id: string
         }[]
       }
+      rpc_list_active_habits: {
+        Args: { p_domain?: Database["public"]["Enums"]["habit_domain"] }
+        Returns: {
+          category: string
+          description: string
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          id: string
+          slug: string
+          title: string
+        }[]
+      }
       rpc_log_habit: {
         Args: {
           p_amount?: number
@@ -8420,6 +8509,10 @@ export type Database = {
           p_slug: string
         }
         Returns: string
+      }
+      rpc_log_habit_by_slug: {
+        Args: { p_habit_slug: string; p_note?: string; p_occurred_at?: string }
+        Returns: Json
       }
       rpc_mark_habit_done: {
         Args: { p_date?: string; p_habit_slug: string; p_notes?: string }
@@ -8482,9 +8575,48 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_upsert_habit_reminder_by_slug: {
+        Args: {
+          p_day_of_week?: number
+          p_enabled?: boolean
+          p_frequency: string
+          p_habit_slug: string
+          p_time_local?: string
+        }
+        Returns: {
+          created_at: string
+          day_of_week: number | null
+          frequency: string
+          habit_slug: string
+          id: string
+          is_enabled: boolean
+          time_local: string | null
+          user_id: string
+        }
+      }
       rpc_upsert_habit_templates: {
         Args: { p_templates: Json }
         Returns: number
+      }
+      rpc_upsert_user_habit_by_slug: {
+        Args: { p_habit_slug: string; p_target_per_week?: number }
+        Returns: {
+          created_at: string
+          id: string
+          is_paused: boolean
+          next_due_at: string | null
+          notes: string | null
+          reminder_at: string | null
+          schedule: Json
+          slug: string
+          snooze_until: string | null
+          start_date: string
+          status: string
+          target: number | null
+          target_per_week: number
+          updated_at: string
+          user_id: string
+        }
       }
       rpc_upsert_user_profile: {
         Args: { p_constraints?: Json; p_goals?: Json; p_preferences?: Json }
