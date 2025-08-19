@@ -2205,6 +2205,68 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_reminders: {
+        Row: {
+          created_at: string
+          day_of_week: number | null
+          frequency: string
+          habit_slug: string
+          id: string
+          is_enabled: boolean
+          time_local: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week?: number | null
+          frequency: string
+          habit_slug: string
+          id?: string
+          is_enabled?: boolean
+          time_local?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number | null
+          frequency?: string
+          habit_slug?: string
+          id?: string
+          is_enabled?: boolean
+          time_local?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_habit_reminders_slug"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "fk_habit_reminders_slug"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "fk_habit_reminders_slug"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "fk_habit_reminders_slug"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       habit_search_events: {
         Row: {
           category: string | null
@@ -2303,6 +2365,7 @@ export type Database = {
           estimated_minutes: number | null
           goal_type: Database["public"]["Enums"]["habit_goal_type"]
           id: string
+          is_active: boolean
           min_viable: string | null
           name: string
           slug: string
@@ -2326,6 +2389,7 @@ export type Database = {
           estimated_minutes?: number | null
           goal_type: Database["public"]["Enums"]["habit_goal_type"]
           id?: string
+          is_active?: boolean
           min_viable?: string | null
           name: string
           slug: string
@@ -2349,6 +2413,7 @@ export type Database = {
           estimated_minutes?: number | null
           goal_type?: Database["public"]["Enums"]["habit_goal_type"]
           id?: string
+          is_active?: boolean
           min_viable?: string | null
           name?: string
           slug?: string
@@ -5229,6 +5294,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_paused: boolean
           next_due_at: string | null
           notes: string | null
           reminder_at: string | null
@@ -5238,12 +5304,14 @@ export type Database = {
           start_date: string
           status: string
           target: number | null
+          target_per_week: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_paused?: boolean
           next_due_at?: string | null
           notes?: string | null
           reminder_at?: string | null
@@ -5253,12 +5321,14 @@ export type Database = {
           start_date?: string
           status?: string
           target?: number | null
+          target_per_week?: number
           updated_at?: string
           user_id?: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_paused?: boolean
           next_due_at?: string | null
           notes?: string | null
           reminder_at?: string | null
@@ -5268,6 +5338,7 @@ export type Database = {
           start_date?: string
           status?: string
           target?: number | null
+          target_per_week?: number
           updated_at?: string
           user_id?: string
         }
