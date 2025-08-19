@@ -112,14 +112,12 @@ interface Reminder {
 }
 
 export default function HabitCentralV2() {
-  console.log('[Browse] mount');
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
   
   // Tab and data state
   const [activeTab, setActiveTab] = useState('browse');
-  console.log('[Browse] activeTab at mount', activeTab);
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [myHabits, setMyHabits] = useState<UserHabit[]>([]);
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
@@ -146,32 +144,14 @@ export default function HabitCentralV2() {
 
   // Load active habits - templates are public, no auth needed
   const loadHabits = useCallback(async (domainUi?: string) => {
-    console.log('[Browse] loadHabits:start', { domainUi });
     setLoading(true);
     try {
       type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
       const p_domain: HabitDomain | null = 
         !domainUi || domainUi === 'all' ? null : (domainUi as HabitDomain);
       
-      console.log('[Browse] rpc params', { p_domain });
-      
       const { data, error } = await supabase.rpc('rpc_list_active_habits', {
         p_domain
-      });
-      
-      console.log('[Browse] rpc result', { count: data?.length ?? -1, error: error?.message });
-      
-      // Direct table plumbing test
-      const probe = await supabase
-        .from('habit_template')
-        .select('slug,name,domain,difficulty,is_active')
-        .eq('is_active', true)
-        .limit(3);
-      
-      console.log('[Browse] direct table probe', {
-        error: probe.error?.message,
-        count: probe.data?.length ?? 0,
-        sample: probe.data?.[0]
       });
       
       if (error) {
@@ -179,8 +159,6 @@ export default function HabitCentralV2() {
         setHabits([]);
         return;
       }
-      
-      console.log('[Browse] setHabits', { nextLen: data?.length ?? 0 });
       setHabits(data ?? []);
     } catch (error) {
       console.error('Error loading habits:', error);
@@ -556,12 +534,10 @@ export default function HabitCentralV2() {
 
   // Load habits on mount and when filters change
   useEffect(() => {
-    console.log('[Browse] useEffect initial -> calling loadHabits("all")');
     void loadHabits('all');
   }, []);
 
   useEffect(() => {
-    console.log('[Browse] domainFilter changed', { domainFilter });
     if (activeTab === 'browse') {
       void loadHabits(domainFilter);
     }
@@ -781,16 +757,6 @@ export default function HabitCentralV2() {
               </motion.div>
 
               {/* Habits grid */}
-              {(() => {
-                console.log('[Browse] render snapshot', {
-                  habitsLen: habits?.length ?? -1,
-                  filteredLen: filteredHabits?.length ?? -1,
-                  domainFilter,
-                  difficultyFilter,
-                  loading
-                });
-                return null;
-              })()}
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
                   <div className="animate-pulse text-sm md:text-base">Loading habits...</div>
