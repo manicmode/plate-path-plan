@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { EmojiRain } from '@/components/habit-central/EmojiRain';
+import { ProTip } from '@/components/habit-central/ProTip';
 
 // Helper functions
 const getDomainEmoji = (domain: string) => {
@@ -127,6 +130,10 @@ export default function HabitCentralV2() {
   const [healthIssues, setHealthIssues] = useState<HealthIssue[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [adminStats, setAdminStats] = useState({ templates: 0, userHabits: 0, logs: 0 });
+
+  // Delight features state
+  const [emojiRainTrigger, setEmojiRainTrigger] = useState(false);
+  const [emojiRainEmoji, setEmojiRainEmoji] = useState('🎉');
 
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
@@ -243,9 +250,13 @@ export default function HabitCentralV2() {
     }
   }, [user, activeTab, loadMyHabits, toast]);
 
-  // Log habit completion
+  // Log habit completion with delight features
   const handleLogHabit = useCallback(async (slug: string, note?: string) => {
     if (!user) return;
+    
+    // Get current habit stats before logging
+    const currentHabit = myHabits.find(h => h.habit_slug === slug);
+    const previousCount = currentHabit?.last_30d_count || 0;
     
     try {
       triggerHaptics('light');
@@ -256,17 +267,71 @@ export default function HabitCentralV2() {
       });
       
       if (error) throw error;
-      toast({ title: "Logged — nice!" });
       
-      // Refresh data
-      if (activeTab === 'my-habits') loadMyHabits();
-      if (activeTab === 'analytics') loadProgress(progressWindow);
+      // Refresh data first to get updated counts
+      if (activeTab === 'my-habits') await loadMyHabits();
+      if (activeTab === 'analytics') await loadProgress(progressWindow);
+      
+      // Get updated habit for delight features
+      const updatedHabit = myHabits.find(h => h.habit_slug === slug) || currentHabit;
+      const newCount = (updatedHabit?.last_30d_count || 0);
+      
+      // 🎉 First log ever (0 → 1)
+      if (previousCount === 0 && newCount >= 1) {
+        // Confetti burst
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
+        });
+        
+        // Special toast for first log
+        toast({ 
+          title: "First log — you're on your way! 🚀",
+          description: "Every journey starts with a single step!"
+        });
+        
+        // Light haptic feedback
+        try {
+          Haptics.impact({ style: ImpactStyle.Light });
+        } catch {
+          // Ignore haptics errors on web
+        }
+      }
+      // 🔥 Streak surges (multiples of 5, >= 5)
+      else if (newCount >= 5 && newCount % 5 === 0) {
+        // Get domain emoji for this habit
+        const domainEmoji = getDomainEmoji(updatedHabit?.domain || 'exercise');
+        
+        // Trigger emoji rain
+        setEmojiRainEmoji(domainEmoji);
+        setEmojiRainTrigger(true);
+        
+        // Streak toast
+        toast({ 
+          title: `🔥 ${newCount} streak logs! Keep it rolling.`,
+          description: "You're building incredible momentum!"
+        });
+        
+        // Medium haptic feedback
+        try {
+          Haptics.impact({ style: ImpactStyle.Medium });
+        } catch {
+          // Ignore haptics errors on web
+        }
+      }
+      // Regular log
+      else {
+        toast({ title: "Logged — nice!" });
+      }
+      
     } catch (error) {
       console.error('Error logging habit:', error);
       triggerHaptics('selection');
       toast({ title: "Failed to log habit", variant: "destructive" });
     }
-  }, [user, activeTab, loadMyHabits, loadProgress, progressWindow, toast]);
+  }, [user, activeTab, loadMyHabits, loadProgress, progressWindow, toast, myHabits]);
 
   // Update habit target
   const handleUpdateTarget = useCallback(async (slug: string, newTarget: number) => {
@@ -519,7 +584,14 @@ export default function HabitCentralV2() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <motion.div 
+      {/* Emoji Rain Animation */}
+      <EmojiRain
+        emoji={emojiRainEmoji}
+        trigger={emojiRainTrigger}
+        onComplete={() => setEmojiRainTrigger(false)}
+      />
+      
+      <motion.div
         initial="hidden" 
         animate="visible" 
         variants={staggerContainer}
@@ -666,6 +738,9 @@ export default function HabitCentralV2() {
                   ))}
                 </motion.div>
               )}
+              
+              {/* Pro Tip for Browse */}
+              <ProTip tab="browse" />
             </TabsContent>
 
             {/* My Habits Tab */}
@@ -779,8 +854,11 @@ export default function HabitCentralV2() {
                       </Card>
                     </motion.div>
                   ))}
-                </motion.div>
-              )}
+                 </motion.div>
+               )}
+               
+               {/* Pro Tip for My Habits */}
+               <ProTip tab="habits" />
             </TabsContent>
 
             {/* Reminders Tab */}
@@ -808,6 +886,9 @@ export default function HabitCentralV2() {
                   ))}
                 </motion.div>
               )}
+              
+              {/* Pro Tip for Reminders */}
+              <ProTip tab="reminders" />
             </TabsContent>
 
             {/* Analytics Tab */}
@@ -881,6 +962,9 @@ export default function HabitCentralV2() {
                   </Card>
                 </motion.div>
               )}
+              
+              {/* Pro Tip for Analytics */}
+              <ProTip tab="analytics" />
             </TabsContent>
 
             {/* Admin Tab */}
