@@ -19,14 +19,22 @@ import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { useToast } from '@/hooks/use-toast';
+import { StartPack } from '@/components/StartPack';
+import { useAuth } from '@/contexts/auth';
+
+// Feature flag for Habit Central V1
+const HABIT_CENTRAL_V1_ENABLED = import.meta.env.VITE_HABIT_CENTRAL_V1 !== '0';
 
 export default function HabitCentralV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin } = useIsAdmin();
+  const { user } = useAuth();
   const { addHabit, logHabit, loading: habitManagementLoading } = useHabitManagement();
   const { toast } = useToast();
   const [userActiveHabits, setUserActiveHabits] = useState<string[]>([]);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [activeHabitsCount, setActiveHabitsCount] = useState(0);
+  const [showStartPack, setShowStartPack] = useState(false);
   
   // State for filters, search, and pagination
   const [filters, setFilters] = useState<HabitTemplateFilters>({});
@@ -115,6 +123,37 @@ export default function HabitCentralV2() {
 
     setSearchParams(newParams, { replace: true });
   }, [filters.domains, filters.category, filters.difficulty, filters.goalType, filters.equipment, filters.tags, searchQuery, currentPage, setSearchParams]);
+
+  // Fetch user's active habits count
+  useEffect(() => {
+    const fetchActiveHabitsCount = async () => {
+      if (!user) {
+        setActiveHabitsCount(0);
+        setShowStartPack(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_habit')
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        setActiveHabitsCount(count);
+        setShowStartPack(count === 0 && HABIT_CENTRAL_V1_ENABLED);
+      } catch (error) {
+        console.error('Error fetching active habits count:', error);
+        setActiveHabitsCount(0);
+        setShowStartPack(false);
+      }
+    };
+
+    fetchActiveHabitsCount();
+  }, [user, habitsRailKey]);
 
   // Prepare filters for API call
   const apiFilters = useMemo(() => {
@@ -220,6 +259,16 @@ export default function HabitCentralV2() {
     setHabitsRailKey(prev => prev + 1); // Refresh the rail
   };
 
+  // Handle StartPack completion
+  const handleStartPackCompleted = () => {
+    setShowStartPack(false);
+    setHabitsRailKey(prev => prev + 1); // Refresh the rail
+  };
+
+  const handleStartPackSkipped = () => {
+    setShowStartPack(false);
+  };
+
   // Demo seed functionality (dev only)
   const handleSeedDemoHabits = async () => {
     if (!import.meta.env.DEV) return;
@@ -279,6 +328,21 @@ export default function HabitCentralV2() {
     }
   };
 
+  // Feature flag fallback
+  if (!HABIT_CENTRAL_V1_ENABLED) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold">Habit Central</h1>
+          <p className="text-xl text-muted-foreground">Coming soon</p>
+          <p className="text-muted-foreground">
+            We're working on something amazing to help you build better habits.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="space-y-8">
@@ -304,40 +368,57 @@ export default function HabitCentralV2() {
           )}
         </div>
 
-        {/* Hero Rotator */}
-        <HeroHabitRotator onStartHabit={handleStartHabit} />
+        {/* StartPack - Only show for users with 0 habits */}
+        {showStartPack && (
+          <StartPack
+            onHabitsStarted={handleStartPackCompleted}
+            onSkip={handleStartPackSkipped}
+          />
+        )}
 
-        {/* AI Suggestions */}
-        <SuggestionsForYou onStartHabit={handleStartHabit} />
+        {/* Hero rotator - Only show when StartPack is not active */}
+        {!showStartPack && (
+          <HeroHabitRotator onStartHabit={handleStartHabit} />
+        )}
+
+        {/* AI Suggestions - Only show when StartPack is not active */}
+        {!showStartPack && (
+          <SuggestionsForYou onStartHabit={handleStartHabit} />
+        )}
 
         {/* Your Habits Rail */}
-        <YourHabitsRail
-          key={habitsRailKey}
-          onHabitStarted={handleHabitStarted}
-          onStartHabit={handleStartHabit}
-        />
+        <div data-section="your-habits">
+          <YourHabitsRail
+            key={habitsRailKey}
+            onHabitStarted={handleHabitStarted}
+            onStartHabit={handleStartHabit}
+            onEditHabit={handleEditHabit}
+          />
+        </div>
 
-        {/* Domain Carousels */}
-        <DomainCarousel
-          domain="nutrition"
-          title="Nutrition"
-          onStartHabit={handleStartHabit}
-          onDetailsClick={handleDetailsClick}
-        />
-
-        <DomainCarousel
-          domain="exercise"
-          title="Exercise"
-          onStartHabit={handleStartHabit}
-          onDetailsClick={handleDetailsClick}
-        />
-
-        <DomainCarousel
-          domain="recovery"
-          title="Recovery"
-          onStartHabit={handleStartHabit}
-          onDetailsClick={handleDetailsClick}
-        />
+        {/* Domain carousels - Only show when StartPack is not active */}
+        {!showStartPack && (
+          <>
+            <DomainCarousel
+              domain="nutrition"
+              title="Nutrition"
+              onStartHabit={handleStartHabit}
+              onDetailsClick={handleDetailsClick}
+            />
+            <DomainCarousel
+              domain="exercise"
+              title="Exercise"
+              onStartHabit={handleStartHabit}
+              onDetailsClick={handleDetailsClick}
+            />
+            <DomainCarousel
+              domain="recovery"
+              title="Recovery"
+              onStartHabit={handleStartHabit}
+              onDetailsClick={handleDetailsClick}
+            />
+          </>
+        )}
 
         {/* Progress Panel */}
         <HabitProgressPanel />

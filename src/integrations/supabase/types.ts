@@ -8111,6 +8111,13 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_add_user_habits_bulk: {
+        Args: { p_items: Json }
+        Returns: {
+          slug: string
+          user_habit_id: string
+        }[]
+      }
       rpc_get_due_habits: {
         Args: { p_after_minutes?: number; p_before_minutes?: number }
         Returns: {
