@@ -19,6 +19,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { EmojiRain } from '@/components/habit-central/EmojiRain';
 import { ProTip } from '@/components/habit-central/ProTip';
+import { CronStatusWidget } from '@/components/habit-central/CronStatusWidget';
 
 // Helper functions
 const getDomainEmoji = (domain: string) => {
@@ -352,9 +353,30 @@ export default function HabitCentralV2() {
           // Ignore haptics errors on web
         }
       }
-      // Regular log
+      // Regular log with undo option
       else {
-        toast({ title: "Logged — nice!" });
+        const undoAction = async () => {
+          try {
+            await supabase.rpc('rpc_undo_last_log_by_slug', { p_habit_slug: slug });
+            toast({ title: "Log undone" });
+            
+            // Refresh data after undo
+            if (activeTab === 'my-habits') await loadMyHabits();
+            if (activeTab === 'analytics') await loadProgress(progressWindow);
+          } catch (error) {
+            console.error('Error undoing log:', error);
+            toast({ title: "Failed to undo log", variant: "destructive" });
+          }
+        };
+
+        toast({
+          title: "Logged — nice!",
+          description: "5 seconds to undo",
+          action: {
+            label: "Undo",
+            onClick: undoAction,
+          },
+        });
       }
       
     } catch (error) {
@@ -1045,7 +1067,10 @@ export default function HabitCentralV2() {
                 </motion.div>
                 
                 {healthIssues.length === 0 ? (
-                  <AdminHealthyState />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <AdminHealthyState />
+                    <CronStatusWidget />
+                  </div>
                 ) : (
                   <motion.div 
                     variants={staggerContainer}
@@ -1088,6 +1113,13 @@ export default function HabitCentralV2() {
                         </CardContent>
                       </Card>
                     </motion.div>
+                  </motion.div>
+                )}
+                
+                {/* Always show cron status when there are health issues */}
+                {healthIssues.length > 0 && (
+                  <motion.div variants={fadeInUp}>
+                    <CronStatusWidget />
                   </motion.div>
                 )}
               </TabsContent>

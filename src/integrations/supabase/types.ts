@@ -8621,6 +8621,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_undo_last_log_by_slug: {
+        Args: { p_habit_slug: string }
+        Returns: Json
+      }
       rpc_update_user_habit: {
         Args: {
           p_notes?: string
