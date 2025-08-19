@@ -7,12 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { QuickLogSheet } from '@/components/QuickLogSheet';
 import { ProfilePrefsSheet } from '@/components/ProfilePrefsSheet';
+import { HabitDetailDrawer } from '@/components/HabitDetailDrawer';
 import { useAuth } from '@/contexts/auth';
 import { useUserHabits } from '@/hooks/useUserHabits';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { track } from '@/lib/analytics';
+import { markHabitDone } from '@/lib/habits';
 
 interface Recommendation {
   slug: string;
@@ -46,7 +48,9 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<{ template: HabitTemplate; userHabit: any } | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Recommendation | null>(null);
   
   const { hasHabit, getUserHabit, fetchUserHabits } = useUserHabits();
   const { logHabit } = useHabitManagement();
@@ -168,25 +172,36 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
       if (hasHabit(recommendation.slug)) {
         // Handle logging for active habit
         if (template.goal_type === 'bool') {
-          const success = await logHabit(template.slug, true);
-          if (success) {
+          try {
+            await markHabitDone(recommendation.slug);
+            toast({
+              title: "Logged!",
+              description: `${recommendation.name} completed for today.`
+            });
             await fetchUserHabits();
+            track('habit_logged', { habit_slug: recommendation.slug });
+          } catch (error) {
+            console.error('Error logging habit:', error);
+            toast({
+              title: "Failed to log habit",
+              variant: "destructive"
+            });
           }
         } else {
           setSelectedTemplate({ template, userHabit });
           setQuickLogOpen(true);
         }
       } else {
-        // Start new habit with analytics
-        track('habit_started', { 
-          slug: recommendation.slug, 
-          source: 'for_you', 
-          personalized,
-          domain: recommendation.domain
-        });
-        onStartHabit(template);
+        // Open detail drawer for new habits
+        setSelectedRecommendation(recommendation);
+        setDetailDrawerOpen(true);
       }
     }
+  };
+
+  const handleDetailDrawerChanged = () => {
+    fetchUserHabits();
+    setDetailDrawerOpen(false);
   };
 
   const handleScroll = (direction: 'left' | 'right') => {
@@ -338,24 +353,40 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
                   <p className="text-sm text-muted-foreground italic line-clamp-2">
                     {recommendation.reason}
                   </p>
-                  <Button 
-                    onClick={() => handleRecommendationClick(recommendation)}
-                    className="w-full"
-                    size="sm"
-                    variant={isActive ? "secondary" : "default"}
-                  >
-                    {isActive ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Log now
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Start this habit
-                      </>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={() => handleRecommendationClick(recommendation)}
+                      className="w-full"
+                      size="sm"
+                      variant={isActive ? "secondary" : "default"}
+                    >
+                      {isActive ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Log now
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Start this habit
+                        </>
+                      )}
+                    </Button>
+                    
+                    {!isActive && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-xs"
+                        onClick={() => {
+                          setSelectedRecommendation(recommendation);
+                          setDetailDrawerOpen(true);
+                        }}
+                      >
+                        View details
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -376,6 +407,25 @@ export function SuggestionsForYou({ onStartHabit }: SuggestionsForYouProps) {
           fetchUserHabits();
         }}
       />
+
+      {/* Habit Detail Drawer */}
+      {selectedRecommendation && (
+        <HabitDetailDrawer
+          habit={{
+            slug: selectedRecommendation.slug,
+            name: selectedRecommendation.name,
+            domain: selectedRecommendation.domain as 'nutrition' | 'exercise' | 'recovery',
+            estimated_minutes: templates[selectedRecommendation.slug]?.estimated_minutes,
+            equipment: templates[selectedRecommendation.slug]?.equipment,
+            description: templates[selectedRecommendation.slug]?.description,
+            reason: selectedRecommendation.reason,
+            score: selectedRecommendation.score
+          }}
+          open={detailDrawerOpen}
+          onOpenChange={setDetailDrawerOpen}
+          onChanged={handleDetailDrawerChanged}
+        />
+      )}
 
       {/* Profile Preferences Sheet */}
       <ProfilePrefsSheet

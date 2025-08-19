@@ -7011,6 +7011,44 @@ export type Database = {
         }
         Relationships: []
       }
+      v_habit_consistency: {
+        Row: {
+          done_30d: number | null
+          habit_slug: string | null
+          user_id: string | null
+          window_days: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_export"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_template_health"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "user_habit_slug_fkey"
+            columns: ["habit_slug"]
+            isOneToOne: false
+            referencedRelation: "habit_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       vw_habit_progress_month: {
         Row: {
           completions: number | null
@@ -7159,6 +7197,10 @@ export type Database = {
       _ensure_rank20_challenge: {
         Args: { _group_id: string }
         Returns: string
+      }
+      _fn_exists: {
+        Args: { fn_name: string }
+        Returns: boolean
       }
       _rank20_sync_group_flag: {
         Args: { p_group_id: string }
@@ -8199,6 +8241,14 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_mark_habit_done: {
+        Args: { p_date?: string; p_habit_slug: string; p_notes?: string }
+        Returns: undefined
+      }
+      rpc_pause_habit: {
+        Args: { p_habit_slug: string }
+        Returns: undefined
+      }
       rpc_recommend_habits: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -8218,8 +8268,28 @@ export type Database = {
           slug: string
         }[]
       }
+      rpc_resume_habit: {
+        Args: { p_habit_slug: string }
+        Returns: undefined
+      }
+      rpc_set_habit_reminder: {
+        Args: {
+          p_frequency?: string
+          p_habit_slug: string
+          p_reminder_time: string
+        }
+        Returns: undefined
+      }
       rpc_snooze_habit: {
         Args: { p_minutes?: number; p_user_habit_id: string }
+        Returns: undefined
+      }
+      rpc_start_habit: {
+        Args: {
+          p_frequency?: string
+          p_habit_slug: string
+          p_reminder_time?: string
+        }
         Returns: undefined
       }
       rpc_update_user_habit: {

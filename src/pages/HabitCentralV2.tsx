@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
 import { useToast } from '@/hooks/use-toast';
 import { StartPack } from '@/components/StartPack';
+import { MiniProgressRow } from '@/components/MiniProgressRow';
 import { useAuth } from '@/contexts/auth';
 
 // Feature flag for Habit Central V1
@@ -380,6 +381,9 @@ export default function HabitCentralV2() {
         {!showStartPack && (
           <HeroHabitRotator onStartHabit={handleStartHabit} />
         )}
+
+        {/* Mini Progress Row - Show above suggestions */}
+        {!showStartPack && <MiniProgressRow />}
 
         {/* AI Suggestions - Only show when StartPack is not active */}
         {!showStartPack && (
