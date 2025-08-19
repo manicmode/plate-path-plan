@@ -22,6 +22,8 @@ interface UserHabit {
   reminder_at: string | null;
   target: number | null;
   notes: string | null;
+  next_due_at: string | null;
+  snooze_until: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,7 +46,7 @@ interface Recommendation {
 interface YourHabitsRailProps {
   onHabitStarted: () => void;
   onStartHabit: (template: HabitTemplate) => void;
-  onEditHabit?: (template: HabitTemplate, userHabit: UserHabit) => void;
+  onEditHabit?: (template: HabitTemplate, userHabit: import('@/hooks/useHabitManagement').UserHabit) => void;
 }
 
 const getDomainColor = (domain: string) => {
@@ -296,9 +298,9 @@ export function YourHabitsRail({ onHabitStarted, onStartHabit, onEditHabit }: Yo
                         
                         {/* Management Menu */}
                         <HabitManagementMenu
-                          userHabit={userHabit}
+                          userHabit={userHabit as import('@/hooks/useHabitManagement').UserHabit}
                           template={template}
-                          onEdit={onEditHabit}
+                          onEdit={(template, userHabit) => onEditHabit?.(template, userHabit as import('@/hooks/useHabitManagement').UserHabit)}
                           onStatusChanged={fetchUserHabits}
                         />
                       </div>

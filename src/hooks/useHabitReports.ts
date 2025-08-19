@@ -33,7 +33,7 @@ export const useHabitReport = (period: 'week' | 'month') => {
       if (!user) return [];
 
       const { data, error } = await supabase.rpc('rpc_habit_report', {
-        p_period: period
+        period: period
       });
 
       if (error) throw error;
@@ -52,11 +52,14 @@ export const useHabitKPIs = (period: 'week' | 'month') => {
       if (!user) return null;
 
       const { data, error } = await supabase.rpc('rpc_habit_kpis', {
-        p_period: period
+        period: period
       });
 
       if (error) throw error;
-      return data as HabitKPIsData;
+      
+      // The RPC returns an array, but we want the first item
+      const kpis = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      return kpis as HabitKPIsData | null;
     },
     enabled: !!user
   });

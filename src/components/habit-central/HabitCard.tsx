@@ -16,6 +16,7 @@ interface HabitCardProps {
   onStartHabit?: (template: HabitTemplate) => void;
   showAdminActions?: boolean;
   userActiveHabits?: string[]; // Array of slugs for active habits
+  isActive?: boolean; // Whether user has this habit active
 }
 
 // Text highlighting utility
@@ -58,7 +59,7 @@ const getGoalTypeLabel = (goalType: string) => {
   }
 };
 
-export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false, userActiveHabits = [] }: HabitCardProps) {
+export function HabitCard({ template, searchQuery, isSelected, onSelectionChange, onDetailsClick, onStartHabit, showAdminActions = false, userActiveHabits = [], isActive = false }: HabitCardProps) {
   const { toast } = useToast();
 
   const handleCopySlug = () => {
@@ -77,7 +78,7 @@ export function HabitCard({ template, searchQuery, isSelected, onSelectionChange
     : [];
 
   // Check if user already has this habit active
-  const isHabitActive = userActiveHabits.includes(template.slug);
+  const isHabitActive = isActive || userActiveHabits.includes(template.slug);
 
   return (
     <Card className="h-full">

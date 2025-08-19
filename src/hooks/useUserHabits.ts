@@ -1,9 +1,24 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { UserHabit } from '@/hooks/useHabitManagement';
+
+// Define a simplified UserHabit interface for this hook
+export interface SimpleUserHabit {
+  id: string;
+  slug: string;
+  status: 'active' | 'paused' | 'completed';
+  schedule: any;
+  reminder_at: string | null;
+  target: number | null;
+  notes: string | null;
+  next_due_at: string | null;
+  snooze_until: string | null;
+  start_date: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export const useUserHabits = () => {
-  const [userHabits, setUserHabits] = useState<Map<string, UserHabit>>(new Map());
+  const [userHabits, setUserHabits] = useState<Map<string, SimpleUserHabit>>(new Map());
   const [loading, setLoading] = useState(false);
 
   const fetchUserHabits = useCallback(async () => {
@@ -16,9 +31,9 @@ export const useUserHabits = () => {
 
       if (error) throw error;
 
-      const habitsMap = new Map<string, UserHabit>();
+      const habitsMap = new Map<string, SimpleUserHabit>();
       (data || []).forEach(habit => {
-        habitsMap.set(habit.slug, habit as UserHabit);
+        habitsMap.set(habit.slug, habit as SimpleUserHabit);
       });
       
       setUserHabits(habitsMap);
