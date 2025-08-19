@@ -19,8 +19,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Validate CRON_TOKEN authorization
-  const ok = req.headers.get('authorization') === `Bearer ${Deno.env.get('CRON_TOKEN')}`;
-  if (!ok) {
+  const auth = req.headers.get('authorization') || '';
+  if (auth !== `Bearer ${Deno.env.get('CRON_TOKEN')}`) {
     console.log('❌ Unauthorized request to deliverHabitNudges');
     return new Response('forbidden', { status: 403 });
   }
