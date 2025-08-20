@@ -179,10 +179,13 @@ export default function HabitCentralV2() {
   const loadMyHabits = useCallback(async () => {
     if (!user) return;
     
+    console.log('[MyHabits] load start');
     setLoading(true);
     try {
+      console.log('[MyHabits] query filters: calling rpc_get_my_habits_with_stats()');
       const { data, error } = await supabase.rpc('rpc_get_my_habits_with_stats');
       
+      console.log('[MyHabits] load result', { error, count: data?.length, sample: data?.[0] });
       if (error) throw error;
       setMyHabits(data || []);
     } catch (error) {
@@ -237,11 +240,13 @@ export default function HabitCentralV2() {
     
     try {
       triggerHaptics('light');
+      console.log('[Add] calling rpc_upsert_user_habit_by_slug with:', { p_habit_slug: slug, p_target_per_week: target });
       const { data, error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
         p_habit_slug: slug,
         p_target_per_week: target
       });
       
+      console.log('[Add] upsert_user_habit result', { error, data });
       if (error) throw error;
       
       setAddedHabits(prev => new Set([...prev, slug]));
@@ -1150,6 +1155,7 @@ export default function HabitCentralV2() {
                 if (!selectedHabitForAdd) return;
                 setIsAddingHabit(true);
                 try {
+                  console.log('[Add] onConfirm received config:', config);
                   await handleAddHabit(selectedHabitForAdd.slug, config.targetPerWeek);
                   setSelectedHabitForAdd(null);
                   triggerHaptics('light');

@@ -78,6 +78,13 @@ export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: Hab
       isEnabled: true,
       isAuto: activeTab === 'auto'
     };
+    console.log('[Add] starting', { 
+      slug: habit?.slug, 
+      target_per_week: config.targetPerWeek, 
+      mode: config.isAuto ? 'auto' : 'manual', 
+      frequency: config.frequency, 
+      time_local: config.timeLocal 
+    });
     onConfirm(config);
   };
 
