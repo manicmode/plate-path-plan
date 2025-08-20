@@ -722,32 +722,6 @@ export default function HabitCentralV2() {
                 Science-backed habits for better health
               </motion.p>
             </div>
-            
-             {/* Tabs beneath title */}
-             <div className="w-full">
-               <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-5">
-                 <TabsTrigger value="search" className="text-xs sm:text-sm">
-                   <Search className="h-4 w-4 mr-1 sm:mr-2" />
-                   <span className="hidden sm:inline">Search</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="browse" className="text-xs sm:text-sm">
-                   <Compass className="h-4 w-4 mr-1 sm:mr-2" />
-                   <span className="hidden sm:inline">Browse</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
-                   <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                   <span className="hidden sm:inline">My Habits</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="reminders" className="text-xs sm:text-sm">
-                   <Bell className="h-4 w-4 mr-1 sm:mr-2" />
-                   <span className="hidden sm:inline">Reminders</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="analytics" className="text-xs sm:text-sm">
-                   <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
-                   <span className="hidden sm:inline">Progress</span>
-                 </TabsTrigger>
-               </TabsList>
-             </div>
           </div>
         </div>
       </div>
@@ -769,6 +743,29 @@ export default function HabitCentralV2() {
         >
           {/* Tab Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            {/* Tabs beneath title */}
+            <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-5 mb-8">
+              <TabsTrigger value="search" className="text-xs sm:text-sm">
+                <Search className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Search</span>
+              </TabsTrigger>
+              <TabsTrigger value="browse" className="text-xs sm:text-sm">
+                <Compass className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Browse</span>
+              </TabsTrigger>
+              <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
+                <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">My Habits</span>
+              </TabsTrigger>
+              <TabsTrigger value="reminders" className="text-xs sm:text-sm">
+                <Bell className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Reminders</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm">
+                <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Progress</span>
+              </TabsTrigger>
+            </TabsList>
 
             {/* Search Tab */}
             <TabsContent value="search" className="space-y-6">
