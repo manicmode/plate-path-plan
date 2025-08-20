@@ -175,7 +175,6 @@ export default function HabitCentralV2() {
     }
   }, [toast]);
 
-
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
     if (!user) return;
@@ -499,12 +498,13 @@ export default function HabitCentralV2() {
           });
         }
       });
-      
+
       setHealthIssues(issues);
     } catch (error) {
       console.error('Error loading health data:', error);
+      toast({ title: "Failed to load health data", variant: "destructive" });
     }
-  }, [isAdmin]);
+  }, [isAdmin, toast]);
 
   // Tab change handler
   const handleTabChange = useCallback((value: string) => {
@@ -518,66 +518,38 @@ export default function HabitCentralV2() {
     if (value === 'admin' && isAdmin) loadHealthData();
   }, [debouncedDomainFilter, loadHabits, loadMyHabits, loadReminders, loadProgress, progressWindow, loadHealthData, isAdmin]);
 
-  // Reset filters with proper sentinels
-  const resetFilters = useCallback(() => {
-    setDomainFilter('all');
-    setDifficultyFilter('all');
-    loadHabits('all');
-  }, [loadHabits]);
-
-  // Robust client-side difficulty filter with normalized sentinels
-  const filteredHabits = useMemo(() => {
-    const effDifficulty = difficultyFilter === 'all' ? null : difficultyFilter?.toLowerCase() ?? null;
-    if (!effDifficulty) return habits;
-    return habits.filter(habit => 
-      (habit.difficulty ?? '').toLowerCase() === effDifficulty
-    );
-  }, [habits, difficultyFilter]);
-
-  // Load habits on mount and when filters change
+  // 🎯 Load data on mount + dependencies
   useEffect(() => {
-    void loadHabits('all');
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'browse') {
-      void loadHabits(domainFilter);
+    if (user) {
+      handleTabChange(activeTab);
     }
-  }, [domainFilter, activeTab, loadHabits]);
+  }, [user, handleTabChange, activeTab]);
 
-  // Empty state components
-  const BrowseEmptyState = () => (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
-      variants={fadeInUp}
-      className="text-center py-12 sm:py-16 md:py-24"
-      role="status"
-      aria-live="polite"
-    >
-      <Compass className="h-12 w-12 mx-auto mb-4 text-muted-foreground md:h-16 md:w-16" />
-      <h3 className="text-lg font-semibold mb-2 md:text-xl">No habits found</h3>
-      <p className="text-sm text-muted-foreground mb-4 md:text-base">Try a different domain or difficulty. Tip: start with 1–2 easy wins.</p>
-      <Button onClick={resetFilters} variant="outline" className="h-10 text-sm md:h-11 md:text-base">
-        Reset filters
-      </Button>
-    </motion.div>
-  );
+  // Update added habits from user's current habits
+  useEffect(() => {
+    const userHabitSlugs = new Set(myHabits.map(h => h.habit_slug));
+    setAddedHabits(userHabitSlugs);
+  }, [myHabits]);
 
+  // Empty states
   const MyHabitsEmptyState = () => (
     <motion.div 
       initial="hidden" 
       animate="visible" 
       variants={fadeInUp}
-      className="text-center py-12 sm:py-16 md:py-24"
+      className="text-center py-12"
       role="status"
       aria-live="polite"
     >
-      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground md:h-16 md:w-16" />
-      <h3 className="text-lg font-semibold mb-2 md:text-xl">Let's build your first habit</h3>
-      <p className="text-sm text-muted-foreground mb-4 md:text-base">Pick one from Browse and tap Add. Start small, stay consistent.</p>
-      <Button onClick={() => setActiveTab('browse')} className="h-10 text-sm md:h-11 md:text-base">
-        Browse habits
+      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-semibold mb-2">No habits added yet</h3>
+      <p className="text-muted-foreground mb-4">Start by adding your first habit from the Browse tab</p>
+      <Button 
+        onClick={() => setActiveTab('browse')} 
+        size="sm"
+        className="animate-pulse"
+      >
+        Browse Habits
       </Button>
     </motion.div>
   );
@@ -592,11 +564,8 @@ export default function HabitCentralV2() {
       aria-live="polite"
     >
       <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">Never miss a rep</h3>
-      <p className="text-muted-foreground mb-4">Set a friendly nudge time that fits your day.</p>
-      <Button disabled>
-        Set a reminder
-      </Button>
+      <h3 className="text-lg font-semibold mb-2">No habits to remind</h3>
+      <p className="text-muted-foreground">Add some habits to set up reminders.</p>
     </motion.div>
   );
 
@@ -656,33 +625,34 @@ export default function HabitCentralV2() {
         <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
       </div>
 
-      {/* Header with centered title and tabs */}
-      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
-          <div className="py-6 space-y-4">
-            {/* Centered Title */}
-            <div className="text-center">
-              <motion.h1 
-                className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                Habit Central
-              </motion.h1>
-              <motion.p 
-                className="text-muted-foreground mt-2"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                Science-backed habits for better health
-              </motion.p>
-            </div>
-            
-            {/* Tabs in sticky header */}
-            <div className="w-full">
-              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      {/* Tabs wrapper for the entire component */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        {/* Header with centered title and tabs */}
+        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
+            <div className="py-6 space-y-4">
+              {/* Centered Title */}
+              <div className="text-center">
+                <motion.h1 
+                  className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  Habit Central
+                </motion.h1>
+                <motion.p 
+                  className="text-muted-foreground mt-2"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  Science-backed habits for better health
+                </motion.p>
+              </div>
+              
+              {/* Tabs in sticky header */}
+              <div className="w-full">
                 <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-4">
                   <TabsTrigger value="browse" className="text-xs sm:text-sm">
                     <Search className="h-4 w-4 mr-1 sm:mr-2" />
@@ -701,24 +671,27 @@ export default function HabitCentralV2() {
                     <span className="hidden sm:inline">Progress</span>
                   </TabsTrigger>
                 </TabsList>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {/* Emoji Rain Animation */}
-      <EmojiRain
-        emoji={emojiRainEmoji}
-        trigger={emojiRainTrigger}
-        onComplete={() => setEmojiRainTrigger(false)}
-      />
+        {/* Emoji Rain Animation */}
+        <EmojiRain
+          emoji={emojiRainEmoji}
+          trigger={emojiRainTrigger}
+          onComplete={() => setEmojiRainTrigger(false)}
+        />
 
-      {/* Main container */}
-      <div className="relative z-10 mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 pb-[calc(84px+env(safe-area-inset-bottom))]">
-        <motion.div
-          initial="hidden" 
-          animate="visible" 
-          variants={staggerContainer}
-          className="space-y-8 pt-8"
-        >
-          {/* Tab Content - continuing from sticky header tabs */}
-
+        {/* Main container */}
+        <div className="relative z-10 mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8 pb-[calc(84px+env(safe-area-inset-bottom))]">
+          <motion.div
+            initial="hidden" 
+            animate="visible" 
+            variants={staggerContainer}
+            className="space-y-8 pt-8"
+          >
+            {/* Browse Tab Content */}
             <TabsContent value="browse" className="space-y-12">
               <motion.div
                 initial="hidden"
@@ -802,43 +775,6 @@ export default function HabitCentralV2() {
               </motion.div>
             </TabsContent>
             
-            {/* Modals */}
-            <HabitInfoModal
-              habit={selectedHabitForInfo}
-              open={!!selectedHabitForInfo}
-              onClose={() => setSelectedHabitForInfo(null)}
-              onAdd={() => {
-                if (selectedHabitForInfo) {
-                  setSelectedHabitForAdd(selectedHabitForInfo);
-                  setSelectedHabitForInfo(null);
-                }
-              }}
-              isAdded={selectedHabitForInfo ? addedHabits.has(selectedHabitForInfo.slug) : false}
-            />
-            
-            <HabitAddModal
-              habit={selectedHabitForAdd}
-              open={!!selectedHabitForAdd}
-              onClose={() => setSelectedHabitForAdd(null)}
-              onConfirm={async (config: HabitConfig) => {
-                if (!selectedHabitForAdd) return;
-                setIsAddingHabit(true);
-                try {
-                  await handleAddHabit(selectedHabitForAdd.slug, config.targetPerWeek);
-                  setSelectedHabitForAdd(null);
-                  triggerHaptics('light');
-                  if (config.isAuto) {
-                    confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } });
-                  }
-                } catch (error) {
-                  console.error('Error adding habit:', error);
-                } finally {
-                  setIsAddingHabit(false);
-                }
-              }}
-              isAdding={isAddingHabit}
-            />
-
             {/* My Habits Tab */}
             <TabsContent value="my-habits" className="space-y-4">
               <motion.div variants={fadeInUp} className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -960,11 +896,11 @@ export default function HabitCentralV2() {
                       </Card>
                     </motion.div>
                   ))}
-                 </motion.div>
-               )}
-               
-               {/* Pro Tip for My Habits */}
-               <ProTip tab="habits" />
+                </motion.div>
+              )}
+              
+              {/* Pro Tip for My Habits */}
+              <ProTip tab="habits" />
             </TabsContent>
 
             {/* Reminders Tab */}
@@ -1191,9 +1127,46 @@ export default function HabitCentralV2() {
                 )}
               </TabsContent>
             )}
-          </Tabs>
+            
+            {/* Modals */}
+            <HabitInfoModal
+              habit={selectedHabitForInfo}
+              open={!!selectedHabitForInfo}
+              onClose={() => setSelectedHabitForInfo(null)}
+              onAdd={() => {
+                if (selectedHabitForInfo) {
+                  setSelectedHabitForAdd(selectedHabitForInfo);
+                  setSelectedHabitForInfo(null);
+                }
+              }}
+              isAdded={selectedHabitForInfo ? addedHabits.has(selectedHabitForInfo.slug) : false}
+            />
+            
+            <HabitAddModal
+              habit={selectedHabitForAdd}
+              open={!!selectedHabitForAdd}
+              onClose={() => setSelectedHabitForAdd(null)}
+              onConfirm={async (config: HabitConfig) => {
+                if (!selectedHabitForAdd) return;
+                setIsAddingHabit(true);
+                try {
+                  await handleAddHabit(selectedHabitForAdd.slug, config.targetPerWeek);
+                  setSelectedHabitForAdd(null);
+                  triggerHaptics('light');
+                  if (config.isAuto) {
+                    confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } });
+                  }
+                } catch (error) {
+                  console.error('Error adding habit:', error);
+                } finally {
+                  setIsAddingHabit(false);
+                }
+              }}
+              isAdding={isAddingHabit}
+            />
+          </motion.div>
         </div>
-      </div>
+      </Tabs>
     </div>
   );
 }
