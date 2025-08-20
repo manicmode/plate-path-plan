@@ -17,6 +17,7 @@ import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import { CarouselHabitCard } from '@/components/habit-central/CarouselHabitCard';
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
+import { SuggestionReasonDrawer } from '@/components/habit-central/SuggestionReasonDrawer';
 
 // Domain emojis
 const getDomainEmoji = (domain: string) => {
@@ -81,6 +82,7 @@ export default function CreateDiscover() {
   // Modal state for AI suggestions
   const [selectedHabitForInfo, setSelectedHabitForInfo] = useState<any>(null);
   const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<any>(null);
+  const [selectedHabitForReason, setSelectedHabitForReason] = useState<any>(null);
   const [isAddingHabit, setIsAddingHabit] = useState(false);
 
   // Load AI suggestions with new hook
@@ -207,6 +209,22 @@ export default function CreateDiscover() {
       setIsAddingHabit(false);
     }
   }, [ready, user?.id, toast, navigate, removeFromSuggestions]);
+
+  // Handle suggestion feedback
+  const handleNotHelpful = (habit: any) => {
+    removeFromSuggestions(habit.slug);
+    // Store feedback in localStorage for session
+    const feedback = JSON.parse(localStorage.getItem('suggestion_feedback') || '{}');
+    feedback[habit.slug] = 'not_helpful';
+    localStorage.setItem('suggestion_feedback', JSON.stringify(feedback));
+  };
+
+  const handleMoreLikeThis = (habit: any) => {
+    // Store positive feedback for future improvements
+    const feedback = JSON.parse(localStorage.getItem('suggestion_feedback') || '{}');
+    feedback[habit.slug] = 'helpful';
+    localStorage.setItem('suggestion_feedback', JSON.stringify(feedback));
+  };
 
   return (
     <div className="space-y-8">
@@ -478,7 +496,9 @@ export default function CreateDiscover() {
                       description: habit.description || '',
                       domain: habit.domain,
                       difficulty: habit.difficulty,
-                      category: habit.domain
+                      category: habit.domain,
+                      score: habit.score,
+                      reasons: habit.reasons
                     }}
                     index={index}
                     onInfo={() => setSelectedHabitForInfo({
@@ -491,6 +511,7 @@ export default function CreateDiscover() {
                       category: habit.domain
                     })}
                     onAdd={() => setSelectedHabitForAdd(habit)}
+                    onWhyThis={() => setSelectedHabitForReason(habit)}
                     isAdded={false}
                   />
                 ))}
@@ -515,6 +536,15 @@ export default function CreateDiscover() {
         onClose={() => setSelectedHabitForAdd(null)}
         onConfirm={(config) => selectedHabitForAdd && handleAddSuggestedHabit(selectedHabitForAdd, config)}
         isAdding={isAddingHabit}
+      />
+
+      {/* Suggestion Reason Drawer */}
+      <SuggestionReasonDrawer
+        habit={selectedHabitForReason}
+        open={!!selectedHabitForReason}
+        onClose={() => setSelectedHabitForReason(null)}
+        onNotHelpful={() => handleNotHelpful(selectedHabitForReason)}
+        onMoreLikeThis={() => handleMoreLikeThis(selectedHabitForReason)}
       />
     </div>
   );

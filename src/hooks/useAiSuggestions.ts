@@ -2,6 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
+type SuggestionSignals = {
+  hasGoalMatch?: boolean;
+  domainGap?: boolean;
+  isEasy?: boolean;
+  lowRecentLogs?: boolean;
+  timeFit?: 'morning'|'evening'|null;
+  diversityBoost?: boolean;
+};
+
 type Suggestion = {
   id: string;
   slug: string;
@@ -11,7 +20,66 @@ type Suggestion = {
   description?: string | null;
   icon?: string | null;
   category?: string | null;
+  score: number;
+  reasons: string[];
 };
+
+function scoreSuggestion(habit: any, ctx: {
+  goals?: string[];
+  activeDomains: Set<string>;
+  recentLogsCount?: number;
+  typicalTime?: 'morning'|'evening'|null;
+  recentAddedSlugs?: string[];
+}): { score: number; reasons: string[] } {
+  let score = 0;
+  const reasons: string[] = [];
+
+  // Goal match (simple tag/name match)
+  const name = (habit.title || habit.name || '').toLowerCase();
+  const goalMatch = ctx.goals?.some(g => name.includes(g.toLowerCase())) ?? false;
+  if (goalMatch) { 
+    score += 3; 
+    const matchedGoal = ctx.goals!.find(g => name.includes(g.toLowerCase()));
+    reasons.push(`🎯 Matches your goal: **${matchedGoal}**`); 
+  }
+
+  // Domain gap
+  if (!ctx.activeDomains.has(habit.domain)) { 
+    score += 2; 
+    reasons.push(`⚖️ Balances your routine (no active **${habit.domain}** habits)`); 
+  }
+
+  // Easy starter
+  if ((habit.difficulty || '').toLowerCase() === 'easy') { 
+    score += 2; 
+    reasons.push('🚀 Easy starter habit to build momentum'); 
+  }
+
+  // Consistency boost
+  if ((ctx.recentLogsCount ?? 0) < 3) { 
+    score += 2; 
+    reasons.push('🔁 Helps improve consistency (few logs recently)'); 
+  }
+
+  // Time fit (simplified for now)
+  if (ctx.typicalTime) { 
+    score += 1; 
+    reasons.push(`☀️ Fits your typical **${ctx.typicalTime}** schedule`); 
+  }
+
+  // Diversity boost
+  if (ctx.recentAddedSlugs && ctx.recentAddedSlugs.length) { 
+    score += 1; 
+    reasons.push('🧩 Adds variety to prevent burn-out'); 
+  }
+
+  // Default reason if no specific ones
+  if (reasons.length === 0) {
+    reasons.push('⭐ Popular habit with good success rates');
+  }
+
+  return { score, reasons: reasons.slice(0, 3) };
+}
 
 const TTL_MS = 12 * 60 * 60 * 1000; // 12h
 
@@ -73,43 +141,46 @@ export function useAiSuggestions(limit = 8) {
         if (e2) throw e2;
 
         const owned = new Set((mine ?? []).map((h: any) => h.habit_slug));
-
-        // 2) Lightweight "AI" scoring (deterministic, client-side)
-        const profile = { preferredDomains: [], preferredDifficulty: null as null | string };
-        const weight = {
-          newHabit: 4,                // not already owned
-          domainMatch: 2,             // if domain is in preferredDomains
-          easyBias: 1,                // small bias toward easy if no profile
+        const activeDomains = new Set((mine ?? []).map((h: any) => h.domain || h.habit_slug.split('-')[0]));
+        
+        // Get context for scoring
+        const totalLogs = (mine ?? []).reduce((sum: number, h: any) => sum + (h.last_30d_count || 0), 0);
+        const scoringContext = {
+          goals: ['sleep', 'nutrition', 'fitness', 'mindfulness'], // simplified
+          activeDomains,
+          recentLogsCount: totalLogs,
+          typicalTime: 'morning' as const, // simplified
+          recentAddedSlugs: (mine ?? []).slice(-3).map((h: any) => h.habit_slug)
         };
 
-        function score(h: any): number {
-          let s = 0;
-          if (!owned.has(h.slug)) s += weight.newHabit;
-          if (profile.preferredDomains.includes?.(h.domain)) s += weight.domainMatch;
-          if (!profile.preferredDifficulty && String(h.difficulty).toLowerCase() === 'easy') s += weight.easyBias;
-          // tiny variety nudge so the order feels alive but stable
-          s += (h.slug.charCodeAt(0) % 10) / 10;
-          return s;
-        }
+        // 2) Score and rank habits
+        const scoredHabits = (all ?? [])
+          .filter((h: any) => !owned.has(h.slug))
+          .map((h: any) => {
+            const baseHabit = {
+              id: String(h.id || h.slug),
+              slug: String(h.slug),
+              title: String(h.title || h.name || h.slug.replaceAll('-', ' ')),
+              description: String(h.description || h.summary || '').trim(),
+              domain: h.domain,
+              difficulty: String(h.difficulty || 'easy').toLowerCase(),
+              category: h.category || null,
+              icon: null,
+            };
+            
+            const { score, reasons } = scoreSuggestion(h, scoringContext);
+            
+            return {
+              ...baseHabit,
+              score: score + (h.slug.charCodeAt(0) % 10) / 10, // tiny variety nudge
+              reasons
+            } as Suggestion;
+          })
+          .sort((a, b) => b.score - a.score);
 
-        const full: Suggestion[] = (all ?? []).map((h: any) => ({
-          id: String(h.id || h.slug),
-          slug: String(h.slug),
-          title: String(h.title || h.name || h.slug.replaceAll('-', ' ')),
-          description: String(h.description || h.summary || '').trim(),
-          domain: h.domain,
-          difficulty: String(h.difficulty || 'easy').toLowerCase(),
-          category: h.category || null,
-          icon: null,
-        }));
-
-        const ranked = full
-          .filter(h => !owned.has(h.slug))       // never recommend already added
-          .sort((a, b) => score(b) - score(a));
-
-        // 3) Pick a balanced mix: limit total (4 per domain if possible)
+        // 3) Pick a balanced mix: limit total (per domain if possible)
         const byDomain = { nutrition: [] as Suggestion[], exercise: [] as Suggestion[], recovery: [] as Suggestion[] };
-        for (const h of ranked) { (byDomain as any)[h.domain]?.push(h); }
+        for (const h of scoredHabits) { (byDomain as any)[h.domain]?.push(h); }
         const take = (arr: Suggestion[], n: number) => arr.slice(0, n);
 
         const perDomain = Math.floor(limit / 3);
@@ -118,7 +189,7 @@ export function useAiSuggestions(limit = 8) {
           ...take(byDomain.exercise, perDomain),
           ...take(byDomain.recovery, perDomain),
         ];
-        const fill = ranked.filter(h => !curated.find(c => c.slug === h.slug)).slice(0, Math.max(0, limit - curated.length));
+        const fill = scoredHabits.filter(h => !curated.find(c => c.slug === h.slug)).slice(0, Math.max(0, limit - curated.length));
         const finalList = [...curated, ...fill];
 
         if (!cancelled && mountedRef.current && !ac.signal.aborted) {

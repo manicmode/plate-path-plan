@@ -12,6 +12,8 @@ export interface HabitTemplate {
   domain: 'nutrition' | 'exercise' | 'recovery';
   difficulty: string;
   category: string;
+  score?: number;
+  reasons?: string[];
 }
 
 interface CarouselHabitCardProps {
@@ -19,6 +21,7 @@ interface CarouselHabitCardProps {
   isAdded?: boolean;
   onInfo: () => void;
   onAdd: () => void;
+  onWhyThis?: () => void;
   index: number;
 }
 
@@ -43,7 +46,7 @@ function getDifficultyColor(difficulty: string) {
   }
 }
 
-export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, index }: CarouselHabitCardProps) {
+export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, index }: CarouselHabitCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -83,9 +86,30 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, index }: Caro
           </div>
 
           {/* Description */}
-          <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-2 flex-1">
             {habit.description}
           </p>
+
+          {/* Suggestion reason (if available) */}
+          {habit.reasons && habit.reasons.length > 0 && (
+            <div className="mb-3 space-y-1">
+              <p className="text-xs text-muted-foreground/70 line-clamp-1">
+                Suggested because: {habit.reasons[0].replace(/🎯|⚖️|🚀|🔁|☀️|🧩|⭐/g, '').replace(/\*\*/g, '').trim()}
+              </p>
+              {onWhyThis && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onWhyThis();
+                  }}
+                  className="text-xs text-primary/70 hover:text-primary underline"
+                >
+                  Why this? →
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2">
