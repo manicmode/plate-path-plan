@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Calendar, Target, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { HabitTemplate } from './CarouselHabitCard';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 interface HabitAddModalProps {
   habit: HabitTemplate | null;
@@ -59,6 +60,7 @@ function getSuggestedTime(habit: HabitTemplate): string {
 }
 
 export function HabitAddModal({ habit, open, onClose, onConfirm, isAdding }: HabitAddModalProps) {
+  const { user, ready } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState('auto');
   const [targetPerWeek, setTargetPerWeek] = useState(5);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'custom'>('daily');

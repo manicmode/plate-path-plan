@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search } from 'lucide-react';
-import { useAuth } from '@/contexts/auth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -108,7 +108,7 @@ interface Reminder {
 }
 
 export default function HabitCentralV2() {
-  const { user } = useAuth();
+  const { user, ready } = useSupabaseAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
   
@@ -177,7 +177,14 @@ export default function HabitCentralV2() {
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
-    if (!user) return;
+    if (!ready) { 
+      console.log('[MyHabits] auth not ready'); 
+      return; 
+    }
+    if (!user) { 
+      console.warn('[MyHabits] no user; show sign-in nudge'); 
+      return; 
+    }
     
     console.log('[MyHabits] load start');
     setLoading(true);
@@ -195,7 +202,7 @@ export default function HabitCentralV2() {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [ready, user, toast]);
 
   // Load progress data
   const loadProgress = useCallback(async (window: 'last_7d' | 'last_30d' = 'last_30d') => {
@@ -236,10 +243,18 @@ export default function HabitCentralV2() {
 
   // Add habit to user's list
   const handleAddHabit = useCallback(async (slug: string, target: number = 5) => {
-    if (!user) return;
+    if (!ready) { 
+      console.log('[Add] auth not ready'); 
+      return; 
+    }
+    if (!user) { 
+      console.warn('[Add] no user; show sign-in nudge'); 
+      return; 
+    }
     
     try {
       triggerHaptics('light');
+      console.log('[Add] user', { userId: user.id });
       console.log('[Add] calling rpc_upsert_user_habit_by_slug with:', { p_habit_slug: slug, p_target_per_week: target });
       const { data, error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
         p_habit_slug: slug,
@@ -261,7 +276,7 @@ export default function HabitCentralV2() {
       triggerHaptics('selection');
       toast({ title: "Failed to add habit", variant: "destructive" });
     }
-  }, [user, activeTab, loadMyHabits, toast]);
+  }, [ready, user, activeTab, loadMyHabits, toast]);
 
   // Log habit completion with delight features
   const handleLogHabit = useCallback(async (slug: string, note?: string) => {
@@ -398,7 +413,7 @@ export default function HabitCentralV2() {
 
   // Update habit target
   const handleUpdateTarget = useCallback(async (slug: string, newTarget: number) => {
-    if (!user) return;
+    if (!ready || !user) return;
     
     try {
       triggerHaptics('light');
@@ -415,11 +430,11 @@ export default function HabitCentralV2() {
       triggerHaptics('selection');
       toast({ title: "Failed to update target", variant: "destructive" });
     }
-  }, [user, loadMyHabits, toast]);
+  }, [ready, user, loadMyHabits, toast]);
 
   // Toggle habit pause
   const handleTogglePause = useCallback(async (slug: string, currentPaused: boolean) => {
-    if (!user) return;
+    if (!ready || !user) return;
     
     try {
       triggerHaptics('light');
@@ -436,11 +451,11 @@ export default function HabitCentralV2() {
       triggerHaptics('selection');
       toast({ title: "Failed to update habit", variant: "destructive" });
     }
-  }, [user, loadMyHabits, toast]);
+  }, [ready, user, loadMyHabits, toast]);
 
   // Save reminder
   const handleSaveReminder = useCallback(async (habitSlug: string, reminder: Partial<Reminder>) => {
-    if (!user) return;
+    if (!ready || !user) return;
     
     try {
       triggerHaptics('light');
@@ -460,7 +475,7 @@ export default function HabitCentralV2() {
       triggerHaptics('selection');
       toast({ title: "Failed to save reminder", variant: "destructive" });
     }
-  }, [user, loadReminders, toast]);
+  }, [ready, user, loadReminders, toast]);
 
   // Load admin health data with detailed checks
   const loadHealthData = useCallback(async () => {
@@ -525,10 +540,35 @@ export default function HabitCentralV2() {
 
   // 🎯 Load data on mount + dependencies
   useEffect(() => {
-    if (user) {
+    if (ready && user) {
       handleTabChange(activeTab);
     }
-  }, [user, handleTabChange, activeTab]);
+  }, [ready, user, handleTabChange, activeTab]);
+
+  // Realtime subscription for user habits
+  useEffect(() => {
+    if (!ready || !user) return;
+    
+    const ch = supabase
+      .channel('user-habit-live')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_habit',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        console.log('[Realtime user_habit]', payload);
+        // Refetch habits when changes occur
+        if (activeTab === 'my-habits') {
+          loadMyHabits();
+        }
+      })
+      .subscribe();
+    
+    return () => { 
+      supabase.removeChannel(ch); 
+    };
+  }, [ready, user?.id, activeTab, loadMyHabits]);
 
   // Update added habits from user's current habits
   useEffect(() => {
@@ -799,6 +839,23 @@ export default function HabitCentralV2() {
               {loading ? (
                 <motion.div variants={fadeInUp} className="text-center py-8">
                   <div className="animate-pulse text-sm md:text-base">Loading your habits...</div>
+                </motion.div>
+              ) : !ready ? (
+                <motion.div variants={fadeInUp} className="text-center py-8">
+                  <div className="animate-pulse text-sm md:text-base">Loading auth...</div>
+                </motion.div>
+              ) : !user ? (
+                <motion.div 
+                  variants={fadeInUp}
+                  className="text-center py-12"
+                >
+                  <Card className="max-w-md mx-auto">
+                    <CardContent className="p-6">
+                      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">You're not signed in</h3>
+                      <p className="text-muted-foreground">Sign in to save & view your habits.</p>
+                    </CardContent>
+                  </Card>
                 </motion.div>
               ) : myHabits.length === 0 ? (
                 <MyHabitsEmptyState />
