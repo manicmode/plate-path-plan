@@ -85,6 +85,10 @@ if (!rootElement) {
 performance.mark('react:start');
 console.log('[boot] html.class before mount:', document.documentElement.className);
 
+// STEP 2: CSS readiness / Fonts logging for forensics  
+document.fonts?.ready?.then(() => console.log('[fonts] ready at', performance.now()));
+window.addEventListener('load', () => console.log('[window] load at', performance.now()));
+
 const root = createRoot(rootElement);
 
 // Enhanced global error handlers for mobile debugging

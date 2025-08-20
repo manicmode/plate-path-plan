@@ -34,6 +34,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userAgent: navigator.userAgent.substring(0, 50)
   });
 
+  // STEP 2: Forensics - log auth ready state changes
+  ReactModule.useEffect(() => {
+    const isReady = !loading && session !== null;
+    console.log('[auth] ready?', { 
+      ready: isReady, 
+      user: !!session?.user,
+      isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
+      loading
+    });
+  }, [loading, session]);
+
 
   // Load user profile in background with enhanced error handling
   const loadExtendedProfile = async (supabaseUser: any) => {

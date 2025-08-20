@@ -5,6 +5,22 @@
     <!-- STEP 2: Performance marker for forensics -->
     <script>performance.mark('boot:head');</script>
     
+    <!-- STEP 3: Surgical fix for Theme FOUC - inline theme guard -->
+    <script>
+      (function() {
+        try {
+          const stored = localStorage.getItem('darkMode');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const isDark = stored ? JSON.parse(stored) : prefersDark;
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch {}
+        // Prevent white paint before CSS loads – matches current dark shell
+        document.documentElement.style.backgroundColor = '#0b1220';
+      })();
+    </script>
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1220">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc">
+    
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>VOYAGE - Your Personal Nutrition Companion</title>

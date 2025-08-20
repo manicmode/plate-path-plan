@@ -28,16 +28,29 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
     if (!loading && !ready) setReady(true);
     if (loading || !isAuthenticated || redirected.current) return;
 
+    // STEP 2: Forensics - log route guard decisions
+    console.log('[router] guard decision:', {
+      pathname: loc.pathname,
+      effectiveComplete,
+      bypass,
+      isAuthenticated,
+      loading
+    });
+
     if (!effectiveComplete && !bypass) {
+      console.log('[router] start navigation to onboarding');
       redirected.current = true;
       nav('/onboarding', { replace: true });
       return;
     }
     if (effectiveComplete && (loc.pathname || '').startsWith('/onboarding')) {
+      console.log('[router] start navigation to home');
       redirected.current = true;
       nav('/home', { replace: true });
       return;
     }
+    
+    console.log('[router] done - no redirect needed');
   }, [loading, ready, isAuthenticated, effectiveComplete, bypass, loc.pathname, nav]);
 
   if (loading && !ready) return <div className="p-4"><div className="h-5 w-28 animate-pulse rounded bg-muted" /></div>;
