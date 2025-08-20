@@ -13,7 +13,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { useHabitTemplatesV2 } from '@/hooks/useHabitTemplatesV2';
+import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import { CarouselHabitCard } from '@/components/habit-central/CarouselHabitCard';
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
@@ -83,23 +83,12 @@ export default function CreateDiscover() {
   const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<any>(null);
   const [isAddingHabit, setIsAddingHabit] = useState(false);
 
-  // Load AI suggestions
+  // Load AI suggestions with new hook
   const { 
-    data: suggestions = [],
-    loading: loadingSuggestions
-  } = useHabitTemplatesV2({
-    filters: {
-      domains: [],
-      category: '',
-      difficulty: undefined,
-      goalType: undefined,
-      equipment: '',
-      tags: [],
-      search: ''
-    },
-    page: 1,
-    pageSize: 12
-  });
+    data: suggestions,
+    loading: loadingSuggestions,
+    error: suggestionsError
+  } = useAiSuggestions(8);
 
   // Update icon when domain changes
   useEffect(() => {
@@ -177,30 +166,44 @@ export default function CreateDiscover() {
 
   // Handle adding suggested habit
   const handleAddSuggestedHabit = useCallback(async (habit: any, config: HabitConfig) => {
-    if (!ready || !user) return;
+    if (!ready || !user?.id) {
+      toast({
+        title: "Please sign in",
+        description: "You need to be signed in to add habits",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsAddingHabit(true);
     try {
-      const { error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
+      const { data, error } = await supabase.rpc('rpc_upsert_user_habit_by_slug', {
         p_habit_slug: habit.slug,
         p_target_per_week: config.targetPerWeek
       });
 
       if (error) throw error;
 
-      toast({ title: "Added to My Habits" });
+      toast({ 
+        title: "Habit added successfully!",
+        description: `${habit.title} added to your active habits`
+      });
+      
       setSelectedHabitForAdd(null);
-
+      
+      // Navigate to active habits
+      navigate('/habits?tab=my-habits');
     } catch (error) {
       console.error('Error adding habit:', error);
       toast({
         title: "Failed to add habit",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive"
       });
     } finally {
       setIsAddingHabit(false);
     }
-  }, [ready, user, toast]);
+  }, [ready, user?.id, toast, navigate]);
 
   return (
     <div className="space-y-8">
@@ -434,33 +437,61 @@ export default function CreateDiscover() {
             </CardHeader>
 
             <CardContent className="relative">
-              {loadingSuggestions ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : suggestions.length === 0 ? (
-                <div className="text-center py-12 space-y-2">
-                  <p className="text-muted-foreground">No suggestions available</p>
-                  <p className="text-sm text-muted-foreground">Check back later for personalized recommendations</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {suggestions.slice(0, 6).map((habit, index) => (
-                    <CarouselHabitCard
-                      key={habit.id}
-                      habit={{
-                        ...habit,
-                        title: habit.name,
-                        description: habit.summary
-                      }}
-                      index={index}
-                      onInfo={() => setSelectedHabitForInfo(habit)}
-                      onAdd={() => setSelectedHabitForAdd(habit)}
-                      isAdded={false}
-                    />
+              {/* Loading skeletons overlay (keeps old data visible if present) */}
+              {loadingSuggestions && (
+                <div className="absolute inset-0 bg-background/30 backdrop-blur-sm grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="rounded-xl h-32 bg-white/5 animate-pulse" />
                   ))}
                 </div>
               )}
+
+              {/* Error state */}
+              {suggestionsError && (!suggestions || suggestions.length === 0) && (
+                <div className="text-center py-12 space-y-2">
+                  <p className="text-sm text-red-400">
+                    Couldn't load suggestions. Pull to refresh or try again later.
+                  </p>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!suggestionsError && suggestions && suggestions.length === 0 && (
+                <div className="text-center py-12 space-y-2">
+                  <p className="text-muted-foreground">No suggestions yet</p>
+                  <p className="text-sm text-muted-foreground">Add a goal or a few habits and check back.</p>
+                </div>
+              )}
+
+              {/* Results (always render container — prevents flicker/disappear) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(suggestions || []).slice(0, 6).map((habit, index) => (
+                  <CarouselHabitCard
+                    key={habit.slug}
+                    habit={{
+                      id: habit.slug,
+                      slug: habit.slug,
+                      title: habit.title,
+                      description: habit.description || '',
+                      domain: habit.domain,
+                      difficulty: habit.difficulty,
+                      category: habit.domain
+                    }}
+                    index={index}
+                    onInfo={() => setSelectedHabitForInfo({
+                      id: habit.slug,
+                      slug: habit.slug,
+                      title: habit.title,
+                      description: habit.description || '',
+                      domain: habit.domain,
+                      difficulty: habit.difficulty,
+                      category: habit.domain
+                    })}
+                    onAdd={() => setSelectedHabitForAdd(habit)}
+                    isAdded={false}
+                  />
+                ))}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
