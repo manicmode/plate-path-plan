@@ -44,11 +44,8 @@ export function SuggestionReasonDrawer({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-xl border-white/10">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+          <DialogTitle>
             Why we suggested this
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogTitle>
         </DialogHeader>
 
