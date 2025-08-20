@@ -87,7 +87,8 @@ export default function CreateDiscover() {
   const { 
     data: suggestions,
     loading: loadingSuggestions,
-    error: suggestionsError
+    error: suggestionsError,
+    removeFromSuggestions
   } = useAiSuggestions(8);
 
   // Update icon when domain changes
@@ -189,6 +190,8 @@ export default function CreateDiscover() {
         description: `${habit.title} added to your active habits`
       });
       
+      // Remove from suggestions list optimistically
+      removeFromSuggestions(habit.slug);
       setSelectedHabitForAdd(null);
       
       // Navigate to active habits
@@ -203,7 +206,7 @@ export default function CreateDiscover() {
     } finally {
       setIsAddingHabit(false);
     }
-  }, [ready, user?.id, toast, navigate]);
+  }, [ready, user?.id, toast, navigate, removeFromSuggestions]);
 
   return (
     <div className="space-y-8">

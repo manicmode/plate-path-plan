@@ -3,12 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 type Suggestion = {
+  id: string;
   slug: string;
   title: string;
   domain: 'nutrition' | 'exercise' | 'recovery';
   difficulty: string;
   description?: string | null;
   icon?: string | null;
+  category?: string | null;
 };
 
 const TTL_MS = 12 * 60 * 60 * 1000; // 12h
@@ -19,11 +21,18 @@ export function useAiSuggestions(limit = 8) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
   const cacheKey = useMemo(
-    () => (user?.id ? `ai_suggestions_v1:${user.id}` : null),
+    () => (user?.id ? `ai_suggestions_v2:${user.id}` : null),
     [user?.id]
   );
+
+  // Clean up on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // read cache once
   useEffect(() => {
@@ -41,93 +50,106 @@ export function useAiSuggestions(limit = 8) {
   useEffect(() => {
     if (!ready || !user?.id) return;
 
-    // don't clear existing data (sticky) — just show skeleton overlay via `loading`
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
 
-    // abort any in-flight request
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
+    async function loadSuggestions() {
+      if (!mountedRef.current) return;
+      
+      setLoading(true);
+      setError(null);
 
-    (async () => {
+      // abort any in-flight request
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
       try {
-        // 1) user's active slugs
-        const { data: my, error: e1 } = await supabase
-          .rpc('rpc_get_my_habits_with_stats');
+        // 1) Fetch all active habits + user's current habits
+        const [{ data: all, error: e1 }, { data: mine, error: e2 }] = await Promise.all([
+          supabase.rpc('rpc_list_active_habits', { p_domain: null }),
+          supabase.rpc('rpc_get_my_habits_with_stats')
+        ]);
         if (e1) throw e1;
-        const activeSlugs = new Set((my ?? []).map((h: any) => h.habit_slug));
-
-        // 2) all templates
-        const { data: all, error: e2 } = await supabase
-          .rpc('rpc_list_active_habits', { p_domain: null });
         if (e2) throw e2;
 
-        // simple client-side ranking: exclude active, prefer easy/medium, diverse domains
-        const pool = (all ?? []).filter((t: any) => !activeSlugs.has(t.slug));
+        const owned = new Set((mine ?? []).map((h: any) => h.habit_slug));
 
-        // score
-        const scored = pool.map((t: any) => {
-          let score = 0;
-          if (t.difficulty === 'easy') score += 3;
-          if (t.difficulty === 'medium') score += 2;
-          // small boost for shorter descriptions
-          if ((t.summary?.length ?? 0) < 120) score += 1;
-          return { t, score };
-        });
+        // 2) Lightweight "AI" scoring (deterministic, client-side)
+        const profile = { preferredDomains: [], preferredDifficulty: null as null | string };
+        const weight = {
+          newHabit: 4,                // not already owned
+          domainMatch: 2,             // if domain is in preferredDomains
+          easyBias: 1,                // small bias toward easy if no profile
+        };
 
-        scored.sort((a, b) => b.score - a.score);
-
-        // pick top `limit`, enforce domain diversity
-        const seen = new Set();
-        const picked: Suggestion[] = [];
-        for (const { t } of scored) {
-          const key = t.domain;
-          if (picked.length < limit && !seen.has(key)) {
-            picked.push({
-              slug: t.slug,
-              title: t.name,
-              domain: t.domain,
-              difficulty: t.difficulty,
-              description: t.summary,
-              icon: null,
-            });
-            seen.add(key);
-          }
-        }
-        // if fewer than limit, top up
-        for (const { t } of scored) {
-          if (picked.length >= limit) break;
-          if (!picked.find(p => p.slug === t.slug)) {
-            picked.push({
-              slug: t.slug,
-              title: t.name,
-              domain: t.domain,
-              difficulty: t.difficulty,
-              description: t.summary,
-              icon: null,
-            });
-          }
+        function score(h: any): number {
+          let s = 0;
+          if (!owned.has(h.slug)) s += weight.newHabit;
+          if (profile.preferredDomains.includes?.(h.domain)) s += weight.domainMatch;
+          if (!profile.preferredDifficulty && String(h.difficulty).toLowerCase() === 'easy') s += weight.easyBias;
+          // tiny variety nudge so the order feels alive but stable
+          s += (h.slug.charCodeAt(0) % 10) / 10;
+          return s;
         }
 
-        if (!ac.signal.aborted) {
-          setData(picked);
+        const full: Suggestion[] = (all ?? []).map((h: any) => ({
+          id: String(h.id || h.slug),
+          slug: String(h.slug),
+          title: String(h.title || h.name || h.slug.replaceAll('-', ' ')),
+          description: String(h.description || h.summary || '').trim(),
+          domain: h.domain,
+          difficulty: String(h.difficulty || 'easy').toLowerCase(),
+          category: h.category || null,
+          icon: null,
+        }));
+
+        const ranked = full
+          .filter(h => !owned.has(h.slug))       // never recommend already added
+          .sort((a, b) => score(b) - score(a));
+
+        // 3) Pick a balanced mix: limit total (4 per domain if possible)
+        const byDomain = { nutrition: [] as Suggestion[], exercise: [] as Suggestion[], recovery: [] as Suggestion[] };
+        for (const h of ranked) { (byDomain as any)[h.domain]?.push(h); }
+        const take = (arr: Suggestion[], n: number) => arr.slice(0, n);
+
+        const perDomain = Math.floor(limit / 3);
+        const curated = [
+          ...take(byDomain.nutrition, perDomain),
+          ...take(byDomain.exercise, perDomain),
+          ...take(byDomain.recovery, perDomain),
+        ];
+        const fill = ranked.filter(h => !curated.find(c => c.slug === h.slug)).slice(0, Math.max(0, limit - curated.length));
+        const finalList = [...curated, ...fill];
+
+        if (!cancelled && mountedRef.current && !ac.signal.aborted) {
+          setData(finalList);
           // cache
           if (cacheKey) {
-            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload: picked }));
+            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload: finalList }));
           }
         }
       } catch (err: any) {
-        if (!ac.signal.aborted) {
+        console.error('[AI Suggestions] load error', err);
+        if (!cancelled && mountedRef.current && !ac.signal.aborted) {
           setError(err?.message ?? 'Failed to load suggestions');
         }
       } finally {
-        if (!ac.signal.aborted) setLoading(false);
+        if (!cancelled && mountedRef.current && !ac.signal.aborted) {
+          setLoading(false);
+        }
       }
-    })();
+    }
 
-    return () => ac.abort();
+    loadSuggestions();
+    return () => { 
+      cancelled = true; 
+      abortRef.current?.abort();
+    };
   }, [ready, user?.id, cacheKey, limit]);
 
-  return { data, loading, error, refetch: () => setData(d => d) };
+  const removeFromSuggestions = (slug: string) => {
+    setData(prev => prev ? prev.filter(h => h.slug !== slug) : prev);
+  };
+
+  return { data, loading, error, removeFromSuggestions };
 }
