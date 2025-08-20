@@ -1,5 +1,6 @@
 // ✅ Robust import pattern: never resolves to null
 import * as React from 'react';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -12,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +62,17 @@ const triggerHaptics = (type: 'light' | 'selection' = 'light') => {
   }
 };
 
+const formatStartedTime = (createdAt: string) => {
+  try {
+    const date = parseISO(createdAt);
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch (error) {
+    console.warn('Failed to format timestamp:', error);
+    // Fallback to short ISO format
+    return createdAt.split('T')[0]; // Just the date part
+  }
+};
+
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -86,6 +100,7 @@ interface UserHabit {
   target_per_week: number;
   is_paused: boolean;
   last_30d_count: number;
+  created_at: string;
 }
 
 interface ProgressData {
@@ -139,6 +154,13 @@ export default function HabitCentralV2() {
   const [selectedHabitForInfo, setSelectedHabitForInfo] = useState<ImportedHabitTemplate | null>(null);
   const [selectedHabitForAdd, setSelectedHabitForAdd] = useState<ImportedHabitTemplate | null>(null);
   const [isAddingHabit, setIsAddingHabit] = useState(false);
+
+  // Delete state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState<string | null>(null);
+  const [purgeLogsOnDelete, setPurgeLogsOnDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
@@ -453,6 +475,122 @@ export default function HabitCentralV2() {
     }
   }, [ready, user, loadMyHabits, toast]);
 
+  // Delete a single habit
+  const handleDeleteHabit = useCallback(async (slug: string, purgeLogsChecked: boolean) => {
+    if (!ready || !user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to delete habits",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      triggerHaptics('light');
+      console.log('[Delete] Calling rpc_delete_user_habit with:', { p_slug: slug, p_purge_logs: purgeLogsChecked });
+      
+      const { error } = await supabase.rpc('rpc_delete_user_habit', {
+        p_slug: slug,
+        p_purge_logs: purgeLogsChecked
+      });
+
+      if (error) {
+        if (error.message?.includes('permission denied')) {
+          throw new Error('Authentication required. Please sign in again.');
+        }
+        throw error;
+      }
+
+      // Optimistically remove from UI
+      setMyHabits(prev => prev.filter(h => h.habit_slug !== slug));
+      
+      // Refresh data to ensure accuracy
+      await loadMyHabits();
+      
+      toast({ 
+        title: "Deleted",
+        description: purgeLogsChecked ? "Habit and logs removed" : "Habit removed (logs kept)"
+      });
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+      triggerHaptics('selection');
+      
+      // Revert optimistic update on error
+      await loadMyHabits();
+      
+      toast({ 
+        title: "Failed to delete habit", 
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setHabitToDelete(null);
+      setPurgeLogsOnDelete(false);
+    }
+  }, [ready, user, loadMyHabits, toast]);
+
+  // Delete all paused habits
+  const handleDeleteAllPaused = useCallback(async (purgeLogsChecked: boolean) => {
+    if (!ready || !user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to delete habits",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const pausedCount = myHabits.filter(h => h.is_paused).length;
+    if (pausedCount === 0) {
+      toast({ title: "No paused habits to delete" });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      triggerHaptics('light');
+      console.log('[BulkDelete] Calling rpc_delete_all_paused_user_habits with:', { p_purge_logs: purgeLogsChecked });
+      
+      const { data, error } = await supabase.rpc('rpc_delete_all_paused_user_habits', {
+        p_purge_logs: purgeLogsChecked
+      });
+
+      if (error) {
+        if (error.message?.includes('permission denied')) {
+          throw new Error('Authentication required. Please sign in again.');
+        }
+        throw error;
+      }
+
+      const deletedCount = data || 0;
+      
+      // Refresh data to get updated list
+      await loadMyHabits();
+      
+      toast({ 
+        title: `Removed ${deletedCount} paused habits`,
+        description: purgeLogsChecked ? "Habits and logs removed" : "Habits removed (logs kept)"
+      });
+    } catch (error) {
+      console.error('Error deleting paused habits:', error);
+      triggerHaptics('selection');
+      
+      toast({ 
+        title: "Failed to delete paused habits", 
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowBulkDeleteDialog(false);
+      setPurgeLogsOnDelete(false);
+    }
+  }, [ready, user, myHabits, loadMyHabits, toast]);
+
   // Save reminder
   const handleSaveReminder = useCallback(async (habitSlug: string, reminder: Partial<Reminder>) => {
     if (!ready || !user) return;
@@ -586,16 +724,23 @@ export default function HabitCentralV2() {
       role="status"
       aria-live="polite"
     >
-      <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-      <h3 className="text-lg font-semibold mb-2">No habits added yet</h3>
-      <p className="text-muted-foreground mb-4">Start by adding your first habit from the Browse tab</p>
-      <Button 
-        onClick={() => setActiveTab('browse')} 
-        size="sm"
-        className="animate-pulse"
-      >
-        Browse Habits
-      </Button>
+      <Card className="max-w-md mx-auto border-dashed border-2">
+        <CardContent className="p-8">
+          <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold mb-2">Start your habit journey</h3>
+          <p className="text-muted-foreground mb-6">
+            Build lasting habits that improve your life. Track progress, set reminders, and achieve your goals.
+          </p>
+          <Button 
+            onClick={() => setActiveTab('browse')} 
+            size="lg"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Browse Habits
+          </Button>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 
@@ -860,13 +1005,50 @@ export default function HabitCentralV2() {
               ) : myHabits.length === 0 ? (
                 <MyHabitsEmptyState />
               ) : (
-                <motion.div 
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="visible"
-                  className="space-y-3 sm:space-y-4"
-                >
-                  {myHabits.map((habit) => (
+                <>
+                  {/* Bulk delete banner for paused habits */}
+                  {myHabits.filter(h => h.is_paused).length > 0 && (
+                    <motion.div variants={fadeInUp}>
+                      <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-orange-600" />
+                              <span className="text-sm text-orange-800 dark:text-orange-200">
+                                You have {myHabits.filter(h => h.is_paused).length} paused habits
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setActiveTab('browse')}
+                                className="text-xs"
+                              >
+                                Manage
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setShowBulkDeleteDialog(true)}
+                                className="text-xs"
+                              >
+                                Delete all paused
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+
+                  <motion.div 
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    className="space-y-3 sm:space-y-4"
+                  >
+                    {myHabits.map((habit) => (
                     <motion.div
                       key={habit.habit_slug}
                       variants={fadeInUp}
@@ -874,21 +1056,45 @@ export default function HabitCentralV2() {
                     >
                       <Card className="w-full rounded-2xl">
                         <CardContent className="p-4 sm:p-6">
-                          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            {/* Top row on mobile - Emoji + Name */}
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <span className="text-xl sm:text-2xl">{getDomainEmoji(habit.domain)}</span>
-                              <div className="min-w-0 flex-1">
-                                <h4 className="font-medium text-sm sm:text-base line-clamp-1">{habit.title}</h4>
-                                <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
-                                  <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
-                                  <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
-                                    {habit.difficulty}
-                                  </Badge>
-                                  {habit.is_paused && <Badge variant="destructive" className="text-xs">Paused</Badge>}
-                                </div>
-                              </div>
-                            </div>
+                           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                             {/* Top row on mobile - Emoji + Name + Menu */}
+                             <div className="flex items-center gap-3 min-w-0 flex-1">
+                               <span className="text-xl sm:text-2xl">{getDomainEmoji(habit.domain)}</span>
+                               <div className="min-w-0 flex-1">
+                                 <div className="flex items-center justify-between">
+                                   <h4 className="font-medium text-sm sm:text-base line-clamp-1">{habit.title}</h4>
+                                   <DropdownMenu>
+                                     <DropdownMenuTrigger asChild>
+                                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                         <MoreHorizontal className="h-4 w-4" />
+                                       </Button>
+                                     </DropdownMenuTrigger>
+                                     <DropdownMenuContent align="end">
+                                       <DropdownMenuItem
+                                         onClick={() => {
+                                           setHabitToDelete(habit.habit_slug);
+                                           setShowDeleteDialog(true);
+                                         }}
+                                         className="text-destructive"
+                                       >
+                                         <Trash2 className="h-4 w-4 mr-2" />
+                                         Delete
+                                       </DropdownMenuItem>
+                                     </DropdownMenuContent>
+                                   </DropdownMenu>
+                                 </div>
+                                 <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
+                                   <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
+                                   <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
+                                     {habit.difficulty}
+                                   </Badge>
+                                   {habit.is_paused && <Badge variant="destructive" className="text-xs">Paused</Badge>}
+                                   <Badge variant="outline" className="text-xs">
+                                     Started: {formatStartedTime(habit.created_at)}
+                                   </Badge>
+                                 </div>
+                               </div>
+                             </div>
 
                             {/* Bottom row on mobile - Controls */}
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -958,7 +1164,8 @@ export default function HabitCentralV2() {
                       </Card>
                     </motion.div>
                   ))}
-                </motion.div>
+                  </motion.div>
+                </>
               )}
               
               {/* Pro Tip for My Habits */}
@@ -1227,6 +1434,74 @@ export default function HabitCentralV2() {
               }}
               isAdding={isAddingHabit}
             />
+
+            {/* Single habit delete confirmation dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this habit?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes reminders and the habit from your list. You can add it again later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="flex items-center space-x-2 py-4">
+                  <Checkbox 
+                    id="purge-logs" 
+                    checked={purgeLogsOnDelete}
+                    onCheckedChange={(checked) => setPurgeLogsOnDelete(checked === true)}
+                  />
+                  <Label htmlFor="purge-logs" className="text-sm">
+                    Also delete past logs
+                  </Label>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (habitToDelete) {
+                        handleDeleteHabit(habitToDelete, purgeLogsOnDelete);
+                      }
+                    }}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk delete paused habits confirmation dialog */}
+            <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete all paused habits?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove {myHabits.filter(h => h.is_paused).length} paused habits and their reminders. You can add them again later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="flex items-center space-x-2 py-4">
+                  <Checkbox 
+                    id="bulk-purge-logs" 
+                    checked={purgeLogsOnDelete}
+                    onCheckedChange={(checked) => setPurgeLogsOnDelete(checked === true)}
+                  />
+                  <Label htmlFor="bulk-purge-logs" className="text-sm">
+                    Also delete past logs
+                  </Label>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteAllPaused(purgeLogsOnDelete)}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete All Paused'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </motion.div>
         </div>
       </Tabs>
