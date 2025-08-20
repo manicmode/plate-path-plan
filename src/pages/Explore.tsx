@@ -194,7 +194,7 @@ const Explore = () => {
             {/* My Reports Text */}
             <span className={`text-center ${safeIsMobile ? 'text-sm' : 'text-base'} 
               font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
-              My Reports
+              Reports
             </span>
           </div>
         </Button>
