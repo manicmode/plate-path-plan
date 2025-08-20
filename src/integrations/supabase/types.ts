@@ -8446,6 +8446,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      rpc_delete_all_paused_user_habits: {
+        Args: { p_purge_logs?: boolean }
+        Returns: number
+      }
+      rpc_delete_user_habit: {
+        Args: { p_purge_logs?: boolean; p_slug: string }
+        Returns: undefined
+      }
       rpc_dispatch_habit_reminders: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -8479,6 +8487,7 @@ export type Database = {
       rpc_get_my_habits_with_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
+          created_at: string
           difficulty: string
           domain: Database["public"]["Enums"]["habit_domain"]
           habit_slug: string
