@@ -29,6 +29,13 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    
+    // STEP 2: Forensics - log theme changes
+    console.log('[boot] theme:apply', {
+      isDarkMode,
+      htmlClass: document.documentElement.className,
+      bodyBg: getComputedStyle(document.body).backgroundColor
+    });
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {

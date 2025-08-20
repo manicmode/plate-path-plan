@@ -84,6 +84,9 @@ const Home = () => {
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
 
   useEffect(() => {
+    // STEP 2: Forensics - log home mount
+    console.log('[home] first mount');
+    
     document.body.classList.remove('splash-visible');
     const splash = document.getElementById('SplashRoot');
     if (splash) splash.style.display = 'none';

@@ -81,6 +81,10 @@ if (!rootElement) {
   throw new Error("Failed to find the root element");
 }
 
+// STEP 2: Performance marker for forensics
+performance.mark('react:start');
+console.log('[boot] html.class before mount:', document.documentElement.className);
+
 const root = createRoot(rootElement);
 
 // Enhanced global error handlers for mobile debugging

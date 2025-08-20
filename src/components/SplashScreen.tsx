@@ -34,6 +34,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   // Start preloading home data immediately when splash becomes visible
   const { isReady: homeDataReady } = useDeferredHomeDataLoading();
 
+  // STEP 2: Forensics - log splash mount/unmount
+  useEffect(() => { 
+    console.log('[splash] mount'); 
+    return () => console.log('[splash] unmount');
+  }, []);
 
   // Play startup chime when splash becomes visible (only on cold start)
   useEffect(() => {

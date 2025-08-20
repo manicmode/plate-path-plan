@@ -141,7 +141,13 @@ function AppContent() {
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-
+  // STEP 2: Forensics performance marker and theme tracing
+  useEffect(() => { 
+    performance.mark('react:mounted'); 
+    console.log('[boot] react:mounted'); 
+    console.log('[boot+100ms] html.class after mount:', document.documentElement.className);
+    setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
+  }, []);
 
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
