@@ -25,8 +25,6 @@ import { ProTip } from '@/components/habit-central/ProTip';
 import { ThemedDomainSection } from '@/components/habit-central/ThemedDomainSection';
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
-import { SearchBar } from '@/components/habit-central/SearchBar';
-import { FilterPills } from '@/components/habit-central/FilterPills';
 import type { HabitTemplate as ImportedHabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
 
@@ -128,11 +126,6 @@ export default function HabitCentralV2() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [progressWindow, setProgressWindow] = useState<'last_7d' | 'last_30d'>('last_30d');
   
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<HabitTemplate[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  
   // Admin health check
   const [healthIssues, setHealthIssues] = useState<HealthIssue[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
@@ -182,41 +175,6 @@ export default function HabitCentralV2() {
     }
   }, [toast]);
 
-  // Search habits
-  const searchHabits = useCallback(async (query: string) => {
-    if (!query || query.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      // Use the existing rpc_list_active_habits and filter client-side for now
-      const { data, error } = await supabase.rpc('rpc_list_active_habits', {
-        p_domain: null
-      });
-
-      if (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-        return;
-      }
-      
-      // Filter results client-side
-      const filteredResults = (data || []).filter((habit: HabitTemplate) => 
-        habit.title?.toLowerCase().includes(query.toLowerCase()) ||
-        habit.description?.toLowerCase().includes(query.toLowerCase()) ||
-        habit.category?.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setSearchResults(filteredResults);
-    } catch (error) {
-      console.error('Error searching habits:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
@@ -553,7 +511,6 @@ export default function HabitCentralV2() {
     setActiveTab(value);
     
     // Load data for specific tabs
-    if (value === 'search' && searchQuery) searchHabits(searchQuery);
     if (value === 'browse') loadHabits(debouncedDomainFilter);
     if (value === 'my-habits') loadMyHabits();
     if (value === 'reminders') loadReminders();
@@ -744,13 +701,9 @@ export default function HabitCentralV2() {
           {/* Tab Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             {/* Tabs beneath title */}
-            <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-5 mb-8">
-              <TabsTrigger value="search" className="text-xs sm:text-sm">
-                <Search className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Search</span>
-              </TabsTrigger>
+            <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-4 mb-8">
               <TabsTrigger value="browse" className="text-xs sm:text-sm">
-                <Compass className="h-4 w-4 mr-1 sm:mr-2" />
+                <Search className="h-4 w-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Browse</span>
               </TabsTrigger>
               <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
@@ -766,123 +719,6 @@ export default function HabitCentralV2() {
                 <span className="hidden sm:inline">Progress</span>
               </TabsTrigger>
             </TabsList>
-
-            {/* Search Tab */}
-            <TabsContent value="search" className="space-y-6">
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={staggerContainer}
-                className="space-y-6"
-              >
-                <motion.div variants={fadeInUp}>
-                  <SearchBar
-                    value={searchQuery}
-                    onChange={(value) => {
-                      setSearchQuery(value);
-                      searchHabits(value);
-                    }}
-                    resultsCount={searchResults.length}
-                    loading={isSearching}
-                    placeholder="Search for habits..."
-                  />
-                </motion.div>
-
-                {searchQuery && searchQuery.trim().length >= 2 && (
-                  <motion.div variants={fadeInUp}>
-                    <FilterPills
-                      options={['All', 'Nutrition', 'Exercise', 'Recovery']}
-                      selected={domainFilter === 'all' ? 'All' : domainFilter.charAt(0).toUpperCase() + domainFilter.slice(1)}
-                      onSelect={(option) => setDomainFilter(option === 'All' ? 'all' : option.toLowerCase())}
-                      layoutId="search-domain-filter"
-                    />
-                  </motion.div>
-                )}
-
-                {isSearching ? (
-                  <motion.div variants={fadeInUp} className="text-center py-12">
-                    <div className="animate-pulse">Searching habits...</div>
-                  </motion.div>
-                ) : searchQuery.trim().length < 2 ? (
-                  <motion.div variants={fadeInUp} className="text-center py-12">
-                    <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Search for habits</h3>
-                    <p className="text-muted-foreground">Type at least 2 characters to search our habit library</p>
-                  </motion.div>
-                ) : searchResults.length === 0 ? (
-                  <motion.div variants={fadeInUp} className="text-center py-12">
-                    <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">No habits found</h3>
-                    <p className="text-muted-foreground">Try different keywords or browse our habit categories</p>
-                    <Button 
-                      onClick={() => setActiveTab('browse')} 
-                      variant="outline" 
-                      className="mt-4"
-                    >
-                      Browse Habits
-                    </Button>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    variants={staggerContainer}
-                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                  >
-                    {searchResults
-                      .filter(habit => domainFilter === 'all' || habit.domain === domainFilter)
-                      .map((habit, index) => (
-                        <motion.div
-                          key={habit.id}
-                          variants={fadeInUp}
-                          whileHover={{ scale: 1.02 }}
-                          className="cursor-pointer"
-                        >
-                          <Card className="h-full hover:shadow-lg transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex items-start gap-3">
-                                <span className="text-2xl">{getDomainEmoji(habit.domain)}</span>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-medium line-clamp-2 mb-2">{habit.title}</h4>
-                                  <div className="flex flex-wrap gap-1 mb-3">
-                                    <Badge variant="secondary" className="text-xs">
-                                      {habit.domain}
-                                    </Badge>
-                                    <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
-                                      {habit.difficulty}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                    {habit.description}
-                                  </p>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setSelectedHabitForInfo(habit)}
-                                      className="flex-1"
-                                    >
-                                      Info
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => setSelectedHabitForAdd(habit)}
-                                      disabled={addedHabits.has(habit.slug)}
-                                      className="flex-1"
-                                    >
-                                      {addedHabits.has(habit.slug) ? 'Added' : 'Add'}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
-                  </motion.div>
-                )}
-
-                <ProTip tab="browse" />
-              </motion.div>
-            </TabsContent>
 
             <TabsContent value="browse" className="space-y-12">
               <motion.div
