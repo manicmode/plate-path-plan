@@ -98,6 +98,7 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
               </p>
               {onWhyThis && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -114,12 +115,13 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
           {/* Actions */}
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onInfo();
+                onInfo?.();
               }}
               className="flex-1 h-9 text-xs"
             >
@@ -129,6 +131,7 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
             
             {isAdded ? (
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 disabled
@@ -139,11 +142,12 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
               </Button>
             ) : (
               <Button
+                type="button"
                 size="sm"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onAdd();
+                  onAdd?.();
                 }}
                 className="flex-1 h-9 text-xs"
               >

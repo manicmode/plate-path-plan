@@ -485,7 +485,8 @@ export default function CreateDiscover() {
               )}
 
               {/* Results (always render container — prevents flicker/disappear) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <form onSubmit={(e) => e.preventDefault()}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(suggestions || []).slice(0, 6).map((habit, index) => (
                   <CarouselHabitCard
                     key={habit.slug}
@@ -515,7 +516,8 @@ export default function CreateDiscover() {
                     isAdded={false}
                   />
                 ))}
-              </div>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </motion.div>

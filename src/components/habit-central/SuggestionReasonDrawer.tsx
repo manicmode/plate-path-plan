@@ -104,6 +104,7 @@ export function SuggestionReasonDrawer({
           {/* Feedback buttons */}
           <div className="flex gap-2 pt-2">
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={handleNotHelpful}
@@ -113,6 +114,7 @@ export function SuggestionReasonDrawer({
               Not helpful
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={handleMoreLikeThis}
