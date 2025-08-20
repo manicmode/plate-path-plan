@@ -8523,6 +8523,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      rpc_get_domain_activity: {
+        Args: { p_days?: number }
+        Returns: {
+          domain: Database["public"]["Enums"]["habit_domain"]
+          logs_count: number
+        }[]
+      }
       rpc_get_due_habits: {
         Args: { p_after_minutes?: number; p_before_minutes?: number }
         Returns: {
