@@ -451,8 +451,13 @@ export default function CreateDiscover() {
             
             <CardHeader className="relative">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary/10 rounded-xl">
-                  <Sparkles className="h-6 w-6 text-secondary" />
+                <div className="relative p-2 bg-secondary/10 rounded-xl">
+                  {/* Pulsating glow effect */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-400/30 via-blue-400/30 to-cyan-400/30 animate-pulse" />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-400/20 via-blue-400/20 to-cyan-400/20 animate-ping" />
+                  
+                  {/* Icon with pulsating and glow effects */}
+                  <Sparkles className="relative h-6 w-6 text-transparent bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text animate-pulse drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
                 </div>
                 <div>
                   <CardTitle className="text-xl">AI Suggestions</CardTitle>
