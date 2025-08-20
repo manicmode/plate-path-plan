@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 
-export type HabitDomain = 'nutrition'|'exercise'|'recovery';
+export type HabitDomain = 'nutrition'|'exercise'|'recovery'|'lifestyle';
 export type HabitDifficulty = 'easy'|'medium'|'hard';
 
 type TemplateRec = {

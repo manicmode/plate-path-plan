@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
+type HabitDomain = 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
 type HabitGoalType = 'count' | 'duration' | 'bool';
 
 export interface HabitTemplate {

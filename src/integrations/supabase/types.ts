@@ -8891,7 +8891,7 @@ export type Database = {
         | "recovery_challenge_participant"
         | "influencer"
       challenge_visibility: "public" | "private"
-      habit_domain: "nutrition" | "exercise" | "recovery"
+      habit_domain: "nutrition" | "exercise" | "recovery" | "lifestyle"
       habit_goal_type: "bool" | "count" | "duration"
       habit_status: "active" | "paused" | "archived"
       member_role: "owner" | "member"
@@ -9034,7 +9034,7 @@ export const Constants = {
         "influencer",
       ],
       challenge_visibility: ["public", "private"],
-      habit_domain: ["nutrition", "exercise", "recovery"],
+      habit_domain: ["nutrition", "exercise", "recovery", "lifestyle"],
       habit_goal_type: ["bool", "count", "duration"],
       habit_status: ["active", "paused", "archived"],
       member_role: ["owner", "member"],

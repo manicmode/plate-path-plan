@@ -9,7 +9,7 @@ export interface HabitTemplate {
   slug: string;
   title: string;
   description: string;
-  domain: 'nutrition' | 'exercise' | 'recovery';
+  domain: 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
   difficulty: string;
   category: string;
   score?: number;
@@ -28,13 +28,15 @@ interface CarouselHabitCardProps {
 const DOMAIN_EMOJIS = {
   nutrition: '🥗',
   exercise: '💪',
-  recovery: '🧘'
+  recovery: '🧘',
+  lifestyle: '⚡'
 };
 
 const DOMAIN_GRADIENTS = {
   nutrition: 'from-emerald-400/30 to-lime-400/20',
   exercise: 'from-cyan-400/30 to-blue-400/20',
-  recovery: 'from-violet-400/30 to-indigo-400/20'
+  recovery: 'from-violet-400/30 to-indigo-400/20',
+  lifestyle: 'from-amber-400/30 to-orange-400/20'
 };
 
 function getDifficultyColor(difficulty: string) {

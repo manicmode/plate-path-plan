@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CreateHabitData {
   name: string;
-  domain: 'nutrition' | 'exercise' | 'recovery';
+  domain: 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
   goal_type: 'count' | 'duration' | 'bool';
   target_value?: number;
   time_windows?: any[];

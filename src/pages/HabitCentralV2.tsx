@@ -38,6 +38,7 @@ const getDomainEmoji = (domain: string) => {
     case 'nutrition': return '🍎';
     case 'exercise': return '🏃';
     case 'recovery': return '🌙';
+    case 'lifestyle': return '⚡';
     default: return '⚡';
   }
 };
@@ -96,7 +97,7 @@ type HabitTemplate = ImportedHabitTemplate;
 interface UserHabit {
   habit_slug: string;
   title: string;
-  domain: 'nutrition' | 'exercise' | 'recovery';
+  domain: 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
   difficulty: string;
   target_per_week: number;
   is_paused: boolean;
@@ -217,7 +218,7 @@ export default function HabitCentralV2() {
   const loadHabits = useCallback(async (domainUi?: string) => {
     setLoading(true);
     try {
-      type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
+      type HabitDomain = 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
       const p_domain: HabitDomain | null = 
         !domainUi || domainUi === 'all' ? null : (domainUi as HabitDomain);
       

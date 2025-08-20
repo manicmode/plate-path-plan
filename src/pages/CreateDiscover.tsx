@@ -18,6 +18,7 @@ import { CarouselHabitCard } from '@/components/habit-central/CarouselHabitCard'
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
 import { SuggestionReasonDrawer } from '@/components/habit-central/SuggestionReasonDrawer';
+import { EmojiPicker } from '@/components/ui/emoji-picker';
 
 // Domain emojis
 const getDomainEmoji = (domain: string) => {
@@ -25,6 +26,7 @@ const getDomainEmoji = (domain: string) => {
     case 'nutrition': return '🍎';
     case 'exercise': return '🏃';
     case 'recovery': return '🌙';
+    case 'lifestyle': return '⚡';
     default: return '⚡';
   }
 };
@@ -46,16 +48,27 @@ const staggerContainer = {
 
 interface CustomHabitForm {
   title: string;
-  domain: 'nutrition' | 'exercise' | 'recovery';
+  domain: 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
   difficulty: 'easy' | 'medium' | 'hard';
   description: string;
   icon: string;
   targetPerWeek: number;
-  useAuto: boolean;
-  frequency: 'daily' | 'weekly' | 'custom';
+  frequency: 'none' | 'daily' | 'weekly';
   timeLocal: string;
   daysOfWeek: number[];
 }
+
+const initialForm = {
+  title: '',
+  description: '',
+  domain: '',
+  difficulty: '',
+  icon: '',
+  targetPerWeek: 3,
+  frequency: 'none', // none, daily, weekly
+  timeLocal: '09:00',
+  daysOfWeek: [] as number[] // 1-7 (Mon-Sun)
+};
 
 const DEFAULT_FORM: Omit<CustomHabitForm, 'domain' | 'difficulty'> & { domain: string; difficulty: string } = {
   title: '',
@@ -63,11 +76,10 @@ const DEFAULT_FORM: Omit<CustomHabitForm, 'domain' | 'difficulty'> & { domain: s
   difficulty: '',
   description: '',
   icon: '',
-  targetPerWeek: 5,
-  useAuto: true,
-  frequency: 'daily',
+  targetPerWeek: 3,
+  frequency: 'none',
   timeLocal: '09:00',
-  daysOfWeek: [1, 2, 3, 4, 5] // Mon-Fri
+  daysOfWeek: []
 };
 
 export default function CreateDiscover() {
@@ -76,7 +88,7 @@ export default function CreateDiscover() {
   const navigate = useNavigate();
 
   // Form state
-  const [form, setForm] = useState<any>(DEFAULT_FORM);
+  const [form, setForm] = useState<any>(initialForm);
   const [isCreating, setIsCreating] = useState(false);
 
   // Modal state for AI suggestions
@@ -134,10 +146,10 @@ export default function CreateDiscover() {
         p_description: form.description.trim() || null,
         p_icon: form.icon || null,
         p_target_per_week: form.targetPerWeek,
-        p_use_auto: form.useAuto,
-        p_frequency: form.frequency,
-        p_time_local: form.useAuto ? null : form.timeLocal,
-        p_days_of_week: form.useAuto || form.frequency === 'daily' ? null : form.daysOfWeek
+        p_use_auto: false,
+        p_frequency: form.frequency === 'none' ? null : form.frequency,
+        p_time_local: form.frequency === 'none' ? null : form.timeLocal,
+        p_days_of_week: form.frequency === 'weekly' ? form.daysOfWeek : null
       });
 
       if (error) throw error;
@@ -153,7 +165,7 @@ export default function CreateDiscover() {
       });
 
       // Reset form
-      setForm(DEFAULT_FORM);
+      setForm(initialForm);
 
     } catch (error) {
       console.error('Error creating custom habit:', error);
@@ -281,10 +293,10 @@ export default function CreateDiscover() {
 
                 <div className="space-y-2">
                   <Label>Emoji (optional)</Label>
-                  <Input
-                    placeholder="Pick an emoji"
+                  <EmojiPicker
                     value={form.icon}
-                    onChange={(e) => updateForm('icon', e.target.value)}
+                    onChange={(emoji) => updateForm('icon', emoji)}
+                    placeholder="Pick an emoji"
                   />
                 </div>
               </div>
@@ -301,6 +313,7 @@ export default function CreateDiscover() {
                       <SelectItem value="nutrition">🍎 Nutrition</SelectItem>
                       <SelectItem value="exercise">🏃 Exercise</SelectItem>
                       <SelectItem value="recovery">🌙 Recovery</SelectItem>
+                      <SelectItem value="lifestyle">⚡ Lifestyle</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -332,92 +345,93 @@ export default function CreateDiscover() {
                 />
               </div>
 
-              {/* Target & Reminders */}
+              {/* Target per week */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="target">Target per week: {form.targetPerWeek}</Label>
+                <div className="space-y-2">
+                  <Label>Target per week</Label>
                   <div className="flex items-center gap-2">
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => updateForm('targetPerWeek', Math.max(1, form.targetPerWeek - 1))}
+                      disabled={form.targetPerWeek <= 1}
                     >
                       -
                     </Button>
-                    <span className="min-w-[2rem] text-center">{form.targetPerWeek}</span>
+                    <div className="min-w-[3rem] text-center font-medium">
+                      {form.targetPerWeek}
+                    </div>
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => updateForm('targetPerWeek', Math.min(7, form.targetPerWeek + 1))}
+                      disabled={form.targetPerWeek >= 7}
                     >
                       +
                     </Button>
                   </div>
                 </div>
 
-                {/* Reminder Mode */}
+                {/* Manual reminders */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={form.useAuto}
-                      onCheckedChange={(checked) => updateForm('useAuto', checked)}
-                    />
-                    <Label>Smart reminders (recommended)</Label>
-                  </div>
+                  <Label>Reminders</Label>
+                  <div className="space-y-3">
+                    {/* Frequency */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Frequency</Label>
+                      <Select value={form.frequency} onValueChange={(value) => updateForm('frequency', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No reminders</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Manual reminder settings */}
-                  {!form.useAuto && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="space-y-3 pl-6 border-l-2 border-primary/20"
-                    >
-                      {/* Frequency */}
-                      <div className="space-y-2">
-                        <Label>Frequency</Label>
-                        <Select value={form.frequency} onValueChange={(value) => updateForm('frequency', value)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="custom">Custom days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Time */}
-                      <div className="space-y-2">
-                        <Label>Time</Label>
-                        <Input
-                          type="time"
-                          value={form.timeLocal}
-                          onChange={(e) => updateForm('timeLocal', e.target.value)}
-                        />
-                      </div>
-
-                      {/* Days of week for weekly/custom */}
-                      {(form.frequency === 'weekly' || form.frequency === 'custom') && (
+                    {/* Time picker (visible for daily/weekly) */}
+                    {form.frequency !== 'none' && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="space-y-3"
+                      >
                         <div className="space-y-2">
-                          <Label>Days of week</Label>
-                          <div className="flex flex-wrap gap-2">
-                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                              <Button
-                                key={day}
-                                variant={form.daysOfWeek.includes(index + 1) ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => toggleDay(index + 1)}
-                              >
-                                {day}
-                              </Button>
-                            ))}
-                          </div>
+                          <Label className="text-sm">Time</Label>
+                          <Input
+                            type="time"
+                            value={form.timeLocal}
+                            onChange={(e) => updateForm('timeLocal', e.target.value)}
+                          />
                         </div>
-                      )}
-                    </motion.div>
-                  )}
+
+                        {/* Days of week for weekly */}
+                        {form.frequency === 'weekly' && (
+                          <div className="space-y-2">
+                            <Label className="text-sm">Days of week</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                                <Button
+                                  key={day}
+                                  type="button"
+                                  variant={form.daysOfWeek.includes(index + 1) ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => toggleDay(index + 1)}
+                                >
+                                  {day}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
               </div>
 

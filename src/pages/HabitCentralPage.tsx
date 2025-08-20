@@ -51,7 +51,7 @@ const highlightText = (text: string, query: string) => {
   );
 };
 
-type HabitDomain = 'nutrition' | 'exercise' | 'recovery';
+type HabitDomain = 'nutrition' | 'exercise' | 'recovery' | 'lifestyle';
 
 // CSV utility functions
 function toCSV(rows: any[]) {
