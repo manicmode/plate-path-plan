@@ -16,10 +16,6 @@ export function useSupabaseAuth() {
       setUser(data.session?.user ?? null);
       setReady(true);
       console.log('[AUTH] initial session', { hasSession: !!data.session, userId: data.session?.user?.id });
-      // Forensic: Auth ready state
-      if (import.meta.env.DEV) {
-        console.log('[auth] ready?', { ready: true, user: !!data.session?.user });
-      }
     };
     init();
 

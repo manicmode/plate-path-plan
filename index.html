@@ -2,7 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script>performance.mark('early:head');</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>VOYAGE - Your Personal Nutrition Companion</title>
@@ -22,21 +21,8 @@
     <!-- Prevent zoom on iOS -->
     <meta name="format-detection" content="telephone=no" />
     
-    <!-- Prevent theme FOUC with inline theme setter -->
-    <script>
-    try {
-      const t = localStorage.getItem('darkMode');
-      if (t === 'true' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-      }
-    } catch (e) { 
-      document.documentElement.classList.add('dark'); 
-    }
-    </script>
-    
     <!-- Theme color for vibrant VOYAGE gradient -->
-    <meta name="theme-color" content="#0B1220" media="(prefers-color-scheme: dark)">
-    <meta name="theme-color" content="#0B1220" />
+    <meta name="theme-color" content="#00C896" />
 
     <meta property="og:title" content="VOYAGE - Your Personal Nutrition Companion" />
     <meta property="og:description" content="AI-powered nutrition coaching app with photo-based food logging, analytics, and personalized guidance" />

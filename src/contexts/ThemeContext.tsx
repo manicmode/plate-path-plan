@@ -29,14 +29,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
-    // Forensic: Theme application trace
-    if (import.meta.env.DEV) {
-      console.log('[boot] theme:apply', {
-        htmlClass: document.documentElement.className,
-        bodyBg: getComputedStyle(document.body).backgroundColor
-      });
-    }
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {

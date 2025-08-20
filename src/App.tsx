@@ -141,12 +141,6 @@ function AppContent() {
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-  // Forensic: React mounted marker
-  useEffect(() => { 
-    performance.mark('react:mounted'); 
-    console.log('[boot] react:mounted'); 
-  }, []);
-  
 
 
   // Prefetch critical components after app has loaded
@@ -157,12 +151,6 @@ function AppContent() {
   return (
     <>
       <AuthUrlHandler />
-      
-      {/* Persistent dark backdrop during the swap */}
-      <div id="underlay" className="fixed inset-0 -z-10 bg-[#0B1220]">
-        <div className="absolute inset-0 opacity-40 bg-[radial-gradient(1200px_800px_at_50%_-20%,#17ffc0,transparent_60%)] will-change-transform"></div>
-      </div>
-      
       {/* Cold Start Splash Screen - shows immediately with highest priority */}
       <SplashScreen 
         isVisible={isColdStart} 
