@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useDeferredHomeDataLoading } from '@/hooks/useDeferredDataLoading';
 import { useSound } from '@/contexts/SoundContext';
+import { useAppReadiness } from '@/hooks/useAppReadiness';
+import { logSplashTiming } from '@/utils/splashTimingLogger';
 
 interface SplashScreenProps {
   isVisible: boolean;
@@ -27,6 +29,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
   );
   const { playStartupChime, isEnabled } = useSound();
+  const { isReady: appReady, fontsLoaded, authResolved, status } = useAppReadiness();
   
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -36,10 +39,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
 
   // STEP 2: Forensics - log splash mount/unmount
   useEffect(() => { 
+    logSplashTiming('splash mounted');
     console.log('[splash] mount'); 
+    
+    // Ensure body has splash background
+    document.body.style.background = '#0B0B0B';
+    document.body.classList.add('splash-active');
+    
     return () => {
+      logSplashTiming('splash unmounted');
       console.log('[splash] unmount');
       console.log('[splash] hide');
+      document.body.classList.remove('splash-active');
     };
   }, []);
 
@@ -74,15 +85,57 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   useEffect(() => {
     if (!isVisible) return;
     let done = false;
-    const safeComplete = () => { if (done) return; done = true; onComplete(); };
+    const safeComplete = () => { 
+      if (done) return; 
+      done = true; 
+      
+      // Remove prepaint background styles to restore normal app styling
+      const prepaintStyle = document.getElementById('prepaint-bg');
+      if (prepaintStyle) {
+        prepaintStyle.remove();
+      }
+      
+      onComplete(); 
+    };
 
-    const max = setTimeout(() => {
-      document.body.classList.remove('splash-visible');
-      safeComplete();
-    }, 2000);
+    // Check if all required resources are ready
+    const checkReadiness = () => {
+      console.log('[splash] readiness check:', { 
+        fontsLoaded, 
+        authResolved, 
+        homeDataReady, 
+        appReady,
+        status
+      });
+      return appReady && homeDataReady;
+    };
 
-    return () => { done = true; clearTimeout(max); };
-  }, [isVisible, onComplete]);
+    // Minimum display time (reduced for better UX)
+    const minDisplayTime = isMobile ? 1500 : 2000;
+    const startTime = Date.now();
+
+    const checkAndComplete = () => {
+      const elapsed = Date.now() - startTime;
+      const readyToHide = checkReadiness();
+      
+      if (readyToHide && elapsed >= minDisplayTime) {
+        console.log('[splash] completing - all ready');
+        safeComplete();
+      } else if (elapsed >= 4000) {
+        // Failsafe - hide after 4 seconds regardless
+        console.log('[splash] completing - failsafe timeout');
+        safeComplete();
+      } else {
+        // Check again in 100ms
+        setTimeout(checkAndComplete, 100);
+      }
+    };
+
+    // Start checking after a short delay
+    setTimeout(checkAndComplete, 200);
+
+    return () => { done = true; };
+  }, [isVisible, onComplete, fontsLoaded, authResolved, homeDataReady, appReady, status, isMobile]);
 
   return (
     <AnimatePresence>
@@ -93,7 +146,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
             opacity: 0,
             transition: { duration: 0.8, ease: "easeInOut" }
           }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          style={{ background: '#0B0B0B' }}
         >
           {/* Background AI Avatar Glow Effect */}
           <motion.div
