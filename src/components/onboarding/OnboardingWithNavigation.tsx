@@ -28,7 +28,7 @@ export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigatio
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
     console.log('[onboarding] skip: click');
 
     // 1) Navigate immediately - no waiting for network operations

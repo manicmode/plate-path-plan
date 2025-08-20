@@ -5,6 +5,7 @@ import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import AppErrorBoundary from '@/components/system/AppErrorBoundary';
+import { requestIdle } from '@/utils/safeIdle';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -149,14 +150,14 @@ function AppContent() {
     setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
     
     // Defer heavy work behind initial paint
-    requestIdleCallback?.(() => {
+    requestIdle(() => {
       // Move version check to idle callback to not block initial render
       try {
         checkForUpdates();
       } catch (error) {
         console.warn('Version check failed:', error);
       }
-    }, { timeout: 1000 });
+    });
   }, []);
 
   // Prefetch critical components after app has loaded
