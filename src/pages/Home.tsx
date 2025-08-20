@@ -48,6 +48,9 @@ import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
 
+// STEP 2: Forensics - log first Home mount
+let homeFirstMountLogged = false;
+
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
   try {
@@ -84,8 +87,11 @@ const Home = () => {
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
 
   useEffect(() => {
-    // STEP 2: Forensics - log home mount
-    console.log('[home] first mount');
+    // STEP 2: Forensics - log home first mount only
+    if (!homeFirstMountLogged) {
+      console.log('[home] first mount', performance.now());
+      homeFirstMountLogged = true;
+    }
     
     document.body.classList.remove('splash-visible');
     const splash = document.getElementById('SplashRoot');

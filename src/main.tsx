@@ -83,10 +83,11 @@ if (!rootElement) {
 
 // STEP 2: Performance marker for forensics
 performance.mark('react:start');
+console.log('[react:start]', performance.now());
 console.log('[boot] html.class before mount:', document.documentElement.className);
 
 // STEP 2: CSS readiness / Fonts logging for forensics  
-document.fonts?.ready?.then(() => console.log('[fonts] ready at', performance.now()));
+document.fonts?.ready?.then(() => console.log('[fonts] ready', performance.now()));
 window.addEventListener('load', () => console.log('[window] load at', performance.now()));
 
 const root = createRoot(rootElement);
