@@ -52,13 +52,13 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24, delay: index * 0.03 }}
-      className="min-w-[76%] sm:min-w-[56%] md:min-w-[40%] flex-shrink-0 snap-center"
+      className="w-full max-w-sm mx-auto"
     >
       <div className={cn(
         "rounded-2xl bg-background/40 backdrop-blur-xl ring-1 ring-border",
         "hover:ring-primary/50 transition-all duration-200",
         "hover:shadow-lg hover:shadow-primary/10",
-        "p-4 h-full flex flex-col group relative"
+        "p-4 min-h-[240px] flex flex-col group relative"
       )}>
         {/* Gradient background */}
         <div className={cn(
@@ -90,12 +90,19 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, onWhyThis, in
             {habit.description}
           </p>
 
-          {/* Suggestion reason (if available) */}
+          {/* Suggestion reasons as bullet chips */}
           {habit.reasons && habit.reasons.length > 0 && (
-            <div className="mb-3 space-y-1">
-              <p className="text-xs text-muted-foreground/70 line-clamp-1">
-                Suggested because: {habit.reasons[0].replace(/🎯|⚖️|🚀|🔁|☀️|🧩|⭐/g, '').replace(/\*\*/g, '').trim()}
-              </p>
+            <div className="mb-3 space-y-2">
+              <div className="flex flex-wrap gap-1">
+                {habit.reasons.slice(0, 2).map((reason, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-primary/10 text-primary/80 border border-primary/20"
+                  >
+                    {reason.split(' ')[0]} {reason.replace(/🎯|⚖️|🚀|🔁|☀️|🧩|⭐|📈/g, '').replace(/\*\*/g, '').trim().slice(0, 20)}...
+                  </span>
+                ))}
+              </div>
               {onWhyThis && (
                 <button
                   type="button"

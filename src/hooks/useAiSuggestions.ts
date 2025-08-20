@@ -30,6 +30,7 @@ function scoreSuggestion(habit: any, ctx: {
   recentLogsCount?: number;
   typicalTime?: 'morning'|'evening'|null;
   recentAddedSlugs?: string[];
+  domainActivityMap?: Map<string, number>;
 }): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -43,10 +44,14 @@ function scoreSuggestion(habit: any, ctx: {
     reasons.push(`🎯 Matches your goal: **${matchedGoal}**`); 
   }
 
-  // Domain gap
+  // Domain gap & activity
+  const domainLogsCount = ctx.domainActivityMap?.get(habit.domain) || 0;
   if (!ctx.activeDomains.has(habit.domain)) { 
     score += 2; 
     reasons.push(`⚖️ Balances your routine (no active **${habit.domain}** habits)`); 
+  } else if (domainLogsCount < 3) {
+    score += 1.5;
+    reasons.push(`📈 You've logged fewer **${habit.domain}** sessions lately; this helps you recharge`);
   }
 
   // Easy starter
@@ -132,25 +137,34 @@ export function useAiSuggestions(limit = 8) {
       abortRef.current = ac;
 
       try {
-        // 1) Fetch all active habits + user's current habits
-        const [{ data: all, error: e1 }, { data: mine, error: e2 }] = await Promise.all([
+        // 1) Fetch all active habits + user's current habits + domain activity
+        const [{ data: all, error: e1 }, { data: mine, error: e2 }, { data: domainActivity, error: e3 }] = await Promise.all([
           supabase.rpc('rpc_list_active_habits', { p_domain: null }),
-          supabase.rpc('rpc_get_my_habits_with_stats')
+          supabase.rpc('rpc_get_my_habits_with_stats'),
+          supabase.rpc('rpc_get_domain_activity', { p_days: 14 })
         ]);
         if (e1) throw e1;
         if (e2) throw e2;
+        if (e3) console.warn('Domain activity fetch failed:', e3); // Non-blocking
 
         const owned = new Set((mine ?? []).map((h: any) => h.habit_slug));
         const activeDomains = new Set((mine ?? []).map((h: any) => h.domain || h.habit_slug.split('-')[0]));
         
+        // Build domain activity map for better reasons
+        const domainActivityMap = new Map<string, number>();
+        (domainActivity ?? []).forEach((da: any) => {
+          domainActivityMap.set(da.domain, da.logs_count);
+        });
+        
         // Get context for scoring
         const totalLogs = (mine ?? []).reduce((sum: number, h: any) => sum + (h.last_30d_count || 0), 0);
         const scoringContext = {
-          goals: ['sleep', 'nutrition', 'fitness', 'mindfulness'], // simplified
+          goals: ['sleep', 'nutrition', 'fitness', 'mindfulness'], // simplified - could be enhanced with real user goals
           activeDomains,
           recentLogsCount: totalLogs,
-          typicalTime: 'morning' as const, // simplified
-          recentAddedSlugs: (mine ?? []).slice(-3).map((h: any) => h.habit_slug)
+          typicalTime: 'morning' as const, // simplified - could be enhanced with real user timing patterns
+          recentAddedSlugs: (mine ?? []).slice(-3).map((h: any) => h.habit_slug),
+          domainActivityMap
         };
 
         // 2) Score and rank habits

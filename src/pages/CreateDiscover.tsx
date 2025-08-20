@@ -188,16 +188,20 @@ export default function CreateDiscover() {
       if (error) throw error;
 
       toast({ 
-        title: "Habit added successfully!",
+        title: "Habit added ✓",
         description: `${habit.title} added to your active habits`
       });
+      
+      // Haptic feedback if available
+      if ('vibrate' in navigator) {
+        navigator.vibrate(100);
+      }
       
       // Remove from suggestions list optimistically
       removeFromSuggestions(habit.slug);
       setSelectedHabitForAdd(null);
       
-      // Navigate to active habits
-      navigate('/habits?tab=my-habits');
+      // Do not navigate - keep user in discovery mode
     } catch (error) {
       console.error('Error adding habit:', error);
       toast({
@@ -458,36 +462,53 @@ export default function CreateDiscover() {
             </CardHeader>
 
             <CardContent className="relative">
-              {/* Loading skeletons overlay (keeps old data visible if present) */}
-              {loadingSuggestions && (
-                <div className="absolute inset-0 bg-background/30 backdrop-blur-sm grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="rounded-xl h-32 bg-white/5 animate-pulse" />
+              {/* Loading state - show skeletons while loading */}
+              {loadingSuggestions && !suggestions && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="rounded-2xl h-48 bg-muted/30 animate-pulse flex flex-col p-4">
+                      <div className="h-6 bg-muted/50 rounded mb-2" />
+                      <div className="h-4 bg-muted/40 rounded mb-4 w-2/3" />
+                      <div className="flex-1" />
+                      <div className="flex gap-2">
+                        <div className="h-8 bg-muted/40 rounded flex-1" />
+                        <div className="h-8 bg-muted/40 rounded flex-1" />
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
 
               {/* Error state */}
               {suggestionsError && (!suggestions || suggestions.length === 0) && (
-                <div className="text-center py-12 space-y-2">
+                <div className="text-center py-12 space-y-4">
                   <p className="text-sm text-red-400">
-                    Couldn't load suggestions. Pull to refresh or try again later.
+                    Couldn't load suggestions
                   </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => window.location.reload()}
+                    className="mx-auto"
+                  >
+                    Try again
+                  </Button>
                 </div>
               )}
 
               {/* Empty state */}
-              {!suggestionsError && suggestions && suggestions.length === 0 && (
+              {!loadingSuggestions && !suggestionsError && suggestions && suggestions.length === 0 && (
                 <div className="text-center py-12 space-y-2">
-                  <p className="text-muted-foreground">No suggestions yet</p>
-                  <p className="text-sm text-muted-foreground">Add a goal or a few habits and check back.</p>
+                  <p className="text-muted-foreground">No suggestions right now</p>
+                  <p className="text-sm text-muted-foreground">Try adding a goal or logging a habit for personalized recommendations.</p>
                 </div>
               )}
 
-              {/* Results (always render container — prevents flicker/disappear) */}
-              <form onSubmit={(e) => e.preventDefault()}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(suggestions || []).slice(0, 6).map((habit, index) => (
+              {/* Results - only show when we have data and not loading initial state */}
+              {!loadingSuggestions && suggestions && suggestions.length > 0 && (
+                <form onSubmit={(e) => e.preventDefault()}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {suggestions.slice(0, 6).map((habit, index) => (
                   <CarouselHabitCard
                     key={habit.slug}
                     habit={{
@@ -511,13 +532,16 @@ export default function CreateDiscover() {
                       difficulty: habit.difficulty,
                       category: habit.domain
                     })}
-                    onAdd={() => setSelectedHabitForAdd(habit)}
+                    onAdd={() => {
+                      setSelectedHabitForAdd(habit);
+                    }}
                     onWhyThis={() => setSelectedHabitForReason(habit)}
                     isAdded={false}
                   />
-                ))}
-                </div>
-              </form>
+                  ))}
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
         </motion.div>
