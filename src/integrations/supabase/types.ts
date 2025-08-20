@@ -5205,6 +5205,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_custom_habit: {
+        Row: {
+          created_at: string
+          description: string | null
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          icon: string | null
+          id: string
+          is_archived: boolean
+          slug: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          difficulty: string
+          domain: Database["public"]["Enums"]["habit_domain"]
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          difficulty?: string
+          domain?: Database["public"]["Enums"]["habit_domain"]
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_fitness_preferences: {
         Row: {
           available_equipment: string[]
@@ -8446,6 +8488,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      rpc_create_custom_habit: {
+        Args: {
+          p_days_of_week?: number[]
+          p_description?: string
+          p_difficulty: string
+          p_domain: Database["public"]["Enums"]["habit_domain"]
+          p_frequency?: string
+          p_icon?: string
+          p_target_per_week?: number
+          p_time_local?: string
+          p_title: string
+          p_use_auto?: boolean
+        }
+        Returns: string
+      }
       rpc_delete_all_paused_user_habits: {
         Args: { p_purge_logs?: boolean }
         Returns: number
@@ -8475,6 +8532,13 @@ export type Database = {
           slug: string
           summary: string
           user_habit_id: string
+        }[]
+      }
+      rpc_get_habit_history: {
+        Args: { p_days?: number; p_slug: string }
+        Returns: {
+          count: number
+          d: string
         }[]
       }
       rpc_get_habit_progress: {
