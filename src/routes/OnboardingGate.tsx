@@ -12,6 +12,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
   const nav = useNavigate();
   const loc = useLocation();
   const redirected = useRef(false);
+  const decidedRef = useRef(false);
   const [ready, setReady] = useState(false);
 
   const loading = authLoading || obLoading;
@@ -26,7 +27,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!loading && !ready) setReady(true);
-    if (loading || !isAuthenticated || redirected.current) return;
+    if (loading || !isAuthenticated || decidedRef.current) return;
 
     // STEP 2: Forensics - log route guard decisions
     console.log('[router] guard decision:', {
@@ -37,15 +38,16 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
       loading
     });
 
+    // Prevent double decisions with ref guard
+    decidedRef.current = true;
+
     if (!effectiveComplete && !bypass) {
       console.log('[router] start navigation to onboarding');
-      redirected.current = true;
       nav('/onboarding', { replace: true });
       return;
     }
     if (effectiveComplete && (loc.pathname || '').startsWith('/onboarding')) {
       console.log('[router] start navigation to home');
-      redirected.current = true;
       nav('/home', { replace: true });
       return;
     }

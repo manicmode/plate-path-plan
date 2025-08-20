@@ -422,21 +422,29 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   };
 
   const handleSkipAll = async () => {
-    try {
-      setIsFinalizing(true);
-      sessionStorage.setItem('onb_finalizing', '1'); // gate guard
-      sessionStorage.setItem('onb_finalizing_at', String(Date.now()));
-      await markOnboardingComplete(); // applies defaults + sets onboarding_completed=true + calculate-daily-targets
-      navigate('/home', { replace: true });
-    } catch (e) {
-      
-      // fallback: send to onboarding start to avoid blank
-      navigate('/onboarding', { replace: true });
-    } finally {
-      sessionStorage.removeItem('onb_finalizing');
-      sessionStorage.removeItem('onb_finalizing_at');
-      setIsFinalizing(false);
-    }
+    console.log('[onboarding] skip all: click');
+    
+    // 1) Navigate immediately - no waiting
+    console.log('[onboarding] skip all: navigate(start)');
+    navigate('/home', { replace: true });
+    
+    // 2) Do background updates without blocking UI
+    queueMicrotask(async () => {
+      try {
+        setIsFinalizing(true);
+        sessionStorage.setItem('onb_finalizing', '1'); // gate guard
+        sessionStorage.setItem('onb_finalizing_at', String(Date.now()));
+        
+        // Background: applies defaults + sets onboarding_completed=true + calculate-daily-targets
+        await markOnboardingComplete();
+      } catch (error) {
+        console.warn('[onboarding] skip all: bg update failed', error);
+      } finally {
+        sessionStorage.removeItem('onb_finalizing');
+        sessionStorage.removeItem('onb_finalizing_at');
+        setIsFinalizing(false);
+      }
+    });
   };
 
   const progress = ((currentScreen + 1) / TOTAL_SCREENS) * 100;

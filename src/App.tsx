@@ -147,6 +147,16 @@ function AppContent() {
     console.log('[boot] react:mounted'); 
     console.log('[boot+100ms] html.class after mount:', document.documentElement.className);
     setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
+    
+    // Defer heavy work behind initial paint
+    requestIdleCallback?.(() => {
+      // Move version check to idle callback to not block initial render
+      try {
+        checkForUpdates();
+      } catch (error) {
+        console.warn('Version check failed:', error);
+      }
+    }, { timeout: 1000 });
   }, []);
 
   // Prefetch critical components after app has loaded

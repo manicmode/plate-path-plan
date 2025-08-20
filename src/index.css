@@ -1,5 +1,6 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Self-hosted fonts to prevent CSP blocks */
+/* Using system fonts as fallback to eliminate external requests */
 
 @keyframes shine {
   0% { transform: translateX(-200%) skewX(-12deg); }
@@ -154,7 +155,7 @@
 
   body {
     @apply text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     background: var(--gradient-main);
     background-attachment: fixed;

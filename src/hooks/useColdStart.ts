@@ -6,6 +6,7 @@ const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 export const useColdStart = () => {
   const [isColdStart, setIsColdStart] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [userInitiatedExit, setUserInitiatedExit] = useState(false);
   
   // Mobile detection for enhanced debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -50,7 +51,10 @@ export const useColdStart = () => {
         });
 
         // Minimum display time to ensure splash is visible, shortened for mobile
-        const minDisplayTime = isMobile ? 2000 : 3000; // Shorter for mobile
+        // BUT bypass on user action (skip button press)
+        const minDisplayTime = isMobile ? 2000 : 3000;
+        console.log('[boot] minDisplayTime=', minDisplayTime);
+        
         setTimeout(() => {
           console.log('🚀 Cold start ready timer complete', { 
             isMobile, 
@@ -88,8 +92,16 @@ export const useColdStart = () => {
     setIsColdStart(false);
   };
 
+  const forceCompleteSplash = () => {
+    console.log('[boot] user initiated exit - bypassing minDisplayTime');
+    setUserInitiatedExit(true);
+    setIsReady(true);
+    setIsColdStart(false);
+  };
+
   return {
-    isColdStart: isColdStart && !isReady,
-    completeSplash
+    isColdStart: isColdStart && !isReady && !userInitiatedExit,
+    completeSplash,
+    forceCompleteSplash
   };
 };

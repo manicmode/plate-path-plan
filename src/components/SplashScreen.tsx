@@ -37,7 +37,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   // STEP 2: Forensics - log splash mount/unmount
   useEffect(() => { 
     console.log('[splash] mount'); 
-    return () => console.log('[splash] unmount');
+    return () => {
+      console.log('[splash] unmount');
+      console.log('[splash] hide');
+    };
   }, []);
 
   // Play startup chime when splash becomes visible (only on cold start)
@@ -228,7 +231,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 transition: { duration: 0.8, delay: 0.5, ease: "easeOut" } // Adjusted timing
               }}
               className="text-4xl font-bold mb-2 bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent"
-              style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
               VOYAGE
             </motion.h1>
@@ -242,7 +244,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 transition: { duration: 0.8, delay: 0.7, ease: "easeOut" } // Adjusted timing
               }}
               className="text-lg font-medium mb-6 tracking-wide text-gray-300"
-              style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
               AI Wellness Assistant
             </motion.p>
