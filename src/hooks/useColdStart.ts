@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useAppReadiness } from './useAppReadiness';
 
 const COLD_START_KEY = 'voyage_session_active';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export const useColdStart = () => {
   const [isColdStart, setIsColdStart] = useState(true);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [userInitiatedExit, setUserInitiatedExit] = useState(false);
-  
-  const { isReady: appReady, status } = useAppReadiness();
   
   // Mobile detection for enhanced debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -40,7 +37,6 @@ export const useColdStart = () => {
           (now - parseInt(lastActive)) > SESSION_TIMEOUT;
 
         setIsColdStart(isCold);
-        setSessionChecked(true);
 
         // Mark session as active
         if (isCold) {
@@ -54,13 +50,27 @@ export const useColdStart = () => {
           timestamp: new Date().toISOString()
         });
 
+        // Minimum display time to ensure splash is visible, shortened for mobile
+        // BUT bypass on user action (skip button press)
+        const minDisplayTime = isMobile ? 2000 : 3000;
+        console.log('[boot] minDisplayTime=', minDisplayTime);
+        
+        setTimeout(() => {
+          console.log('🚀 Cold start ready timer complete', { 
+            isMobile, 
+            minDisplayTime,
+            timestamp: new Date().toISOString() 
+          });
+          setIsReady(true);
+        }, minDisplayTime);
+
       } catch (error) {
         console.warn('🚨 Cold start detection failed:', error, { 
           isMobile, 
           timestamp: new Date().toISOString() 
         });
         setIsColdStart(false);
-        setSessionChecked(true);
+        setIsReady(true);
       }
     };
 
@@ -78,34 +88,20 @@ export const useColdStart = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Monitor app readiness and auto-complete splash when ready
-  useEffect(() => {
-    if (!sessionChecked || !isColdStart) return;
-    
-    if (appReady && status === 'ready') {
-      console.log('[cold-start] app ready, can complete splash');
-    }
-  }, [appReady, status, sessionChecked, isColdStart]);
-
   const completeSplash = () => {
-    console.log('[cold-start] completing splash screen');
     setIsColdStart(false);
   };
 
   const forceCompleteSplash = () => {
-    console.log('[cold-start] force completing splash - user initiated');
+    console.log('[boot] user initiated exit - bypassing minDisplayTime');
     setUserInitiatedExit(true);
+    setIsReady(true);
     setIsColdStart(false);
   };
 
-  // Only show splash if it's a cold start AND (app not ready OR user hasn't initiated exit)
-  const shouldShowSplash = isColdStart && sessionChecked && !userInitiatedExit;
-
   return {
-    isColdStart: shouldShowSplash,
-    isAppReady: appReady,
+    isColdStart: isColdStart && !isReady && !userInitiatedExit,
     completeSplash,
-    forceCompleteSplash,
-    appReadinessStatus: status
+    forceCompleteSplash
   };
 };

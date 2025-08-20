@@ -36,7 +36,6 @@ import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
 import AuthUrlHandler from '@/auth/AuthUrlHandler';
-import { useAuth } from '@/contexts/auth';
 
 import OnboardingGate from '@/routes/OnboardingGate';
 
@@ -134,10 +133,9 @@ const RouteSentinel = () => {
 
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
-  const { isColdStart, completeSplash, isAppReady, appReadinessStatus } = useColdStart();
+  const { isColdStart, completeSplash } = useColdStart();
   const { isProcessing } = useAuthCallback();
   const { checkForUpdates } = useVersionCheck(); // Add version checking
-  const { loading: authLoading, user } = useAuth();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
   
@@ -164,13 +162,8 @@ function AppContent() {
 
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
-    if (isAppReady) {
-      prefetchCriticalComponents();
-    }
-  }, [isAppReady]);
-
-  // Prevent route thrashing - only show main content when properly ready
-  const shouldShowMainContent = !isColdStart && isAppReady;
+    prefetchCriticalComponents();
+  }, []);
 
   return (
     <>
@@ -184,8 +177,8 @@ function AppContent() {
       {/* Auth Processing Overlay - shows during magic link processing */}
       {isProcessing && <AuthProcessingOverlay />}
       
-      {/* Main App Content - only render after splash completes AND app is ready */}
-      {shouldShowMainContent && (
+      {/* Main App Content - only render after splash completes */}
+      {!isColdStart && (
         <>
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
