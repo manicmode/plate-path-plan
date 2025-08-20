@@ -41,6 +41,12 @@
     --input: 174 30% 91%;
     --ring: 174 100% 50%;
 
+    /* Enhanced tab contrast tokens */
+    --tab-active: 174 100% 50%;
+    --tab-active-foreground: 0 0% 0%;
+    --tab-inactive: 220 13% 91%;
+    --tab-inactive-foreground: 220 9% 46%;
+
     --radius: 1rem;
 
     /* Enhanced Futuristic Color System - Light Mode */
@@ -103,6 +109,12 @@
     --border: 220 13% 18%;
     --input: 220 13% 18%;
     --ring: 174 100% 50%;
+
+    /* Enhanced tab contrast tokens - dark mode */
+    --tab-active: 174 100% 50%;
+    --tab-active-foreground: 0 0% 0%;
+    --tab-inactive: 220 13% 18%;
+    --tab-inactive-foreground: 220 5% 65%;
 
     /* Enhanced Dark Gradients */
     --gradient-main: 
