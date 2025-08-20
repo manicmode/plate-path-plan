@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,8 @@ import { ProTip } from '@/components/habit-central/ProTip';
 import { ThemedDomainSection } from '@/components/habit-central/ThemedDomainSection';
 import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
+import { SearchBar } from '@/components/habit-central/SearchBar';
+import { FilterPills } from '@/components/habit-central/FilterPills';
 import type { HabitTemplate as ImportedHabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
 
@@ -113,7 +115,7 @@ export default function HabitCentralV2() {
   const { toast } = useToast();
   
   // Tab and data state
-  const [activeTab, setActiveTab] = useState('browse');
+  const [activeTab, setActiveTab] = useState('search');
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [myHabits, setMyHabits] = useState<UserHabit[]>([]);
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
@@ -125,6 +127,11 @@ export default function HabitCentralV2() {
   const [domainFilter, setDomainFilter] = useState<string>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [progressWindow, setProgressWindow] = useState<'last_7d' | 'last_30d'>('last_30d');
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<HabitTemplate[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   // Admin health check
   const [healthIssues, setHealthIssues] = useState<HealthIssue[]>([]);
@@ -174,6 +181,42 @@ export default function HabitCentralV2() {
       setLoading(false);
     }
   }, [toast]);
+
+  // Search habits
+  const searchHabits = useCallback(async (query: string) => {
+    if (!query || query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Use the existing rpc_list_active_habits and filter client-side for now
+      const { data, error } = await supabase.rpc('rpc_list_active_habits', {
+        p_domain: null
+      });
+
+      if (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+        return;
+      }
+      
+      // Filter results client-side
+      const filteredResults = (data || []).filter((habit: HabitTemplate) => 
+        habit.title?.toLowerCase().includes(query.toLowerCase()) ||
+        habit.description?.toLowerCase().includes(query.toLowerCase()) ||
+        habit.category?.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching habits:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
 
   // Load user's habits
   const loadMyHabits = useCallback(async () => {
@@ -510,6 +553,7 @@ export default function HabitCentralV2() {
     setActiveTab(value);
     
     // Load data for specific tabs
+    if (value === 'search' && searchQuery) searchHabits(searchQuery);
     if (value === 'browse') loadHabits(debouncedDomainFilter);
     if (value === 'my-habits') loadMyHabits();
     if (value === 'reminders') loadReminders();
@@ -655,78 +699,60 @@ export default function HabitCentralV2() {
         <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
       </div>
 
-      {/* Sticky Header */}
+      {/* Header with centered title */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-3">
+          <div className="py-6 space-y-4">
+            {/* Centered Title */}
+            <div className="text-center">
               <motion.h1 
-                className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
                 Habit Central
               </motion.h1>
               <motion.p 
-                className="text-sm text-muted-foreground hidden sm:block"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                className="text-muted-foreground mt-2"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 Science-backed habits for better health
               </motion.p>
             </div>
             
-            {/* Tab Icons in Header */}
-            <div className="flex items-center space-x-1">
-              <Button
-                variant={activeTab === 'browse' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabChange('browse')}
-                className="h-9 px-3"
-              >
-                <Compass className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Browse</span>
-              </Button>
-              <Button
-                variant={activeTab === 'my-habits' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabChange('my-habits')}
-                className="h-9 px-3"
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">My Habits</span>
-              </Button>
-              <Button
-                variant={activeTab === 'reminders' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabChange('reminders')}
-                className="h-9 px-3"
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Reminders</span>
-              </Button>
-              <Button
-                variant={activeTab === 'analytics' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabChange('analytics')}
-                className="h-9 px-3"
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Progress</span>
-              </Button>
-              {isAdmin && (
-                <Button
-                  variant={activeTab === 'admin' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleTabChange('admin')}
-                  className="h-9 px-3"
-                >
-                  <ShieldAlert className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Admin</span>
-                </Button>
-              )}
+            {/* Tabs beneath title */}
+            <div className="w-full">
+              <TabsList className={`grid w-full h-12 bg-muted/30 backdrop-blur-sm ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
+                <TabsTrigger value="search" className="text-xs sm:text-sm">
+                  <Search className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Search</span>
+                </TabsTrigger>
+                <TabsTrigger value="browse" className="text-xs sm:text-sm">
+                  <Compass className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Browse</span>
+                </TabsTrigger>
+                <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
+                  <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">My Habits</span>
+                </TabsTrigger>
+                <TabsTrigger value="reminders" className="text-xs sm:text-sm">
+                  <Bell className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Reminders</span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="text-xs sm:text-sm">
+                  <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Progress</span>
+                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="admin" className="text-xs sm:text-sm">
+                    <ShieldAlert className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
             </div>
           </div>
         </div>
@@ -749,6 +775,123 @@ export default function HabitCentralV2() {
         >
           {/* Tab Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+
+            {/* Search Tab */}
+            <TabsContent value="search" className="space-y-6">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer}
+                className="space-y-6"
+              >
+                <motion.div variants={fadeInUp}>
+                  <SearchBar
+                    value={searchQuery}
+                    onChange={(value) => {
+                      setSearchQuery(value);
+                      searchHabits(value);
+                    }}
+                    resultsCount={searchResults.length}
+                    loading={isSearching}
+                    placeholder="Search for habits..."
+                  />
+                </motion.div>
+
+                {searchQuery && searchQuery.trim().length >= 2 && (
+                  <motion.div variants={fadeInUp}>
+                    <FilterPills
+                      options={['All', 'Nutrition', 'Exercise', 'Recovery']}
+                      selected={domainFilter === 'all' ? 'All' : domainFilter.charAt(0).toUpperCase() + domainFilter.slice(1)}
+                      onSelect={(option) => setDomainFilter(option === 'All' ? 'all' : option.toLowerCase())}
+                      layoutId="search-domain-filter"
+                    />
+                  </motion.div>
+                )}
+
+                {isSearching ? (
+                  <motion.div variants={fadeInUp} className="text-center py-12">
+                    <div className="animate-pulse">Searching habits...</div>
+                  </motion.div>
+                ) : searchQuery.trim().length < 2 ? (
+                  <motion.div variants={fadeInUp} className="text-center py-12">
+                    <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Search for habits</h3>
+                    <p className="text-muted-foreground">Type at least 2 characters to search our habit library</p>
+                  </motion.div>
+                ) : searchResults.length === 0 ? (
+                  <motion.div variants={fadeInUp} className="text-center py-12">
+                    <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">No habits found</h3>
+                    <p className="text-muted-foreground">Try different keywords or browse our habit categories</p>
+                    <Button 
+                      onClick={() => setActiveTab('browse')} 
+                      variant="outline" 
+                      className="mt-4"
+                    >
+                      Browse Habits
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    variants={staggerContainer}
+                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                  >
+                    {searchResults
+                      .filter(habit => domainFilter === 'all' || habit.domain === domainFilter)
+                      .map((habit, index) => (
+                        <motion.div
+                          key={habit.id}
+                          variants={fadeInUp}
+                          whileHover={{ scale: 1.02 }}
+                          className="cursor-pointer"
+                        >
+                          <Card className="h-full hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <span className="text-2xl">{getDomainEmoji(habit.domain)}</span>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium line-clamp-2 mb-2">{habit.title}</h4>
+                                  <div className="flex flex-wrap gap-1 mb-3">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {habit.domain}
+                                    </Badge>
+                                    <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
+                                      {habit.difficulty}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                    {habit.description}
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setSelectedHabitForInfo(habit)}
+                                      className="flex-1"
+                                    >
+                                      Info
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setSelectedHabitForAdd(habit)}
+                                      disabled={addedHabits.has(habit.slug)}
+                                      className="flex-1"
+                                    >
+                                      {addedHabits.has(habit.slug) ? 'Added' : 'Add'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                  </motion.div>
+                )}
+
+                <ProTip tab="browse" />
+              </motion.div>
+            </TabsContent>
 
             <TabsContent value="browse" className="space-y-12">
               <motion.div
