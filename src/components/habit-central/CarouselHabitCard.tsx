@@ -92,7 +92,11 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, index }: Caro
             <Button
               variant="outline"
               size="sm"
-              onClick={onInfo}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onInfo();
+              }}
               className="flex-1 h-9 text-xs"
             >
               <Info className="h-3 w-3 mr-1" />
@@ -112,7 +116,11 @@ export function CarouselHabitCard({ habit, isAdded, onInfo, onAdd, index }: Caro
             ) : (
               <Button
                 size="sm"
-                onClick={onAdd}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAdd();
+                }}
                 className="flex-1 h-9 text-xs"
               >
                 <Plus className="h-3 w-3 mr-1" />
