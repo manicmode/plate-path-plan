@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2, CheckCircle } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
@@ -162,8 +162,55 @@ export default function HabitCentralV2() {
   const [purgeLogsOnDelete, setPurgeLogsOnDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Daily lock state for logged habits
+  const [loggedToday, setLoggedToday] = useState<Set<string>>(new Set());
+  const [isLogging, setIsLogging] = useState<Set<string>>(new Set());
+
   // Debounced filter update
   const debouncedDomainFilter = useMemo(() => domainFilter, [domainFilter]);
+
+  // Daily lock utilities
+  const todayKey = useCallback((slug: string) => 
+    `vh:logged:${slug}:${new Date().toISOString().slice(0,10)}`, []);
+
+  const isLoggedTodayLocal = useCallback((slug: string) => 
+    localStorage.getItem(todayKey(slug)) === '1', [todayKey]);
+
+  const markLoggedTodayLocal = useCallback((slug: string) => 
+    localStorage.setItem(todayKey(slug), '1'), [todayKey]);
+
+  // Auto-reset at midnight
+  const useMidnightTick = useCallback((onMidnight: () => void) => {
+    useEffect(() => {
+      let d = new Date().toDateString();
+      const id = setInterval(() => {
+        const now = new Date().toDateString();
+        if (now !== d) { 
+          d = now; 
+          onMidnight(); 
+        }
+      }, 60_000);
+      return () => clearInterval(id);
+    }, [onMidnight]);
+  }, []);
+
+  // Reset logged state at midnight
+  useMidnightTick(() => {
+    setLoggedToday(new Set());
+  });
+
+  // Initialize logged state from localStorage
+  useEffect(() => {
+    if (myHabits.length > 0) {
+      const newLoggedToday = new Set<string>();
+      myHabits.forEach(habit => {
+        if (isLoggedTodayLocal(habit.habit_slug)) {
+          newLoggedToday.add(habit.habit_slug);
+        }
+      });
+      setLoggedToday(newLoggedToday);
+    }
+  }, [myHabits, isLoggedTodayLocal]);
 
   // Load active habits - templates are public, no auth needed
   const loadHabits = useCallback(async (domainUi?: string) => {
@@ -300,13 +347,41 @@ export default function HabitCentralV2() {
     }
   }, [ready, user, activeTab, loadMyHabits, toast]);
 
-  // Log habit completion with delight features
+  // Log habit completion with daily lock and delight features
   const handleLogHabit = useCallback(async (slug: string, note?: string) => {
-    if (!user) return;
-    
+    if (!ready || !user) {
+      toast({
+        title: "Please sign in",
+        description: "Sign in to log your habits",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if already logged today
+    if (loggedToday.has(slug)) {
+      return;
+    }
+
+    // Check if currently logging (debounce)
+    if (isLogging.has(slug)) {
+      return;
+    }
+
     // Get current habit stats before logging
     const currentHabit = myHabits.find(h => h.habit_slug === slug);
     const previousCount = currentHabit?.last_30d_count || 0;
+    
+    // Optimistically update UI
+    setIsLogging(prev => new Set([...prev, slug]));
+    setLoggedToday(prev => new Set([...prev, slug]));
+    
+    // Optimistically increment count in UI
+    setMyHabits(prev => prev.map(h => 
+      h.habit_slug === slug 
+        ? { ...h, last_30d_count: h.last_30d_count + 1 }
+        : h
+    ));
     
     try {
       triggerHaptics('light');
@@ -316,9 +391,34 @@ export default function HabitCentralV2() {
         p_note: note || null
       });
       
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('permission denied')) {
+          toast({
+            title: "Please sign in",
+            description: "Sign in to log your habits",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+        // Revert optimistic updates
+        setLoggedToday(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(slug);
+          return newSet;
+        });
+        setMyHabits(prev => prev.map(h => 
+          h.habit_slug === slug 
+            ? { ...h, last_30d_count: Math.max(0, h.last_30d_count - 1) }
+            : h
+        ));
+        return;
+      }
       
-      // Refresh data first to get updated counts
+      // Persist the logged state
+      markLoggedTodayLocal(slug);
+      
+      // Refresh data to get accurate counts
       if (activeTab === 'my-habits') await loadMyHabits();
       if (activeTab === 'analytics') await loadProgress(progressWindow);
       
@@ -409,6 +509,16 @@ export default function HabitCentralV2() {
             await supabase.rpc('rpc_undo_last_log_by_slug', { p_habit_slug: slug });
             toast({ title: "Log undone" });
             
+            // Reset logged state for today
+            setLoggedToday(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(slug);
+              return newSet;
+            });
+            
+            // Clear localStorage
+            localStorage.removeItem(todayKey(slug));
+            
             // Refresh data after undo
             if (activeTab === 'my-habits') await loadMyHabits();
             if (activeTab === 'analytics') await loadProgress(progressWindow);
@@ -419,7 +529,7 @@ export default function HabitCentralV2() {
         };
 
         toast({
-          title: "Logged — nice!",
+          title: "Logged ✓",
           description: "5 seconds to undo",
           action: <ToastAction altText="Undo" onClick={undoAction}>Undo</ToastAction>,
           duration: 5000,
@@ -429,9 +539,29 @@ export default function HabitCentralV2() {
     } catch (error) {
       console.error('Error logging habit:', error);
       triggerHaptics('selection');
+      
+      // Revert optimistic updates on error
+      setLoggedToday(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slug);
+        return newSet;
+      });
+      setMyHabits(prev => prev.map(h => 
+        h.habit_slug === slug 
+          ? { ...h, last_30d_count: Math.max(0, h.last_30d_count - 1) }
+          : h
+      ));
+      
       toast({ title: "Failed to log habit", variant: "destructive" });
+    } finally {
+      // Remove from logging set
+      setIsLogging(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slug);
+        return newSet;
+      });
     }
-  }, [user, activeTab, loadMyHabits, loadProgress, progressWindow, toast, myHabits]);
+  }, [ready, user, loggedToday, isLogging, myHabits, activeTab, loadMyHabits, loadProgress, progressWindow, toast, markLoggedTodayLocal, todayKey]);
 
   // Update habit target
   const handleUpdateTarget = useCallback(async (slug: string, newTarget: number) => {
@@ -1134,19 +1264,31 @@ export default function HabitCentralV2() {
                               </div>
 
                               {/* Action buttons */}
-                              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
-                                <motion.div whileTap={{ scale: 0.95 }} className="min-w-0">
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleLogHabit(habit.habit_slug)}
-                                    disabled={habit.is_paused}
-                                    aria-label={`Log ${habit.title} now`}
-                                    className="w-full h-10 text-sm md:h-11 md:text-base"
-                                  >
-                                    <Play className="h-3 w-3 mr-1 md:h-4 md:w-4" />
-                                    Log now
-                                  </Button>
-                                </motion.div>
+                               <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+                                 <motion.div whileTap={{ scale: 0.95 }} className="min-w-0">
+                                   {loggedToday.has(habit.habit_slug) ? (
+                                     <Button 
+                                       size="sm" 
+                                       disabled
+                                       aria-label={`${habit.title} logged today`}
+                                       className="w-full h-10 text-sm md:h-11 md:text-base bg-muted text-muted-foreground cursor-not-allowed"
+                                     >
+                                       <CheckCircle className="h-3 w-3 mr-1 md:h-4 md:w-4" />
+                                       Logged ✓
+                                     </Button>
+                                   ) : (
+                                     <Button 
+                                       size="sm" 
+                                       onClick={() => handleLogHabit(habit.habit_slug)}
+                                       disabled={habit.is_paused || isLogging.has(habit.habit_slug)}
+                                       aria-label={`Log ${habit.title} now`}
+                                       className="w-full h-10 text-sm md:h-11 md:text-base"
+                                     >
+                                       <Play className="h-3 w-3 mr-1 md:h-4 md:w-4" />
+                                       {isLogging.has(habit.habit_slug) ? 'Logging...' : 'Log now'}
+                                     </Button>
+                                   )}
+                                 </motion.div>
                                 
                                 <Button 
                                   variant="outline" 
