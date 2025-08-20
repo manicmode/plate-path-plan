@@ -49,8 +49,9 @@ export const useColdStart = () => {
           timestamp: new Date().toISOString()
         });
 
-        // Minimum display time to ensure splash is visible, shortened for mobile
-        const minDisplayTime = isMobile ? 2000 : 3000; // Shorter for mobile
+        // Remove artificial hold - navigate immediately when route decision is made
+        const minDisplayTime = 0; // No artificial hold
+        console.log('[boot] minDisplayTime=', minDisplayTime);
         setTimeout(() => {
           console.log('🚀 Cold start ready timer complete', { 
             isMobile, 

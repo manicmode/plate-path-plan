@@ -24,11 +24,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    // Single-source theme application - never clear all classes, only toggle 'dark'
+    document.documentElement.classList.toggle('dark', !!isDarkMode);
     
     // STEP 2: Forensics - log theme changes
     console.log('[theme] html.class=', document.documentElement.className);

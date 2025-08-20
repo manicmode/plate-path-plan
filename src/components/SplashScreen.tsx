@@ -71,7 +71,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   useEffect(() => {
     if (!isVisible) return;
     let done = false;
-    const safeComplete = () => { if (done) return; done = true; onComplete(); };
+    const safeComplete = () => { 
+      if (done) return; 
+      done = true; 
+      console.log('[splash] hide', performance.now());
+      onComplete(); 
+    };
 
     const max = setTimeout(() => {
       document.body.classList.remove('splash-visible');

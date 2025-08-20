@@ -149,10 +149,23 @@ function AppContent() {
     setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
   }, []);
 
-  // Prefetch critical components after app has loaded
+  // Defer prefetch after navigation completes to avoid blocking first paint
   React.useEffect(() => {
-    prefetchCriticalComponents();
-  }, []);
+    const deferredPrefetch = () => {
+      prefetchCriticalComponents();
+      // Also defer version check to avoid blocking
+      requestIdleCallback(() => {
+        checkForUpdates();
+      }, { timeout: 3000 });
+    };
+    
+    // Use requestIdleCallback if available, otherwise setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(deferredPrefetch, { timeout: 1200 });
+    } else {
+      setTimeout(deferredPrefetch, 500);
+    }
+  }, [checkForUpdates]);
 
   return (
     <>
