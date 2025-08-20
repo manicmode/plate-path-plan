@@ -12,7 +12,6 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
   const nav = useNavigate();
   const loc = useLocation();
   const redirected = useRef(false);
-  const decidedRef = useRef(false); // Guard against double navigation
   const [ready, setReady] = useState(false);
 
   const loading = authLoading || obLoading;
@@ -27,7 +26,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!loading && !ready) setReady(true);
-    if (loading || !isAuthenticated || redirected.current || decidedRef.current) return;
+    if (loading || !isAuthenticated || redirected.current) return;
 
     // STEP 2: Forensics - log route guard decisions
     console.log('[router] guard decision:', {
@@ -35,26 +34,23 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
       effectiveComplete,
       bypass,
       isAuthenticated,
-      loading,
-      timestamp: performance.now()
+      loading
     });
 
     if (!effectiveComplete && !bypass) {
-      console.log('[router] start navigation to onboarding', performance.now());
-      decidedRef.current = true;
+      console.log('[router] start navigation to onboarding');
       redirected.current = true;
       nav('/onboarding', { replace: true });
       return;
     }
     if (effectiveComplete && (loc.pathname || '').startsWith('/onboarding')) {
-      console.log('[router] start navigation to home', performance.now());
-      decidedRef.current = true;
+      console.log('[router] start navigation to home');
       redirected.current = true;
       nav('/home', { replace: true });
       return;
     }
     
-    console.log('[router] done - no redirect needed', performance.now());
+    console.log('[router] done - no redirect needed');
   }, [loading, ready, isAuthenticated, effectiveComplete, bypass, loc.pathname, nav]);
 
   if (loading && !ready) return <div className="p-4"><div className="h-5 w-28 animate-pulse rounded bg-muted" /></div>;

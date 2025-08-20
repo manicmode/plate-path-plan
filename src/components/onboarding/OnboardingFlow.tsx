@@ -135,14 +135,6 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   const [currentScreen, setCurrentScreen] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  
-  // STEP 2: Forensics - log onboarding unmount
-  useEffect(() => {
-    console.log('[onboarding] mounted', performance.now());
-    return () => {
-      console.log('[onboarding] unmount', performance.now());
-    };
-  }, []);
   const [formData, setFormData] = useState<OnboardingData>({
     age: '',
     gender: '',
