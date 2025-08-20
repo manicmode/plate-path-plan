@@ -115,7 +115,7 @@ export default function HabitCentralV2() {
   const { toast } = useToast();
   
   // Tab and data state
-  const [activeTab, setActiveTab] = useState('search');
+  const [activeTab, setActiveTab] = useState('browse');
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [myHabits, setMyHabits] = useState<UserHabit[]>([]);
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
