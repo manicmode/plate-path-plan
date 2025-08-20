@@ -164,6 +164,9 @@ console.log('🔍 Rendering app...', {
   reactVersion: React.version || 'unknown'
 });
 
+// Add forensic marker before React mounting
+performance.mark('react:start');
+
 root.render(
   <ErrorBoundary>
     <AuthProvider>
