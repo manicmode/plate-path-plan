@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2, CheckCircle } from 'lucide-react';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2, CheckCircle, Sparkles } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ import { HabitInfoModal } from '@/components/habit-central/HabitInfoModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
 import type { HabitTemplate as ImportedHabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 const CronStatusWidget = React.lazy(() => import('@/components/habit-central/CronStatusWidget'));
+const CreateDiscoverContent = React.lazy(() => import('@/pages/CreateDiscover'));
 
 // Helper functions
 const getDomainEmoji = (domain: string) => {
@@ -982,9 +983,9 @@ export default function HabitCentralV2() {
                     <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">My Habits</span>
                   </TabsTrigger>
-                  <TabsTrigger value="reminders" className="text-xs sm:text-sm">
-                    <Bell className="h-4 w-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Reminders</span>
+                  <TabsTrigger value="create" className="text-xs sm:text-sm">
+                    <Sparkles className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Create</span>
                   </TabsTrigger>
                   <TabsTrigger value="analytics" className="text-xs sm:text-sm">
                     <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
@@ -1213,16 +1214,21 @@ export default function HabitCentralV2() {
                                      </DropdownMenuContent>
                                    </DropdownMenu>
                                  </div>
-                                 <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
-                                   <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
-                                   <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
-                                     {habit.difficulty}
-                                   </Badge>
-                                   {habit.is_paused && <Badge variant="destructive" className="text-xs">Paused</Badge>}
-                                   <Badge variant="outline" className="text-xs">
-                                     Started: {formatStartedTime(habit.created_at)}
-                                   </Badge>
-                                 </div>
+                                  <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
+                                    <Badge variant="secondary" className="text-xs">{habit.domain}</Badge>
+                                    <Badge variant={getDifficultyVariant(habit.difficulty)} className="text-xs">
+                                      {habit.difficulty}
+                                    </Badge>
+                                    {habit.habit_slug.startsWith('custom:') && (
+                                      <Badge variant="outline" className="text-xs border-primary text-primary">
+                                        Manual
+                                      </Badge>
+                                    )}
+                                    {habit.is_paused && <Badge variant="destructive" className="text-xs">Paused</Badge>}
+                                    <Badge variant="outline" className="text-xs">
+                                      Started: {formatStartedTime(habit.created_at)}
+                                    </Badge>
+                                  </div>
                                </div>
                              </div>
 
@@ -1314,34 +1320,11 @@ export default function HabitCentralV2() {
               <ProTip tab="habits" />
             </TabsContent>
 
-            {/* Reminders Tab */}
-            <TabsContent value="reminders" className="space-y-4">
-              {myHabits.length === 0 ? (
-                <RemindersEmptyState />
-              ) : (
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
-                  <motion.h3 variants={fadeInUp} className="text-lg font-semibold">Habit Reminders</motion.h3>
-                  {myHabits.map((habit) => (
-                    <motion.div key={habit.habit_slug} variants={fadeInUp}>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            {getDomainEmoji(habit.domain)} {habit.title}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="text-sm text-muted-foreground text-center py-4">
-                            Reminder settings coming soon!
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-              
-              {/* Pro Tip for Reminders */}
-              <ProTip tab="reminders" />
+            {/* Create Tab */}
+            <TabsContent value="create" className="space-y-4">
+              <React.Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <CreateDiscoverContent />
+              </React.Suspense>
             </TabsContent>
 
             {/* Analytics Tab */}
