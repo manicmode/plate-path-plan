@@ -65,7 +65,7 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
       className="w-[92%] max-w-[420px] mx-auto shrink-0 snap-center"
     >
       <div className={cn(
-        "relative rounded-2xl p-4 sm:p-5 md:p-6 overflow-hidden",
+        "relative rounded-2xl p-4 sm:p-5 md:p-6 overflow-hidden h-[320px]",
         "bg-slate-900/60 backdrop-blur-xl border transition-all duration-300",
         "hover:shadow-2xl group",
         habit.domain === 'nutrition' && "border-emerald-400/20 shadow-[0_10px_40px_rgba(16,185,129,.25)]",
@@ -81,7 +81,7 @@ export function ThemedHabitCard({ habit, isAdded, onInfo, onAdd, index }: Themed
         </div>
         
         {/* Content */}
-        <div className="relative z-10 h-full flex flex-col min-h-[220px] sm:min-h-[240px]">
+        <div className="relative z-10 h-full flex flex-col justify-between">
           {/* Header */}
           <div className="flex items-start gap-3 mb-4">
             <div className="text-3xl flex-shrink-0">
