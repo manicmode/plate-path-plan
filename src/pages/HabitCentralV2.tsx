@@ -656,7 +656,7 @@ export default function HabitCentralV2() {
         <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
       </div>
 
-      {/* Header with centered title */}
+      {/* Header with centered title and tabs */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
           <div className="py-6 space-y-4">
@@ -679,9 +679,28 @@ export default function HabitCentralV2() {
                 Science-backed habits for better health
               </motion.p>
             </div>
-          </div>
-        </div>
-      </div>
+            
+            {/* Tabs in sticky header */}
+            <div className="w-full">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-4">
+                  <TabsTrigger value="browse" className="text-xs sm:text-sm">
+                    <Search className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Browse</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
+                    <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">My Habits</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="reminders" className="text-xs sm:text-sm">
+                    <Bell className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Reminders</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs sm:text-sm">
+                    <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Progress</span>
+                  </TabsTrigger>
+                </TabsList>
 
       {/* Emoji Rain Animation */}
       <EmojiRain
@@ -698,27 +717,7 @@ export default function HabitCentralV2() {
           variants={staggerContainer}
           className="space-y-8 pt-8"
         >
-          {/* Tab Content */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            {/* Tabs beneath title */}
-            <TabsList className="grid w-full h-12 bg-muted/30 backdrop-blur-sm grid-cols-4 mb-8">
-              <TabsTrigger value="browse" className="text-xs sm:text-sm">
-                <Search className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Browse</span>
-              </TabsTrigger>
-              <TabsTrigger value="my-habits" className="text-xs sm:text-sm">
-                <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">My Habits</span>
-              </TabsTrigger>
-              <TabsTrigger value="reminders" className="text-xs sm:text-sm">
-                <Bell className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Reminders</span>
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="text-xs sm:text-sm">
-                <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Progress</span>
-              </TabsTrigger>
-            </TabsList>
+          {/* Tab Content - continuing from sticky header tabs */}
 
             <TabsContent value="browse" className="space-y-12">
               <motion.div
@@ -1193,7 +1192,7 @@ export default function HabitCentralV2() {
               </TabsContent>
             )}
           </Tabs>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
