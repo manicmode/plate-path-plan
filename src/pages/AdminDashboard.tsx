@@ -201,7 +201,7 @@ const AdminDashboard = () => {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-0 z-40 bg-gradient-to-r from-primary via-primary/90 to-secondary/70 backdrop-blur-sm border-b border-white/10"
+          className="sticky top-0 z-40 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-600 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 backdrop-blur-sm border-b border-white/10"
         >
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center gap-4">
@@ -217,16 +217,20 @@ const AdminDashboard = () => {
                 </p>
               </div>
               <div className="hidden md:flex items-center gap-2">
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/20">
-                  Admin
-                </Badge>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={refetch}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  onClick={() => {
+                    refetch();
+                    toast({
+                      title: "Refreshing data...",
+                      description: "Admin dashboard stats are being updated."
+                    });
+                  }}
+                  disabled={loading}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 disabled:opacity-50"
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
             </div>
@@ -553,7 +557,13 @@ const AdminDashboard = () => {
               {
                 label: 'Refresh',
                 icon: RefreshCw,
-                onClick: refetch,
+                onClick: () => {
+                  refetch();
+                  toast({
+                    title: "Refreshing data...",
+                    description: "Admin dashboard stats are being updated."
+                  });
+                },
                 variant: 'outline',
               },
               {
