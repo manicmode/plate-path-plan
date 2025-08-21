@@ -476,6 +476,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string | null
+          id: string
+          meta: Json | null
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       affiliate_click: {
         Row: {
           affiliate_partner_id: string
@@ -7768,6 +7795,18 @@ export type Database = {
           paid_orders_count: number | null
           total_earnings_cents: number | null
           total_orders: number | null
+        }
+        Relationships: []
+      }
+      v_platform_metrics: {
+        Row: {
+          as_of: string | null
+          gmv_cents: number | null
+          net_revenue_cents: number | null
+          new_users_30d: number | null
+          paid_orders_all: number | null
+          refunds_count: number | null
+          total_users: number | null
         }
         Relationships: []
       }

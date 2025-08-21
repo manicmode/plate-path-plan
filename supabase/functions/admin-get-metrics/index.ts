@@ -60,60 +60,42 @@ serve(async (req) => {
       );
     }
 
-    const { userId, newRole } = await req.json();
+    // Get platform metrics using service_role (has access to v_platform_metrics)
+    const { data: metrics, error: metricsError } = await supabaseAdmin
+      .from('v_platform_metrics')
+      .select('*')
+      .single();
 
-    if (!userId || !newRole) {
+    if (metricsError) {
+      console.error('Error fetching platform metrics:', metricsError);
       return new Response(
-        JSON.stringify({ error: 'Missing userId or newRole' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to fetch metrics' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Valid roles
-    const validRoles = ['admin', 'moderator', 'user', 'influencer'];
-    if (!validRoles.includes(newRole)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid role' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Get configurable platform take rate (default 10% if no config)
+    // TODO: Move this to a settings table
+    const platformTakeBps = 1000; // 10% in basis points
+    
+    // Recalculate net revenue with configurable rate
+    const netRevenueCents = Math.floor((metrics.gmv_cents * platformTakeBps) / 10000);
 
-    // Remove existing roles for the user
-    await supabaseAdmin
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId);
+    const finalMetrics = {
+      ...metrics,
+      net_revenue_cents: netRevenueCents,
+      platform_take_bps: platformTakeBps,
+    };
 
-    // Add new role (unless it's 'user' which is the default)
-    if (newRole !== 'user') {
-      const { error: insertError } = await supabaseAdmin
-        .from('user_roles')
-        .insert({ user_id: userId, role: newRole });
-
-      if (insertError) {
-        throw insertError;
-      }
-    }
-
-    // Log the action to audit table
-    await supabaseAdmin
-      .from('admin_audit')
-      .insert({
-        actor_user_id: userData.user.id,
-        action: 'set_user_role',
-        target_id: userId,
-        meta: { old_role: 'user', new_role: newRole }
-      });
-
-    console.log(`Admin ${userData.user.email} changed user ${userId} role to ${newRole}`);
+    console.log(`Admin ${userData.user.email} fetched platform metrics`);
 
     return new Response(
-      JSON.stringify({ success: true, message: `Role updated to ${newRole}` }),
+      JSON.stringify({ success: true, data: finalMetrics }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Admin set user role error:', error);
+    console.error('Admin get metrics error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
