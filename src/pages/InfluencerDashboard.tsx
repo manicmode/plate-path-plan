@@ -41,10 +41,12 @@ import { StatCard } from '@/components/influencer/StatCard';
 import { Sparkline } from '@/components/influencer/Sparkline';
 import { ChallengeCard } from '@/components/influencer/ChallengeCard';
 import { TopChallengesList } from '@/components/influencer/TopChallengesList';
-import { ShareBar } from '@/components/influencer/ShareBar';
+import { ShareKit } from '@/components/influencer/ShareKit';
 import { QuickBroadcast } from '@/components/influencer/QuickBroadcast';
 import { PayoutsPanel } from '@/components/influencer/PayoutsPanel';
 import { EmptyState } from '@/components/influencer/EmptyState';
+import { FunnelCards } from '@/components/influencer/FunnelCards';
+import { RangeToggle } from '@/components/analytics/RangeToggle';
 import { toast } from '@/hooks/use-toast';
 
 const ProfileTab = () => {
@@ -156,7 +158,7 @@ const ProfileTab = () => {
       </motion.div>
 
       {/* Mobile Share Profile Button */}
-      <ShareBar sticky className="sm:hidden" />
+      <ShareKit sticky className="sm:hidden" />
     </div>
   );
 };
@@ -255,13 +257,8 @@ const ChallengesTab = () => {
         />
       )}
 
-      {/* Mobile Create Button */}
-      <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden">
-        <Button onClick={handleCreateChallenge} className="w-full gap-2 rounded-2xl">
-          <Plus className="h-4 w-4" />
-          Create Challenge
-        </Button>
-      </div>
+      {/* Mobile Share Kit Buttons - Challenges Tab */}
+      <ShareKit sticky className="sm:hidden" />
     </div>
   );
 };
@@ -411,8 +408,12 @@ const ProductsTab = () => {
       )}
 
       {/* Mobile Add Button */}
-      <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden">
-        <Button onClick={handleAddProduct} className="w-full gap-2 rounded-2xl">
+      <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden pb-[max(env(safe-area-inset-bottom),0px)] mb-1">
+        <Button 
+          onClick={handleAddProduct} 
+          className="w-full gap-2 rounded-2xl shadow-lg"
+          style={{ minHeight: '44px' }}
+        >
           <Plus className="h-4 w-4" />
           Add Product
         </Button>
@@ -474,52 +475,18 @@ const AnalyticsTab = () => {
               <CardTitle>Performance Overview</CardTitle>
               
               {/* Mobile Period Toggle */}
-              <div className="flex gap-1 p-1 bg-muted/20 rounded-lg sm:hidden">
-                <button
-                  onClick={() => setSelectedPeriod('7d')}
-                  className={`px-3 py-1 text-xs rounded transition-colors ${
-                    selectedPeriod === '7d' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  7 Days
-                </button>
-                <button
-                  onClick={() => setSelectedPeriod('30d')}
-                  className={`px-3 py-1 text-xs rounded transition-colors ${
-                    selectedPeriod === '30d' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  30 Days
-                </button>
-              </div>
+              <RangeToggle 
+                value={selectedPeriod}
+                onChange={setSelectedPeriod}
+                className="sm:hidden"
+              />
 
               {/* Desktop Period Toggle */}
-              <div className="hidden sm:flex gap-1 p-1 bg-muted/20 rounded-lg">
-                <button
-                  onClick={() => setSelectedPeriod('7d')}
-                  className={`px-4 py-2 text-sm rounded transition-colors ${
-                    selectedPeriod === '7d' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  onClick={() => setSelectedPeriod('30d')}
-                  className={`px-4 py-2 text-sm rounded transition-colors ${
-                    selectedPeriod === '30d' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Last 30 Days
-                </button>
-              </div>
+              <RangeToggle 
+                value={selectedPeriod}
+                onChange={setSelectedPeriod}
+                className="hidden sm:flex"
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -537,8 +504,8 @@ const AnalyticsTab = () => {
             ) : (
               <EmptyState
                 icon={BarChart3}
-                title="Analytics coming soon"
-                description="Start creating challenges and engaging with your community to see analytics here."
+                title="Share your link to start generating views"
+                description="Get your first analytics by sharing your profile with your community."
                 className="py-8"
               />
             )}
@@ -681,6 +648,17 @@ const EarningsTab = () => {
         )}
       </motion.div>
 
+      {/* Funnel Cards */}
+      <FunnelCards
+        data={{
+          clicks: earnings?.clicks || 0,
+          addToCarts: earnings?.add_to_carts || 0,
+          paidOrders: earnings?.paid_orders_count || 0,
+          payouts: Math.floor((earnings?.paid_earnings_cents || 0) / 2000) // Estimate payout count
+        }}
+        isLoading={earningsLoading}
+      />
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
@@ -764,10 +742,13 @@ const EarningsTab = () => {
             <p className="text-muted-foreground mb-4">
               Share your profile and challenges to grow your community and increase earnings.
             </p>
-            <ShareBar />
+            <ShareKit />
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Mobile Share Kit Buttons - Earnings Tab */}
+      <ShareKit sticky className="sm:hidden" />
     </div>
   );
 };

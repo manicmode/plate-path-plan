@@ -84,7 +84,7 @@ export const ChallengeCard = ({
             </div>
           </div>
 
-          {/* Revenue Trend */}
+          {/* Revenue Trend & Badge */}
           {revenueData.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -97,6 +97,11 @@ export const ChallengeCard = ({
                   <TrendingUp className="h-3 w-3" />
                   Last 7 days
                 </span>
+                {revenue > 500000 && ( // $5000+
+                  <Badge className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-0 text-xs px-1.5 py-0.5">
+                    🏆 Top Earner
+                  </Badge>
+                )}
               </div>
               <Sparkline 
                 data={revenueData} 
