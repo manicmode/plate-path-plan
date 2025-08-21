@@ -8788,6 +8788,16 @@ export type Database = {
           friend_phone: string
         }[]
       }
+      get_my_feature_flags: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          flag_key: string
+          global_enabled: boolean
+          has_user_override: boolean
+          resolved_enabled: boolean
+          user_enabled: boolean
+        }[]
+      }
       get_pending_friend_requests: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -9619,6 +9629,10 @@ export type Database = {
         Args: { "": number }
         Returns: number
       }
+      set_user_feature_flag: {
+        Args: { enabled_param: boolean; flag_key_param: string }
+        Returns: boolean
+      }
       show_limit: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -9642,6 +9656,10 @@ export type Database = {
           result: string
           test_name: string
         }[]
+      }
+      toggle_feature_flag: {
+        Args: { enabled_param: boolean; key_param: string }
+        Returns: boolean
       }
       track_coach_interaction: {
         Args: {

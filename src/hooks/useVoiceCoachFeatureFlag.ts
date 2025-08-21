@@ -1,12 +1,12 @@
-import { useFeatureFlag } from './useFeatureFlag';
+import { useFeatureFlagOptimized } from './useFeatureFlagOptimized';
 import { checkVoiceCoachEnabled, checkUserTier, isVoiceCoachAvailable } from '@/voice/featureFlag';
 
 /**
  * Hook for checking Voice Coach feature availability
- * Combines database feature flags with environment and user tier checks
+ * Uses SWR cache first, then falls back to existing checks
  */
 export function useVoiceCoachFeatureFlag() {
-  const { enabled: dbEnabled, loading } = useFeatureFlag('voice_coach_mvp');
+  const { enabled: dbEnabled, loading } = useFeatureFlagOptimized('voice_coach_mvp');
   
   // Combine database flag with existing environment/tier checks
   const isAvailable = dbEnabled && checkVoiceCoachEnabled() && checkUserTier();
