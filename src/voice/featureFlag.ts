@@ -15,6 +15,7 @@ export const checkUserTier = (): boolean => {
   return true;
 };
 
+// Legacy function - use useVoiceCoachFeatureFlag hook instead
 export const isVoiceCoachAvailable = (): boolean => {
   return checkVoiceCoachEnabled() && checkUserTier();
 };

@@ -5800,6 +5800,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          flag_key: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          flag_key: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          flag_key?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feature_flags_flag_fk"
+            columns: ["flag_key"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       user_fitness_preferences: {
         Row: {
           available_equipment: string[]
