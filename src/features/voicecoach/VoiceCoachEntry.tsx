@@ -23,7 +23,7 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
       <Button
         size="sm"
         variant="secondary"
-        className={`rounded-full gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all ${className}`}
+        className={`rounded-full gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all ${className}`}
         aria-label="Start Voice Coach"
         onClick={() => {
           try { 
