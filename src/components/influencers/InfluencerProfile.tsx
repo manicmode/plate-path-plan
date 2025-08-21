@@ -16,6 +16,40 @@ import { cn } from '@/lib/utils';
 import { useJoinChallenge } from '@/data/influencers/useJoinChallenge';
 import type { InfluencerProfile, ChallengePreview } from './types';
 
+interface InfluencerProfileProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  profile?: InfluencerProfile | null;
+  onToggleFollow?: (id: string) => void;
+  onNotify?: (challengeId: string) => void;
+}
+
+// Utility functions
+const formatFollowers = (count?: number): string => {
+  if (!count) return '0';
+  if (count < 1000) return count.toString();
+  if (count < 1000000) return `${(count / 1000).toFixed(1)}K`;
+  return `${(count / 1000000).toFixed(1)}M`;
+};
+
+const formatRelative = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'Past';
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays < 7) return `in ${diffDays} days`;
+  if (diffDays < 30) return `in ${Math.ceil(diffDays / 7)} weeks`;
+  return `in ${Math.ceil(diffDays / 30)} months`;
+};
+
+const formatPrice = (cents?: number): string => {
+  if (!cents) return 'Free';
+  return `$${(cents / 100).toFixed(2)}`;
+};
+
 function ChallengeCard({ challenge, onNotify }: { challenge: ChallengePreview; onNotify?: (id: string) => void }) {
   const [isNotifying, setIsNotifying] = useState(false);
   const joinChallenge = useJoinChallenge();
