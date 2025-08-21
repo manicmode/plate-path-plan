@@ -63,7 +63,7 @@ export const CreatorTabs: React.FC<CreatorTabsProps> = ({
                   "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none",
                   "min-h-[44px] min-w-[44px]",
                   isActive
-                    ? "bg-gradient-to-r from-primary to-primary/80 text-slate-900 dark:text-slate-900 shadow-md data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-900"
+                    ? "bg-gradient-to-r from-primary to-primary/80 text-slate-900 dark:text-slate-900 shadow-md"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 )}
               >

@@ -1089,7 +1089,7 @@ const InfluencerHubContent = () => {
           />
 
           {/* Creator Tabs Navigation - Proper z-index below modals */}
-          <div className="relative z-20 pointer-events-none">
+          <div className="relative z-10 pointer-events-none">
             <CreatorTabs 
               value={activeTab}
               onChange={handleTabChange}

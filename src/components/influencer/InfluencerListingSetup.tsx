@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -213,20 +214,26 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
   };
 
   // Add body scroll lock when modal is open
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
       return () => {
-        document.body.style.overflow = 'unset';
+        document.body.style.overflow = '';
       };
     }
   }, [open]);
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 pointer-events-auto">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[9999] flex items-start justify-center"
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative z-[10000] w-full max-w-2xl mx-auto mt-4 rounded-2xl bg-neutral-900 shadow-2xl overflow-hidden">
+        <Card className="border-0 bg-transparent">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -582,7 +589,9 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
             </div>
           </div>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </div>,
+    document.getElementById('portal-root')!
   );
 }
