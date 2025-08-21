@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { useCallback, useState } from 'react';
 
 export interface InfluencerListingData {
   id: string;
@@ -175,6 +176,56 @@ export function useInfluencerListing() {
 
   const validation = getValidationErrors(influencerData);
 
+  // Handle uniqueness check with debouncing
+  const [handleAvailability, setHandleAvailability] = useState<{ isChecking: boolean; isAvailable: boolean | null; error: string | null }>({
+    isChecking: false,
+    isAvailable: null,
+    error: null
+  });
+
+  const checkHandleAvailability = useCallback(async (handle: string) => {
+    if (!handle || handle.length < 3) {
+      setHandleAvailability({ isChecking: false, isAvailable: null, error: null });
+      return;
+    }
+
+    if (!/^[a-z0-9_]{3,24}$/.test(handle)) {
+      setHandleAvailability({ isChecking: false, isAvailable: false, error: 'Handle must be 3-24 characters (letters, numbers, underscore only)' });
+      return;
+    }
+
+    // Don't check if it's the current user's handle
+    if (handle === influencerData?.handle) {
+      setHandleAvailability({ isChecking: false, isAvailable: true, error: null });
+      return;
+    }
+
+    setHandleAvailability({ isChecking: true, isAvailable: null, error: null });
+
+    try {
+      const { data, error } = await supabase
+        .from('influencer')
+        .select('handle')
+        .ilike('handle', handle) // Case-insensitive check
+        .limit(1);
+
+      if (error) {
+        setHandleAvailability({ isChecking: false, isAvailable: false, error: 'Could not check availability' });
+        return;
+      }
+
+      const isAvailable = data.length === 0;
+      setHandleAvailability({ 
+        isChecking: false, 
+        isAvailable, 
+        error: isAvailable ? null : 'Handle is already taken' 
+      });
+
+    } catch (error) {
+      setHandleAvailability({ isChecking: false, isAvailable: false, error: 'Could not check availability' });
+    }
+  }, [influencerData?.handle]);
+
   return {
     influencerData,
     isLoading,
@@ -185,5 +236,7 @@ export function useInfluencerListing() {
     validationErrors: validation.errors,
     validateField,
     getAvatarFallback,
+    checkHandleAvailability,
+    handleAvailability,
   };
 }

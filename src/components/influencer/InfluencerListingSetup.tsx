@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -9,7 +9,11 @@ import {
   Eye, 
   Check, 
   ArrowRight, 
-  X 
+  ArrowLeft,
+  X,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AvatarUpload } from '@/components/ui/AvatarUpload';
+import { SocialLinksInput } from '@/components/ui/SocialLinksInput';
 import { useInfluencerListing, type InfluencerListingData } from '@/data/influencers/useInfluencerListing';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +41,16 @@ const CATEGORY_OPTIONS = [
 
 export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListingSetupProps) {
   const navigate = useNavigate();
-  const { influencerData, updateProfile, publishToHub, unpublishFromHub, canPublish, getAvatarFallback } = useInfluencerListing();
+  const { 
+    influencerData, 
+    updateProfile, 
+    publishToHub, 
+    unpublishFromHub, 
+    canPublish, 
+    getAvatarFallback,
+    checkHandleAvailability,
+    handleAvailability 
+  } = useInfluencerListing();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<InfluencerListingData>>({
@@ -50,6 +65,17 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
     social_links: influencerData?.social_links || {},
   });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // Handle debounced uniqueness checking
+  useEffect(() => {
+    if (!formData.handle) return;
+
+    const timeoutId = setTimeout(() => {
+      checkHandleAvailability(formData.handle!);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.handle, checkHandleAvailability]);
 
   const updateField = (field: keyof InfluencerListingData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -100,7 +126,7 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
       
       // Close and redirect
       onOpenChange(false);
-      navigate('/influencer-hub?highlight=me');
+      navigate(`/influencer-hub?q=@${formData.handle}`);
       
     } catch (error) {
       console.error('Publish failed:', error);
@@ -142,30 +168,48 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
     updateField('category_tags', updated);
   };
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.display_name && formData.handle; // Avatar will fallback if empty
-      case 2:
-        return formData.bio && formData.bio.length >= 80;
-      case 3:
-        return formData.category_tags && formData.category_tags.length > 0;
-      case 4:
-        return true; // Social links are optional
-      case 5:
+  // Step validation - allows proceeding when step requirements are met
+  const canProceedFromStep = (step: number) => {
+    switch (step) {
+      case 1: // Basics: display name + handle (with availability check)
+        return !!(
+          formData.display_name?.trim() && 
+          formData.handle?.trim() && 
+          /^[a-z0-9_]{3,24}$/.test(formData.handle) &&
+          handleAvailability.isAvailable !== false
+        );
+      case 2: // About: bio minimum 80 chars
+        return !!(formData.bio?.trim() && formData.bio.trim().length >= 80);
+      case 3: // Specialty tags: 1-3 tags required  
+        return !!(formData.category_tags && formData.category_tags.length >= 1 && formData.category_tags.length <= 3);
+      case 4: // Social links: always optional, can proceed
+        return true;
+      case 5: // Review: must agree to terms
         return agreedToTerms;
       default:
         return false;
     }
   };
 
-  // Compute validation for publishing
+  // Overall validation for publishing
   const canPublishNow = () => {
-    const hasNameAndHandle = !!formData.display_name && !!formData.handle;
-    const hasBio = (formData.bio?.length ?? 0) >= 80;
+    const hasNameAndHandle = !!(formData.display_name?.trim() && formData.handle?.trim());
+    const hasBio = (formData.bio?.trim()?.length ?? 0) >= 80;
     const hasTags = (formData.category_tags?.length ?? 0) >= 1 && (formData.category_tags?.length ?? 0) <= 3;
-    // Avatar not required since we have fallback
-    return hasNameAndHandle && hasBio && hasTags && agreedToTerms;
+    const handleIsValid = handleAvailability.isAvailable !== false;
+    return hasNameAndHandle && hasBio && hasTags && handleIsValid && agreedToTerms;
+  };
+
+  const nextStep = () => {
+    if (currentStep < 5 && canProceedFromStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   if (!open) return null;
@@ -215,19 +259,13 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="avatar">Profile Photo</Label>
-                    <div className="flex items-center gap-4 mt-2">
-                      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                        {formData.avatar_url ? (
-                          <img src={formData.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
-                        ) : (
-                          <Camera className="h-6 w-6 text-muted-foreground" />
-                        )}
-                      </div>
-                      <Input
-                        placeholder="Avatar URL"
-                        value={formData.avatar_url || ''}
-                        onChange={(e) => updateField('avatar_url', e.target.value)}
+                    <Label>Profile Photo</Label>
+                    <div className="mt-2">
+                      <AvatarUpload
+                        currentUrl={formData.avatar_url}
+                        onUpload={(url) => updateField('avatar_url', url)}
+                        onDelete={() => updateField('avatar_url', '')}
+                        size="lg"
                       />
                     </div>
                   </div>
@@ -243,14 +281,38 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
                   </div>
 
                   <div>
-                    <Label htmlFor="handle">Handle</Label>
-                    <Input
-                      id="handle"
-                      value={formData.handle || ''}
-                      onChange={(e) => updateField('handle', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder="your_handle"
-                      pattern="^[a-z0-9_]{3,24}$"
-                    />
+                    <Label htmlFor="handle">Hub Handle (public @name) *</Label>
+                    <div className="relative mt-1">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</div>
+                      <Input
+                        id="handle"
+                        value={formData.handle || ''}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                          updateField('handle', cleaned);
+                        }}
+                        placeholder="your_handle"
+                        className="pl-8"
+                        maxLength={24}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {handleAvailability.isChecking && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {handleAvailability.isAvailable === true && (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                        {handleAvailability.isAvailable === false && (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Shown in your URL (voyage.app/c/@name). Lowercase letters, numbers, underscores.
+                    </div>
+                    {handleAvailability.error && (
+                      <div className="text-xs text-destructive mt-1">{handleAvailability.error}</div>
+                    )}
                   </div>
 
                   <div>
@@ -283,17 +345,17 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="bio">Bio</Label>
+                    <Label htmlFor="bio">Bio *</Label>
                     <Textarea
                       id="bio"
                       value={formData.bio || ''}
                       onChange={(e) => updateField('bio', e.target.value)}
                       placeholder="Share your story, expertise, and what motivates you..."
                       rows={6}
-                      minLength={80}
+                      className="mt-1"
                     />
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {(formData.bio || '').length}/80 characters minimum
+                    <div className={`text-xs mt-1 ${(formData.bio?.trim()?.length ?? 0) >= 80 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {formData.bio?.trim()?.length ?? 0}/80 characters minimum
                     </div>
                   </div>
 
@@ -374,23 +436,10 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
                   <p className="text-muted-foreground">Connect your social profiles (optional)</p>
                 </div>
 
-                <div className="space-y-4">
-                  {['instagram', 'youtube', 'tiktok', 'twitter', 'website'].map((platform) => (
-                    <div key={platform}>
-                      <Label htmlFor={platform}>{platform.charAt(0).toUpperCase() + platform.slice(1)}</Label>
-                      <Input
-                        id={platform}
-                        value={formData.social_links?.[platform] || ''}
-                        onChange={(e) => updateField('social_links', { 
-                          ...formData.social_links, 
-                          [platform]: e.target.value 
-                        })}
-                        placeholder={`Your ${platform} URL`}
-                        type="url"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <SocialLinksInput
+                  values={formData.social_links || {}}
+                  onChange={(links) => updateField('social_links', links)}
+                />
               </motion.div>
             )}
 
@@ -470,11 +519,11 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
 
           {/* Navigation */}
           <div className="flex justify-between items-center mt-8 pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-              disabled={currentStep === 1}
-            >
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+              >
               Back
             </Button>
 
@@ -489,8 +538,8 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
 
               {currentStep < 5 ? (
                 <Button
-                  onClick={() => setCurrentStep(prev => prev + 1)}
-                  disabled={!canProceed()}
+                  onClick={nextStep}
+                  disabled={!canProceedFromStep(currentStep)}
                 >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
