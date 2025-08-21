@@ -19,10 +19,10 @@ export const HeaderHero = ({ monthlyGrowth, isLoading }: HeaderHeroProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative"
+      className="relative z-0"
     >
       {/* Gradient hero background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-2xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-2xl pointer-events-none" />
       
       <div className="relative p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">

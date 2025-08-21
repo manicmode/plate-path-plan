@@ -1033,59 +1033,97 @@ const InfluencerHubContent = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          {/* Responsive Tab Navigation */}
-          <div className="sticky top-3 z-30 bg-white/80 dark:bg-black/80 backdrop-blur rounded-2xl p-1 mb-6 pb-[max(env(safe-area-inset-bottom),0px)]">
-            <TabsList className="grid w-full grid-cols-6 gap-1 bg-transparent">
-              <TabsTrigger 
-                value="profile" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
+          {/* Accessible Segmented Control Tab Navigation */}
+          <div className="sticky top-3 z-20 mb-6">
+            <div className="rounded-xl bg-black/50 backdrop-blur p-1 md:p-2 overflow-x-auto md:overflow-visible pointer-events-auto relative z-20">
+              <div
+                role="tablist"
+                aria-label="Dashboard sections"
+                className="grid grid-cols-6 gap-1 min-w-max md:min-w-0"
+                onKeyDown={(e) => {
+                  const tabs = ['profile', 'challenges', 'products', 'analytics', 'broadcasts', 'monetization'];
+                  const currentIndex = tabs.indexOf(activeTab);
+                  
+                  if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                    e.preventDefault();
+                    handleTabChange(tabs[currentIndex - 1]);
+                    (e.target as HTMLElement).focus();
+                  } else if (e.key === 'ArrowRight' && currentIndex < tabs.length - 1) {
+                    e.preventDefault();
+                    handleTabChange(tabs[currentIndex + 1]);
+                    (e.target as HTMLElement).focus();
+                  }
+                }}
               >
-                <User className="h-4 w-4" />
-                <span className="hidden xs:inline">Profile</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="challenges" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
-              >
-                <Trophy className="h-4 w-4" />
-                <span className="hidden xs:inline">Challenges</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="products" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
-              >
-                <Package className="h-4 w-4" />
-                <span className="hidden xs:inline">Products</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden xs:inline">Analytics</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="broadcasts" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
-              >
-                <Megaphone className="h-4 w-4" />
-                <span className="hidden xs:inline">Broadcasts</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="monetization" 
-                data-testid="monetization-tab" 
-                className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                style={{ minHeight: '44px' }}
-              >
-                <DollarSign className="h-4 w-4" />
-                <span className="hidden xs:inline">Money</span>
-              </TabsTrigger>
-            </TabsList>
+                <TabsTrigger 
+                  value="profile"
+                  role="tab"
+                  aria-selected={activeTab === 'profile'}
+                  aria-controls="profile-panel"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <User className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Profile</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="challenges"
+                  role="tab"
+                  aria-selected={activeTab === 'challenges'}
+                  aria-controls="challenges-panel"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <Trophy className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Challenges</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="products"
+                  role="tab"
+                  aria-selected={activeTab === 'products'}
+                  aria-controls="products-panel"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <Package className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Products</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="analytics"
+                  role="tab"
+                  aria-selected={activeTab === 'analytics'}
+                  aria-controls="analytics-panel"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <BarChart3 className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Analytics</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="broadcasts"
+                  role="tab"
+                  aria-selected={activeTab === 'broadcasts'}
+                  aria-controls="broadcasts-panel"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <Megaphone className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Broadcasts</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="monetization"
+                  role="tab"
+                  aria-selected={activeTab === 'monetization'}
+                  aria-controls="monetization-panel"
+                  data-testid="monetization-tab"
+                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <DollarSign className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden md:inline truncate">Money</span>
+                </TabsTrigger>
+              </div>
+            </div>
           </div>
 
           {/* Tab Content with Animations */}
@@ -1093,28 +1131,29 @@ const InfluencerHubContent = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
+            className="relative z-0"
           >
-            <TabsContent value="profile" className="mt-0">
+            <TabsContent value="profile" className="mt-0" id="profile-panel" role="tabpanel">
               <ProfileTab />
             </TabsContent>
 
-            <TabsContent value="challenges" className="mt-0">
+            <TabsContent value="challenges" className="mt-0" id="challenges-panel" role="tabpanel">
               <ChallengesTab />
             </TabsContent>
 
-            <TabsContent value="products" className="mt-0">
+            <TabsContent value="products" className="mt-0" id="products-panel" role="tabpanel">
               <ProductsTab />
             </TabsContent>
 
-            <TabsContent value="analytics" className="mt-0">
+            <TabsContent value="analytics" className="mt-0" id="analytics-panel" role="tabpanel">
               <AnalyticsTab />
             </TabsContent>
 
-            <TabsContent value="broadcasts" className="mt-0">
+            <TabsContent value="broadcasts" className="mt-0" id="broadcasts-panel" role="tabpanel">
               <BroadcastsTab />
             </TabsContent>
 
-            <TabsContent value="monetization" className="mt-0">
+            <TabsContent value="monetization" className="mt-0" id="monetization-panel" role="tabpanel">
               <MonetizationTab />
             </TabsContent>
           </motion.div>
