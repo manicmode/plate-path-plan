@@ -2111,6 +2111,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          percent_off: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          percent_off: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          percent_off?: number
+        }
+        Relationships: []
+      }
       custom_routines: {
         Row: {
           created_at: string
@@ -3836,6 +3863,36 @@ export type Database = {
           prediction_date?: string
           user_id?: string
           user_rating?: number | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          audience: string
+          body: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          audience?: string
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          audience?: string
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
