@@ -9018,6 +9018,10 @@ export type Database = {
         Args: { challenge_id_param: string }
         Returns: undefined
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_feature_enabled: {
         Args: { feature_key: string }
         Returns: boolean
