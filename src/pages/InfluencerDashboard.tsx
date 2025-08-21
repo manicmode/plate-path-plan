@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { InfluencerGuard } from '@/components/auth/InfluencerGuard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +38,7 @@ import { useInfluencerStats, useMonthlyRevenue } from '@/data/influencers/useInf
 
 // New Components
 import { HeaderHero } from '@/components/influencer/HeaderHero';
+import { CreatorTabs } from '@/components/influencer/CreatorTabs';
 import { StatCard } from '@/components/influencer/StatCard';
 import { Sparkline } from '@/components/influencer/Sparkline';
 import { ChallengeCard } from '@/components/influencer/ChallengeCard';
@@ -998,133 +998,65 @@ const InfluencerHubContent = () => {
 
   // MonetizationTab component that has access to local state
   const MonetizationTab = () => {
+    const subTabs = [
+      { key: 'earnings', label: 'Earnings' },
+      { key: 'payouts', label: 'Payouts' }
+    ];
+
     return (
       <div className="space-y-6">
-        <Tabs value={monetizationSubTab} onValueChange={handleMonetizationSubTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="earnings" data-testid="earnings-tab">
-              Earnings
-            </TabsTrigger>
-            <TabsTrigger value="payouts" data-testid="payouts-tab">
-              Payouts
-            </TabsTrigger>
-          </TabsList>
+        {/* Sub-navigation for monetization */}
+        <div className="flex space-x-1 rounded-lg bg-muted p-1">
+          {subTabs.map((subTab) => (
+            <button
+              key={subTab.key}
+              onClick={() => handleMonetizationSubTabChange(subTab.key)}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                monetizationSubTab === subTab.key
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              data-testid={`${subTab.key}-tab`}
+            >
+              {subTab.label}
+            </button>
+          ))}
+        </div>
 
-          <TabsContent value="earnings">
-            <EarningsTab />
-          </TabsContent>
-
-          <TabsContent value="payouts">
-            <PayoutsTab />
-          </TabsContent>
-        </Tabs>
+        {/* Content based on active sub-tab */}
+        {monetizationSubTab === 'earnings' && <EarningsTab />}
+        {monetizationSubTab === 'payouts' && <PayoutsTab />}
       </div>
     );
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto p-3 sm:p-6 space-y-6 max-w-7xl">
-        {/* Header Hero */}
-        <HeaderHero 
-          monthlyGrowth={stats?.monthly_growth} 
-          isLoading={!stats}
-        />
+  // Define tab items
+  const tabItems = [
+    { key: 'profile', icon: User, label: 'Profile' },
+    { key: 'challenges', icon: Trophy, label: 'Challenges' },
+    { key: 'products', icon: Package, label: 'Products' },
+    { key: 'analytics', icon: BarChart3, label: 'Analytics' },
+    { key: 'broadcasts', icon: Megaphone, label: 'Broadcasts' },
+    { key: 'monetization', icon: DollarSign, label: 'Money' }
+  ];
 
-        {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          {/* Accessible Segmented Control Tab Navigation */}
-          <div className="sticky top-3 z-20 mb-6">
-            <div className="rounded-xl bg-black/50 backdrop-blur p-1 md:p-2 overflow-x-auto md:overflow-visible pointer-events-auto relative z-20">
-              <div
-                role="tablist"
-                aria-label="Dashboard sections"
-                className="grid grid-cols-6 gap-1 min-w-max md:min-w-0"
-                onKeyDown={(e) => {
-                  const tabs = ['profile', 'challenges', 'products', 'analytics', 'broadcasts', 'monetization'];
-                  const currentIndex = tabs.indexOf(activeTab);
-                  
-                  if (e.key === 'ArrowLeft' && currentIndex > 0) {
-                    e.preventDefault();
-                    handleTabChange(tabs[currentIndex - 1]);
-                    (e.target as HTMLElement).focus();
-                  } else if (e.key === 'ArrowRight' && currentIndex < tabs.length - 1) {
-                    e.preventDefault();
-                    handleTabChange(tabs[currentIndex + 1]);
-                    (e.target as HTMLElement).focus();
-                  }
-                }}
-              >
-                <TabsTrigger 
-                  value="profile"
-                  role="tab"
-                  aria-selected={activeTab === 'profile'}
-                  aria-controls="profile-panel"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <User className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Profile</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="challenges"
-                  role="tab"
-                  aria-selected={activeTab === 'challenges'}
-                  aria-controls="challenges-panel"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <Trophy className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Challenges</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="products"
-                  role="tab"
-                  aria-selected={activeTab === 'products'}
-                  aria-controls="products-panel"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <Package className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Products</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="analytics"
-                  role="tab"
-                  aria-selected={activeTab === 'analytics'}
-                  aria-controls="analytics-panel"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Analytics</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="broadcasts"
-                  role="tab"
-                  aria-selected={activeTab === 'broadcasts'}
-                  aria-controls="broadcasts-panel"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <Megaphone className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Broadcasts</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="monetization"
-                  role="tab"
-                  aria-selected={activeTab === 'monetization'}
-                  aria-controls="monetization-panel"
-                  data-testid="monetization-tab"
-                  className="flex items-center justify-center gap-1 md:gap-2 px-2 py-3 text-xs md:text-sm rounded-lg transition-all duration-200 data-[state=active]:gradient-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                >
-                  <DollarSign className="h-4 w-4 flex-shrink-0" />
-                  <span className="hidden md:inline truncate">Money</span>
-                </TabsTrigger>
-              </div>
-            </div>
-          </div>
+  // Safe mode wrapper to prevent crashes
+  try {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="container mx-auto p-3 sm:p-6 space-y-6 max-w-7xl">
+          {/* Header Hero */}
+          <HeaderHero 
+            monthlyGrowth={stats?.monthly_growth} 
+            isLoading={!stats}
+          />
+
+          {/* Creator Tabs Navigation */}
+          <CreatorTabs 
+            value={activeTab}
+            onChange={handleTabChange}
+            items={tabItems}
+          />
 
           {/* Tab Content with Animations */}
           <motion.div 
@@ -1133,37 +1065,71 @@ const InfluencerHubContent = () => {
             transition={{ duration: 0.3 }}
             className="relative z-0"
           >
-            <TabsContent value="profile" className="mt-0" id="profile-panel" role="tabpanel">
-              <ProfileTab />
-            </TabsContent>
+            {activeTab === 'profile' && (
+              <div id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
+                <ProfileTab />
+              </div>
+            )}
 
-            <TabsContent value="challenges" className="mt-0" id="challenges-panel" role="tabpanel">
-              <ChallengesTab />
-            </TabsContent>
+            {activeTab === 'challenges' && (
+              <div id="challenges-panel" role="tabpanel" aria-labelledby="challenges-tab">
+                <ChallengesTab />
+              </div>
+            )}
 
-            <TabsContent value="products" className="mt-0" id="products-panel" role="tabpanel">
-              <ProductsTab />
-            </TabsContent>
+            {activeTab === 'products' && (
+              <div id="products-panel" role="tabpanel" aria-labelledby="products-tab">
+                <ProductsTab />
+              </div>
+            )}
 
-            <TabsContent value="analytics" className="mt-0" id="analytics-panel" role="tabpanel">
-              <AnalyticsTab />
-            </TabsContent>
+            {activeTab === 'analytics' && (
+              <div id="analytics-panel" role="tabpanel" aria-labelledby="analytics-tab">
+                <AnalyticsTab />
+              </div>
+            )}
 
-            <TabsContent value="broadcasts" className="mt-0" id="broadcasts-panel" role="tabpanel">
-              <BroadcastsTab />
-            </TabsContent>
+            {activeTab === 'broadcasts' && (
+              <div id="broadcasts-panel" role="tabpanel" aria-labelledby="broadcasts-tab">
+                <BroadcastsTab />
+              </div>
+            )}
 
-            <TabsContent value="monetization" className="mt-0" id="monetization-panel" role="tabpanel">
-              <MonetizationTab />
-            </TabsContent>
+            {activeTab === 'monetization' && (
+              <div id="monetization-panel" role="tabpanel" aria-labelledby="monetization-tab">
+                <MonetizationTab />
+              </div>
+            )}
           </motion.div>
-        </Tabs>
+        </div>
+        
+        {/* Mobile Safe Area for Sticky Elements */}
+        <div className="h-20 sm:hidden" />
       </div>
-      
-      {/* Mobile Safe Area for Sticky Elements */}
-      <div className="h-20 sm:hidden" />
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error('Dashboard render error:', error);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <Card className="max-w-md mx-auto m-6">
+          <CardHeader>
+            <CardTitle>Dashboard Loading...</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              We're setting up your dashboard. This should only take a moment.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Refresh Page
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 };
 
 export default function InfluencerHub() {
