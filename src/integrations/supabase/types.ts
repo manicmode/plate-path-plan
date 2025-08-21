@@ -1460,6 +1460,62 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge: {
+        Row: {
+          banner_url: string | null
+          created_at: string | null
+          description: string | null
+          end_at: string
+          id: string
+          influencer_id: string
+          is_paid: boolean | null
+          max_participants: number | null
+          price_cents: number | null
+          published_at: string | null
+          start_at: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_at: string
+          id?: string
+          influencer_id: string
+          is_paid?: boolean | null
+          max_participants?: number | null
+          price_cents?: number | null
+          published_at?: string | null
+          start_at: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_at?: string
+          id?: string
+          influencer_id?: string
+          is_paid?: boolean | null
+          max_participants?: number | null
+          price_cents?: number | null
+          published_at?: string | null
+          start_at?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencer"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_invitations: {
         Row: {
           id: string
@@ -1494,6 +1550,35 @@ export type Database = {
             columns: ["private_challenge_id"]
             isOneToOne: false
             referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_join: {
+        Row: {
+          challenge_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_join_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenge"
             referencedColumns: ["id"]
           },
         ]
@@ -2591,6 +2676,83 @@ export type Database = {
           volume?: number
         }
         Relationships: []
+      }
+      influencer: {
+        Row: {
+          avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string
+          handle: string
+          id: string
+          niches: string[] | null
+          socials: Json | null
+          tagline: string | null
+          updated_at: string | null
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name: string
+          handle: string
+          id?: string
+          niches?: string[] | null
+          socials?: Json | null
+          tagline?: string | null
+          updated_at?: string | null
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string
+          handle?: string
+          id?: string
+          niches?: string[] | null
+          socials?: Json | null
+          tagline?: string | null
+          updated_at?: string | null
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
+      influencer_follow: {
+        Row: {
+          created_at: string | null
+          follower_id: string
+          id: string
+          influencer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id: string
+          id?: string
+          influencer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string
+          id?: string
+          influencer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_follow_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencer"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       influencer_followers: {
         Row: {
