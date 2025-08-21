@@ -76,14 +76,14 @@ export const AdminStatCard = ({
       whileHover={{ scale: 1.02 }}
       className={className}
     >
-      <Card className="rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm hover:bg-card/90 dark:hover:bg-card/90 transition-all duration-300 shadow-lg hover:shadow-xl">
+      <Card className="rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm hover:bg-card/90 dark:hover:bg-card/90 transition-all duration-300 shadow-lg hover:shadow-xl h-full">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {title}
           </CardTitle>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col justify-between h-full">
           <div className="space-y-1">
             {isLoading ? (
               <div className="h-8 w-20 bg-muted-foreground/20 rounded animate-pulse" />
@@ -92,20 +92,25 @@ export const AdminStatCard = ({
                 <AnimatedNumber value={value} formatValue={formatValue} />
               </div>
             )}
-            {trend && !isLoading && (
-              <div className="flex items-center text-xs">
-                <span className={`font-medium ${
-                  trend.isPositive 
-                    ? 'text-emerald-500' 
-                    : trend.isPositive === false 
-                      ? 'text-red-500' 
-                      : 'text-muted-foreground'
-                }`}>
-                  {trend.isPositive !== undefined && (trend.isPositive ? '+' : '')}{trend.value}
-                </span>
-                <span className="text-muted-foreground ml-1">{trend.label}</span>
-              </div>
-            )}
+            {/* Always render trend area for consistent height */}
+            <div className="h-5 flex items-center text-xs">
+              {trend && !isLoading ? (
+                <>
+                  <span className={`font-medium ${
+                    trend.isPositive 
+                      ? 'text-emerald-500' 
+                      : trend.isPositive === false 
+                        ? 'text-red-500' 
+                        : 'text-muted-foreground'
+                  }`}>
+                    {trend.isPositive !== undefined && (trend.isPositive ? '+' : '')}{trend.value}
+                  </span>
+                  <span className="text-muted-foreground ml-1">{trend.label}</span>
+                </>
+              ) : (
+                <span className="text-transparent">placeholder</span>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
