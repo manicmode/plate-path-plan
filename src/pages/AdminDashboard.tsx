@@ -201,7 +201,7 @@ const AdminDashboard = () => {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-0 z-40 bg-gradient-to-r from-primary via-primary/90 to-secondary backdrop-blur-sm border-b border-white/10"
+          className="sticky top-0 z-40 bg-gradient-to-r from-primary via-primary/90 to-secondary/70 backdrop-blur-sm border-b border-white/10"
         >
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center gap-4">
