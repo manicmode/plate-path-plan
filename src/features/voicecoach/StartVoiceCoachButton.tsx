@@ -6,8 +6,13 @@ import { notify } from "@/lib/notify";
 
 export default function StartVoiceCoachButton() {
   const { enabled, loading } = useFeatureFlagOptimized("voice_coach_mvp");
+  const { enabled: killSwitchDisabled } = useFeatureFlagOptimized("voice_coach_disabled");
   const { setUserFlag } = useFeatureFlagActions();
   const { refresh } = useMyFeatureFlags();
+
+  // Environment checks
+  const inIframe = typeof window !== 'undefined' && window.top !== window.self;
+  const insecure = typeof window !== 'undefined' && !window.isSecureContext;
 
   const handleToggleUserOverride = async () => {
     const success = await setUserFlag("voice_coach_mvp", !enabled);
@@ -17,13 +22,30 @@ export default function StartVoiceCoachButton() {
     }
   };
 
-  const handleStartVoiceCoach = () => {
+  const handleStartVoiceCoach = async () => {
     if (!enabled) {
       notify.info("Voice Coach is coming soon for your account.");
       return;
     }
-    // Start flow logic would go here
-    notify.info("Starting Voice Coach...");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // TODO: Start recording with the returned stream
+      notify.success("Microphone access granted! Starting Voice Coach...");
+      
+      // Stop the stream for now since we're just testing permission
+      stream.getTracks().forEach(track => track.stop());
+    } catch (error: any) {
+      if (error?.name === 'NotAllowedError') {
+        notify.error('Microphone permission is required. Tap the address bar → Website Settings → Microphone → Allow.');
+      } else if (error?.name === 'NotFoundError') {
+        notify.error('No microphone detected on this device.');
+      } else if (inIframe || insecure) {
+        notify.error('Open in a new browser tab (HTTPS) to use the microphone.');
+      } else {
+        notify.error('Could not access microphone.');
+      }
+    }
   };
 
   if (loading) {
@@ -33,11 +55,25 @@ export default function StartVoiceCoachButton() {
   return (
     <div className="space-y-2">
       <Button
-        disabled={!enabled}
+        disabled={killSwitchDisabled}
         onClick={handleStartVoiceCoach}
       >
-        Start Voice Coach
+        Start a Voice Session
       </Button>
+
+      {(inIframe || insecure) && (
+        <div className="mt-2 p-2 text-xs bg-muted/50 rounded border">
+          Microphone requires HTTPS and a top-level tab.{' '}
+          <a 
+            href={typeof window !== 'undefined' ? window.location.href : '#'} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="underline hover:no-underline"
+          >
+            Open in Browser
+          </a>
+        </div>
+      )}
 
       {/* Dev helper: quickly flip your own override */}
       <Button variant="outline" onClick={handleToggleUserOverride}>
