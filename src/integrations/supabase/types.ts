@@ -476,6 +476,170 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_click: {
+        Row: {
+          affiliate_partner_id: string
+          clicked_at: string | null
+          id: string
+          ip_address: unknown | null
+          referrer_url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          affiliate_partner_id: string
+          clicked_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          referrer_url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          affiliate_partner_id?: string
+          clicked_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          referrer_url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_click_affiliate_partner_id_fkey"
+            columns: ["affiliate_partner_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_partner"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_conversion: {
+        Row: {
+          affiliate_partner_id: string
+          challenge_order_id: string
+          commission_amount_cents: number
+          converted_at: string | null
+          id: string
+        }
+        Insert: {
+          affiliate_partner_id: string
+          challenge_order_id: string
+          commission_amount_cents: number
+          converted_at?: string | null
+          id?: string
+        }
+        Update: {
+          affiliate_partner_id?: string
+          challenge_order_id?: string
+          commission_amount_cents?: number
+          converted_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_conversion_affiliate_partner_id_fkey"
+            columns: ["affiliate_partner_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_conversion_challenge_order_id_fkey"
+            columns: ["challenge_order_id"]
+            isOneToOne: true
+            referencedRelation: "challenge_order"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_partner: {
+        Row: {
+          affiliate_program_id: string
+          created_at: string | null
+          id: string
+          partner_user_id: string
+          referral_code: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_program_id: string
+          created_at?: string | null
+          id?: string
+          partner_user_id: string
+          referral_code: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_program_id?: string
+          created_at?: string | null
+          id?: string
+          partner_user_id?: string
+          referral_code?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_partner_affiliate_program_id_fkey"
+            columns: ["affiliate_program_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_program"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_partner_affiliate_program_id_fkey"
+            columns: ["affiliate_program_id"]
+            isOneToOne: false
+            referencedRelation: "v_affiliate_summary"
+            referencedColumns: ["program_id"]
+          },
+        ]
+      }
+      affiliate_program: {
+        Row: {
+          commission_rate: number
+          cookie_duration_days: number
+          created_at: string | null
+          id: string
+          influencer_id: string
+          is_active: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          commission_rate?: number
+          cookie_duration_days?: number
+          created_at?: string | null
+          id?: string
+          influencer_id: string
+          is_active?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          commission_rate?: number
+          cookie_duration_days?: number
+          created_at?: string | null
+          id?: string
+          influencer_id?: string
+          is_active?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "influencer"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "v_influencer_earnings"
+            referencedColumns: ["influencer_id"]
+          },
+        ]
+      }
       ai_generated_routines: {
         Row: {
           created_at: string
@@ -1514,6 +1678,13 @@ export type Database = {
             referencedRelation: "influencer"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "challenge_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_earnings"
+            referencedColumns: ["influencer_id"]
+          },
         ]
       }
       challenge_invitations: {
@@ -1658,6 +1829,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenges_with_counts"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_order: {
+        Row: {
+          affiliate_partner_id: string | null
+          amount_cents: number
+          buyer_user_id: string
+          challenge_id: string
+          created_at: string | null
+          currency: string
+          id: string
+          influencer_id: string
+          status: string
+          stripe_session_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_partner_id?: string | null
+          amount_cents: number
+          buyer_user_id: string
+          challenge_id: string
+          created_at?: string | null
+          currency?: string
+          id?: string
+          influencer_id: string
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_partner_id?: string | null
+          amount_cents?: number
+          buyer_user_id?: string
+          challenge_id?: string
+          created_at?: string | null
+          currency?: string
+          id?: string
+          influencer_id?: string
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_order_affiliate_partner_id_fkey"
+            columns: ["affiliate_partner_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_order_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_order_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencer"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_order_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_earnings"
+            referencedColumns: ["influencer_id"]
           },
         ]
       }
@@ -2682,11 +2924,14 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          connect_account_id: string | null
           created_at: string | null
+          default_currency: string | null
           display_name: string
           handle: string
           id: string
           niches: string[] | null
+          payouts_enabled: boolean | null
           socials: Json | null
           tagline: string | null
           updated_at: string | null
@@ -2697,11 +2942,14 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connect_account_id?: string | null
           created_at?: string | null
+          default_currency?: string | null
           display_name: string
           handle: string
           id?: string
           niches?: string[] | null
+          payouts_enabled?: boolean | null
           socials?: Json | null
           tagline?: string | null
           updated_at?: string | null
@@ -2712,11 +2960,14 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connect_account_id?: string | null
           created_at?: string | null
+          default_currency?: string | null
           display_name?: string
           handle?: string
           id?: string
           niches?: string[] | null
+          payouts_enabled?: boolean | null
           socials?: Json | null
           tagline?: string | null
           updated_at?: string | null
@@ -2751,6 +3002,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "influencer"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencer_follow_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_earnings"
+            referencedColumns: ["influencer_id"]
           },
         ]
       }
@@ -7376,6 +7634,32 @@ export type Database = {
         }
         Relationships: []
       }
+      v_affiliate_summary: {
+        Row: {
+          influencer_id: string | null
+          partner_count: number | null
+          program_id: string | null
+          total_clicks: number | null
+          total_commission_cents: number | null
+          total_conversions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "influencer"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "v_influencer_earnings"
+            referencedColumns: ["influencer_id"]
+          },
+        ]
+      }
       v_habit_consistency: {
         Row: {
           done_30d: number | null
@@ -7476,6 +7760,16 @@ export type Database = {
             referencedColumns: ["habit_slug"]
           },
         ]
+      }
+      v_influencer_earnings: {
+        Row: {
+          influencer_id: string | null
+          paid_earnings_cents: number | null
+          paid_orders_count: number | null
+          total_earnings_cents: number | null
+          total_orders: number | null
+        }
+        Relationships: []
       }
       vw_habit_progress_month: {
         Row: {
