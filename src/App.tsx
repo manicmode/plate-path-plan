@@ -115,7 +115,6 @@ const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
-const AdminBootstrapPage = lazy(() => import('@/pages/AdminBootstrapPage'));
 // Voice Coach - Isolated lazy loading
 const VoiceCoach = lazy(() => import('@/voice/index'));
 // ArenaDebug removed - V1 legacy
@@ -484,16 +483,11 @@ function AppContent() {
                            <DevChallengesPage />
                          </ProtectedRoute>
                         } />
-                         <Route path="/feature-flags" element={
-                           <ProtectedRoute>
-                             <FeatureFlagsPage />
-                           </ProtectedRoute>
-                         } />
-                         <Route path="/admin-bootstrap" element={
-                           <ProtectedRoute>
-                             <AdminBootstrapPage />
-                           </ProtectedRoute>
-                         } />
+                          <Route path="/feature-flags" element={
+                            <ProtectedRoute>
+                              <FeatureFlagsPage />
+                            </ProtectedRoute>
+                          } />
                         {/* Temporarily disabled arena debug route */}
                       
                       <Route path="*" element={<NotFound />} />
