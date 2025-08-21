@@ -58,7 +58,10 @@ const ProfileTab = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showListingSetup, setShowListingSetup] = useState(false);
-  const { influencerData, unpublishFromHub, canPublish, validationErrors } = useInfluencerListing();
+  const { influencerData, unpublishFromHub, canPublish, validationErrors, isLoading } = useInfluencerListing();
+
+  // Guard against null user
+  if (!user) return <div className="text-center py-8 text-muted-foreground">Loading profile...</div>;
 
   const handleCopyProfileLink = () => {
     const profileUrl = `${window.location.origin}/profile/${user?.id}`;
@@ -241,8 +244,8 @@ const ProfileTab = () => {
                 This is how your public profile looks to visitors
               </div>
               <div className="inline-block p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                <div className="font-semibold">{user?.name || 'Your Name'}</div>
-                <div className="text-sm text-muted-foreground">@{user?.email?.split('@')[0] || 'username'}</div>
+                <div className="font-semibold">{influencerData?.display_name || user?.name || 'Your Name'}</div>
+                <div className="text-sm text-muted-foreground">@{influencerData?.handle || user?.email?.split('@')[0] || 'username'}</div>
               </div>
             </div>
           </CardContent>
@@ -929,7 +932,7 @@ const PayoutsTab = () => {
 
 
 const InfluencerHubContent = () => {
-  const { data: stats } = useInfluencerStats();
+  const { data: stats, isLoading: statsLoading } = useInfluencerStats();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
@@ -1040,6 +1043,25 @@ const InfluencerHubContent = () => {
     { key: 'monetization', icon: DollarSign, label: 'Money' }
   ];
 
+  // Loading skeleton while data loads
+  if (statsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="container mx-auto p-3 sm:p-6 space-y-6 max-w-7xl">
+          {/* Loading skeleton */}
+          <div className="animate-pulse">
+            <div className="h-48 bg-muted/20 rounded-2xl mb-6"></div>
+            <div className="h-16 bg-muted/20 rounded-xl mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-64 bg-muted/20 rounded-2xl"></div>
+              <div className="h-32 bg-muted/20 rounded-2xl"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Safe mode wrapper to prevent crashes
   try {
     return (
@@ -1048,7 +1070,7 @@ const InfluencerHubContent = () => {
           {/* Header Hero */}
           <HeaderHero 
             monthlyGrowth={stats?.monthly_growth} 
-            isLoading={!stats}
+            isLoading={statsLoading}
           />
 
           {/* Creator Tabs Navigation */}
@@ -1056,6 +1078,7 @@ const InfluencerHubContent = () => {
             value={activeTab}
             onChange={handleTabChange}
             items={tabItems}
+            className="pointer-events-auto relative z-20"
           />
 
           {/* Tab Content with Animations */}
