@@ -8627,6 +8627,10 @@ export type Database = {
         Args: { date_param: string; user_id_param: string }
         Returns: Json
       }
+      bootstrap_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       calculate_challenge_progress: {
         Args: { participation_id_param: string }
         Returns: undefined
@@ -8700,6 +8704,10 @@ export type Database = {
       compute_next_due_at: {
         Args: { p_reminder_at: string; p_schedule: Json; p_start_date: string }
         Returns: string
+      }
+      count_admins: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       current_rank20_challenge_id: {
         Args: Record<PropertyKey, never>
