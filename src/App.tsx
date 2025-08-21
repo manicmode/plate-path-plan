@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import AppErrorBoundary from '@/components/system/AppErrorBoundary';
 import { requestIdle } from '@/utils/safeIdle';
 import { ROUTES } from '@/routes/constants';
+import { APP_CONFIG } from '@/config/app';
+import { verifyHubRoutes } from '@/utils/hubRouteCheck';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -166,6 +168,10 @@ function AppContent() {
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
     prefetchCriticalComponents();
+    // Run hub route verification in development
+    if (process.env.NODE_ENV === 'development') {
+      verifyHubRoutes();
+    }
   }, []);
 
   return (

@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import HomeAIInsights from '@/components/HomeAIInsights';
 import { HomeCtaTicker } from '@/components/HomeCtaTicker';
+import { ROUTES } from '@/routes/constants';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
@@ -1745,7 +1746,7 @@ const Home = () => {
               },
               {
                 id: 'influencers',
-                title: 'Influencers',
+                title: 'Influencer Hub',
                 emoji: '⭐️',
                 color: 'from-blue-600 via-cyan-400 to-cyan-600',
                 shadowColor: 'shadow-cyan-500/40',
@@ -1772,7 +1773,11 @@ const Home = () => {
                 } else if (tileId === 'game-challenge') {
                   navigate('/game-and-challenge');
                 } else if (tileId === 'influencers') {
-                  setIsComingSoonOpen(true);
+                  // Fire analytics event
+                  if (typeof window !== 'undefined' && (window as any).gtag) {
+                    (window as any).gtag('event', 'influencer_hub.nav_open_from_home');
+                  }
+                  navigate(ROUTES.INFLUENCER_HUB);
                 } else if (tileId === 'exercise-hub') {
                   navigate('/exercise-hub');
                 } else if (tileId === 'habit-central') {
