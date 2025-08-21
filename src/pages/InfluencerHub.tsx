@@ -3,7 +3,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { InfluencerFilters } from '@/components/influencers/InfluencerFilters';
 import { InfluencerList } from '@/components/influencers/InfluencerList';
 import { InfluencerProfile } from '@/components/influencers/InfluencerProfile';
-import { useInfluencerSearch } from '@/data/influencers/useInfluencerSearch';
+import { useInfluencerSearchPublic } from '@/data/influencers/useInfluencerSearchPublic';
 import { useInfluencerProfile } from '@/data/influencers/useInfluencerProfile';
 import { useFollowMutation } from '@/data/influencers/useFollowMutation';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,7 @@ const InfluencerHub = () => {
 
   const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
 
-  // Fetch influencers with real data
+  // Fetch influencers with real data from public view
   const { 
     data: influencersData,
     fetchNextPage,
@@ -30,7 +30,7 @@ const InfluencerHub = () => {
     isFetchingNextPage,
     isLoading,
     error
-  } = useInfluencerSearch(filters);
+  } = useInfluencerSearchPublic(filters);
 
   // Fetch selected influencer profile
   const { data: selectedProfile, isLoading: profileLoading } = useInfluencerProfile(
@@ -75,12 +75,22 @@ const InfluencerHub = () => {
     window.history.pushState({}, '', '/influencer-hub');
   };
 
-  // Handle deep link - extract handle from URL
+  // Handle deep link - extract handle from URL and highlight parameter
   React.useEffect(() => {
     const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    
+    // Handle profile deep link
     const match = path.match(/^\/influencer-hub\/([^\/]+)$/);
     if (match) {
       setSelectedHandle(match[1]);
+    }
+    
+    // Handle highlight parameter (for newly published profiles)
+    if (params.get('highlight') === 'me') {
+      // TODO: Scroll to and highlight user's own card
+      // This would require getting the current user's influencer data
+      // and finding their card in the list to highlight it
     }
   }, []);
 

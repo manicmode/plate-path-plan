@@ -48,11 +48,16 @@ import { PayoutsPanel } from '@/components/influencer/PayoutsPanel';
 import { EmptyState } from '@/components/influencer/EmptyState';
 import { FunnelCards } from '@/components/influencer/FunnelCards';
 import { RangeToggle } from '@/components/analytics/RangeToggle';
+import { InfluencerListingSetup } from '@/components/influencer/InfluencerListingSetup';
+import { useInfluencerListing } from '@/data/influencers/useInfluencerListing';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 
 const ProfileTab = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [showListingSetup, setShowListingSetup] = useState(false);
+  const { influencerData, unpublishFromHub, canPublish } = useInfluencerListing();
 
   const handleCopyProfileLink = () => {
     const profileUrl = `${window.location.origin}/profile/${user?.id}`;
@@ -63,13 +68,101 @@ const ProfileTab = () => {
     });
   };
 
+  const handleUnpublish = async () => {
+    try {
+      await unpublishFromHub.mutateAsync();
+      toast({
+        title: "Unpublished from Hub",
+        description: "Your profile is no longer discoverable."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to unpublish. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Profile Preview Card */}
+      {/* Get Listed Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+      >
+        <Card className="rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5" />
+              Influencer Hub Listing
+              {influencerData?.is_listed && (
+                <Badge className="ml-auto">Live</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {influencerData?.is_listed ? (
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Your profile is live on the Influencer Hub! People can discover and follow you.
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => window.open('/influencer-hub?highlight=me', '_blank')}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View in Hub
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleUnpublish}
+                    disabled={unpublishFromHub.isPending}
+                  >
+                    {unpublishFromHub.isPending ? 'Unpublishing...' : 'Unpublish'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Get discovered by the community! Complete your profile and publish to the Influencer Hub.
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className={`h-2 w-2 rounded-full ${influencerData?.display_name && influencerData?.handle && influencerData?.avatar_url ? 'bg-green-500' : 'bg-muted'}`} />
+                    Basic info (name, handle, avatar)
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className={`h-2 w-2 rounded-full ${influencerData?.bio && influencerData.bio.length >= 80 ? 'bg-green-500' : 'bg-muted'}`} />
+                    Bio (80+ characters)
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className={`h-2 w-2 rounded-full ${influencerData?.category_tags && influencerData.category_tags.length > 0 ? 'bg-green-500' : 'bg-muted'}`} />
+                    At least 1 specialty tag
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowListingSetup(true)}
+                  className="gap-2"
+                  disabled={!canPublish && !influencerData}
+                >
+                  <Plus className="h-4 w-4" />
+                  {influencerData ? 'Complete Setup' : 'Get Listed'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Profile Preview Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
       >
         <Card className="rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur">
           <CardHeader>
@@ -100,6 +193,12 @@ const ProfileTab = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Listing Setup Modal */}
+      <InfluencerListingSetup
+        open={showListingSetup}
+        onOpenChange={setShowListingSetup}
+      />
 
       {/* Edit Profile Card */}
       <motion.div

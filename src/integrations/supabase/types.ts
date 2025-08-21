@@ -665,6 +665,13 @@ export type Database = {
             referencedRelation: "v_influencer_earnings"
             referencedColumns: ["influencer_id"]
           },
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "v_influencer_public_cards"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_generated_routines: {
@@ -1712,6 +1719,13 @@ export type Database = {
             referencedRelation: "v_influencer_earnings"
             referencedColumns: ["influencer_id"]
           },
+          {
+            foreignKeyName: "challenge_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_public_cards"
+            referencedColumns: ["id"]
+          },
         ]
       }
       challenge_invitations: {
@@ -1927,6 +1941,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_influencer_earnings"
             referencedColumns: ["influencer_id"]
+          },
+          {
+            foreignKeyName: "challenge_order_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_public_cards"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2951,14 +2972,21 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          category_tags: string[] | null
           connect_account_id: string | null
           created_at: string | null
           default_currency: string | null
           display_name: string
           handle: string
+          headline: string | null
           id: string
+          is_listed: boolean | null
+          listed_at: string | null
+          location_city: string | null
+          location_country: string | null
           niches: string[] | null
           payouts_enabled: boolean | null
+          social_links: Json | null
           socials: Json | null
           tagline: string | null
           updated_at: string | null
@@ -2969,14 +2997,21 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          category_tags?: string[] | null
           connect_account_id?: string | null
           created_at?: string | null
           default_currency?: string | null
           display_name: string
           handle: string
+          headline?: string | null
           id?: string
+          is_listed?: boolean | null
+          listed_at?: string | null
+          location_city?: string | null
+          location_country?: string | null
           niches?: string[] | null
           payouts_enabled?: boolean | null
+          social_links?: Json | null
           socials?: Json | null
           tagline?: string | null
           updated_at?: string | null
@@ -2987,14 +3022,21 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          category_tags?: string[] | null
           connect_account_id?: string | null
           created_at?: string | null
           default_currency?: string | null
           display_name?: string
           handle?: string
+          headline?: string | null
           id?: string
+          is_listed?: boolean | null
+          listed_at?: string | null
+          location_city?: string | null
+          location_country?: string | null
           niches?: string[] | null
           payouts_enabled?: boolean | null
+          social_links?: Json | null
           socials?: Json | null
           tagline?: string | null
           updated_at?: string | null
@@ -3036,6 +3078,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_influencer_earnings"
             referencedColumns: ["influencer_id"]
+          },
+          {
+            foreignKeyName: "influencer_follow_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "v_influencer_public_cards"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -7685,6 +7734,13 @@ export type Database = {
             referencedRelation: "v_influencer_earnings"
             referencedColumns: ["influencer_id"]
           },
+          {
+            foreignKeyName: "affiliate_program_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: true
+            referencedRelation: "v_influencer_public_cards"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_habit_consistency: {
@@ -7795,6 +7851,51 @@ export type Database = {
           paid_orders_count: number | null
           total_earnings_cents: number | null
           total_orders: number | null
+        }
+        Relationships: []
+      }
+      v_influencer_public_cards: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          category_tags: string[] | null
+          display_name: string | null
+          handle: string | null
+          headline: string | null
+          id: string | null
+          listed_at: string | null
+          location_city: string | null
+          location_country: string | null
+          social_links: Json | null
+          verified: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          category_tags?: string[] | null
+          display_name?: string | null
+          handle?: string | null
+          headline?: string | null
+          id?: string | null
+          listed_at?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          social_links?: Json | null
+          verified?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          category_tags?: string[] | null
+          display_name?: string | null
+          handle?: string | null
+          headline?: string | null
+          id?: string | null
+          listed_at?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          social_links?: Json | null
+          verified?: boolean | null
         }
         Relationships: []
       }
