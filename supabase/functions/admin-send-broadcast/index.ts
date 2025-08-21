@@ -69,54 +69,56 @@ serve(async (req) => {
       );
     }
 
-    // Get target users based on audience
-    let targetUserIds: string[] = [];
-    
-    if (targetAudience === 'all') {
-      const { data: profiles } = await supabaseAdmin
-        .from('user_profiles')
-        .select('user_id');
-      
-      targetUserIds = profiles?.map(p => p.user_id) || [];
-    } else if (targetAudience === 'influencers') {
-      const { data: influencers } = await supabaseAdmin
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'influencer');
-      
-      targetUserIds = influencers?.map(i => i.user_id) || [];
-    }
-
-    // Create notifications for all target users
-    if (targetUserIds.length > 0) {
-      const notifications = targetUserIds.map(userId => ({
-        user_id: userId,
+    // Create broadcast notification (single row for all users)
+    const { data: notification, error: insertError } = await supabaseAdmin
+      .from('notifications')
+      .insert({
         title,
         body: message,
-        kind: 'broadcast',
-        meta: {
-          sent_by: userData.user.id,
-          sent_at: new Date().toISOString(),
-          audience: targetAudience || 'all'
-        }
-      }));
+        audience: targetAudience || 'all',
+        user_id: null, // null means broadcast to all
+        created_by: userData.user.id
+      })
+      .select()
+      .single();
 
-      const { error: insertError } = await supabaseAdmin
-        .from('app_notifications')
-        .insert(notifications);
-
-      if (insertError) {
-        throw insertError;
-      }
+    if (insertError) {
+      throw insertError;
     }
 
-    console.log(`Admin ${userData.user.email} sent broadcast to ${targetUserIds.length} users: ${title}`);
+    // Log the action
+    await supabaseAdmin
+      .from('admin_audit')
+      .insert({
+        actor_user_id: userData.user.id,
+        action: 'broadcast_send',
+        target_id: notification.id,
+        meta: { audience: targetAudience || 'all', title }
+      });
+
+    // Count potential recipients for response
+    let recipientCount = 0;
+    if (targetAudience === 'all' || targetAudience === 'users') {
+      const { count } = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id', { count: 'exact', head: true });
+      recipientCount = count || 0;
+    } else if (targetAudience === 'creators') {
+      const { count } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('role', 'influencer');
+      recipientCount = count || 0;
+    }
+
+    console.log(`Admin ${userData.user.email} sent broadcast to ${recipientCount} users: ${title}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Broadcast sent to ${targetUserIds.length} users`,
-        sentCount: targetUserIds.length
+        id: notification.id,
+        message: `Broadcast sent to ${recipientCount} users`,
+        sentCount: recipientCount
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

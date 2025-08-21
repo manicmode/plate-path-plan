@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,7 +19,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Get the JWT from the authorization header
+    // Verify user is authenticated and is an admin
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       return new Response(
@@ -28,7 +28,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify the user is authenticated and is an admin
     const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -45,7 +44,7 @@ serve(async (req) => {
       );
     }
 
-    // Check if the requesting user is an admin
+    // Check if user is admin
     const { data: adminCheck } = await supabaseAdmin
       .from('user_roles')
       .select('role')
@@ -60,55 +59,59 @@ serve(async (req) => {
       );
     }
 
-    // Get platform metrics using service_role (has access to v_platform_metrics)
-    const { data: metrics, error: metricsError } = await supabaseAdmin
-      .from('v_platform_metrics')
-      .select('*')
-      .single();
+    const { code, percent_off } = await req.json();
 
-    if (metricsError) {
-      console.error('Error fetching platform metrics:', metricsError);
+    if (!code || !percent_off || percent_off < 1 || percent_off > 100) {
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch metrics' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Invalid code or percent_off (must be 1-100)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get configurable platform take rate (default 10% if no config)
-    // TODO: Move this to a settings table
-    const platformTakeBps = 1000; // 10% in basis points
-    
-    // Recalculate net revenue with configurable rate
-    const netRevenueCents = Math.floor((metrics.gmv_cents * platformTakeBps) / 10000);
+    // Create coupon (upsert to handle duplicates)
+    const { data: coupon, error: couponError } = await supabaseAdmin
+      .from('coupon')
+      .upsert({
+        code: code.toUpperCase(),
+        percent_off,
+        created_by: userData.user.id,
+        active: true
+      })
+      .select()
+      .single();
 
-    const finalMetrics = {
-      ...metrics,
-      net_revenue_cents: netRevenueCents,
-      platform_take_bps: platformTakeBps,
-    };
+    if (couponError) {
+      throw couponError;
+    }
 
-    // Log the metrics refresh
+    // Log the action
     await supabaseAdmin
       .from('admin_audit')
       .insert({
         actor_user_id: userData.user.id,
-        action: 'metrics_refresh',
-        meta: { 
-          timestamp: new Date().toISOString(), 
-          gmv_cents: metrics.gmv_cents,
-          total_users: metrics.total_users
-        }
+        action: 'coupon_create',
+        target_id: coupon.id,
+        meta: { code: coupon.code, percent_off: coupon.percent_off }
       });
 
-    console.log(`Admin ${userData.user.email} fetched platform metrics`);
+    console.log(`Admin ${userData.user.email} created coupon: ${coupon.code} (${percent_off}% off)`);
 
     return new Response(
-      JSON.stringify({ success: true, data: finalMetrics }),
+      JSON.stringify({
+        success: true,
+        coupon: {
+          id: coupon.id,
+          code: coupon.code,
+          percent_off: coupon.percent_off,
+          active: coupon.active,
+          created_at: coupon.created_at
+        }
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Admin get metrics error:', error);
+    console.error('Admin coupon creation error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

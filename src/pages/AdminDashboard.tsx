@@ -10,7 +10,11 @@ import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminStickyBar } from '@/components/admin/AdminStickyBar';
 import { EnhancedAdminChart } from '@/components/admin/EnhancedAdminChart';
+import { SendBroadcastModal } from '@/components/admin/SendBroadcastModal';
+import { CreateCouponModal } from '@/components/admin/CreateCouponModal';
 import { useAdminStats } from '@/data/admin/useAdminStats';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   Shield, 
   Users, 
@@ -33,20 +37,77 @@ import {
   Download,
   MessageCircle,
   Zap,
-  Globe
+  Globe,
+  Send,
+  Percent
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [activeSubTab, setActiveSubTab] = useState(searchParams.get('sub') || '');
+  const [sendBroadcastOpen, setSendBroadcastOpen] = useState(false);
+  const [createCouponOpen, setCreateCouponOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   
   const { stats, trends, loading, error, refetch, formatMoney, getTrendForStat } = useAdminStats();
+
+  // Refresh metrics handler
+  const handleRefreshMetrics = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ['admin:metrics'] });
+      toast({
+        title: "Success",
+        description: "Metrics refreshed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to refresh metrics",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Recalculate metrics handler
+  const handleRecalculateMetrics = async () => {
+    setRecalculating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-recalc-metrics');
+      if (error) throw error;
+      
+      if (data?.success) {
+        await queryClient.invalidateQueries({ queryKey: ['admin:metrics'] });
+        toast({
+          title: "Success",
+          description: data.message,
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to recalculate metrics');
+      }
+    } catch (error) {
+      console.error('Recalculate error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to recalculate metrics",
+        variant: "destructive",
+      });
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   // Sync tab state with URL
   useEffect(() => {
@@ -220,20 +281,11 @@ const AdminDashboard = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    console.log('Refresh button clicked!');
-                    console.log('Loading state:', loading);
-                    console.log('Refetch function:', typeof refetch);
-                    refetch();
-                    toast({
-                      title: "Refreshing data...",
-                      description: "Admin dashboard stats are being updated."
-                    });
-                  }}
-                  disabled={loading}
+                  onClick={handleRefreshMetrics}
+                  disabled={refreshing}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
             </div>
@@ -241,32 +293,50 @@ const AdminDashboard = () => {
         </motion.div>
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6 pb-20 md:pb-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
             {/* Sticky Tab Bar */}
-            <div className="sticky top-[104px] z-30 -mx-4 px-4 bg-background/95 backdrop-blur border-b border-border/20 pb-4">
-              <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-muted/50 backdrop-blur rounded-2xl p-1 shadow-lg">
-                <TabsTrigger value="overview" className="rounded-xl">
+            <div className="sticky top-0 z-20 -mx-1 md:mx-0 rounded-2xl bg-[rgba(0,0,0,.35)] backdrop-blur p-1">
+              <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-transparent">
+                <TabsTrigger 
+                  value="overview" 
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Overview
                 </TabsTrigger>
-                <TabsTrigger value="users" className="rounded-xl">
+                <TabsTrigger 
+                  value="users"
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <Users className="h-4 w-4 mr-2" />
                   Users
                 </TabsTrigger>
-                <TabsTrigger value="influencers" className="rounded-xl">
+                <TabsTrigger 
+                  value="influencers"
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <Crown className="h-4 w-4 mr-2" />
                   Creators
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="rounded-xl">
+                <TabsTrigger 
+                  value="analytics"
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Analytics
                 </TabsTrigger>
-                <TabsTrigger value="system" className="rounded-xl">
+                <TabsTrigger 
+                  value="system"
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <Settings className="h-4 w-4 mr-2" />
                   System
                 </TabsTrigger>
-                <TabsTrigger value="tools" className="rounded-xl">
+                <TabsTrigger 
+                  value="tools"
+                  className="px-4 py-2 rounded-xl data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-950 data-[state=active]:[&>svg]:text-slate-900"
+                >
                   <Wrench className="h-4 w-4 mr-2" />
                   Tools
                 </TabsTrigger>
@@ -276,7 +346,7 @@ const AdminDashboard = () => {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 <AdminStatCard
                   title="Total Users"
                   value={stats.totalUsers}
@@ -309,7 +379,7 @@ const AdminDashboard = () => {
               </div>
 
               {/* Secondary Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 <AdminStatCard
                   title="New Users (7d)"
                   value={stats.newUsers7d}
@@ -487,53 +557,87 @@ const AdminDashboard = () => {
 
             {/* Tools Tab */}
             <TabsContent value="tools" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  {
-                    title: 'Broadcast Message',
-                    description: 'Send system-wide notifications',
-                    icon: MessageCircle,
-                    action: 'Send Broadcast'
-                  },
-                  {
-                    title: 'Generate Coupon',
-                    description: 'Create discount codes',
-                    icon: Zap,
-                    action: 'Create Coupon'
-                  },
-                  {
-                    title: 'Recalc Metrics',
-                    description: 'Refresh platform statistics',
-                    icon: RefreshCw,
-                    action: 'Recalculate'
-                  },
-                ].map((tool, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <div className="flex items-center gap-3">
-                      <tool.icon className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">{tool.title}</h3>
-                        <p className="text-sm text-muted-foreground">{tool.description}</p>
-                      </div>
+              <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0 }}
+                  className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <Send className="h-8 w-8 text-primary" />
+                    <div>
+                      <h3 className="font-semibold">Send Broadcast</h3>
+                      <p className="text-sm text-muted-foreground">Send system-wide notifications</p>
                     </div>
-                    <Button
-                      className="w-full"
-                      onClick={() => toast({ title: `${tool.action} triggered!` })}
-                    >
-                      {tool.action}
-                    </Button>
-                  </motion.div>
-                ))}
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => setSendBroadcastOpen(true)}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Broadcast
+                  </Button>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <Percent className="h-8 w-8 text-primary" />
+                    <div>
+                      <h3 className="font-semibold">Create Coupon</h3>
+                      <p className="text-sm text-muted-foreground">Generate discount codes</p>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => setCreateCouponOpen(true)}
+                  >
+                    <Percent className="h-4 w-4 mr-2" />
+                    Create Coupon
+                  </Button>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="h-8 w-8 text-primary" />
+                    <div>
+                      <h3 className="font-semibold">Recalculate Metrics</h3>
+                      <p className="text-sm text-muted-foreground">Refresh platform statistics</p>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={handleRecalculateMetrics}
+                    disabled={recalculating}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${recalculating ? 'animate-spin' : ''}`} />
+                    {recalculating ? 'Recalculating...' : 'Recalculate'}
+                  </Button>
+                </motion.div>
               </div>
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Modals */}
+        <SendBroadcastModal 
+          open={sendBroadcastOpen} 
+          onOpenChange={setSendBroadcastOpen} 
+        />
+        <CreateCouponModal 
+          open={createCouponOpen} 
+          onOpenChange={setCreateCouponOpen} 
+        />
 
         {/* Mobile Sticky Actions */}
         <div className="md:hidden">
@@ -542,13 +646,7 @@ const AdminDashboard = () => {
               {
                 label: 'Refresh',
                 icon: RefreshCw,
-                onClick: () => {
-                  refetch();
-                  toast({
-                    title: "Refreshing data...",
-                    description: "Admin dashboard stats are being updated."
-                  });
-                },
+                onClick: handleRefreshMetrics,
                 variant: 'outline',
               },
               {

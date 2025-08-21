@@ -26,7 +26,7 @@ interface TrendData {
 
 export const useAdminStats = () => {
   const query = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin:metrics'], // Updated key as specified
     queryFn: async (): Promise<AdminStats> => {
       try {
         const { data, error } = await supabase.functions.invoke('admin-get-metrics');
