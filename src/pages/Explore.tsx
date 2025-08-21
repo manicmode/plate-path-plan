@@ -43,7 +43,15 @@ const Explore = () => {
         navigate('/exercise-hub', { state: { from: '/explore' } });
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'influencers') {
-        setIsComingSoonOpen(true);
+        setNavigationInProgress(true);
+        navigate('/influencer-dashboard');
+        
+        // Fire analytics event
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'influencer.nav_open_from_explore');
+        }
+        
+        setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'habit-central') {
         setNavigationInProgress(true);
         navigate('/habit');
@@ -92,7 +100,7 @@ const Explore = () => {
     },
     {
       id: 'influencers',
-      title: 'Influencer Hub',
+      title: 'Influencer Dashboard',
       emoji: '⭐️',
       color: 'from-blue-600 via-cyan-400 to-cyan-600',
       shadowColor: 'shadow-cyan-500/30',

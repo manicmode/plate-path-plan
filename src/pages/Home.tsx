@@ -44,6 +44,7 @@ import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanne
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { MoodCheckinBanner } from '@/components/mood/MoodCheckinBanner';
 import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
+import { InfluencerDashboardCTA } from '@/components/InfluencerDashboardCTA';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';

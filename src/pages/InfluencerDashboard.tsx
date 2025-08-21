@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { InfluencerGuard } from '@/components/auth/InfluencerGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -772,33 +773,100 @@ const PayoutsTab = () => {
   );
 };
 
-const MonetizationTab = () => {
-  return (
-    <div className="space-y-6">
-      <Tabs defaultValue="earnings" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="earnings" data-testid="earnings-tab">
-            Earnings
-          </TabsTrigger>
-          <TabsTrigger value="payouts" data-testid="payouts-tab">
-            Payouts
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="earnings">
-          <EarningsTab />
-        </TabsContent>
-
-        <TabsContent value="payouts">
-          <PayoutsTab />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
 
 const InfluencerDashboardContent = () => {
   const { data: stats } = useInfluencerStats();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [monetizationSubTab, setMonetizationSubTab] = useState('earnings');
+
+  // Handle URL params for deep linking
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    const subParam = searchParams.get('sub');
+    
+    if (tabParam && ['profile', 'challenges', 'products', 'analytics', 'broadcasts', 'monetization'].includes(tabParam)) {
+      setActiveTab(tabParam);
+      
+      // Fire analytics for deep link navigation
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', `influencer.open_${tabParam}_tab`);
+        if (tabParam === 'monetization' && subParam === 'payouts') {
+          (window as any).gtag('event', 'influencer.open_payouts_tab');
+        }
+      }
+    }
+    
+    if (subParam && activeTab === 'monetization' && ['earnings', 'payouts'].includes(subParam)) {
+      setMonetizationSubTab(subParam);
+    }
+  }, [location.search, activeTab]);
+
+  // Update URL when tab changes (without triggering navigation)
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    if (newTab !== 'monetization') {
+      url.searchParams.delete('sub');
+    }
+    window.history.replaceState(null, '', url.toString());
+    
+    // Fire analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', `influencer.nav_${newTab}_tab`);
+    }
+  };
+
+  const handleMonetizationSubTabChange = (subTab: string) => {
+    setMonetizationSubTab(subTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'monetization');
+    url.searchParams.set('sub', subTab);
+    window.history.replaceState(null, '', url.toString());
+    
+    if (subTab === 'payouts' && typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'influencer.open_payouts_tab');
+    }
+  };
+
+  const handleInfluencerCreated = () => {
+    // Auto-open payouts tab after profile creation
+    setActiveTab('monetization');
+    setMonetizationSubTab('payouts');
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'monetization');
+    url.searchParams.set('sub', 'payouts');
+    window.history.replaceState(null, '', url.toString());
+  };
+
+  // MonetizationTab component that has access to local state
+  const MonetizationTab = () => {
+    return (
+      <div className="space-y-6">
+        <Tabs value={monetizationSubTab} onValueChange={handleMonetizationSubTabChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="earnings" data-testid="earnings-tab">
+              Earnings
+            </TabsTrigger>
+            <TabsTrigger value="payouts" data-testid="payouts-tab">
+              Payouts
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="earnings">
+            <EarningsTab />
+          </TabsContent>
+
+          <TabsContent value="payouts">
+            <PayoutsTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -810,13 +878,14 @@ const InfluencerDashboardContent = () => {
         />
 
         {/* Main Tabs */}
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           {/* Responsive Tab Navigation */}
-          <div className="sticky top-3 z-30 bg-white/80 dark:bg-black/80 backdrop-blur rounded-2xl p-1 mb-6">
+          <div className="sticky top-3 z-30 bg-white/80 dark:bg-black/80 backdrop-blur rounded-2xl p-1 mb-6 pb-[max(env(safe-area-inset-bottom),0px)]">
             <TabsList className="grid w-full grid-cols-6 gap-1 bg-transparent">
               <TabsTrigger 
                 value="profile" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <User className="h-4 w-4" />
                 <span className="hidden xs:inline">Profile</span>
@@ -824,6 +893,7 @@ const InfluencerDashboardContent = () => {
               <TabsTrigger 
                 value="challenges" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <Trophy className="h-4 w-4" />
                 <span className="hidden xs:inline">Challenges</span>
@@ -831,6 +901,7 @@ const InfluencerDashboardContent = () => {
               <TabsTrigger 
                 value="products" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <Package className="h-4 w-4" />
                 <span className="hidden xs:inline">Products</span>
@@ -838,6 +909,7 @@ const InfluencerDashboardContent = () => {
               <TabsTrigger 
                 value="analytics" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden xs:inline">Analytics</span>
@@ -845,6 +917,7 @@ const InfluencerDashboardContent = () => {
               <TabsTrigger 
                 value="broadcasts" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <Megaphone className="h-4 w-4" />
                 <span className="hidden xs:inline">Broadcasts</span>
@@ -853,6 +926,7 @@ const InfluencerDashboardContent = () => {
                 value="monetization" 
                 data-testid="monetization-tab" 
                 className="flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                style={{ minHeight: '44px' }}
               >
                 <DollarSign className="h-4 w-4" />
                 <span className="hidden xs:inline">Money</span>
@@ -901,7 +975,14 @@ const InfluencerDashboardContent = () => {
 
 export default function InfluencerDashboard() {
   return (
-    <InfluencerGuard>
+    <InfluencerGuard onInfluencerCreated={() => {
+      // This will trigger after profile creation to open payouts
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'monetization');
+      url.searchParams.set('sub', 'payouts');
+      window.history.replaceState(null, '', url.toString());
+      window.location.reload();
+    }}>
       <InfluencerDashboardContent />
     </InfluencerGuard>
   );

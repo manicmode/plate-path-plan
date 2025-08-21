@@ -102,6 +102,7 @@ const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
 const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
 const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
 const PublicShare = lazy(() => import('@/pages/share/PublicShare'));
+const InfluencerRedirect = lazy(() => import('@/pages/InfluencerRedirect'));
 const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
 const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
 const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
@@ -452,12 +453,11 @@ function AppContent() {
                          <SearchInsightsPage />
                        </ProtectedRoute>
                      } />
-                    <Route path="/influencer-portal" element={
-                      <ProtectedRoute>
-                        <InfluencerPortal />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/challenge-preview/:id" element={
+                     {/* Legacy redirect for old influencer routes */}
+                     <Route path="/influencer" element={<InfluencerRedirect />} />
+                     <Route path="/influencer-portal" element={<InfluencerRedirect />} />
+                     
+                     <Route path="/challenge-preview/:id" element={
                       <ProtectedRoute>
                         <ChallengePreview />
                       </ProtectedRoute>
