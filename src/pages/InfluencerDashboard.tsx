@@ -935,58 +935,73 @@ const InfluencerHubContent = () => {
   const { data: stats, isLoading: statsLoading } = useInfluencerStats();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState('profile');
+  
+  // Strictly controlled tab state
+  type TabType = 'profile' | 'challenges' | 'products' | 'analytics' | 'broadcasts' | 'monetization';
+  const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [monetizationSubTab, setMonetizationSubTab] = useState('earnings');
 
-  // Handle URL params for deep linking
+  // Read URL params only once on mount
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const tabParam = searchParams.get('tab');
+    const tabParam = searchParams.get('tab') as TabType;
     const subParam = searchParams.get('sub');
     
     if (tabParam && ['profile', 'challenges', 'products', 'analytics', 'broadcasts', 'monetization'].includes(tabParam)) {
       setActiveTab(tabParam);
+    }
+    
+    if (subParam && ['earnings', 'payouts'].includes(subParam)) {
+      setMonetizationSubTab(subParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Write tab changes to URL (only when tab actually changes)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const currentTabInUrl = searchParams.get('tab');
+    
+    if (currentTabInUrl !== activeTab) {
+      searchParams.set('tab', activeTab);
+      if (activeTab !== 'monetization') {
+        searchParams.delete('sub');
+      }
+      navigate({ search: `?${searchParams.toString()}` }, { replace: true });
       
-      // Fire analytics for deep link navigation
+      // Fire analytics for tab navigation
       if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('event', `influencer.open_${tabParam}_tab`);
-        if (tabParam === 'monetization' && subParam === 'payouts') {
+        (window as any).gtag('event', `influencer.nav_${activeTab}_tab`);
+      }
+    }
+  }, [activeTab, navigate, location.search]);
+
+  // Write monetization sub-tab changes to URL
+  useEffect(() => {
+    if (activeTab === 'monetization') {
+      const searchParams = new URLSearchParams(location.search);
+      const currentSubInUrl = searchParams.get('sub');
+      
+      if (currentSubInUrl !== monetizationSubTab) {
+        searchParams.set('tab', 'monetization');
+        searchParams.set('sub', monetizationSubTab);
+        navigate({ search: `?${searchParams.toString()}` }, { replace: true });
+        
+        if (monetizationSubTab === 'payouts' && typeof window !== 'undefined' && (window as any).gtag) {
           (window as any).gtag('event', 'influencer.open_payouts_tab');
         }
       }
     }
-    
-    if (subParam && activeTab === 'monetization' && ['earnings', 'payouts'].includes(subParam)) {
-      setMonetizationSubTab(subParam);
-    }
-  }, [location.search, activeTab]);
+  }, [monetizationSubTab, activeTab, navigate, location.search]);
 
-  // Update URL when tab changes (without triggering navigation)
+  // Handle tab changes directly (no URL manipulation here)
   const handleTabChange = (newTab: string) => {
-    setActiveTab(newTab);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', newTab);
-    if (newTab !== 'monetization') {
-      url.searchParams.delete('sub');
-    }
-    window.history.replaceState(null, '', url.toString());
-    
-    // Fire analytics
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', `influencer.nav_${newTab}_tab`);
-    }
+    setActiveTab(newTab as TabType);
   };
 
+  // Handle monetization sub-tab changes
   const handleMonetizationSubTabChange = (subTab: string) => {
     setMonetizationSubTab(subTab);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'monetization');
-    url.searchParams.set('sub', subTab);
-    window.history.replaceState(null, '', url.toString());
-    
-    if (subTab === 'payouts' && typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'influencer.open_payouts_tab');
-    }
   };
 
   const handleInfluencerCreated = () => {
@@ -1073,13 +1088,15 @@ const InfluencerHubContent = () => {
             isLoading={statsLoading}
           />
 
-          {/* Creator Tabs Navigation */}
-          <CreatorTabs 
-            value={activeTab}
-            onChange={handleTabChange}
-            items={tabItems}
-            className="pointer-events-auto relative z-20"
-          />
+          {/* Creator Tabs Navigation - No overlays, proper z-index */}
+          <div className="relative z-20 pointer-events-none">
+            <CreatorTabs 
+              value={activeTab}
+              onChange={handleTabChange}
+              items={tabItems}
+              className="pointer-events-auto"
+            />
+          </div>
 
           {/* Tab Content with Animations */}
           <motion.div 
@@ -1158,12 +1175,14 @@ const InfluencerHubContent = () => {
 export default function InfluencerHub() {
   return (
     <InfluencerGuard onInfluencerCreated={() => {
-      // This will trigger after profile creation to open payouts
+      // This will trigger after profile creation to open payouts (only once)
+      if (window.location.search.includes('tab=')) return; // Don't override user navigation
+      
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'monetization');
       url.searchParams.set('sub', 'payouts');
       window.history.replaceState(null, '', url.toString());
-      window.location.reload();
+      // Remove the reload - let React handle the state change
     }}>
       <InfluencerHubContent />
     </InfluencerGuard>
