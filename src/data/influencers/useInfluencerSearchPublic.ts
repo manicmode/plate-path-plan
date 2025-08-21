@@ -93,5 +93,7 @@ export function useInfluencerSearchPublic(filters: InfluencerFilters) {
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
+    staleTime: 60_000, // Cache for 1 minute
+    refetchOnWindowFocus: true,
   });
 }

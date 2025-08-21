@@ -57,7 +57,7 @@ const ProfileTab = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showListingSetup, setShowListingSetup] = useState(false);
-  const { influencerData, unpublishFromHub, canPublish } = useInfluencerListing();
+  const { influencerData, unpublishFromHub, canPublish, validationErrors } = useInfluencerListing();
 
   const handleCopyProfileLink = () => {
     const profileUrl = `${window.location.origin}/profile/${user?.id}`;
@@ -132,16 +132,20 @@ const ProfileTab = () => {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${influencerData?.display_name && influencerData?.handle && influencerData?.avatar_url ? 'bg-green-500' : 'bg-muted'}`} />
-                    Basic info (name, handle, avatar)
+                    <div className={`h-2 w-2 rounded-full ${influencerData?.display_name && influencerData?.handle ? 'bg-green-500' : 'bg-muted'}`} />
+                    Basic info (name, handle)
+                    {validationErrors?.display_name && <span className="text-destructive text-xs">• {validationErrors.display_name}</span>}
+                    {validationErrors?.handle && <span className="text-destructive text-xs">• {validationErrors.handle}</span>}
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <div className={`h-2 w-2 rounded-full ${influencerData?.bio && influencerData.bio.length >= 80 ? 'bg-green-500' : 'bg-muted'}`} />
                     Bio (80+ characters)
+                    {validationErrors?.bio && <span className="text-destructive text-xs">• {validationErrors.bio}</span>}
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <div className={`h-2 w-2 rounded-full ${influencerData?.category_tags && influencerData.category_tags.length > 0 ? 'bg-green-500' : 'bg-muted'}`} />
                     At least 1 specialty tag
+                    {validationErrors?.category_tags && <span className="text-destructive text-xs">• {validationErrors.category_tags}</span>}
                   </div>
                 </div>
                 <Button

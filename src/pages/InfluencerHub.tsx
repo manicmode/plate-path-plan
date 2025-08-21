@@ -13,14 +13,34 @@ const InfluencerHub = () => {
   useScrollToTop();
   const { toast } = useToast();
 
-  const [filters, setFilters] = useState<FilterType>({
-    query: '',
-    category: 'all',
-    sort: 'trending',
-    verifiedOnly: false,
-  });
+  // Initialize filters from URL params
+  const getInitialFilters = (): FilterType => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      query: params.get('q') || '',
+      category: (params.get('tags') as FilterType['category']) || 'all',
+      sort: (params.get('sort') as FilterType['sort']) || 'trending',
+      verifiedOnly: params.get('verified') === '1',
+    };
+  };
 
+  const [filters, setFilters] = useState<FilterType>(getInitialFilters());
   const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
+
+  // Update URL when filters change
+  const updateFilters = (newFilters: FilterType) => {
+    setFilters(newFilters);
+    
+    // Update URL without reload
+    const params = new URLSearchParams();
+    if (newFilters.query) params.set('q', newFilters.query);
+    if (newFilters.category !== 'all') params.set('tags', newFilters.category);
+    if (newFilters.sort !== 'trending') params.set('sort', newFilters.sort);
+    if (newFilters.verifiedOnly) params.set('verified', '1');
+    
+    const newUrl = `/influencer-hub${params.toString() ? `?${params.toString()}` : ''}`;
+    window.history.replaceState({}, '', newUrl);
+  };
 
   // Fetch influencers with real data from public view
   const { 
@@ -91,6 +111,14 @@ const InfluencerHub = () => {
       // TODO: Scroll to and highlight user's own card
       // This would require getting the current user's influencer data
       // and finding their card in the list to highlight it
+      toast({
+        title: '🎉 Welcome to the Hub!',
+        description: 'Your profile is now live and discoverable.',
+      });
+      
+      // Clean URL after showing message
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
   }, []);
 
@@ -134,7 +162,7 @@ const InfluencerHub = () => {
         </div>
 
         {/* Filters */}
-        <InfluencerFilters value={filters} onChange={setFilters} />
+        <InfluencerFilters value={filters} onChange={updateFilters} />
 
         {/* Content */}
         <div className="max-w-6xl mx-auto px-4 py-8">
