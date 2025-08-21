@@ -36,7 +36,7 @@ export const ShareKit = ({
     if (productId) url.searchParams.set('product', productId);
     if (platform) {
       url.searchParams.set('utm_source', platform);
-      url.searchParams.set('utm_campaign', 'influencer_dashboard');
+      url.searchParams.set('utm_campaign', 'influencer_hub');
     }
     return url.toString();
   };

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Star, TrendingUp, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/routes/constants";
 
 export const InfluencerHubCTA = () => {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export const InfluencerHubCTA = () => {
       (window as any).gtag('event', 'influencer_hub.nav_open_from_home');
     }
     
-    navigate('/influencer-hub');
+    navigate(ROUTES.INFLUENCER_HUB);
   };
 
   return (

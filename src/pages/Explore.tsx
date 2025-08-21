@@ -6,6 +6,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useState, useCallback } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
+import { ROUTES } from '@/routes/constants';
 
 const Explore = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const Explore = () => {
         if (typeof window !== 'undefined' && (window as any).gtag) {
           (window as any).gtag('event', 'influencer_hub.nav_open_from_explore');
         }
-        navigate('/influencer-hub');
+        navigate(ROUTES.INFLUENCER_HUB);
       } else if (tileId === 'habit-central') {
         setNavigationInProgress(true);
         navigate('/habit');

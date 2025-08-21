@@ -10,5 +10,5 @@ export default function InfluencerRedirect() {
     }
   }, []);
 
-  return <Navigate to="/influencer-dashboard" replace />;
+  return <Navigate to="/influencer-hub" replace />;
 }

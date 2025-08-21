@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import AppErrorBoundary from '@/components/system/AppErrorBoundary';
 import { requestIdle } from '@/utils/safeIdle';
+import { ROUTES } from '@/routes/constants';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -440,8 +441,8 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                     {/* Redirects for legacy routes */}
-                    <Route path="/influencer-dashboard" element={<Navigate to="/influencer-hub" replace />} />
-                    <Route path="/influencer" element={<Navigate to="/influencer-hub" replace />} />
+                     <Route path="/influencer-dashboard" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
+                     <Route path="/influencer" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
                      <Route path="/admin/security-logs" element={
                        <ProtectedRoute>
                          <SecurityLogsPage />
@@ -458,9 +459,6 @@ function AppContent() {
                        </ProtectedRoute>
                      } />
                      {/* Legacy redirect for old influencer routes */}
-                     <Route path="/influencer" element={<InfluencerRedirect />} />
-                     <Route path="/influencer-portal" element={<InfluencerRedirect />} />
-                     
                      <Route path="/challenge-preview/:id" element={
                       <ProtectedRoute>
                         <ChallengePreview />
