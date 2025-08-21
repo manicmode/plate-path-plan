@@ -10,6 +10,8 @@ interface InfluencerListProps {
   emptyHint?: string;
   onSelect?: (id: string) => void;
   onToggleFollow?: (id: string) => void;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 
@@ -48,7 +50,9 @@ export function InfluencerList({
   loading, 
   emptyHint = "No influencers match your filters.",
   onSelect,
-  onToggleFollow
+  onToggleFollow,
+  onLoadMore,
+  loadingMore
 }: InfluencerListProps) {
   if (loading) {
     return (
@@ -75,15 +79,30 @@ export function InfluencerList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {items.map((influencer) => (
-        <InfluencerCard 
-          key={influencer.id} 
-          data={influencer}
-          onSelect={onSelect}
-          onToggleFollow={onToggleFollow}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {items.map((influencer) => (
+          <InfluencerCard 
+            key={influencer.id} 
+            data={influencer}
+            onSelect={onSelect}
+            onToggleFollow={onToggleFollow}
+          />
+        ))}
+      </div>
+
+      {/* Load More Button */}
+      {onLoadMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
+    </>
   );
 }
