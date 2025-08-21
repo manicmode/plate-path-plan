@@ -18,6 +18,7 @@ import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
 import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExerciseInsightsCard';
 import { AnimatePresence } from 'framer-motion';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
+import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
@@ -484,10 +485,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                 <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
                 <span>Chat with Your Coach</span>
               </CardTitle>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="text-xs">Use my data</span>
-                <input type="checkbox" aria-label="Use my data" className="accent-current" checked={useMyData} onChange={(e)=>setUseMyData(e.target.checked)} />
-              </div>
+              <VoiceCoachEntry />
             </div>
           </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>

@@ -10,6 +10,7 @@ import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
+import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 
 interface Message {
   id: string;
@@ -195,16 +196,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
             <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
             <span>Chat with Your Coach</span>
           </CardTitle>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="text-xs">Use my data</span>
-            <input
-              type="checkbox"
-              checked={useMyData}
-              onChange={(e) => setUseMyData(e.target.checked)}
-              className="accent-current"
-              aria-label="Use my data"
-            />
-          </div>
+          <VoiceCoachEntry />
         </div>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>

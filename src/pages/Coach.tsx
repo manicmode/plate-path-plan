@@ -28,6 +28,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
+import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
 
 interface Message {
@@ -525,10 +526,7 @@ setMessages(prev => {
         <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
         <span>Chat with Your Coach</span>
       </CardTitle>
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <span className="text-xs">Use my data</span>
-        <input type="checkbox" aria-label="Use my data" className="accent-current" checked={useMyData} onChange={(e)=>setUseMyData(e.target.checked)} />
-      </div>
+      <VoiceCoachEntry />
     </div>
           </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
