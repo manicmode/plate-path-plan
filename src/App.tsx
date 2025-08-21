@@ -433,6 +433,7 @@ function AppContent() {
                         <AdminDashboard />
                       </ProtectedRoute>
                     } />
+                    <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
                     <Route path="/influencer-dashboard" element={
                       <ProtectedRoute>
                         <InfluencerDashboard />

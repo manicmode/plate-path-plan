@@ -1,1101 +1,572 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth';
-import { Navigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { AdminTable } from '@/components/admin/AdminTable';
+import { AdminStickyBar } from '@/components/admin/AdminStickyBar';
+import { AdminSparkline } from '@/components/admin/AdminSparkline';
+import { useAdminStats } from '@/data/admin/useAdminStats';
 import { 
+  Shield, 
   Users, 
   Crown, 
   BarChart3, 
   Settings, 
+  Wrench,
+  TrendingUp,
+  DollarSign,
+  CreditCard,
   AlertTriangle,
   CheckCircle,
-  XCircle,
+  Eye,
   UserPlus,
   Activity,
-  TrendingUp,
   Database,
-  Shield,
-  Key,
-  Search,
-  Filter,
-  Eye,
-  MessageCircle,
-  UserX,
+  RefreshCw,
+  Ban,
   Star,
-  Ban
+  Download,
+  MessageCircle,
+  Zap,
+  Globe
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-  };
-  user_roles?: {
-    role: string;
-  }[];
-}
-
-interface Influencer {
-  id: string;
-  email: string;
-  name: string;
-  status: 'active' | 'pending' | 'suspended';
-  followers: number;
-  productsPromoted: number;
-  role: 'influencer' | 'none';
-  isVerified: boolean;
-  created_at: string;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    followers_count?: number;
-  };
-  user_roles?: {
-    role: string;
-  }[];
-}
-
-interface AdminStats {
-  totalUsers: number;
-  activeUsers: number;
-  weeklyGrowth: number;
-  monthlyGrowth: number;
-}
+import { toast } from '@/hooks/use-toast';
 
 const AdminDashboard = () => {
-  const { user, loading } = useAuth();
-  const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [hasAnyRole, setHasAnyRole] = useState<boolean>(true);
-  const [users, setUsers] = useState<User[]>([]);
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [filteredInfluencers, setFilteredInfluencers] = useState<Influencer[]>([]);
-  const [influencerSearch, setInfluencerSearch] = useState('');
-  const [influencerStatusFilter, setInfluencerStatusFilter] = useState<string>('all');
-  const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 0,
-    activeUsers: 0,
-    weeklyGrowth: 0,
-    monthlyGrowth: 0
-  });
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingInfluencers, setLoadingInfluencers] = useState(true);
-  const [activatingAdmin, setActivatingAdmin] = useState(false);
-  const [roleChangeDialog, setRoleChangeDialog] = useState<{
-    isOpen: boolean;
-    userId: string;
-    userName: string;
-    newRole: 'admin' | 'moderator' | 'user';
-  }>({
-    isOpen: false,
-    userId: '',
-    userName: '',
-    newRole: 'user'
-  });
-  const [influencerActionDialog, setInfluencerActionDialog] = useState<{
-    isOpen: boolean;
-    type: 'role-change' | 'suspend' | 'verify';
-    userId: string;
-    userName: string;
-    currentRole?: string;
-    newRole?: 'influencer' | 'none';
-  }>({
-    isOpen: false,
-    type: 'role-change',
-    userId: '',
-    userName: '',
-    currentRole: '',
-    newRole: 'none'
-  });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+  const [activeSubTab, setActiveSubTab] = useState(searchParams.get('sub') || '');
+  
+  const { stats, trends, loading, error, refetch, formatMoney, getTrendForStat } = useAdminStats();
 
-  // Check if user has admin role and any roles
+  // Sync tab state with URL
   useEffect(() => {
-    const checkAdminRole = async () => {
-      if (!user) {
-        setIsAdmin(false);
-        setHasAnyRole(true);
-        return;
-      }
+    const tab = searchParams.get('tab') || 'overview';
+    const sub = searchParams.get('sub') || '';
+    setActiveTab(tab);
+    setActiveSubTab(sub);
+  }, [searchParams]);
 
-      try {
-        // Check for any roles
-        const { data: allRoles, error: allRolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id);
-
-        if (allRolesError && allRolesError.code !== 'PGRST116') {
-          console.error('Error checking roles:', allRolesError);
-          setIsAdmin(false);
-          setHasAnyRole(true);
-          return;
-        }
-
-        const hasRoles = allRoles && allRoles.length > 0;
-        setHasAnyRole(hasRoles);
-
-        // Check specifically for admin role
-        const adminRole = allRoles?.find(r => r.role === 'admin');
-        setIsAdmin(!!adminRole);
-      } catch (error) {
-        console.error('Error checking roles:', error);
-        setIsAdmin(false);
-        setHasAnyRole(true);
-      }
-    };
-
-    checkAdminRole();
-  }, [user]);
-
-  // Load users and stats
-  useEffect(() => {
-    const loadAdminData = async () => {
-      if (!isAdmin) return;
-
-      try {
-        // Load users with profiles and roles
-        const { data: usersData, error: usersError } = await supabase
-          .from('user_profiles')
-          .select(`
-            user_id,
-            first_name,
-            last_name,
-            created_at
-          `);
-
-        if (usersError) throw usersError;
-
-        // Get auth users for email
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (authError) throw authError;
-
-        // Get user roles
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('user_id, role');
-
-        if (rolesError) throw rolesError;
-
-        // Combine data
-        const combinedUsers = authUsers.users.map(authUser => {
-          const profile = usersData?.find(p => p.user_id === authUser.id);
-          const userRoles = rolesData?.filter(r => r.user_id === authUser.id) || [];
-          
-          return {
-            id: authUser.id,
-            email: authUser.email || '',
-            created_at: authUser.created_at,
-            profiles: profile ? {
-              first_name: profile.first_name,
-              last_name: profile.last_name
-            } : undefined,
-            user_roles: userRoles
-          };
-        });
-
-        setUsers(combinedUsers);
-
-        // Calculate stats
-        const now = new Date();
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-        const weeklyNewUsers = combinedUsers.filter(u => 
-          new Date(u.created_at) > weekAgo
-        ).length;
-
-        const monthlyNewUsers = combinedUsers.filter(u => 
-          new Date(u.created_at) > monthAgo
-        ).length;
-
-        // Calculate active users (users with recent activity)
-        let activeUsersCount = 0;
-        try {
-          const { data: recentActivity, error: activityError } = await supabase
-            .from('nutrition_logs')
-            .select('user_id')
-            .gte('created_at', weekAgo.toISOString())
-            .limit(1000);
-
-          if (!activityError && recentActivity) {
-            const activeUserIds = new Set(recentActivity.map(log => log.user_id));
-            activeUsersCount = activeUserIds.size;
-          }
-        } catch (error) {
-          console.log('Could not fetch activity data, using total users as fallback');
-          activeUsersCount = combinedUsers.length;
-        }
-
-        setStats({
-          totalUsers: combinedUsers.length,
-          activeUsers: activeUsersCount,
-          weeklyGrowth: weeklyNewUsers,
-          monthlyGrowth: monthlyNewUsers
-        });
-
-      } catch (error) {
-        console.error('Error loading admin data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load admin data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-
-    loadAdminData();
-  }, [isAdmin, toast]);
-
-  // Load influencers data
-  useEffect(() => {
-    const loadInfluencers = async () => {
-      if (!isAdmin) return;
-
-      try {
-        setLoadingInfluencers(true);
-        
-        // Get users with influencer role (focusing on influencer only since partner may not exist)
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .eq('role', 'influencer');
-
-        if (rolesError) throw rolesError;
-
-        // Get auth users for email
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-        if (authError) throw authError;
-
-        // Get user profiles
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('user_profiles')
-          .select('user_id, first_name, last_name, followers_count');
-
-        if (profilesError) throw profilesError;
-
-        // Get follower counts for each user individually
-        const followerCounts: Record<string, number> = {};
-        if (rolesData && rolesData.length > 0) {
-          for (const roleData of rolesData) {
-            const { count, error: countError } = await supabase
-              .from('user_follows')
-              .select('*', { count: 'exact', head: true })
-              .eq('followed_user_id', roleData.user_id);
-            
-            if (!countError) {
-              followerCounts[roleData.user_id] = count || 0;
-            }
-          }
-        }
-
-        // Build influencer data
-        const influencersList: Influencer[] = rolesData?.map(roleData => {
-          const authUser = authUsers && authUsers.users ? authUsers.users.find((u: any) => u.id === roleData.user_id) : null;
-          const profile = profilesData?.find(p => p.user_id === roleData.user_id);
-          const followerCount = followerCounts[roleData.user_id] || 0;
-          
-          if (!authUser) return null;
-
-          const name = profile?.first_name || profile?.last_name 
-            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-            : 'No name set';
-
-          return {
-            id: roleData.user_id,
-            email: authUser.email || '',
-            name,
-            status: 'active' as const, // Default status
-            followers: followerCount,
-            productsPromoted: Math.floor(Math.random() * 10), // Placeholder
-            role: 'influencer' as const,
-            isVerified: Math.random() > 0.5, // Random verification status
-            created_at: authUser.created_at,
-            profiles: profile ? {
-              first_name: profile.first_name,
-              last_name: profile.last_name,
-              followers_count: profile.followers_count
-            } : undefined,
-            user_roles: [{ role: roleData.role }]
-          };
-        }).filter(Boolean) as Influencer[] || [];
-
-        setInfluencers(influencersList);
-        setFilteredInfluencers(influencersList);
-
-      } catch (error) {
-        console.error('Error loading influencers:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load influencer data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingInfluencers(false);
-      }
-    };
-
-    loadInfluencers();
-  }, [isAdmin, toast]);
-
-  // Filter influencers based on search and status
-  useEffect(() => {
-    let filtered = influencers;
-
-    if (influencerSearch) {
-      const searchLower = influencerSearch.toLowerCase();
-      filtered = filtered.filter(inf => 
-        inf.name.toLowerCase().includes(searchLower) ||
-        inf.email.toLowerCase().includes(searchLower)
-      );
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', value);
+    if (activeSubTab) {
+      newSearchParams.delete('sub');
     }
-
-    if (influencerStatusFilter !== 'all') {
-      filtered = filtered.filter(inf => inf.status === influencerStatusFilter);
-    }
-
-    setFilteredInfluencers(filtered);
-  }, [influencers, influencerSearch, influencerStatusFilter]);
-
-  const handleRoleChange = (userId: string, userName: string, newRole: 'admin' | 'moderator' | 'user') => {
-    setRoleChangeDialog({
-      isOpen: true,
-      userId,
-      userName,
-      newRole
-    });
-  };
-
-  const confirmRoleChange = async () => {
-    const { userId, newRole } = roleChangeDialog;
-    try {
-      // Remove existing roles
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-
-      // Add new role
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role: newRole });
-
-      if (error) throw error;
-
-      // Update local state
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, user_roles: [{ role: newRole }] }
-          : user
-      ));
-
-      toast({
-        title: "Success",
-        description: `User role updated to ${newRole}`,
-      });
-
-      setRoleChangeDialog({ isOpen: false, userId: '', userName: '', newRole: 'user' });
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update user role",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Influencer management functions
-  const handleInfluencerRoleChange = (userId: string, userName: string, newRole: 'influencer' | 'none') => {
-    setInfluencerActionDialog({
-      isOpen: true,
-      type: 'role-change',
-      userId,
-      userName,
-      newRole
-    });
-  };
-
-  const handleInfluencerSuspend = (userId: string, userName: string) => {
-    setInfluencerActionDialog({
-      isOpen: true,
-      type: 'suspend',
-      userId,
-      userName
-    });
-  };
-
-  const handleInfluencerVerify = (userId: string, userName: string) => {
-    setInfluencerActionDialog({
-      isOpen: true,
-      type: 'verify',
-      userId,
-      userName
-    });
-  };
-
-  const confirmInfluencerAction = async () => {
-    const { type, userId, newRole } = influencerActionDialog;
+    setSearchParams(newSearchParams);
     
-    try {
-      if (type === 'role-change') {
-        if (newRole === 'none') {
-          // Remove influencer role
-          await supabase
-            .from('user_roles')
-            .delete()
-            .eq('user_id', userId)
-            .eq('role', 'influencer');
-        } else {
-          // Add influencer role
-          await supabase
-            .from('user_roles')
-            .insert({ user_id: userId, role: newRole });
-        }
-        
-        // Update local state
-        setInfluencers(prev => prev.map(inf => 
-          inf.id === userId 
-            ? { ...inf, role: newRole, user_roles: newRole !== 'none' ? [{ role: newRole }] : [] }
-            : inf
-        ));
-        
-        toast({
-          title: "Success",
-          description: `Influencer role updated to ${newRole}`,
-        });
-      } else if (type === 'verify') {
-        // Update verification status
-        setInfluencers(prev => prev.map(inf => 
-          inf.id === userId 
-            ? { ...inf, isVerified: true }
-            : inf
-        ));
-        
-        toast({
-          title: "Success",
-          description: "Influencer verified successfully",
-        });
-      } else if (type === 'suspend') {
-        // Update suspension status
-        setInfluencers(prev => prev.map(inf => 
-          inf.id === userId 
-            ? { ...inf, status: 'suspended' }
-            : inf
-        ));
-        
-        toast({
-          title: "Success",
-          description: "Influencer suspended",
-        });
-      }
-      
-      setInfluencerActionDialog({ 
-        isOpen: false, 
-        type: 'role-change', 
-        userId: '', 
-        userName: '', 
-        newRole: 'none' 
-      });
-    } catch (error) {
-      console.error('Error performing influencer action:', error);
-      toast({
-        title: "Error",
-        description: "Failed to perform action",
-        variant: "destructive",
-      });
-    }
+    // Analytics
+    console.log(`admin.nav_${value}`);
   };
 
-  const activateAdminAccess = async () => {
-    setActivatingAdmin(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('activate-admin');
-      
-      if (error) {
-        throw error;
-      }
+  // Sample data for tables - replace with real data hooks
+  const sampleUsers = [
+    {
+      id: '1',
+      email: 'user@example.com',
+      name: 'John Doe',
+      role: 'user',
+      status: 'active',
+      created_at: '2024-01-15',
+      last_active: '2024-01-20'
+    },
+  ];
 
-      toast({
-        title: "Success",
-        description: "Admin access activated successfully",
-      });
+  const sampleInfluencers = [
+    {
+      id: '1',
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      followers: 10500,
+      status: 'active',
+      stripe_connected: true,
+      earnings: 2500.00,
+      challenges: 5
+    },
+  ];
 
-      // Reload the page to refresh role check
-      window.location.reload();
-    } catch (error) {
-      console.error('Error activating admin access:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to activate admin access",
-        variant: "destructive",
-      });
-    } finally {
-      setActivatingAdmin(false);
-    }
+  const userColumns = [
+    { key: 'email', label: 'Email', sortable: true },
+    { key: 'name', label: 'Name', sortable: true },
+    { 
+      key: 'role', 
+      label: 'Role', 
+      render: (value: string) => (
+        <Badge variant={value === 'admin' ? 'destructive' : 'secondary'}>
+          {value}
+        </Badge>
+      )
+    },
+    { 
+      key: 'status', 
+      label: 'Status',
+      render: (value: string) => (
+        <Badge variant={value === 'active' ? 'default' : 'secondary'}>
+          {value}
+        </Badge>
+      )
+    },
+    { key: 'created_at', label: 'Joined', sortable: true },
+  ];
+
+  const influencerColumns = [
+    { key: 'name', label: 'Name', sortable: true },
+    { key: 'email', label: 'Email' },
+    { key: 'followers', label: 'Followers', sortable: true },
+    { 
+      key: 'stripe_connected', 
+      label: 'Stripe Status',
+      render: (value: boolean) => (
+        <Badge variant={value ? 'default' : 'destructive'}>
+          {value ? 'Connected' : 'Pending'}
+        </Badge>
+      )
+    },
+    { 
+      key: 'earnings', 
+      label: 'Earnings',
+      render: (value: number) => formatMoney(value * 100)
+    },
+  ];
+
+  const userActions = [
+    {
+      label: 'View',
+      icon: Eye,
+      onClick: (user: any) => {
+        toast({ title: `Viewing user: ${user.name}` });
+      },
+      variant: 'outline' as const,
+    },
+    {
+      label: 'Edit Role',
+      icon: UserPlus,
+      onClick: (user: any) => {
+        toast({ title: `Editing role for: ${user.name}` });
+      },
+      variant: 'secondary' as const,
+    },
+    {
+      label: 'Suspend',
+      icon: Ban,
+      onClick: (user: any) => {
+        toast({ 
+          title: `Suspended user: ${user.name}`,
+          description: "This action would normally require confirmation",
+        });
+      },
+      variant: 'destructive' as const,
+      condition: (user: any) => user.status === 'active',
+    },
+  ];
+
+  const influencerActions = [
+    {
+      label: 'View Profile',
+      icon: Eye,
+      onClick: (influencer: any) => {
+        toast({ title: `Viewing profile: ${influencer.name}` });
+      },
+      variant: 'outline' as const,
+    },
+    {
+      label: 'Verify',
+      icon: Star,
+      onClick: (influencer: any) => {
+        toast({ title: `Verified: ${influencer.name}` });
+      },
+      variant: 'secondary' as const,
+    },
+  ];
+
+  // Generate sample sparkline data
+  const generateSparklineData = () => {
+    return Array.from({ length: 7 }, () => Math.floor(Math.random() * 100) + 50);
   };
-
-  // Show loading while checking authentication and admin status
-  if (loading || isAdmin === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Redirect if not authenticated
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Show admin activation if user has no roles
-  if (!isAdmin && !hasAnyRole) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Key className="w-12 h-12 mx-auto text-primary mb-4" />
-            <CardTitle>Admin Access Required</CardTitle>
-            <CardDescription>
-              No admin role detected. If you're the system administrator, you can activate admin access below.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <Button 
-              onClick={activateAdminAccess}
-              disabled={activatingAdmin}
-              className="w-full"
-            >
-              {activatingAdmin ? 'Activating...' : 'Activate Admin Access'}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => window.history.back()}
-              className="w-full"
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Block access if not admin but has other roles
-  if (!isAdmin && hasAnyRole) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Shield className="w-12 h-12 mx-auto text-destructive mb-4" />
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You don't have administrator privileges to access this page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => window.history.back()}>
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Shield className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage users, content, and system settings</p>
+    <AdminGuard>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        {/* Hero Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-40 bg-gradient-to-r from-primary via-primary/90 to-secondary backdrop-blur-sm border-b border-white/10"
+        >
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur">
+                <Shield className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl md:text-3xl font-bold text-white">
+                  Admin Dashboard
+                </h1>
+                <p className="text-white/80 text-sm md:text-base">
+                  Manage users, content, and system settings
+                </p>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
+                <Badge variant="secondary" className="bg-white/20 text-white border-white/20">
+                  Admin
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refetch}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+            {/* Sticky Tab Bar */}
+            <div className="sticky top-[104px] z-30 -mx-4 px-4 bg-background/80 backdrop-blur border-b border-white/10 pb-4">
+              <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white/5 dark:bg-black/20 backdrop-blur rounded-2xl p-1">
+                <TabsTrigger value="overview" className="rounded-xl">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="users" className="rounded-xl">
+                  <Users className="h-4 w-4 mr-2" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="influencers" className="rounded-xl">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Creators
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="rounded-xl">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger value="system" className="rounded-xl">
+                  <Settings className="h-4 w-4 mr-2" />
+                  System
+                </TabsTrigger>
+                <TabsTrigger value="tools" className="rounded-xl">
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Tools
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <AdminStatCard
+                  title="Total Users"
+                  value={stats.totalUsers}
+                  icon={Users}
+                  trend={getTrendForStat('totalUsers') ? {
+                    value: getTrendForStat('totalUsers')!.percentage,
+                    label: "vs last period",
+                    isPositive: getTrendForStat('totalUsers')!.isPositive
+                  } : undefined}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="Active (30d)"
+                  value={stats.activeUsers30d}
+                  icon={Activity}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="GMV"
+                  value={formatMoney(stats.gmvCents)}
+                  icon={DollarSign}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="Net Revenue"
+                  value={formatMoney(stats.netRevenueCents)}
+                  icon={CreditCard}
+                  isLoading={loading}
+                />
+              </div>
+
+              {/* Secondary Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <AdminStatCard
+                  title="New Users (7d)"
+                  value={stats.newUsers7d}
+                  icon={UserPlus}
+                  trend={getTrendForStat('newUsers7d') ? {
+                    value: getTrendForStat('newUsers7d')!.percentage,
+                    label: "vs prev 7d",
+                    isPositive: getTrendForStat('newUsers7d')!.isPositive
+                  } : undefined}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="Influencers"
+                  value={stats.totalInfluencers}
+                  icon={Crown}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="Pending Payouts"
+                  value={formatMoney(stats.pendingPayoutsCents)}
+                  icon={AlertTriangle}
+                  isLoading={loading}
+                />
+                <AdminStatCard
+                  title="Refunds"
+                  value={stats.refundsCount}
+                  icon={RefreshCw}
+                  isLoading={loading}
+                />
+              </div>
+
+              {/* Growth Charts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">User Growth (7 days)</h3>
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <AdminSparkline
+                    data={generateSparklineData()}
+                    width={300}
+                    height={60}
+                    className="w-full"
+                  />
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">Revenue Trend</h3>
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <AdminSparkline
+                    data={generateSparklineData()}
+                    width={300}
+                    height={60}
+                    className="w-full"
+                  />
+                </motion.div>
+              </div>
+            </TabsContent>
+
+            {/* Users Tab */}
+            <TabsContent value="users" className="space-y-6">
+              <AdminTable
+                title="User Management"
+                data={sampleUsers}
+                columns={userColumns}
+                actions={userActions}
+                onExport={() => toast({ title: "Exporting users..." })}
+                filterable
+                filterOptions={[
+                  { label: 'Active', value: 'active' },
+                  { label: 'Suspended', value: 'suspended' },
+                  { label: 'Admins', value: 'admin' },
+                ]}
+                isLoading={loading}
+                emptyMessage="No users found"
+              />
+            </TabsContent>
+
+            {/* Influencers Tab */}
+            <TabsContent value="influencers" className="space-y-6">
+              <AdminTable
+                title="Influencer Management"
+                data={sampleInfluencers}
+                columns={influencerColumns}
+                actions={influencerActions}
+                onExport={() => toast({ title: "Exporting influencers..." })}
+                filterable
+                filterOptions={[
+                  { label: 'Stripe Connected', value: 'connected' },
+                  { label: 'Pending Setup', value: 'pending' },
+                  { label: 'High Earners', value: 'top' },
+                ]}
+                isLoading={loading}
+                emptyMessage="No influencers found"
+              />
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12"
+              >
+                <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Analytics Dashboard</h3>
+                <p className="text-muted-foreground mb-6">
+                  Advanced analytics and insights coming soon
+                </p>
+                <Button variant="outline" onClick={() => toast({ title: "Feature coming soon!" })}>
+                  <Globe className="h-4 w-4 mr-2" />
+                  View Full Analytics
+                </Button>
+              </motion.div>
+            </TabsContent>
+
+            {/* System Tab */}
+            <TabsContent value="system" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                >
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    System Health
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Database</span>
+                      <Badge variant="default">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Healthy
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Edge Functions</span>
+                      <Badge variant="default">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Online
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Storage</span>
+                      <Badge variant="default">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Available
+                      </Badge>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                >
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Feature Flags
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Maintenance Mode</span>
+                      <Badge variant="secondary">Off</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">New Registrations</span>
+                      <Badge variant="default">Enabled</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Payouts</span>
+                      <Badge variant="default">Active</Badge>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </TabsContent>
+
+            {/* Tools Tab */}
+            <TabsContent value="tools" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  {
+                    title: 'Broadcast Message',
+                    description: 'Send system-wide notifications',
+                    icon: MessageCircle,
+                    action: 'Send Broadcast'
+                  },
+                  {
+                    title: 'Generate Coupon',
+                    description: 'Create discount codes',
+                    icon: Zap,
+                    action: 'Create Coupon'
+                  },
+                  {
+                    title: 'Recalc Metrics',
+                    description: 'Refresh platform statistics',
+                    icon: RefreshCw,
+                    action: 'Recalculate'
+                  },
+                ].map((tool, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <tool.icon className="h-8 w-8 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">{tool.title}</h3>
+                        <p className="text-sm text-muted-foreground">{tool.description}</p>
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => toast({ title: `${tool.action} triggered!` })}
+                    >
+                      {tool.action}
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Mobile Sticky Actions */}
+        <div className="md:hidden">
+          <AdminStickyBar
+            actions={[
+              {
+                label: 'Refresh',
+                icon: RefreshCw,
+                onClick: refetch,
+                variant: 'outline',
+              },
+              {
+                label: 'Export',
+                icon: Download,
+                onClick: () => toast({ title: "Exporting data..." }),
+                variant: 'secondary',
+              },
+            ]}
+          />
         </div>
       </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeUsers}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Growth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{stats.weeklyGrowth}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Growth</CardTitle>
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{stats.monthlyGrowth}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="influencers" className="flex items-center gap-2">
-            <Crown className="w-4 h-4" />
-            Influencers
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
-            <Database className="w-4 h-4" />
-            System
-          </TabsTrigger>
-          <TabsTrigger value="tools" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Tools
-          </TabsTrigger>
-        </TabsList>
-
-        {/* User Management Tab */}
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>
-                Manage user accounts, roles, and permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingUsers ? (
-                <div className="flex justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {user.profiles?.first_name || user.profiles?.last_name 
-                                ? `${user.profiles.first_name || ''} ${user.profiles.last_name || ''}`.trim()
-                                : 'No name set'}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              ID: {user.id.slice(0, 8)}...
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {user.user_roles?.map((role, index) => (
-                              <Badge 
-                                key={index}
-                                variant={role.role === 'admin' ? 'default' : 'secondary'}
-                              >
-                                {role.role}
-                              </Badge>
-                            )) || <Badge variant="outline">user</Badge>}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={user.user_roles?.[0]?.role || 'user'}
-                            onValueChange={(value) => {
-                              const userName = user.profiles?.first_name || user.profiles?.last_name 
-                                ? `${user.profiles.first_name || ''} ${user.profiles.last_name || ''}`.trim()
-                                : user.email;
-                              handleRoleChange(user.id, userName, value as 'admin' | 'moderator' | 'user');
-                            }}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="moderator">Moderator</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Influencer Management Tab */}
-        <TabsContent value="influencers">
-          <Card>
-            <CardHeader>
-              <CardTitle>Influencer Management</CardTitle>
-              <CardDescription>
-                Manage influencer applications, approvals, and roles
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Search and Filter */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={influencerSearch}
-                    onChange={(e) => setInfluencerSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={influencerStatusFilter} onValueChange={setInfluencerStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Influencers Table */}
-              {loadingInfluencers ? (
-                <div className="flex justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : filteredInfluencers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Crown className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No influencers found</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Followers</TableHead>
-                      <TableHead>Products</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInfluencers.map((influencer) => (
-                      <TableRow key={influencer.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <div className="font-medium">{influencer.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                ID: {influencer.id.slice(0, 8)}...
-                              </div>
-                            </div>
-                            {influencer.isVerified && (
-                              <Badge variant="secondary" className="ml-2">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Verified
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{influencer.email}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={
-                              influencer.status === 'active' ? 'default' :
-                              influencer.status === 'pending' ? 'secondary' :
-                              'destructive'
-                            }
-                          >
-                            {influencer.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{influencer.followers}</TableCell>
-                        <TableCell>{influencer.productsPromoted}</TableCell>
-                        <TableCell>
-                          <Select
-                            value={influencer.role}
-                            onValueChange={(value) => 
-                              handleInfluencerRoleChange(
-                                influencer.id, 
-                                influencer.name, 
-                                value as 'influencer' | 'none'
-                              )
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="influencer">Influencer</SelectItem>
-                              <SelectItem value="none">None</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => window.open(`/profile/${influencer.id}`, '_blank')}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {!influencer.isVerified && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleInfluencerVerify(influencer.id, influencer.name)}
-                              >
-                                <Star className="w-4 h-4" />
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleInfluencerSuspend(influencer.id, influencer.name)}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Analytics</CardTitle>
-              <CardDescription>
-                View detailed analytics and metrics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Advanced analytics dashboard coming soon</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* System Logs Tab */}
-        <TabsContent value="logs">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Monitoring</CardTitle>
-              <CardDescription>
-                Monitor system health and view logs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>System monitoring dashboard coming soon</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Admin Tools Tab */}
-        <TabsContent value="tools">
-          <Card>
-            <CardHeader>
-              <CardTitle>Admin Tools</CardTitle>
-              <CardDescription>
-                Administrative utilities and maintenance tools
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Link to="/admin/security-logs">
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
-                    <Shield className="w-6 h-6" />
-                    <span>Security Logs</span>
-                  </Button>
-                </Link>
-                
-                <Link to="/admin/synonyms">
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
-                    <Search className="w-6 h-6" />
-                    <span>Search Synonyms</span>
-                  </Button>
-                </Link>
-                
-                <Link to="/admin/search-insights">
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 w-full">
-                    <BarChart3 className="w-6 h-6" />
-                    <span>Search Insights</span>
-                  </Button>
-                </Link>
-                
-                <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                  <Database className="w-6 h-6" />
-                  <span>Clear Test Data</span>
-                </Button>
-                
-                <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                  <AlertTriangle className="w-6 h-6" />
-                  <span>Maintenance Mode</span>
-                </Button>
-                
-                <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                  <Settings className="w-6 h-6" />
-                  <span>Feature Flags</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Role Change Confirmation Dialog */}
-      <AlertDialog open={roleChangeDialog.isOpen} onOpenChange={(open) => 
-        setRoleChangeDialog(prev => ({ ...prev, isOpen: open }))
-      }>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to change <strong>{roleChangeDialog.userName}</strong>'s role to{' '}
-              <strong>{roleChangeDialog.newRole}</strong>? This action will immediately affect their permissions.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRoleChange}>
-              Confirm Change
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Influencer Action Confirmation Dialog */}
-      <AlertDialog open={influencerActionDialog.isOpen} onOpenChange={(open) => 
-        setInfluencerActionDialog(prev => ({ ...prev, isOpen: open }))
-      }>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {influencerActionDialog.type === 'verify' && 'Verify Influencer'}
-              {influencerActionDialog.type === 'suspend' && 'Suspend Influencer'}
-              {influencerActionDialog.type === 'role-change' && 'Change Role'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {influencerActionDialog.type === 'verify' && 
-                `Are you sure you want to verify ${influencerActionDialog.userName} as an influencer?`}
-              {influencerActionDialog.type === 'suspend' && 
-                `Are you sure you want to suspend ${influencerActionDialog.userName}?`}
-              {influencerActionDialog.type === 'role-change' && 
-                `Change ${influencerActionDialog.userName}'s role to ${influencerActionDialog.newRole}?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmInfluencerAction}>
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </AdminGuard>
   );
 };
 

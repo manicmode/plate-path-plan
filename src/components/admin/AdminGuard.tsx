@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
+import { useAuth } from '@/contexts/auth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield } from 'lucide-react';
 
@@ -14,13 +16,27 @@ export const AdminGuard = ({
   fallback, 
   requireAdmin = true 
 }: AdminGuardProps) => {
-  const { role, loading, isAdmin, isModerator } = useUserRole();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading, isAdmin, isModerator } = useUserRole();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const loading = authLoading || roleLoading;
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    const currentPath = location.pathname + location.search;
+    navigate(`/auth?next=${encodeURIComponent(currentPath)}`);
+    return null;
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Checking permissions...</span>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Checking permissions...</p>
+        </div>
       </div>
     );
   }
@@ -29,12 +45,14 @@ export const AdminGuard = ({
 
   if (!hasAccess) {
     return fallback || (
-      <Alert className="m-4">
-        <Shield className="h-4 w-4" />
-        <AlertDescription>
-          You don't have permission to access this area. Admin access required.
-        </AlertDescription>
-      </Alert>
+      <div className="flex items-center justify-center min-h-screen p-8">
+        <Alert className="max-w-md">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            You don't have permission to access this area. Admin access required.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
