@@ -4,18 +4,22 @@ export type VCState = "idle" | "recording" | "processing";
 
 export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>) {
   const [state, setState] = useState<VCState>("idle");
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mrRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // guards
+  const startedRef = useRef(false);
   const stoppingRef = useRef(false);
   const finalizedRef = useRef(false);
 
   const start = useCallback(async () => {
     console.log('[VCRecorder] Start called, current state:', state);
-    if (state === "recording") {
+    if (startedRef.current || state === "recording") {
       console.log('[VCRecorder] Already recording, ignoring start');
       return;
     }
+    startedRef.current = true;
     setState("processing");
 
     try {
@@ -55,7 +59,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
       console.log('[VCRecorder] Using mime type:', mimeType);
 
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaRecorderRef.current = mr;
+      mrRef.current = mr;
       chunksRef.current = [];
       stoppingRef.current = false;
       finalizedRef.current = false;
@@ -66,6 +70,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
       };
       
       const onStop = async () => {
+        // absolutely NO mr.stop() or state transitions that trigger stop() here
         console.log('[VCRecorder] Stop event fired, finalized:', finalizedRef.current);
         if (finalizedRef.current) return;
         finalizedRef.current = true;
@@ -73,6 +78,14 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
         try {
           const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
           console.log('[VCRecorder] Created blob:', blob.size, 'bytes, type:', blob.type);
+          
+          // protect the edge function from empty blobs (causes 500)
+          if (!blob || blob.size < 1024) { // ~1KB
+            console.warn('[VCRecorder] Skip finalize (empty/too small blob)');
+            return;
+          }
+          
+          setState("processing");
           await onFinalize(blob);
         } catch (error) {
           console.error('[VCRecorder] Error in finalization:', error);
@@ -80,7 +93,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
           // Cleanup - remove listeners first
           mr.removeEventListener("dataavailable", onData);
           mr.removeEventListener("stop", onStop);
-          mediaRecorderRef.current = null;
+          mrRef.current = null;
           chunksRef.current = [];
           
           // Stop stream tracks
@@ -91,6 +104,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
           }
           
           stoppingRef.current = false;
+          startedRef.current = false;
           setState("idle");
           console.log('[VCRecorder] Cleanup completed');
         }
@@ -110,19 +124,23 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
 
   const stop = useCallback(() => {
     console.log('[VCRecorder] Stop called');
-    const mr = mediaRecorderRef.current;
+    const mr = mrRef.current;
     if (!mr || mr.state === "inactive" || stoppingRef.current) {
       console.log('[VCRecorder] Stop ignored - no recorder, inactive, or already stopping');
       return;
     }
     stoppingRef.current = true;
     console.log('[VCRecorder] Calling MediaRecorder.stop()');
-    try { 
-      mr.stop(); 
-    } catch (error) { 
-      console.error('[VCRecorder] Error stopping recorder:', error);
-      stoppingRef.current = false; 
-    }
+    
+    // break any sync onStop→stop loops
+    queueMicrotask(() => {
+      try { 
+        mr.stop(); 
+      } catch (error) { 
+        console.error('[VCRecorder] Error stopping recorder:', error);
+        stoppingRef.current = false; 
+      }
+    });
   }, []);
 
   const cancel = useCallback(() => {

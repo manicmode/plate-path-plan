@@ -4,7 +4,7 @@ import { useFeatureFlagActions } from "@/hooks/useFeatureFlagActions";
 import { useMyFeatureFlags } from "@/hooks/useMyFeatureFlags";
 import { notify } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { useVoiceCoachRecorder } from "./hooks/useVoiceCoachRecorder";
 import { useVadAutoStop } from "./hooks/useVadAutoStop";
@@ -94,13 +94,16 @@ export default function StartVoiceCoachButton() {
   // Voice recorder with idempotent stop
   const { state, start, stop, cancel, streamRef } = useVoiceCoachRecorder(onFinalize);
 
+  // make a stable value so useVadAutoStop re-runs when the ref changes
+  const liveStream = useMemo(() => streamRef.current ?? null, [streamRef.current]);
+
   // VAD auto-stop
   useVadAutoStop({
-    stream: streamRef.current,
+    stream: liveStream,
     isRecording: state === "recording",
     onSilenceStop: stop,
     trailingMs: 900,
-    minVoiceRms: 0.015,
+    minVoiceRms: 0.02,
     maxMs: 30_000,
     onVadUpdate: (rms, silenceMs) => {
       setVadData({ rms, silenceMs });
@@ -195,7 +198,7 @@ export default function StartVoiceCoachButton() {
       {/* VAD Debug Info (only shown in debug mode) */}
       {state === "recording" && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'vc' && (
         <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
-          <div>RMS Level: {vadData.rms.toFixed(4)} (threshold: 0.015)</div>
+          <div>RMS Level: {vadData.rms.toFixed(4)} (threshold: 0.02)</div>
           <div>Silence: {vadData.silenceMs !== null ? `${vadData.silenceMs.toFixed(0)}ms` : 'Voice detected'}</div>
           <div className="w-full bg-muted rounded-full h-2">
             <div 
