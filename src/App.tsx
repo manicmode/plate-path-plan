@@ -114,6 +114,8 @@ const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
+// Voice Coach - Isolated lazy loading
+const VoiceCoach = lazy(() => import('@/voice/index'));
 // ArenaDebug removed - V1 legacy
 
 
@@ -318,6 +320,12 @@ function AppContent() {
                       <Route path="/habit" element={
                         <ProtectedRoute>
                           <HabitCentralPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* Voice Coach - Isolated module */}
+                      <Route path="/voice-coach" element={
+                        <ProtectedRoute>
+                          <VoiceCoach />
                         </ProtectedRoute>
                       } />
                     <Route path="/supplement-hub" element={
