@@ -408,10 +408,10 @@ const AuthForm = () => {
             setCurrentTab(value as 'login' | 'register');
           }} className="space-y-4">
             <TabsList className="grid w-full grid-cols-2 glass-button border-0">
-              <TabsTrigger value="login" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
+              <TabsTrigger value="login" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
                 Sign In
               </TabsTrigger>
-              <TabsTrigger value="register" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
+              <TabsTrigger value="register" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
                 Sign Up
               </TabsTrigger>
             </TabsList>
