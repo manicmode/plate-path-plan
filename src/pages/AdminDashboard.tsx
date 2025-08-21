@@ -6,6 +6,7 @@ import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminStickyBar } from '@/components/admin/AdminStickyBar';
@@ -13,6 +14,8 @@ import { EnhancedAdminChart } from '@/components/admin/EnhancedAdminChart';
 import { SendBroadcastModal } from '@/components/admin/SendBroadcastModal';
 import { CreateCouponModal } from '@/components/admin/CreateCouponModal';
 import { useAdminStats } from '@/data/admin/useAdminStats';
+import { useMyFeatureFlags } from '@/hooks/useMyFeatureFlags';
+import { useFeatureFlagActions } from '@/hooks/useFeatureFlagActions';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
@@ -39,7 +42,8 @@ import {
   Zap,
   Globe,
   Send,
-  Percent
+  Percent,
+  Flag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -59,6 +63,8 @@ const AdminDashboard = () => {
   const [recalculating, setRecalculating] = useState(false);
   
   const { stats, trends, loading, error, refetch, formatMoney, getTrendForStat } = useAdminStats();
+  const { flags, flagsMap, loading: flagsLoading } = useMyFeatureFlags();
+  const { toggleGlobalFlag, setUserFlag, loading: flagActionLoading } = useFeatureFlagActions();
 
   // Refresh metrics handler
   const handleRefreshMetrics = async () => {
@@ -129,6 +135,23 @@ const AdminDashboard = () => {
     // Analytics
     console.log(`admin.nav_${value}`);
   };
+
+  // Feature Flag Handlers
+  const handleKillSwitchToggle = async (enabled: boolean) => {
+    await toggleGlobalFlag('voice_coach_disabled', enabled);
+  };
+
+  const handleUserOverrideToggle = async (enabled: boolean) => {
+    await setUserFlag('voice_coach_mvp', enabled);
+  };
+
+  // Get flag states
+  const killSwitchFlag = flags.find(f => f.flag_key === 'voice_coach_disabled');
+  const userOverrideFlag = flags.find(f => f.flag_key === 'voice_coach_mvp');
+  
+  const isKillSwitchOn = killSwitchFlag?.global_enabled || false;
+  const hasUserOverride = userOverrideFlag?.has_user_override || false;
+  const userOverrideEnabled = userOverrideFlag?.user_enabled || false;
 
   // Sample data for tables - replace with real data hooks
   const sampleUsers = [
@@ -534,23 +557,63 @@ const AdminDashboard = () => {
                   className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg"
                 >
                   <h3 className="font-semibold flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
+                    <Flag className="h-5 w-5" />
                     Feature Flags
                   </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Maintenance Mode</span>
-                      <Badge variant="secondary">Off</Badge>
+                  
+                  {flagsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">New Registrations</span>
-                      <Badge variant="default">Enabled</Badge>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Voice Coach Kill Switch */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium">Voice Coach – Kill Switch</span>
+                            <p className="text-xs text-muted-foreground">When ON, Voice Coach is disabled for everyone</p>
+                          </div>
+                          <Switch
+                            checked={isKillSwitchOn}
+                            onCheckedChange={handleKillSwitchToggle}
+                            disabled={flagActionLoading}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Voice Coach User Override */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="space-y-1">
+                            <span className={`text-sm font-medium ${isKillSwitchOn ? 'text-muted-foreground' : ''}`}>
+                              Voice Coach – MVP Access (You)
+                            </span>
+                            <p className={`text-xs ${isKillSwitchOn ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                              {isKillSwitchOn ? 'Globally disabled' : 'Enable Voice Coach for your account to test'}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={userOverrideEnabled && hasUserOverride}
+                            onCheckedChange={handleUserOverrideToggle}
+                            disabled={flagActionLoading || isKillSwitchOn}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="pt-2 border-t border-border/50">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/feature-flags')}
+                          className="w-full"
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Manage All Flags
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Payouts</span>
-                      <Badge variant="default">Active</Badge>
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               </div>
             </TabsContent>
