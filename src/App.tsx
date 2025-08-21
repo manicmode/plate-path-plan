@@ -111,9 +111,9 @@ const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
 const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
+const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
-const InfluencersPage = lazy(() => import('@/pages/Influencers'));
 // ArenaDebug removed - V1 legacy
 
 
@@ -309,22 +309,17 @@ function AppContent() {
                       <ProtectedRoute>
                         <Profile />
                       </ProtectedRoute>
-                    } />
-                     <Route path="/game-and-challenge" element={
-                       <ProtectedRoute>
-                         <GameAndChallengePage_Min />
-                       </ProtectedRoute>
                      } />
-                     <Route path="/habit" element={
-                       <ProtectedRoute>
-                         <HabitCentralPage />
-                       </ProtectedRoute>
-                     } />
-                     <Route path="/influencers" element={
-                       <ProtectedRoute>
-                         <InfluencersPage />
-                       </ProtectedRoute>
-                     } />
+                      <Route path="/game-and-challenge" element={
+                        <ProtectedRoute>
+                          <GameAndChallengePage_Min />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/habit" element={
+                        <ProtectedRoute>
+                          <HabitCentralPage />
+                        </ProtectedRoute>
+                      } />
                     <Route path="/supplement-hub" element={
                       <ProtectedRoute>
                         <SupplementHub />
@@ -446,9 +441,13 @@ function AppContent() {
                         <InfluencerHub />
                       </ProtectedRoute>
                     } />
-                    {/* Redirects for legacy routes */}
-                     <Route path="/influencer-dashboard" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
-                     <Route path="/influencer" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
+                    <Route path="/influencer-dashboard" element={
+                      <ProtectedRoute>
+                        <InfluencerDashboard />
+                      </ProtectedRoute>
+                    } />
+                    {/* Legacy redirects */}
+                    <Route path="/influencer" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
                      <Route path="/admin/security-logs" element={
                        <ProtectedRoute>
                          <SecurityLogsPage />

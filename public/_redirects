@@ -1,5 +1,4 @@
 # Influencer Hub Redirects (301 permanent)
-/influencer-dashboard  /influencer-hub  301!
 /influencer            /influencer-hub  301!
 
 /*    /index.html   200

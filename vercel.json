@@ -1,11 +1,6 @@
 {
   "redirects": [
     {
-      "source": "/influencer-dashboard",
-      "destination": "/influencer-hub",
-      "permanent": true
-    },
-    {
       "source": "/influencer",
       "destination": "/influencer-hub", 
       "permanent": true
