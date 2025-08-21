@@ -21,8 +21,15 @@ import {
   Users,
   Eye,
   Heart,
-  MessageCircle
+  MessageCircle,
+  DollarSign,
+  CreditCard,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
+import { useInfluencerEarnings, useTopChallenges, formatMoney } from '@/data/influencers/useInfluencerEarnings';
+import { useStripeStatus, useCreateOnboardingLink, useRefreshPayoutStatus } from '@/data/influencers/useStripeConnect';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ProfileTab = () => {
   const { user } = useAuth();
@@ -268,6 +275,260 @@ const BroadcastsTab = () => {
   );
 };
 
+const EarningsTab = () => {
+  const { data: earnings, isLoading: earningsLoading } = useInfluencerEarnings();
+  const { data: topChallenges, isLoading: challengesLoading } = useTopChallenges();
+  const { data: stripeStatus } = useStripeStatus();
+  
+  if (earningsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-8 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card data-testid="stat-total-revenue">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatMoney(earnings?.total_earnings_cents || 0, stripeStatus?.default_currency || 'USD')}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="stat-paid-out">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Paid Out</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatMoney(earnings?.paid_earnings_cents || 0, stripeStatus?.default_currency || 'USD')}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Paid Orders</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {earnings?.paid_orders_count || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">All Orders</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {earnings?.total_orders || 0}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Earning Challenges */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Earning Challenges</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {challengesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          ) : topChallenges && topChallenges.length > 0 ? (
+            <div className="space-y-3">
+              {topChallenges.map((challenge) => (
+                <div key={challenge.challenge_id} className="flex justify-between items-center">
+                  <div className="text-sm font-medium">{challenge.challenge_title}</div>
+                  <div className="text-sm text-muted-foreground tabular-nums">
+                    {formatMoney(challenge.total_revenue_cents, stripeStatus?.default_currency || 'USD')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No paid orders yet.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const PayoutsTab = () => {
+  const { data: stripeStatus, isLoading } = useStripeStatus();
+  const createOnboardingLink = useCreateOnboardingLink();
+  const refreshPayoutStatus = useRefreshPayoutStatus();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <Skeleton className="h-6 w-48 mb-4" />
+            <Skeleton className="h-4 w-full mb-2" />
+            <Skeleton className="h-10 w-32" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleSetupPayouts = () => {
+    createOnboardingLink.mutate();
+  };
+
+  const handleRefreshStatus = () => {
+    refreshPayoutStatus.mutate();
+  };
+
+  const handleOpenStripe = () => {
+    window.open('https://dashboard.stripe.com', '_blank');
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Stripe Connect Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!stripeStatus?.connect_account_id ? (
+            <>
+              <p className="text-muted-foreground">
+                Connect your Stripe account to receive payouts from paid challenges.
+              </p>
+              <Button 
+                onClick={handleSetupPayouts}
+                disabled={createOnboardingLink.isPending}
+              >
+                {createOnboardingLink.isPending ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4 mr-2" />
+                )}
+                Set up payouts
+              </Button>
+            </>
+          ) : !stripeStatus.payouts_enabled ? (
+            <>
+              <p className="text-muted-foreground">
+                Complete your Stripe onboarding to enable payouts.
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleRefreshStatus}
+                  disabled={refreshPayoutStatus.isPending}
+                >
+                  {refreshPayoutStatus.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Refresh status
+                </Button>
+                <Button variant="outline" onClick={handleSetupPayouts}>
+                  Complete onboarding
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                <CreditCard className="h-4 w-4" />
+                <span className="font-medium">Stripe Connect • Payouts enabled</span>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={handleRefreshStatus}
+                  disabled={refreshPayoutStatus.isPending}
+                >
+                  {refreshPayoutStatus.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Refresh status
+                </Button>
+                <Button variant="outline" onClick={handleOpenStripe}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open Stripe
+                </Button>
+              </div>
+            </>
+          )}
+
+          <div className="pt-4 border-t text-xs text-muted-foreground">
+            <p>
+              Payments from paid challenges appear as orders. After Stripe settles funds, 
+              payouts go to your connected bank account.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const MonetizationTab = () => {
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue="earnings" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="earnings" data-testid="earnings-tab">
+            Earnings
+          </TabsTrigger>
+          <TabsTrigger value="payouts" data-testid="payouts-tab">
+            Payouts
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="earnings">
+          <EarningsTab />
+        </TabsContent>
+
+        <TabsContent value="payouts">
+          <PayoutsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
 const InfluencerDashboardContent = () => {
   const { user } = useAuth();
 
@@ -289,7 +550,7 @@ const InfluencerDashboardContent = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
@@ -309,6 +570,10 @@ const InfluencerDashboardContent = () => {
           <TabsTrigger value="broadcasts" className="flex items-center gap-2">
             <Megaphone className="h-4 w-4" />
             <span className="hidden sm:inline">Broadcasts</span>
+          </TabsTrigger>
+          <TabsTrigger value="monetization" data-testid="monetization-tab" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Monetization</span>
           </TabsTrigger>
         </TabsList>
 
@@ -330,6 +595,10 @@ const InfluencerDashboardContent = () => {
 
         <TabsContent value="broadcasts">
           <BroadcastsTab />
+        </TabsContent>
+
+        <TabsContent value="monetization">
+          <MonetizationTab />
         </TabsContent>
       </Tabs>
     </div>
