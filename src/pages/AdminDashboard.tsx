@@ -221,6 +221,9 @@ const AdminDashboard = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    console.log('Refresh button clicked!');
+                    console.log('Loading state:', loading);
+                    console.log('Refetch function:', typeof refetch);
                     refetch();
                     toast({
                       title: "Refreshing data...",
