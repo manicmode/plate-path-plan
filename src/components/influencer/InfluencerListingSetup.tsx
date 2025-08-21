@@ -35,7 +35,7 @@ const CATEGORY_OPTIONS = [
 
 export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListingSetupProps) {
   const navigate = useNavigate();
-  const { influencerData, updateProfile, publishToHub, canPublish } = useInfluencerListing();
+  const { influencerData, updateProfile, publishToHub, unpublishFromHub, canPublish, getAvatarFallback } = useInfluencerListing();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<InfluencerListingData>>({
@@ -74,8 +74,14 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
 
   const handlePublish = async () => {
     try {
+      // Ensure avatar fallback before publishing
+      const dataToSave = { ...formData };
+      if (!dataToSave.avatar_url) {
+        dataToSave.avatar_url = getAvatarFallback();
+      }
+      
       // Save current data first
-      await updateProfile.mutateAsync(formData);
+      await updateProfile.mutateAsync(dataToSave);
       
       // Then publish
       await publishToHub.mutateAsync();
@@ -106,6 +112,27 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
     }
   };
 
+  const handleUnpublish = async () => {
+    try {
+      await unpublishFromHub.mutateAsync();
+      
+      toast({
+        title: "Unpublished from Hub",
+        description: "Your profile is no longer discoverable."
+      });
+      
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error('Unpublish failed:', error);
+      toast({
+        title: "Unpublish failed",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const toggleCategory = (category: string) => {
     const current = formData.category_tags || [];
     const updated = current.includes(category)
@@ -118,7 +145,7 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return formData.display_name && formData.handle && formData.avatar_url;
+        return formData.display_name && formData.handle; // Avatar will fallback if empty
       case 2:
         return formData.bio && formData.bio.length >= 80;
       case 3:
@@ -126,10 +153,19 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
       case 4:
         return true; // Social links are optional
       case 5:
-        return agreedToTerms && canPublish;
+        return agreedToTerms;
       default:
         return false;
     }
+  };
+
+  // Compute validation for publishing
+  const canPublishNow = () => {
+    const hasNameAndHandle = !!formData.display_name && !!formData.handle;
+    const hasBio = (formData.bio?.length ?? 0) >= 80;
+    const hasTags = (formData.category_tags?.length ?? 0) >= 1 && (formData.category_tags?.length ?? 0) <= 3;
+    // Avatar not required since we have fallback
+    return hasNameAndHandle && hasBio && hasTags && agreedToTerms;
   };
 
   if (!open) return null;
@@ -404,6 +440,20 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
                   )}
                 </div>
 
+                {/* Validation summary */}
+                {!canPublishNow() && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm font-medium text-destructive mb-2">Complete these requirements:</p>
+                    <div className="space-y-1 text-xs">
+                      {!formData.display_name && <p>• Add display name</p>}
+                      {!formData.handle && <p>• Add handle</p>}
+                      {(!formData.bio || formData.bio.length < 80) && <p>• Bio must be at least 80 characters</p>}
+                      {(!formData.category_tags || formData.category_tags.length === 0) && <p>• Select at least 1 specialty tag</p>}
+                      {!agreedToTerms && <p>• Agree to terms</p>}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-start space-x-2">
                   <Checkbox
                     id="terms"
@@ -446,18 +496,29 @@ export function InfluencerListingSetup({ open, onOpenChange }: InfluencerListing
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handlePublish}
-                  disabled={!canProceed() || publishToHub.isPending}
-                  className="bg-gradient-to-r from-primary to-primary/80"
-                >
-                  {publishToHub.isPending ? 'Publishing...' : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Publish to Hub
-                    </>
+                <div className="flex gap-2">
+                  {influencerData?.is_listed && (
+                    <Button
+                      variant="outline"
+                      onClick={handleUnpublish}
+                      disabled={unpublishFromHub.isPending}
+                    >
+                      {unpublishFromHub.isPending ? 'Unpublishing...' : 'Unpublish'}
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={handlePublish}
+                    disabled={!canPublishNow() || publishToHub.isPending}
+                    className="bg-gradient-to-r from-primary to-primary/80"
+                  >
+                    {publishToHub.isPending ? 'Publishing...' : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        {influencerData?.is_listed ? 'Update & Republish' : 'Publish to Hub'}
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </div>

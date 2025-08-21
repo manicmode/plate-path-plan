@@ -30,7 +30,8 @@ import {
   Copy,
   Share2,
   TrendingUp,
-  Clock
+  Clock,
+  Check
 } from 'lucide-react';
 import { useInfluencerEarnings, useTopChallenges, formatMoney } from '@/data/influencers/useInfluencerEarnings';
 import { useStripeStatus, useCreateOnboardingLink, useRefreshPayoutStatus } from '@/data/influencers/useStripeConnect';
@@ -130,31 +131,81 @@ const ProfileTab = () => {
                 <div className="text-sm text-muted-foreground">
                   Get discovered by the community! Complete your profile and publish to the Influencer Hub.
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${influencerData?.display_name && influencerData?.handle ? 'bg-green-500' : 'bg-muted'}`} />
-                    Basic info (name, handle)
-                    {validationErrors?.display_name && <span className="text-destructive text-xs">• {validationErrors.display_name}</span>}
-                    {validationErrors?.handle && <span className="text-destructive text-xs">• {validationErrors.handle}</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${influencerData?.bio && influencerData.bio.length >= 80 ? 'bg-green-500' : 'bg-muted'}`} />
-                    Bio (80+ characters)
-                    {validationErrors?.bio && <span className="text-destructive text-xs">• {validationErrors.bio}</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${influencerData?.category_tags && influencerData.category_tags.length > 0 ? 'bg-green-500' : 'bg-muted'}`} />
-                    At least 1 specialty tag
-                    {validationErrors?.category_tags && <span className="text-destructive text-xs">• {validationErrors.category_tags}</span>}
-                  </div>
-                </div>
+                
+                {/* Computed validation checks */}
+                {(() => {
+                  const hasNameAndHandle = !!influencerData?.display_name && !!influencerData?.handle;
+                  const hasBio = (influencerData?.bio?.trim().length ?? 0) >= 80;
+                  const hasTags = (influencerData?.category_tags?.length ?? 0) >= 1 && (influencerData?.category_tags?.length ?? 0) <= 3;
+                  const hasAvatar = !!influencerData?.avatar_url;
+                  
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${hasNameAndHandle ? 'bg-green-500' : 'bg-muted'}`} />
+                          Basic info (name, handle)
+                          {hasNameAndHandle && <Check className="h-3 w-3 text-green-500" />}
+                        </div>
+                        {!hasNameAndHandle && (
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs" 
+                            onClick={() => setShowListingSetup(true)}>
+                            Fix
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${hasAvatar ? 'bg-green-500' : 'bg-muted'}`} />
+                          Profile photo
+                          {hasAvatar && <Check className="h-3 w-3 text-green-500" />}
+                        </div>
+                        {!hasAvatar && (
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs"
+                            onClick={() => setShowListingSetup(true)}>
+                            Fix
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${hasBio ? 'bg-green-500' : 'bg-muted'}`} />
+                          Bio (80+ characters)
+                          {hasBio && <Check className="h-3 w-3 text-green-500" />}
+                        </div>
+                        {!hasBio && (
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs"
+                            onClick={() => setShowListingSetup(true)}>
+                            Fix
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${hasTags ? 'bg-green-500' : 'bg-muted'}`} />
+                          Specialty tags (1-3)
+                          {hasTags && <Check className="h-3 w-3 text-green-500" />}
+                        </div>
+                        {!hasTags && (
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs"
+                            onClick={() => setShowListingSetup(true)}>
+                            Fix
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                
                 <Button
                   onClick={() => setShowListingSetup(true)}
-                  className="gap-2"
-                  disabled={!canPublish && !influencerData}
+                  className="gap-2 w-full z-20"
                 >
                   <Plus className="h-4 w-4" />
-                  {influencerData ? 'Complete Setup' : 'Get Listed'}
+                  {influencerData ? 'Finish Setup' : 'Get Listed'}
                 </Button>
               </div>
             )}
