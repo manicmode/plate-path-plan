@@ -3,16 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Star, TrendingUp, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export const InfluencerDashboardCTA = () => {
+export const InfluencerHubCTA = () => {
   const navigate = useNavigate();
 
-  const handleOpenDashboard = () => {
+  const handleOpenHub = () => {
     // Fire analytics event
     if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'influencer.nav_open_from_home');
+      (window as any).gtag('event', 'influencer_hub.nav_open_from_home');
     }
     
-    navigate('/influencer-dashboard');
+    navigate('/influencer-hub');
   };
 
   return (
@@ -30,7 +30,7 @@ export const InfluencerDashboardCTA = () => {
                 <Star className="h-5 w-5 text-cyan-600" />
                 <span className="text-sm font-semibold text-cyan-600 dark:text-cyan-400">Creator Tools</span>
               </div>
-              <h3 className="text-lg font-bold mb-1">Influencer Dashboard</h3>
+              <h3 className="text-lg font-bold mb-1">Influencer Hub</h3>
               <p className="text-sm text-muted-foreground mb-3">
                 Track earnings, grow your community, and monetize your content
               </p>
@@ -47,12 +47,12 @@ export const InfluencerDashboardCTA = () => {
             </div>
             
             <Button 
-              onClick={handleOpenDashboard}
+              onClick={handleOpenHub}
               className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               size="sm"
             >
               <Star className="h-4 w-4 mr-2" />
-              Open Dashboard
+              Open Hub
             </Button>
           </div>
           

@@ -107,7 +107,7 @@ const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
 const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
 const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
-const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
+const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const InfluencersPage = lazy(() => import('@/pages/Influencers'));
@@ -434,11 +434,14 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                     <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
-                    <Route path="/influencer-dashboard" element={
+                    <Route path="/influencer-hub" element={
                       <ProtectedRoute>
-                        <InfluencerDashboard />
+                        <InfluencerHub />
                       </ProtectedRoute>
                     } />
+                    {/* Redirects for legacy routes */}
+                    <Route path="/influencer-dashboard" element={<Navigate to="/influencer-hub" replace />} />
+                    <Route path="/influencer" element={<Navigate to="/influencer-hub" replace />} />
                      <Route path="/admin/security-logs" element={
                        <ProtectedRoute>
                          <SecurityLogsPage />

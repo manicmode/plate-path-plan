@@ -774,7 +774,7 @@ const PayoutsTab = () => {
 };
 
 
-const InfluencerDashboardContent = () => {
+const InfluencerHubContent = () => {
   const { data: stats } = useInfluencerStats();
   const navigate = useNavigate();
   const location = useLocation();
@@ -973,7 +973,7 @@ const InfluencerDashboardContent = () => {
   );
 };
 
-export default function InfluencerDashboard() {
+export default function InfluencerHub() {
   return (
     <InfluencerGuard onInfluencerCreated={() => {
       // This will trigger after profile creation to open payouts
@@ -983,7 +983,7 @@ export default function InfluencerDashboard() {
       window.history.replaceState(null, '', url.toString());
       window.location.reload();
     }}>
-      <InfluencerDashboardContent />
+      <InfluencerHubContent />
     </InfluencerGuard>
   );
 }
