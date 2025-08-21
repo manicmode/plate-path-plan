@@ -1088,7 +1088,7 @@ const InfluencerHubContent = () => {
             isLoading={statsLoading}
           />
 
-          {/* Creator Tabs Navigation - No overlays, proper z-index */}
+          {/* Creator Tabs Navigation - Proper z-index below modals */}
           <div className="relative z-20 pointer-events-none">
             <CreatorTabs 
               value={activeTab}

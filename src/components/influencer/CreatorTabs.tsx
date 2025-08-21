@@ -63,11 +63,14 @@ export const CreatorTabs: React.FC<CreatorTabsProps> = ({
                   "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none",
                   "min-h-[44px] min-w-[44px]",
                   isActive
-                    ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-md"
+                    ? "bg-gradient-to-r from-primary to-primary/80 text-slate-900 dark:text-slate-900 shadow-md data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-900"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 )}
               >
-                <IconComponent className="h-4 w-4 flex-shrink-0" />
+                <IconComponent className={cn(
+                  "h-4 w-4 flex-shrink-0",
+                  isActive ? "text-slate-900 dark:text-slate-900" : ""
+                )} />
                 <span className="hidden md:inline truncate">{item.label}</span>
               </button>
             );
