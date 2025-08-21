@@ -6445,6 +6445,134 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_audit: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          payload: Json | null
+          tool_name: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          payload?: Json | null
+          tool_name?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          payload?: Json | null
+          tool_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      voice_quota: {
+        Row: {
+          month_key: string
+          plan_minutes: number
+          used_seconds_month: number
+          user_id: string
+        }
+        Insert: {
+          month_key?: string
+          plan_minutes?: number
+          used_seconds_month?: number
+          user_id: string
+        }
+        Update: {
+          month_key?: string
+          plan_minutes?: number
+          used_seconds_month?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      voice_session: {
+        Row: {
+          cost_cents: number | null
+          ended_at: string | null
+          id: string
+          started_at: string | null
+          total_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          cost_cents?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          total_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          cost_cents?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          total_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      voice_turn: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          id: string
+          ms_asr: number | null
+          ms_tts: number | null
+          role: string
+          session_id: string
+          text: string | null
+          tokens_output: number | null
+          tokens_prompt: number | null
+          tool_name: string | null
+          tool_payload: Json | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          ms_asr?: number | null
+          ms_tts?: number | null
+          role: string
+          session_id: string
+          text?: string | null
+          tokens_output?: number | null
+          tokens_prompt?: number | null
+          tool_name?: string | null
+          tool_payload?: Json | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          ms_asr?: number | null
+          ms_tts?: number | null
+          role?: string
+          session_id?: string
+          text?: string | null
+          tokens_output?: number | null
+          tokens_prompt?: number | null
+          tool_name?: string | null
+          tool_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_turn_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "voice_session"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_exercise_insights: {
         Row: {
           created_at: string
