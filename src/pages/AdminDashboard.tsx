@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminStickyBar } from '@/components/admin/AdminStickyBar';
-import { AdminSparkline } from '@/components/admin/AdminSparkline';
+import { EnhancedAdminChart } from '@/components/admin/EnhancedAdminChart';
 import { useAdminStats } from '@/data/admin/useAdminStats';
 import { 
   Shield, 
@@ -241,8 +241,8 @@ const AdminDashboard = () => {
         <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
             {/* Sticky Tab Bar */}
-            <div className="sticky top-[104px] z-30 -mx-4 px-4 bg-background/80 backdrop-blur border-b border-white/10 pb-4">
-              <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white/5 dark:bg-black/20 backdrop-blur rounded-2xl p-1">
+            <div className="sticky top-[104px] z-30 -mx-4 px-4 bg-background/95 backdrop-blur border-b border-border/20 pb-4">
+              <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-muted/50 backdrop-blur rounded-2xl p-1 shadow-lg">
                 <TabsTrigger value="overview" className="rounded-xl">
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Overview
@@ -340,41 +340,23 @@ const AdminDashboard = () => {
 
               {/* Growth Charts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold">User Growth (7 days)</h3>
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <AdminSparkline
-                    data={generateSparklineData()}
-                    width={300}
-                    height={60}
-                    className="w-full"
-                  />
-                </motion.div>
+                <EnhancedAdminChart
+                  title="User Growth (7 days)"
+                  data={generateSparklineData()}
+                  icon={TrendingUp}
+                  type="area"
+                  color="hsl(var(--primary))"
+                  gradient={true}
+                />
                 
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold">Revenue Trend</h3>
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <AdminSparkline
-                    data={generateSparklineData()}
-                    width={300}
-                    height={60}
-                    className="w-full"
-                  />
-                </motion.div>
+                <EnhancedAdminChart
+                  title="Revenue Trend"
+                  data={generateSparklineData()}
+                  icon={DollarSign}
+                  type="area"
+                  color="hsl(142 76% 36%)"
+                  gradient={true}
+                />
               </div>
             </TabsContent>
 
@@ -441,7 +423,7 @@ const AdminDashboard = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                  className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg"
                 >
                   <h3 className="font-semibold flex items-center gap-2">
                     <Database className="h-5 w-5" />
@@ -476,7 +458,7 @@ const AdminDashboard = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                  className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg"
                 >
                   <h3 className="font-semibold flex items-center gap-2">
                     <Settings className="h-5 w-5" />
@@ -528,7 +510,7 @@ const AdminDashboard = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="p-6 rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur space-y-4"
+                    className="p-6 rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm space-y-4 shadow-lg hover:shadow-xl transition-all duration-300"
                   >
                     <div className="flex items-center gap-3">
                       <tool.icon className="h-8 w-8 text-primary" />

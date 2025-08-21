@@ -76,7 +76,7 @@ export const AdminStatCard = ({
       whileHover={{ scale: 1.02 }}
       className={className}
     >
-      <Card className="rounded-2xl border border-white/10 bg-white/5 dark:bg-black/20 backdrop-blur hover:bg-white/10 dark:hover:bg-black/30 transition-all duration-200">
+      <Card className="rounded-2xl border border-border/50 bg-card/80 dark:bg-card/80 backdrop-blur-sm hover:bg-card/90 dark:hover:bg-card/90 transition-all duration-300 shadow-lg hover:shadow-xl">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {title}
