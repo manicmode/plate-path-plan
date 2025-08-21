@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { InfluencerPreview, InfluencerFilters } from '@/components/influencers/types';
+import { getDisplayName } from '@/lib/displayName';
 
 interface PublicInfluencerData {
   id: string;
@@ -73,9 +74,15 @@ export function useInfluencerSearchPublic(filters: InfluencerFilters) {
       // Transform to InfluencerPreview format
       const influencers: InfluencerPreview[] = (data || []).map((item: PublicInfluencerData) => ({
         id: item.id,
-        name: item.display_name,
+        name: getDisplayName({
+          display_name: item.display_name,
+          first_name: null,
+          last_name: null,
+          email: null,
+          user_id: item.id,
+        }),
         handle: item.handle,
-        avatarUrl: item.avatar_url || '',
+        avatarUrl: item.avatar_url || null, // Keep null to allow fallback to initials
         tagline: item.headline || undefined,
         verified: item.verified,
         niches: item.category_tags,

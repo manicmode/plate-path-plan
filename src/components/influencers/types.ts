@@ -2,7 +2,7 @@ export type InfluencerPreview = {
   id: string;
   name: string;
   handle: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   bannerUrl?: string;
   tagline?: string;
   verified?: boolean;

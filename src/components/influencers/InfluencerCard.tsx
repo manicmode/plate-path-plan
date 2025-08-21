@@ -72,16 +72,27 @@ export function InfluencerCard({ data, onSelect, onToggleFollow }: InfluencerCar
           {/* Header with Avatar and Basic Info */}
           <div className="flex items-start space-x-4">
             <div className="relative">
-              <img
-                src={data.avatarUrl}
-                alt={`${data.name} avatar`}
-                className={cn(
-                  "w-16 h-16 rounded-full object-cover ring-2 transition-all",
+              {data.avatarUrl ? (
+                <img
+                  src={data.avatarUrl}
+                  alt={`${data.name} avatar`}
+                  className={cn(
+                    "w-16 h-16 rounded-full object-cover ring-2 transition-all",
+                    data.bannerUrl 
+                      ? "ring-background group-hover:ring-primary/30" 
+                      : "ring-border/50 group-hover:ring-primary/30"
+                  )}
+                />
+              ) : (
+                <div className={cn(
+                  "w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center ring-2 transition-all text-primary font-semibold text-lg",
                   data.bannerUrl 
                     ? "ring-background group-hover:ring-primary/30" 
                     : "ring-border/50 group-hover:ring-primary/30"
-                )}
-              />
+                )}>
+                  {data.name.charAt(0).toUpperCase()}
+                </div>
+              )}
               {data.verified && (
                 <CheckCircle2 className="absolute -bottom-1 -right-1 h-5 w-5 text-primary bg-background rounded-full p-0.5" />
               )}
