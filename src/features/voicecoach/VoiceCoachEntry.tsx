@@ -19,22 +19,20 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
   }
 
   return (
-    <FeatureFlagGuard flag="voice_coach_mvp" fallback={null}>
-      <Button
-        size="sm"
-        variant="secondary"
-        className={`rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all ${className}`}
-        aria-label="Start Voice Coach"
-        onClick={() => {
-          try { 
-            nav("/voice-coach"); 
-          } catch { 
-            notify.info("Launching Voice Coach…"); 
-          }
-        }}
-      >
-        <span>🎙️ Voice Coach</span>
-      </Button>
-    </FeatureFlagGuard>
+    <Button
+      size="sm"
+      variant="secondary"
+      className={`rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all ${className}`}
+      aria-label="Start Voice Coach"
+      onClick={() => {
+        try { 
+          nav("/voice-coach"); 
+        } catch { 
+          notify.info("Launching Voice Coach…"); 
+        }
+      }}
+    >
+      <span>🎙️ Voice Coach</span>
+    </Button>
   );
 }
