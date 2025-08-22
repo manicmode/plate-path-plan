@@ -8,14 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { useMyFeatureFlags } from '@/hooks/useMyFeatureFlags';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useFeatureFlagActions } from '@/hooks/useFeatureFlagActions';
-import { useVoiceCoachFeatureFlag } from '@/hooks/useVoiceCoachFeatureFlag';
 import { useFeatureFlagOptimized } from '@/hooks/useFeatureFlagOptimized';
 
 export default function FeatureFlagDemo() {
   const { flags, flagsMap, loading: flagsLoading, refresh } = useMyFeatureFlags();
   const { isAdmin, loading: adminLoading } = useAdminRole();
   const { setUserFlag, toggleGlobalFlag, loading: actionLoading } = useFeatureFlagActions();
-  const voiceCoach = useVoiceCoachFeatureFlag();
   
   // Use optimized hook for demo
   const voiceCoachOptimized = useFeatureFlagOptimized('voice_coach_mvp');
@@ -64,9 +62,9 @@ export default function FeatureFlagDemo() {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Voice Coach Status: 
-              <Badge className="ml-2" variant={voiceCoach.fullyAvailable ? "default" : "secondary"}>
-                {voiceCoach.fullyAvailable ? 'Available' : 'Disabled'}
+              Voice Agent MVP Status: 
+              <Badge className="ml-2" variant={voiceCoachOptimized.enabled ? "default" : "secondary"}>
+                {voiceCoachOptimized.enabled ? 'Available' : 'Disabled'}
               </Badge>
               <span className="ml-2 text-xs text-muted-foreground">
                 (Optimized cache: {voiceCoachOptimized.isFromCache ? '✓' : '✗'})
@@ -87,7 +85,7 @@ export default function FeatureFlagDemo() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium text-red-700 dark:text-red-300">
-                          Voice Coach Disabled
+                          Voice Agent Disabled
                         </h4>
                         <p className="text-sm text-muted-foreground">
                           Global kill switch - overrides all other settings
@@ -221,16 +219,12 @@ export default function FeatureFlagDemo() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm font-mono">
             <div className="space-y-1">
-              <div className="font-semibold">Voice Coach Checks:</div>
-              <div>DB Enabled: {voiceCoach.dbEnabled ? '✅' : '❌'}</div>
-              <div>Env Enabled: {voiceCoach.envEnabled ? '✅' : '❌'}</div>
-              <div>Tier Enabled: {voiceCoach.tierEnabled ? '✅' : '❌'}</div>
-              <div>Final Available: {voiceCoach.fullyAvailable ? '✅' : '❌'}</div>
+              <div className="font-semibold">Voice Agent Status:</div>
+              <div>MVP Enabled: {voiceCoachOptimized.enabled ? '✅' : '❌'}</div>
+              <div>From Cache: {voiceCoachOptimized.isFromCache ? '✅' : '❌'}</div>
             </div>
             <div className="space-y-1">
               <div className="font-semibold">Cache Status:</div>
-              <div>Optimized Hook: {voiceCoachOptimized.enabled ? '✅' : '❌'}</div>
-              <div>From Cache: {voiceCoachOptimized.isFromCache ? '✅' : '❌'}</div>
               <div>Admin Role: {isAdmin ? '✅' : '❌'}</div>
               <div>Flags Loaded: {flags.length}</div>
             </div>

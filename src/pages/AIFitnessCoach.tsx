@@ -18,7 +18,6 @@ import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
 import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExerciseInsightsCard';
 import { AnimatePresence } from 'framer-motion';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
-import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
@@ -480,9 +479,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* AI Chat Box */}
         <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
           <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-            <div className="flex justify-center">
-              <VoiceCoachEntry />
-            </div>
+            {/* Voice agent entry will be added here when ready */}
           </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}

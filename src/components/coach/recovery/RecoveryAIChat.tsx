@@ -10,7 +10,6 @@ import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
-import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 
 interface Message {
   id: string;
@@ -191,9 +190,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   return (
     <Card ref={chatContainerRef} className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <div className="flex justify-center">
-          <VoiceCoachEntry />
-        </div>
+        {/* Voice agent entry will be added here when ready */}
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         {/* Messages Container with optimized height for mobile */}

@@ -28,7 +28,6 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
-import { VoiceCoachEntry } from "@/features/voicecoach/VoiceCoachEntry";
 import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
 
 interface Message {
@@ -521,10 +520,8 @@ setMessages(prev => {
 {/* Chat Interface with enhanced mobile optimization */}
 <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
   <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-    <div className="flex justify-center">
-      <VoiceCoachEntry />
-    </div>
-          </CardHeader>
+    {/* Voice agent entry will be added here when ready */}
+  </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}
           <div className={`${isMobile ? (isLowMemory ? 'h-[400px]' : 'h-[500px]') : 'h-[600px]'} flex flex-col`}>

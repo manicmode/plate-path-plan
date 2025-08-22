@@ -2,6 +2,3 @@ project_id = "uzoiiijqtahohfafqirm"
 
 [functions.dispatchHabitReminders]
 verify_jwt = false
-
-[functions.voice-turn]
-verify_jwt = false
