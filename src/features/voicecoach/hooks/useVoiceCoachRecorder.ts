@@ -21,7 +21,10 @@ function getBestAudioType(): string {
   return '';
 }
 
-export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeType: string; isIosSafari: boolean }) => Promise<void>) {
+export function useVoiceCoachRecorder(
+  onFinalize: (blob: Blob, metadata: { mimeType: string; isIosSafari: boolean }) => Promise<void>,
+  onRecordingStart?: () => void
+) {
   const [state, setState] = useState<VCState>("idle");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -43,7 +46,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
     isRecordingRef.current = true;
     isStoppingRef.current = false;
     finalizedRef.current = false;
-    setState("processing");
+    setState("processing"); // Keep processing until recorder.onstart fires
 
     try {
       // iOS: unlock audio context
@@ -84,6 +87,14 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
         if (e.data?.size) chunksRef.current.push(e.data); 
       };
       
+      // CRITICAL: Only show "Listening..." after onstart fires
+      const onStart = () => {
+        console.log('[VCRecorder] MediaRecorder.onstart fired - now truly recording');
+        setState("recording"); // NOW we show "Listening..."
+        // Notify parent that recording has truly started
+        onRecordingStart?.();
+      };
+      
       const onStop = async () => {
         // CRITICAL: Hard guard against double finalization
         console.log('[VCRecorder] MediaRecorder.onstop fired, finalized:', finalizedRef.current);
@@ -97,8 +108,8 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
           const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
           console.log('[VCRecorder] Created blob:', blob.size, 'bytes, type:', blob.type);
           
-          // protect the edge function from empty blobs (causes 500)
-          if (!blob || blob.size < 512) { // Reduced threshold for very short phrases
+          // Protect against tiny clips but allow short phrases
+          if (!blob || blob.size < 512) {
             console.warn('[VCRecorder] Skip finalize (empty/too small blob):', blob?.size || 0, 'bytes');
             return;
           }
@@ -116,6 +127,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
           // Cleanup - remove listeners first to prevent any re-entrancy
           try {
             mr.removeEventListener("dataavailable", onData);
+            mr.removeEventListener("start", onStart);
             mr.removeEventListener("stop", onStop);
           } catch (e) {
             console.warn('[VCRecorder] Error removing listeners:', e);
@@ -146,10 +158,13 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
       };
 
       mr.addEventListener("dataavailable", onData);
+      mr.addEventListener("start", onStart);
       mr.addEventListener("stop", onStop);
-      mr.start(100); // Collect data every 100ms
-      setState("recording");
-      console.log('[VCRecorder] Recording started successfully');
+      
+      // Start recording immediately - pre-roll buffer
+      mr.start(100);
+      console.log('[VCRecorder] MediaRecorder started, waiting for onstart...');
+      
     } catch (error) {
       console.error('[VCRecorder] Error starting recording:', error);
       // Reset guards on error
@@ -158,7 +173,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
       setState("idle");
       throw error;
     }
-  }, [onFinalize]); // Remove state from deps to prevent re-entrancy
+  }, [onFinalize, onRecordingStart]);
 
   const stop = useCallback(() => {
     console.log('[VCRecorder] stop() called');

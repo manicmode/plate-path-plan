@@ -187,8 +187,10 @@ export default function VoiceCoach() {
     }
   };
 
-  // Voice recorder with idempotent stop
-  const { state, start, stop, cancel, streamRef } = useVoiceCoachRecorder(onFinalize);
+  // Voice recorder with start callback
+  const { state, start, stop, cancel, streamRef } = useVoiceCoachRecorder(onFinalize, () => {
+    notify.success("🎤 Listening… auto-stop on silence");
+  });
 
   // Make a stable value so useVadAutoStop re-runs when the ref changes
   const liveStream = useMemo(() => streamRef.current ?? null, [streamRef.current]);
@@ -238,7 +240,7 @@ export default function VoiceCoach() {
     try {
       console.log('[VoiceCoach] Starting recording');
       await start();
-      notify.success("🎤 Listening… auto-stop on silence");
+      // Don't show success message yet - wait for recorder.onstart
     } catch (error: any) {
       console.error('[VoiceCoach] Start error:', error);
       
@@ -300,10 +302,19 @@ export default function VoiceCoach() {
           </>
         );
       case "processing":
+        // Show different messages based on context
+        if (transcriptionText === "Transcribing...") {
+          return (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Thinking…
+            </>
+          );
+        }
         return (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Thinking…
+            Starting…
           </>
         );
       default:
