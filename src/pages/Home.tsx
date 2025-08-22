@@ -23,7 +23,7 @@ import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 import { useToxinDetections } from '@/hooks/useToxinDetections';
-import { nameCase } from '@/lib/nameCase';
+import { displayName } from '@/utils/displayName';
 import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
@@ -969,7 +969,7 @@ const Home = () => {
             {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
           <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative normal-case`}>
-            {nameCase(user?.name?.split(' ')[0]) || 'Superstar'}! 
+            {displayName(user?.name?.split(' ')[0]) || 'Superstar'}! 
             <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
           </h2>
         </div>

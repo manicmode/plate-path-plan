@@ -14,7 +14,7 @@ import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, 
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { nameCase } from '@/lib/nameCase';
+import { displayName } from '@/utils/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { ARENA_DEBUG_CONTROLS } from '@/lib/featureFlags';
@@ -336,13 +336,13 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                                 className="object-cover"
                               />
                                <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
-                                 <Initials name={nameCase(member.display_name)} />
+                                 <Initials name={displayName(member.display_name)} />
                                </AvatarFallback>
                              </Avatar>
                              
                              <div className="min-w-0 flex-1">
                                <div className="font-semibold text-foreground text-base truncate normal-case">
-                                 {nameCase(member.display_name) ?? member.user_id}
+                                 {displayName(member.display_name) ?? member.user_id}
                                </div>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Flame className="h-3 w-3 text-orange-500" />
@@ -419,13 +419,13 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                                 className="object-cover"
                               />
                                <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
-                                 <Initials name={nameCase(row.display_name)} />
+                                 <Initials name={displayName(row.display_name)} />
                                </AvatarFallback>
                              </Avatar>
                              
                              <div className="min-w-0 flex-1">
                                <div className="font-semibold text-foreground text-base truncate normal-case">
-                                 {nameCase(row.display_name) ?? row.user_id}
+                                 {displayName(row.display_name) ?? row.user_id}
                                </div>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Flame className="h-3 w-3 text-orange-500" />

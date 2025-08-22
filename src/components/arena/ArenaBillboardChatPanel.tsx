@@ -18,7 +18,7 @@ import { useArenaChat } from '@/hooks/useArenaChat';
 import { useRuntimeFlag } from '@/hooks/useRuntimeFlag';
 import SectionDivider from '@/components/ui/SectionDivider';
 import { supabase } from '@/integrations/supabase/client';
-import { nameCase } from '@/lib/nameCase';
+import { displayName } from '@/utils/displayName';
 
 interface Announcement {
   id: string;
@@ -287,14 +287,14 @@ export default function ArenaBillboardChatPanel({ isOpen, onClose, privateChalle
                         >
                           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                              <span className="text-xs font-medium text-primary">
-                               {nameCase(userDisplay?.display_name)?.charAt(0) || message.user_id.charAt(0)?.toUpperCase()}
+                               {displayName(userDisplay?.display_name)?.charAt(0) || message.user_id.charAt(0)?.toUpperCase()}
                              </span>
                            </div>
                            <div className="flex-1 min-w-0">
                              <div className="flex items-center justify-between mb-1">
                                <div className="flex items-center gap-2 min-w-0">
                                  <span className="text-sm font-medium truncate normal-case">
-                                   {nameCase(userDisplay?.display_name) || `User ${message.user_id.slice(0, 8)}`}
+                                   {displayName(userDisplay?.display_name) || `User ${message.user_id.slice(0, 8)}`}
                                  </span>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}

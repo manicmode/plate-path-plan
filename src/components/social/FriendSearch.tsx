@@ -9,7 +9,7 @@ import { useFriendSearch } from '@/hooks/useFriendSearch';
 import { useDebounce } from '@/hooks/useDebounce';
 import { validateUUID, sanitizeText } from '@/lib/validation';
 import { toast } from 'sonner';
-import { nameCase } from '@/lib/nameCase';
+import { displayName } from '@/utils/displayName';
 
 export const FriendSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,16 +61,16 @@ export const FriendSearch = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                        <Avatar className="h-10 w-10">
-                         <AvatarFallback className="text-sm">
-                           {nameCase(user.display_name)?.charAt(0) || '👤'}
-                         </AvatarFallback>
+                          <AvatarFallback className="text-sm">
+                            {displayName(user.display_name)?.charAt(0) || '👤'}
+                          </AvatarFallback>
                        </Avatar>
                        
                        <div className="flex-1 min-w-0">
                          <div className="flex items-center gap-2 mb-1">
-                           <h4 className="font-medium text-sm truncate normal-case">
-                             {nameCase(user.display_name) || user.email}
-                           </h4>
+                            <h4 className="font-medium text-sm truncate normal-case">
+                              {displayName(user.display_name) || user.email}
+                            </h4>
                          </div>
                         
                         {user.email && user.display_name && (
