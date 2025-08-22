@@ -14,6 +14,7 @@ import { Trophy, Users, TrendingUp, TrendingDown, Target, Flame, MessageSquare, 
 import ArenaBillboardChatPanel from '@/components/arena/ArenaBillboardChatPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { nameCase } from '@/lib/nameCase';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { ARENA_DEBUG_CONTROLS } from '@/lib/featureFlags';
@@ -334,15 +335,15 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                                 alt={member.display_name || "user"}
                                 className="object-cover"
                               />
-                              <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
-                                <Initials name={member.display_name} />
-                              </AvatarFallback>
-                            </Avatar>
-                            
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-foreground text-base truncate">
-                                {member.display_name ?? member.user_id}
-                              </div>
+                               <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
+                                 <Initials name={nameCase(member.display_name)} />
+                               </AvatarFallback>
+                             </Avatar>
+                             
+                             <div className="min-w-0 flex-1">
+                               <div className="font-semibold text-foreground text-base truncate normal-case">
+                                 {nameCase(member.display_name) ?? member.user_id}
+                               </div>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Flame className="h-3 w-3 text-orange-500" />
                                 <span>0 streak</span>
@@ -417,15 +418,15 @@ export default function ArenaV2Panel({ challengeMode = 'combined' }: ArenaV2Pane
                                 alt={row.display_name || "user"}
                                 className="object-cover"
                               />
-                              <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
-                                <Initials name={row.display_name} />
-                              </AvatarFallback>
-                            </Avatar>
-                            
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-foreground text-base truncate">
-                                {row.display_name ?? row.user_id}
-                              </div>
+                               <AvatarFallback className="bg-teal-500 text-white font-semibold text-sm">
+                                 <Initials name={nameCase(row.display_name)} />
+                               </AvatarFallback>
+                             </Avatar>
+                             
+                             <div className="min-w-0 flex-1">
+                               <div className="font-semibold text-foreground text-base truncate normal-case">
+                                 {nameCase(row.display_name) ?? row.user_id}
+                               </div>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Flame className="h-3 w-3 text-orange-500" />
                                 <span>0 streak</span>

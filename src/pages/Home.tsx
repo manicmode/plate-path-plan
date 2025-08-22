@@ -23,6 +23,7 @@ import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 import { useToxinDetections } from '@/hooks/useToxinDetections';
+import { nameCase } from '@/lib/nameCase';
 import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
@@ -967,8 +968,8 @@ const Home = () => {
           <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
             {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
-          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>
-            {user?.name?.split(' ')[0] || 'Superstar'}! 
+          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative normal-case`}>
+            {nameCase(user?.name?.split(' ')[0]) || 'Superstar'}! 
             <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
           </h2>
         </div>

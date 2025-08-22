@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { withStabilizedViewport } from '@/utils/scrollStabilizer';
+import { nameCase } from '@/lib/nameCase';
 
 interface PersonalInformationProps {
   formData: {
@@ -76,7 +77,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     }
   }, [isEditing]);
   
-  const displayName = username || user?.name || user?.email || 'User';
+  const displayName = nameCase(username) || nameCase(user?.name) || user?.email || 'User';
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) {
@@ -166,7 +167,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
           <div className="flex flex-col items-center space-y-4">
             {/* Name and Info Section */}
             <div className="text-center space-y-2">
-              <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-foreground`}>
+              <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-foreground normal-case`}>
                 {displayName}
               </h2>
               <p className={`text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>

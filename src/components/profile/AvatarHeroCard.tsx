@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { CaricatureModal } from './CaricatureModal';
 import { AvatarCarousel } from './AvatarCarousel';
 import { cn } from '@/lib/utils';
+import { nameCase } from '@/lib/nameCase';
 
 interface AvatarHeroCardProps {
   user: {
@@ -66,8 +67,8 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
   const cooldown = calculateCooldown();
 
   const displayName = user?.first_name && user?.last_name 
-    ? `${user.first_name} ${user.last_name}`
-    : user?.name || user?.email || 'User';
+    ? nameCase(`${user.first_name} ${user.last_name}`)
+    : nameCase(user?.name) || user?.email || 'User';
 
   const handleAvatarUpdate = (url: string) => {
     setCurrentAvatarUrl(url);
