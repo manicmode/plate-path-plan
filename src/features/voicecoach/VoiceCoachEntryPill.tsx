@@ -18,10 +18,10 @@ export default function VoiceCoachEntryPill({ className, to = "/voice-agent", on
         "inline-flex items-center gap-2 rounded-full px-4 py-2",
         "bg-slate-800/70 backdrop-blur border border-white/10",
         "text-slate-100 font-semibold",
-        // soft long shadow glow (teal/cyan) you liked
-        "shadow-[0_10px_28px_rgba(16,185,129,0.35),0_18px_50px_rgba(56,189,248,0.20)]",
-        "hover:bg-slate-800/85 hover:shadow-[0_12px_34px_rgba(16,185,129,0.42),0_22px_60px_rgba(56,189,248,0.26)]",
-        "active:scale-[0.98] transition select-none",
+        // soft long shadow glow (teal/cyan) - reduced intensity
+        "shadow-[0_8px_20px_rgba(16,185,129,0.18),0_14px_35px_rgba(56,189,248,0.12)]",
+        "hover:bg-slate-800/85 hover:shadow-[0_10px_24px_rgba(16,185,129,0.22),0_16px_40px_rgba(56,189,248,0.15)] hover:brightness-[1.05]",
+        "active:translate-y-[1px] transition select-none",
         className
       )}
     >

@@ -15,11 +15,6 @@ const CoachMain = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-3 pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Coach</h1>
-      </header>
-
       {/* Toggle Section */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex justify-center py-4">
