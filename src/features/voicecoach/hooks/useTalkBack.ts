@@ -66,12 +66,14 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
 
     try {
       // Ensure voices are loaded (critical for iOS)
-      await ensureVoices();
+      const loadedVoices = await ensureVoices();
+      console.log(`[TalkBack] Loaded ${loadedVoices.length} voices`);
       
       // Resume if paused (iOS Safari fix)
       if (speechSynthesis.paused) {
         try { 
-          speechSynthesis.resume(); 
+          speechSynthesis.resume();
+          console.log('[TalkBack] Resumed paused synthesis'); 
         } catch (e) {
           console.warn('[TalkBack] Resume failed:', e);
         }
@@ -84,26 +86,37 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
       utterRef.current = utterance;
       
       // Configure utterance
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
+      utterance.rate = opts.rate ?? 1.0;
+      utterance.pitch = opts.pitch ?? 1.0;
       utterance.lang = 'en-US';
       
-      // Pick best English voice
-      const availableVoices = speechSynthesis.getVoices();
-      const englishVoice = availableVoices.find(v => /en/i.test(v.lang)) || availableVoices[0];
-      if (englishVoice) {
-        utterance.voice = englishVoice;
+      // Use properly loaded voices (CRITICAL FIX)
+      const selectedVoice = pickVoice();
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        console.log(`[TalkBack] Selected voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+      } else {
+        console.warn('[TalkBack] No voice selected, using system default');
       }
       
       return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.error('[TalkBack] Speech timeout - falling back to text');
+          setIsSpeaking(false);
+          utterRef.current = null;
+          reject(new Error('Speech timeout'));
+        }, 30000); // 30s timeout
+        
         utterance.onend = () => {
-          console.log('[TalkBack] Speech completed');
+          clearTimeout(timeout);
+          console.log('[TalkBack] Speech completed successfully');
           setIsSpeaking(false);
           utterRef.current = null;
           resolve();
         };
         
         utterance.onerror = (e) => {
+          clearTimeout(timeout);
           console.error('[TalkBack] Speech error:', e);
           setIsSpeaking(false);
           utterRef.current = null;
@@ -112,7 +125,7 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
         
         setIsSpeaking(true);
         speechSynthesis.speak(utterance);
-        console.log('[TalkBack] Speech started');
+        console.log(`[TalkBack] Speech started: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
       });
       
     } catch (e) {

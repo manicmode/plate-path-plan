@@ -72,8 +72,8 @@ serve(async (req) => {
       const transcriptionResult = await transcriptionResponse.json();
       const transcriptionText = transcriptionResult.text?.trim();
       
-      // Check for empty or very short transcription (likely no speech)
-      if (!transcriptionText || transcriptionText.length <= 2) {
+      // Check for empty transcription, but allow very short valid words
+      if (!transcriptionText || transcriptionText.length === 0) {
         console.log('[voice-turn] No speech detected, transcript:', transcriptionText);
         return new Response(
           JSON.stringify({ 
@@ -87,8 +87,11 @@ serve(async (req) => {
           }
         );
       }
-
-      console.log('[voice-turn] Transcription successful:', transcriptionText);
+      
+      console.log('[voice-turn] Transcription successful:', { 
+        text: transcriptionText, 
+        length: transcriptionText.length 
+      });
 
       // Generate AI response
       const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -98,10 +98,12 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
           console.log('[VCRecorder] Created blob:', blob.size, 'bytes, type:', blob.type);
           
           // protect the edge function from empty blobs (causes 500)
-          if (!blob || blob.size < 1024) { // ~1KB
-            console.warn('[VCRecorder] Skip finalize (empty/too small blob)');
+          if (!blob || blob.size < 512) { // Reduced threshold for very short phrases
+            console.warn('[VCRecorder] Skip finalize (empty/too small blob):', blob?.size || 0, 'bytes');
             return;
           }
+          
+          console.log('[VCRecorder] Finalizing blob:', blob.size, 'bytes, type:', blob.type);
           
           setState("processing");
           await onFinalize(blob, { 

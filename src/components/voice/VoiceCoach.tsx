@@ -18,6 +18,8 @@ type VadData = {
   mimeChosen?: string;
   isIosSafari?: boolean;
   exitReason?: string;
+  voicesCount?: number;
+  selectedVoice?: string;
 };
 
 export default function VoiceCoach() {
@@ -26,7 +28,7 @@ export default function VoiceCoach() {
   const { isAdmin } = useAdminRole();
 
   // TTS hook
-  const { canSpeak, isSpeaking, speak, stop: stopTTS } = useTalkBack();
+  const { canSpeak, isSpeaking, speak, stop: stopTTS, voices, pickVoice } = useTalkBack();
 
   // State for transcription and response
   const [transcriptionText, setTranscriptionText] = useState<string>("");
@@ -51,6 +53,17 @@ export default function VoiceCoach() {
   const inIframe = typeof window !== 'undefined' && window.top !== window.self;
   const insecure = typeof window !== 'undefined' && !window.isSecureContext;
   const debugMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'vc';
+
+  // Update debug info with TTS data
+  useEffect(() => {
+    if (debugMode) {
+      setVadData(prev => ({
+        ...prev,
+        voicesCount: voices.length,
+        selectedVoice: pickVoice()?.name || 'none'
+      }));
+    }
+  }, [voices, debugMode, pickVoice]);
 
   // Persist settings changes
   useEffect(() => {
@@ -108,26 +121,35 @@ export default function VoiceCoach() {
       // TTS talk back + hands-free re-arm
       if (speakReplies && canSpeak && aiReply) {
         try {
+          console.log('[VoiceCoach] Starting TTS for reply');
           await speak(aiReply);
-          console.log('[VoiceCoach] TTS completed');
+          console.log('[VoiceCoach] TTS completed successfully');
           
           // Re-arm mic after TTS ends if hands-free is enabled
           if (handsFree) {
-            console.log('[VoiceCoach] Hands-free re-arm');
+            console.log('[VoiceCoach] Hands-free re-arm starting');
+            // Wait for recorder cleanup to complete before re-arming
             setTimeout(() => {
-              if (state === "idle") { // Only re-arm if still idle
+              console.log('[VoiceCoach] Checking state for re-arm:', state);
+              // More robust state checking
+              if (state === "idle") {
+                console.log('[VoiceCoach] Re-arming microphone');
                 start();
                 notify.success("🎤 Ready for next question");
+              } else {
+                console.log('[VoiceCoach] Not re-arming, state:', state);
               }
-            }, 400); // 400ms delay for iOS
+            }, 800); // Increased delay for iOS Safari
           }
         } catch (ttsError) {
           console.error('[VoiceCoach] TTS error:', ttsError);
           notify.info('Reply shown as text—couldn\'t play voice');
         }
       } else if (!speakReplies) {
-        // If not speaking, state will naturally return to idle after finalization
-        console.log('[VoiceCoach] Not speaking replies, recorder will reset to idle');
+        console.log('[VoiceCoach] TTS disabled, not speaking reply');
+      } else if (!canSpeak) {
+        console.warn('[VoiceCoach] Speech synthesis not available');
+        notify.info('Speech not supported on this device');
       }
 
     } catch (error) {
@@ -395,10 +417,18 @@ export default function VoiceCoach() {
                 />
               </div>
               <div className="mt-2 space-y-1">
-                <div>Kill Switch: {killSwitchDisabled ? 'ON (disabled)' : 'OFF'}</div>
-                <div>MVP Flag: {mvpEnabled ? 'ON' : 'OFF'}</div>
-                <div>Is Admin: {isAdmin ? 'YES' : 'NO'}</div>
-                <div>Allowed: {isAllowed ? 'YES' : 'NO'}</div>
+                <div>Transcript Length: {transcriptionText.length} chars</div>
+                <div>TTS Available: {canSpeak ? 'YES' : 'NO'}</div>
+                <div>TTS Speaking: {isSpeaking ? 'YES' : 'NO'}</div>
+                <div>Voices Loaded: {vadData.voicesCount || 0}</div>
+                <div>Selected Voice: {vadData.selectedVoice || 'none'}</div>
+                <div>State: {state}</div>
+                <div className="mt-1 border-t pt-1">
+                  <div>Kill Switch: {killSwitchDisabled ? 'ON (disabled)' : 'OFF'}</div>
+                  <div>MVP Flag: {mvpEnabled ? 'ON' : 'OFF'}</div>
+                  <div>Is Admin: {isAdmin ? 'YES' : 'NO'}</div>
+                  <div>Allowed: {isAllowed ? 'YES' : 'NO'}</div>
+                </div>
               </div>
             </div>
           )}
