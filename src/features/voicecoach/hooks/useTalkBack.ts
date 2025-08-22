@@ -2,35 +2,83 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type TalkBackOpts = { rate?: number; pitch?: number; voiceName?: string };
 
-// Robust voice loader for iOS Safari
-async function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
+// Deterministic voice loading for iOS Safari
+async function voicesReady(): Promise<SpeechSynthesisVoice[]> {
   let voices = speechSynthesis.getVoices();
-  if (voices.length) return voices;
+  if (voices.length > 0) return voices;
   
-  await new Promise<void>(resolve => {
-    const handler = () => { 
-      speechSynthesis.onvoiceschanged = null; 
-      resolve(); 
+  return new Promise<SpeechSynthesisVoice[]>((resolve) => {
+    const handler = () => {
+      speechSynthesis.onvoiceschanged = null;
+      const loadedVoices = speechSynthesis.getVoices();
+      console.log(`[TalkBack] voicesReady loaded ${loadedVoices.length} voices`);
+      resolve(loadedVoices);
     };
+    
     speechSynthesis.onvoiceschanged = handler;
-    // Poke loading
-    speechSynthesis.getVoices();
-    setTimeout(handler, 800);
+    speechSynthesis.getVoices(); // Poke loading
+    setTimeout(() => {
+      // Fallback timeout
+      const voices = speechSynthesis.getVoices();
+      if (voices.length > 0) handler();
+    }, 1000);
   });
+}
+
+// Smart voice picker with iOS Safari optimization
+function pickVoice(voices: SpeechSynthesisVoice[], preferredLang = 'en-US'): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
   
-  return speechSynthesis.getVoices();
+  // Precedence: localService + Siri → Samantha → first localService en- → first en- → fallback first
+  const siri = voices.find(v => v.localService && v.name.toLowerCase().includes('siri'));
+  if (siri) {
+    console.log(`[TalkBack] Selected Siri voice: ${siri.name} (${siri.lang})`);
+    return siri;
+  }
+  
+  const samantha = voices.find(v => v.name.toLowerCase().includes('samantha'));
+  if (samantha) {
+    console.log(`[TalkBack] Selected Samantha voice: ${samantha.name} (${samantha.lang})`);
+    return samantha;
+  }
+  
+  const localEn = voices.find(v => v.localService && v.lang.startsWith('en-'));
+  if (localEn) {
+    console.log(`[TalkBack] Selected local English voice: ${localEn.name} (${localEn.lang})`);
+    return localEn;
+  }
+  
+  const anyEn = voices.find(v => v.lang.startsWith('en-'));
+  if (anyEn) {
+    console.log(`[TalkBack] Selected English voice: ${anyEn.name} (${anyEn.lang})`);
+    return anyEn;
+  }
+  
+  console.log(`[TalkBack] Selected fallback voice: ${voices[0].name} (${voices[0].lang})`);
+  return voices[0];
 }
 
 export function useTalkBack(opts: TalkBackOpts = {}) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({
+    ttsOnStart: false,
+    ttsEnded: false,
+    ttsError: '',
+    selectedVoice: ''
+  });
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Load voices (iOS may emit voices asynchronously)
+  // Load voices deterministically
   useEffect(() => {
     const load = async () => {
-      const loadedVoices = await ensureVoices();
+      const loadedVoices = await voicesReady();
       setVoices(loadedVoices);
+      const selected = pickVoice(loadedVoices);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        selectedVoice: selected ? `${selected.name} (${selected.lang})` : 'none' 
+      }));
     };
     load();
     
@@ -40,13 +88,9 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
     };
   }, []);
 
-  const pickVoice = useCallback(() => {
-    if (!voices.length) return null;
-    // Prefer configured name; else pick an English voice if present; else first
-    const byName = opts.voiceName ? voices.find(v => v.name.includes(opts.voiceName!)) : null;
-    const en = voices.find(v => /^en[-_]/i.test(v.lang));
-    return byName || en || voices[0];
-  }, [voices, opts.voiceName]);
+  const getSelectedVoice = useCallback(() => {
+    return pickVoice(voices);
+  }, [voices]);
 
   const stop = useCallback(() => {
     try { 
@@ -64,9 +108,12 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
       return Promise.resolve();
     }
 
+    // Reset debug info
+    setDebugInfo(prev => ({ ...prev, ttsOnStart: false, ttsEnded: false, ttsError: '' }));
+
     try {
-      // Ensure voices are loaded (critical for iOS)
-      const loadedVoices = await ensureVoices();
+      // Ensure voices are loaded
+      const loadedVoices = await voicesReady();
       console.log(`[TalkBack] Loaded ${loadedVoices.length} voices`);
       
       // Resume if paused (iOS Safari fix)
@@ -85,39 +132,72 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterRef.current = utterance;
       
-      // Configure utterance
-      utterance.rate = opts.rate ?? 1.0;
-      utterance.pitch = opts.pitch ?? 1.0;
-      utterance.lang = 'en-US';
+      // Configure utterance with iOS optimization
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
       
-      // Use properly loaded voices (CRITICAL FIX)
-      const selectedVoice = pickVoice();
+      // Select voice deterministically
+      const selectedVoice = pickVoice(loadedVoices);
       if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log(`[TalkBack] Selected voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+        utterance.lang = selectedVoice.lang;
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          selectedVoice: `${selectedVoice.name} (${selectedVoice.lang})` 
+        }));
       } else {
+        utterance.lang = 'en-US';
         console.warn('[TalkBack] No voice selected, using system default');
       }
       
       return new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          console.error('[TalkBack] Speech timeout - falling back to text');
+        let startWatchdog: NodeJS.Timeout | null = null;
+        let endWatchdog: NodeJS.Timeout | null = null;
+        
+        // Start timeout - if onstart doesn't fire within 2.5s
+        startWatchdog = setTimeout(() => {
+          console.error('[TalkBack] Start timeout - onstart never fired');
+          setDebugInfo(prev => ({ ...prev, ttsError: 'start-timeout' }));
           setIsSpeaking(false);
           utterRef.current = null;
-          reject(new Error('Speech timeout'));
-        }, 30000); // 30s timeout
+          reject(new Error('start-timeout'));
+        }, 2500);
+        
+        utterance.onstart = () => {
+          console.log('[TalkBack] Speech started successfully');
+          setDebugInfo(prev => ({ ...prev, ttsOnStart: true }));
+          if (startWatchdog) {
+            clearTimeout(startWatchdog);
+            startWatchdog = null;
+          }
+          
+          // End watchdog - 60s after start
+          endWatchdog = setTimeout(() => {
+            console.error('[TalkBack] End timeout - speech took too long');
+            setDebugInfo(prev => ({ ...prev, ttsError: 'end-timeout' }));
+            setIsSpeaking(false);
+            utterRef.current = null;
+            reject(new Error('end-timeout'));
+          }, 60000);
+        };
         
         utterance.onend = () => {
-          clearTimeout(timeout);
           console.log('[TalkBack] Speech completed successfully');
+          setDebugInfo(prev => ({ ...prev, ttsEnded: true }));
+          if (startWatchdog) clearTimeout(startWatchdog);
+          if (endWatchdog) clearTimeout(endWatchdog);
           setIsSpeaking(false);
           utterRef.current = null;
           resolve();
         };
         
         utterance.onerror = (e) => {
-          clearTimeout(timeout);
           console.error('[TalkBack] Speech error:', e);
+          const errorMsg = e.error?.toString() || 'unknown';
+          setDebugInfo(prev => ({ ...prev, ttsError: errorMsg }));
+          if (startWatchdog) clearTimeout(startWatchdog);
+          if (endWatchdog) clearTimeout(endWatchdog);
           setIsSpeaking(false);
           utterRef.current = null;
           reject(e.error || e);
@@ -125,11 +205,12 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
         
         setIsSpeaking(true);
         speechSynthesis.speak(utterance);
-        console.log(`[TalkBack] Speech started: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+        console.log(`[TalkBack] Speech queued: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
       });
       
     } catch (e) {
       console.error('[TalkBack] Speak failed:', e);
+      setDebugInfo(prev => ({ ...prev, ttsError: e instanceof Error ? e.message : 'unknown' }));
       setIsSpeaking(false);
       utterRef.current = null;
       throw e;
@@ -138,5 +219,5 @@ export function useTalkBack(opts: TalkBackOpts = {}) {
 
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
 
-  return { canSpeak, isSpeaking, speak, stop, voices, pickVoice };
+  return { canSpeak, isSpeaking, speak, stop, voices, getSelectedVoice, debugInfo };
 }

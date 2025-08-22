@@ -4,19 +4,23 @@ type Opts = {
   stream: MediaStream | null;
   isRecording: boolean;
   onSilenceStop: (reason: 'silence' | 'maxDuration') => void;
-  trailingMs?: number;      // default 700-1200ms  
+  trailingMs?: number;      // default 1000ms for iOS  
   minVoiceRms?: number;     // default ~-45dB threshold
   maxMs?: number;           // default 30000
-  onVadUpdate?: (rms: number, silenceMs: number | null, peakDb: number) => void; // For debug display
+  minActiveMs?: number;     // minimum active speech before allowing auto-stop
+  minTotalMs?: number;      // minimum total recording time
+  onVadUpdate?: (rms: number, silenceMs: number | null, peakDb: number) => void;
 };
 
 export function useVadAutoStop({
   stream, 
   isRecording, 
   onSilenceStop, 
-  trailingMs = 900, 
+  trailingMs = 1000, // iOS-optimized 
   minVoiceRms = 0.003, // ~-45dB threshold
   maxMs = 30000,
+  minActiveMs = 600, // don't stop until 600ms of voice seen
+  minTotalMs = 1000, // recording won't auto-stop before 1s total
   onVadUpdate
 }: Opts) {
   const rafRef = useRef<number | null>(null);
@@ -28,6 +32,8 @@ export function useVadAutoStop({
   const silenceSinceRef = useRef<number | null>(null);
   const firedStopRef = useRef(false);
   const peakDbRef = useRef<number>(-Infinity);
+  const totalVoiceTimeRef = useRef<number>(0);
+  const lastVoiceTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!stream || !isRecording) return;
@@ -36,6 +42,8 @@ export function useVadAutoStop({
     
     firedStopRef.current = false;
     peakDbRef.current = -Infinity;
+    totalVoiceTimeRef.current = 0;
+    lastVoiceTimeRef.current = 0;
     
     const AC: any = (window as any).AudioContext || (window as any).webkitAudioContext;
     const ctx = new AC({ sampleRate: 24000 });
@@ -99,8 +107,13 @@ export function useVadAutoStop({
         // Update debug callback
         onVadUpdate?.(rms, silenceMs, peakDbRef.current);
         
-        // Auto-stop after trailing silence
-        if (silenceMs >= trailingMs) {
+        // Check minimum requirements before allowing auto-stop
+        const totalRecordingMs = now - startedAtRef.current;
+        const hasMinVoice = totalVoiceTimeRef.current >= minActiveMs;
+        const hasMinTotal = totalRecordingMs >= minTotalMs;
+        
+        // Auto-stop after trailing silence (with minimum requirements)
+        if (silenceMs >= trailingMs && hasMinVoice && hasMinTotal) {
           callStopOnce('silence');
           return; // Stop the loop
         }
@@ -109,6 +122,14 @@ export function useVadAutoStop({
         if (silenceSinceRef.current !== null) {
           console.log('[VAD] Voice resumed, dB:', db.toFixed(1));
         }
+        
+        // Track voice activity time
+        const voiceGapMs = lastVoiceTimeRef.current > 0 ? now - lastVoiceTimeRef.current : 0;
+        if (voiceGapMs < 200) { // Consider continuous if gap < 200ms
+          totalVoiceTimeRef.current += voiceGapMs;
+        }
+        lastVoiceTimeRef.current = now;
+        
         silenceSinceRef.current = null;
         
         // Update debug callback
@@ -143,7 +164,7 @@ export function useVadAutoStop({
       silenceSinceRef.current = null;
       // firedStopRef intentionally not reset here; it resets on next start
     };
-  }, [stream, isRecording, onSilenceStop, trailingMs, minVoiceRms, maxMs, onVadUpdate]);
+  }, [stream, isRecording, onSilenceStop, trailingMs, minVoiceRms, maxMs, minActiveMs, minTotalMs, onVadUpdate]);
 
   // Return current VAD state for external use
   return {

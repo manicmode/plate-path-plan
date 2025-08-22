@@ -5,7 +5,7 @@ import { useFeatureFlagOptimized } from "@/hooks/useFeatureFlagOptimized";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { notify } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Mic, Square, Loader2, Volume2, Hand, AlertTriangle, ExternalLink } from "lucide-react";
 import { useVoiceCoachRecorder } from "@/features/voicecoach/hooks/useVoiceCoachRecorder";
 import { useVadAutoStop } from "@/features/voicecoach/hooks/useVadAutoStop";
@@ -28,7 +28,10 @@ export default function VoiceCoach() {
   const { isAdmin } = useAdminRole();
 
   // TTS hook
-  const { canSpeak, isSpeaking, speak, stop: stopTTS, voices, pickVoice } = useTalkBack();
+  const { canSpeak, isSpeaking, speak, stop: stopTTS, voices, getSelectedVoice, debugInfo } = useTalkBack();
+  
+  // Re-arm guard
+  const reArmingRef = useRef(false);
 
   // State for transcription and response
   const [transcriptionText, setTranscriptionText] = useState<string>("");
@@ -60,10 +63,10 @@ export default function VoiceCoach() {
       setVadData(prev => ({
         ...prev,
         voicesCount: voices.length,
-        selectedVoice: pickVoice()?.name || 'none'
+        selectedVoice: getSelectedVoice()?.name || 'none'
       }));
     }
-  }, [voices, debugMode, pickVoice]);
+  }, [voices, debugMode, getSelectedVoice]);
 
   // Persist settings changes
   useEffect(() => {
@@ -126,20 +129,30 @@ export default function VoiceCoach() {
           console.log('[VoiceCoach] TTS completed successfully');
           
           // Re-arm mic after TTS ends if hands-free is enabled
-          if (handsFree) {
+          if (handsFree && !reArmingRef.current) {
+            reArmingRef.current = true;
             console.log('[VoiceCoach] Hands-free re-arm starting');
-            // Wait for recorder cleanup to complete before re-arming
+            
+            // iOS requires longer delay after TTS completion
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const delay = isIOS ? 800 : 400;
+            
             setTimeout(() => {
               console.log('[VoiceCoach] Checking state for re-arm:', state);
-              // More robust state checking
-              if (state === "idle") {
+              if (state === "idle" && reArmingRef.current) {
                 console.log('[VoiceCoach] Re-arming microphone');
-                start();
-                notify.success("🎤 Ready for next question");
+                start().then(() => {
+                  notify.success("🎤 Ready for next question");
+                }).catch(() => {
+                  console.log('[VoiceCoach] Re-arm failed');
+                }).finally(() => {
+                  reArmingRef.current = false;
+                });
               } else {
                 console.log('[VoiceCoach] Not re-arming, state:', state);
+                reArmingRef.current = false;
               }
-            }, 800); // Increased delay for iOS Safari
+            }, delay);
           }
         } catch (ttsError) {
           console.error('[VoiceCoach] TTS error:', ttsError);
@@ -180,7 +193,7 @@ export default function VoiceCoach() {
   // Make a stable value so useVadAutoStop re-runs when the ref changes
   const liveStream = useMemo(() => streamRef.current ?? null, [streamRef.current]);
 
-  // VAD auto-stop with exit reason tracking
+  // VAD auto-stop with iOS optimizations
   useVadAutoStop({
     stream: liveStream,
     isRecording: state === "recording",
@@ -189,9 +202,11 @@ export default function VoiceCoach() {
       setVadData(prev => ({ ...prev, exitReason: reason }));
       stop();
     },
-    trailingMs: 900,
+    trailingMs: 1000, // iOS-optimized
     minVoiceRms: 0.003, // ~-45dB
     maxMs: 30_000,
+    minActiveMs: 600, // Minimum voice activity
+    minTotalMs: 1000, // Minimum total time
     onVadUpdate: (rms, silenceMs, peakDb) => {
       setVadData(prev => ({ ...prev, rms, silenceMs, peakDb }));
     }
@@ -215,9 +230,10 @@ export default function VoiceCoach() {
       return;
     }
 
-    // Clear previous results
+    // Clear previous results and reset re-arm guard
     setTranscriptionText("");
     setResponseText("");
+    reArmingRef.current = false;
 
     try {
       console.log('[VoiceCoach] Starting recording');
@@ -248,6 +264,21 @@ export default function VoiceCoach() {
 
   const openInBrowser = () => {
     window.open(window.location.href, '_blank', 'noopener');
+  };
+
+  const testVoice = async () => {
+    if (!canSpeak) {
+      notify.error('Speech not supported on this device');
+      return;
+    }
+    
+    try {
+      await speak('Testing voice');
+      notify.success('Voice test completed');
+    } catch (error) {
+      notify.error('Voice test failed');
+      console.error('[VoiceCoach] Voice test error:', error);
+    }
   };
 
   const getButtonContent = () => {
@@ -422,7 +453,22 @@ export default function VoiceCoach() {
                 <div>TTS Speaking: {isSpeaking ? 'YES' : 'NO'}</div>
                 <div>Voices Loaded: {vadData.voicesCount || 0}</div>
                 <div>Selected Voice: {vadData.selectedVoice || 'none'}</div>
+                <div>TTS OnStart: {debugInfo.ttsOnStart ? 'YES' : 'NO'}</div>
+                <div>TTS Ended: {debugInfo.ttsEnded ? 'YES' : 'NO'}</div>
+                <div>TTS Error: {debugInfo.ttsError || 'none'}</div>
+                <div>Re-arming: {reArmingRef.current ? 'YES' : 'NO'}</div>
                 <div>State: {state}</div>
+                <div className="mt-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={testVoice}
+                    disabled={!canSpeak || isSpeaking}
+                    className="text-xs"
+                  >
+                    Test Voice
+                  </Button>
+                </div>
                 <div className="mt-1 border-t pt-1">
                   <div>Kill Switch: {killSwitchDisabled ? 'ON (disabled)' : 'OFF'}</div>
                   <div>MVP Flag: {mvpEnabled ? 'ON' : 'OFF'}</div>
