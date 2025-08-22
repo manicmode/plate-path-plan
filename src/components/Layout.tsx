@@ -37,7 +37,6 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/camera', icon: Camera, label: 'Log' },
     { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
-    { path: '/voice-agent', icon: Mic, label: '🎙️ Voice Agent' },
     { path: '/explore', icon: Compass, label: 'Explore' },
   ];
   // [nav-restore-2025-08-11] end
