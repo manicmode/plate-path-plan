@@ -18,40 +18,68 @@ export default function StartVoiceCoachButton() {
   // State for transcription and response
   const [transcriptionText, setTranscriptionText] = useState<string>("");
   const [responseText, setResponseText] = useState<string>("");
-  const [vadData, setVadData] = useState<{ rms: number; silenceMs: number | null }>({ rms: 0, silenceMs: null });
+  const [vadData, setVadData] = useState<{ 
+    rms: number; 
+    silenceMs: number | null; 
+    peakDb: number;
+    mimeChosen?: string;
+    isIosSafari?: boolean;
+    exitReason?: string;
+  }>({ 
+    rms: 0, 
+    silenceMs: null, 
+    peakDb: -Infinity 
+  });
 
   // Environment checks
   const inIframe = typeof window !== 'undefined' && window.top !== window.self;
   const insecure = typeof window !== 'undefined' && !window.isSecureContext;
 
-  // Audio finalization pipeline
-  const onFinalize = async (blob: Blob) => {
-    console.log('[VoiceCoach] Starting audio finalization pipeline');
+  // Audio finalization pipeline with proper FormData upload
+  const onFinalize = async (blob: Blob, metadata: { mimeType: string; isIosSafari: boolean }) => {
+    console.log('[VoiceCoach] upload begin');
     setTranscriptionText("Transcribing...");
     
+    // Update VAD data with metadata
+    setVadData(prev => ({
+      ...prev,
+      mimeChosen: metadata.mimeType,
+      isIosSafari: metadata.isIosSafari
+    }));
+    
     try {
-      // Convert to base64 for STT
-      const reader = new FileReader();
-      const base64Audio = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = () => reject(new Error('Failed to read audio file'));
-        reader.readAsDataURL(blob);
+      // Create FormData with proper file extension
+      const formData = new FormData();
+      const ext = metadata.mimeType.includes('mp4') ? 'm4a' : 
+                  metadata.mimeType.includes('webm') ? 'webm' : 'audio';
+      const filename = `voice-${Date.now()}.${ext}`;
+      
+      formData.append('audio', blob, filename);
+
+      // Send to voice-turn edge function
+      const response = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/voice-turn', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw`,
+        },
+        body: formData
       });
 
-      console.log('[VoiceCoach] Audio converted to base64, size:', base64Audio.length);
+      console.log('[VoiceCoach] upload done');
 
-      // Send to STT
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64Audio }
-      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[VoiceCoach] EF status:', response.status, errorText);
+        throw new Error(`Voice turn failed: ${response.status} ${response.statusText} — ${errorText}`);
+      }
 
-      if (error) throw new Error(error.message || 'STT failed');
-      if (!data?.text) throw new Error('No transcription received');
+      const responseData = await response.json();
+      
+      if (!responseData.ok) {
+        throw new Error(responseData.message || 'Voice turn failed');
+      }
 
-      const transcription = data.text;
+      const transcription = responseData.text;
       console.log('[VoiceCoach] Transcription received:', transcription);
       setTranscriptionText(transcription);
 
@@ -59,18 +87,17 @@ export default function StartVoiceCoachButton() {
       setResponseText("Generating response...");
       
       try {
-        const { data: responseData, error: responseError } = await supabase.functions.invoke('voice-turn', {
+        const { data: chatData, error: chatError } = await supabase.functions.invoke('voice-turn', {
           body: { 
-            audio: base64Audio,
-            mimeType: blob.type,
-            transcript: transcription 
+            transcript: transcription,
+            mode: 'chat' // Indicate this is for chat response, not transcription
           }
         });
 
-        if (responseError) throw new Error(responseError.message || 'Voice turn failed');
-        if (!responseData) throw new Error('No response received');
+        if (chatError) throw new Error(chatError.message || 'Voice turn failed');
+        if (!chatData?.text) throw new Error('No response received');
 
-        const response = responseData.text || responseData.response || 'Response received';
+        const response = chatData.text;
         console.log('[VoiceCoach] Voice response received:', response);
         setResponseText(response);
         
@@ -85,9 +112,9 @@ export default function StartVoiceCoachButton() {
       }
 
     } catch (error) {
-      console.error('[VoiceCoach] STT error:', error);
-      setTranscriptionText(`Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      notify.error('Failed to transcribe audio');
+      console.error('[VoiceCoach] Upload/transcription error:', error);
+      setTranscriptionText(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      notify.error('Failed to process audio');
     }
   };
 
@@ -97,16 +124,20 @@ export default function StartVoiceCoachButton() {
   // make a stable value so useVadAutoStop re-runs when the ref changes
   const liveStream = useMemo(() => streamRef.current ?? null, [streamRef.current]);
 
-  // VAD auto-stop
+  // VAD auto-stop with exit reason tracking
   useVadAutoStop({
     stream: liveStream,
     isRecording: state === "recording",
-    onSilenceStop: stop,
+    onSilenceStop: (reason) => {
+      console.log('[VoiceCoach] Auto-stop triggered:', reason);
+      setVadData(prev => ({ ...prev, exitReason: reason }));
+      stop();
+    },
     trailingMs: 900,
-    minVoiceRms: 0.02,
+    minVoiceRms: 0.003, // ~-45dB
     maxMs: 30_000,
-    onVadUpdate: (rms, silenceMs) => {
-      setVadData({ rms, silenceMs });
+    onVadUpdate: (rms, silenceMs, peakDb) => {
+      setVadData(prev => ({ ...prev, rms, silenceMs, peakDb }));
     }
   });
 
@@ -137,8 +168,9 @@ export default function StartVoiceCoachButton() {
     setResponseText("");
 
     try {
+      console.log('[VoiceCoach] start()');
       await start();
-      notify.success("🎤 Listening... (tap to cancel)");
+      notify.success("🎤 Listening… auto-stop on silence");
     } catch (error: any) {
       console.error('[VoiceCoach] Start error:', error);
       if (error?.name === 'NotAllowedError') {
@@ -162,8 +194,8 @@ export default function StartVoiceCoachButton() {
       case "recording":
         return (
           <>
-            <Square className="h-4 w-4" />
-            Listening... (tap to cancel)
+            <div className="h-4 w-4 bg-red-500 rounded-full animate-pulse" />
+            Listening… (tap to cancel)
           </>
         );
       case "processing":
@@ -196,14 +228,18 @@ export default function StartVoiceCoachButton() {
       </Button>
 
       {/* VAD Debug Info (only shown in debug mode) */}
-      {state === "recording" && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'vc' && (
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'vc' && (
         <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
-          <div>RMS Level: {vadData.rms.toFixed(4)} (threshold: 0.02)</div>
-          <div>Silence: {vadData.silenceMs !== null ? `${vadData.silenceMs.toFixed(0)}ms` : 'Voice detected'}</div>
+          <div>mimeChosen: {vadData.mimeChosen || 'none'}</div>
+          <div>isIosSafari: {vadData.isIosSafari ? 'true' : 'false'}</div>
+          <div>vadSilenceMs: {vadData.silenceMs !== null ? `${vadData.silenceMs.toFixed(0)}ms` : 'Voice detected'}</div>
+          <div>peakDb: {vadData.peakDb !== -Infinity ? vadData.peakDb.toFixed(1) : '-∞'} dB</div>
+          <div>exitReason: {vadData.exitReason || 'none'}</div>
+          <div>RMS: {vadData.rms.toFixed(4)} (~{vadData.rms > 0 ? (20 * Math.log10(vadData.rms)).toFixed(1) : '-∞'}dB)</div>
           <div className="w-full bg-muted rounded-full h-2">
             <div 
               className="bg-primary h-2 rounded-full transition-all duration-100" 
-              style={{ width: `${Math.min(100, vadData.rms * 5000)}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, (vadData.peakDb + 60) * 2))}%` }}
             />
           </div>
         </div>

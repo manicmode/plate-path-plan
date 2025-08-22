@@ -3,11 +3,11 @@ import { useEffect, useRef } from "react";
 type Opts = {
   stream: MediaStream | null;
   isRecording: boolean;
-  onSilenceStop: () => void;
-  trailingMs?: number;      // default 900
-  minVoiceRms?: number;     // default 0.02
+  onSilenceStop: (reason: 'silence' | 'maxDuration') => void;
+  trailingMs?: number;      // default 700-1200ms  
+  minVoiceRms?: number;     // default ~-45dB threshold
   maxMs?: number;           // default 30000
-  onVadUpdate?: (rms: number, silenceMs: number | null) => void; // For debug display
+  onVadUpdate?: (rms: number, silenceMs: number | null, peakDb: number) => void; // For debug display
 };
 
 export function useVadAutoStop({
@@ -15,7 +15,7 @@ export function useVadAutoStop({
   isRecording, 
   onSilenceStop, 
   trailingMs = 900, 
-  minVoiceRms = 0.02, 
+  minVoiceRms = 0.003, // ~-45dB threshold
   maxMs = 30000,
   onVadUpdate
 }: Opts) {
@@ -27,6 +27,7 @@ export function useVadAutoStop({
   const startedAtRef = useRef<number>(0);
   const silenceSinceRef = useRef<number | null>(null);
   const firedStopRef = useRef(false);
+  const peakDbRef = useRef<number>(-Infinity);
 
   useEffect(() => {
     if (!stream || !isRecording) return;
@@ -34,12 +35,16 @@ export function useVadAutoStop({
     console.log('[VAD] Starting VAD analysis');
     
     firedStopRef.current = false;
+    peakDbRef.current = -Infinity;
+    
     const AC: any = (window as any).AudioContext || (window as any).webkitAudioContext;
     const ctx = new AC({ sampleRate: 24000 });
     const src = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.3;
+    analyser.smoothingTimeConstant = 0.1; // More responsive
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = -10;
 
     src.connect(analyser);
     ctxRef.current = ctx;
@@ -51,15 +56,15 @@ export function useVadAutoStop({
 
     console.log('[VAD] Audio context created, starting analysis loop');
 
-    const callStopOnce = () => {
+    const callStopOnce = (reason: 'silence' | 'maxDuration') => {
       if (firedStopRef.current) return;
       firedStopRef.current = true;
-      onSilenceStop();
+      console.log('[VAD] Auto-stopping due to:', reason);
+      onSilenceStop(reason);
     };
 
     const tick = () => {
-      if (!analyserRef.current || !dataRef.current) {
-        console.log('[VAD] Tick stopped - no analyser or data buffer');
+      if (!analyserRef.current || !dataRef.current || firedStopRef.current) {
         return;
       }
       
@@ -72,43 +77,48 @@ export function useVadAutoStop({
         sum += buf[i] * buf[i];
       }
       const rms = Math.sqrt(sum / buf.length);
-
+      
+      // Convert to decibels for better threshold handling
+      const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+      peakDbRef.current = Math.max(peakDbRef.current, db);
+      
       const now = performance.now();
       
-      // Voice activity detection
-      if (rms < minVoiceRms) {
+      // Voice activity detection using dB threshold (~-45dB)
+      const silenceThreshold = -45;
+      const isVoice = db > silenceThreshold;
+      
+      if (!isVoice) {
         // Silence detected
         if (silenceSinceRef.current === null) {
           silenceSinceRef.current = now;
-          console.log('[VAD] Silence started, RMS:', rms.toFixed(4));
+          console.log('[VAD] Silence started, dB:', db.toFixed(1));
         }
         const silenceMs = now - silenceSinceRef.current;
         
         // Update debug callback
-        onVadUpdate?.(rms, silenceMs);
+        onVadUpdate?.(rms, silenceMs, peakDbRef.current);
         
         // Auto-stop after trailing silence
         if (silenceMs >= trailingMs) {
-          console.log('[VAD] Auto-stopping due to silence:', silenceMs, 'ms');
-          callStopOnce();
+          callStopOnce('silence');
           return; // Stop the loop
         }
       } else {
         // Voice detected
         if (silenceSinceRef.current !== null) {
-          console.log('[VAD] Voice resumed, RMS:', rms.toFixed(4));
+          console.log('[VAD] Voice resumed, dB:', db.toFixed(1));
         }
         silenceSinceRef.current = null;
         
         // Update debug callback
-        onVadUpdate?.(rms, null);
+        onVadUpdate?.(rms, null, peakDbRef.current);
       }
 
       // Max recording time check
       const totalRecordingMs = now - startedAtRef.current;
       if (totalRecordingMs >= maxMs) {
-        console.log('[VAD] Auto-stopping due to max time:', totalRecordingMs, 'ms');
-        callStopOnce();
+        callStopOnce('maxDuration');
         return;
       }
 

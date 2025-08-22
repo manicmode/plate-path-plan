@@ -2,24 +2,46 @@ import { useCallback, useRef, useState } from "react";
 
 export type VCState = "idle" | "recording" | "processing";
 
-export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>) {
+// Helper function to get best audio type for device
+function getBestAudioType(): string {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/mp4',
+    'audio/mpeg'
+  ];
+  
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      console.log('[VCRecorder] Selected audio type:', type);
+      return type;
+    }
+  }
+  
+  console.log('[VCRecorder] No preferred type supported, using default');
+  return '';
+}
+
+export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeType: string; isIosSafari: boolean }) => Promise<void>) {
   const [state, setState] = useState<VCState>("idle");
-  const mrRef = useRef<MediaRecorder | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // guards
-  const startedRef = useRef(false);
-  const stoppingRef = useRef(false);
+  // guards to prevent recursion
+  const isRecordingRef = useRef(false);
+  const isStoppingRef = useRef(false);
   const finalizedRef = useRef(false);
 
   const start = useCallback(async () => {
     console.log('[VCRecorder] Start called, current state:', state);
-    if (startedRef.current || state === "recording") {
+    if (isRecordingRef.current) {
       console.log('[VCRecorder] Already recording, ignoring start');
       return;
     }
-    startedRef.current = true;
+    
+    isRecordingRef.current = true;
+    isStoppingRef.current = false;
+    finalizedRef.current = false;
     setState("processing");
 
     try {
@@ -48,21 +70,13 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
       streamRef.current = stream;
       console.log('[VCRecorder] Microphone access granted');
 
-      // Try preferred format, fall back gracefully
-      let mimeType = 'audio/webm;codecs=opus';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/webm';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = ''; // Let browser choose
-        }
-      }
-      console.log('[VCRecorder] Using mime type:', mimeType);
-
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mrRef.current = mr;
+      // Get best audio type for this device
+      const bestType = getBestAudioType();
+      const isIosSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent);
+      
+      const mr = new MediaRecorder(stream, bestType ? { mimeType: bestType } : undefined);
+      recorderRef.current = mr;
       chunksRef.current = [];
-      stoppingRef.current = false;
-      finalizedRef.current = false;
 
       const onData = (e: BlobEvent) => { 
         console.log('[VCRecorder] Audio chunk received:', e.data?.size);
@@ -70,8 +84,8 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
       };
       
       const onStop = async () => {
-        // absolutely NO mr.stop() or state transitions that trigger stop() here
-        console.log('[VCRecorder] Stop event fired, finalized:', finalizedRef.current);
+        // CRITICAL: Never call stop() from within onstop handler to prevent recursion
+        console.log('[VCRecorder] MediaRecorder.onstop fired, finalized:', finalizedRef.current);
         if (finalizedRef.current) return;
         finalizedRef.current = true;
         
@@ -86,25 +100,38 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
           }
           
           setState("processing");
-          await onFinalize(blob);
+          await onFinalize(blob, { 
+            mimeType: blob.type || mr.mimeType || "audio/webm",
+            isIosSafari 
+          });
         } catch (error) {
           console.error('[VCRecorder] Error in finalization:', error);
         } finally {
-          // Cleanup - remove listeners first
-          mr.removeEventListener("dataavailable", onData);
-          mr.removeEventListener("stop", onStop);
-          mrRef.current = null;
+          // Cleanup - remove listeners first to prevent any re-entrancy
+          try {
+            mr.removeEventListener("dataavailable", onData);
+            mr.removeEventListener("stop", onStop);
+          } catch (e) {
+            console.warn('[VCRecorder] Error removing listeners:', e);
+          }
+          
+          recorderRef.current = null;
           chunksRef.current = [];
           
           // Stop stream tracks
           if (streamRef.current) {
             console.log('[VCRecorder] Stopping stream tracks');
-            streamRef.current.getTracks().forEach(t => t.stop());
+            try {
+              streamRef.current.getTracks().forEach(t => t.stop());
+            } catch (e) {
+              console.warn('[VCRecorder] Error stopping tracks:', e);
+            }
             streamRef.current = null;
           }
           
-          stoppingRef.current = false;
-          startedRef.current = false;
+          // Reset all guards
+          isStoppingRef.current = false;
+          isRecordingRef.current = false;
           setState("idle");
           console.log('[VCRecorder] Cleanup completed');
         }
@@ -117,30 +144,34 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob) => Promise<void>)
       console.log('[VCRecorder] Recording started successfully');
     } catch (error) {
       console.error('[VCRecorder] Error starting recording:', error);
+      // Reset guards on error
+      isRecordingRef.current = false;
+      isStoppingRef.current = false;
       setState("idle");
       throw error;
     }
-  }, [state, onFinalize]);
+  }, [onFinalize]); // Remove state from deps to prevent re-entrancy
 
   const stop = useCallback(() => {
-    console.log('[VCRecorder] Stop called');
-    const mr = mrRef.current;
-    if (!mr || mr.state === "inactive" || stoppingRef.current) {
+    console.log('[VCRecorder] stop() called');
+    const mr = recorderRef.current;
+    
+    // Guard against multiple calls and already stopped states
+    if (!mr || mr.state === "inactive" || isStoppingRef.current || !isRecordingRef.current) {
       console.log('[VCRecorder] Stop ignored - no recorder, inactive, or already stopping');
       return;
     }
-    stoppingRef.current = true;
+    
+    isStoppingRef.current = true;
     console.log('[VCRecorder] Calling MediaRecorder.stop()');
     
-    // break any sync onStop→stop loops
-    queueMicrotask(() => {
-      try { 
-        mr.stop(); 
-      } catch (error) { 
-        console.error('[VCRecorder] Error stopping recorder:', error);
-        stoppingRef.current = false; 
-      }
-    });
+    try { 
+      mr.stop(); 
+    } catch (error) { 
+      console.error('[VCRecorder] Error stopping recorder:', error);
+      // Reset guards on error
+      isStoppingRef.current = false;
+    }
   }, []);
 
   const cancel = useCallback(() => {
