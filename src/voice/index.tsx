@@ -162,7 +162,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({ onClose }) => {
           <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
             <Zap className="w-6 h-6 text-muted-foreground" />
           </div>
-          <CardTitle>Voice Coach</CardTitle>
+          <CardTitle>Talk to Coach</CardTitle>
           <CardDescription>
             Voice Coach is not available for your current plan.
           </CardDescription>
@@ -185,7 +185,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({ onClose }) => {
       {/* Header with close button */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Voice Coach</h1>
+          <h1 className="text-2xl font-bold">Talk to Coach</h1>
           <p className="text-muted-foreground">
             AI-powered voice assistant for your health journey
           </p>

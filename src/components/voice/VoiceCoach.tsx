@@ -253,7 +253,7 @@ export default function VoiceCoach() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mic className="h-5 w-5" />
-            Voice Coach
+            Talk to Coach
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">

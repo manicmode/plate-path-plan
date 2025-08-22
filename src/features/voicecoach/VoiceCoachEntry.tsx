@@ -40,7 +40,7 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
         }
       }}
     >
-      <span>🎙️ Voice Coach</span>
+      <span>🎙️ Talk to Coach</span>
     </Button>
   );
 }
