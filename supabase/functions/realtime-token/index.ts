@@ -31,7 +31,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('[realtime-token] Requesting ephemeral token from OpenAI');
+    console.log('[realtime-token] Requesting session from OpenAI API');
 
     // Request ephemeral token from OpenAI Realtime API
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
@@ -118,7 +118,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[realtime-token] OpenAI API error:', response.status, errorText);
+      console.error('[realtime-token] Session creation failed:', response.status);
       return new Response(
         JSON.stringify({ 
           ok: false, 

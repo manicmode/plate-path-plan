@@ -23,11 +23,19 @@ export default function VoiceAgentPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Feature gating: allow if not kill-switched AND (admin OR MVP enabled)
-  const isAllowed = !killSwitchDisabled && (isAdmin || mvpEnabled);
+  // Feature gating: allow if not kill-switched AND (admin OR MVP enabled) AND env enabled
+  const envEnabled = import.meta.env.VITE_VOICE_AGENT_ENABLED !== 'false';
+  const isAllowed = !killSwitchDisabled && (isAdmin || mvpEnabled) && envEnabled;
 
   // Debug mode from URL params
   const debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
+
+  // Debug logging helper
+  const debugLog = (message: string, data?: any) => {
+    if (debugMode) {
+      console.debug(`[VoiceAgent] ${message}`, data || '');
+    }
+  };
 
   useEffect(() => {
     // Cleanup on unmount
@@ -41,7 +49,7 @@ export default function VoiceAgentPage() {
       setCallState("connecting");
       setLastError("");
 
-      console.log('[VoiceAgent] Starting voice session');
+      debugLog('start', 'Starting voice session');
 
       // Step 1: Get user media (microphone)
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -58,7 +66,7 @@ export default function VoiceAgentPage() {
       // Get microphone device label for debug
       const audioTrack = stream.getAudioTracks()[0];
       setMicDevice(audioTrack.label || "Unknown microphone");
-      console.log('[VoiceAgent] Microphone access granted:', audioTrack.label);
+      debugLog('microphone-access', { label: audioTrack.label });
 
       // Step 2: Create RTCPeerConnection
       const pc = new RTCPeerConnection();
@@ -68,11 +76,11 @@ export default function VoiceAgentPage() {
       const toolsChannel = pc.createDataChannel("tools", { ordered: true });
       
       toolsChannel.onopen = () => {
-        console.log('[VoiceAgent] Tools data channel opened');
+        debugLog('dc-open', 'Tools data channel opened');
       };
 
       toolsChannel.onmessage = async (event) => {
-        console.log('[VoiceAgent] Tool call received:', event.data);
+        debugLog('dc-message', 'Tool call received');
         
         try {
           const message = JSON.parse(event.data);
@@ -93,11 +101,11 @@ export default function VoiceAgentPage() {
             
             if (toolsChannel.readyState === 'open') {
               toolsChannel.send(JSON.stringify(response));
-              console.log('[VoiceAgent] Tool result sent:', response);
+              debugLog('tool-result-sent', { id, ok: result.ok });
             }
           }
         } catch (error) {
-          console.error('[VoiceAgent] Error handling tool call:', error);
+          debugLog('tool-call-error', error);
           
           // Send error response if we can parse the ID
           try {
@@ -115,22 +123,22 @@ export default function VoiceAgentPage() {
               }
             }
           } catch (parseError) {
-            console.error('[VoiceAgent] Could not send error response:', parseError);
+            debugLog('error-response-failed', parseError);
           }
         }
       };
 
       toolsChannel.onerror = (error) => {
-        console.error('[VoiceAgent] Tools channel error:', error);
+        debugLog('dc-error', error);
       };
 
       // Step 3: Add local track
       pc.addTrack(audioTrack, stream);
-      console.log('[VoiceAgent] Local audio track added to peer connection');
+      debugLog('local-track-added', 'Audio track added to peer connection');
 
       // Step 4: Handle remote audio stream
       pc.ontrack = (event) => {
-        console.log('[VoiceAgent] Remote audio track received');
+        debugLog('ontrack', 'Remote audio track received');
         if (audioRef.current && event.streams[0]) {
           audioRef.current.srcObject = event.streams[0];
         }
@@ -138,7 +146,7 @@ export default function VoiceAgentPage() {
 
       // Handle connection state changes
       pc.onconnectionstatechange = () => {
-        console.log('[VoiceAgent] Connection state:', pc.connectionState);
+        debugLog('connection-state-change', pc.connectionState);
         if (pc.connectionState === 'connected') {
           setCallState("live");
           notify.success("Voice chat connected!");
@@ -153,10 +161,10 @@ export default function VoiceAgentPage() {
         offerToReceiveAudio: true
       });
       await pc.setLocalDescription(offer);
-      console.log('[VoiceAgent] SDP offer created');
+      debugLog('sdp-offer-created', 'SDP offer created');
 
       // Step 6: Get ephemeral token from our edge function
-      console.log('[VoiceAgent] Fetching ephemeral token...');
+      debugLog('token-request-start', 'Fetching ephemeral token');
       const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('realtime-token');
 
       if (tokenError) {
@@ -168,10 +176,10 @@ export default function VoiceAgentPage() {
       }
 
       const ephemeralToken = tokenResponse.session.client_secret.value;
-      console.log('[VoiceAgent] Ephemeral token received');
+      debugLog('token-received', 'Ephemeral token received');
 
       // Step 7: POST SDP offer to OpenAI Realtime API
-      console.log('[VoiceAgent] Connecting to OpenAI Realtime API...');
+      debugLog('realtime-api-connect', 'Connecting to OpenAI Realtime API');
       const realtimeResponse = await fetch(
         "https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17",
         {
@@ -197,10 +205,10 @@ export default function VoiceAgentPage() {
       };
       
       await pc.setRemoteDescription(answer);
-      console.log('[VoiceAgent] Remote description set, WebRTC connection establishing...');
+      debugLog('answer-received', 'Remote description set, WebRTC connection establishing');
 
     } catch (error) {
-      console.error('[VoiceAgent] Start error:', error);
+      debugLog('start-error', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       setLastError(errorMsg);
       
@@ -219,13 +227,13 @@ export default function VoiceAgentPage() {
   };
 
   const handleEnd = () => {
-    console.log('[VoiceAgent] Ending voice session');
+    debugLog('end', 'Ending voice session');
     
     // Stop media stream tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
         track.stop();
-        console.log('[VoiceAgent] Stopped track:', track.kind);
+        debugLog('track-stopped', track.kind);
       });
       streamRef.current = null;
     }
@@ -234,7 +242,7 @@ export default function VoiceAgentPage() {
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
-      console.log('[VoiceAgent] Peer connection closed');
+      debugLog('peer-connection-closed', 'Peer connection closed');
     }
 
     // Clear audio element
@@ -261,12 +269,17 @@ export default function VoiceAgentPage() {
             <div className="p-3 bg-muted rounded-lg border text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Access Restricted</span>
+                <span className="text-sm font-medium">
+                  {!envEnabled ? "Voice Agent Disabled" : "Access Restricted"}
+                </span>
               </div>
               <div className="text-sm text-muted-foreground mb-4">
-                Voice Agent is currently in beta and access is limited.
+                {!envEnabled 
+                  ? "Voice Agent is currently disabled by environment configuration."
+                  : "Voice Agent is currently in beta and access is limited."
+                }
               </div>
-              {isAdmin && (
+              {isAdmin && envEnabled && (
                 <Button variant="outline" size="sm" asChild>
                   <a 
                     href="/feature-flags" 
@@ -276,7 +289,7 @@ export default function VoiceAgentPage() {
                   </a>
                 </Button>
               )}
-              {!isAdmin && (
+              {!isAdmin && envEnabled && (
                 <div className="text-xs text-muted-foreground">
                   Contact your administrator for access
                 </div>
