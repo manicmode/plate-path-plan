@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
 import { useFeatureFlagOptimized } from "@/hooks/useFeatureFlagOptimized";
@@ -32,6 +33,7 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
           }
         }}
       >
+        <Mic className="h-4 w-4" />
         <span>🎙️ Voice Coach</span>
       </Button>
     </FeatureFlagGuard>
