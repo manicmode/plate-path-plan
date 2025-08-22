@@ -88,15 +88,25 @@ export default function VoiceAgentPage() {
           if (message.type === "tool_call") {
             const { name, args, id } = message;
             
-            // Handle tool call
-            const result = await handleToolCall(name, args);
+            // Handle tool call based on tool type
+            let result;
+            
+            // Read-only data tools (use agent-tools endpoint)
+            const readOnlyTools = ['get_week_summary', 'get_trends', 'get_last_meal', 'get_last_workout', 'get_goals'];
+            
+            if (readOnlyTools.includes(name)) {
+              result = await handleAgentToolCall(name, args);
+            } else {
+              // Legacy write tools (use existing handleToolCall)
+              result = await handleToolCall(name, args);
+            }
             
             // Send response back
             const response = {
               type: "tool_result",
               id: id,
               ok: result.ok,
-              message: result.message
+              message: result.message || result.data
             };
             
             if (toolsChannel.readyState === 'open') {
@@ -163,9 +173,13 @@ export default function VoiceAgentPage() {
       await pc.setLocalDescription(offer);
       debugLog('sdp-offer-created', 'SDP offer created');
 
-      // Step 6: Get ephemeral token from our edge function
+      // Step 6: Get ephemeral token from our edge function (with auth)
       debugLog('token-request-start', 'Fetching ephemeral token');
-      const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('realtime-token');
+      const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('realtime-token', {
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
 
       if (tokenError) {
         throw new Error(`Token fetch failed: ${tokenError.message}`);
@@ -253,6 +267,59 @@ export default function VoiceAgentPage() {
     setCallState("idle");
     setMicDevice("");
     notify.info("Voice chat ended");
+  };
+
+  // Helper function for read-only agent tools
+  const handleAgentToolCall = async (toolName: string, args: any) => {
+    const timeoutMs = 10000; // 10 second timeout
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error('No authentication token available');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('agent-tools', {
+        body: { tool: toolName, args },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (error) throw error;
+      
+      if (!data?.ok) {
+        throw new Error(data?.message || 'Tool call failed');
+      }
+      
+      return {
+        ok: true,
+        message: JSON.stringify(data.data),
+        data: data.data
+      };
+      
+    } catch (error) {
+      console.error(`[VoiceAgent] Tool call ${toolName} failed:`, error);
+      
+      if (error.name === 'AbortError') {
+        return {
+          ok: false,
+          message: "I'm having trouble getting that information right now. Could you try asking again?"
+        };
+      }
+      
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Sorry, I couldn't get that information."
+      };
+    }
   };
 
   if (!isAllowed) {

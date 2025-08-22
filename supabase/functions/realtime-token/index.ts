@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +32,43 @@ serve(async (req) => {
       );
     }
 
-    console.log('[realtime-token] Requesting session from OpenAI API');
+    // Get user info and display name
+    let userName = 'friend'; // fallback
+    
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const jwt = authHeader.split(' ')[1];
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+        });
+        
+        const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+        if (user && !authError) {
+          // Get user profile for display name
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('first_name, last_name')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (profile?.first_name) {
+            userName = profile.first_name;
+          } else if (profile?.last_name) {
+            userName = profile.last_name;
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[realtime-token] Could not get user name, using fallback');
+    }
+
+    console.log(`[realtime-token] Requesting session for user: ${userName}`);
 
     // Request ephemeral token from OpenAI Realtime API
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
@@ -44,8 +81,91 @@ serve(async (req) => {
         model: "gpt-4o-realtime-preview-2024-12-17",
         voice: "alloy",
         modalities: ["text", "audio"],
-        instructions: "You are Voyage, a friendly wellness coach. Always reply with speech. If you didn't clearly hear the user, say 'I didn't catch that—could you repeat?' Keep replies under 12 seconds. When the user mentions logging food, exercise, or opening pages, propose a confirmation like 'Should I log that apple with 95 calories?' and wait for 'yes' or similar confirmation. When the user confirms, call the appropriate tool with concise parameters. After a tool call succeeds, speak a 1-sentence confirmation and ask a short follow-up question.",
+        instructions: `You are Voyage, a warm and encouraging wellness coach. Your user's name is ${userName}.
+
+PERSONA & BEHAVIOR:
+- Greet ${userName} by name once per conversation turn (not every sentence)
+- Be warm, encouraging, concise, and lightly witty (max one small quip per turn), never cheesy
+- Keep responses to 15-25 seconds of speech; if more detail is needed, summarize then offer to go deeper
+- When unclear: say "I didn't catch that, ${userName}—could you repeat?"
+
+DATA & RECOMMENDATIONS:
+- When questions need data, call the appropriate tool first, then speak a brief summary of findings and your recommendation
+- Use actual data to give personalized insights (e.g., "Last week you hit 1,850 calories average, ${userName}")
+- End with a tiny next-step offer (e.g., "Want me to log that?" or "Should I set a reminder?")
+- Do not write/log anything unless the user confirms
+
+LEGACY TOOL CONFIRMATIONS (still required):
+- For logging food/exercise, still ask confirmation like 'Should I log that apple with 95 calories?' and wait for 'yes'
+- After tool call succeeds, speak 1-sentence confirmation and ask short follow-up`,
         tools: [
+          {
+            type: "function",
+            name: "get_week_summary",
+            description: "Get a summary of user's nutrition, exercise, or recovery data for a specified period",
+            parameters: {
+              type: "object",
+              properties: {
+                domain: {
+                  type: "string",
+                  enum: ["nutrition", "exercise", "recovery"],
+                  description: "The domain to get summary for"
+                },
+                days: {
+                  type: "number",
+                  description: "Number of days to look back (default: 7)"
+                }
+              },
+              required: ["domain"]
+            }
+          },
+          {
+            type: "function",
+            name: "get_trends",
+            description: "Get trend data for a specific metric over time",
+            parameters: {
+              type: "object",
+              properties: {
+                metric: {
+                  type: "string",
+                  enum: ["calories_in", "hydration_ml", "weight", "exercise_calories"],
+                  description: "The metric to analyze trends for"
+                },
+                days: {
+                  type: "number",
+                  description: "Number of days to analyze (default: 30)"
+                }
+              },
+              required: ["metric"]
+            }
+          },
+          {
+            type: "function",
+            name: "get_last_meal",
+            description: "Get details about the user's most recent logged meal",
+            parameters: {
+              type: "object",
+              properties: {}
+            }
+          },
+          {
+            type: "function",
+            name: "get_last_workout",
+            description: "Get details about the user's most recent workout",
+            parameters: {
+              type: "object",
+              properties: {}
+            }
+          },
+          {
+            type: "function",
+            name: "get_goals",
+            description: "Get the user's current nutrition and wellness goals",
+            parameters: {
+              type: "object",
+              properties: {}
+            }
+          },
           {
             type: "function",
             name: "log_food",
