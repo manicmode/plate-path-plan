@@ -44,7 +44,75 @@ serve(async (req) => {
         model: "gpt-4o-realtime-preview-2024-12-17",
         voice: "alloy",
         modalities: ["text", "audio"],
-        instructions: "You are Voyage, a friendly wellness coach. Always reply with speech. If you didn't clearly hear the user, say 'I didn't catch that—could you repeat?' Keep replies under 12 seconds. When the user asks to log food, exercise, or measurements, propose a short confirmation and await a 'yes' before executing a tool call."
+        instructions: "You are Voyage, a friendly wellness coach. Always reply with speech. If you didn't clearly hear the user, say 'I didn't catch that—could you repeat?' Keep replies under 12 seconds. When the user asks to log food, exercise, or measurements, propose a short confirmation and await a 'yes' before executing a tool call. For example: 'Should I log that apple with 95 calories for you?' Wait for confirmation before calling log_food or log_exercise tools.",
+        tools: [
+          {
+            type: "function",
+            name: "log_food",
+            description: "Log a food item to the user's nutrition diary. Always ask for confirmation before calling this tool.",
+            parameters: {
+              type: "object",
+              properties: {
+                description: {
+                  type: "string",
+                  description: "Description of the food item (e.g., '1 medium apple', 'chicken breast salad')"
+                },
+                calories: {
+                  type: "number",
+                  description: "Estimated calories for the food item"
+                },
+                when: {
+                  type: "string",
+                  description: "When the food was consumed (optional, defaults to now)"
+                }
+              },
+              required: ["description"]
+            }
+          },
+          {
+            type: "function", 
+            name: "log_exercise",
+            description: "Log an exercise activity to the user's fitness diary. Always ask for confirmation before calling this tool.",
+            parameters: {
+              type: "object",
+              properties: {
+                activity: {
+                  type: "string",
+                  description: "Type of exercise activity (e.g., 'running', 'yoga', 'weight training')"
+                },
+                minutes: {
+                  type: "number", 
+                  description: "Duration in minutes (optional, defaults to 30)"
+                },
+                intensity: {
+                  type: "string",
+                  enum: ["low", "moderate", "high"],
+                  description: "Exercise intensity level (optional, defaults to moderate)"
+                },
+                when: {
+                  type: "string",
+                  description: "When the exercise was performed (optional, defaults to now)"
+                }
+              },
+              required: ["activity"]
+            }
+          },
+          {
+            type: "function",
+            name: "open_page", 
+            description: "Navigate to a specific page in the app (e.g., analytics, camera, coach)",
+            parameters: {
+              type: "object",
+              properties: {
+                path: {
+                  type: "string",
+                  description: "The page path to navigate to (e.g., '/analytics', '/camera', '/coach')"
+                }
+              },
+              required: ["path"]
+            }
+          }
+        ]
       }),
     });
 

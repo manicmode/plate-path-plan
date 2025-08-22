@@ -6,6 +6,7 @@ import { useFeatureFlagOptimized } from "@/hooks/useFeatureFlagOptimized";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
+import { handleToolCall } from "./agentTools";
 
 type CallState = "idle" | "connecting" | "live";
 
@@ -62,6 +63,66 @@ export default function VoiceAgentPage() {
       // Step 2: Create RTCPeerConnection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
+
+      // Step 2.5: Set up data channel for tool calls
+      const toolsChannel = pc.createDataChannel("tools", { ordered: true });
+      
+      toolsChannel.onopen = () => {
+        console.log('[VoiceAgent] Tools data channel opened');
+      };
+
+      toolsChannel.onmessage = async (event) => {
+        console.log('[VoiceAgent] Tool call received:', event.data);
+        
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === "tool_call") {
+            const { name, args, id } = message;
+            
+            // Handle tool call
+            const result = await handleToolCall(name, args);
+            
+            // Send response back
+            const response = {
+              type: "tool_result",
+              id: id,
+              ok: result.ok,
+              message: result.message
+            };
+            
+            if (toolsChannel.readyState === 'open') {
+              toolsChannel.send(JSON.stringify(response));
+              console.log('[VoiceAgent] Tool result sent:', response);
+            }
+          }
+        } catch (error) {
+          console.error('[VoiceAgent] Error handling tool call:', error);
+          
+          // Send error response if we can parse the ID
+          try {
+            const message = JSON.parse(event.data);
+            if (message.id) {
+              const errorResponse = {
+                type: "tool_result", 
+                id: message.id,
+                ok: false,
+                message: "Failed to process tool call"
+              };
+              
+              if (toolsChannel.readyState === 'open') {
+                toolsChannel.send(JSON.stringify(errorResponse));
+              }
+            }
+          } catch (parseError) {
+            console.error('[VoiceAgent] Could not send error response:', parseError);
+          }
+        }
+      };
+
+      toolsChannel.onerror = (error) => {
+        console.error('[VoiceAgent] Tools channel error:', error);
+      };
 
       // Step 3: Add local track
       pc.addTrack(audioTrack, stream);
