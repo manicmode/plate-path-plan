@@ -4,10 +4,11 @@ import { useFeatureFlagActions } from "@/hooks/useFeatureFlagActions";
 import { useMyFeatureFlags } from "@/hooks/useMyFeatureFlags";
 import { notify } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useMemo } from "react";
-import { Mic, Square, Loader2 } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Mic, Square, Loader2, Volume2, Hand } from "lucide-react";
 import { useVoiceCoachRecorder } from "./hooks/useVoiceCoachRecorder";
 import { useVadAutoStop } from "./hooks/useVadAutoStop";
+import { useTalkBack } from "./hooks/useTalkBack";
 
 export default function StartVoiceCoachButton() {
   const { enabled, loading } = useFeatureFlagOptimized("voice_coach_mvp");
@@ -15,9 +16,29 @@ export default function StartVoiceCoachButton() {
   const { setUserFlag } = useFeatureFlagActions();
   const { refresh } = useMyFeatureFlags();
 
+  // TTS hook
+  const { canSpeak, isSpeaking, speak, stop: stopTTS } = useTalkBack();
+
   // State for transcription and response
   const [transcriptionText, setTranscriptionText] = useState<string>("");
   const [responseText, setResponseText] = useState<string>("");
+  
+  // TTS settings (persisted in localStorage)
+  const [speakReplies, setSpeakReplies] = useState(() => 
+    JSON.parse(localStorage.getItem("vc_speak_replies") || "true")
+  );
+  const [handsFree, setHandsFree] = useState(() => 
+    JSON.parse(localStorage.getItem("vc_hands_free") || "false")
+  );
+
+  // Persist settings changes
+  useEffect(() => {
+    localStorage.setItem("vc_speak_replies", JSON.stringify(speakReplies));
+  }, [speakReplies]);
+
+  useEffect(() => {
+    localStorage.setItem("vc_hands_free", JSON.stringify(handsFree));
+  }, [handsFree]);
   const [vadData, setVadData] = useState<{ 
     rms: number; 
     silenceMs: number | null; 
@@ -103,7 +124,21 @@ export default function StartVoiceCoachButton() {
         
         notify.success("Voice session completed!");
         
-        // TODO: If TTS is enabled, auto-play the response here
+        // TTS talk back + hands-free re-arm
+        if (speakReplies && canSpeak && response) {
+          try {
+            await speak(response);
+            // Re-arm mic after TTS ends if hands-free is enabled
+            if (handsFree) {
+              console.log('[VoiceCoach] Hands-free re-arm');
+              await start();
+              notify.success("🎤 Re-armed for hands-free");
+            }
+          } catch (ttsError) {
+            console.error('[VoiceCoach] TTS error:', ttsError);
+            notify.error('Could not speak reply');
+          }
+        }
         
       } catch (responseError) {
         console.error('[VoiceCoach] Voice response error:', responseError);
@@ -158,6 +193,12 @@ export default function StartVoiceCoachButton() {
       return;
     }
 
+    // If TTS is speaking, stop it first then start recording
+    if (isSpeaking) {
+      console.log('[VoiceCoach] Stopping TTS to start recording');
+      stopTTS();
+    }
+
     if (!enabled) {
       notify.info("Voice Coach is coming soon for your account.");
       return;
@@ -190,6 +231,15 @@ export default function StartVoiceCoachButton() {
   }
 
   const getButtonContent = () => {
+    if (isSpeaking) {
+      return (
+        <>
+          <Volume2 className="h-4 w-4 animate-pulse" />
+          Speaking… (tap to interrupt)
+        </>
+      );
+    }
+
     switch (state) {
       case "recording":
         return (
@@ -217,11 +267,36 @@ export default function StartVoiceCoachButton() {
 
   return (
     <div className="space-y-4">
+      {/* TTS Settings Toggles */}
+      <div className="flex gap-4 items-center justify-center text-sm">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={speakReplies} 
+            onChange={e => setSpeakReplies(e.target.checked)}
+            className="rounded"
+          />
+          <Volume2 className="h-4 w-4" />
+          <span>Speak replies</span>
+        </label>
+        
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={handsFree} 
+            onChange={e => setHandsFree(e.target.checked)}
+            className="rounded"
+          />
+          <Hand className="h-4 w-4" />
+          <span>Hands-free</span>
+        </label>
+      </div>
+
       {/* Main Voice Button */}
       <Button
-        disabled={killSwitchDisabled}
+        disabled={killSwitchDisabled || (state === "recording" && isSpeaking)}
         onClick={handleButtonClick}
-        variant={state === "recording" ? "destructive" : "default"}
+        variant={state === "recording" ? "destructive" : isSpeaking ? "secondary" : "default"}
         className="w-full gap-2"
       >
         {getButtonContent()}
