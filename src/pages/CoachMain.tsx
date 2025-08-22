@@ -1,24 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useFeatureFlagOptimized } from '@/hooks/useFeatureFlagOptimized';
-import { useAdminRole } from '@/hooks/useAdminRole';
 import Coach from '@/pages/Coach';
 import AIFitnessCoach from '@/pages/AIFitnessCoach';
 import RecoveryCoachSection from '@/components/coach/sections/RecoveryCoachSection';
 
 
 const CoachMain = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'nutrition' | 'exercise' | 'recovery'>('nutrition');
-  
-  // Voice coach feature flags
-  const { enabled: killSwitchDisabled } = useFeatureFlagOptimized("voice_coach_disabled");
-  const { enabled: mvpEnabled } = useFeatureFlagOptimized("voice_coach_mvp");
-  const { isAdmin } = useAdminRole();
-  
-  // Voice coach is allowed if kill switch is off AND (user is admin OR MVP is enabled)
-  const voiceCoachAllowed = !killSwitchDisabled && (isAdmin || mvpEnabled);
 
   // Scroll to top when tab changes
   useEffect(() => {
@@ -27,27 +15,9 @@ const CoachMain = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with Voice Coach Pill */}
+      {/* Header */}
       <header className="flex items-center justify-between px-4 pt-3 pb-2">
         <h1 className="text-2xl font-semibold tracking-tight">Coach</h1>
-        
-        {voiceCoachAllowed && (
-          <button
-            onClick={() => navigate('/voice-agent')}
-            aria-label="Speak to Coach"
-            className="
-              inline-flex items-center gap-2 rounded-full
-              bg-gradient-to-r from-teal-400 to-emerald-400
-              text-slate-900 font-semibold px-3.5 py-1.5
-              shadow-[0_10px_28px_rgba(16,185,129,0.40)]
-              hover:shadow-[0_12px_32px_rgba(16,185,129,0.50)]
-              transition active:scale-[0.98] select-none
-            "
-          >
-            <span className="text-lg leading-none">🎙️</span>
-            <span className="leading-none">Speak to Coach</span>
-          </button>
-        )}
       </header>
 
       {/* Toggle Section */}

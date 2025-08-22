@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import VoiceCoachEntryPill from '@/features/voicecoach/VoiceCoachEntryPill';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -520,7 +521,10 @@ setMessages(prev => {
 {/* Chat Interface with enhanced mobile optimization */}
 <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
   <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-    {/* Voice agent entry will be added here when ready */}
+    {/* Centered pill above conversation */}
+    <div className="flex justify-center pt-3 pb-2">
+      <VoiceCoachEntryPill />
+    </div>
   </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}

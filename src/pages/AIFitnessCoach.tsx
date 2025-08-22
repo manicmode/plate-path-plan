@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import VoiceCoachEntryPill from '@/features/voicecoach/VoiceCoachEntryPill';
 import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell, TrendingUp, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -479,7 +480,10 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* AI Chat Box */}
         <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
           <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-            {/* Voice agent entry will be added here when ready */}
+            {/* Centered pill above conversation */}
+            <div className="flex justify-center pt-3 pb-2">
+              <VoiceCoachEntryPill />
+            </div>
           </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}
