@@ -3,7 +3,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import Coach from '@/pages/Coach';
 import AIFitnessCoach from '@/pages/AIFitnessCoach';
 import RecoveryCoachSection from '@/components/coach/sections/RecoveryCoachSection';
-import { VoiceCoachFABWrapper } from '@/features/voicecoach/VoiceCoachFABWrapper';
+
 
 const CoachMain = () => {
   const [activeTab, setActiveTab] = useState<'nutrition' | 'exercise' | 'recovery'>('nutrition');
@@ -56,10 +56,7 @@ const CoachMain = () => {
             </ToggleGroupItem>
           </ToggleGroup>
       </div>
-      
-      {/* Voice Coach FAB for mobile */}
-      <VoiceCoachFABWrapper />
-    </div>
+      </div>
 
       {/* Content */}
       <div className="relative">
@@ -67,9 +64,6 @@ const CoachMain = () => {
         {activeTab === 'exercise' && <AIFitnessCoach />}
         {activeTab === 'recovery' && <RecoveryCoachSection />}
       </div>
-      
-      {/* Voice Coach FAB for mobile */}
-      <VoiceCoachFABWrapper />
     </div>
   );
 };
