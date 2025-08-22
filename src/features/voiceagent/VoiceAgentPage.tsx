@@ -205,6 +205,8 @@ export default function VoiceAgentPage() {
         }
       });
 
+      console.info("[Agent] token fetch", tokenResponse ? 200 : (tokenError ? 'error' : 'unknown'));
+
       if (tokenError) {
         throw new Error(`Token fetch failed: ${tokenError.message}`);
       }
@@ -358,8 +360,12 @@ export default function VoiceAgentPage() {
       }, 10000);
 
       const checkConnection = () => {
-        if (pcRef.current?.connectionState === 'connected' && 
-            eventsChannelRef.current?.readyState === 'open') {
+        const pcState = pcRef.current?.connectionState;
+        const dcState = eventsChannelRef.current?.readyState;
+        console.info("[Agent] pc state", pcState, pcRef.current?.iceConnectionState);
+        console.info("[Agent] events-dc", dcState);
+        
+        if (pcState === 'connected' && dcState === 'open') {
           clearTimeout(timeout);
           console.info("[Agent] ensureConnected: pc=connected dc=open");
           resolve();
@@ -371,32 +377,32 @@ export default function VoiceAgentPage() {
       // Check if already connected
       if (checkConnection()) return;
 
-      // If not started, start the connection
-      if (callState === 'idle') {
+      // Check current state
+      const currentState = callState;
+      
+      // If not started or failed, start the connection
+      if (currentState === 'idle' || !pcRef.current) {
+        console.info("[Agent] Starting new connection...");
         handleStart().then(() => {
           // Wait for connection to be established
           const pollConnection = () => {
             if (checkConnection()) return;
+            // Continue polling for up to 10 seconds total
             setTimeout(pollConnection, 100);
           };
-          pollConnection();
+          setTimeout(pollConnection, 100); // Small delay to let connection establish
         }).catch((error) => {
           clearTimeout(timeout);
           reject(error);
         });
-      } else if (callState === 'connecting') {
-        // Already connecting, just wait
+      } else {
+        // Already connecting or connected, just wait
+        console.info("[Agent] Waiting for existing connection...");
         const pollConnection = () => {
           if (checkConnection()) return;
           setTimeout(pollConnection, 100);
         };
         pollConnection();
-      } else {
-        // Already connected, check again
-        if (!checkConnection()) {
-          clearTimeout(timeout);
-          reject(new Error('Connection lost'));
-        }
       }
     });
   };
@@ -452,6 +458,13 @@ export default function VoiceAgentPage() {
       // Error already handled and notified in ask() function
     }
   };
+
+  // Debug helper for manual testing
+  useEffect(() => {
+    if (debugMode) {
+      (window as any).debugAsk = (text: string) => ask(text);
+    }
+  }, [debugMode]);
 
   if (!isAllowed) {
     return (
@@ -582,12 +595,10 @@ export default function VoiceAgentPage() {
           )}
 
           {/* Idea Starters */}
-          {callState === "idle" && (
-            <IdeaStarters 
-              onQuestionSelect={handleQuestionSelect}
-              disabled={callState !== "idle"}
-            />
-          )}
+          <IdeaStarters 
+            onQuestionSelect={handleQuestionSelect}
+            disabled={callState === "connecting"}
+          />
         </CardContent>
       </Card>
     </div>
