@@ -123,13 +123,10 @@ serve(async (req) => {
       switch (body.tool) {
         case "log_water": {
           const args = WaterArgs.parse(body.args);
-          const when = args.when ?? nowIso;
 
-          // —— WRITE: pick your canonical hydration table here ——
-          // If you already have one, use it. Otherwise, call a SECURITY DEFINER RPC.
           const { error } = await sbUser
             .from("hydration_logs")
-            .insert({ user_id: userId, amount_ml: args.amount_ml, logged_at: when })
+            .insert({ user_id: userId, amount_ml: args.amount_ml })
             .select()
             .single();
           if (error) throw error;
@@ -140,11 +137,10 @@ serve(async (req) => {
         }
         case "log_meal": {
           const args = MealArgs.parse(body.args);
-          const when = args.when ?? nowIso;
 
           const { error } = await sbUser
             .from("meal_logs")
-            .insert({ user_id: userId, notes: args.meal_text, logged_at: when })
+            .insert({ user_id: userId, notes: args.meal_text })
             .select()
             .single();
           if (error) throw error;
@@ -155,11 +151,10 @@ serve(async (req) => {
         }
         case "log_workout": {
           const args = WorkoutArgs.parse(body.args);
-          const when = args.when ?? nowIso;
 
           const { error } = await sbUser
             .from("workout_logs")
-            .insert({ user_id: userId, summary: args.summary, logged_at: when })
+            .insert({ user_id: userId, summary: args.summary })
             .select()
             .single();
           if (error) throw error;

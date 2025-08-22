@@ -3276,6 +3276,27 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_logs: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_scores: {
         Row: {
           created_at: string
@@ -5931,6 +5952,27 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_goals: {
+        Row: {
+          name: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          name: string
+          updated_at?: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          name?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
         }
         Relationships: []
       }
