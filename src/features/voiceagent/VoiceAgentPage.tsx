@@ -208,7 +208,7 @@ export default function VoiceAgentPage() {
               {isAdmin && (
                 <Button variant="outline" size="sm" asChild>
                   <a 
-                    href="/admin/feature-flags" 
+                    href="/feature-flags" 
                     className="inline-flex items-center gap-1"
                   >
                     Manage Access <ExternalLink className="h-3 w-3" />

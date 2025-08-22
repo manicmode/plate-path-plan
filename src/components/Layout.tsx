@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText } from 'lucide-react';
+import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -37,6 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/camera', icon: Camera, label: 'Log' },
     { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
+    { path: '/voice-agent', icon: Mic, label: '🎙️ Voice Agent' },
     { path: '/explore', icon: Compass, label: 'Explore' },
   ];
   // [nav-restore-2025-08-11] end
