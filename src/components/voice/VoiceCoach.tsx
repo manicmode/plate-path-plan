@@ -77,11 +77,12 @@ export default function VoiceCoach() {
     }));
     
     try {
-      // Create FormData with proper file extension
+      // Create FormData with proper file extension based on mimeType
       const formData = new FormData();
-      const ext = metadata.mimeType.includes('mp4') ? 'm4a' : 
-                  metadata.mimeType.includes('webm') ? 'webm' : 'audio';
-      const filename = `voice-${Date.now()}.${ext}`;
+      const ext = metadata.mimeType.includes('mp4') || metadata.mimeType.includes('m4a') ? 'm4a' :
+                  metadata.mimeType.includes('webm') ? 'webm' :
+                  metadata.mimeType.includes('mpeg') ? 'mp3' : 'webm';
+      const filename = `recording.${ext}`;
       
       formData.append('audio', blob, filename);
 
@@ -108,31 +109,46 @@ export default function VoiceCoach() {
       if (speakReplies && canSpeak && aiReply) {
         try {
           await speak(aiReply);
+          console.log('[VoiceCoach] TTS completed');
+          
           // Re-arm mic after TTS ends if hands-free is enabled
           if (handsFree) {
             console.log('[VoiceCoach] Hands-free re-arm');
-            setTimeout(() => start(), 400); // 400ms delay as specified
-            notify.success("🎤 Re-armed for hands-free");
+            setTimeout(() => {
+              if (state === "idle") { // Only re-arm if still idle
+                start();
+                notify.success("🎤 Ready for next question");
+              }
+            }, 400); // 400ms delay for iOS
           }
         } catch (ttsError) {
           console.error('[VoiceCoach] TTS error:', ttsError);
-          notify.error('Could not speak reply');
+          notify.info('Reply shown as text—couldn\'t play voice');
         }
+      } else if (!speakReplies) {
+        // If not speaking, state will naturally return to idle after finalization
+        console.log('[VoiceCoach] Not speaking replies, recorder will reset to idle');
       }
 
     } catch (error) {
       console.error('[VoiceCoach] Processing error:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      setTranscriptionText(`Failed: ${errorMsg}`);
+      setTranscriptionText(`Error: ${errorMsg}`);
       
       // Show user-friendly error messages
       if (errorMsg.includes('missing_openai_key')) {
         notify.error('Voice Coach not configured. Please contact admin.');
       } else if (errorMsg.includes('too large')) {
         notify.error('Recording too long. Please keep it under 30 seconds.');
+      } else if (errorMsg.includes('No speech detected')) {
+        notify.error('No speech detected. Please try speaking louder.');
+        setTranscriptionText(""); // Clear the error from display
       } else {
         notify.error('Failed to process audio. Please try again.');
       }
+      
+      // Reset to idle state on error so user can retry immediately
+      console.log('[VoiceCoach] Error occurred, recorder will reset to idle state');
     }
   };
 
@@ -227,14 +243,14 @@ export default function VoiceCoach() {
         return (
           <>
             <Square className="h-4 w-4 text-red-500" />
-            Stop
+            Listening… auto-stop on silence
           </>
         );
       case "processing":
         return (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Processing…
+            Thinking…
           </>
         );
       default:

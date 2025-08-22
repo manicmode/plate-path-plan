@@ -72,16 +72,17 @@ serve(async (req) => {
       const transcriptionResult = await transcriptionResponse.json();
       const transcriptionText = transcriptionResult.text?.trim();
       
-      if (!transcriptionText) {
-        console.log('[voice-turn] Empty transcription');
+      // Check for empty or very short transcription (likely no speech)
+      if (!transcriptionText || transcriptionText.length <= 2) {
+        console.log('[voice-turn] No speech detected, transcript:', transcriptionText);
         return new Response(
           JSON.stringify({ 
             ok: false, 
-            error: 'No speech detected in audio',
-            text: '',
-            reply: ''
+            code: 'no_speech',
+            error: 'No speech detected in audio'
           }),
           {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );

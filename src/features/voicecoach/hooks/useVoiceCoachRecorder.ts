@@ -27,7 +27,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // guards to prevent recursion
+  // Hard guards to prevent recursion and double-stop
   const isRecordingRef = useRef(false);
   const isStoppingRef = useRef(false);
   const finalizedRef = useRef(false);
@@ -39,6 +39,7 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
       return;
     }
     
+    // Reset all guards for new session
     isRecordingRef.current = true;
     isStoppingRef.current = false;
     finalizedRef.current = false;
@@ -84,9 +85,12 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
       };
       
       const onStop = async () => {
-        // CRITICAL: Never call stop() from within onstop handler to prevent recursion
+        // CRITICAL: Hard guard against double finalization
         console.log('[VCRecorder] MediaRecorder.onstop fired, finalized:', finalizedRef.current);
-        if (finalizedRef.current) return;
+        if (finalizedRef.current) {
+          console.log('[VCRecorder] Already finalized, ignoring onstop');
+          return;
+        }
         finalizedRef.current = true;
         
         try {
@@ -129,10 +133,12 @@ export function useVoiceCoachRecorder(onFinalize: (blob: Blob, metadata: { mimeT
             streamRef.current = null;
           }
           
-          // Reset all guards
-          isStoppingRef.current = false;
-          isRecordingRef.current = false;
-          setState("idle");
+          // Reset all guards and return to idle
+          setTimeout(() => {
+            isStoppingRef.current = false;
+            isRecordingRef.current = false;
+            setState("idle");
+          }, 100);
           console.log('[VCRecorder] Cleanup completed');
         }
       };
