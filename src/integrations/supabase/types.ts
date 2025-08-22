@@ -6480,6 +6480,36 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_action_audit: {
+        Row: {
+          args_json: Json
+          created_at: string
+          error_text: string | null
+          id: string
+          ok: boolean
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          args_json: Json
+          created_at?: string
+          error_text?: string | null
+          id?: string
+          ok: boolean
+          tool: string
+          user_id: string
+        }
+        Update: {
+          args_json?: Json
+          created_at?: string
+          error_text?: string | null
+          id?: string
+          ok?: boolean
+          tool?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       voice_audit: {
         Row: {
           action: string
