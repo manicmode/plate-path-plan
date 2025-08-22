@@ -23,7 +23,7 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
       <Button
         size="sm"
         variant="secondary"
-        className={`rounded-full gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all ${className}`}
+        className={`rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all ${className}`}
         aria-label="Start Voice Coach"
         onClick={() => {
           try { 
@@ -33,7 +33,6 @@ export function VoiceCoachEntry({ className = "" }: { className?: string }) {
           }
         }}
       >
-        <Mic className="h-4 w-4" />
         <span>🎙️ Voice Coach</span>
       </Button>
     </FeatureFlagGuard>
