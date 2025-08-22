@@ -191,11 +191,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   return (
     <Card ref={chatContainerRef} className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <div className="flex items-center justify-between">
-          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
-            <span>Chat with Your Coach</span>
-          </CardTitle>
+        <div className="flex justify-center">
           <VoiceCoachEntry />
         </div>
       </CardHeader>

@@ -521,11 +521,7 @@ setMessages(prev => {
 {/* Chat Interface with enhanced mobile optimization */}
 <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
   <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-    <div className="flex items-center justify-between">
-      <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-        <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
-        <span>Chat with Your Coach</span>
-      </CardTitle>
+    <div className="flex justify-center">
       <VoiceCoachEntry />
     </div>
           </CardHeader>
