@@ -7,6 +7,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
 import { handleToolCall } from "./agentTools";
+import IdeaStarters from "./IdeaStarters";
 
 type CallState = "idle" | "connecting" | "live";
 
@@ -22,6 +23,7 @@ export default function VoiceAgentPage() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
   // Feature gating: allow if not kill-switched AND (admin OR MVP enabled) AND env enabled
   const envEnabled = import.meta.env.VITE_VOICE_AGENT_ENABLED !== 'false';
@@ -74,6 +76,7 @@ export default function VoiceAgentPage() {
 
       // Step 2.5: Set up data channel for tool calls
       const toolsChannel = pc.createDataChannel("tools", { ordered: true });
+      dataChannelRef.current = toolsChannel;
       
       toolsChannel.onopen = () => {
         debugLog('dc-open', 'Tools data channel opened');
@@ -258,6 +261,9 @@ export default function VoiceAgentPage() {
       pcRef.current = null;
       debugLog('peer-connection-closed', 'Peer connection closed');
     }
+
+    // Clear data channel reference
+    dataChannelRef.current = null;
 
     // Clear audio element
     if (audioRef.current) {
@@ -449,8 +455,36 @@ export default function VoiceAgentPage() {
               <div>{lastError}</div>
             </div>
           )}
+
+          {/* Idea Starters */}
+          {callState === "idle" && (
+            <IdeaStarters 
+              onQuestionSelect={handleQuestionSelect}
+              disabled={callState !== "idle"}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
   );
+
+  // Helper function to send questions to the realtime agent
+  function handleQuestionSelect(question: string) {
+    debugLog('question-selected', question);
+    
+    if (callState !== "idle") {
+      notify.error("Please start the conversation first");
+      return;
+    }
+
+    // Start the conversation with the selected question
+    handleStart().then(() => {
+      // Once connected, we would send the question via data channel
+      // For now, just show feedback
+      notify.info(`Starting conversation with: "${question.slice(0, 40)}..."`);
+    }).catch((error) => {
+      debugLog('auto-start-error', error);
+      notify.error("Failed to start conversation");
+    });
+  }
 }
