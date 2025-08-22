@@ -24,6 +24,7 @@ export default function VoiceAgentPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const eventsChannelRef = useRef<RTCDataChannel | null>(null);
 
   // Feature gating: allow if not kill-switched AND (admin OR MVP enabled) AND env enabled
   const envEnabled = import.meta.env.VITE_VOICE_AGENT_ENABLED !== 'false';
@@ -77,6 +78,25 @@ export default function VoiceAgentPage() {
       // Step 2.5: Set up data channel for tool calls
       const toolsChannel = pc.createDataChannel("tools", { ordered: true });
       dataChannelRef.current = toolsChannel;
+
+      // Step 2.6: Set up events data channel for realtime communication
+      const eventsChannel = pc.createDataChannel("oai-events", { ordered: true });
+      eventsChannelRef.current = eventsChannel;
+      
+      eventsChannel.onopen = () => {
+        debugLog('events-dc-open', 'Events data channel opened');
+        console.info("[Agent] datachannel open");
+      };
+      
+      eventsChannel.onclose = () => {
+        debugLog('events-dc-close', 'Events data channel closed');
+        console.info("[Agent] datachannel closed");
+      };
+      
+      eventsChannel.onerror = (error) => {
+        debugLog('events-dc-error', 'Events data channel error');
+        console.error("[Agent] datachannel error", error);
+      };
       
       toolsChannel.onopen = () => {
         debugLog('dc-open', 'Tools data channel opened');
@@ -152,6 +172,7 @@ export default function VoiceAgentPage() {
       // Step 4: Handle remote audio stream
       pc.ontrack = (event) => {
         debugLog('ontrack', 'Remote audio track received');
+        console.info("[Agent] audio: first frame received");
         if (audioRef.current && event.streams[0]) {
           audioRef.current.srcObject = event.streams[0];
         }
@@ -262,8 +283,9 @@ export default function VoiceAgentPage() {
       debugLog('peer-connection-closed', 'Peer connection closed');
     }
 
-    // Clear data channel reference
+    // Clear data channel references
     dataChannelRef.current = null;
+    eventsChannelRef.current = null;
 
     // Clear audio element
     if (audioRef.current) {
@@ -325,6 +347,109 @@ export default function VoiceAgentPage() {
         ok: false,
         message: error instanceof Error ? error.message : "Sorry, I couldn't get that information."
       };
+    }
+  };
+
+  // Connection management functions
+  const ensureConnected = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Connection timeout after 10 seconds'));
+      }, 10000);
+
+      const checkConnection = () => {
+        if (pcRef.current?.connectionState === 'connected' && 
+            eventsChannelRef.current?.readyState === 'open') {
+          clearTimeout(timeout);
+          console.info("[Agent] ensureConnected: pc=connected dc=open");
+          resolve();
+          return true;
+        }
+        return false;
+      };
+
+      // Check if already connected
+      if (checkConnection()) return;
+
+      // If not started, start the connection
+      if (callState === 'idle') {
+        handleStart().then(() => {
+          // Wait for connection to be established
+          const pollConnection = () => {
+            if (checkConnection()) return;
+            setTimeout(pollConnection, 100);
+          };
+          pollConnection();
+        }).catch((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      } else if (callState === 'connecting') {
+        // Already connecting, just wait
+        const pollConnection = () => {
+          if (checkConnection()) return;
+          setTimeout(pollConnection, 100);
+        };
+        pollConnection();
+      } else {
+        // Already connected, check again
+        if (!checkConnection()) {
+          clearTimeout(timeout);
+          reject(new Error('Connection lost'));
+        }
+      }
+    });
+  };
+
+  const sendEvent = async (payload: any): Promise<void> => {
+    if (!eventsChannelRef.current || eventsChannelRef.current.readyState !== 'open') {
+      throw new Error('Events data channel not ready');
+    }
+    
+    eventsChannelRef.current.send(JSON.stringify(payload));
+    console.info("[Agent] send", payload.type);
+  };
+
+  const ask = async (text: string): Promise<void> => {
+    try {
+      console.info("[IdeaStarter] click", text);
+      
+      await ensureConnected();
+      
+      await sendEvent({
+        type: "conversation.item.create",
+        item: { 
+          type: "message", 
+          role: "user", 
+          content: [{ type: "input_text", text }] 
+        }
+      });
+      
+      await sendEvent({
+        type: "response.create",
+        response: { 
+          conversation: "default", 
+          modalities: ["audio"]
+        }
+      });
+      
+    } catch (error) {
+      console.error('[Agent] ask failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      notify.error(`Failed to ask question: ${errorMsg}`);
+      throw error;
+    }
+  };
+
+  // Helper function to send questions to the realtime agent
+  const handleQuestionSelect = async (question: string) => {
+    debugLog('question-selected', question);
+    
+    try {
+      await ask(question);
+    } catch (error) {
+      debugLog('question-select-error', error);
+      // Error already handled and notified in ask() function
     }
   };
 
@@ -467,24 +592,4 @@ export default function VoiceAgentPage() {
       </Card>
     </div>
   );
-
-  // Helper function to send questions to the realtime agent
-  function handleQuestionSelect(question: string) {
-    debugLog('question-selected', question);
-    
-    if (callState !== "idle") {
-      notify.error("Please start the conversation first");
-      return;
-    }
-
-    // Start the conversation with the selected question
-    handleStart().then(() => {
-      // Once connected, we would send the question via data channel
-      // For now, just show feedback
-      notify.info(`Starting conversation with: "${question.slice(0, 40)}..."`);
-    }).catch((error) => {
-      debugLog('auto-start-error', error);
-      notify.error("Failed to start conversation");
-    });
-  }
 }

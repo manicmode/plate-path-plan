@@ -50,6 +50,7 @@ export default function IdeaStarters({ onQuestionSelect, disabled = false }: Ide
           <div key={starter.section} className="border rounded-xl overflow-hidden">
             {/* Section Header */}
             <button
+              type="button"
               onClick={() => toggleSection(starter.section)}
               disabled={disabled}
               className={cn(
@@ -78,6 +79,7 @@ export default function IdeaStarters({ onQuestionSelect, disabled = false }: Ide
                       <div key={categoryKey} className="border border-border/50 rounded-lg overflow-hidden">
                         {/* Category Header */}
                         <button
+                          type="button"
                           onClick={() => toggleCategory(categoryKey)}
                           disabled={disabled}
                           className={cn(
@@ -109,6 +111,7 @@ export default function IdeaStarters({ onQuestionSelect, disabled = false }: Ide
                             <div className="grid gap-2 sm:grid-cols-1 md:grid-cols-2">
                               {category.questions.map((question, index) => (
                                 <button
+                                  type="button"
                                   key={index}
                                   onClick={() => handleQuestionClick(question)}
                                   disabled={disabled}
