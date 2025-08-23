@@ -38,7 +38,7 @@ export default function VoiceAgentPage() {
   const functionCallBufferRef = useRef<Map<string, string>>(new Map());
   
   // Confirmation latch (client-side safety net)
-  const pendingActionRef = useRef<{ tool: string; args: any; expiresAt: number } | null>(null);
+  const pendingActionRef = useRef<{ tool: string; args: any; correlationId: string; expiresAt: number } | null>(null);
   
   // Prevent double-fire across Path A (tool call) & Path B (latch)
   const inflightToolRef = useRef<Set<string>>(new Set());
@@ -64,7 +64,7 @@ export default function VoiceAgentPage() {
   function clearPendingAction(reason?: string) {
     pendingActionRef.current = null;
     // also ensure any spinners are cleared if they rely on tool status
-    try { setToolStatus?.({ isActive: false, reason }); } catch {}
+    try { setToolStatus?.({ isActive: false }); } catch {}
   }
   
   // Define tools that should be available on every response
@@ -751,16 +751,20 @@ export default function VoiceAgentPage() {
               const ozMatch = transcript.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?oz/i);
               const mlMatch = transcript.match(/(\d+(?:\.\d+)?)\s*ml/i);
               
+              const correlationId = newCorrelationId('latch');
+              
               if (ozMatch) {
                 pendingAction = {
                   tool: 'log_water',
                   args: { amount_oz: parseFloat(ozMatch[1]) },
+                  correlationId,
                   expiresAt: Date.now() + 60000 // 60 seconds
                 };
               } else if (mlMatch) {
                 pendingAction = {
                   tool: 'log_water', 
                   args: { amount_ml: parseFloat(mlMatch[1]) },
+                  correlationId,
                   expiresAt: Date.now() + 60000
                 };
               }
@@ -786,17 +790,20 @@ export default function VoiceAgentPage() {
             
             console.log('[Agent] Affirmative response detected, executing pending action');
             const pendingAction = pendingActionRef.current;
-            pendingActionRef.current = null; // Clear latch
+            const { tool, args, correlationId } = pendingAction;
             
-            // Execute the tool call immediately
-            handleRealtimeToolCall({
-              name: pendingAction.tool,
-              args: pendingAction.args,
-              callId: 'latch-' + Date.now()
+            // Path B: Use correlation ID and mutex
+            oncePerCorrelation(correlationId, async () => {
+              await handleRealtimeToolCall({
+                name: tool,
+                args: { ...args, correlation_id: correlationId },
+                callId: 'latch-' + Date.now()
+              });
             });
+            
           } else if (pendingActionRef.current.expiresAt <= Date.now()) {
             // Expire old latch
-            pendingActionRef.current = null;
+            clearPendingAction('expired');
             console.log('[Agent] Confirmation latch expired');
           }
         }
@@ -937,7 +944,12 @@ export default function VoiceAgentPage() {
 
       // Play confirmation earcon on success, then trigger response
       if (result.ok) {
+        // Clear pending action on success
+        clearPendingAction('success');
         await playEarcon();
+      } else {
+        // Clear pending action on error
+        clearPendingAction('error');
       }
 
       // Then trigger response generation with confirmation message
@@ -989,7 +1001,8 @@ export default function VoiceAgentPage() {
       console.error('[Tools] Tool call failed:', error);
       debugLog('tool-call-error', error);
       
-      // Clear tool status on error
+      // Clear pending action and tool status on error
+      clearPendingAction('error');
       setToolStatus({ isActive: false });
       
       // Send error response back to OpenAI

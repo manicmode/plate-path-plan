@@ -86,11 +86,12 @@ async function audit(
   args: unknown,
   ok: boolean,
   errorText?: string,
+  correlationId?: string,
 ) {
   await sbService.from("voice_action_audit").insert({
     user_id: userId,
     tool,
-    args_json: args,
+    args_json: { ...args, correlation_id: correlationId },
     ok,
     error_text: errorText ?? null,
   });
@@ -262,8 +263,9 @@ serve(async (req) => {
       console.error("Voice tools write error:", errorText);
     }
 
-    // Always audit
-    await audit(sbService, userId, body.tool, body.args, ok, errorText);
+    // Always audit with correlation_id if present
+    const correlationId = (body.args as any)?.correlation_id;
+    await audit(sbService, userId, body.tool, body.args, ok, errorText, correlationId);
 
     if (!ok) {
       if (errorText === "rate_limit") {
