@@ -142,51 +142,34 @@ serve(async (req) => {
           
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
-          // Runtime idempotency: check for existing row with same user, type='water', volume, within same minute
-          const minuteStart = new Date(timestamp);
-          minuteStart.setSeconds(0, 0);
-          const minuteEnd = new Date(minuteStart.getTime() + 60000);
-          
-          const { data: existing } = await sbUser
-            .from("hydration_logs")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("type", "water")
-            .eq("volume", volumeMl)
-            .gte("created_at", minuteStart.toISOString())
-            .lt("created_at", minuteEnd.toISOString())
-            .limit(1);
-          
-          if (existing && existing.length > 0) {
-            ok = true;
-            result = { message: "Water logged", volume_ml: volumeMl, duplicate: true };
-            console.log(`[Voice-Tools] Duplicate water log detected, skipping insert`);
-            break;
-          }
-          
-          // Write to canonical table that UI reads: hydration_logs
+          // Use UPSERT for clean minute-level idempotency via unique index
           const insertData = { 
-            user_id: userId, 
             name: args.name || `${Math.round(volumeMl)} ml Water`,
             volume: volumeMl,
             type: 'water',
             created_at: timestamp
+            // minute_key will be set automatically by trigger
           };
           
-          console.log(`[Voice-Tools] Inserting into hydration_logs:`, insertData);
+          console.log(`[Voice-Tools] Upserting into hydration_logs:`, insertData);
           
-          const { error, data: insertedData } = await sbUser
+          const { error, data: insertedData, count } = await sbUser
             .from("hydration_logs")
-            .insert(insertData)
-            .select()
-            .single();
+            .upsert(insertData, { 
+              onConflict: 'user_id,minute_key,volume', 
+              ignoreDuplicates: true 
+            })
+            .select();
             
           if (error) {
-            console.error(`[Voice-Tools] Database insert failed:`, error);
+            console.error(`[Voice-Tools] Database upsert failed:`, error);
             throw error;
           }
           
-          console.log(`[Voice-Tools] Successfully inserted hydration log:`, insertedData);
+          // Check if this was a duplicate (nothing inserted)
+          const duplicate = !insertedData || insertedData.length === 0;
+          
+          console.log(`[Voice-Tools] Successfully ${duplicate ? 'ignored duplicate' : 'inserted'} hydration log:`, insertedData);
 
           ok = true;
           result = { message: "Water logged", volume_ml: volumeMl };

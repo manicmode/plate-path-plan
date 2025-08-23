@@ -2966,6 +2966,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          minute_key: number | null
           name: string
           trigger_tags: string[] | null
           type: string
@@ -2976,6 +2977,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          minute_key?: number | null
           name: string
           trigger_tags?: string[] | null
           type?: string
@@ -2986,6 +2988,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          minute_key?: number | null
           name?: string
           trigger_tags?: string[] | null
           type?: string
@@ -8706,6 +8709,10 @@ export type Database = {
       calculate_challenge_progress: {
         Args: { participation_id_param: string }
         Returns: undefined
+      }
+      calculate_minute_key: {
+        Args: { ts: string }
+        Returns: number
       }
       calculate_next_trigger: {
         Args: { reminder_id: string }
