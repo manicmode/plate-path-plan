@@ -175,6 +175,38 @@ export default function VoiceAgentPage() {
 
     return null;
   }
+
+  // FIX: robustly detect AI's "Should I log ... water?" prompt and set latch on the final transcript
+  function maybeSetWaterLatchFromAiLine(fullText: string) {
+    const t = fullText.toLowerCase();
+
+    // Be flexible about phrasing and units ("oz", "ounce", "ounces")
+    // Capture a number before oz/ounce(s)
+    const amt =
+      (() => {
+        const m = t.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?(?:oz|ounce|ounces)\b/);
+        if (m) return parseFloat(m[1]);
+        if (t.includes('a cup') || t.includes('one cup')) return 8;
+        if (t.includes('a glass') || t.includes('one glass')) return 8;
+        return null;
+      })();
+
+    const isAskingToLog =
+      t.includes('should i log') &&
+      t.includes('water'); // keep it strict to avoid false positives
+
+    if (isAskingToLog && amt && !pendingActionRef.current) {
+      const correlationId = newCorrelationId('latch');
+      pendingActionRef.current = {
+        tool: 'log_water',
+        args: { amount_oz: amt },
+        correlationId,
+        expiresAt: Date.now() + 60_000
+      };
+      // optional debug
+      dbg.log('LATCH_SET', { amt, correlationId, from: 'audio_transcript.done' });
+    }
+  }
   
   // Initialize AudioContext for confirmation sounds
   const initializeAudioContext = async () => {
@@ -851,6 +883,53 @@ export default function VoiceAgentPage() {
           }
         }
       }
+
+      // FIX: Set latch on final AI transcript completion (more reliable than deltas)
+      else if (data.type === 'response.audio_transcript.done') {
+        const fullTranscript = data.transcript;
+        if (fullTranscript) {
+          // DEBUG: forensic
+          dbg.log('AI_TRANSCRIPT_DONE', { transcript: fullTranscript.slice(0, 100) + '...', length: fullTranscript.length });
+          
+          console.log(`[RT] AI transcript complete:`, fullTranscript);
+          
+          // Use the robust latch detection function
+          maybeSetWaterLatchFromAiLine(fullTranscript);
+
+          // FIX: Auto-commit detection - if AI says it will log but doesn't use tool call
+          const lowerTranscript = fullTranscript.toLowerCase();
+          const isAutoCommit = (
+            (lowerTranscript.includes('sure, i\'ll log') || 
+             lowerTranscript.includes('i\'ll log') ||
+             lowerTranscript.includes('logging') ||
+             lowerTranscript.includes('let me log')) &&
+            lowerTranscript.includes('water')
+          );
+
+          if (isAutoCommit) {
+            // Extract amount from the transcript
+            const amount_oz = parseWaterAmountOz(fullTranscript);
+            if (amount_oz) {
+              // FIX: if we ever autocommit, always run the tool call too
+              const correlationId = newCorrelationId('autocommit');
+              dbg.log('AUTO_COMMIT_DETECTED', { transcript: fullTranscript.slice(0, 100), amount_oz, correlationId });
+              
+              oncePerCorrelation(correlationId, async () => {
+                try {
+                  await handleRealtimeToolCall({ 
+                    name: 'log_water', 
+                    args: { amount_oz, correlation_id: correlationId },
+                    callId: 'autocommit-' + Date.now()
+                  });
+                  // do not set latch; this is a direct commit
+                } catch (e) {
+                  dbg.log('POST_ERR', { message: String(e) });
+                }
+              });
+            }
+          }
+        }
+      }
       
       // Handle user input transcripts for confirmation latch checking
       else if (data.type === 'conversation.item.input_audio_transcription.completed') {
@@ -881,11 +960,18 @@ export default function VoiceAgentPage() {
             
             // Path B: Use correlation ID and mutex
             oncePerCorrelation(correlationId, async () => {
-              await handleRealtimeToolCall({
-                name: tool,
-                args: { ...args, correlation_id: correlationId },
-                callId: 'latch-' + Date.now()
-              });
+              try {
+                await handleRealtimeToolCall({
+                  name: tool,
+                  args: { ...args, correlation_id: correlationId },
+                  callId: 'latch-' + Date.now()
+                });
+                clearPendingAction('success');
+              } catch (e) {
+                dbg.log('POST_ERR', { message: String(e) });
+                clearPendingAction('error');
+                // surface toast/error (existing)
+              }
             });
             
           } else if (pendingActionRef.current.expiresAt <= Date.now()) {
