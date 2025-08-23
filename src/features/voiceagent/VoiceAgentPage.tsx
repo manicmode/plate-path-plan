@@ -6,7 +6,7 @@ import { useFeatureFlagOptimized } from "@/hooks/useFeatureFlagOptimized";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
-import { handleToolCall } from "./agentTools";
+import { handleToolCall as handleLegacyToolCall } from "./agentTools";
 import IdeaStarters from "./IdeaStarters";
 
 type CallState = "idle" | "connecting" | "live";
@@ -25,6 +25,10 @@ export default function VoiceAgentPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const eventsChannelRef = useRef<RTCDataChannel | null>(null);
+  const toolsChannelRef = useRef<RTCDataChannel | null>(null);
+
+  // Buffer for accumulating function call arguments
+  const functionCallBufferRef = useRef<Map<string, string>>(new Map());
 
   // Feature gating: allow if not kill-switched AND (admin OR MVP enabled) AND env enabled
   const envEnabled = import.meta.env.VITE_VOICE_AGENT_ENABLED !== 'false';
@@ -78,6 +82,7 @@ export default function VoiceAgentPage() {
       // Step 2.5: Set up data channel for tool calls
       const toolsChannel = pc.createDataChannel("tools", { ordered: true });
       dataChannelRef.current = toolsChannel;
+      toolsChannelRef.current = toolsChannel;
 
       // Step 2.6: Set up events data channel for realtime communication
       const eventsChannel = pc.createDataChannel("oai-events", { ordered: true });
@@ -85,21 +90,37 @@ export default function VoiceAgentPage() {
       
       eventsChannel.onopen = () => {
         debugLog('events-dc-open', 'Events data channel opened');
-        console.info("[Agent] datachannel open");
+        console.info("[Agent] events datachannel open");
       };
       
       eventsChannel.onclose = () => {
         debugLog('events-dc-close', 'Events data channel closed');
-        console.info("[Agent] datachannel closed");
+        console.info("[Agent] events datachannel closed");
       };
       
       eventsChannel.onerror = (error) => {
         debugLog('events-dc-error', 'Events data channel error');
-        console.error("[Agent] datachannel error", error);
+        console.error("[Agent] events datachannel error", error);
+      };
+
+      // Handle OpenAI Realtime API events
+      eventsChannel.onmessage = (event) => {
+        handleRealtimeEvent(event);
       };
       
       toolsChannel.onopen = () => {
-        debugLog('dc-open', 'Tools data channel opened');
+        debugLog('tools-dc-open', 'Tools data channel opened');
+        console.info("[Agent] tools datachannel open");
+      };
+      
+      toolsChannel.onclose = () => {
+        debugLog('tools-dc-close', 'Tools data channel closed');
+        console.info("[Agent] tools datachannel closed");
+      };
+      
+      toolsChannel.onerror = (error) => {
+        debugLog('tools-dc-error', 'Tools data channel error');
+        console.error("[Agent] tools datachannel error", error);
       };
 
       toolsChannel.onmessage = async (event) => {
@@ -120,8 +141,8 @@ export default function VoiceAgentPage() {
             if (readOnlyTools.includes(name)) {
               result = await handleAgentToolCall(name, args);
             } else {
-              // Legacy write tools (use existing handleToolCall)
-              result = await handleToolCall(name, args);
+              // Legacy write tools (use existing handleLegacyToolCall)
+              result = await handleLegacyToolCall(name, args);
             }
             
             // Send response back
@@ -288,6 +309,10 @@ export default function VoiceAgentPage() {
     // Clear data channel references
     dataChannelRef.current = null;
     eventsChannelRef.current = null;
+    toolsChannelRef.current = null;
+    
+    // Clear function call buffer
+    functionCallBufferRef.current.clear();
 
     // Clear audio element
     if (audioRef.current) {
@@ -459,10 +484,161 @@ export default function VoiceAgentPage() {
     }
   };
 
+  // Handle OpenAI Realtime API events
+  const handleRealtimeEvent = (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data);
+      
+      // Log all events for debugging
+      debugLog('realtime-event', { type: data.type, responseId: data.response_id, itemId: data.item_id });
+      
+      // Handle function call argument deltas (streaming)
+      if (data.type === 'response.function_call_arguments.delta') {
+        const key = data.call_id || data.response_id || 'default';
+        const existing = functionCallBufferRef.current.get(key) || '';
+        functionCallBufferRef.current.set(key, existing + (data.delta || ''));
+        debugLog('function-call-delta', { callId: data.call_id, delta: data.delta });
+      }
+      
+      // Handle function call completion
+      else if (data.type === 'response.function_call_arguments.done') {
+        const key = data.call_id || data.response_id || 'default';
+        const argsJson = data.arguments || functionCallBufferRef.current.get(key) || '';
+        functionCallBufferRef.current.delete(key);
+        
+        try {
+          const args = JSON.parse(argsJson);
+          const toolName = data.name || 'unknown_tool';
+          
+          debugLog('function-call-done', { name: toolName, args, callId: data.call_id });
+          console.info('[Tools] tool_call received:', toolName, args);
+          
+          handleRealtimeToolCall({
+            name: toolName,
+            args,
+            callId: data.call_id,
+            responseId: data.response_id,
+            itemId: data.item_id
+          });
+          
+        } catch (parseError) {
+          console.error('[Tools] Failed to parse function arguments:', argsJson, parseError);
+        }
+      }
+      
+      // Handle other event types for debugging
+      else if (data.type?.startsWith('response.') || data.type?.startsWith('conversation.')) {
+        debugLog('realtime-other', data.type);
+      }
+      
+    } catch (error) {
+      debugLog('realtime-event-error', error);
+      console.error('[Agent] Failed to parse realtime event:', error);
+    }
+  };
+
+  // Handle tool calls (write operations → voice-tools edge function)
+  const handleRealtimeToolCall = async (toolCall: { name: string; args: any; callId?: string; responseId?: string; itemId?: string }) => {
+    const { name, args, callId } = toolCall;
+    
+    try {
+      // Get user session for authorization
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error('No authentication token available');
+      }
+
+      debugLog('tool-call-start', { name, args });
+      console.info('[Tools] POST /functions/v1/voice-tools', { tool: name, args });
+
+      // Call the voice-tools edge function
+      const response = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/voice-tools', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tool: name, args })
+      });
+
+      const result = await response.json();
+      console.info('[Tools] voice-tools ->', response.status, result);
+      debugLog('tool-call-response', { status: response.status, result });
+
+      // Send tool result back to OpenAI
+      const toolResult = {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: callId,
+          output: JSON.stringify(result)
+        }
+      };
+
+      await sendEvent(toolResult);
+      console.info('[Tools] send tool_result', { callId, ok: result.ok });
+      debugLog('tool-result-sent', toolResult);
+
+      // Trigger response generation with confirmation message
+      const instructions = result.ok 
+        ? "Confirm the action was completed successfully. Say something like 'Logged it! Anything else?' in a friendly tone."
+        : `There was an error: ${result.error || result.message}. Apologize and ask the user to try again.`;
+
+      await sendEvent({
+        type: 'response.create',
+        response: {
+          modalities: ['audio'],
+          instructions
+        }
+      });
+      
+      console.info('[Agent] send response.create');
+      debugLog('response-create-sent', 'Confirmation audio requested');
+
+    } catch (error) {
+      console.error('[Tools] Tool call failed:', error);
+      debugLog('tool-call-error', error);
+      
+      // Send error response back to OpenAI
+      try {
+        const errorResult = {
+          type: 'conversation.item.create',
+          item: {
+            type: 'function_call_output',
+            call_id: callId,
+            output: JSON.stringify({ 
+              ok: false, 
+              error: error instanceof Error ? error.message : 'Unknown error' 
+            })
+          }
+        };
+
+        await sendEvent(errorResult);
+        
+        await sendEvent({
+          type: 'response.create',
+          response: {
+            modalities: ['audio'],
+            instructions: "Apologize for the technical issue and ask the user to try again."
+          }
+        });
+        
+      } catch (sendError) {
+        console.error('[Tools] Failed to send error response:', sendError);
+      }
+    }
+  };
+
   // Debug helper for manual testing
   useEffect(() => {
     if (debugMode) {
       (window as any).debugAsk = (text: string) => ask(text);
+      (window as any).debugTool = async (name: string, args: any) => {
+        console.info('[Debug] Manual tool call:', name, args);
+        await handleRealtimeToolCall({ name, args, callId: 'debug-' + Date.now() });
+      };
     }
   }, [debugMode]);
 

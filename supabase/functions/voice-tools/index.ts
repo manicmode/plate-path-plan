@@ -190,18 +190,24 @@ serve(async (req) => {
     await audit(sbService, userId, body.tool, body.args, ok, errorText);
 
     if (!ok) {
-      // @ts-ignore
-      if (errorText === "rate_limit" || (e && e.code === 429)) {
-        return json(429, { ok: false, code: "rate_limited", error: "Too many requests" });
+      if (errorText === "rate_limit") {
+        return json(429, { ok: false, code: "rate_limited", message: "Please try again in a few minutes." });
       }
-      return json(400, { ok: false, code: "write_failed", error: errorText ?? "Write failed" });
+      return json(400, { ok: false, code: "write_failed", message: errorText ?? "Write failed" });
     }
 
     return json(200, { ok: true, result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // @ts-ignore
-    const code = e?.code === 429 ? 429 : 500;
-    return json(code, { ok: false, code: code === 429 ? "rate_limited" : "server_error", error: msg });
+    const isRateLimit = msg === "rate_limit" || (e instanceof Error && (e as any).code === 429);
+    const code = isRateLimit ? 429 : 500;
+    
+    console.error("Voice tools error:", msg, e);
+    
+    return json(code, { 
+      ok: false, 
+      code: isRateLimit ? "rate_limited" : "server_error", 
+      message: isRateLimit ? "Please try again in a few minutes." : msg 
+    });
   }
 });
