@@ -37,6 +37,88 @@ export default function VoiceAgentPage() {
   // Buffer for accumulating function call arguments
   const functionCallBufferRef = useRef<Map<string, string>>(new Map());
   
+  // Confirmation latch (client-side safety net)
+  const pendingActionRef = useRef<{ tool: string; args: any; expiresAt: number } | null>(null);
+  
+  // Define tools that should be available on every response
+  const getTools = () => [
+    {
+      type: "function",
+      name: "log_water",
+      description: "Log water intake. Tell the user you are logging their water.",
+      parameters: {
+        type: "object",
+        properties: {
+          amount_ml: { type: "number", description: "Amount in milliliters" },
+          amount_oz: { type: "number", description: "Amount in fluid ounces" },
+          name: { type: "string", description: "Optional description" },
+          when: { type: "string", format: "date-time", description: "When consumed (ISO datetime)" }
+        }
+      }
+    },
+    {
+      type: "function", 
+      name: "log_meal",
+      description: "Log a meal or food intake. Tell the user you are logging their meal.",
+      parameters: {
+        type: "object",
+        properties: {
+          meal_text: { type: "string", description: "Description of the meal or food" },
+          when: { type: "string", format: "date-time", description: "When eaten (ISO datetime)" }
+        },
+        required: ["meal_text"]
+      }
+    },
+    {
+      type: "function",
+      name: "log_workout", 
+      description: "Log exercise or workout activity. Tell the user you are logging their workout.",
+      parameters: {
+        type: "object",
+        properties: {
+          summary: { type: "string", description: "Summary of the workout" },
+          when: { type: "string", format: "date-time", description: "When performed (ISO datetime)" }
+        },
+        required: ["summary"]
+      }
+    },
+    {
+      type: "function",
+      name: "set_goal",
+      description: "Set a health goal. Tell the user you are setting their goal.",
+      parameters: {
+        type: "object", 
+        properties: {
+          name: { 
+            type: "string", 
+            enum: ["protein", "calories", "steps", "water_ml"],
+            description: "Type of goal to set"
+          },
+          value: { type: "number", description: "Target value for the goal" }
+        },
+        required: ["name", "value"]
+      }
+    }
+  ];
+  
+  // Check if text is an affirmative response
+  const isAffirmativeResponse = (text: string): boolean => {
+    const lowerText = text.toLowerCase().trim();
+    const affirmatives = [
+      'yes', 'yeah', 'yep', 'yup', 'sure', 'okay', 'ok', 'do it', 
+      'please', 'log it', 'correct', 'right', 'exactly', 'that\'s right',
+      'go ahead', 'proceed', 'confirm', 'absolutely', 'definitely'
+    ];
+    
+    return affirmatives.some(word => 
+      lowerText === word || 
+      lowerText.startsWith(word + ' ') || 
+      lowerText.startsWith(word + ',') ||
+      lowerText.endsWith(' ' + word) ||
+      lowerText.includes(' ' + word + ' ')
+    );
+  };
+  
   // Initialize AudioContext for confirmation sounds
   const initializeAudioContext = async () => {
     if (!audioContextRef.current) {
@@ -532,12 +614,14 @@ export default function VoiceAgentPage() {
         }
       });
       
-      console.log(`[Agent] send response.create`);
+      console.log(`[Agent] send response.create with tools`);
       await sendEvent({
         type: "response.create",
         response: { 
           conversation: "default", 
-          modalities: ["audio"]
+          modalities: ["audio"],
+          tools: getTools(),
+          tool_choice: "auto"
         }
       });
       
@@ -569,8 +653,116 @@ export default function VoiceAgentPage() {
       // Log all realtime events for forensic tracing
       console.log(`[RT] events message: ${data.type}`, data);
       
+      // Handle session creation - send session.update with tools
+      if (data.type === 'session.created') {
+        console.log('[RT] session.created received, sending session.update with tools');
+        
+        const sessionUpdate = {
+          type: 'session.update',
+          session: {
+            modalities: ['text', 'audio'],
+            instructions: "You are a helpful health and fitness coach. You help users log their water intake, meals, workouts, and set health goals. When users ask you to log something, you can use the available tools to record that information. If you're not sure about the specific details (like exact amounts), ask the user for confirmation before logging. For example, 'Should I log 16 oz of water for you?' Always be conversational and encouraging about their health journey.",
+            voice: 'alloy',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            input_audio_transcription: {
+              model: 'whisper-1'
+            },
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 1000
+            },
+            tools: getTools(),
+            tool_choice: 'auto',
+            temperature: 0.8,
+            max_response_output_tokens: 'inf'
+          }
+        };
+        
+        sendEvent(sessionUpdate).catch(error => {
+          console.error('[RT] Failed to send session.update:', error);
+        });
+      }
+      
+      // Handle audio transcript deltas for confirmation latch 
+      else if (data.type === 'response.audio_transcript.delta') {
+        const transcript = data.delta;
+        if (transcript) {
+          console.log(`[RT] AI transcript delta:`, transcript);
+          
+          // Check if AI is asking for confirmation and set latch
+          const lowerTranscript = transcript.toLowerCase();
+          if (lowerTranscript.includes('should i log') || 
+              lowerTranscript.includes('would you like me to log') ||
+              lowerTranscript.includes('shall i record') ||
+              (lowerTranscript.includes('log') && lowerTranscript.includes('?'))) {
+            
+            console.log('[Agent] AI asking confirmation, setting up latch for next user input');
+            
+            // Try to extract logging parameters from recent context
+            // This is a simple heuristic - in practice you might store context more systematically
+            let pendingAction = null;
+            
+            if (lowerTranscript.includes('water') || lowerTranscript.includes('oz') || lowerTranscript.includes('ml')) {
+              // Extract water amount if mentioned
+              const ozMatch = transcript.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?oz/i);
+              const mlMatch = transcript.match(/(\d+(?:\.\d+)?)\s*ml/i);
+              
+              if (ozMatch) {
+                pendingAction = {
+                  tool: 'log_water',
+                  args: { amount_oz: parseFloat(ozMatch[1]) },
+                  expiresAt: Date.now() + 60000 // 60 seconds
+                };
+              } else if (mlMatch) {
+                pendingAction = {
+                  tool: 'log_water', 
+                  args: { amount_ml: parseFloat(mlMatch[1]) },
+                  expiresAt: Date.now() + 60000
+                };
+              }
+            }
+            
+            if (pendingAction) {
+              pendingActionRef.current = pendingAction;
+              console.log('[Agent] Confirmation latch set:', pendingAction);
+            }
+          }
+        }
+      }
+      
+      // Handle user input transcripts for confirmation latch checking
+      else if (data.type === 'conversation.item.input_audio_transcription.completed') {
+        const userTranscript = data.transcript;
+        if (userTranscript && pendingActionRef.current) {
+          console.log(`[RT] User transcript:`, userTranscript);
+          
+          // Check if user gave affirmative response and latch is active
+          if (isAffirmativeResponse(userTranscript) && 
+              pendingActionRef.current.expiresAt > Date.now()) {
+            
+            console.log('[Agent] Affirmative response detected, executing pending action');
+            const pendingAction = pendingActionRef.current;
+            pendingActionRef.current = null; // Clear latch
+            
+            // Execute the tool call immediately
+            handleRealtimeToolCall({
+              name: pendingAction.tool,
+              args: pendingAction.args,
+              callId: 'latch-' + Date.now()
+            });
+          } else if (pendingActionRef.current.expiresAt <= Date.now()) {
+            // Expire old latch
+            pendingActionRef.current = null;
+            console.log('[Agent] Confirmation latch expired');
+          }
+        }
+      }
+      
       // Handle function call argument deltas (streaming)
-      if (data.type === 'response.function_call_arguments.delta') {
+      else if (data.type === 'response.function_call_arguments.delta') {
         const key = data.call_id || data.response_id || 'default';
         const existing = functionCallBufferRef.current.get(key) || '';
         functionCallBufferRef.current.set(key, existing + (data.delta || ''));
@@ -647,7 +839,9 @@ export default function VoiceAgentPage() {
         type: 'response.create',
         response: {
           modalities: ['audio'],
-          instructions: "Say 'Still working on that...' briefly and naturally."
+          instructions: "Say 'Still working on that...' briefly and naturally.",
+          tools: getTools(),
+          tool_choice: "auto"
         }
       });
     }, 6000);
@@ -718,7 +912,9 @@ export default function VoiceAgentPage() {
         type: 'response.create',
         response: {
           modalities: ['audio'],
-          instructions
+          instructions,
+          tools: getTools(),
+          tool_choice: "auto"
         }
       });
       
@@ -771,7 +967,9 @@ export default function VoiceAgentPage() {
           type: 'response.create',
           response: {
             modalities: ['audio'],
-            instructions: "Apologize for the technical issue and ask the user to try again."
+            instructions: "Apologize for the technical issue and ask the user to try again.",
+            tools: getTools(),
+            tool_choice: "auto"
           }
         });
         
