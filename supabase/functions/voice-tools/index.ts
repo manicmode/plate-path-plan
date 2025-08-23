@@ -124,9 +124,18 @@ serve(async (req) => {
         case "log_water": {
           const args = WaterArgs.parse(body.args);
           
-          // Convert oz to ml if needed (1 fl oz ≈ 29.5735 ml)  
-          // Voice agent should pass ml directly, but handle conversion if needed
-          const volumeMl = args.amount_ml;
+          // Handle ounces → ml conversion (1 fl oz ≈ 29.5735 ml)
+          let volumeMl: number;
+          if (args.amount_ml > 50) {
+            // Already in ml
+            volumeMl = args.amount_ml;
+          } else {
+            // Likely ounces, convert to ml
+            volumeMl = Math.round(args.amount_ml * 29.5735);
+          }
+          
+          console.log(`[Voice-Tools] log_water: ${args.amount_ml} converted to ${volumeMl}ml`);
+          
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
           // Runtime idempotency: check for existing row with same user, type='water', volume, within same minute
@@ -147,22 +156,33 @@ serve(async (req) => {
           if (existing && existing.length > 0) {
             ok = true;
             result = { message: "Water logged", volume_ml: volumeMl, duplicate: true };
+            console.log(`[Voice-Tools] Duplicate water log detected, skipping insert`);
             break;
           }
           
           // Write to canonical table that UI reads: hydration_logs
-          const { error } = await sbUser
+          const insertData = { 
+            user_id: userId, 
+            name: `${Math.round(volumeMl)}ml Water`,
+            volume: volumeMl,
+            type: 'water',
+            created_at: timestamp
+          };
+          
+          console.log(`[Voice-Tools] Inserting into hydration_logs:`, insertData);
+          
+          const { error, data: insertedData } = await sbUser
             .from("hydration_logs")
-            .insert({ 
-              user_id: userId, 
-              name: `${Math.round(volumeMl)}ml Water`,
-              volume: volumeMl,
-              type: 'water',
-              created_at: timestamp
-            })
+            .insert(insertData)
             .select()
             .single();
-          if (error) throw error;
+            
+          if (error) {
+            console.error(`[Voice-Tools] Database insert failed:`, error);
+            throw error;
+          }
+          
+          console.log(`[Voice-Tools] Successfully inserted hydration log:`, insertedData);
 
           ok = true;
           result = { message: "Water logged", volume_ml: volumeMl };

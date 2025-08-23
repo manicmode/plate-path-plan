@@ -447,6 +447,7 @@ export default function VoiceAgentPage() {
       
       await ensureConnected();
       
+      console.log(`[Agent] send conversation.item.create`);
       await sendEvent({
         type: "conversation.item.create",
         item: { 
@@ -456,6 +457,7 @@ export default function VoiceAgentPage() {
         }
       });
       
+      console.log(`[Agent] send response.create`);
       await sendEvent({
         type: "response.create",
         response: { 
@@ -489,15 +491,19 @@ export default function VoiceAgentPage() {
     try {
       const data = JSON.parse(event.data);
       
-      // Log all events for debugging
-      debugLog('realtime-event', { type: data.type, responseId: data.response_id, itemId: data.item_id });
+      // Log all realtime events for forensic tracing
+      console.log(`[RT] events message: ${data.type}`, data);
       
       // Handle function call argument deltas (streaming)
       if (data.type === 'response.function_call_arguments.delta') {
         const key = data.call_id || data.response_id || 'default';
         const existing = functionCallBufferRef.current.get(key) || '';
         functionCallBufferRef.current.set(key, existing + (data.delta || ''));
-        debugLog('function-call-delta', { callId: data.call_id, delta: data.delta });
+        console.log(`[RT] response.function_call_arguments.delta:`, { 
+          call_id: data.call_id, 
+          delta: data.delta,
+          accumulated_length: functionCallBufferRef.current.get(key)?.length || 0
+        });
       }
       
       // Handle function call completion
@@ -541,6 +547,21 @@ export default function VoiceAgentPage() {
   const handleRealtimeToolCall = async (toolCall: { name: string; args: any; callId?: string; responseId?: string; itemId?: string }) => {
     const { name, args, callId } = toolCall;
     
+    console.log(`[Tools] tool_call: ${name}`, args);
+    
+    // Set timeout for tool execution
+    const timeoutId = setTimeout(() => {
+      console.log(`[Tools] timeout waiting for tool_result`);
+      // Have agent say something about working on it
+      sendEvent({
+        type: 'response.create',
+        response: {
+          modalities: ['audio'],
+          instructions: "Say 'Still working on that...' briefly and naturally."
+        }
+      });
+    }, 8000);
+    
     try {
       // Get user session for authorization
       const session = await supabase.auth.getSession();
@@ -551,7 +572,9 @@ export default function VoiceAgentPage() {
       }
 
       debugLog('tool-call-start', { name, args });
-      console.info('[Tools] POST /functions/v1/voice-tools', { tool: name, args });
+      
+      const requestBody = { tool: name, args };
+      console.log(`[Tools] POST to /functions/v1/voice-tools request body:`, requestBody);
 
       // Call the voice-tools edge function
       const response = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/voice-tools', {
@@ -560,11 +583,13 @@ export default function VoiceAgentPage() {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tool: name, args })
+        body: JSON.stringify(requestBody)
       });
 
+      clearTimeout(timeoutId);
+
       const result = await response.json();
-      console.info('[Tools] voice-tools ->', response.status, result);
+      console.log(`[Tools] voice-tools response - status: ${response.status}, body:`, result);
       debugLog('tool-call-response', { status: response.status, result });
 
       // Send tool result back to OpenAI
@@ -578,7 +603,7 @@ export default function VoiceAgentPage() {
       };
 
       await sendEvent(toolResult);
-      console.info('[Tools] send tool_result', { callId, ok: result.ok });
+      console.log(`[Tools] tool_result sent`);
       debugLog('tool-result-sent', toolResult);
 
       // Then trigger response generation with confirmation message
@@ -586,6 +611,7 @@ export default function VoiceAgentPage() {
         ? "Confirm the action was completed successfully. Say something like 'Logged it! Anything else?' in a friendly tone."
         : `There was an error: ${result.error || result.message}. Apologize and ask the user to try again.`;
 
+      console.log(`[Agent] send response.create`);
       await sendEvent({
         type: 'response.create',
         response: {
@@ -594,7 +620,6 @@ export default function VoiceAgentPage() {
         }
       });
       
-      console.info('[Agent] send response.create');
       debugLog('response-create-sent', 'Confirmation audio requested');
 
       // Finally, dispatch UI update events for immediate cache invalidation
@@ -614,6 +639,7 @@ export default function VoiceAgentPage() {
       }
 
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('[Tools] Tool call failed:', error);
       debugLog('tool-call-error', error);
       
