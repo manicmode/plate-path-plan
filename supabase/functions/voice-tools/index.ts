@@ -14,7 +14,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const baseArgs = z.object({ when: z.string().datetime().optional() });
 
 const WaterArgs = baseArgs.extend({
-  amount_ml: z.number().positive().max(10000),
+  amount_ml: z.number().positive().max(10000).optional(),
+  amount_oz: z.number().positive().max(340).optional(), // ~340 oz = 10L max
+  name: z.string().optional(),
+}).refine(data => data.amount_ml || data.amount_oz, {
+  message: "Either amount_ml or amount_oz must be provided"
 });
 const MealArgs = baseArgs.extend({
   meal_text: z.string().min(2).max(2000),
@@ -126,15 +130,15 @@ serve(async (req) => {
           
           // Handle ounces → ml conversion (1 fl oz ≈ 29.5735 ml)
           let volumeMl: number;
-          if (args.amount_ml > 50) {
-            // Already in ml
+          if (args.amount_oz) {
+            volumeMl = Math.round(args.amount_oz * 29.5735);
+          } else if (args.amount_ml) {
             volumeMl = args.amount_ml;
           } else {
-            // Likely ounces, convert to ml
-            volumeMl = Math.round(args.amount_ml * 29.5735);
+            throw new Error("No volume specified");
           }
           
-          console.log(`[Voice-Tools] log_water: ${args.amount_ml} converted to ${volumeMl}ml`);
+          console.log(`[Voice-Tools] log_water: ${args.amount_oz ? args.amount_oz + ' oz' : args.amount_ml + ' ml'} converted to ${volumeMl}ml`);
           
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
@@ -163,7 +167,7 @@ serve(async (req) => {
           // Write to canonical table that UI reads: hydration_logs
           const insertData = { 
             user_id: userId, 
-            name: `${Math.round(volumeMl)}ml Water`,
+            name: args.name || `${Math.round(volumeMl)} ml Water`,
             volume: volumeMl,
             type: 'water',
             created_at: timestamp
