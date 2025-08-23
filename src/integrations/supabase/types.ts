@@ -4859,7 +4859,7 @@ export type Database = {
           next_trigger_at: string | null
           payload: Json
           reminder_time: string
-          schedule: string | null
+          schedule: string
           timezone: string
           type: string
           updated_at: string
@@ -4880,7 +4880,7 @@ export type Database = {
           next_trigger_at?: string | null
           payload?: Json
           reminder_time?: string
-          schedule?: string | null
+          schedule: string
           timezone?: string
           type?: string
           updated_at?: string
@@ -4901,7 +4901,7 @@ export type Database = {
           next_trigger_at?: string | null
           payload?: Json
           reminder_time?: string
-          schedule?: string | null
+          schedule?: string
           timezone?: string
           type?: string
           updated_at?: string
