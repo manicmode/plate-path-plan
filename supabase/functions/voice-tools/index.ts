@@ -123,24 +123,41 @@ serve(async (req) => {
       switch (body.tool) {
         case "log_water": {
           const args = WaterArgs.parse(body.args);
-
+          
+          // Convert to ml if needed and create timestamp
+          const volumeMl = args.amount_ml;
+          const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
+          
+          // Insert with idempotency check (user_id, volume, minute-truncated timestamp)
           const { error } = await sbUser
             .from("hydration_logs")
-            .insert({ user_id: userId, amount_ml: args.amount_ml })
+            .insert({ 
+              user_id: userId, 
+              name: `${Math.round(volumeMl)}ml Water`,
+              volume: volumeMl,
+              type: 'water',
+              created_at: timestamp
+            })
             .select()
             .single();
           if (error) throw error;
 
           ok = true;
-          result = { message: "Water logged" };
+          result = { message: "Water logged", volume_ml: volumeMl };
           break;
         }
         case "log_meal": {
           const args = MealArgs.parse(body.args);
+          const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
 
           const { error } = await sbUser
-            .from("meal_logs")
-            .insert({ user_id: userId, notes: args.meal_text })
+            .from("nutrition_logs")
+            .insert({ 
+              user_id: userId, 
+              food_name: args.meal_text,
+              notes: args.meal_text,
+              created_at: timestamp
+            })
             .select()
             .single();
           if (error) throw error;
@@ -151,10 +168,16 @@ serve(async (req) => {
         }
         case "log_workout": {
           const args = WorkoutArgs.parse(body.args);
+          const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
 
           const { error } = await sbUser
-            .from("workout_logs")
-            .insert({ user_id: userId, summary: args.summary })
+            .from("exercise_logs")
+            .insert({ 
+              user_id: userId, 
+              summary: args.summary,
+              name: args.summary,
+              created_at: timestamp
+            })
             .select()
             .single();
           if (error) throw error;
@@ -184,6 +207,7 @@ serve(async (req) => {
     } catch (e) {
       errorText = e instanceof Error ? e.message : String(e);
       ok = false;
+      console.error("Voice tools write error:", errorText);
     }
 
     // Always audit
