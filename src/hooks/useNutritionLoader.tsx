@@ -215,6 +215,19 @@ export const useNutritionLoader = () => {
     loadTodaysData(today);
   }, [user]);
 
+  // Listen for nutrition updated events from voice tools
+  useEffect(() => {
+    const handleUpdate = () => {
+      console.info('[Nutrition] Refreshing data due to voice tool update');
+      // Trigger reload by calling loadTodaysData with current date
+      const today = getLocalDateString();
+      loadTodaysData(today);
+    };
+    
+    window.addEventListener('nutrition:updated', handleUpdate);
+    return () => window.removeEventListener('nutrition:updated', handleUpdate);
+  }, [loadTodaysData]);
+
   return {
     data,
     isLoading,

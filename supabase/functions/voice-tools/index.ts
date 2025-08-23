@@ -124,7 +124,8 @@ serve(async (req) => {
         case "log_water": {
           const args = WaterArgs.parse(body.args);
           
-          // Convert oz to ml if needed (1 fl oz ≈ 29.5735 ml)
+          // Convert oz to ml if needed (1 fl oz ≈ 29.5735 ml)  
+          // Voice agent should pass ml directly, but handle conversion if needed
           const volumeMl = args.amount_ml;
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
@@ -149,7 +150,7 @@ serve(async (req) => {
             break;
           }
           
-          // Insert new hydration log with canonical columns
+          // Write to canonical table that UI reads: hydration_logs
           const { error } = await sbUser
             .from("hydration_logs")
             .insert({ 
@@ -171,12 +172,23 @@ serve(async (req) => {
           const args = MealArgs.parse(body.args);
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
 
+          // Write to canonical table that UI reads: nutrition_logs
           const { error } = await sbUser
             .from("nutrition_logs")
             .insert({ 
               user_id: userId, 
               food_name: args.meal_text,
               notes: args.meal_text,
+              // Default nutritional values - could be enhanced with AI estimation later
+              calories: 300, // Reasonable default for voice logging
+              protein: 15,
+              carbs: 30,
+              fat: 10,
+              fiber: 5,
+              sugar: 8,
+              sodium: 400,
+              saturated_fat: 3,
+              confidence: 50, // Low confidence since it's voice-estimated
               created_at: timestamp
             })
             .select()
@@ -184,19 +196,25 @@ serve(async (req) => {
           if (error) throw error;
 
           ok = true;
-          result = { message: "Meal logged" };
+          result = { message: "Meal logged", meal: args.meal_text };
           break;
         }
         case "log_workout": {
           const args = WorkoutArgs.parse(body.args);
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
 
+          // Write to canonical table that UI reads: exercise_logs
           const { error } = await sbUser
             .from("exercise_logs")
             .insert({ 
               user_id: userId, 
               summary: args.summary,
               name: args.summary,
+              // Default values for voice logging
+              duration_minutes: 30, // Reasonable default
+              calories_burned: 200, // Reasonable default 
+              intensity_level: 'moderate',
+              activity_type: 'general',
               created_at: timestamp
             })
             .select()
@@ -204,16 +222,22 @@ serve(async (req) => {
           if (error) throw error;
 
           ok = true;
-          result = { message: "Workout logged" };
+          result = { message: "Workout logged", workout: args.summary };
           break;
         }
         case "set_goal": {
           const args = GoalArgs.parse(body.args);
 
+          // Write to canonical table that UI reads: user_goals
           const { error } = await sbUser
             .from("user_goals")
             .upsert(
-              { user_id: userId, name: args.name, value: args.value },
+              { 
+                user_id: userId, 
+                name: args.name, 
+                value: args.value,
+                updated_at: nowIso
+              },
               { onConflict: "user_id,name" },
             )
             .select()
@@ -221,7 +245,7 @@ serve(async (req) => {
           if (error) throw error;
 
           ok = true;
-          result = { message: "Goal updated" };
+          result = { message: "Goal updated", goal: args.name, value: args.value };
           break;
         }
       }

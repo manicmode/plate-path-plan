@@ -597,10 +597,20 @@ export default function VoiceAgentPage() {
       console.info('[Agent] send response.create');
       debugLog('response-create-sent', 'Confirmation audio requested');
 
-      // Finally, dispatch UI update event for hydration writes
-      if (result.ok && name === 'log_water') {
-        console.info('[Tools] Water logged - triggering UI update');
-        window.dispatchEvent(new CustomEvent('hydration:updated'));
+      // Finally, dispatch UI update events for immediate cache invalidation
+      if (result.ok) {
+        console.info('[Tools] Dispatching UI update events');
+        
+        // Dispatch specific events for different data types
+        if (name === 'log_water') {
+          window.dispatchEvent(new CustomEvent('hydration:updated'));
+        } else if (name === 'log_meal') {
+          window.dispatchEvent(new CustomEvent('nutrition:updated'));
+        } else if (name === 'log_workout') {
+          window.dispatchEvent(new CustomEvent('exercise:updated'));
+        } else if (name === 'set_goal') {
+          window.dispatchEvent(new CustomEvent('goals:updated'));
+        }
       }
 
     } catch (error) {
