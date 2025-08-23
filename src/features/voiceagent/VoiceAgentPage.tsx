@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, AlertTriangle, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Mic, MicOff, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
 import { useFeatureFlagOptimized } from "@/hooks/useFeatureFlagOptimized";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ import { handleToolCall as handleLegacyToolCall } from "./agentTools";
 import IdeaStarters from "./IdeaStarters";
 
 type CallState = "idle" | "connecting" | "live";
+type ToolStatus = { isActive: boolean; toolName?: string; args?: any; startTime?: number };
 
 export default function VoiceAgentPage() {
   const { enabled: killSwitchDisabled } = useFeatureFlagOptimized("voice_coach_disabled");
@@ -19,6 +21,10 @@ export default function VoiceAgentPage() {
   const [callState, setCallState] = useState<CallState>("idle");
   const [micDevice, setMicDevice] = useState<string>("");
   const [lastError, setLastError] = useState<string>("");
+  const [toolStatus, setToolStatus] = useState<ToolStatus>({ isActive: false });
+  const [confirmationSoundEnabled, setConfirmationSoundEnabled] = useState(() => {
+    return localStorage.getItem('voice-confirmation-sound') !== 'false';
+  });
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -26,9 +32,75 @@ export default function VoiceAgentPage() {
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const eventsChannelRef = useRef<RTCDataChannel | null>(null);
   const toolsChannelRef = useRef<RTCDataChannel | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Buffer for accumulating function call arguments
   const functionCallBufferRef = useRef<Map<string, string>>(new Map());
+  
+  // Initialize AudioContext for confirmation sounds
+  const initializeAudioContext = async () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
+  };
+
+  // Play confirmation earcon (200ms sine sweep with fade)
+  const playEarcon = async () => {
+    if (!confirmationSoundEnabled) return;
+    
+    try {
+      await initializeAudioContext();
+      const ctx = audioContextRef.current!;
+      
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      // Sine sweep from 800Hz to 1200Hz over 200ms
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.2);
+      
+      // Envelope: quick attack, gentle release
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.2);
+      
+    } catch (error) {
+      console.warn('Failed to play confirmation earcon:', error);
+    }
+  };
+  
+  // Handle confirmation sound toggle
+  const handleConfirmationSoundToggle = (enabled: boolean) => {
+    setConfirmationSoundEnabled(enabled);
+    localStorage.setItem('voice-confirmation-sound', String(enabled));
+  };
+  
+  // Format tool status message
+  const formatToolStatusMessage = (toolName: string, args: any): string => {
+    switch (toolName) {
+      case 'log_water':
+        const amount = args.amount_ml;
+        const unit = amount > 500 ? `${Math.round(amount)}ml` : `${Math.round(amount * 0.033814)}oz`;
+        return `Logging ${unit} water...`;
+      case 'log_meal':
+        return `Logging meal...`;
+      case 'log_workout':
+        return `Logging workout...`;
+      case 'set_goal':
+        return `Setting goal...`;
+      default:
+        return `Processing ${toolName}...`;
+    }
+  };
 
   // Feature gating: allow if not kill-switched AND (admin OR MVP enabled) AND env enabled
   const envEnabled = import.meta.env.VITE_VOICE_AGENT_ENABLED !== 'false';
@@ -57,6 +129,9 @@ export default function VoiceAgentPage() {
       setLastError("");
 
       debugLog('start', 'Starting voice session');
+
+      // Initialize AudioContext on first user interaction
+      await initializeAudioContext();
 
       // Step 1: Get user media (microphone)
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -519,6 +594,14 @@ export default function VoiceAgentPage() {
           debugLog('function-call-done', { name: toolName, args, callId: data.call_id });
           console.info('[Tools] tool_call received:', toolName, args);
           
+          // Update tool status to show activity
+          setToolStatus({
+            isActive: true,
+            toolName,
+            args,
+            startTime: Date.now()
+          });
+          
           handleRealtimeToolCall({
             name: toolName,
             args,
@@ -549,9 +632,16 @@ export default function VoiceAgentPage() {
     
     console.log(`[Tools] tool_call: ${name}`, args);
     
-    // Set timeout for tool execution
+    // Set timeout for tool execution - update status message
     const timeoutId = setTimeout(() => {
       console.log(`[Tools] timeout waiting for tool_result`);
+      
+      // Update status to "Still working..."
+      setToolStatus(prev => ({
+        ...prev,
+        toolName: 'timeout'
+      }));
+      
       // Have agent say something about working on it
       sendEvent({
         type: 'response.create',
@@ -560,7 +650,7 @@ export default function VoiceAgentPage() {
           instructions: "Say 'Still working on that...' briefly and naturally."
         }
       });
-    }, 8000);
+    }, 6000);
     
     try {
       // Get user session for authorization
@@ -606,10 +696,22 @@ export default function VoiceAgentPage() {
       console.log(`[Tools] tool_result sent`);
       debugLog('tool-result-sent', toolResult);
 
+      // Play confirmation earcon on success, then trigger response
+      if (result.ok) {
+        await playEarcon();
+      }
+
       // Then trigger response generation with confirmation message
-      const instructions = result.ok 
-        ? "Confirm the action was completed successfully. Say something like 'Logged it! Anything else?' in a friendly tone."
-        : `There was an error: ${result.error || result.message}. Apologize and ask the user to try again.`;
+      let instructions: string;
+      if (result.ok) {
+        if (result.duplicate) {
+          instructions = "Say 'Already logged that a moment ago—want to add another?' in a friendly, conversational tone.";
+        } else {
+          instructions = "Say 'Logged it! Anything else?' in a cheerful, accomplished tone.";
+        }
+      } else {
+        instructions = `There was an error: ${result.error || result.message}. Apologize briefly and ask the user to try again.`;
+      }
 
       console.log(`[Agent] send response.create`);
       await sendEvent({
@@ -619,6 +721,9 @@ export default function VoiceAgentPage() {
           instructions
         }
       });
+      
+      // Clear tool status after confirmation starts
+      setToolStatus({ isActive: false });
       
       debugLog('response-create-sent', 'Confirmation audio requested');
 
@@ -642,6 +747,9 @@ export default function VoiceAgentPage() {
       clearTimeout(timeoutId);
       console.error('[Tools] Tool call failed:', error);
       debugLog('tool-call-error', error);
+      
+      // Clear tool status on error
+      setToolStatus({ isActive: false });
       
       // Send error response back to OpenAI
       try {
@@ -748,7 +856,7 @@ export default function VoiceAgentPage() {
           </div>
 
           {/* Main Action Button */}
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center space-y-3">
             <Button
               size="lg"
               onClick={callState === "idle" ? handleStart : handleEnd}
@@ -781,6 +889,33 @@ export default function VoiceAgentPage() {
                 </>
               )}
             </Button>
+
+            {/* Tool Status Animation */}
+            {toolStatus.isActive && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  {toolStatus.toolName === 'timeout' 
+                    ? 'Still working...' 
+                    : toolStatus.toolName && toolStatus.args
+                    ? formatToolStatusMessage(toolStatus.toolName, toolStatus.args)
+                    : 'Processing...'
+                  }
+                </span>
+              </div>
+            )}
+
+            {/* Confirmation Sound Toggle */}
+            {callState !== "idle" && (
+              <div className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={confirmationSoundEnabled}
+                  onCheckedChange={handleConfirmationSoundToggle}
+                  className="scale-75"
+                />
+                <span className="text-muted-foreground">Play confirmation sound</span>
+              </div>
+            )}
           </div>
 
           {/* Hidden Audio Element for Assistant Voice */}
