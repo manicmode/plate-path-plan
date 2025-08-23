@@ -33,8 +33,17 @@ const GoalArgs = z.object({
 
 const BodySchema = z.object({
   tool: z.enum(["log_water", "log_meal", "log_workout", "set_goal"]),
-  args: z.record(z.any()),
-});
+  args: z.object({
+    amount_oz: z.number().positive().optional(),
+    amount_ml: z.number().positive().optional(),
+    name: z.string().optional(),
+    when: z.string().datetime().optional(),
+    meal_text: z.string().optional(),
+    summary: z.string().optional(),
+    value: z.number().positive().optional(),
+  }).passthrough(), // Allow additional fields but validate known ones
+  correlation_id: z.string().optional(), // <— NEW: top-level correlation_id
+}).strict();
 
 // ---------- Helpers ----------
 function json(status: number, data: unknown) {
@@ -258,13 +267,18 @@ serve(async (req) => {
         }
       }
     } catch (e) {
-      errorText = e instanceof Error ? e.message : String(e);
+      // FIX: Better error messages - ensure thrown errors are stringified, not [object Object]
+      errorText = typeof e === 'string'
+        ? e
+        : (e && typeof e === 'object' && 'message' in e
+            ? (e as any).message
+            : JSON.stringify(e));
       ok = false;
       console.error("Voice tools write error:", errorText);
     }
 
-// Always audit with correlation_id if present
-const correlationId = (body.args as any)?.correlation_id;
+// Always audit with correlation_id from top-level (not nested in args)
+const correlationId = body.correlation_id;
 
 // DEBUG: forensic - edge function audit echo
 console.log(JSON.stringify({
@@ -282,7 +296,16 @@ await audit(sbService, userId, body.tool, body.args, ok, errorText, correlationI
       if (errorText === "rate_limit") {
         return json(429, { ok: false, code: "rate_limited", message: "Please try again in a few minutes." });
       }
-      return json(400, { ok: false, code: "write_failed", message: errorText ?? "Write failed" });
+      // FIX: Better catch block error messages - no [object Object]
+      return json(400, { 
+        ok: false, 
+        code: "write_failed", 
+        message: typeof errorText === 'string' 
+          ? errorText 
+          : (errorText && typeof errorText === 'object' && 'message' in errorText
+              ? (errorText as any).message
+              : JSON.stringify(errorText)) 
+      });
     }
 
     return json(200, { 

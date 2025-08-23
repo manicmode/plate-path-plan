@@ -1108,15 +1108,28 @@ export default function VoiceAgentPage() {
         throw new Error('DEBUG: forced client error before POST');
       }
       
-      const requestBody = { tool: name, args };
+      // FIX: Move correlation_id out of args to top-level
+      const { correlation_id: correlationId, ...rawArgs } = { ...args };
+      const safeArgs = { ...rawArgs }; // only amount_oz / amount_ml / name / when
+      // (Optional) normalize amount_oz to number
+      if (typeof safeArgs.amount_oz === 'string') safeArgs.amount_oz = parseFloat(safeArgs.amount_oz);
+      
+      const requestBody = {
+        tool: name, // 'log_water'
+        args: safeArgs,
+        correlation_id: correlationId,
+      };
+      
+      // DEBUG: forensic - POST body visibility
+      dbg.log('POST_BODY', { tool: name, args: safeArgs, correlation_id: correlationId });
       console.log(`[Tools] POST to /functions/v1/voice-tools request body:`, requestBody);
 
       // DEBUG: forensic - network logging
       dbg.log('POST_START', {
         url: 'voice-tools',
-        correlationId: args?.correlation_id,
+        correlationId: correlationId,
         tool: name,
-        argsSansJWT: Object.keys(args || {})
+        argsSansJWT: Object.keys(safeArgs || {})
       });
 
       // Call the voice-tools edge function
@@ -1268,9 +1281,15 @@ export default function VoiceAgentPage() {
   useEffect(() => {
     if (debugMode) {
       (window as any).debugAsk = (text: string) => ask(text);
-      (window as any).debugTool = async (name: string, args: any) => {
-        console.info('[Debug] Manual tool call:', name, args);
-        await handleRealtimeToolCall({ name, args, callId: 'debug-' + Date.now() });
+      (window as any).debugTool = async (data: { kind: string, amount_oz?: number }) => {
+        console.info('[Debug] Manual tool call:', data);
+        if (data.kind === 'hydration' && data.amount_oz) {
+          await handleRealtimeToolCall({ 
+            name: 'log_water', 
+            args: { amount_oz: data.amount_oz }, 
+            callId: 'debug-' + Date.now() 
+          });
+        }
       };
     }
   }, [debugMode]);
