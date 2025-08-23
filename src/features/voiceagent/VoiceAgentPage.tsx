@@ -62,10 +62,29 @@ export default function VoiceAgentPage() {
   }
 
   function clearPendingAction(reason?: string) {
+    // DEBUG: forensic
+    dbg.log('CLEAR_PENDING_ACTION', { reason, hadPending: !!pendingActionRef.current });
     pendingActionRef.current = null;
     // also ensure any spinners are cleared if they rely on tool status
     try { setToolStatus?.({ isActive: false }); } catch {}
   }
+
+  // DEBUG: forensic - circular buffer timeline tracer
+  const dbg = {
+    buf: [] as Array<{t:number, tag:string, data?:any}>,
+    log(tag:string, data?:any){ 
+      this.buf.push({t:Date.now(), tag, data}); 
+      if(this.buf.length>200) this.buf.shift(); 
+      console.debug('[VOICEDBG]', tag, data ?? ''); 
+    },
+    dump(){ 
+      console.table(this.buf.map(x=>({dt:(x.t-this.buf[0]?.t)||0, tag:x.tag, data:x.data}))); 
+    }
+  };
+  (window as any).__VOICEDBG = dbg;
+
+  // DEBUG: forensic - panic dumper
+  (window as any).dumpVoiceTrace = () => (window as any).__VOICEDBG?.dump();
   
   // Define tools that should be available on every response
   const getTools = () => [
@@ -169,11 +188,26 @@ export default function VoiceAgentPage() {
 
   // Play confirmation earcon (200ms sine sweep with fade)
   const playEarcon = async () => {
+    // DEBUG: forensic - check audio state
+    const audioState = audioContextRef.current?.state;
+    const speechSpeaking = speechSynthesis?.speaking;
+    const speechPaused = speechSynthesis?.paused;
+    
+    dbg.log('PLAY_EARCON', { 
+      enabled: confirmationSoundEnabled, 
+      audioState, 
+      speechSpeaking, 
+      speechPaused 
+    });
+    
     if (!confirmationSoundEnabled) return;
     
     try {
       await initializeAudioContext();
       const ctx = audioContextRef.current!;
+      
+      // DEBUG: forensic - log post-init state
+      dbg.log('EARCON_START', { audioState: ctx.state });
       
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
@@ -193,7 +227,12 @@ export default function VoiceAgentPage() {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.2);
       
+      // DEBUG: forensic
+      dbg.log('EARCON_PLAYING', { duration: 0.2 });
+      
     } catch (error) {
+      // DEBUG: forensic
+      dbg.log('EARCON_ERROR', { error: error instanceof Error ? error.message : 'unknown' });
       console.warn('Failed to play confirmation earcon:', error);
     }
   };
@@ -483,6 +522,9 @@ export default function VoiceAgentPage() {
   };
 
   const handleEnd = () => {
+    // DEBUG: forensic
+    dbg.log('HANDLE_END', { reason: 'explicit_call', callState, hadPending: !!pendingActionRef.current });
+    
     debugLog('end', 'Ending voice session');
     
     // Clear any pending actions and spinners on session end
@@ -631,6 +673,9 @@ export default function VoiceAgentPage() {
   };
 
   const sendEvent = async (payload: any): Promise<void> => {
+    // DEBUG: forensic
+    dbg.log('SEND_EVENT', { type: payload.type, hasTools: !!payload.response?.tools, toolChoice: payload.response?.tool_choice });
+    
     if (!eventsChannelRef.current || eventsChannelRef.current.readyState !== 'open') {
       throw new Error('Events data channel not ready');
     }
@@ -641,6 +686,9 @@ export default function VoiceAgentPage() {
 
   const ask = async (text: string): Promise<void> => {
     try {
+      // DEBUG: forensic
+      dbg.log('ASK_START', { text: text.slice(0, 50) + '...', textLength: text.length });
+      
       console.info("[IdeaStarter] click", text);
       
       await ensureConnected();
@@ -655,6 +703,9 @@ export default function VoiceAgentPage() {
         }
       });
       
+      // DEBUG: forensic
+      dbg.log('RESPONSE_CREATE', { withTools: true, toolChoice: 'auto', toolCount: getTools().length });
+      
       console.log(`[Agent] send response.create with tools`);
       await sendEvent({
         type: "response.create",
@@ -667,6 +718,9 @@ export default function VoiceAgentPage() {
       });
       
     } catch (error) {
+      // DEBUG: forensic
+      dbg.log('ASK_ERROR', { error: error instanceof Error ? error.message : 'unknown' });
+      
       console.error('[Agent] ask failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       notify.error(`Failed to ask question: ${errorMsg}`);
@@ -691,11 +745,17 @@ export default function VoiceAgentPage() {
     try {
       const data = JSON.parse(event.data);
       
+      // DEBUG: forensic - log every realtime event
+      dbg.log('RT_EVENT', { type: data.type, hasContent: !!data.delta || !!data.transcript || !!data.arguments });
+      
       // Log all realtime events for forensic tracing
       console.log(`[RT] events message: ${data.type}`, data);
       
       // Handle session creation - send session.update with tools
       if (data.type === 'session.created') {
+        // DEBUG: forensic
+        dbg.log('SESSION_CREATED', { sending: 'session.update' });
+        
         console.log('[RT] session.created received, sending session.update with tools');
         
         const sessionUpdate = {
@@ -731,6 +791,9 @@ export default function VoiceAgentPage() {
       else if (data.type === 'response.audio_transcript.delta') {
         const transcript = data.delta;
         if (transcript) {
+          // DEBUG: forensic
+          dbg.log('TRANSCRIPT_DELTA', { delta: transcript, length: transcript.length });
+          
           console.log(`[RT] AI transcript delta:`, transcript);
           
           // Check if AI is asking for confirmation and set latch
@@ -739,6 +802,9 @@ export default function VoiceAgentPage() {
               lowerTranscript.includes('would you like me to log') ||
               lowerTranscript.includes('shall i record') ||
               (lowerTranscript.includes('log') && lowerTranscript.includes('?'))) {
+            
+            // DEBUG: forensic
+            dbg.log('LATCH_TRIGGER', { phrase: transcript.slice(0, 100) });
             
             console.log('[Agent] AI asking confirmation, setting up latch for next user input');
             
@@ -771,6 +837,14 @@ export default function VoiceAgentPage() {
             }
             
             if (pendingAction) {
+              // DEBUG: forensic
+              dbg.log('LATCH_SET', { 
+                tool: pendingAction.tool, 
+                args: pendingAction.args, 
+                correlationId: pendingAction.correlationId, 
+                expiresIn: (pendingAction.expiresAt - Date.now()) / 1000 
+              });
+              
               pendingActionRef.current = pendingAction;
               console.log('[Agent] Confirmation latch set:', pendingAction);
             }
@@ -781,12 +855,25 @@ export default function VoiceAgentPage() {
       // Handle user input transcripts for confirmation latch checking
       else if (data.type === 'conversation.item.input_audio_transcription.completed') {
         const userTranscript = data.transcript;
+        // DEBUG: forensic
+        dbg.log('USER_TRANSCRIPT_COMPLETE', { 
+          transcript: userTranscript, 
+          hadPending: !!pendingActionRef.current,
+          isAffirmative: userTranscript ? isAffirmativeResponse(userTranscript) : false
+        });
+        
         if (userTranscript && pendingActionRef.current) {
           console.log(`[RT] User transcript:`, userTranscript);
           
           // Check if user gave affirmative response and latch is active
           if (isAffirmativeResponse(userTranscript) && 
               pendingActionRef.current.expiresAt > Date.now()) {
+            
+            // DEBUG: forensic
+            dbg.log('PATH_B_TRIGGERED', { 
+              transcript: userTranscript, 
+              correlationId: pendingActionRef.current.correlationId 
+            });
             
             console.log('[Agent] Affirmative response detected, executing pending action');
             const pendingAction = pendingActionRef.current;
@@ -831,6 +918,14 @@ export default function VoiceAgentPage() {
           const args = JSON.parse(argsJson);
           const toolName = data.name || 'unknown_tool';
           
+          // DEBUG: forensic
+          dbg.log('PATH_A_TRIGGERED', { 
+            toolName, 
+            args: args, 
+            callId: data.call_id,
+            argsLength: argsJson.length
+          });
+          
           debugLog('function-call-done', { name: toolName, args, callId: data.call_id });
           console.info('[Tools] tool_call received:', toolName, args);
           
@@ -855,6 +950,8 @@ export default function VoiceAgentPage() {
           });
           
         } catch (parseError) {
+          // DEBUG: forensic
+          dbg.log('PATH_A_PARSE_ERROR', { argsJson, error: parseError instanceof Error ? parseError.message : 'unknown' });
           console.error('[Tools] Failed to parse function arguments:', argsJson, parseError);
         }
       }
@@ -865,6 +962,8 @@ export default function VoiceAgentPage() {
       }
       
     } catch (error) {
+      // DEBUG: forensic
+      dbg.log('RT_EVENT_ERROR', { error: error instanceof Error ? error.message : 'unknown' });
       debugLog('realtime-event-error', error);
       console.error('[Agent] Failed to parse realtime event:', error);
     }
@@ -873,6 +972,14 @@ export default function VoiceAgentPage() {
   // Handle tool calls (write operations → voice-tools edge function)
   const handleRealtimeToolCall = async (toolCall: { name: string; args: any; callId?: string; responseId?: string; itemId?: string }) => {
     const { name, args, callId } = toolCall;
+    
+    // DEBUG: forensic
+    dbg.log('TOOL_CALL_START', { 
+      name, 
+      callId, 
+      argsKeys: Object.keys(args || {}),
+      correlationId: args?.correlation_id
+    });
     
     console.log(`[Tools] tool_call: ${name}`, args);
     
@@ -903,14 +1010,32 @@ export default function VoiceAgentPage() {
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
       
+      // DEBUG: forensic - auth visibility
+      dbg.log('AUTH_CHECK', { hasJWT: !!accessToken });
+      
       if (!accessToken) {
         throw new Error('No authentication token available');
       }
 
       debugLog('tool-call-start', { name, args });
       
+      // DEBUG: forensic - force error functionality  
+      const FORCE_ERR = new URLSearchParams(location.search).has('forceVoiceError');
+      if(FORCE_ERR) {
+        dbg.log('FORCED_ERROR', { before: 'POST' });
+        throw new Error('DEBUG: forced client error before POST');
+      }
+      
       const requestBody = { tool: name, args };
       console.log(`[Tools] POST to /functions/v1/voice-tools request body:`, requestBody);
+
+      // DEBUG: forensic - network logging
+      dbg.log('POST_START', {
+        url: 'voice-tools',
+        correlationId: args?.correlation_id,
+        tool: name,
+        argsSansJWT: Object.keys(args || {})
+      });
 
       // Call the voice-tools edge function
       const response = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/voice-tools', {
@@ -927,6 +1052,13 @@ export default function VoiceAgentPage() {
       const result = await response.json();
       console.log(`[Tools] voice-tools response - status: ${response.status}, body:`, result);
       debugLog('tool-call-response', { status: response.status, result });
+
+      // DEBUG: forensic - network response
+      dbg.log('POST_DONE', {
+        status: response.status,
+        ok: response.ok,
+        bodyPreview: result?.ok !== undefined ? { ok: result.ok, message: result.message?.slice?.(0, 100) } : 'unparseable'
+      });
 
       // Send tool result back to OpenAI
       const toolResult = {
@@ -984,6 +1116,9 @@ export default function VoiceAgentPage() {
       if (result.ok) {
         console.info('[Tools] Dispatching UI update events');
         
+        // DEBUG: forensic
+        dbg.log('CUSTOM_EVENTS', { tool: name, dispatching: true });
+        
         // Dispatch specific events for different data types
         if (name === 'log_water') {
           window.dispatchEvent(new CustomEvent('hydration:updated'));
@@ -994,10 +1129,20 @@ export default function VoiceAgentPage() {
         } else if (name === 'set_goal') {
           window.dispatchEvent(new CustomEvent('goals:updated'));
         }
+        
+        // DEBUG: forensic
+        dbg.log('CUSTOM_EVENTS_DONE', { tool: name });
       }
 
     } catch (error) {
       clearTimeout(timeoutId);
+      
+      // DEBUG: forensic
+      dbg.log('POST_ERR', { 
+        message: error instanceof Error ? error.message : 'unknown',
+        stack: error instanceof Error ? error.stack?.slice(0, 200) : undefined
+      });
+      
       console.error('[Tools] Tool call failed:', error);
       debugLog('tool-call-error', error);
       

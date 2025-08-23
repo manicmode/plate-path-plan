@@ -263,9 +263,20 @@ serve(async (req) => {
       console.error("Voice tools write error:", errorText);
     }
 
-    // Always audit with correlation_id if present
-    const correlationId = (body.args as any)?.correlation_id;
-    await audit(sbService, userId, body.tool, body.args, ok, errorText, correlationId);
+// Always audit with correlation_id if present
+const correlationId = (body.args as any)?.correlation_id;
+
+// DEBUG: forensic - edge function audit echo
+console.log(JSON.stringify({
+  tag:'VOICE_TOOLS_AUDIT',
+  user_id: userId,
+  tool: body.tool,
+  has_correlation_id: !!correlationId,
+  correlation_id: correlationId || null,
+  ts: new Date().toISOString()
+}));
+
+await audit(sbService, userId, body.tool, body.args, ok, errorText, correlationId);
 
     if (!ok) {
       if (errorText === "rate_limit") {
@@ -274,7 +285,13 @@ serve(async (req) => {
       return json(400, { ok: false, code: "write_failed", message: errorText ?? "Write failed" });
     }
 
-    return json(200, { ok: true, result });
+    return json(200, { 
+      ok: true, 
+      result: {
+        ...result,
+        correlation_id: correlationId // DEBUG: forensic - return correlation_id if present
+      }
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const isRateLimit = msg === "rate_limit" || (e instanceof Error && (e as any).code === 429);
