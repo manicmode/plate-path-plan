@@ -4845,6 +4845,7 @@ export type Database = {
       }
       reminders: {
         Row: {
+          channel: string
           created_at: string
           custom_days: number[] | null
           food_item_data: Json | null
@@ -4854,13 +4855,16 @@ export type Database = {
           is_active: boolean
           label: string
           last_triggered_at: string | null
+          next_run_at: string | null
           next_trigger_at: string | null
+          payload: Json
           reminder_time: string
           type: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          channel?: string
           created_at?: string
           custom_days?: number[] | null
           food_item_data?: Json | null
@@ -4870,13 +4874,16 @@ export type Database = {
           is_active?: boolean
           label: string
           last_triggered_at?: string | null
+          next_run_at?: string | null
           next_trigger_at?: string | null
+          payload?: Json
           reminder_time?: string
           type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          channel?: string
           created_at?: string
           custom_days?: number[] | null
           food_item_data?: Json | null
@@ -4886,7 +4893,9 @@ export type Database = {
           is_active?: boolean
           label?: string
           last_triggered_at?: string | null
+          next_run_at?: string | null
           next_trigger_at?: string | null
+          payload?: Json
           reminder_time?: string
           type?: string
           updated_at?: string
@@ -6528,28 +6537,37 @@ export type Database = {
       voice_action_audit: {
         Row: {
           args_json: Json
+          correlation_id: string
           created_at: string
+          error_message: string | null
           error_text: string | null
           id: string
           ok: boolean
+          succeeded: boolean
           tool: string
           user_id: string
         }
         Insert: {
           args_json: Json
+          correlation_id: string
           created_at?: string
+          error_message?: string | null
           error_text?: string | null
           id?: string
           ok: boolean
+          succeeded?: boolean
           tool: string
           user_id: string
         }
         Update: {
           args_json?: Json
+          correlation_id?: string
           created_at?: string
+          error_message?: string | null
           error_text?: string | null
           id?: string
           ok?: boolean
+          succeeded?: boolean
           tool?: string
           user_id?: string
         }
