@@ -581,10 +581,11 @@ export default function VoiceAgentPage() {
       console.info('[Tools] send tool_result', { callId, ok: result.ok });
       debugLog('tool-result-sent', toolResult);
 
-      // For hydration writes, the Realtime subscription in NutritionContext should 
-      // automatically update the UI when new rows are inserted into hydration_logs
+      // For hydration writes, trigger cache invalidation for immediate UI updates
       if (result.ok && name === 'log_water') {
-        console.info('[Tools] Water logged - UI will update via Realtime subscription');
+        console.info('[Tools] Water logged - triggering cache refresh');
+        // Dispatch event to trigger hydration data refresh
+        window.dispatchEvent(new CustomEvent('hydration:refresh'));
       }
 
       // Trigger response generation with confirmation message

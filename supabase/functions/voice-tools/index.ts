@@ -128,7 +128,25 @@ serve(async (req) => {
           const volumeMl = args.amount_ml;
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
-          // Insert with idempotency check (user_id, volume, minute-truncated timestamp)
+          // Check for duplicate within the same minute (idempotency)
+          const minuteTruncated = new Date(timestamp);
+          minuteTruncated.setSeconds(0, 0);
+          const { data: existing } = await sbUser
+            .from("hydration_logs")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("volume", volumeMl)
+            .gte("created_at", minuteTruncated.toISOString())
+            .lt("created_at", new Date(minuteTruncated.getTime() + 60000).toISOString())
+            .limit(1);
+          
+          if (existing && existing.length > 0) {
+            ok = true;
+            result = { message: "Water already logged (duplicate prevented)", volume_ml: volumeMl };
+            break;
+          }
+          
+          // Insert new hydration log
           const { error } = await sbUser
             .from("hydration_logs")
             .insert({ 

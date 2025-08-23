@@ -94,6 +94,17 @@ export const useRealHydrationData = () => {
     loadHydrationData();
   }, [user?.id]);
 
+  // Listen for hydration refresh events from voice tools
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.info('[Hydration] Refreshing data due to voice tool update');
+      loadHydrationData();
+    };
+    
+    window.addEventListener('hydration:refresh', handleRefresh);
+    return () => window.removeEventListener('hydration:refresh', handleRefresh);
+  }, []);
+
   // Format weekly data for charts
   const getWeeklyChartData = () => {
     return weeklyData.map((day, index) => {
