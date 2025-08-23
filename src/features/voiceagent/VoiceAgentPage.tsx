@@ -198,7 +198,12 @@ export default function VoiceAgentPage() {
       try {
         await handleRealtimeToolCall({
           name: 'log_water',
-          args: { amount_oz: amt },
+          args: { 
+            amount_oz: amt,
+            name: 'Water',
+            type: 'water', 
+            when: new Date().toISOString()
+          },
           callId: 'autocommit-' + Date.now()
         });
         clearPendingAction('success'); // harmless if none
@@ -959,7 +964,13 @@ export default function VoiceAgentPage() {
               try {
                 await handleRealtimeToolCall({
                   name: tool,
-                  args: { ...args, correlation_id: correlationId },
+                  args: { 
+                    ...args, 
+                    correlation_id: correlationId,
+                    name: 'Water',
+                    type: 'water',
+                    when: new Date().toISOString()
+                  },
                   callId: 'latch-' + Date.now()
                 });
                 clearPendingAction('success');
@@ -1024,7 +1035,13 @@ export default function VoiceAgentPage() {
           oncePerCorrelation(correlationId, async () => {
             await handleRealtimeToolCall({
               name: toolName,
-              args: { ...args, correlation_id: correlationId },
+              args: { 
+                ...args, 
+                correlation_id: correlationId,
+                name: 'Water',
+                type: 'water',
+                when: new Date().toISOString()
+              },
               callId: data.call_id,
               responseId: data.response_id,
               itemId: data.item_id
@@ -1286,7 +1303,12 @@ export default function VoiceAgentPage() {
         if (data.kind === 'hydration' && data.amount_oz) {
           await handleRealtimeToolCall({ 
             name: 'log_water', 
-            args: { amount_oz: data.amount_oz }, 
+            args: { 
+              amount_oz: data.amount_oz,
+              name: 'Water',
+              type: 'water',
+              when: new Date().toISOString()
+            }, 
             callId: 'debug-' + Date.now() 
           });
         }

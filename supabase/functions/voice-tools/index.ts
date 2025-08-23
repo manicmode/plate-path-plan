@@ -17,6 +17,7 @@ const WaterArgs = baseArgs.extend({
   amount_ml: z.number().positive().max(10000).optional(),
   amount_oz: z.number().positive().max(340).optional(), // ~340 oz = 10L max
   name: z.string().optional(),
+  type: z.string().optional(),
 }).refine(data => data.amount_ml || data.amount_oz, {
   message: "Either amount_ml or amount_oz must be provided"
 });
@@ -37,6 +38,7 @@ const BodySchema = z.object({
     amount_oz: z.number().positive().optional(),
     amount_ml: z.number().positive().optional(),
     name: z.string().optional(),
+    type: z.string().optional(),
     when: z.string().datetime().optional(),
     meal_text: z.string().optional(),
     summary: z.string().optional(),
@@ -136,7 +138,18 @@ serve(async (req) => {
     try {
       switch (body.tool) {
         case "log_water": {
-          const args = WaterArgs.parse(body.args);
+          // Validate and normalize args
+          const rawArgs = body.args;
+          
+          // Ensure amount_oz and amount_ml are numbers if present
+          if (rawArgs.amount_oz && typeof rawArgs.amount_oz === 'string') {
+            rawArgs.amount_oz = parseFloat(rawArgs.amount_oz);
+          }
+          if (rawArgs.amount_ml && typeof rawArgs.amount_ml === 'string') {
+            rawArgs.amount_ml = parseFloat(rawArgs.amount_ml);
+          }
+          
+          const args = WaterArgs.parse(rawArgs);
           
           // Handle ounces → ml conversion (1 fl oz ≈ 29.5735 ml)
           let volumeMl: number;
@@ -154,9 +167,9 @@ serve(async (req) => {
           
           // Use UPSERT for clean minute-level idempotency via unique index
           const insertData = { 
-            name: args.name || `${Math.round(volumeMl)} ml Water`,
+            name: args.name || 'Water',
             volume: volumeMl,
-            type: 'water',
+            type: args.type || 'water',
             created_at: timestamp
             // minute_key will be set automatically by trigger
           };
@@ -268,13 +281,17 @@ serve(async (req) => {
       }
     } catch (e) {
       // FIX: Better error messages - ensure thrown errors are stringified, not [object Object]
-      errorText = typeof e === 'string'
-        ? e
-        : (e && typeof e === 'object' && 'message' in e
-            ? (e as any).message
-            : JSON.stringify(e));
+      if (e && typeof e === 'object' && 'message' in e) {
+        errorText = (e as any).message;
+      } else if (e && typeof e === 'object' && 'code' in e) {
+        errorText = `Database error: ${(e as any).code} - ${(e as any).message || 'Unknown error'}`;
+      } else if (typeof e === 'string') {
+        errorText = e;
+      } else {
+        errorText = JSON.stringify(e);
+      }
       ok = false;
-      console.error("Voice tools write error:", errorText);
+      console.error("Voice tools write error:", errorText, e);
     }
 
 // Always audit with correlation_id from top-level (not nested in args)
