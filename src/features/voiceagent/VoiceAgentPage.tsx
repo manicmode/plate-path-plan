@@ -162,18 +162,51 @@ export default function VoiceAgentPage() {
     );
   }
   
-  // Parse water amount with minimal phrase support
+  // --- commit-intent detector (final AI transcript) -----------------
   function parseWaterAmountOz(text: string): number | null {
     const t = text.toLowerCase();
-    // existing numeric/unit regex first...
     const m = t.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?(?:oz|ounce|ounces)\b/);
     if (m) return parseFloat(m[1]);
-
-    // minimal phrase support
     if (t.includes('a cup') || t.includes('one cup')) return 8;
     if (t.includes('a glass') || t.includes('one glass')) return 8;
-
     return null;
+  }
+
+  function aiUtteranceHasCommitIntent(t: string) {
+    t = t.toLowerCase();
+    return (
+      t.includes("i'll log") ||
+      t.includes("i will log") ||
+      t.includes("logging it") ||
+      t.includes("i have logged") ||
+      t.includes("i logged") ||
+      /let'?s .*log(ged)?/.test(t) ||
+      t.includes("get that logged")
+    );
+  }
+
+  // Call this from the *final* AI transcript event (response.audio_transcript.done)
+  async function ensureHydrationWriteFromAiUtterance(finalText: string) {
+    const amt = parseWaterAmountOz(finalText);
+    if (!amt) return;
+    if (!aiUtteranceHasCommitIntent(finalText)) return;
+
+    const correlationId = newCorrelationId('autocommit');
+    dbg.log('AUTO_COMMIT_DETECTED', { amt, correlationId, line: finalText });
+
+    oncePerCorrelation(correlationId, async () => {
+      try {
+        await handleRealtimeToolCall({
+          name: 'log_water',
+          args: { amount_oz: amt },
+          callId: 'autocommit-' + Date.now()
+        });
+        clearPendingAction('success'); // harmless if none
+      } catch (e) {
+        dbg.log('POST_ERR', { message: String(e) });
+        clearPendingAction('error');
+      }
+    });
   }
 
   // FIX: robustly detect AI's "Should I log ... water?" prompt and set latch on the final transcript
@@ -182,14 +215,7 @@ export default function VoiceAgentPage() {
 
     // Be flexible about phrasing and units ("oz", "ounce", "ounces")
     // Capture a number before oz/ounce(s)
-    const amt =
-      (() => {
-        const m = t.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?(?:oz|ounce|ounces)\b/);
-        if (m) return parseFloat(m[1]);
-        if (t.includes('a cup') || t.includes('one cup')) return 8;
-        if (t.includes('a glass') || t.includes('one glass')) return 8;
-        return null;
-      })();
+    const amt = parseWaterAmountOz(fullText);
 
     const isAskingToLog =
       t.includes('should i log') &&
@@ -896,38 +922,8 @@ export default function VoiceAgentPage() {
           // Use the robust latch detection function
           maybeSetWaterLatchFromAiLine(fullTranscript);
 
-          // FIX: Auto-commit detection - if AI says it will log but doesn't use tool call
-          const lowerTranscript = fullTranscript.toLowerCase();
-          const isAutoCommit = (
-            (lowerTranscript.includes('sure, i\'ll log') || 
-             lowerTranscript.includes('i\'ll log') ||
-             lowerTranscript.includes('logging') ||
-             lowerTranscript.includes('let me log')) &&
-            lowerTranscript.includes('water')
-          );
-
-          if (isAutoCommit) {
-            // Extract amount from the transcript
-            const amount_oz = parseWaterAmountOz(fullTranscript);
-            if (amount_oz) {
-              // FIX: if we ever autocommit, always run the tool call too
-              const correlationId = newCorrelationId('autocommit');
-              dbg.log('AUTO_COMMIT_DETECTED', { transcript: fullTranscript.slice(0, 100), amount_oz, correlationId });
-              
-              oncePerCorrelation(correlationId, async () => {
-                try {
-                  await handleRealtimeToolCall({ 
-                    name: 'log_water', 
-                    args: { amount_oz, correlation_id: correlationId },
-                    callId: 'autocommit-' + Date.now()
-                  });
-                  // do not set latch; this is a direct commit
-                } catch (e) {
-                  dbg.log('POST_ERR', { message: String(e) });
-                }
-              });
-            }
-          }
+          // Apply commit intent detection hook
+          ensureHydrationWriteFromAiUtterance(fullTranscript);
         }
       }
       
