@@ -40,6 +40,33 @@ export default function VoiceAgentPage() {
   // Confirmation latch (client-side safety net)
   const pendingActionRef = useRef<{ tool: string; args: any; expiresAt: number } | null>(null);
   
+  // Prevent double-fire across Path A (tool call) & Path B (latch)
+  const inflightToolRef = useRef<Set<string>>(new Set());
+  const processedToolRef = useRef<Set<string>>(new Set());
+
+  function oncePerCorrelation(correlationId: string, run: () => Promise<void>) {
+    if (processedToolRef.current.has(correlationId) || inflightToolRef.current.has(correlationId)) return;
+    inflightToolRef.current.add(correlationId);
+    run()
+      .catch(() => {})
+      .finally(() => {
+        inflightToolRef.current.delete(correlationId);
+        processedToolRef.current.add(correlationId);
+        // Forget after 60s to avoid unbounded growth
+        setTimeout(() => processedToolRef.current.delete(correlationId), 60_000);
+      });
+  }
+
+  function newCorrelationId(prefix = 'voice') {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+  }
+
+  function clearPendingAction(reason?: string) {
+    pendingActionRef.current = null;
+    // also ensure any spinners are cleared if they rely on tool status
+    try { setToolStatus?.({ isActive: false, reason }); } catch {}
+  }
+  
   // Define tools that should be available on every response
   const getTools = () => [
     {
@@ -102,22 +129,33 @@ export default function VoiceAgentPage() {
   ];
   
   // Check if text is an affirmative response
-  const isAffirmativeResponse = (text: string): boolean => {
-    const lowerText = text.toLowerCase().trim();
-    const affirmatives = [
-      'yes', 'yeah', 'yep', 'yup', 'sure', 'okay', 'ok', 'do it', 
-      'please', 'log it', 'correct', 'right', 'exactly', 'that\'s right',
-      'go ahead', 'proceed', 'confirm', 'absolutely', 'definitely'
-    ];
-    
-    return affirmatives.some(word => 
-      lowerText === word || 
-      lowerText.startsWith(word + ' ') || 
-      lowerText.startsWith(word + ',') ||
-      lowerText.endsWith(' ' + word) ||
-      lowerText.includes(' ' + word + ' ')
+  function isAffirmativeResponse(text: string) {
+    const t = text.toLowerCase().trim();
+    // fast exacts
+    if (['yes','yeah','yep','yup','sure','ok','okay','affirmative'].includes(t)) return true;
+    // soft contains
+    return (
+      t.includes('go ahead') ||
+      t.includes('do it') ||
+      t.includes('please do') ||
+      t.includes('log it') ||
+      t === 'correct'
     );
-  };
+  }
+  
+  // Parse water amount with minimal phrase support
+  function parseWaterAmountOz(text: string): number | null {
+    const t = text.toLowerCase();
+    // existing numeric/unit regex first...
+    const m = t.match(/(\d+(?:\.\d+)?)\s*(?:fl\s*)?(?:oz|ounce|ounces)\b/);
+    if (m) return parseFloat(m[1]);
+
+    // minimal phrase support
+    if (t.includes('a cup') || t.includes('one cup')) return 8;
+    if (t.includes('a glass') || t.includes('one glass')) return 8;
+
+    return null;
+  }
   
   // Initialize AudioContext for confirmation sounds
   const initializeAudioContext = async () => {
@@ -446,6 +484,9 @@ export default function VoiceAgentPage() {
 
   const handleEnd = () => {
     debugLog('end', 'Ending voice session');
+    
+    // Clear any pending actions and spinners on session end
+    clearPendingAction('session_ended');
     
     // Stop media stream tracks
     if (streamRef.current) {
@@ -794,12 +835,16 @@ export default function VoiceAgentPage() {
             startTime: Date.now()
           });
           
-          handleRealtimeToolCall({
-            name: toolName,
-            args,
-            callId: data.call_id,
-            responseId: data.response_id,
-            itemId: data.item_id
+          // Path A: Use correlation ID and mutex
+          const correlationId = newCorrelationId('tool');
+          oncePerCorrelation(correlationId, async () => {
+            await handleRealtimeToolCall({
+              name: toolName,
+              args: { ...args, correlation_id: correlationId },
+              callId: data.call_id,
+              responseId: data.response_id,
+              itemId: data.item_id
+            });
           });
           
         } catch (parseError) {
