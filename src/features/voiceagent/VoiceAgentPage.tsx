@@ -581,14 +581,7 @@ export default function VoiceAgentPage() {
       console.info('[Tools] send tool_result', { callId, ok: result.ok });
       debugLog('tool-result-sent', toolResult);
 
-      // For hydration writes, trigger cache invalidation for immediate UI updates
-      if (result.ok && name === 'log_water') {
-        console.info('[Tools] Water logged - triggering cache refresh');
-        // Dispatch event to trigger hydration data refresh
-        window.dispatchEvent(new CustomEvent('hydration:refresh'));
-      }
-
-      // Trigger response generation with confirmation message
+      // Then trigger response generation with confirmation message
       const instructions = result.ok 
         ? "Confirm the action was completed successfully. Say something like 'Logged it! Anything else?' in a friendly tone."
         : `There was an error: ${result.error || result.message}. Apologize and ask the user to try again.`;
@@ -603,6 +596,12 @@ export default function VoiceAgentPage() {
       
       console.info('[Agent] send response.create');
       debugLog('response-create-sent', 'Confirmation audio requested');
+
+      // Finally, dispatch UI update event for hydration writes
+      if (result.ok && name === 'log_water') {
+        console.info('[Tools] Water logged - triggering UI update');
+        window.dispatchEvent(new CustomEvent('hydration:updated'));
+      }
 
     } catch (error) {
       console.error('[Tools] Tool call failed:', error);

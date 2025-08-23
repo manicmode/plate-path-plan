@@ -124,29 +124,32 @@ serve(async (req) => {
         case "log_water": {
           const args = WaterArgs.parse(body.args);
           
-          // Convert to ml if needed and create timestamp
+          // Convert oz to ml if needed (1 fl oz ≈ 29.5735 ml)
           const volumeMl = args.amount_ml;
           const timestamp = args.when ? new Date(args.when).toISOString() : nowIso;
           
-          // Check for duplicate within the same minute (idempotency)
-          const minuteTruncated = new Date(timestamp);
-          minuteTruncated.setSeconds(0, 0);
+          // Runtime idempotency: check for existing row with same user, type='water', volume, within same minute
+          const minuteStart = new Date(timestamp);
+          minuteStart.setSeconds(0, 0);
+          const minuteEnd = new Date(minuteStart.getTime() + 60000);
+          
           const { data: existing } = await sbUser
             .from("hydration_logs")
             .select("id")
             .eq("user_id", userId)
+            .eq("type", "water")
             .eq("volume", volumeMl)
-            .gte("created_at", minuteTruncated.toISOString())
-            .lt("created_at", new Date(minuteTruncated.getTime() + 60000).toISOString())
+            .gte("created_at", minuteStart.toISOString())
+            .lt("created_at", minuteEnd.toISOString())
             .limit(1);
           
           if (existing && existing.length > 0) {
             ok = true;
-            result = { message: "Water already logged (duplicate prevented)", volume_ml: volumeMl };
+            result = { message: "Water logged", volume_ml: volumeMl, duplicate: true };
             break;
           }
           
-          // Insert new hydration log
+          // Insert new hydration log with canonical columns
           const { error } = await sbUser
             .from("hydration_logs")
             .insert({ 
