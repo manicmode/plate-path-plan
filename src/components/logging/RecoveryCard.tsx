@@ -283,7 +283,7 @@ export const RecoveryCard = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 gradient-primary"
               >
                 {isLoading ? 'Logging...' : 'Log Recovery'}
               </Button>

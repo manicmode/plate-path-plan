@@ -381,7 +381,7 @@ export const ExerciseCard = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="w-full sticky bottom-4 md:static"
+              className="w-full sticky bottom-4 md:static gradient-primary"
             >
               {isLoading ? 'Logging...' : 'Log Exercise'}
             </Button>

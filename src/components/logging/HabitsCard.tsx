@@ -401,7 +401,7 @@ export const HabitsCard = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="w-full"
+              className="w-full gradient-primary"
             >
               {isLoading ? 'Logging...' : 'Log Habit'}
             </Button>
