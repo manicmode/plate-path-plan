@@ -19,7 +19,7 @@ interface SupplementEducationCardProps {
   className?: string;
 }
 
-export const SupplementEducationCard = ({ className = '' }: SupplementEducationCardProps) => {
+export const SupplementEducationCardComponent = ({ className = '' }: SupplementEducationCardProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -185,16 +185,13 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
     navigate(`/supplements/${slug}`);
   }, [registry, navigate]);
 
-  // Placeholder for no tips or loading
+  // Placeholder for no tips or loading  
   if (!tips || tips.length === 0) {
     return (
-      <div className={`rounded-2xl border border-white/10 bg-white/5 dark:bg-gray-800/50 dark:border-gray-700/50 p-4 sm:p-6 ${className}`}>
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <span className="text-lg font-semibold text-gray-900 dark:text-white">Supplement Education</span>
-        </div>
+      <div className={`rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 ${className}`}>
+        <div className="text-base font-semibold text-gray-900 dark:text-white">Supplement Education</div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {isLoading ? 'Tips are loading…' : 'Tips are loading… If this persists, check the tips registry.'}
+          {isLoading ? 'Tips are loading…' : 'Tips are loading…'}
         </p>
       </div>
     );
@@ -220,6 +217,7 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
       onMouseLeave={() => setIsPaused(false)}
       role="region"
       aria-labelledby="supp-edu-heading"
+      data-testid="supp-edu-card"
     >
       <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
         {/* Header */}
@@ -342,4 +340,8 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
 };
 
 // Export both named and default
+export function SupplementEducationCard(props: SupplementEducationCardProps) {
+  return SupplementEducationCardComponent(props);
+}
+
 export default SupplementEducationCard;

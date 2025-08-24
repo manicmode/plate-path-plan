@@ -15,6 +15,18 @@ const byDate = (t: SupplementTip): boolean => {
   return true;
 };
 
+// Fallback tips to ensure the card always has content
+const fallbackBaseTips: SupplementTip[] = [
+  { 
+    id: 'creatine', 
+    title: 'Creatine Monohydrate', 
+    blurb: 'Supports strength and power.', 
+    productSlug: 'creatine-monohydrate',
+    emoji: '💪',
+    priority: 100
+  },
+];
+
 export async function loadRegistry(): Promise<Registry> {
   // Start with base - ensure we always have fallback tips
   let catalog: Record<string, SupplementCatalogItem> = {};
@@ -28,25 +40,16 @@ export async function loadRegistry(): Promise<Registry> {
     catalog = Object.fromEntries(baseCatalogData.map((c: SupplementCatalogItem) => [c.slug, c]));
     tips = baseTipsData.filter(byDate);
   } catch (error) {
-    console.error('Failed to load base supplement data:', error);
-    // Ensure at least one fallback tip exists
+    console.error('baseTips import failed:', error);
+    // Ensure fallback catalog item exists for the fallback tip
     const fallbackCatalogItem: SupplementCatalogItem = {
       slug: 'creatine-monohydrate',
       name: 'Creatine Monohydrate',
       shortDesc: 'Supports muscle strength and power',
       defaultPrice: 24.99
     };
-    const fallbackTip: SupplementTip = {
-      id: 'fallback-creatine',
-      productSlug: 'creatine-monohydrate',
-      title: 'Creatine Monohydrate',
-      blurb: 'The most researched supplement for athletic performance and muscle strength.',
-      tag: 'Strength',
-      emoji: '💪',
-      priority: 100
-    };
     catalog = { 'creatine-monohydrate': fallbackCatalogItem };
-    tips = [fallbackTip];
+    tips = fallbackBaseTips;
   }
 
   // Dynamically layer partner content if feature flags permit
@@ -70,7 +73,7 @@ export async function loadRegistry(): Promise<Registry> {
         tips.push(t);
       }
     } catch (error) {
-      console.error(`Failed to load partner content for ${v}:`, error);
+      console.warn('partner tips import failed:', error);
       // Silently ignore partner content loading failures
     }
   }
@@ -88,15 +91,18 @@ export async function loadRegistry(): Promise<Registry> {
   .slice(0, 10); // Keep max 10 tips for performance
 
   // Ensure we always return at least the base tips
-  if (tips.length === 0 && Object.keys(catalog).length > 0) {
-    const firstSlug = Object.keys(catalog)[0];
-    tips = [{
-      id: 'base-fallback',
-      productSlug: firstSlug,
-      title: catalog[firstSlug].name,
-      blurb: catalog[firstSlug].shortDesc || 'A quality supplement for your health goals.',
-      priority: 50
-    }];
+  if (tips.length === 0) {
+    // Final fallback - use hardcoded fallback tips if everything else fails
+    const fallbackCatalogItem: SupplementCatalogItem = {
+      slug: 'creatine-monohydrate',
+      name: 'Creatine Monohydrate',
+      shortDesc: 'Supports muscle strength and power',
+      defaultPrice: 24.99
+    };
+    if (!catalog['creatine-monohydrate']) {
+      catalog['creatine-monohydrate'] = fallbackCatalogItem;
+    }
+    tips = fallbackBaseTips;
   }
 
   return { catalog, tips };
