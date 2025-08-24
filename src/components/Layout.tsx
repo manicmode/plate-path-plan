@@ -171,7 +171,11 @@ const Layout = ({ children }: LayoutProps) => {
                       onClick={() => navigate('/voice-agent')}
                       className="relative hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
                     >
-                      <Mic className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-700 dark:text-gray-300`} />
+                      <img 
+                        src="/lovable-uploads/dcdef418-b127-4b42-aeda-9f8b169cdc0c.png"
+                        alt="Voice Coach"
+                        className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} object-contain`}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
