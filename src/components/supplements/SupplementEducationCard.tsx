@@ -26,9 +26,16 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadeState, setFadeState] = useState<'fade-in' | 'fade-out'>('fade-in');
   const [isPaused, setIsPaused] = useState(false);
-  const [isVisible, setIsVisible] = useState(!document.hidden);
+  const [isVisible, setIsVisible] = useState(true); // Safe default - don't access document at init
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Safely initialize document visibility after mount
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setIsVisible(!document.hidden);
+    }
+  }, []);
 
   // Load registry and persisted index on mount
   useEffect(() => {
@@ -65,6 +72,8 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Handle visibility change (pause when tab is hidden)
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    
     const handleVisibilityChange = () => {
       setIsVisible(!document.hidden);
     };
@@ -120,6 +129,8 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Keyboard navigation
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
@@ -162,7 +173,9 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
     // CTA resolution - Partner link wins
     if (tip.sponsor?.url) {
-      window.open(tip.sponsor.url, '_blank', 'noopener,noreferrer');
+      if (typeof window !== 'undefined') {
+        window.open(tip.sponsor.url, '_blank', 'noopener,noreferrer');
+      }
       return;
     }
 

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
+import { SafeBoundary } from '@/components/common/SafeBoundary';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -1681,7 +1682,16 @@ const SupplementHub = () => {
 
         {/* Education carousel */}
         <div className="mt-6 sm:mt-8" data-testid="supp-edu-card">
-          <SupplementEducationCard />
+          <SafeBoundary fallback={
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+              <div className="text-base font-semibold text-gray-900 dark:text-white">Supplement Education</div>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Content temporarily unavailable
+              </p>
+            </div>
+          }>
+            <SupplementEducationCard />
+          </SafeBoundary>
         </div>
 
         {/* My Supplements Section */}
