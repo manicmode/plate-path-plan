@@ -202,8 +202,27 @@ const Home = () => {
   // Inline scroll stabilizer to prevent page jumps on collapse
   const stabilize = (run: () => void) => {
     const y = window.scrollY;
+    const doc = document.documentElement;
+    const body = document.body;
+    const prevDocOverflow = doc.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    
+    // Temporarily lock scrolling
+    doc.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    
     run();
-    requestAnimationFrame(() => window.scrollTo({ top: y }));
+    
+    // Restore scroll position over multiple frames
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          doc.style.overflow = prevDocOverflow;
+          body.style.overflow = prevBodyOverflow;
+          window.scrollTo({ top: y, behavior: 'instant' });
+        });
+      });
+    });
   };
 
   // Startup chime playback - play once when app loads and user reaches home screen
@@ -1507,7 +1526,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onPointerDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
@@ -1597,7 +1616,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onPointerDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
@@ -1691,7 +1710,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onPointerDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
