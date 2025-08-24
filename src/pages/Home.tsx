@@ -1084,7 +1084,7 @@ const Home = () => {
                   Log Food
                 </h3>
                 <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
-                  Take photo or speak to log
+                  Exercise, Recovery & Habit
                 </p>
               </div>
             </div>
