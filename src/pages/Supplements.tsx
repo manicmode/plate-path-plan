@@ -12,6 +12,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
+import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
 
 const Supplements = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -148,6 +149,29 @@ const Supplements = () => {
           })}
         </CardContent>
       </Card>
+
+      {/* Supplement Education */}
+      <div className="space-y-4">
+        <div className="text-center">
+          <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
+            General recommendations just for you
+          </h2>
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+            Evidence-based supplement insights tailored to your health goals
+          </p>
+        </div>
+        
+        <SupplementEducationCard />
+
+        <div className="text-center pt-4">
+          <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
+            My supplements
+          </h2>
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+            Track your daily supplement intake
+          </p>
+        </div>
+      </div>
 
       {/* Camera & Upload Options */}
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
