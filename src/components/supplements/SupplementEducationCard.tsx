@@ -39,26 +39,45 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Load registry and persisted index on mount
   useEffect(() => {
+    let alive = true;
     const loadData = async () => {
       try {
         const reg = await loadRegistry();
-        setRegistry(reg);
-        
-        // Load persisted index after we have the registry using safe localStorage
-        const savedIndex = safeGetLastIndex(user?.id);
-        if (savedIndex >= 0 && savedIndex < reg.tips.length) {
-          setCurrentIndex(savedIndex);
+        if (alive) {
+          setRegistry(reg);
+          
+          // Load persisted index after we have the registry using safe localStorage
+          const savedIndex = safeGetLastIndex(user?.id);
+          if (savedIndex >= 0 && savedIndex < reg.tips.length) {
+            setCurrentIndex(savedIndex);
+          }
         }
       } catch (error) {
         console.error('SupplementEducationCard registry error:', error);
-        // Set empty registry on error so component still renders placeholder
-        setRegistry({ catalog: {}, tips: [] });
+        if (alive) {
+          // Ensure we always have some tips - never empty
+          const fallbackRegistry = {
+            catalog: {},
+            tips: [{
+              id: 'inline-fallback-creatine',
+              title: 'Creatine Monohydrate',
+              blurb: 'Supports strength, power, and recovery.',
+              productSlug: 'creatine-monohydrate',
+              emoji: '💪',
+              ctaEnabled: true,
+            }]
+          };
+          setRegistry(fallbackRegistry);
+        }
       } finally {
-        setIsLoading(false);
+        if (alive) setIsLoading(false);
       }
     };
 
     loadData();
+    return () => {
+      alive = false;
+    };
   }, [user?.id]);
 
   // Safe localStorage functions

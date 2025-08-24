@@ -1,7 +1,9 @@
 import { SupplementCatalogItem, SupplementTip } from '@/types/supplements';
+import { SHOW_SUPP_EDU, PARTNER_ACME } from '@/lib/flags';
+
+// Static imports - guaranteed to work at build time
 import baseCatalog from '@/content/supplements/baseCatalog';
 import baseTips from '@/content/supplements/baseTips';
-import { flag } from '@/lib/flags';
 
 export type Registry = {
   catalog: Record<string, SupplementCatalogItem>; // keyed by slug
@@ -15,134 +17,109 @@ const byDate = (t: SupplementTip): boolean => {
   return true;
 };
 
-// Fallback tips to ensure the card always has content
-const fallbackBaseTips: SupplementTip[] = [
-  { 
-    id: 'creatine', 
-    title: 'Creatine Monohydrate', 
-    blurb: 'Supports strength and power.', 
+// Local fallback (guaranteed tip) - never fails
+const FALLBACK_TIPS: SupplementTip[] = [
+  {
+    id: 'fallback-creatine',
+    title: 'Creatine Monohydrate',
+    blurb: 'Backed by strong evidence for strength, power and training volume.',
+    emoji: '⚡',
     productSlug: 'creatine-monohydrate',
-    emoji: '💪',
-    priority: 100
+    priority: 100,
+    ctaEnabled: true
   },
-];
-
-// Bulletproof fallback tips that are guaranteed to always be available
-const BULLETPROOF_FALLBACK_TIPS: SupplementTip[] = [
-  { 
-    id: 'creatine-fallback', 
-    title: 'Creatine Monohydrate', 
-    blurb: 'Supports strength and power output. One of the most researched supplements for athletic performance.',
-    productSlug: 'creatine-monohydrate',
-    emoji: '💪',
-    priority: 100
-  },
-  { 
-    id: 'omega3-fallback', 
-    title: 'Omega-3 Fish Oil', 
-    blurb: 'Supports heart health and brain function. Essential fatty acids your body cannot produce naturally.',
-    productSlug: 'omega-3',
+  {
+    id: 'fallback-omega3',
+    title: 'Omega-3 Fish Oil',
+    blurb: 'Supports heart health, brain function, and reduces inflammation.',
     emoji: '🐟',
-    priority: 95
-  },
+    productSlug: 'omega-3',
+    priority: 95,
+    ctaEnabled: true
+  }
 ];
 
 export async function loadRegistry(): Promise<Registry> {
-  // Always start with guaranteed fallback catalog
-  let catalog: Record<string, SupplementCatalogItem> = {
-    'creatine-monohydrate': {
-      slug: 'creatine-monohydrate',
-      name: 'Creatine Monohydrate',
-      shortDesc: 'Supports muscle strength and power',
-      defaultPrice: 24.99
-    },
-    'omega-3': {
-      slug: 'omega-3',
-      name: 'Omega-3 Fish Oil',
-      shortDesc: 'Supports heart and brain health',
-      defaultPrice: 19.99
-    }
-  };
-  let tips: SupplementTip[] = [...BULLETPROOF_FALLBACK_TIPS];
-  let baseTipsData: SupplementTip[] = [];
-  let partnerTips: SupplementTip[] = [];
-  
   try {
-    // Try to load base catalog and tips
-    const baseCatalogModule = await import('@/content/supplements/baseCatalog');
-    const baseTipsModule = await import('@/content/supplements/baseTips');
-    
-    const baseCatalogData = baseCatalogModule.default || [];
-    const baseTipsData = baseTipsModule.default || [];
-    
-    // Merge with base data if available
-    if (baseCatalogData.length > 0) {
-      catalog = Object.fromEntries(baseCatalogData.map((c: SupplementCatalogItem) => [c.slug, c]));
+    if (!SHOW_SUPP_EDU) {
+      return { catalog: {}, tips: FALLBACK_TIPS };
     }
-    
-    if (baseTipsData.length > 0) {
-      const filteredTips = baseTipsData.filter(byDate);
-      if (filteredTips.length > 0) {
-        tips = filteredTips;
+
+    // Guaranteed fallback catalog
+    let catalog: Record<string, SupplementCatalogItem> = {
+      'creatine-monohydrate': {
+        slug: 'creatine-monohydrate',
+        name: 'Creatine Monohydrate',
+        shortDesc: 'Supports muscle strength and power',
+        defaultPrice: 24.99
+      },
+      'omega-3': {
+        slug: 'omega-3',
+        name: 'Omega-3 Fish Oil',
+        shortDesc: 'Supports heart and brain health',
+        defaultPrice: 19.99
+      }
+    };
+
+    // Start with base tips (static import cannot throw at runtime)
+    let tips: SupplementTip[] = Array.isArray(baseTips) ? [...baseTips] : [];
+
+    // Merge base catalog if available
+    if (Array.isArray(baseCatalog) && baseCatalog.length > 0) {
+      catalog = Object.fromEntries(baseCatalog.map((c: SupplementCatalogItem) => [c.slug, c]));
+    }
+
+    // Optionally merge partner tips (never throw)
+    if (PARTNER_ACME) {
+      try {
+        const mod = await import('@/content/partners/acme/tips.json');
+        const partnerTips = Array.isArray(mod.default) ? mod.default : [];
+        tips = [...tips, ...partnerTips];
+      } catch (e) {
+        console.warn('[SuppEdu.registry] partner import failed', e);
       }
     }
-  } catch (error) {
-    console.warn('[Registry] Base import failed, using fallbacks:', error);
-    // Keep existing fallback data
-  }
 
-  // Dynamically layer partner content if feature flags permit
-  // (non-blocking; wrap in try/catch so failures don't break UI)
-  const vendors = ['acme']; // extend later
-  for (const v of vendors) {
-    try {
-      // gate by flag e.g., NEXT_PUBLIC_PARTNER_ACME=1
-      if (!flag(`PARTNER_${v.toUpperCase()}`)) continue;
-      
-      const { default: partnerCatalog } = await import(`@/content/partners/${v}/catalog.json`);
-      const { default: partnerTips } = await import(`@/content/partners/${v}/tips.json`);
+    // Normalize and guarantee CTAs default
+    tips = tips.map(t => ({
+      ...t,
+      ctaEnabled: (t as any).ctaEnabled ?? !!t.productSlug
+    }));
 
-      for (const item of partnerCatalog as SupplementCatalogItem[]) {
-        catalog[item.slug] = { ...catalog[item.slug], ...item }; // override/extend
-      }
+    // Filter by date validity
+    tips = tips.filter(byDate);
 
-      for (const t of partnerTips as SupplementTip[]) {
-        if (t.sponsor?.featureFlag && !flag(t.sponsor.featureFlag)) continue;
-        if (!catalog[t.productSlug]) continue; // require known product
-        partnerTips.push(t);
-        tips.push(t);
-      }
-    } catch (error) {
-      console.warn('partner tips import failed:', error);
-      // Silently ignore partner content loading failures
+    // De-dupe by id, cap to 10
+    const seen = new Set<string>();
+    const deduped = [];
+    for (const t of tips) {
+      const key = t.id ?? `${t.title}-${t.productSlug ?? 'x'}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push({ ...t, id: key });
+      if (deduped.length >= 10) break;
     }
+
+    const finalTips = deduped.length ? deduped : FALLBACK_TIPS;
+    return { catalog, tips: finalTips };
+  } catch (err) {
+    console.error('[SuppEdu.registry] hard failure', err);
+    return { 
+      catalog: {
+        'creatine-monohydrate': {
+          slug: 'creatine-monohydrate',
+          name: 'Creatine Monohydrate',
+          shortDesc: 'Supports muscle strength and power',
+          defaultPrice: 24.99
+        },
+        'omega-3': {
+          slug: 'omega-3',
+          name: 'Omega-3 Fish Oil',
+          shortDesc: 'Supports heart and brain health',
+          defaultPrice: 19.99
+        }
+      }, 
+      tips: FALLBACK_TIPS 
+    };
   }
-
-  // Map tips to include ctaEnabled flag instead of dropping them
-  const knownSlugs = new Set(Object.keys(catalog));
-  const allTips = [...tips];
-  const tipsWithCta = allTips.map(t => {
-    const hasValidSlug = !!t.productSlug && knownSlugs.has(t.productSlug);
-    return { ...t, ctaEnabled: hasValidSlug };
-  });
-  
-  // Deduplicate tips by (productSlug,id) and sort by priority desc
-  const seen = new Set<string>();
-  const finalTips = tipsWithCta.filter(t => {
-    const k = `${t.productSlug}:${t.id}`;
-    if (seen.has(k)) return false;
-    seen.add(k); 
-    return true;
-  })
-  .filter(byDate)
-  .sort((a, b) => (b.priority || 0) - (a.priority || 0))
-  .slice(0, 10); // Keep max 10 tips for performance
-
-  // Ensure we ALWAYS return at least 2 tips minimum
-  if (finalTips.length === 0) {
-    const hardFallback = BULLETPROOF_FALLBACK_TIPS.map(t => ({ ...t, ctaEnabled: true }));
-    return { catalog, tips: hardFallback };
-  }
-
-  return { catalog, tips: finalTips };
 }

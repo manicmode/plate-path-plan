@@ -30,4 +30,5 @@ export type SupplementTip = {
   validTo?: ISODate;
   sponsor?: SponsorMeta;     // partner override (optional)
   emoji?: string;            // for display
+  ctaEnabled?: boolean;      // whether the CTA button should be enabled
 };
