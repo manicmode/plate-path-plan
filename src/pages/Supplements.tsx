@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,7 +161,9 @@ const Supplements = () => {
           </p>
         </div>
         
-        <SupplementEducationCard />
+        <div className="mt-6 sm:mt-8">
+          <SupplementEducationCard />
+        </div>
 
         <div className="text-center pt-4">
           <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
