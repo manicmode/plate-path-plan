@@ -199,6 +199,13 @@ const Home = () => {
   // Team victory celebrations
   useTeamVictoryCelebrations();
 
+  // Inline scroll stabilizer to prevent page jumps on collapse
+  const stabilize = (run: () => void) => {
+    const y = window.scrollY;
+    run();
+    requestAnimationFrame(() => window.scrollTo({ top: y }));
+  };
+
   // Startup chime playback - play once when app loads and user reaches home screen
   useEffect(() => {
     // Only attempt to play startup chime if sound is enabled
@@ -1408,8 +1415,8 @@ const Home = () => {
       </div>
 
       {/* Today's Nutrients Section - Collapsible */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8">
-        <Collapsible open={isNutrientsExpanded} onOpenChange={setIsNutrientsExpanded}>
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8" style={{ overflowAnchor: 'none' }}>
+        <Collapsible open={isNutrientsExpanded} onOpenChange={(next) => stabilize(() => setIsNutrientsExpanded(next))}>
           <CollapsibleTrigger asChild>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
@@ -1500,7 +1507,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
@@ -1521,8 +1528,8 @@ const Home = () => {
       </div>
 
       {/* Micronutrients Section - Collapsible */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
-        <Collapsible open={isMicronutrientsExpanded} onOpenChange={setIsMicronutrientsExpanded}>
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4" style={{ overflowAnchor: 'none' }}>
+        <Collapsible open={isMicronutrientsExpanded} onOpenChange={(next) => stabilize(() => setIsMicronutrientsExpanded(next))}>
           <CollapsibleTrigger asChild>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
@@ -1590,7 +1597,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
@@ -1611,8 +1618,8 @@ const Home = () => {
       </div>
 
       {/* Toxins & Flags Section - Collapsible */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
-        <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4" style={{ overflowAnchor: 'none' }}>
+        <Collapsible open={isToxinsExpanded} onOpenChange={(next) => stabilize(() => setIsToxinsExpanded(next))}>
           <CollapsibleTrigger asChild>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
@@ -1684,7 +1691,7 @@ const Home = () => {
             
             {/* Fold Back Button - Matches Expand style */}
             <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
                 <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
