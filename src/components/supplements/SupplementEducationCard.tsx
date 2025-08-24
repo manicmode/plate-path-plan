@@ -194,13 +194,13 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
     navigate(`/supplements/${slug}`);
   }, [registry, navigate]);
 
-  // Placeholder for no tips or loading  
+  // Placeholder for no tips or loading - This should never show with bulletproof registry
   if (!tips || tips.length === 0) {
     return (
       <div className={`rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 ${className}`}>
         <div className="text-base font-semibold text-gray-900 dark:text-white">Supplement Education</div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {isLoading ? 'Tips are loading…' : 'Tips are loading…'}
+          Loading supplement insights...
         </p>
       </div>
     );

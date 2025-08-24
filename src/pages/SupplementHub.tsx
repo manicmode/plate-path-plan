@@ -1269,29 +1269,19 @@ const SupplementHub = () => {
     setIsAnalyzing(true);
     setRecommendations([]);
     
-    // Open modal immediately with loading state
-    setIsLoadingSupplements(true);
-    setShowSupplementList(true);
-    
-    // Simulate AI analysis
+    // Simulate AI analysis but show results on main page instead of modal
     setTimeout(() => {
       const goalSupplements = supplementDatabase[goalName] || [];
       setRecommendations(goalSupplements);
       setIsAnalyzing(false);
-      setIsLoadingSupplements(false);
       
       if (goalSupplements.length === 0) {
         toast({
           title: "No Supplements Found",
           description: "We're working on adding more supplements for this category.",
         });
-      } else {
-        toast({
-          title: "Recommendations Ready!",
-          description: `Found ${goalSupplements.length} personalized supplements for you.`,
-        });
       }
-    }, 2000);
+    }, 1500);
   };
 
   const handleSupplementSelect = (supplement: Supplement) => {
@@ -1426,6 +1416,11 @@ const SupplementHub = () => {
       setIsGeneratingPersonal(false);
     }
   };
+
+  // Auto-select "Hormonal Balance" from Hormones & Metabolism on mount to show default recommendations
+  useEffect(() => {
+    handleGoalSelect('Hormonal Balance');
+  }, []);
 
   const displayedRecommendations = showMore ? recommendations : recommendations.slice(0, 3);
   const hasMoreRecommendations = recommendations.length > 3;
