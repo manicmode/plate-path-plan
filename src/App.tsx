@@ -78,6 +78,7 @@ const GameAndChallengePage_Min = lazy(() =>
 );
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
+const SupplementDetail = lazy(() => import('@/pages/SupplementDetail'));
 const Hydration = lazy(() => import('@/pages/Hydration'));
 const ProgressCalories = lazy(() => import('@/pages/ProgressCalories'));
 const ProgressProtein = lazy(() => import('@/pages/ProgressProtein'));
@@ -337,6 +338,11 @@ function AppContent() {
                     <Route path="/supplements" element={
                       <ProtectedRoute>
                         <Supplements />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/supplements/:slug" element={
+                      <ProtectedRoute>
+                        <SupplementDetail />
                       </ProtectedRoute>
                     } />
                     <Route path="/hydration" element={

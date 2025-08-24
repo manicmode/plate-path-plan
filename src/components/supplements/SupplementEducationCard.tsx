@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/auth';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { loadRegistry, type Registry } from '@/lib/supplements/registry';
 import { getLastIndex, setLastIndex } from '@/lib/supplements/storage';
@@ -20,6 +21,7 @@ interface SupplementEducationCardProps {
 
 export const SupplementEducationCard = ({ className = '' }: SupplementEducationCardProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadeState, setFadeState] = useState<'fade-in' | 'fade-out'>('fade-in');
@@ -155,19 +157,26 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
       sponsor: tip.sponsor?.name 
     });
 
-    // CTA resolution
+    // CTA resolution - Partner link wins
     if (tip.sponsor?.url) {
-      // Open partner URL
       window.open(tip.sponsor.url, '_blank', 'noopener,noreferrer');
-    } else {
-      // Navigate to product detail page or show modal
-      // For now, show a toast since we don't have a modal system in place
-      toast({
-        title: "Product Details",
-        description: `${tip.title} details would open here. Navigate to /supplements/${tip.productSlug}`,
-      });
+      return;
     }
-  }, [registry]);
+
+    // Base tip → navigate to product page
+    const slug = tip.productSlug;
+    if (!slug) {
+      toast({
+        title: "Product Not Found",
+        description: "Unable to find product details.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Navigate to supplements detail page
+    navigate(`/supplements/${slug}`);
+  }, [registry, navigate]);
 
   // Loading state
   if (isLoading) {

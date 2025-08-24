@@ -1,5 +1,5 @@
 
-import { useState, useRef, Suspense } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,13 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
-import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
+
+// Client-side only loading to avoid SSR issues with localStorage/timers
+const SupplementEducationCard = lazy(() => 
+  import('@/components/supplements/SupplementEducationCard').then(mod => ({ 
+    default: mod.SupplementEducationCard 
+  }))
+);
 
 const Supplements = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -162,7 +168,18 @@ const Supplements = () => {
         </div>
         
         <div className="mt-6 sm:mt-8">
-          <SupplementEducationCard />
+          <Suspense fallback={
+            <Card className="modern-action-card border-0 rounded-3xl shadow-xl">
+              <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
+                <div className="text-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-500 dark:text-gray-400">Loading supplement insights...</p>
+                </div>
+              </CardContent>
+            </Card>
+          }>
+            <SupplementEducationCard />
+          </Suspense>
         </div>
 
         <div className="text-center pt-4">
