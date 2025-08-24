@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useDailyScore } from '@/hooks/useDailyScore';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
@@ -199,31 +199,65 @@ const Home = () => {
   // Team victory celebrations
   useTeamVictoryCelebrations();
 
-  // Inline scroll stabilizer to prevent page jumps on collapse
-  const stabilize = (run: () => void) => {
-    const y = window.scrollY;
-    const doc = document.documentElement;
-    const body = document.body;
-    const prevDocOverflow = doc.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    
-    // Temporarily lock scrolling
-    doc.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-    
-    run();
-    
-    // Restore scroll position over multiple frames
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          doc.style.overflow = prevDocOverflow;
-          body.style.overflow = prevBodyOverflow;
-          window.scrollTo({ top: y, behavior: 'instant' });
-        });
-      });
+  // Temporary debug helper for forensic analysis
+  const debugScroll = (label: string, el?: HTMLElement | null) => {
+    const scroller = document.scrollingElement || document.documentElement;
+    const y = scroller.scrollTop;
+    const vh = window.innerHeight;
+    const r = el ? el.getBoundingClientRect() : null;
+    // eslint-disable-next-line no-console
+    console.log(`[FoldBack][${label}]`, {
+      y, vh,
+      elTop: r?.top, elBottom: r?.bottom, elHeight: el ? el.offsetHeight : undefined,
     });
   };
+
+  // Robust scroll compensation hook
+  const useStableCollapse = useCallback(() => {
+    return useCallback((contentEl: HTMLElement | null, runToggle: () => void) => {
+      const scroller = document.scrollingElement || document.documentElement;
+      const startY = scroller.scrollTop;
+      const beforeRect = contentEl?.getBoundingClientRect();
+      const beforeHeight = contentEl?.offsetHeight ?? 0;
+
+      // Snapshot taken; run the state change
+      runToggle();
+
+      // Listen for the height transition to finish; fallback to a short timeout
+      let done = false;
+      const onEnd = () => {
+        if (done) return;
+        done = true;
+        if (!contentEl) return;
+
+        const afterHeight = contentEl.offsetHeight;
+        const delta = beforeHeight - afterHeight; // positive when collapsing
+
+        // If the top of the content was above the viewport when user tapped Fold Back,
+        // removing height will cause upward re-anchoring — compensate by moving up by delta.
+        if (delta > 0 && beforeRect) {
+          scroller.scrollTop = startY - delta;
+        }
+
+        contentEl.removeEventListener('transitionend', onEnd);
+      };
+
+      if (contentEl) {
+        contentEl.addEventListener('transitionend', onEnd, { once: true });
+        // Fallback in case there is no transition or the event is swallowed
+        window.setTimeout(onEnd, 220);
+      } else {
+        window.setTimeout(onEnd, 0);
+      }
+    }, []);
+  }, []);
+
+  const stableToggle = useStableCollapse();
+
+  // Refs for collapsible content elements
+  const nutrientsContentRef = useRef<HTMLDivElement>(null);
+  const micronutrientsContentRef = useRef<HTMLDivElement>(null);
+  const toxinsContentRef = useRef<HTMLDivElement>(null);
 
   // Startup chime playback - play once when app loads and user reaches home screen
   useEffect(() => {
@@ -1435,8 +1469,12 @@ const Home = () => {
 
       {/* Today's Nutrients Section - Collapsible */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8" style={{ overflowAnchor: 'none' }}>
-        <Collapsible open={isNutrientsExpanded} onOpenChange={(next) => stabilize(() => setIsNutrientsExpanded(next))}>
-          <CollapsibleTrigger asChild>
+        <Collapsible open={isNutrientsExpanded} onOpenChange={(next) => {
+          debugScroll('before', nutrientsContentRef.current);
+          stableToggle(nutrientsContentRef.current, () => setIsNutrientsExpanded(next));
+          debugScroll('after', nutrientsContentRef.current);
+        }}>
+          <CollapsibleTrigger asChild onPointerDown={(e) => e.preventDefault()}>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
                 <Zap className="h-6 w-6 text-orange-500" />
@@ -1453,7 +1491,7 @@ const Home = () => {
             </div>
           </CollapsibleTrigger>
           
-          <CollapsibleContent className="space-y-6">
+          <CollapsibleContent ref={nutrientsContentRef} className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {macroCards.map((macro, index) => {
@@ -1548,8 +1586,12 @@ const Home = () => {
 
       {/* Micronutrients Section - Collapsible */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4" style={{ overflowAnchor: 'none' }}>
-        <Collapsible open={isMicronutrientsExpanded} onOpenChange={(next) => stabilize(() => setIsMicronutrientsExpanded(next))}>
-          <CollapsibleTrigger asChild>
+        <Collapsible open={isMicronutrientsExpanded} onOpenChange={(next) => {
+          debugScroll('before', micronutrientsContentRef.current);
+          stableToggle(micronutrientsContentRef.current, () => setIsMicronutrientsExpanded(next));
+          debugScroll('after', micronutrientsContentRef.current);
+        }}>
+          <CollapsibleTrigger asChild onPointerDown={(e) => e.preventDefault()}>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
                 <Atom className="h-6 w-6 text-indigo-500" />
@@ -1566,7 +1608,7 @@ const Home = () => {
             </div>
           </CollapsibleTrigger>
           
-          <CollapsibleContent className="space-y-6">
+          <CollapsibleContent ref={micronutrientsContentRef} className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {micronutrientCards.map((micro, index) => {
@@ -1638,8 +1680,12 @@ const Home = () => {
 
       {/* Toxins & Flags Section - Collapsible */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4" style={{ overflowAnchor: 'none' }}>
-        <Collapsible open={isToxinsExpanded} onOpenChange={(next) => stabilize(() => setIsToxinsExpanded(next))}>
-          <CollapsibleTrigger asChild>
+        <Collapsible open={isToxinsExpanded} onOpenChange={(next) => {
+          debugScroll('before', toxinsContentRef.current);
+          stableToggle(toxinsContentRef.current, () => setIsToxinsExpanded(next));
+          debugScroll('after', toxinsContentRef.current);
+        }}>
+          <CollapsibleTrigger asChild onPointerDown={(e) => e.preventDefault()}>
             <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🧪</span>
@@ -1656,7 +1702,7 @@ const Home = () => {
             </div>
           </CollapsibleTrigger>
           
-          <CollapsibleContent className="space-y-6">
+          <CollapsibleContent ref={toxinsContentRef} className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {realToxinData.map((item, index) => {
