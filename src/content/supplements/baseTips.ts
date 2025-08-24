@@ -1,76 +1,78 @@
-export type SupplementTip = {
-  id: string;
-  title: string;
-  blurb: string;
-  tag?: string;
-  emoji?: string;
-  productId?: string;
-  productSlug?: string;
-};
+import { SupplementTip } from '@/types/supplements';
 
-export const supplementEducationTips: SupplementTip[] = [
+const baseTips: SupplementTip[] = [
   {
-    id: 'creatine-monohydrate',
+    id: 'creatine-performance',
+    productSlug: 'creatine-monohydrate',
     title: 'Creatine Monohydrate',
     blurb: 'Boosts muscle strength, power output, and exercise recovery. Most researched supplement for athletic performance with proven results.',
     tag: 'Strength',
     emoji: '💪',
-    productSlug: 'creatine-monohydrate'
+    priority: 95
   },
   {
-    id: 'omega-3-fish-oil',
+    id: 'omega3-health',
+    productSlug: 'omega-3',
     title: 'Omega-3 (Fish Oil)',
     blurb: 'Supports heart health, brain function, and reduces inflammation. Essential fatty acids your body cannot produce naturally.',
     tag: 'Heart Health',
     emoji: '🐟',
-    productSlug: 'omega-3'
+    priority: 90
   },
   {
-    id: 'vitamin-d3',
+    id: 'vitd3-immune',
+    productSlug: 'vitamin-d3',
     title: 'Vitamin D3',
     blurb: 'Enhances immune function, bone health, and mood regulation. Crucial for those with limited sun exposure.',
     tag: 'Immunity',
     emoji: '☀️',
-    productSlug: 'vitamin-d3'
+    priority: 85
   },
   {
-    id: 'magnesium-glycinate',
+    id: 'magnesium-sleep',
+    productSlug: 'magnesium-glycinate',
     title: 'Magnesium Glycinate',
     blurb: 'Promotes better sleep quality, muscle relaxation, and stress reduction. Gentle on the stomach with high absorption.',
     tag: 'Sleep',
     emoji: '😴',
-    productSlug: 'magnesium-glycinate'
+    priority: 80
   },
   {
-    id: 'electrolytes',
+    id: 'electrolytes-hydration',
+    productSlug: 'electrolytes',
     title: 'Electrolytes',
     blurb: 'Maintains hydration balance, prevents muscle cramps, and supports endurance performance. Essential for active individuals.',
     tag: 'Endurance',
     emoji: '💧',
-    productSlug: 'electrolytes'
+    priority: 75
   },
   {
-    id: 'probiotic',
+    id: 'probiotic-gut',
+    productSlug: 'probiotic',
     title: 'Probiotic',
     blurb: 'Improves gut health, supports digestion, and boosts immune system. Contains beneficial bacteria for optimal microbiome.',
     tag: 'Gut Health',
     emoji: '🦠',
-    productSlug: 'probiotic'
+    priority: 70
   },
   {
-    id: 'whey-protein',
+    id: 'protein-muscle',
+    productSlug: 'whey-protein',
     title: 'Whey Protein',
     blurb: 'Accelerates muscle protein synthesis and recovery after workouts. Complete amino acid profile for muscle building.',
     tag: 'Muscle Building',
     emoji: '🥛',
-    productSlug: 'whey-protein'
+    priority: 65
   },
   {
-    id: 'b-complex',
+    id: 'bcomplex-energy',
+    productSlug: 'b-complex',
     title: 'B-Complex Vitamins',
     blurb: 'Boosts energy metabolism, supports brain function, and reduces fatigue. Essential for converting food into cellular energy.',
     tag: 'Energy',
     emoji: '⚡',
-    productSlug: 'b-complex'
+    priority: 60
   }
 ];
+
+export default baseTips;

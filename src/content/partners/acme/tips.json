@@ -1,0 +1,33 @@
+[
+  {
+    "id": "acme-creatine-promo",
+    "productSlug": "creatine-monohydrate",
+    "title": "Premium Creatine Formula",
+    "blurb": "Experience 40% better absorption with our patented micronized creatine. Clinically proven to increase strength gains by 15%.",
+    "tag": "Premium",
+    "emoji": "💎",
+    "priority": 100,
+    "sponsor": {
+      "name": "ACME Nutrition",
+      "ctaText": "Shop ACME Creatine",
+      "url": "https://acme-nutrition.com/creatine-ultra?ref=partner",
+      "disclosure": "Sponsored",
+      "featureFlag": "ACME_PROMO_Q1"
+    }
+  },
+  {
+    "id": "acme-omega3-science",
+    "productSlug": "premium-omega3", 
+    "title": "Triple-Strength Omega-3",
+    "blurb": "Get 3x more EPA/DHA per capsule with our molecular distillation process. Third-party tested for purity and potency.",
+    "tag": "Science-Backed",
+    "emoji": "🧬",
+    "priority": 98,
+    "sponsor": {
+      "name": "ACME Nutrition",
+      "ctaText": "Try ACME Omega-3",
+      "url": "https://acme-nutrition.com/triple-omega3?ref=partner",
+      "disclosure": "Sponsored"
+    }
+  }
+]

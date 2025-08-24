@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "creatine-monohydrate",
+    "name": "ACME Creatine Ultra",
+    "shortDesc": "Premium creatine monohydrate with enhanced absorption technology",
+    "imageUrl": "https://example.com/images/acme-creatine.jpg",
+    "tags": ["strength", "performance", "premium"],
+    "defaultPrice": 34.99
+  },
+  {
+    "slug": "premium-omega3",
+    "name": "ACME Triple Omega-3",
+    "shortDesc": "Ultra-pure fish oil with 3x concentration of EPA/DHA",
+    "imageUrl": "https://example.com/images/acme-omega3.jpg", 
+    "tags": ["heart-health", "brain-health", "premium"],
+    "defaultPrice": 49.99
+  }
+]

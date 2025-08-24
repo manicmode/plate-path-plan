@@ -5,13 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/auth';
-import { supplementEducationTips, type SupplementTip } from '@/data/supplementEducationTips';
 import { toast } from '@/hooks/use-toast';
+import { loadRegistry, type Registry } from '@/lib/supplements/registry';
+import { getLastIndex, setLastIndex } from '@/lib/supplements/storage';
+import { type SupplementTip } from '@/types/supplements';
 
 // Configuration constants
 const ROTATION_INTERVAL = 6000; // 6 seconds
 const FADE_DURATION = 300; // 300ms
-const STORAGE_KEY_PREFIX = 'supp.education.index';
 
 interface SupplementEducationCardProps {
   className?: string;
@@ -24,33 +25,38 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
   const [fadeState, setFadeState] = useState<'fade-in' | 'fade-out'>('fade-in');
   const [isPaused, setIsPaused] = useState(false);
   const [isVisible, setIsVisible] = useState(!document.hidden);
+  const [registry, setRegistry] = useState<Registry | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Storage key based on user ID or anonymous
-  const storageKey = `${STORAGE_KEY_PREFIX}:${user?.id || 'anon'}`;
-
-  // Load persisted index on mount
+  // Load registry and persisted index on mount
   useEffect(() => {
-    try {
-      const savedIndex = localStorage.getItem(storageKey);
-      if (savedIndex && !isNaN(parseInt(savedIndex))) {
-        const index = parseInt(savedIndex);
-        if (index >= 0 && index < supplementEducationTips.length) {
-          setCurrentIndex(index);
+    const loadData = async () => {
+      try {
+        const reg = await loadRegistry();
+        setRegistry(reg);
+        
+        // Load persisted index after we have the registry
+        const savedIndex = getLastIndex(user?.id);
+        if (savedIndex >= 0 && savedIndex < reg.tips.length) {
+          setCurrentIndex(savedIndex);
         }
+      } catch (error) {
+        console.warn('Failed to load supplement registry:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.warn('Failed to load saved supplement tip index:', error);
-    }
-  }, [storageKey]);
+    };
+
+    loadData();
+  }, [user?.id]);
+
+  // Get current tips array
+  const tips = registry?.tips || [];
 
   // Save current index to localStorage
   const saveCurrentIndex = useCallback((index: number) => {
-    try {
-      localStorage.setItem(storageKey, index.toString());
-    } catch (error) {
-      console.warn('Failed to save supplement tip index:', error);
-    }
-  }, [storageKey]);
+    setLastIndex(index, user?.id);
+  }, [user?.id]);
 
   // Handle visibility change (pause when tab is hidden)
   useEffect(() => {
@@ -64,7 +70,7 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
 
   // Auto-rotation timer
   useEffect(() => {
-    if (supplementEducationTips.length <= 1 || isPaused || !isVisible) {
+    if (tips.length <= 1 || isPaused || !isVisible || isLoading) {
       return;
     }
 
@@ -72,7 +78,7 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
       setFadeState('fade-out');
       setTimeout(() => {
         setCurrentIndex((prev) => {
-          const nextIndex = (prev + 1) % supplementEducationTips.length;
+          const nextIndex = (prev + 1) % tips.length;
           saveCurrentIndex(nextIndex);
           return nextIndex;
         });
@@ -81,11 +87,11 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
     }, ROTATION_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [isPaused, isVisible, saveCurrentIndex]);
+  }, [isPaused, isVisible, isLoading, tips.length, saveCurrentIndex]);
 
   // Navigation functions
   const goToTip = useCallback((index: number) => {
-    if (index === currentIndex || index < 0 || index >= supplementEducationTips.length) {
+    if (index === currentIndex || index < 0 || index >= tips.length) {
       return;
     }
 
@@ -95,17 +101,17 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
       saveCurrentIndex(index);
       setFadeState('fade-in');
     }, FADE_DURATION);
-  }, [currentIndex, saveCurrentIndex]);
+  }, [currentIndex, tips.length, saveCurrentIndex]);
 
   const goToPrevious = useCallback(() => {
-    const prevIndex = currentIndex === 0 ? supplementEducationTips.length - 1 : currentIndex - 1;
+    const prevIndex = currentIndex === 0 ? tips.length - 1 : currentIndex - 1;
     goToTip(prevIndex);
-  }, [currentIndex, goToTip]);
+  }, [currentIndex, tips.length, goToTip]);
 
   const goToNext = useCallback(() => {
-    const nextIndex = (currentIndex + 1) % supplementEducationTips.length;
+    const nextIndex = (currentIndex + 1) % tips.length;
     goToTip(nextIndex);
-  }, [currentIndex, goToTip]);
+  }, [currentIndex, tips.length, goToTip]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -132,7 +138,9 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
 
   // Handle supplement purchase
   const handleBuyNow = useCallback((tip: SupplementTip) => {
-    if (!tip.productSlug) {
+    const catalogItem = registry?.catalog[tip.productSlug];
+    
+    if (!catalogItem) {
       toast({
         title: "Coming Soon",
         description: "This supplement is not yet available in our catalog.",
@@ -140,18 +148,43 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
       return;
     }
 
-    // Analytics (no-op for now)
-    console.log('supplement_buy_clicked', { id: tip.id, slug: tip.productSlug });
-
-    // For now, show a toast since we don't have a modal system in place
-    toast({
-      title: "Supplement Details",
-      description: `${tip.title} details would open here. Product: ${tip.productSlug}`,
+    // Analytics
+    console.log('supplement_buy_clicked', { 
+      id: tip.id, 
+      slug: tip.productSlug, 
+      sponsor: tip.sponsor?.name 
     });
-  }, []);
+
+    // CTA resolution
+    if (tip.sponsor?.url) {
+      // Open partner URL
+      window.open(tip.sponsor.url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Navigate to product detail page or show modal
+      // For now, show a toast since we don't have a modal system in place
+      toast({
+        title: "Product Details",
+        description: `${tip.title} details would open here. Navigate to /supplements/${tip.productSlug}`,
+      });
+    }
+  }, [registry]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card className={`modern-action-card border-0 rounded-3xl shadow-xl ${className}`}>
+        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
+          <div className="text-center py-8">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading supplement insights...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Empty state
-  if (supplementEducationTips.length === 0) {
+  if (tips.length === 0) {
     return (
       <Card className={`modern-action-card border-0 rounded-3xl shadow-xl ${className}`}>
         <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
@@ -164,7 +197,18 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
     );
   }
 
-  const currentTip = supplementEducationTips[currentIndex];
+  const currentTip = tips[currentIndex];
+  
+  // Track tip view for analytics
+  useEffect(() => {
+    if (currentTip && !isLoading) {
+      console.log('supplement_tip_viewed', { 
+        id: currentTip.id, 
+        slug: currentTip.productSlug,
+        position: currentIndex 
+      });
+    }
+  }, [currentTip, currentIndex, isLoading]);
 
   return (
     <Card 
@@ -216,7 +260,7 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
 
         {/* Dot indicators */}
         <div className="flex justify-center space-x-2 mb-6" role="tablist">
-          {supplementEducationTips.map((_, index) => (
+          {tips.map((_, index) => (
             <button
               key={index}
               role="tab"
@@ -229,7 +273,7 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
               }`}
               onClick={() => {
                 goToTip(index);
-                console.log('supplement_tip_dot_clicked', { id: currentTip.id, toIndex: index });
+                console.log('supplement_tip_dot_clicked', { id: currentTip?.id, toIndex: index });
               }}
               tabIndex={0}
             />
@@ -257,6 +301,11 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
                       {currentTip.tag}
                     </Badge>
                   )}
+                  {currentTip.sponsor?.disclosure && (
+                    <Badge variant="outline" className="text-xs">
+                      {currentTip.sponsor.disclosure}
+                    </Badge>
+                  )}
                 </div>
                 <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
                   {currentTip.blurb}
@@ -267,15 +316,22 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
         </div>
 
         {/* CTA Button */}
-        <Button
-          onClick={() => handleBuyNow(currentTip)}
-          disabled={!currentTip.productSlug}
-          className={`w-full gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold`}
-          aria-label={`Buy ${currentTip.title} supplement`}
-        >
-          <ShoppingCart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
-          Buy this supplement
-        </Button>
+        <div className="space-y-3">
+          <Button
+            onClick={() => handleBuyNow(currentTip)}
+            disabled={!registry?.catalog[currentTip.productSlug]}
+            className={`w-full gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold`}
+            aria-label={`${currentTip.sponsor?.ctaText || 'Buy'} ${currentTip.title} supplement`}
+          >
+            <ShoppingCart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
+            {currentTip.sponsor?.ctaText || 'Buy this supplement'}
+          </Button>
+          
+          {/* Disclaimer */}
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Not medical advice. Consult your healthcare provider before starting any supplement.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
