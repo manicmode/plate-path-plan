@@ -3,32 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
-
-// Helper function to generate schedule string from frequency data
-const generateScheduleString = (
-  frequencyType: 'daily' | 'every_x_days' | 'weekly' | 'custom_days',
-  frequencyValue?: number,
-  customDays?: number[]
-): string => {
-  switch (frequencyType) {
-    case 'daily':
-      return 'FREQ=DAILY;INTERVAL=1';
-    case 'every_x_days':
-      return `FREQ=DAILY;INTERVAL=${frequencyValue || 1}`;
-    case 'weekly':
-      return 'FREQ=WEEKLY;INTERVAL=1';
-    case 'custom_days':
-      if (customDays && customDays.length > 0) {
-        // Convert day numbers to RRULE format (SU=0, MO=1, etc.)
-        const dayNames = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-        const ruleDays = customDays.map(day => dayNames[day]).join(',');
-        return `FREQ=WEEKLY;BYDAY=${ruleDays}`;
-      }
-      return 'FREQ=WEEKLY;INTERVAL=1';
-    default:
-      return 'FREQ=DAILY;INTERVAL=1';
-  }
-};
+import { generateScheduleStringLegacy } from '@/utils/scheduleString';
 
 export interface Reminder {
   id: string;
@@ -91,7 +66,7 @@ export const useReminders = () => {
 
     try {
       // Generate schedule string from frequency data
-      const schedule = generateScheduleString(reminderData.frequency_type, reminderData.frequency_value, reminderData.custom_days);
+      const schedule = generateScheduleStringLegacy(reminderData.frequency_type, reminderData.frequency_value, reminderData.custom_days);
       
       const { data, error } = await supabase
         .from('reminders')

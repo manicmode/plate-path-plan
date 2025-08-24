@@ -12,25 +12,28 @@ interface AnalyticsEventProps {
   [key: string]: any;
 }
 
+type Payload = Record<string, unknown>;
+
+/**
+ * Safe analytics logger - no-op if analytics unavailable
+ */
+const log = (event: string, payload: Payload = {}) => {
+  try { 
+    (window as any)?.analytics?.track?.(event, payload); 
+  } catch (error) {
+    // Silent fallback - analytics should never break the app
+    if (import.meta.env.DEV) {
+      console.info(`[analytics] ${event}`, payload);
+    }
+  }
+};
+
 /**
  * Track an analytics event
  * Uses configured analytics service if available, otherwise logs to console
  */
 export function track(event: string, props?: AnalyticsEventProps): void {
-  try {
-    // TODO: Replace with actual analytics service when available
-    // For now, log to console for debugging
-    if (import.meta.env.DEV) {
-      console.info(`[analytics] ${event}`, props);
-    }
-    
-    // Future: Call actual analytics service
-    // analytics.track(event, props);
-    
-  } catch (error) {
-    // Silent fallback - analytics should never break the app
-    console.warn('Analytics tracking failed:', error);
-  }
+  log(event, props);
 }
 
 /**
@@ -45,4 +48,14 @@ export const HabitEvents = {
   habitEdited: (props: AnalyticsEventProps) => track('habit_edited', props),
   habitSnoozed: (props: AnalyticsEventProps) => track('habit_snoozed', props),
   habitReminderOpened: (props: AnalyticsEventProps) => track('habit_reminder_opened', props),
+};
+
+/**
+ * Activity logging specific analytics
+ */
+export const ActivityEvents = {
+  exerciseLogged: (p: Payload) => log('log_exercise_submitted', p),
+  templateSaved: (p: Payload) => log('exercise_template_saved', p),
+  recoveryFav: (p: Payload) => log('recovery_favorited', p),
+  habitLogged: (p: Payload) => log('habit_logged', p),
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,14 @@ import { format } from 'date-fns';
 import { RecoveryLog, RecoveryFavorite, RECOVERY_PROTOCOLS, INTENSITY_OPTIONS } from '@/types/logging';
 import { createLogService } from '@/services/logService';
 import { useAuth } from '@/contexts/auth';
+import { ActivityEvents } from '@/lib/analytics';
+import { useTabState } from '@/hooks/useTabState';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export const RecoveryCard = () => {
   const { user } = useAuth();
   const [logService] = useState(() => createLogService(user?.id));
+  const [activeTab, setActiveTab] = useTabState('recovery', 'log', user?.id);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -31,6 +35,15 @@ export const RecoveryCard = () => {
   const [recentLogs, setRecentLogs] = useState<RecoveryLog[]>([]);
   const [favorites, setFavorites] = useState<RecoveryFavorite[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Debounced protocol search
+  const debouncedProtocol = useDebounce(formData.protocol, 300);
+  const filteredProtocols = useMemo(() => 
+    RECOVERY_PROTOCOLS.filter(protocol => 
+      protocol.toLowerCase().includes(debouncedProtocol.toLowerCase())
+    ).slice(0, 8),
+    [debouncedProtocol]
+  );
 
   // Load data on mount
   useEffect(() => {
@@ -88,6 +101,14 @@ export const RecoveryCard = () => {
       await loadRecentLogs();
       resetForm();
       toast.success('Recovery session logged successfully!');
+      
+      // Fire analytics event
+      ActivityEvents.recoveryFav({
+        protocol: recoveryLog.protocol,
+        duration: recoveryLog.durationMin,
+        intensity: recoveryLog.intensity,
+        timestamp: recoveryLog.createdAt
+      });
       
       // Fire analytics event
       if (typeof window !== 'undefined' && (window as any).analytics) {
@@ -178,14 +199,14 @@ export const RecoveryCard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="log" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="log">Log</TabsTrigger>
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="favorites">Favorites</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3" role="tablist">
+            <TabsTrigger value="log" role="tab" aria-selected={activeTab === 'log'}>Log</TabsTrigger>
+            <TabsTrigger value="recent" role="tab" aria-selected={activeTab === 'recent'}>Recent</TabsTrigger>
+            <TabsTrigger value="favorites" role="tab" aria-selected={activeTab === 'favorites'}>Favorites</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="log" className="space-y-4">
+          <TabsContent value="log" className="space-y-4" role="tabpanel" aria-labelledby="log-tab">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="datetime">Date/Time</Label>
@@ -277,7 +298,7 @@ export const RecoveryCard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="recent" className="space-y-4">
+          <TabsContent value="recent" className="space-y-4" role="tabpanel" aria-labelledby="recent-tab">
             {recentLogs.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No recent logs yet.
@@ -312,7 +333,7 @@ export const RecoveryCard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="favorites" className="space-y-4">
+          <TabsContent value="favorites" className="space-y-4" role="tabpanel" aria-labelledby="favorites-tab">
             {favorites.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 Nothing saved yet. Create one from the Log tab.

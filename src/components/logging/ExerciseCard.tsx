@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,14 @@ import { format } from 'date-fns';
 import { ExerciseLog, ExerciseTemplate, EXERCISE_ACTIVITIES } from '@/types/logging';
 import { createLogService } from '@/services/logService';
 import { useAuth } from '@/contexts/auth';
+import { ActivityEvents } from '@/lib/analytics';
+import { useTabState } from '@/hooks/useTabState';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export const ExerciseCard = () => {
   const { user } = useAuth();
   const [logService] = useState(() => createLogService(user?.id));
+  const [activeTab, setActiveTab] = useTabState('exercise', 'log', user?.id);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -36,6 +40,15 @@ export const ExerciseCard = () => {
   const [recentLogs, setRecentLogs] = useState<ExerciseLog[]>([]);
   const [templates, setTemplates] = useState<ExerciseTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Debounced activity search
+  const debouncedActivity = useDebounce(formData.activity, 300);
+  const filteredActivities = useMemo(() => 
+    EXERCISE_ACTIVITIES.filter(activity => 
+      activity.toLowerCase().includes(debouncedActivity.toLowerCase())
+    ).slice(0, 8),
+    [debouncedActivity]
+  );
 
   // Load data on mount
   useEffect(() => {
@@ -142,6 +155,12 @@ export const ExerciseCard = () => {
         
         await logService.saveExerciseTemplate(template);
         await loadTemplates();
+        
+        // Fire analytics event
+        ActivityEvents.templateSaved({
+          templateName: template.name,
+          activity: template.activity
+        });
       }
 
       await loadRecentLogs();
@@ -149,13 +168,11 @@ export const ExerciseCard = () => {
       toast.success('Exercise logged successfully!');
       
       // Fire analytics event
-      if (typeof window !== 'undefined' && (window as any).analytics) {
-        (window as any).analytics.track('log_exercise_submitted', {
-          activity: exerciseLog.activity,
-          duration: exerciseLog.durationMin,
-          timestamp: exerciseLog.createdAt
-        });
-      }
+      ActivityEvents.exerciseLogged({
+        activity: exerciseLog.activity,
+        duration: exerciseLog.durationMin,
+        timestamp: exerciseLog.createdAt
+      });
     } catch (error) {
       console.error('Error logging exercise:', error);
       toast.error('Failed to log exercise. Please try again.');
@@ -213,14 +230,14 @@ export const ExerciseCard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="log" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="log">Log</TabsTrigger>
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3" role="tablist">
+            <TabsTrigger value="log" role="tab" aria-selected={activeTab === 'log'}>Log</TabsTrigger>
+            <TabsTrigger value="recent" role="tab" aria-selected={activeTab === 'recent'}>Recent</TabsTrigger>
+            <TabsTrigger value="templates" role="tab" aria-selected={activeTab === 'templates'}>Templates</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="log" className="space-y-4">
+          <TabsContent value="log" className="space-y-4" role="tabpanel" aria-labelledby="log-tab">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="datetime">Date/Time</Label>
@@ -241,7 +258,7 @@ export const ExerciseCard = () => {
                   list="activities"
                 />
                 <datalist id="activities">
-                  {EXERCISE_ACTIVITIES.map(activity => (
+                  {filteredActivities.map(activity => (
                     <option key={activity} value={activity} />
                   ))}
                 </datalist>
@@ -364,13 +381,13 @@ export const ExerciseCard = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="w-full"
+              className="w-full sticky bottom-4 md:static"
             >
               {isLoading ? 'Logging...' : 'Log Exercise'}
             </Button>
           </TabsContent>
 
-          <TabsContent value="recent" className="space-y-4">
+          <TabsContent value="recent" className="space-y-4" role="tabpanel" aria-labelledby="recent-tab">
             {recentLogs.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No recent logs yet.
@@ -406,7 +423,7 @@ export const ExerciseCard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="templates" className="space-y-4">
+          <TabsContent value="templates" className="space-y-4" role="tabpanel" aria-labelledby="templates-tab">
             <Button
               variant="outline"
               className="w-full"

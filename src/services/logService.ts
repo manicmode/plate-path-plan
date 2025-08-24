@@ -1,4 +1,5 @@
 import { ExerciseLog, ExerciseTemplate, RecoveryLog, RecoveryFavorite, HabitLog, HabitPin } from '@/types/logging';
+import { store } from '@/lib/storage';
 
 // Interface for future server integration
 export interface LogService {
@@ -25,124 +26,61 @@ export interface LogService {
   reorderPinnedHabits(habits: HabitPin[]): Promise<void>;
 }
 
-// Local storage implementation
+// Enhanced local storage implementation with versioning
 class LocalStorageLogService implements LogService {
-  private userId: string;
+  private userId?: string;
 
   constructor(userId?: string) {
-    this.userId = userId || 'anonymous';
-  }
-
-  private getStorageKey(type: string): string {
-    return `${type}:${this.userId}`;
-  }
-
-  private getFromStorage<T>(key: string): T[] {
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error reading from localStorage:', error);
-      return [];
-    }
-  }
-
-  private saveToStorage<T>(key: string, data: T[]): void {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-      throw new Error('Failed to save data');
-    }
+    this.userId = userId;
   }
 
   // Exercise methods
   async logExercise(payload: ExerciseLog): Promise<void> {
-    const key = this.getStorageKey('exercise.recent');
-    const recent = this.getFromStorage<ExerciseLog>(key);
-    recent.unshift(payload);
-    // Keep only last 50 entries
-    const trimmed = recent.slice(0, 50);
-    this.saveToStorage(key, trimmed);
+    store.upsertToFront('exercise.recent', this.userId, payload, 50);
   }
 
   async listRecentExercise(limit: number = 10): Promise<ExerciseLog[]> {
-    const key = this.getStorageKey('exercise.recent');
-    const recent = this.getFromStorage<ExerciseLog>(key);
+    const recent = store.get<ExerciseLog[]>('exercise.recent', [], this.userId);
     return recent.slice(0, limit);
   }
 
   async saveExerciseTemplate(template: ExerciseTemplate): Promise<void> {
-    const key = this.getStorageKey('exercise.templates');
-    const templates = this.getFromStorage<ExerciseTemplate>(key);
-    const existingIndex = templates.findIndex(t => t.id === template.id);
-    
-    if (existingIndex >= 0) {
-      templates[existingIndex] = template;
-    } else {
-      templates.push(template);
-    }
-    
-    this.saveToStorage(key, templates);
+    store.updateOrAdd('exercise.templates', this.userId, template);
   }
 
   async listExerciseTemplates(): Promise<ExerciseTemplate[]> {
-    const key = this.getStorageKey('exercise.templates');
-    return this.getFromStorage<ExerciseTemplate>(key);
+    return store.get<ExerciseTemplate[]>('exercise.templates', [], this.userId);
   }
 
   async deleteExerciseTemplate(id: string): Promise<void> {
-    const key = this.getStorageKey('exercise.templates');
-    const templates = this.getFromStorage<ExerciseTemplate>(key);
-    const filtered = templates.filter(t => t.id !== id);
-    this.saveToStorage(key, filtered);
+    store.removeById('exercise.templates', this.userId, id);
   }
 
   // Recovery methods
   async logRecovery(payload: RecoveryLog): Promise<void> {
-    const key = this.getStorageKey('recovery.recent');
-    const recent = this.getFromStorage<RecoveryLog>(key);
-    recent.unshift(payload);
-    const trimmed = recent.slice(0, 50);
-    this.saveToStorage(key, trimmed);
+    store.upsertToFront('recovery.recent', this.userId, payload, 50);
   }
 
   async listRecentRecovery(limit: number = 10): Promise<RecoveryLog[]> {
-    const key = this.getStorageKey('recovery.recent');
-    const recent = this.getFromStorage<RecoveryLog>(key);
+    const recent = store.get<RecoveryLog[]>('recovery.recent', [], this.userId);
     return recent.slice(0, limit);
   }
 
   async saveRecoveryFavorite(favorite: RecoveryFavorite): Promise<void> {
-    const key = this.getStorageKey('recovery.favorites');
-    const favorites = this.getFromStorage<RecoveryFavorite>(key);
-    const existingIndex = favorites.findIndex(f => f.id === favorite.id);
-    
-    if (existingIndex >= 0) {
-      favorites[existingIndex] = favorite;
-    } else {
-      favorites.push(favorite);
-    }
-    
-    this.saveToStorage(key, favorites);
+    store.updateOrAdd('recovery.favorites', this.userId, favorite);
   }
 
   async listRecoveryFavorites(): Promise<RecoveryFavorite[]> {
-    const key = this.getStorageKey('recovery.favorites');
-    return this.getFromStorage<RecoveryFavorite>(key);
+    return store.get<RecoveryFavorite[]>('recovery.favorites', [], this.userId);
   }
 
   async deleteRecoveryFavorite(id: string): Promise<void> {
-    const key = this.getStorageKey('recovery.favorites');
-    const favorites = this.getFromStorage<RecoveryFavorite>(key);
-    const filtered = favorites.filter(f => f.id !== id);
-    this.saveToStorage(key, filtered);
+    store.removeById('recovery.favorites', this.userId, id);
   }
 
   // Habit methods
   async logHabit(payload: HabitLog): Promise<void> {
-    const key = this.getStorageKey('habits.logs');
-    const logs = this.getFromStorage<HabitLog>(key);
+    const logs = store.get<HabitLog[]>('habits.logs', [], this.userId);
     
     // Remove existing log for same habit on same date
     const filtered = logs.filter(log => 
@@ -150,55 +88,39 @@ class LocalStorageLogService implements LogService {
     );
     
     filtered.push(payload);
-    this.saveToStorage(key, filtered);
+    store.set('habits.logs', this.userId, filtered);
   }
 
   async listHabitLogs(date: string): Promise<HabitLog[]> {
-    const key = this.getStorageKey('habits.logs');
-    const logs = this.getFromStorage<HabitLog>(key);
+    const logs = store.get<HabitLog[]>('habits.logs', [], this.userId);
     return logs.filter(log => log.date === date);
   }
 
   async listPinnedHabits(): Promise<HabitPin[]> {
-    const key = this.getStorageKey('habits.pinned');
-    return this.getFromStorage<HabitPin>(key);
+    return store.get<HabitPin[]>('habits.pinned', [], this.userId);
   }
 
   async savePinnedHabit(habit: HabitPin): Promise<void> {
-    const key = this.getStorageKey('habits.pinned');
-    const habits = this.getFromStorage<HabitPin>(key);
-    const existingIndex = habits.findIndex(h => h.id === habit.id);
-    
-    if (existingIndex >= 0) {
-      habits[existingIndex] = habit;
-    } else {
-      habits.push(habit);
-    }
-    
-    this.saveToStorage(key, habits);
+    store.updateOrAdd('habits.pinned', this.userId, habit);
   }
 
   async deletePinnedHabit(id: string): Promise<void> {
-    const key = this.getStorageKey('habits.pinned');
-    const habits = this.getFromStorage<HabitPin>(key);
-    const filtered = habits.filter(h => h.id !== id);
-    this.saveToStorage(key, filtered);
+    store.removeById('habits.pinned', this.userId, id);
   }
 
   async reorderPinnedHabits(habits: HabitPin[]): Promise<void> {
-    const key = this.getStorageKey('habits.pinned');
-    this.saveToStorage(key, habits);
+    store.set('habits.pinned', this.userId, habits);
   }
 }
 
 // Create service instance
 export function createLogService(userId?: string): LogService {
-  // TODO: Check environment variable USE_SERVER_LOGS for server implementation
-  const useServer = process.env.USE_SERVER_LOGS === 'true';
+  // Check environment variable USE_SERVER_LOGS for server implementation
+  const useServer = import.meta.env.VITE_USE_SERVER_LOGS === 'true';
   
   if (useServer) {
     // TODO: Implement server-based service
-    throw new Error('Server-based logging not yet implemented');
+    console.warn('Server-based logging requested but not yet implemented, falling back to localStorage');
   }
   
   return new LocalStorageLogService(userId);

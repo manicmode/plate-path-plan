@@ -14,10 +14,13 @@ import { format } from 'date-fns';
 import { HabitLog, HabitPin } from '@/types/logging';
 import { createLogService } from '@/services/logService';
 import { useAuth } from '@/contexts/auth';
+import { ActivityEvents } from '@/lib/analytics';
+import { useTabState } from '@/hooks/useTabState';
 
 export const HabitsCard = () => {
   const { user } = useAuth();
   const [logService] = useState(() => createLogService(user?.id));
+  const [activeTab, setActiveTab] = useTabState('habits', 'my-habits', user?.id);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -121,13 +124,11 @@ export const HabitsCard = () => {
       toast.success('Habit logged successfully!');
       
       // Fire analytics event
-      if (typeof window !== 'undefined' && (window as any).analytics) {
-        (window as any).analytics.track('habit_logged', {
-          name: habitLog.name,
-          hasValue: !!habitLog.value,
-          timestamp: new Date().toISOString()
-        });
-      }
+      ActivityEvents.habitLogged({
+        habitName: habitLog.name,
+        value: habitLog.value,
+        timestamp: habitLog.date
+      });
     } catch (error) {
       console.error('Error logging habit:', error);
       toast.error('Failed to log habit. Please try again.');
@@ -218,13 +219,13 @@ export const HabitsCard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="my-habits" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="my-habits">My Habits</TabsTrigger>
-            <TabsTrigger value="log-custom">Log Custom</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2" role="tablist">
+            <TabsTrigger value="my-habits" role="tab" aria-selected={activeTab === 'my-habits'}>My Habits</TabsTrigger>
+            <TabsTrigger value="log-custom" role="tab" aria-selected={activeTab === 'log-custom'}>Log Custom</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="my-habits" className="space-y-4">
+          <TabsContent value="my-habits" className="space-y-4" role="tabpanel" aria-labelledby="my-habits-tab">
             <div className="flex justify-between items-center">
               <h4 className="font-medium">Today's Habits</h4>
               <Dialog open={showManageModal} onOpenChange={setShowManageModal}>
@@ -333,7 +334,7 @@ export const HabitsCard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="log-custom" className="space-y-4">
+          <TabsContent value="log-custom" className="space-y-4" role="tabpanel" aria-labelledby="log-custom-tab">
             <div>
               <Label htmlFor="date">Date</Label>
               <Input
