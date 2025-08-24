@@ -13,3 +13,6 @@ export const flag = (k: string, def = false): boolean => {
   
   return def;
 };
+
+// Feature flags
+export const SHOW_SUPP_EDU = process.env.NEXT_PUBLIC_SHOW_SUPP_EDU !== '0';

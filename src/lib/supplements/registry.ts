@@ -64,6 +64,8 @@ export async function loadRegistry(): Promise<Registry> {
     }
   };
   let tips: SupplementTip[] = [...BULLETPROOF_FALLBACK_TIPS];
+  let baseTipsData: SupplementTip[] = [];
+  let partnerTips: SupplementTip[] = [];
   
   try {
     // Try to load base catalog and tips
@@ -107,6 +109,7 @@ export async function loadRegistry(): Promise<Registry> {
       for (const t of partnerTips as SupplementTip[]) {
         if (t.sponsor?.featureFlag && !flag(t.sponsor.featureFlag)) continue;
         if (!catalog[t.productSlug]) continue; // require known product
+        partnerTips.push(t);
         tips.push(t);
       }
     } catch (error) {
@@ -115,9 +118,17 @@ export async function loadRegistry(): Promise<Registry> {
     }
   }
 
+  // Map tips to include ctaEnabled flag instead of dropping them
+  const knownSlugs = new Set(Object.keys(catalog));
+  const allTips = [...tips];
+  const tipsWithCta = allTips.map(t => {
+    const hasValidSlug = !!t.productSlug && knownSlugs.has(t.productSlug);
+    return { ...t, ctaEnabled: hasValidSlug };
+  });
+  
   // Deduplicate tips by (productSlug,id) and sort by priority desc
   const seen = new Set<string>();
-  tips = tips.filter(t => {
+  const finalTips = tipsWithCta.filter(t => {
     const k = `${t.productSlug}:${t.id}`;
     if (seen.has(k)) return false;
     seen.add(k); 
@@ -128,9 +139,10 @@ export async function loadRegistry(): Promise<Registry> {
   .slice(0, 10); // Keep max 10 tips for performance
 
   // Ensure we ALWAYS return at least 2 tips minimum
-  if (tips.length === 0) {
-    tips = BULLETPROOF_FALLBACK_TIPS;
+  if (finalTips.length === 0) {
+    const hardFallback = BULLETPROOF_FALLBACK_TIPS.map(t => ({ ...t, ctaEnabled: true }));
+    return { catalog, tips: hardFallback };
   }
 
-  return { catalog, tips };
+  return { catalog, tips: finalTips };
 }

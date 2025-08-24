@@ -44,8 +44,8 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
         const reg = await loadRegistry();
         setRegistry(reg);
         
-        // Load persisted index after we have the registry
-        const savedIndex = getLastIndex(user?.id);
+        // Load persisted index after we have the registry using safe localStorage
+        const savedIndex = safeGetLastIndex(user?.id);
         if (savedIndex >= 0 && savedIndex < reg.tips.length) {
           setCurrentIndex(savedIndex);
         }
@@ -60,6 +60,29 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
     loadData();
   }, [user?.id]);
+
+  // Safe localStorage functions
+  const safeGet = (key: string) => { 
+    try { 
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null; 
+    } catch { 
+      return null; 
+    } 
+  };
+  
+  const safeSet = (key: string, val: string) => { 
+    try { 
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key, val); 
+    } catch {} 
+  };
+  
+  const safeGetLastIndex = (userId?: string) => {
+    try {
+      return getLastIndex(userId);
+    } catch {
+      return 0;
+    }
+  };
 
   // Get current tips array
   const tips = registry?.tips || [];
@@ -154,16 +177,6 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Handle supplement purchase
   const handleBuyNow = useCallback((tip: SupplementTip) => {
-    const catalogItem = registry?.catalog[tip.productSlug];
-    
-    if (!catalogItem) {
-      toast({
-        title: "Coming Soon",
-        description: "This supplement is not yet available in our catalog.",
-      });
-      return;
-    }
-
     // Analytics
     console.log('supplement_buy_clicked', { 
       id: tip.id, 
@@ -179,20 +192,18 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
       return;
     }
 
-    // Base tip → navigate to product page
-    const slug = tip.productSlug;
-    if (!slug) {
-      toast({
-        title: "Product Not Found",
-        description: "Unable to find product details.",
-        variant: "destructive"
-      });
+    // Base tip → navigate to product page if ctaEnabled
+    if ((tip as any).ctaEnabled && tip.productSlug) {
+      navigate(`/supplements/${tip.productSlug}`);
       return;
     }
-
-    // Navigate to supplements detail page
-    navigate(`/supplements/${slug}`);
-  }, [registry, navigate]);
+    
+    // Fallback toast for disabled CTA
+    toast({
+      title: "Coming Soon",
+      description: "This supplement is not yet available in our catalog.",
+    });
+  }, [navigate]);
 
   // Placeholder for no tips or loading - This should never show with bulletproof registry
   if (!tips || tips.length === 0) {
@@ -206,7 +217,16 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
     );
   }
 
-  const currentTip = tips[currentIndex];
+  // Safe current tip with clamped index
+  const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(0, tips.length - 1));
+  const currentTip: SupplementTip & { ctaEnabled?: boolean } = tips[safeIndex] ?? {
+    id: 'fallback-creatine',
+    title: 'Creatine Monohydrate',
+    blurb: 'Supports strength, power, and recovery.',
+    productSlug: 'creatine-monohydrate',
+    emoji: '💪',
+    ctaEnabled: true,
+  };
   
   // Track tip view for analytics
   useEffect(() => {
@@ -327,12 +347,12 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
         {/* CTA Button */}
         <div className="space-y-3">
-          <Button
+            <Button
             onClick={() => handleBuyNow(currentTip)}
-            disabled={!currentTip.productSlug && !currentTip.sponsor?.url}
+            disabled={!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url}
             className={`w-full gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold`}
             aria-label={`${currentTip.sponsor?.ctaText || 'Buy'} ${currentTip.title} supplement`}
-            title={(!currentTip.productSlug && !currentTip.sponsor?.url) ? "Product coming soon" : undefined}
+            title={!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url ? "Product coming soon" : undefined}
           >
             <ShoppingCart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
             {currentTip.sponsor?.ctaText || 'Buy this supplement'}
