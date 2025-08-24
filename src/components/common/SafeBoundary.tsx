@@ -20,7 +20,7 @@ class ErrorBoundaryImpl extends React.Component<
   }
   
   render() { 
-    const isDev = process.env.NODE_ENV !== 'production';
+    const isDev = !!((import.meta as any)?.env?.DEV);
     if (this.state.hasError) {
       if (isDev) {
         // DEV-ONLY diagnostic view (tiny, inside the existing card box)
