@@ -198,7 +198,7 @@ const Layout = ({ children }: LayoutProps) => {
                       onClick={() => navigate('/voice-agent')}
                       className="relative hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
                     >
-                      <span className={`${isMobile ? 'text-lg' : 'text-xl'} leading-none`}>🎙️</span>
+                      <span className={`${isMobile ? 'text-xl' : 'text-2xl'} leading-none`}>🎙️</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
