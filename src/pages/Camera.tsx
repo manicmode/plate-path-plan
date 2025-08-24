@@ -39,6 +39,7 @@ import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
+import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 import jsQR from 'jsqr';
@@ -2858,6 +2859,11 @@ console.log('Global search enabled:', enableGlobalSearch);
         isVisible={showConfirmation && (recognizedFoods[0] as any)?.servingDebug}
         debugInfo={(recognizedFoods[0] as any)?.servingDebug}
       />
+
+      {/* Activity Logging Section - Exercise, Recovery, Habits */}
+      <div className="mt-8">
+        <ActivityLoggingSection />
+      </div>
       
     </div>
   );
