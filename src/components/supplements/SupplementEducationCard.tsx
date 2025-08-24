@@ -43,7 +43,9 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
           setCurrentIndex(savedIndex);
         }
       } catch (error) {
-        console.warn('Failed to load supplement registry:', error);
+        console.error('SupplementEducationCard registry error:', error);
+        // Set empty registry on error so component still renders placeholder
+        setRegistry({ catalog: {}, tips: [] });
       } finally {
         setIsLoading(false);
       }
@@ -54,6 +56,11 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
 
   // Get current tips array
   const tips = registry?.tips || [];
+
+  // Mount logging (remove after debugging)
+  useEffect(() => { 
+    console.log('SupplementEducationCard mounted, tips:', tips?.length); 
+  }, [tips?.length]);
 
   // Save current index to localStorage
   const saveCurrentIndex = useCallback((index: number) => {
@@ -178,31 +185,18 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
     navigate(`/supplements/${slug}`);
   }, [registry, navigate]);
 
-  // Loading state
-  if (isLoading) {
+  // Placeholder for no tips or loading
+  if (!tips || tips.length === 0) {
     return (
-      <Card className={`modern-action-card border-0 rounded-3xl shadow-xl ${className}`}>
-        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
-          <div className="text-center py-8">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500 dark:text-gray-400">Loading supplement insights...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Empty state
-  if (tips.length === 0) {
-    return (
-      <Card className={`modern-action-card border-0 rounded-3xl shadow-xl ${className}`}>
-        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
-          <div className="text-center py-8">
-            <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">More supplement insights coming soon.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className={`rounded-2xl border border-white/10 bg-white/5 dark:bg-gray-800/50 dark:border-gray-700/50 p-4 sm:p-6 ${className}`}>
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-5 w-5 text-primary" />
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">Supplement Education</span>
+        </div>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          {isLoading ? 'Tips are loading…' : 'Tips are loading… If this persists, check the tips registry.'}
+        </p>
+      </div>
     );
   }
 
@@ -328,9 +322,10 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
         <div className="space-y-3">
           <Button
             onClick={() => handleBuyNow(currentTip)}
-            disabled={!registry?.catalog[currentTip.productSlug]}
+            disabled={!currentTip.productSlug && !currentTip.sponsor?.url}
             className={`w-full gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold`}
             aria-label={`${currentTip.sponsor?.ctaText || 'Buy'} ${currentTip.title} supplement`}
+            title={(!currentTip.productSlug && !currentTip.sponsor?.url) ? "Product coming soon" : undefined}
           >
             <ShoppingCart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
             {currentTip.sponsor?.ctaText || 'Buy this supplement'}
@@ -345,3 +340,6 @@ export const SupplementEducationCard = ({ className = '' }: SupplementEducationC
     </Card>
   );
 };
+
+// Export both named and default
+export default SupplementEducationCard;
