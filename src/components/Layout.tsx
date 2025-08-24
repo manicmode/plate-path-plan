@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText, Mic } from 'lucide-react';
+import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useChatModal } from '@/contexts/ChatModalContext';
 import { useVoiceCoachAllowed } from '@/features/voicecoach/flags';
+import { useDueHabitsCount } from '@/hooks/useDueHabitsCount';
 import ReminderBell from '@/components/ReminderBell';
 
 
@@ -33,6 +34,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const voiceCoachAllowed = useVoiceCoachAllowed();
+  const dueHabitsCount = useDueHabitsCount();
 
   // [nav-restore-2025-08-11] begin
   const navItems = [
@@ -156,8 +158,33 @@ const Layout = ({ children }: LayoutProps) => {
             
             {/* Header Actions */}
             <div className="flex items-center space-x-2 sm:space-x-3">
-              {/* Reminder Bell */}
-              {isAuthenticated && <ReminderBell />}
+              {/* Habits Due Bell - only show when habits are due */}
+              {isAuthenticated && dueHabitsCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Habits due: ${dueHabitsCount}`}
+                      data-testid="header-bell"
+                      className="relative hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                    >
+                      <div className="relative">
+                        <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-700 dark:text-gray-300`} />
+                        <span
+                          className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full px-1 text-[11px] leading-[18px] text-white bg-rose-500 text-center font-medium"
+                          aria-hidden="true"
+                        >
+                          {dueHabitsCount > 9 ? "9+" : dueHabitsCount}
+                        </span>
+                      </div>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Habits due</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               
               {/* Microphone Button */}
               {isAuthenticated && voiceCoachAllowed && (

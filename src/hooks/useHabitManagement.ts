@@ -194,6 +194,9 @@ export const useHabitManagement = () => {
         amount,
         duration_min
       });
+      
+      // Dispatch event to update header bell
+      window.dispatchEvent(new Event("habit:changed"));
 
       toast({
         title: "Logged • Nice work!",

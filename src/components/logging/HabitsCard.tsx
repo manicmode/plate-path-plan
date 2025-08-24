@@ -116,6 +116,9 @@ export const HabitsCard = () => {
           
           await logService.savePinnedHabit(newPin);
           await loadPinnedHabits();
+          
+          // Dispatch event to update header bell
+          window.dispatchEvent(new Event("habit:changed"));
         }
       }
 
@@ -129,6 +132,9 @@ export const HabitsCard = () => {
         value: habitLog.value,
         timestamp: habitLog.date
       });
+      
+      // Dispatch event to update header bell
+      window.dispatchEvent(new Event("habit:changed"));
     } catch (error) {
       console.error('Error logging habit:', error);
       toast.error('Failed to log habit. Please try again.');
@@ -166,6 +172,9 @@ export const HabitsCard = () => {
           timestamp: new Date().toISOString()
         });
       }
+      
+      // Dispatch event to update header bell
+      window.dispatchEvent(new Event("habit:changed"));
     } catch (error) {
       console.error('Error toggling habit:', error);
       toast.error('Failed to log habit');
@@ -190,6 +199,9 @@ export const HabitsCard = () => {
       setNewHabitName('');
       setNewHabitUnit('');
       toast.success('Habit added!');
+      
+      // Dispatch event to update header bell
+      window.dispatchEvent(new Event("habit:changed"));
     } catch (error) {
       console.error('Error adding habit:', error);
       toast.error('Failed to add habit');
@@ -201,6 +213,9 @@ export const HabitsCard = () => {
       await logService.deletePinnedHabit(id);
       await loadPinnedHabits();
       toast.success('Habit removed');
+      
+      // Dispatch event to update header bell
+      window.dispatchEvent(new Event("habit:changed"));
     } catch (error) {
       toast.error('Failed to remove habit');
     }
