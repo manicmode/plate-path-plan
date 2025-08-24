@@ -48,12 +48,32 @@ const SupplementHub = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSupplementList, setShowSupplementList] = useState(false);
   const [showSupplementDetail, setShowSupplementDetail] = useState(false);
+
+  // 🔎 FORENSIC DIAGNOSTIC: Add logging for recommendations
+  if (typeof window !== 'undefined') {
+    console.group('🔎 SupplementHub: Diagnostics');
+    console.log('Component file: SupplementHub.tsx');
+    console.log('recommendations length:', recommendations?.length);
+    console.log('recommendations sample:', recommendations?.slice?.(0, 2));
+    console.log('selectedCategory:', selectedCategory);
+    console.log('userSupplements:', userSupplements?.length);
+    console.groupEnd();
+  }
   const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
   
   // Personal recommendations state
   const [personalRecommendations, setPersonalRecommendations] = useState<Supplement[]>([]);
   const [showMorePersonal, setShowMorePersonal] = useState(false);
   const [isGeneratingPersonal, setIsGeneratingPersonal] = useState(false);
+
+  // 🔎 FORENSIC DIAGNOSTIC: Add logging for personal recommendations
+  if (typeof window !== 'undefined') {
+    console.group('🔎 SupplementHub: Personal Recommendations Diagnostics');
+    console.log('personalRecommendations length:', personalRecommendations?.length);
+    console.log('isGeneratingPersonal:', isGeneratingPersonal);
+    console.log('personalRecommendations sample:', personalRecommendations?.slice?.(0, 2));
+    console.groupEnd();
+  }
 
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1428,6 +1448,9 @@ const SupplementHub = () => {
   
   const displayedPersonalRecommendations = showMorePersonal ? personalRecommendations : personalRecommendations.slice(0, 3);
   const hasMorePersonalRecommendations = personalRecommendations.length > 3;
+
+  // 🔎 FORENSIC DIAGNOSTIC: Track where we render
+  console.log('🔎 SUPP HUB: main render reached, about to render components');
 
   return (
     <div className="space-y-12 sm:space-y-16">
