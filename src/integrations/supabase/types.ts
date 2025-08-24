@@ -9012,26 +9012,6 @@ export type Database = {
           start_utc: string
         }[]
       }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       habit_template_recommend: {
         Args: {
           p_domain?: Database["public"]["Enums"]["habit_domain"]
@@ -9740,21 +9720,9 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
       set_user_feature_flag: {
         Args: { enabled_param: boolean; flag_key_param: string }
         Returns: boolean
-      }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
       }
       test_recommendation_performance: {
         Args: Record<PropertyKey, never>
