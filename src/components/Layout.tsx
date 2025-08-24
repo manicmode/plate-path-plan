@@ -4,10 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, FileText, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useChatModal } from '@/contexts/ChatModalContext';
+import { useVoiceCoachAllowed } from '@/features/voicecoach/flags';
 import ReminderBell from '@/components/ReminderBell';
 
 
@@ -30,6 +32,7 @@ const Layout = ({ children }: LayoutProps) => {
   const { isChatModalOpen } = useChatModal();
   const [isNavigating, setIsNavigating] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const voiceCoachAllowed = useVoiceCoachAllowed();
 
   // [nav-restore-2025-08-11] begin
   const navItems = [
@@ -84,6 +87,23 @@ const Layout = ({ children }: LayoutProps) => {
     setIsNavigating(false);
   }, [location.pathname]);
 
+  // Handle keyboard shortcut for microphone (m key)
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key.toLowerCase() === 'm' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && voiceCoachAllowed && isAuthenticated) {
+      // Check if we're not in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
+        e.preventDefault();
+        navigate('/voice-agent');
+      }
+    }
+  }, [navigate, voiceCoachAllowed, isAuthenticated]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   // Expose app header height as a CSS variable for page headers
   useEffect(() => {
     const setVar = () => {
@@ -114,43 +134,67 @@ const Layout = ({ children }: LayoutProps) => {
   const isExplorePage = location.pathname === '/explore';
 
   return (
-    <div className="min-h-screen gradient-main transition-all duration-300">
-      {/* Enhanced Header with better spacing */}
-      <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
-        <div ref={headerRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <img 
-                src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
-                alt="VOYAGE Winged V Logo" 
-                className={`${isMobile ? 'w-9 h-9' : 'w-12 h-12'} object-contain`}
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-            </div>
-            <div>
-              <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
-              <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>AI Wellness Assistant</p>
-            </div>
-          </div>
-          
-          {/* Enhanced Dark Mode Toggle */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Reminder Bell */}
-            {isAuthenticated && <ReminderBell />}
-            
-            <div className={`flex items-center space-x-1 sm:space-x-2 bg-gray-100 dark:bg-gray-800 ${isMobile ? 'px-2 py-1' : 'px-4 py-2'} rounded-xl border-2 border-gray-400 dark:border-gray-600`}>
-              <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${!isDarkMode ? 'text-yellow-500' : 'text-gray-400'}`} />
-              <Switch
-                checked={isDarkMode}
-                onCheckedChange={toggleDarkMode}
-                className="data-[state=checked]:bg-blue-600 border-2 border-gray-600"
-              />
-              <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${isDarkMode ? 'text-blue-400' : 'text-gray-500'}`} />
+    <TooltipProvider>
+      <div className="min-h-screen gradient-main transition-all duration-300">
+        {/* Enhanced Header with better spacing */}
+        <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
+          <div ref={headerRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
+                <img 
+                  src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
+                  alt="VOYAGE Winged V Logo" 
+                  className={`${isMobile ? 'w-9 h-9' : 'w-12 h-12'} object-contain`}
+                  style={{ filter: 'brightness(0) invert(1)' }}
+                />
+              </div>
+              <div>
+                <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
+                <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>AI Wellness Assistant</p>
+              </div>
             </div>
             
+            {/* Header Actions */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              {/* Reminder Bell */}
+              {isAuthenticated && <ReminderBell />}
+              
+              {/* Microphone Button */}
+              {isAuthenticated && voiceCoachAllowed && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Speak to Coach (Press M)"
+                      data-testid="header-mic"
+                      onClick={() => navigate('/voice-agent')}
+                      className="relative hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                    >
+                      <Mic className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-700 dark:text-gray-300`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Speak to Coach</p>
+                    <p className="text-xs opacity-75">Press M</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              
+              {/* Theme Toggle */}
+              <div className={`flex items-center space-x-1 sm:space-x-2 bg-gray-100 dark:bg-gray-800 ${isMobile ? 'px-2 py-1' : 'px-4 py-2'} rounded-xl border-2 border-gray-400 dark:border-gray-600`}>
+                <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${!isDarkMode ? 'text-yellow-500' : 'text-gray-400'}`} />
+                <Switch
+                  checked={isDarkMode}
+                  onCheckedChange={toggleDarkMode}
+                  className="data-[state=checked]:bg-blue-600 border-2 border-gray-600"
+                />
+                <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${isDarkMode ? 'text-blue-400' : 'text-gray-500'}`} />
+              </div>
+              
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Main Content with safe area padding for bottom nav */}
       <main
@@ -207,7 +251,8 @@ const Layout = ({ children }: LayoutProps) => {
         </nav>
       )}
       
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
