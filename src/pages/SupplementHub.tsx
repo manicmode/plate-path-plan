@@ -11,6 +11,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
+import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,16 +50,6 @@ const SupplementHub = () => {
   const [showSupplementList, setShowSupplementList] = useState(false);
   const [showSupplementDetail, setShowSupplementDetail] = useState(false);
 
-  // 🔎 FORENSIC DIAGNOSTIC: Add logging for recommendations
-  if (typeof window !== 'undefined') {
-    console.group('🔎 SupplementHub: Diagnostics');
-    console.log('Component file: SupplementHub.tsx');
-    console.log('recommendations length:', recommendations?.length);
-    console.log('recommendations sample:', recommendations?.slice?.(0, 2));
-    console.log('selectedCategory:', selectedCategory);
-    console.log('userSupplements:', userSupplements?.length);
-    console.groupEnd();
-  }
   const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
   
   // Personal recommendations state
@@ -66,14 +57,6 @@ const SupplementHub = () => {
   const [showMorePersonal, setShowMorePersonal] = useState(false);
   const [isGeneratingPersonal, setIsGeneratingPersonal] = useState(false);
 
-  // 🔎 FORENSIC DIAGNOSTIC: Add logging for personal recommendations
-  if (typeof window !== 'undefined') {
-    console.group('🔎 SupplementHub: Personal Recommendations Diagnostics');
-    console.log('personalRecommendations length:', personalRecommendations?.length);
-    console.log('isGeneratingPersonal:', isGeneratingPersonal);
-    console.log('personalRecommendations sample:', personalRecommendations?.slice?.(0, 2));
-    console.groupEnd();
-  }
 
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1449,8 +1432,6 @@ const SupplementHub = () => {
   const displayedPersonalRecommendations = showMorePersonal ? personalRecommendations : personalRecommendations.slice(0, 3);
   const hasMorePersonalRecommendations = personalRecommendations.length > 3;
 
-  // 🔎 FORENSIC DIAGNOSTIC: Track where we render
-  console.log('🔎 SUPP HUB: main render reached, about to render components');
 
   return (
     <div className="space-y-12 sm:space-y-16">
@@ -1697,6 +1678,11 @@ const SupplementHub = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Education carousel */}
+        <div className="mt-6 sm:mt-8" data-testid="supp-edu-card">
+          <SupplementEducationCard />
+        </div>
 
         {/* My Supplements Section */}
         <Card className="glass-card border-0 rounded-3xl mt-8">

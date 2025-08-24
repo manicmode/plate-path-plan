@@ -57,10 +57,6 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
   // Get current tips array
   const tips = registry?.tips || [];
 
-  // Mount logging (remove after debugging)
-  useEffect(() => { 
-    console.log('SupplementEducationCard mounted, tips:', tips?.length); 
-  }, [tips?.length]);
 
   // Save current index to localStorage
   const saveCurrentIndex = useCallback((index: number) => {
