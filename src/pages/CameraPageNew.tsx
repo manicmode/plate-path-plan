@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Droplets, Pill, Sparkles } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
-import { useCameraState } from '@/hooks/useCameraState';
+import { useCameraState, RecognizedFood } from '@/hooks/useCameraState';
 import { CameraActions } from '@/components/camera/CameraActions';
 import { CameraCapture } from '@/components/camera/CameraCapture';
 import { BarcodeLogModal } from '@/components/scan/BarcodeLogModal';
@@ -11,12 +11,18 @@ import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useHealthScanner } from '@/hooks/useHealthScanner';
+import { useSpeechToLog } from '@/hooks/useSpeechToLog';
+import { addFoodLog } from '@/lib/addFoodLog';
+import { convertRecognizedFoodToFoodItem } from '@/lib/nutritionConverter';
 import { toast } from 'sonner';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { SessionPickerModal } from '@/components/meditation/SessionPickerModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
 import { HabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 import { useNavigate } from 'react-router-dom';
+import { PHOTO_ANALYSIS_ENABLED, VOICE_LOGGING_ENABLED, MANUAL_ENTRY_ENABLED } from '@/lib/featureFlags';
+import { logEvent } from '@/lib/telemetry';
 
 const CameraPageNew = () => {
   useScrollToTop();
@@ -54,39 +60,127 @@ const CameraPageNew = () => {
     stopRecording,
   } = useVoiceRecording();
 
+  const { scanWithHealthScanner, isScanning: isPhotoAnalyzing } = useHealthScanner();
+
+  const { handleVoiceRecording, isProcessing: isVoiceAnalyzing } = useSpeechToLog({
+    onFoodDetected: async (foods) => {
+      // Convert detected foods to recognition format and show confirmation
+      const recognizedFoods: RecognizedFood[] = foods.map(food => ({
+        name: food.name,
+        confidence: 0.9,
+        source: 'voice',
+        calories: 0, // Will be filled in confirmation
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        sugar: 0,
+        sodium: 0,
+        serving: food.quantity || '1 serving',
+        ingredients: food.preparation || ''
+      }));
+      setRecognizedFoods(recognizedFoods);
+      setShowConfirmation(true);
+      setInputSource('voice');
+    },
+    onError: (error) => {
+      console.error('Voice logging error:', error);
+      toast.error('Voice logging failed. Please try again.');
+    }
+  });
+
   // Photo capture handler
-  const handlePhotoCapture = () => {
-    // This would trigger the camera capture UI
-    toast.info('Camera capture functionality - to be implemented');
+  const handlePhotoCapture = async () => {
+    if (!PHOTO_ANALYSIS_ENABLED) {
+      toast.info('Photo analysis is currently disabled');
+      return;
+    }
+
+    try {
+      logEvent('nutrition.photo.start');
+      setIsAnalyzing(true);
+      setProcessingStep('Taking photo...');
+      
+      // Get photo from camera
+      const imageDataUrl = await capturePhotoFromCamera();
+      if (!imageDataUrl) return;
+
+      setSelectedImage(imageDataUrl);
+      setProcessingStep('Analyzing food...');
+
+      // Analyze with health scanner
+      const result = await scanWithHealthScanner({
+        mode: 'scan',
+        imageBase64: imageDataUrl.split(',')[1] // Remove data:image/jpeg;base64, prefix
+      });
+
+      if (result.success && result.data?.productName) {
+        const recognizedFood: RecognizedFood = {
+          name: result.data.productName,
+          confidence: result.data.brandConfidence || 0.8,
+          source: 'photo',
+          calories: result.data.nutrients?.energy_kcal || 0,
+          protein: result.data.nutrients?.proteins || 0,
+          carbs: result.data.nutrients?.carbohydrates || 0,
+          fat: result.data.nutrients?.fat || 0,
+          fiber: result.data.nutrients?.fiber || 0,
+          sugar: result.data.nutrients?.sugars || 0,
+          sodium: result.data.nutrients?.salt || 0,
+          saturated_fat: result.data.nutrients?.saturated_fat || 0,
+          ingredients: (result.data.ingredients || []).join(', '),
+          allergens: result.data.allergens || [],
+          additives: result.data.additives || [],
+          nova: result.data.nova,
+          isBranded: !!result.data.brand
+        };
+
+        setRecognizedFoods([recognizedFood]);
+        setShowConfirmation(true);
+        setInputSource('photo');
+        logEvent('nutrition.photo.success', { productName: result.data.productName });
+      } else {
+        toast.error('Could not identify food from photo. Try barcode scan or manual entry.');
+        logEvent('nutrition.photo.failed');
+      }
+
+    } catch (error) {
+      console.error('Photo capture error:', error);
+      toast.error('Photo analysis failed');
+      logEvent('nutrition.photo.error', { error: error instanceof Error ? error.message : 'Unknown' });
+    } finally {
+      setIsAnalyzing(false);
+      setProcessingStep('');
+    }
+  };
+
+  const capturePhotoFromCamera = (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      // For now, simulate camera capture - in real implementation this would use camera API
+      toast.info('Camera integration coming soon - use barcode scan instead');
+      resolve(null);
+    });
   };
 
   // Voice recording handler
   const handleVoiceToggle = async () => {
+    if (!VOICE_LOGGING_ENABLED) {
+      toast.info('Voice logging is currently disabled');
+      return;
+    }
+
     try {
-      if (isRecording) {
-        setProcessingStep('Processing...');
-        const transcribedText = await stopRecording();
-        
-        if (transcribedText) {
-          setVoiceText(transcribedText);
-          setShowVoiceEntry(true);
-          setInputSource('voice');
-          resetErrorState();
-        }
-        setProcessingStep('');
-      } else {
-        await startRecording();
-        resetErrorState();
-      }
+      logEvent('nutrition.voice.toggle', { wasRecording: isRecording });
+      await handleVoiceRecording();
+      resetErrorState();
     } catch (error) {
       console.error('Voice recording error:', error);
       toast.error('Voice recording failed');
-      setProcessingStep('');
     }
   };
 
   // Barcode capture handler
   const handleBarcodeCapture = () => {
+    logEvent('nutrition.barcode.open');
     setShowBarcodeLogModal(true);
     setInputSource('barcode');
     resetErrorState();
@@ -94,6 +188,12 @@ const CameraPageNew = () => {
 
   // Manual entry handler
   const handleManualEntry = () => {
+    if (!MANUAL_ENTRY_ENABLED) {
+      toast.info('Manual entry is currently disabled');
+      return;
+    }
+
+    logEvent('nutrition.manual.open');
     setShowManualEdit(true);
     setInputSource('manual');
     resetErrorState();
@@ -161,12 +261,12 @@ const CameraPageNew = () => {
             <div className="space-y-6">
               <CameraActions
                 onPhotoCapture={handlePhotoCapture}
-                isAnalyzing={isAnalyzing}
+                isAnalyzing={isAnalyzing || isPhotoAnalyzing}
                 processingStep={processingStep}
                 onVoiceToggle={handleVoiceToggle}
                 isRecording={isRecording}
-                isVoiceProcessing={isVoiceProcessing}
-                disabled={!!processingStep}
+                isVoiceProcessing={isVoiceProcessing || isVoiceAnalyzing}
+                disabled={!!processingStep || isPhotoAnalyzing || isVoiceAnalyzing}
                 onBarcodeCapture={handleBarcodeCapture}
                 onManualEntry={handleManualEntry}
                 activeTab={activeTab}
@@ -219,12 +319,41 @@ const CameraPageNew = () => {
                 setShowConfirmation(false);
                 setRecognizedFoods([]);
               }}
-              onConfirm={(adjustedFood) => {
-                console.log('Food confirmed:', adjustedFood);
-                toast.success('Food logged successfully!');
-                resetAllState();
+              onConfirm={async (adjustedFood) => {
+                try {
+                  logEvent('nutrition.confirm.start', { source: inputSource, foodName: adjustedFood.name });
+                  
+                  await addFoodLog({
+                    source: inputSource === 'photo' ? 'photo' : 
+                           inputSource === 'voice' ? 'voice' : 
+                           inputSource === 'barcode' ? 'barcode' : 'manual',
+                    productName: adjustedFood.name,
+                    nutrients: {
+                      energy_kcal: adjustedFood.calories,
+                      proteins: adjustedFood.protein,
+                      carbohydrates: adjustedFood.carbs,
+                      fat: adjustedFood.fat,
+                      fiber: adjustedFood.fiber,
+                      sugars: adjustedFood.sugar,
+                      salt: adjustedFood.sodium
+                    },
+                    ingredients: adjustedFood.ingredientsText ? [adjustedFood.ingredientsText] : [],
+                    serving: {
+                      amount: 1,
+                      unit: 'serving'
+                    },
+                    barcode: adjustedFood.barcode
+                  });
+                  
+                  logEvent('nutrition.confirm.success', { source: inputSource, foodName: adjustedFood.name });
+                  resetAllState();
+                } catch (error) {
+                  console.error('Error logging food:', error);
+                  logEvent('nutrition.confirm.error', { source: inputSource, error: error instanceof Error ? error.message : 'Unknown' });
+                  toast.error('Failed to log food. Please try again.');
+                }
               }}
-              foodItem={recognizedFoods[0]}
+              foodItem={convertRecognizedFoodToFoodItem(recognizedFoods[0])}
             />
           )}
         </CardContent>
@@ -342,18 +471,108 @@ const CameraPageNew = () => {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Manual food entry functionality - to be implemented
-              </p>
-              <Button
-                onClick={() => {
-                  toast.info('Manual entry feature coming soon');
-                  setShowManualEdit(false);
-                }}
-                className="w-full mt-4"
-              >
-                Add Food
-              </Button>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Food Name or Barcode</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Greek yogurt or 022000287311"
+                    className="w-full px-3 py-2 border rounded-md"
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        const input = (e.target as HTMLInputElement).value.trim();
+                        if (!input) return;
+
+                        try {
+                          setShowManualEdit(false);
+                          
+                          // Check if input is a barcode (numbers only)
+                          const isBarcode = /^\d{8,14}$/.test(input);
+                          
+                          if (isBarcode) {
+                            // Handle as barcode
+                            logEvent('nutrition.manual.barcode_search', { barcode: input });
+                            const result = await scanWithHealthScanner({ mode: 'barcode', barcode: input });
+                            
+                            if (result.success && result.data?.productName) {
+                              const food: RecognizedFood = {
+                                name: result.data.productName,
+                                confidence: 1.0,
+                                source: 'manual',
+                                calories: result.data.nutrients?.energy_kcal || 0,
+                                protein: result.data.nutrients?.proteins || 0,
+                                carbs: result.data.nutrients?.carbohydrates || 0,
+                                fat: result.data.nutrients?.fat || 0,
+                                fiber: result.data.nutrients?.fiber || 0,
+                                sugar: result.data.nutrients?.sugars || 0,
+                                sodium: result.data.nutrients?.salt || 0,
+                                saturated_fat: result.data.nutrients?.saturated_fat || 0,
+                                ingredients: (result.data.ingredients || []).join(', '),
+                                allergens: result.data.allergens || [],
+                                additives: result.data.additives || [],
+                                nova: result.data.nova,
+                                isBranded: !!result.data.brand,
+                                barcode: input
+                              };
+                              setRecognizedFoods([food]);
+                              setShowConfirmation(true);
+                              setInputSource('manual');
+                            } else {
+                              toast.error('Product not found for this barcode');
+                            }
+                          } else {
+                            // Handle as text search
+                            logEvent('nutrition.manual.text_search', { query: input });
+                            const result = await scanWithHealthScanner({ mode: 'text', text: input });
+                            
+                            if (result.success && result.data?.productName) {
+                              const food: RecognizedFood = {
+                                name: result.data.productName,
+                                confidence: 0.8,
+                                source: 'manual',
+                                calories: result.data.nutrients?.energy_kcal || 0,
+                                protein: result.data.nutrients?.proteins || 0,
+                                carbs: result.data.nutrients?.carbohydrates || 0,
+                                fat: result.data.nutrients?.fat || 0,
+                                fiber: result.data.nutrients?.fiber || 0,
+                                sugar: result.data.nutrients?.sugars || 0,
+                                sodium: result.data.nutrients?.salt || 0,
+                                ingredients: (result.data.ingredients || []).join(', ')
+                              };
+                              setRecognizedFoods([food]);
+                              setShowConfirmation(true);
+                              setInputSource('manual');
+                            } else {
+                              // Create basic food entry for unknown items
+                              const food: RecognizedFood = {
+                                name: input,
+                                confidence: 0.5,
+                                source: 'manual',
+                                calories: 0,
+                                protein: 0,
+                                carbs: 0,
+                                fat: 0,
+                                fiber: 0,
+                                sugar: 0,
+                                sodium: 0
+                              };
+                              setRecognizedFoods([food]);
+                              setShowConfirmation(true);
+                              setInputSource('manual');
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Manual entry error:', error);
+                          toast.error('Search failed. Please try again.');
+                        }
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Press Enter to search
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -5,6 +5,12 @@ export const ARENA_DEBUG_CONTROLS = false; // Show debug buttons when true
 // Barcode V2 feature flag - rock-solid recognition
 export const BARCODE_V2 = true;
 
+// Nutrition logging feature flags
+export const NUTRITION_LOG_V2_ENABLED = true; // Enable new nutrition logging
+export const PHOTO_ANALYSIS_ENABLED = true; // Enable photo analysis
+export const VOICE_LOGGING_ENABLED = true; // Enable voice logging
+export const MANUAL_ENTRY_ENABLED = true; // Enable manual entry
+
 // Legacy fallback flag - should remain false in production
 export const ARENA_LEGACY_FALLBACK = false; // Warns if enabled
 
