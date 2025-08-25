@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +17,7 @@ import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { SharedBarcodeScanner } from '@/components/scan/SharedBarcodeScanner';
 import { ConfirmAddFoodModal } from '@/components/scan/ConfirmAddFoodModal';
+import { BarcodeLogModal } from '@/components/scan/BarcodeLogModal';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
@@ -117,7 +118,7 @@ const CameraPage = () => {
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [showSharedBarcodeScanner, setShowSharedBarcodeScanner] = useState(false);
+  const [showBarcodeLogModal, setShowBarcodeLogModal] = useState(false);
   const [barcodeProductData, setBarcodeProductData] = useState(null);
   const [showConfirmAdd, setShowConfirmAdd] = useState(false);
   
@@ -1436,7 +1437,7 @@ console.log('Global search enabled:', enableGlobalSearch);
     setShowSharedBarcodeScanner(true);
   };
 
-  const handleVoiceRecording = async () => {
+  const handleVoiceRecording = useCallback(async () => {
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
     
     if (isRecording) {
@@ -1458,7 +1459,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       await startRecording();
       resetErrorState();
     }
-  };
+  }, [isRecording, isProcessingVoice, stopRecording, startRecording, resetErrorState, setVoiceText, setShowVoiceEntry, setInputSource, setProcessingStep]);
 
   const processVoiceEntry = async () => {
     console.log('🎤 [Camera] Processing voice entry:', { voiceText, length: voiceText?.length });
@@ -2748,28 +2749,18 @@ console.log('Global search enabled:', enableGlobalSearch);
                     )}
                   </Button>
                   
-                   {/* Scan Barcode Tab - NEW SHARED SCANNER */}
+                   {/* Scan Barcode Tab - CLEAN MODAL */}
                   <Button
                     onClick={() => {
-                      setShowSharedBarcodeScanner(true);
+                      setShowBarcodeLogModal(true);
                       setInputSource('barcode');
                       resetErrorState();
                     }}
-                    disabled={isLoadingBarcode}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
-                    {isLoadingBarcode ? (
-                      <>
-                        <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full" />
-                        <span className="text-sm font-medium">Looking up...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ScanBarcode className="h-6 w-6" />
-                        <span className="text-sm font-medium">Scan Barcode</span>
-                      </>
-                    )}
+                    <ScanBarcode className="h-6 w-6" />
+                    <span className="text-sm font-medium">Scan Barcode</span>
                   </Button>
                   
                   
@@ -3186,8 +3177,8 @@ console.log('Global search enabled:', enableGlobalSearch);
         <ActivityLoggingSection />
       </div>
       
-     </div>
-   );
+    </div>
+  );
 };
 
 export default CameraPage;
