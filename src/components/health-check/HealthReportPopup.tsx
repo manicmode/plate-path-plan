@@ -146,7 +146,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <div className="mb-4">
               <CircularProgress percentage={result.healthScore * 10} size={140} strokeWidth={10} />
             </div>
-            <div className="text-sm text-foreground/70 font-medium mb-6">Health Score</div>
+            <div className="text-sm text-foreground font-medium mb-6">Health Score</div>
             
             {/* Star Rating */}
             <div className="flex justify-center space-x-1 mb-6">
@@ -156,7 +156,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   className={`w-7 h-7 transition-all duration-200 ${
                     i < starCount 
                       ? 'text-yellow-400 fill-yellow-400 drop-shadow-lg' 
-                      : 'text-foreground/30'
+                      : 'text-muted-foreground'
                   }`} 
                 />
               ))}
@@ -297,14 +297,14 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                       <div className="text-3xl font-bold text-foreground mb-1">
                         {typeof value === 'number' ? value : value}
                       </div>
-                      <div className="text-sm text-foreground/80 font-medium mb-1">{unit}</div>
-                      <div className="text-xs text-foreground/70 font-semibold uppercase tracking-wide">{displayKey}</div>
+                      <div className="text-sm text-foreground font-medium mb-1">{unit}</div>
+                      <div className="text-xs text-foreground font-semibold uppercase tracking-wide">{displayKey}</div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center text-foreground/60 font-medium">
+              <div className="p-4 text-center text-muted-foreground font-medium">
                 Nutrition facts not available from scan data
               </div>
             )}
@@ -324,7 +324,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
                 {/* This would come from the API - for now showing a placeholder */}
-                <span className="text-foreground/80">
+                <span className="text-foreground">
                   {result.healthProfile.additives && result.healthProfile.additives.length > 0 
                     ? result.healthProfile.additives.join(', ')
                     : 'Ingredient list not available from scan data'
