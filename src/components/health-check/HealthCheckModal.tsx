@@ -174,12 +174,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use enhanced scanner with structured results
       const payload = {
         imageBase64: cleanImageData,
-        mode: 'scan'
+        mode: 'scan',
+        detectedBarcode: detectedBarcode || null
       };
       
       console.log('📦 Enhanced scanner payload:', {
         mode: payload.mode,
-        dataLength: payload.imageBase64?.length || 0
+        dataLength: payload.imageBase64?.length || 0,
+        hasDetectedBarcode: !!detectedBarcode
       });
       
       let data, error;
@@ -333,7 +335,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         body: {
           inputType: type,
           data: query,
-          userId: user?.id
+          userId: user?.id,
+          detectedBarcode: null
         }
       });
 
@@ -466,7 +469,8 @@ export const handleBarcodeInput = async (barcode: string, userId?: string) => {
     body: {
       inputType: 'barcode',
       data: barcode,
-      userId: userId
+      userId: userId,
+      detectedBarcode: barcode
     }
   });
 

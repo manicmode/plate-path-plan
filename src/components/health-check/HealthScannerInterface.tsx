@@ -246,7 +246,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: {
             inputType: 'text',
             data: barcodeInput.trim(),
-            userId: user?.id
+            userId: user?.id,
+            detectedBarcode: null
           }
         });
         

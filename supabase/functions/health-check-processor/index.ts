@@ -353,9 +353,31 @@ function calculateHealthScore(flags: HealthFlag[], hasCandy: boolean, hasStrongE
 }
 
 /**
+ * Map OpenFoodFacts product to BackendResponse format
+ */
+function mapOFFtoBackendResponse(off: any): HealthReport {
+  const productName = `${off.brands ?? ''} ${off.product_name ?? ''}`.trim();
+  const ingredients = off.ingredients_text ? 
+    off.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
+  
+  const healthFlags = generateHealthFlags(ingredients, false);
+  const healthScore = calculateHealthScore(healthFlags, false, true);
+  
+  return {
+    productName: productName || "Unknown Product",
+    ingredients,
+    healthFlags,
+    healthScore,
+    nutritionData: generateNutritionData(off.nutriments),
+    summary: generateHealthSummary(healthFlags, healthScore),
+    recommendations: generateRecommendations(healthFlags)
+  };
+}
+
+/**
  * Process input with barcode-first logic and confidence gating
  */
-async function processInput(input: ProcessedInput): Promise<HealthReport> {
+async function processInput(input: ProcessedInput, detectedBarcode?: string): Promise<HealthReport> {
   const ctx: RequestContext = {
     reqId: crypto.randomUUID().substring(0, 8),
     now: new Date(),
@@ -366,42 +388,87 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
     plateConf: 0
   };
   
+  const t0 = Date.now();
   console.log(`🚀 Processing ${input.type} input [${ctx.reqId}]`);
   
   let barcodeHit = false;
   let nameHit = false;
   let offProduct: any = null;
+  let barcodeFound = false;
   
-  // Step 1: Barcode first (highest priority)
-  if (input.type === 'barcode' || input.type === 'image') {
+  // Step 1: Barcode first (highest priority) - prefer client-detected barcode
+  const digits = (detectedBarcode ?? '').replace(/\D/g, '');
+  const looksLikeBarcode = /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(digits);
+  
+  if (looksLikeBarcode) {
+    barcodeFound = true;
+    barcodeHit = true;
+    ctx.barcodeFound = digits;
+    
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${digits}.json`);
+    const j = await r.json().catch(() => null);
+    if (j?.status === 1 && j.product) {
+      offProduct = j.product;
+      ctx.offHit = true;
+      
+      console.log(`✅ Barcode success [${ctx.reqId}]`, { barcode: digits, product: offProduct.product_name });
+      
+      // Short-circuit on OFF hit
+      const result = mapOFFtoBackendResponse(offProduct);
+      
+      // Success logging
+      console.log(JSON.stringify({
+        reqId: ctx.reqId, 
+        phase: 'done', 
+        barcodeFound, 
+        offHit: true, 
+        brand: offProduct.brands ?? 'none',
+        plateConf: null, 
+        scored: true,
+        productName: result.productName, 
+        latencyMs: Date.now() - t0
+      }));
+      
+      return result;
+    }
+  }
+  
+  if (!detectedBarcode) {
+    console.log(JSON.stringify({ reqId: ctx.reqId, at: 'no_client_barcode' }));
+  }
+  
+  // Fallback barcode detection for legacy paths
+  if (input.type === 'barcode' || (input.type === 'image' && !detectedBarcode)) {
     const barcode = input.content.match(/\b\d{8,14}\b/)?.[0] || 
                    (input.type === 'image' && input.imageData ? 
                     (await detectBarcodeFromBinary(input.imageData)).barcode : null);
     
-    if (barcode) {
+    if (barcode && !barcodeFound) {
+      barcodeFound = true;
+      barcodeHit = true;
       ctx.barcodeFound = barcode;
       offProduct = await lookupByBarcode(barcode);
       if (offProduct) {
-        barcodeHit = true;
         ctx.offHit = true;
         
-        const ingredients = offProduct.ingredients_text ? 
-          offProduct.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
-          
-        const flags = generateHealthFlags(ingredients, false);
-        const healthScore = calculateHealthScore(flags, false, true);
+        console.log(`✅ Legacy barcode success [${ctx.reqId}]`, { barcode, product: offProduct.product_name });
         
-        console.log(`✅ Barcode success [${ctx.reqId}]`, { barcode, product: offProduct.product_name });
+        const result = mapOFFtoBackendResponse(offProduct);
         
-        return {
-          productName: offProduct.product_name || "Unknown Product",
-          ingredients,
-          healthFlags: flags,
-          healthScore,
-          nutritionData: generateNutritionData(offProduct.nutriments),
-          summary: generateHealthSummary(flags, healthScore),
-          recommendations: generateRecommendations(flags)
-        };
+        // Success logging
+        console.log(JSON.stringify({
+          reqId: ctx.reqId, 
+          phase: 'done', 
+          barcodeFound, 
+          offHit: true, 
+          brand: offProduct.brands ?? 'none',
+          plateConf: null, 
+          scored: true,
+          productName: result.productName, 
+          latencyMs: Date.now() - t0
+        }));
+        
+        return result;
       }
     }
   }
@@ -460,10 +527,13 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
   // Step 4: Plate confidence calculation
   ctx.plateConf = calculatePlateConfidence(ctx.tokens);
   
-  // Step 5: Confidence gating
-  const hasStrongEvidence = barcodeHit || nameHit || ctx.plateConf >= 0.85;
+  // Step 5: Safety gate (no score without evidence)
+  const hasRealEvidence = 
+    Boolean(barcodeHit) ||
+    Boolean(nameHit) ||
+    ((ctx.plateConf ?? 0) >= 0.85);
   
-  if (!hasStrongEvidence) {
+  if (!hasRealEvidence) {
     console.log(`❌ Low confidence [${ctx.reqId}]`, { 
       barcodeHit, nameHit, plateConf: ctx.plateConf, 
       evidence: 'insufficient' 
@@ -471,33 +541,39 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
     
     return {
       productName: 'Unknown product',
-      ingredients: [],
-      healthFlags: [],
       healthScore: null,
+      healthFlags: [],
       nutritionData: null,
-      summary: "We couldn't confidently identify this product",
-      recommendations: GENERAL_TIPS.slice(),
+      ingredients: [],
+      recommendations: [
+        'Try scanning the barcode on the back of the package.',
+        'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+      ],
+      summary: 'We could not confidently identify this item from the photo.',
       fallback: true
     };
   }
   
   // Step 6: Generate result with evidence
   const flags = generateHealthFlags([], ctx.hasCandy);
-  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasStrongEvidence);
+  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasRealEvidence);
+  const resolvedName = input.content || "Detected Food";
   
-  // Final logging
-  console.log(`📊 Final result [${ctx.reqId}]`, {
-    barcodeFound: !!ctx.barcodeFound,
-    offHit: ctx.offHit || false,
+  // Success logging
+  console.log(JSON.stringify({
+    reqId: ctx.reqId, 
+    phase: 'done', 
+    barcodeFound, 
+    offHit: ctx.offHit || false, 
     brand: ctx.brandTokens.join(',') || 'none',
-    plateConf: ctx.plateConf,
-    scored: healthScore !== null,
-    productName: input.content || 'Unknown',
-    latencyMs: Date.now() - ctx.now.getTime()
-  });
+    plateConf: ctx.plateConf, 
+    scored: hasRealEvidence,
+    productName: resolvedName, 
+    latencyMs: Date.now() - t0
+  }));
   
   return {
-    productName: input.content || "Detected Food",
+    productName: resolvedName,
     ingredients: [],
     healthFlags: flags,
     healthScore,
@@ -571,7 +647,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    const { type, content, imageData, inputType, data, userId } = requestBody;
+    const { type, content, imageData, inputType, data, userId, detectedBarcode } = requestBody;
     
     const processType = inputType || type;
     const processContent = data || content;
@@ -586,7 +662,7 @@ serve(async (req) => {
       imageData: imageData
     };
 
-    const healthReport = await processInput(input);
+    const healthReport = await processInput(input, detectedBarcode);
     
     return new Response(JSON.stringify(healthReport), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
