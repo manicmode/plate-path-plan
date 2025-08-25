@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -12,9 +12,19 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { toast } from 'sonner';
+import { AddWorkoutModal } from '@/components/AddWorkoutModal';
+import { SessionPickerModal } from '@/components/meditation/SessionPickerModal';
+import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
+import { HabitTemplate } from '@/components/habit-central/CarouselHabitCard';
 
 const CameraPageNew = () => {
   useScrollToTop();
+  
+  // New modal states for Exercise/Recovery/Habit
+  const [showExerciseModal, setShowExerciseModal] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showHabitModal, setShowHabitModal] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<HabitTemplate | null>(null);
   
   const {
     // State
@@ -87,6 +97,35 @@ const CameraPageNew = () => {
     resetErrorState();
   };
 
+  // Exercise log handler
+  const handleExerciseLog = () => {
+    setShowExerciseModal(true);
+    console.log('[telemetry] log.exercise.open');
+  };
+
+  // Recovery log handler  
+  const handleRecoveryLog = () => {
+    setShowRecoveryModal(true);
+    console.log('[telemetry] log.recovery.open');
+  };
+
+  // Habit log handler
+  const handleHabitLog = () => {
+    // For now, create a mock habit template
+    const mockHabit: HabitTemplate = {
+      id: 'quick-habit',
+      slug: 'quick-habit',
+      title: 'Quick Habit',
+      domain: 'nutrition',
+      description: 'Track a quick habit',
+      difficulty: 'easy',
+      category: 'nutrition'
+    };
+    setSelectedHabit(mockHabit);
+    setShowHabitModal(true);
+    console.log('[telemetry] log.habit.open');
+  };
+
   // Image selection handler
   const handleImageSelected = (imageDataUrl: string) => {
     setSelectedImage(imageDataUrl);
@@ -118,23 +157,19 @@ const CameraPageNew = () => {
           {/* Main Actions */}
           {activeTab === 'main' && (
             <div className="space-y-6">
-              {!selectedImage && (
-                <CameraCapture
-                  onImageSelected={handleImageSelected}
-                  disabled={isAnalyzing}
-                />
-              )}
-
               <CameraActions
                 onPhotoCapture={handlePhotoCapture}
                 isAnalyzing={isAnalyzing}
                 processingStep={processingStep}
-              onVoiceToggle={handleVoiceToggle}
-              isRecording={isRecording}
-              isVoiceProcessing={isVoiceProcessing}
-              disabled={!!processingStep}
-              onBarcodeCapture={handleBarcodeCapture}
+                onVoiceToggle={handleVoiceToggle}
+                isRecording={isRecording}
+                isVoiceProcessing={isVoiceProcessing}
+                disabled={!!processingStep}
+                onBarcodeCapture={handleBarcodeCapture}
                 onManualEntry={handleManualEntry}
+                onExerciseLog={handleExerciseLog}
+                onRecoveryLog={handleRecoveryLog}
+                onHabitLog={handleHabitLog}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
               />
@@ -200,6 +235,45 @@ const CameraPageNew = () => {
       <BarcodeLogModal
         open={showBarcodeLogModal}
         onOpenChange={setShowBarcodeLogModal}
+      />
+
+      {/* Exercise Log Modal */}
+      <AddWorkoutModal
+        isOpen={showExerciseModal}
+        onClose={() => setShowExerciseModal(false)}
+        onSave={(workout) => {
+          console.log('[telemetry] log.exercise.added:', { workout });
+          toast.success('Exercise logged successfully!');
+          setShowExerciseModal(false);
+        }}
+      />
+
+      {/* Recovery Log Modal */}
+      <SessionPickerModal
+        isOpen={showRecoveryModal}
+        onClose={() => setShowRecoveryModal(false)}
+        theme={null}
+        onStartSession={(session) => {
+          console.log('[telemetry] log.recovery.added:', { session });
+          toast.success('Recovery session logged!');
+          setShowRecoveryModal(false);
+        }}
+      />
+
+      {/* Habit Log Modal */}
+      <HabitAddModal
+        habit={selectedHabit}
+        open={showHabitModal}
+        onClose={() => {
+          setShowHabitModal(false);
+          setSelectedHabit(null);
+        }}
+        onConfirm={(config: HabitConfig) => {
+          console.log('[telemetry] log.habit.added:', { config });
+          toast.success('Habit reminder set up!');
+          setShowHabitModal(false);
+          setSelectedHabit(null);
+        }}
       />
 
       {showManualEdit && (
