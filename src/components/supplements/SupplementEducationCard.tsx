@@ -20,62 +20,85 @@ interface SupplementEducationCardProps {
 }
 
 export const SupplementEducationCardComponent = ({ className = '' }: SupplementEducationCardProps) => {
+  // --- ALL HOOKS UNCONDITIONAL, ALWAYS AT TOP ---
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  
+  // Core state - always initialized
+  const [tips, setTips] = useState<SupplementTip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadeState, setFadeState] = useState<'fade-in' | 'fade-out'>('fade-in');
   const [isPaused, setIsPaused] = useState(false);
-  const [isVisible, setIsVisible] = useState(true); // Safe default - don't access document at init
+  const [isVisible, setIsVisible] = useState(true);
   const [registry, setRegistry] = useState<Registry | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Safely initialize document visibility after mount
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      setIsVisible(!document.hidden);
+  // Safe localStorage functions - always defined
+  const safeGet = useCallback((key: string) => { 
+    try { 
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null; 
+    } catch { 
+      return null; 
+    } 
+  }, []);
+  
+  const safeSet = useCallback((key: string, val: string) => { 
+    try { 
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key, val); 
+    } catch {} 
+  }, []);
+  
+  const safeGetLastIndex = useCallback((userId?: string) => {
+    try {
+      return getLastIndex(userId);
+    } catch {
+      return 0;
     }
   }, []);
 
-  // Load registry and persisted index on mount
+  // Save current index to localStorage - always defined
+  const saveCurrentIndex = useCallback((index: number) => {
+    try {
+      setLastIndex(index, user?.id);
+    } catch {
+      // Fail silently
+    }
+  }, [user?.id]);
+
+  // Load registry and tips - unconditional effect, guard inside
   useEffect(() => {
-    console.info('[SuppEdu] mount');
     let alive = true;
     const loadData = async () => {
       try {
-        console.info('[SuppEdu] loading tips…');
-        const reg = await loadRegistry().catch(e => { 
-          console.error('[SuppEdu] getTips error', e); 
-          return undefined; 
-        });
-        console.info('[SuppEdu] tips result', Array.isArray(reg?.tips) ? reg.tips.length : reg);
+        const reg = await loadRegistry();
+        if (!alive) return;
         
-        if (alive) {
-          setRegistry(reg);
-          
-          // Load persisted index after we have the registry using safe localStorage
+        setRegistry(reg);
+        setTips(reg?.tips || []);
+        
+        // Load persisted index after we have tips
+        if (reg?.tips && reg.tips.length > 0) {
           const savedIndex = safeGetLastIndex(user?.id);
-          if (savedIndex >= 0 && reg && savedIndex < reg.tips.length) {
+          if (savedIndex >= 0 && savedIndex < reg.tips.length) {
             setCurrentIndex(savedIndex);
           }
         }
       } catch (error) {
         console.error('SupplementEducationCard registry error:', error);
-        if (alive) {
-          // Ensure we always have some tips - never empty
-          const fallbackRegistry = {
-            catalog: {},
-            tips: [{
-              id: 'inline-fallback-creatine',
-              title: 'Creatine Monohydrate',
-              blurb: 'Supports strength, power, and recovery.',
-              productSlug: 'creatine-monohydrate',
-              emoji: '💪',
-              ctaEnabled: true,
-            }]
-          };
-          setRegistry(fallbackRegistry);
-        }
+        if (!alive) return;
+        
+        // Ensure we always have fallback tips - never empty
+        const fallbackTips = [{
+          id: 'inline-fallback-creatine',
+          title: 'Creatine Monohydrate',
+          blurb: 'Supports strength, power, and recovery.',
+          productSlug: 'creatine-monohydrate',
+          emoji: '💪',
+          ctaEnabled: true,
+        }];
+        setTips(fallbackTips);
+        setRegistry({ catalog: {}, tips: fallbackTips });
       } finally {
         if (alive) setIsLoading(false);
       }
@@ -83,47 +106,11 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
     loadData();
     return () => {
-      console.info('[SuppEdu] unmount');
       alive = false;
     };
-  }, [user?.id]);
+  }, [user?.id, safeGetLastIndex]);
 
-  // Safe localStorage functions
-  const safeGet = (key: string) => { 
-    try { 
-      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null; 
-    } catch { 
-      return null; 
-    } 
-  };
-  
-  const safeSet = (key: string, val: string) => { 
-    try { 
-      if (typeof localStorage !== 'undefined') localStorage.setItem(key, val); 
-    } catch {} 
-  };
-  
-  const safeGetLastIndex = (userId?: string) => {
-    try {
-      return getLastIndex(userId);
-    } catch {
-      return 0;
-    }
-  };
-
-  // Get current tips array
-  const tips = registry?.tips || [];
-  
-  // Add temporary defensive logs right before render
-  console.info('[SuppEdu.render] tips?', Array.isArray(tips), tips?.length, tips?.[0]);
-
-
-  // Save current index to localStorage
-  const saveCurrentIndex = useCallback((index: number) => {
-    setLastIndex(index, user?.id);
-  }, [user?.id]);
-
-  // Handle visibility change (pause when tab is hidden)
+  // Document visibility detection - unconditional, guard inside
   useEffect(() => {
     if (typeof document === 'undefined') return;
     
@@ -131,13 +118,16 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
       setIsVisible(!document.hidden);
     };
 
+    // Set initial state
+    setIsVisible(!document.hidden);
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Auto-rotation timer
+  // Auto-rotation timer - unconditional hook, guard inside
   useEffect(() => {
-    if (tips.length <= 1 || isPaused || !isVisible || isLoading) {
+    if (isLoading || isPaused || !isVisible || tips.length <= 1) {
       return;
     }
 
@@ -156,7 +146,7 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
     return () => clearInterval(interval);
   }, [isPaused, isVisible, isLoading, tips.length, saveCurrentIndex]);
 
-  // Navigation functions
+  // Navigation functions - always defined
   const goToTip = useCallback((index: number) => {
     if (index === currentIndex || index < 0 || index >= tips.length) {
       return;
@@ -171,16 +161,18 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
   }, [currentIndex, tips.length, saveCurrentIndex]);
 
   const goToPrevious = useCallback(() => {
+    if (tips.length === 0) return;
     const prevIndex = currentIndex === 0 ? tips.length - 1 : currentIndex - 1;
     goToTip(prevIndex);
   }, [currentIndex, tips.length, goToTip]);
 
   const goToNext = useCallback(() => {
+    if (tips.length === 0) return;
     const nextIndex = (currentIndex + 1) % tips.length;
     goToTip(nextIndex);
   }, [currentIndex, tips.length, goToTip]);
 
-  // Keyboard navigation
+  // Keyboard navigation - unconditional hook, guard inside
   useEffect(() => {
     if (typeof document === 'undefined') return;
     
@@ -205,7 +197,7 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [goToPrevious, goToNext]);
 
-  // Handle supplement purchase
+  // Handle supplement purchase - always defined
   const handleBuyNow = useCallback((tip: SupplementTip) => {
     // Analytics
     console.log('supplement_buy_clicked', { 
@@ -235,39 +227,40 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
     });
   }, [navigate]);
 
-  // Placeholder for no tips or loading - This should never show with bulletproof registry
-  if (!tips || tips.length === 0) {
-    return (
-      <div className={`rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 ${className}`}>
-        <div className="text-base font-semibold text-gray-900 dark:text-white">Supplement Education</div>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Loading supplement insights...
-        </p>
-      </div>
-    );
-  }
+  // Track tip view for analytics - unconditional hook, guard inside
+  useEffect(() => {
+    if (tips.length > 0 && !isLoading) {
+      const currentTip = tips[currentIndex];
+      if (currentTip) {
+        console.log('supplement_tip_viewed', { 
+          id: currentTip.id, 
+          slug: currentTip.productSlug,
+          position: currentIndex 
+        });
+      }
+    }
+  }, [tips, currentIndex, isLoading]);
 
+  // --- RENDER: decide what to show AFTER all hooks ---
+  const hasTips = !isLoading && tips.length > 0;
+  
   // Safe current tip with clamped index
-  const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(0, tips.length - 1));
-  const currentTip: SupplementTip & { ctaEnabled?: boolean } = tips[safeIndex] ?? {
+  const safeIndex = hasTips ? Math.min(Math.max(currentIndex, 0), Math.max(0, tips.length - 1)) : 0;
+  const currentTip: SupplementTip & { ctaEnabled?: boolean } = hasTips ? tips[safeIndex] ?? {
     id: 'fallback-creatine',
     title: 'Creatine Monohydrate',
     blurb: 'Supports strength, power, and recovery.',
     productSlug: 'creatine-monohydrate',
     emoji: '💪',
     ctaEnabled: true,
+  } : {
+    id: 'loading',
+    title: 'Loading...',
+    blurb: 'Loading supplement insights...',
+    productSlug: 'loading',
+    emoji: '⏳',
+    ctaEnabled: false,
   };
-  
-  // Track tip view for analytics
-  useEffect(() => {
-    if (currentTip && !isLoading) {
-      console.log('supplement_tip_viewed', { 
-        id: currentTip.id, 
-        slug: currentTip.productSlug,
-        position: currentIndex 
-      });
-    }
-  }, [currentTip, currentIndex, isLoading]);
 
   return (
     <Card 
@@ -295,50 +288,54 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
             </div>
           </div>
 
-          {/* Navigation arrows for keyboard users */}
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToPrevious}
-              className="h-8 w-8 p-0 opacity-60 hover:opacity-100"
-              aria-label="Previous supplement tip"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToNext}
-              className="h-8 w-8 p-0 opacity-60 hover:opacity-100"
-              aria-label="Next supplement tip"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Navigation arrows - only show when we have multiple tips */}
+          {hasTips && tips.length > 1 && (
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPrevious}
+                className="h-8 w-8 p-0 opacity-60 hover:opacity-100"
+                aria-label="Previous supplement tip"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNext}
+                className="h-8 w-8 p-0 opacity-60 hover:opacity-100"
+                aria-label="Next supplement tip"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Dot indicators */}
-        <div className="flex justify-center space-x-2 mb-6" role="tablist">
-          {tips.map((_, index) => (
-            <button
-              key={index}
-              role="tab"
-              aria-selected={index === currentIndex}
-              aria-controls={`tip-content-${index}`}
-              className={`w-3 h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                index === currentIndex 
-                  ? 'bg-blue-500 scale-125' 
-                  : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
-              }`}
-              onClick={() => {
-                goToTip(index);
-                console.log('supplement_tip_dot_clicked', { id: currentTip?.id, toIndex: index });
-              }}
-              tabIndex={0}
-            />
-          ))}
-        </div>
+        {/* Dot indicators - only show when we have multiple tips */}
+        {hasTips && tips.length > 1 && (
+          <div className="flex justify-center space-x-2 mb-6" role="tablist">
+            {tips.map((_, index) => (
+              <button
+                key={index}
+                role="tab"
+                aria-selected={index === currentIndex}
+                aria-controls={`tip-content-${index}`}
+                className={`w-3 h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                  index === currentIndex 
+                    ? 'bg-blue-500 scale-125' 
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                }`}
+                onClick={() => {
+                  goToTip(index);
+                  console.log('supplement_tip_dot_clicked', { id: currentTip?.id, toIndex: index });
+                }}
+                tabIndex={0}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Content area */}
         <div className={`min-h-[120px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
@@ -375,17 +372,17 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
           </div>
         </div>
 
-        {/* CTA Button */}
+        {/* CTA Button - always present */}
         <div className="space-y-3">
-            <Button
+          <Button
             onClick={() => handleBuyNow(currentTip)}
-            disabled={!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url}
+            disabled={!hasTips || (!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url)}
             className={`w-full gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold`}
             aria-label={`${currentTip.sponsor?.ctaText || 'Buy'} ${currentTip.title} supplement`}
-            title={!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url ? "Product coming soon" : undefined}
+            title={!hasTips ? "Loading..." : (!(currentTip as any).ctaEnabled && !currentTip.sponsor?.url ? "Product coming soon" : undefined)}
           >
             <ShoppingCart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
-            {currentTip.sponsor?.ctaText || 'Buy this supplement'}
+            {hasTips ? (currentTip.sponsor?.ctaText || 'Buy this supplement') : 'Loading...'}
           </Button>
           
           {/* Disclaimer */}

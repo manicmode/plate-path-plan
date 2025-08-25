@@ -39,9 +39,3 @@ export const SHOW_SUPP_EDU: boolean =
 // Example partner flag (kept if you use it)
 export const PARTNER_ACME: boolean =
   (getEnv('NEXT_PUBLIC_PARTNER_ACME') ?? getEnv('VITE_PARTNER_ACME') ?? '0') === '1';
-
-console.info('[SuppEdu.flags]', {
-  SHOW_SUPP_EDU,
-  PARTNER_ACME,
-  ENV_KEYS: Object.keys((import.meta as any)?.env || {})
-});

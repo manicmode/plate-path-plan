@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Heart, Zap, Brain, Dumbbell, Shield, Utensils, Flame, Moon, User, Smile, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,22 +13,6 @@ import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
 import { SafeBoundary } from '@/components/common/SafeBoundary';
-
-// DEBUG: DiagnosticBoundary – TEMPORARY
-function DiagnosticBoundary({ children }: { children: React.ReactNode }) {
-  const [err, setErr] = React.useState<Error | null>(null);
-  return err ? (
-    <div style={{ padding: 8, border: '1px solid #f66', borderRadius: 8, background: '#2b1d1d' }}>
-      <strong style={{ color: '#f88' }}>SupplementEducationCard crashed</strong>
-      <pre style={{ whiteSpace: 'pre-wrap', color: '#fdd', fontSize: 12 }}>{String(err.stack || err.message || err)}</pre>
-    </div>
-  ) : (
-    <ErrorCatcher onError={setErr}>{children}</ErrorCatcher>
-  );
-}
-function ErrorCatcher({ children, onError }: { children: React.ReactNode; onError: (e: Error)=>void }) {
-  try { return <>{children}</>; } catch (e) { onError(e as Error); return null; }
-}
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -1692,11 +1676,8 @@ const SupplementHub = () => {
         </Card>
 
         {/* Education carousel */}
-        {/* DEBUG: DiagnosticBoundary – TEMPORARY */}
         <div className="mt-6 sm:mt-8" data-testid="supp-edu-card">
-          <DiagnosticBoundary>
-            <SupplementEducationCard />
-          </DiagnosticBoundary>
+          <SupplementEducationCard />
         </div>
 
         {/* My Supplements Section */}
