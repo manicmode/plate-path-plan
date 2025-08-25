@@ -7,6 +7,9 @@ import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
+import { decodeUPCFromImageBlobWithDiagnostics } from '@/lib/barcode/enhancedDecoder';
+import { copyDebugToClipboard } from '@/lib/barcode/diagnostics';
+import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -33,6 +36,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [debugOverlay, setDebugOverlay] = useState(process.env.NEXT_PUBLIC_SCAN_DEBUG === '1');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -74,7 +78,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       console.log("[CAMERA] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
       });
 
       console.log("[CAMERA] Stream received:", mediaStream);
@@ -186,22 +194,35 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           img.src = imageData;
         });
         
-        // Use enhanced decoder
-        const { decodeUPCFromImageBlob } = await import('@/lib/barcode/decoder');
+        // Use enhanced decoder with diagnostics
+        const reqId = `hs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const barcodeResult = await Promise.race([
-          decodeUPCFromImageBlob(barcodeBlob),
+          decodeUPCFromImageBlobWithDiagnostics(
+            barcodeBlob, 
+            reqId,
+            { video: { facingMode: 'environment' } },
+            { w: video.videoWidth, h: video.videoHeight },
+            { w: img.width, h: img.height }
+          ),
           new Promise<{ code: null; attempts: 0; ms: number }>((resolve) => 
             setTimeout(() => resolve({ code: null, attempts: 0, ms: 1200 }), 1200)
           )
         ]);
         
         if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-          console.log('[HS] barcode', { code: barcodeResult.code, ms: barcodeResult.ms, attempts: barcodeResult.attempts });
+          console.log('[HS] barcode', { 
+            code: barcodeResult.code, 
+            normalizedAs: 'normalizedAs' in barcodeResult ? barcodeResult.normalizedAs : undefined,
+            checkDigitOk: 'checkDigitOk' in barcodeResult ? barcodeResult.checkDigitOk : undefined,
+            ms: barcodeResult.ms, 
+            attempts: barcodeResult.attempts 
+          });
         }
         
         if (barcodeResult.code) {
-          // Short-circuit to OFF lookup
-          onCapture(imageData + `&barcode=${barcodeResult.code}`);
+          // Short-circuit to OFF lookup with normalized code
+          const finalCode = ('normalizedAs' in barcodeResult && barcodeResult.normalizedAs) || barcodeResult.code;
+          onCapture(imageData + `&barcode=${finalCode}`);
           return;
         }
       } catch (barcodeError) {
@@ -401,6 +422,37 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
+
+          {/* Debug Overlay - Only visible when NEXT_PUBLIC_SCAN_DEBUG==='1' */}
+          {process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' && (
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const success = await copyDebugToClipboard();
+                  if (success) {
+                    console.log('[HS_DEBUG] Scan report copied to clipboard');
+                  }
+                }}
+                className="bg-black/80 border-yellow-400 text-yellow-300 text-xs px-2 py-1"
+              >
+                Copy Debug
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  console.log('[HS_DEBUG] Running test harness...');
+                  await runBarcodeTests();
+                }}
+                className="bg-black/80 border-blue-400 text-blue-300 text-xs px-2 py-1"
+              >
+                Test Harness
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Footer Controls */}

@@ -1,0 +1,109 @@
+import { decodeUPCFromImageBlobWithDiagnostics } from './enhancedDecoder';
+import { ScanReport } from './diagnostics';
+
+/**
+ * Test harness for barcode detection using static images
+ * Only available when NEXT_PUBLIC_SCAN_DEBUG === '1'
+ */
+export async function decodeTestImage(imagePath: string): Promise<ScanReport | null> {
+  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1') {
+    console.warn('[HS_TEST] Test harness only available in debug mode');
+    return null;
+  }
+  
+  try {
+    console.log('[HS_TEST] Loading test image:', imagePath);
+    
+    // Fetch the test image
+    const response = await fetch(imagePath);
+    if (!response.ok) {
+      throw new Error(`Failed to load test image: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    console.log('[HS_TEST] Test image loaded:', blob.size, 'bytes');
+    
+    // Create test metadata
+    const img = new Image();
+    const imageUrl = URL.createObjectURL(blob);
+    
+    const imageDimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      img.onload = () => {
+        URL.revokeObjectURL(imageUrl);
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(imageUrl);
+        reject(new Error('Failed to load test image'));
+      };
+      img.src = imageUrl;
+    });
+    
+    // Run decode with diagnostics
+    const reqId = `test-${Date.now()}`;
+    const result = await decodeUPCFromImageBlobWithDiagnostics(
+      blob,
+      reqId,
+      { test: true, imagePath },
+      { w: imageDimensions.width, h: imageDimensions.height },
+      { w: imageDimensions.width, h: imageDimensions.height }
+    );
+    
+    console.log('[HS_TEST] Test decode complete:', {
+      success: !!result.code,
+      code: result.code,
+      format: result.format,
+      attempts: result.attempts,
+      ms: result.ms
+    });
+    
+    return result.report || null;
+    
+  } catch (error) {
+    console.error('[HS_TEST] Test harness failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Run predefined test cases
+ */
+export async function runBarcodeTests(): Promise<void> {
+  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1') {
+    return;
+  }
+  
+  console.log('[HS_TEST] Running barcode test suite...');
+  
+  const testCases = [
+    { name: 'Skittles UPC', path: '/test/skittles_upc.jpg', expectedCode: '022000287311' }
+  ];
+  
+  for (const testCase of testCases) {
+    console.log(`[HS_TEST] Testing: ${testCase.name}`);
+    
+    try {
+      const report = await decodeTestImage(testCase.path);
+      
+      if (report) {
+        const success = report.final.success;
+        const matchesExpected = report.final.code === testCase.expectedCode || 
+                               report.final.normalizedAs === testCase.expectedCode;
+        
+        console.log(`[HS_TEST] ${testCase.name}:`, {
+          success,
+          matchesExpected,
+          code: report.final.code,
+          normalizedAs: report.final.normalizedAs,
+          attempts: report.attempts.length
+        });
+      } else {
+        console.log(`[HS_TEST] ${testCase.name}: No report generated`);
+      }
+    } catch (error) {
+      console.error(`[HS_TEST] ${testCase.name} failed:`, error);
+    }
+  }
+  
+  console.log('[HS_TEST] Test suite complete');
+}
