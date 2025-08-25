@@ -114,7 +114,7 @@ export const AddSupplementModal = ({ isOpen, onClose }: Props) => {
             </div>
 
             {/* Search Results */}
-            <ScrollArea className={`${isMobile ? 'h-40' : 'h-48'} rounded-2xl border bg-muted/20`}>
+            <ScrollArea className={`${isMobile ? 'h-64' : 'h-80'} rounded-2xl border bg-muted/20`}>
               <div className="p-3 space-y-2">
                 {searchResults.map((product) => (
                   <div
