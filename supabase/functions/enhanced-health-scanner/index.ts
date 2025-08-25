@@ -349,12 +349,41 @@ async function classifyPlateFood(imageBase64: string): Promise<{ plateItems: Pla
 }
 
 /**
- * Enhanced product matching via OpenFoodFacts
+ * Enhanced product matching with evidence-based gating
  */
-async function matchProduct(barcode?: string, brand?: string, productName?: string): Promise<ProductMatch[]> {
+async function matchProduct(barcode?: string, brand?: string, productName?: string, textInfo?: any): Promise<ProductMatch[]> {
   const matches: ProductMatch[] = [];
   
   try {
+    // Load brand aliases for normalization
+    const brandAliasData = await import('./brandAliases.json');
+    const brandAliases = brandAliasData.default?.brand_aliases || {};
+    
+    // Extract enhanced text info if provided
+    const brandTokens = textInfo?.brandTokens || [];
+    const hasCandy = textInfo?.hasCandy || false;
+    
+    // 2) Evidence scoring for product selection gating
+    let evidence = 0;
+    if (barcode) evidence += 1.0;
+    if (brand && brandTokens.some(token => 
+        brand.toLowerCase().includes(token) || 
+        brandAliases[token] === brand.toLowerCase()
+      )) evidence += 0.6;
+    if (brandTokens.length > 0) evidence += 0.6;
+    if (hasCandy) evidence += 0.2;
+    
+    const REQUIRE_STRONG_BRAND = 0.9;
+    const canChooseSpecific = evidence >= REQUIRE_STRONG_BRAND;
+    
+    console.log('🎯 Evidence scoring:', { 
+      barcode: !!barcode, 
+      brandTokens, 
+      hasCandy, 
+      evidence, 
+      canChooseSpecific 
+    });
+    
     // Try barcode match first (highest confidence)
     if (barcode) {
       console.log('🔍 Attempting barcode product match:', barcode);
@@ -369,34 +398,70 @@ async function matchProduct(barcode?: string, brand?: string, productName?: stri
       }
     }
     
-    // Try fuzzy matching by brand + name
-    if ((brand || productName) && matches.length === 0) {
-      console.log('🔍 Attempting fuzzy product match:', { brand, productName });
-      const searchQuery = [brand, productName].filter(Boolean).join(' ');
-      const searchResults = await searchOpenFoodFacts(searchQuery);
+    // Only attempt fuzzy/logo matching if we have strong evidence
+    if (canChooseSpecific && matches.length === 0) {
+      // Try fuzzy matching with brand tokens only
+      if (brandTokens.length > 0) {
+        const searchQuery = brandTokens.join(' ');
+        console.log('🔍 Attempting brand token product match:', searchQuery);
+        
+        // Add category filter if candy detected
+        const filters: any = {};
+        if (hasCandy) {
+          filters.categories = 'candy,gummies,sweets';
+        }
+        
+        const searchResults = await searchOpenFoodFacts(searchQuery, filters);
+        
+        if (searchResults?.products?.length > 0) {
+          // Filter out beverage results if hasCandy is true
+          const filteredProducts = hasCandy ? 
+            searchResults.products.filter((product: any) => {
+              const categories = (product.categories || '').toLowerCase();
+              return !categories.includes('beverage') && 
+                     !categories.includes('drink') && 
+                     !categories.includes('soda');
+            }) : searchResults.products;
+            
+          if (filteredProducts.length > 0) {
+            matches.push({
+              source: 'fuzzy',
+              confidence: 0.7,
+              product: filteredProducts[0]
+            });
+          }
+        }
+      }
       
-      if (searchResults?.products?.length > 0) {
-        // Take the best match
-        matches.push({
-          source: 'fuzzy',
-          confidence: 0.7,
-          product: searchResults.products[0]
-        });
+      // Logo-based matching with brand validation
+      if (brand && brandTokens.includes(brand.toLowerCase()) && matches.length === 0) {
+        console.log('🔍 Attempting logo-based product match:', brand);
+        const logoResults = await searchOpenFoodFacts(brand, { brands: brand });
+        
+        if (logoResults?.products?.length > 0) {
+          matches.push({
+            source: 'logo',
+            confidence: 0.6,
+            product: logoResults.products[0]
+          });
+        }
       }
     }
     
-    // Logo-based matching
-    if (brand && matches.length === 0) {
-      console.log('🔍 Attempting logo-based product match:', brand);
-      const logoResults = await searchOpenFoodFacts(brand, { brands: brand });
-      
-      if (logoResults?.products?.length > 0) {
-        matches.push({
-          source: 'logo',
-          confidence: 0.6,
-          product: logoResults.products[0]
-        });
-      }
+    // If hasCandy but no specific product match, create generic candy result
+    if (hasCandy && matches.length === 0) {
+      console.log('📝 Creating generic candy result');
+      matches.push({
+        source: 'fuzzy',
+        confidence: 0.5,
+        product: {
+          product_name: productName ? `${productName} (candy)` : 'Candy/Gummies',
+          categories: 'candy,sweets',
+          ingredients_text: '', // Will be filled by heuristics
+          nutriments: {}, // Will be filled by heuristics
+          _isGenericCandy: true
+        }
+      });
     }
     
     console.log('🎯 Product matching results:', matches.length, 'matches found');
@@ -448,6 +513,39 @@ function analyzeHealthFlags(product: ProductResult | null, plateItems: PlateItem
 function analyzeProductFlags(product: ProductResult): HealthFlag[] {
   const flags: HealthFlag[] = [];
   const ingredients = product.ingredients.join(' ').toLowerCase();
+  const isCandy = product.category.toLowerCase().includes('candy') || 
+                  product.category.toLowerCase().includes('gummies') ||
+                  product.category.toLowerCase().includes('sweets') ||
+                  (product as any)._isGenericCandy;
+  
+  // 3) Candy-specific heuristics - always flag high sugar for candy
+  if (isCandy) {
+    flags.push({
+      type: 'warning',
+      icon: '🍭',
+      title: 'Added Sugars High',
+      description: 'High in added sugars; limit portion size',
+      category: 'nutrition',
+      priority: 8
+    });
+    
+    // Check for artificial colors common in candy
+    const candyColors = ['red 40', 'yellow 5', 'yellow 6', 'blue 1', 'red 3', 'blue 2'];
+    const foundColors = candyColors.filter(color => 
+      ingredients.includes(color) || ingredients.includes(color.replace(' ', '#'))
+    );
+    
+    if (foundColors.length > 0 || ingredients.includes('artificial') || ingredients.includes('color')) {
+      flags.push({
+        type: 'warning',
+        icon: '🎨',
+        title: 'Artificial Colors',
+        description: `Contains artificial colors (e.g., ${foundColors.join(', ') || 'Red 40, Yellow 5/6, Blue 1'})`,
+        category: 'additives',
+        priority: 6
+      });
+    }
+  }
   
   // Check GMO risk
   const gmoIngredients = HEALTH_RULES.gmo_risk.filter(risk => 
@@ -885,21 +983,25 @@ async function processScanRequest(imageBase64: string, mode: string = 'scan'): P
     plateItems: plate.plateItems.length
   });
   
-  // Product matching
+  // Enhanced product matching with text analysis
   let product: ProductResult | null = null;
   const productMatches: ProductMatch[] = [];
   
   if (barcode.barcode || logos.logos.length > 0 || text.text) {
+    // Extract enhanced text info for evidence-based matching
+    const textInfo = extractProductInfoFromText(text.text);
+    
     const matches = await matchProduct(
       barcode.barcode, 
       logos.logos[0], 
-      extractProductNameFromText(text.text)
+      textInfo.productName,
+      textInfo
     );
     productMatches.push(...matches);
     
     if (matches.length > 0) {
       const bestMatch = matches[0];
-      product = transformToProductResult(bestMatch.product, barcode.barcode);
+      product = transformToProductResult(bestMatch.product, barcode.barcode, textInfo);
     }
   }
   
@@ -938,6 +1040,25 @@ async function processScanRequest(imageBase64: string, mode: string = 'scan'): P
     }
   };
   
+  // 6) Enhanced logging for debugging misclassifications
+  const textInfo = text.text ? extractProductInfoFromText(text.text) : { brandTokens: [], hasCandy: false, cleanedText: '' };
+  const blockedCategories = textInfo.hasCandy ? ['beverage', 'drink', 'soda'] : [];
+  const selectedProduct = product ? {
+    source: productMatches[0]?.source || 'unknown',
+    brand: product.brand || 'none',
+    name: product.name,
+    score: 0 // Will be calculated in legacy response
+  } : null;
+  
+  console.log('🎯 Classification debug info:', {
+    reqId: Date.now().toString(36),
+    ocrPreview: textInfo.cleanedText.slice(0, 120),
+    brandTokens: textInfo.brandTokens,
+    hasCandy: textInfo.hasCandy,
+    selected: selectedProduct,
+    blockedCategories
+  });
+  
   console.log('✅ Scan processing complete:', {
     processingTime: result.metadata.processingTime,
     confidence: result.confidence,
@@ -949,13 +1070,64 @@ async function processScanRequest(imageBase64: string, mode: string = 'scan'): P
   return result;
 }
 
-function extractProductNameFromText(text: string): string | undefined {
-  if (!text) return undefined;
+// Enhanced OCR cleanup and brand/category extraction
+function extractProductInfoFromText(text: string): {
+  productName?: string;
+  brandTokens: string[];
+  hasCandy: boolean;
+  cleanedText: string;
+} {
+  if (!text) return { brandTokens: [], hasCandy: false, cleanedText: '' };
   
+  // 1) OCR cleanup - strip noisy headers and generic words
+  const cleaned = text
+    .replace(/nutrition facts?[:\s]*/gi, '')
+    .replace(/ingredients?[:\s]*/gi, '')
+    .replace(/\b(net\s*wt|serving|calories?|fat|carb|protein)\b.*$/gi, '')
+    .replace(/[•·]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .toLowerCase()
+    .trim();
+
+  // 2) Tokenize and filter stop words
+  const STOP_WORDS = new Set([
+    'original', 'classic', 'natural', 'organic', 'zero', 'diet', 
+    'brand', 'new', 'soft', 'candy', 'gummies', 'the', 'and', 'or'
+  ]);
+  
+  const tokens = Array.from(new Set(
+    cleaned.split(/[^a-z0-9]+/g)
+      .filter(token => token.length > 2 && !STOP_WORDS.has(token))
+  ));
+
+  // 3) Category detection
+  const CATEGORY_HINTS = new Set(['gummy', 'gummies', 'candy', 'soft', 'chewy', 'sweet']);
+  const hasCandy = tokens.some(token => CATEGORY_HINTS.has(token)) || 
+                   text.toLowerCase().includes('gummies') || 
+                   text.toLowerCase().includes('candy');
+
+  // 4) Brand detection with lexicon
+  const BRAND_LEXICON = new Set([
+    'skittles', 'mars', 'wrigley', 'haribo', 'trolli', 'starburst',
+    'coca', 'coke', 'coca-cola', 'pepsi', 'sprite', 'fanta',
+    'kirkland', 'trader', 'joes', 'whole', 'foods',
+    'kelloggs', 'general', 'mills', 'post', 'quaker'
+  ]);
+  
+  const brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+
+  // 5) Extract product name more carefully 
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   
-  // Look for product-like lines
   const productLine = lines.find(line => {
+    const cleanLine = line.toLowerCase();
+    // Skip if it's a nutritional info line or generic word
+    if (cleanLine.includes('nutrition') || cleanLine.includes('ingredients') || 
+        cleanLine.includes('calories') || cleanLine.includes('serving') ||
+        STOP_WORDS.has(cleanLine)) {
+      return false;
+    }
+    
     return line.length > 3 && line.length < 50 && 
            /^[A-Z]/.test(line) && 
            !/^\d/.test(line) &&
@@ -963,15 +1135,29 @@ function extractProductNameFromText(text: string): string | undefined {
            !line.includes('®');
   });
   
-  return productLine;
+  return {
+    productName: productLine,
+    brandTokens,
+    hasCandy,
+    cleanedText: cleaned
+  };
 }
 
-function transformToProductResult(offProduct: any, barcode?: string): ProductResult {
+// Legacy wrapper for backward compatibility
+function extractProductNameFromText(text: string): string | undefined {
+  const info = extractProductInfoFromText(text);
+  return info.productName;
+}
+
+function transformToProductResult(offProduct: any, barcode?: string, textInfo?: any): ProductResult {
+  const isGenericCandy = offProduct._isGenericCandy;
+  const hasCandy = textInfo?.hasCandy || false;
+  
   return {
-    name: offProduct.product_name || 'Unknown Product',
+    name: offProduct.product_name || (hasCandy ? 'Gummies/Candy' : 'Unknown Product'),
     brand: offProduct.brands || undefined,
     barcode,
-    category: offProduct.categories || 'unknown',
+    category: offProduct.categories || (hasCandy ? 'candy,sweets' : 'unknown'),
     ingredients: offProduct.ingredients_text ? 
       offProduct.ingredients_text.split(',').map((ing: string) => ing.trim()) : [],
     nutrition: {
@@ -985,8 +1171,9 @@ function transformToProductResult(offProduct: any, barcode?: string): ProductRes
       saturated_fat: offProduct.nutriments?.saturated_fat_100g
     },
     allergens: offProduct.allergens_tags || [],
-    flags: []
-  };
+    flags: [],
+    ...(isGenericCandy && { _isGenericCandy: true })
+  } as ProductResult;
 }
 
 /**
@@ -1018,11 +1205,23 @@ function toLegacyBackendResponse(scan: ScanResult): BackendResponse {
   // Convert insights to recommendations (what UI shows as suggestions)
   const recommendations = scan.insights.map(insight => insight.description);
 
-  // Calculate health score (0-10 scale matching UI expectations)
-  const baseScore = 8; // Start optimistic
+  // 3) Enhanced health score calculation with candy penalty
+  const isCandy = scan.product?.category?.toLowerCase().includes('candy') || 
+                  scan.product?.category?.toLowerCase().includes('gummies') ||
+                  scan.product?.category?.toLowerCase().includes('sweets') ||
+                  (scan.product as any)?._isGenericCandy;
+  
+  const baseScore = isCandy ? 4.0 : 8.0; // Lower baseline for candy
+  const sugarPenalty = isCandy ? 2.0 : 0; // Heuristic penalty for candy
   const dangerPenalty = (scan.product?.flags || []).filter(f => f.type === 'danger').length * 3;
   const warningPenalty = (scan.product?.flags || []).filter(f => f.type === 'warning').length * 1.5;
-  const healthScore = Math.max(0, Math.min(10, baseScore - dangerPenalty - warningPenalty));
+  const additivePenalty = (scan.product?.flags || []).filter(f => 
+    f.title.toLowerCase().includes('color') || 
+    f.title.toLowerCase().includes('dye') ||
+    f.title.toLowerCase().includes('artificial')
+  ).length * 1.0;
+  
+  const healthScore = Math.max(0, Math.min(10, baseScore - sugarPenalty - dangerPenalty - warningPenalty - additivePenalty));
 
   // Set general summary for plate items
   const generalSummary = scan.plateItems && scan.plateItems.length > 0 ? 

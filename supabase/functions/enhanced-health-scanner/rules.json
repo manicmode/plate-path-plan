@@ -59,6 +59,20 @@
       "description": "Prioritize whole, minimally processed foods when possible",
       "icon": "🌾",
       "priority": 6
+    },
+    {
+      "type": "warning",
+      "title": "Candy/Sweets Guidance",
+      "description": "Treat as an occasional snack; prefer smaller portions",
+      "icon": "🍭",
+      "priority": 7
+    },
+    {
+      "type": "neutral",
+      "title": "Sugar Balance",
+      "description": "Pair sweets with a protein/fiber snack to blunt spikes",
+      "icon": "⚖️",
+      "priority": 6
     }
   ],
   "plate_food_tips": {

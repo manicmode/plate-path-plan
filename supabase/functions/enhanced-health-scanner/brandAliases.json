@@ -39,7 +39,12 @@
     "lucky charms": "general mills lucky charms",
     "frosted flakes": "kellogg's frosted flakes",
     "fruit loops": "kellogg's froot loops",
-    "froot loops": "kellogg's froot loops"
+    "froot loops": "kellogg's froot loops",
+    "skittles": "skittles",
+    "starburst": "starburst",
+    "haribo": "haribo",
+    "mars": "mars",
+    "wrigley": "wrigley"
   },
   "product_normalizations": {
     "diet coke": "coca-cola diet",
