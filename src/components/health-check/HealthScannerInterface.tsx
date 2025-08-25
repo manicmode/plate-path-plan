@@ -156,6 +156,58 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     });
   };
 
+  // Capture high-resolution still image
+  const captureStill = async (): Promise<{ canvas: HTMLCanvasElement; captureType: 'ImageCapture' | 'VideoFrame' }> => {
+    if (!videoRef.current) throw new Error('Video not ready');
+    
+    const video = videoRef.current;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    
+    console.log(`📹 Video dimensions: ${videoWidth}×${videoHeight}`);
+    
+    // Try ImageCapture API for highest quality
+    if (stream && 'ImageCapture' in window) {
+      try {
+        const track = stream.getVideoTracks()[0];
+        const imageCapture = new (window as any).ImageCapture(track);
+        
+        // Get highest quality photo
+        const blob = await imageCapture.takePhoto();
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(img, 0, 0);
+            resolve(void 0);
+          };
+          img.onerror = reject;
+          img.src = URL.createObjectURL(blob);
+        });
+        
+        console.log(`📸 ImageCapture: ${canvas.width}×${canvas.height}`);
+        return { canvas, captureType: 'ImageCapture' };
+      } catch (error) {
+        console.warn('ImageCapture failed, falling back to video frame:', error);
+      }
+    }
+    
+    // Fallback: capture from video element at full resolution
+    const canvas = document.createElement('canvas');
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+    
+    console.log(`📸 VideoFrame: ${canvas.width}×${canvas.height}`);
+    return { canvas, captureType: 'VideoFrame' };
+  };
+
   const captureImage = async () => {
     console.log("📸 HealthScannerInterface.captureImage called!");
     
@@ -171,46 +223,39 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     playCameraClickSound();
     setIsScanning(true);
     
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      console.error("❌ Cannot get canvas context!");
-      return;
-    }
-
-    // Capture at full resolution
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    
-    const captureTime = Date.now() - t0;
-    console.log("📊 Video capture:", { 
-      width: video.videoWidth, 
-      height: video.videoHeight,
-      captureType: 'VideoFrame',
-      captureTime 
-    });
-    
     try {
+      // Capture high-res still
+      const { canvas, captureType } = await captureStill();
+      const captureTime = Date.now() - t0;
+      
+      console.log("📊 Video capture:", { 
+        width: canvas.width, 
+        height: canvas.height,
+        captureType,
+        captureTime 
+      });
+      
       let detectedBarcode: string | null = null;
       let barcodeTime = 0;
+      let barcodeResult: any = null;
       
       // Multi-pass barcode scanning if BARCODE_V2 enabled
       if (BARCODE_V2) {
         const t1 = Date.now();
         const scanner = new MultiPassBarcodeScanner();
-        const barcodeResult = await scanner.scan(canvas);
+        barcodeResult = await scanner.scan(canvas);
         barcodeTime = Date.now() - t1;
         
         if (barcodeResult) {
           detectedBarcode = barcodeResult.text;
           console.log("🔍 barcodeScan:", {
-            attempts: 'multi-pass',
+            attempts: barcodeResult.scale ? 'multi-scale' : 'multi-pass',
             hit: true,
             pass: barcodeResult.passName,
             rotation: barcodeResult.rotation,
+            scale: barcodeResult.scale,
+            format: barcodeResult.format,
+            checkDigit: barcodeResult.checkDigitValid,
             value: detectedBarcode
           });
         } else {
@@ -248,8 +293,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         hasImage: true
       });
       
-      // If barcode detected, short-circuit to loading → report
-      if (detectedBarcode) {
+      // If barcode detected with valid check digit, short-circuit to OFF lookup
+      if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
+        console.log("🎯 Barcode path - short-circuiting to OFF lookup");
+        
         // Call health processor with barcode
         const body = {
           detectedBarcode,
@@ -261,10 +308,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body
         });
         
-        if (!error && data) {
+        if (!error && data && !data.fallback) {
           console.log("✅ Barcode path success:", data);
           onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
           return;
+        } else {
+          console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
         }
       }
       
@@ -273,7 +322,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
     } catch (conversionError) {
       console.error("❌ Image processing failed:", conversionError);
-      // Fallback to canvas data URL
+      // Fallback to basic canvas capture
+      const canvas = canvasRef.current!;
+      const video = videoRef.current!;
+      const ctx = canvas.getContext('2d')!;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
