@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone } from 'lucide-react';
-import { useNutrition } from '@/contexts/NutritionContext';
+import { useMySupplements } from '@/hooks/useMySupplements';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
@@ -19,7 +19,7 @@ const Supplements = () => {
   const [dosage, setDosage] = useState('');
   const [showManualEntry, setShowManualEntry] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addSupplement } = useNutrition();
+  const { addSupplement } = useMySupplements();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { playFoodLogConfirm } = useSound();
@@ -59,9 +59,9 @@ const Supplements = () => {
   const handleQuickAdd = (supplement: typeof quickSupplements[0]) => {
     addSupplement({
       name: supplement.name,
-      dosage: supplement.dosage,
+      dosage: `${supplement.dosage}`,
       unit: supplement.unit,
-      notifications: [],
+      source: 'manual',
     });
     
     // Play success sound
@@ -93,10 +93,9 @@ const Supplements = () => {
 
     addSupplement({
       name: supplementName,
-      dosage: dosageNumber,
+      dosage: `${dosageNumber}`,
       unit: dosageUnit,
-      notifications: [],
-      image: selectedImage || undefined,
+      source: 'manual',
     });
 
     // Play success sound

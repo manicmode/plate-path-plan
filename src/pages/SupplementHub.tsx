@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
-import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
@@ -15,8 +14,10 @@ import { SupplementEducationCard } from '@/components/supplements/SupplementEduc
 import { SafeBoundary } from '@/components/common/SafeBoundary';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
+import { AddSupplementModal } from '@/components/supplements/AddSupplementModal';
+import { useMySupplements } from '@/hooks/useMySupplements';
 import { supabase } from '@/integrations/supabase/client';
-import { loadRegistry, getProductBySlug, allProducts, type SupplementProduct } from '@/lib/supplements/registry';
+import { loadRegistry, getProductBySlug, getAllProducts, type SupplementProduct } from '@/lib/supplements/registry';
 
 interface Supplement {
   id: string;
@@ -35,14 +36,12 @@ const SupplementHub = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
-  const { currentDay, addSupplement } = useNutrition();
+  const { supplements: mySupplements, removeSupplement, addSupplement: addMySupp } = useMySupplements();
   const { toast } = useToast();
   const { playFoodLogConfirm } = useSound();
   
   // Use the scroll-to-top hook
   useScrollToTop();
-  
-  const userSupplements = currentDay.supplements;
   
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
@@ -52,6 +51,7 @@ const SupplementHub = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSupplementList, setShowSupplementList] = useState(false);
   const [showSupplementDetail, setShowSupplementDetail] = useState(false);
+  const [showAddSupplementModal, setShowAddSupplementModal] = useState(false);
 
   const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
   
@@ -67,7 +67,7 @@ const SupplementHub = () => {
     const loadProducts = async () => {
       try {
         await loadRegistry(); // Ensure registry is loaded
-        setRegistryProducts([...allProducts]);
+        setRegistryProducts([...getAllProducts()]);
       } catch (error) {
         console.error('Failed to load registry products:', error);
       }
@@ -1410,12 +1410,11 @@ const SupplementHub = () => {
   };
 
   const handleBuyNow = (supplement: Supplement) => {
-    // Add to user's supplements
-    addSupplement({
+    // Add to user's supplements using the unified store
+    addMySupp({
       name: supplement.name,
-      dosage: 1,
-      unit: 'serving',
-      notifications: [],
+      slug: supplement.slug,
+      source: 'purchase',
     });
 
     // Play success sound
@@ -1432,7 +1431,7 @@ const SupplementHub = () => {
   };
 
   const handleRemoveSupplement = (supplementId: string) => {
-    // In real app, implement remove functionality in context
+    removeSupplement(supplementId);
     toast({
       title: "Supplement Removed",
       description: "Supplement has been removed from your list.",
@@ -1440,7 +1439,7 @@ const SupplementHub = () => {
   };
 
   const handleAddManually = () => {
-    navigate('/supplements');
+    setShowAddSupplementModal(true);
   };
 
   // Clean up duplicate function - use single implementation
@@ -1750,24 +1749,26 @@ const SupplementHub = () => {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {userSupplements.length > 0 ? (
+            {mySupplements.length > 0 ? (
               <div className="space-y-3">
-                {userSupplements.map((supplement, index) => (
+                {mySupplements.map((supplement) => (
                   <div 
-                    key={index}
+                    key={supplement.id}
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-2xl"
                   >
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">💊</span>
                       <div>
                         <p className="font-medium">{supplement.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {supplement.dosage}{supplement.unit}
-                        </p>
+                        {(supplement.dosage || supplement.unit) && (
+                          <p className="text-xs text-muted-foreground">
+                            {supplement.dosage} {supplement.unit}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <Button
-                      onClick={() => handleRemoveSupplement(supplement.name)}
+                      onClick={() => handleRemoveSupplement(supplement.id)}
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10"
@@ -1813,6 +1814,11 @@ const SupplementHub = () => {
         onClose={() => setShowSupplementDetail(false)}
         supplement={selectedSupplement}
         onBuyNow={handleBuyNow}
+      />
+      
+      <AddSupplementModal
+        isOpen={showAddSupplementModal}
+        onClose={() => setShowAddSupplementModal(false)}
       />
     </div>
   );

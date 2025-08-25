@@ -140,7 +140,11 @@ export function getProductBySlug(slug: string): SupplementProduct | undefined {
   return productMap[slug];
 }
 
-export const allProducts: SupplementProduct[] = [];
+export function getAllProducts(): SupplementProduct[] {
+  return [...allProductsArray];
+}
+
+const allProductsArray: SupplementProduct[] = [];
 
 // Initialize productMap and allProducts from registry
 let registryPromise: Promise<Registry> | null = null;
@@ -151,7 +155,7 @@ async function initializeProducts() {
   registryPromise = loadRegistry().then((registry) => {
     // Clear existing data
     Object.keys(productMap).forEach(key => delete productMap[key]);
-    allProducts.length = 0;
+    allProductsArray.length = 0;
     
     // Convert catalog items to standardized format
     Object.values(registry.catalog).forEach((item) => {
@@ -165,7 +169,7 @@ async function initializeProducts() {
       };
       
       productMap[item.slug] = product;
-      allProducts.push(product);
+      allProductsArray.push(product);
     });
     
     return registry;
