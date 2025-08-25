@@ -38,7 +38,7 @@ const INGREDIENT_FLAGS = {
     { pattern: /aspartame|sucralose|acesulfame/i, title: "Artificial Sweeteners", description: "May disrupt gut microbiome and metabolism" },
     { pattern: /sodium nitrite|sodium nitrate/i, title: "Nitrites/Nitrates", description: "Potential carcinogenic compounds in processed meats" },
     { pattern: /trans fat|partially hydrogenated/i, title: "Trans Fats", description: "Increases risk of heart disease and inflammation" },
-    { pattern: /yellow #5|red #40|blue #1|artificial color/i, title: "Artificial Colors", description: "Linked to hyperactivity and allergic reactions" },
+    { pattern: /yellow #?5|red #?40|blue #?1|artificial color/i, title: "Artificial Colors", description: "Linked to hyperactivity and allergic reactions" },
   ],
   warning: [
     { pattern: /sugar|glucose|fructose|dextrose/i, title: "Added Sugars", description: "Contributes to blood sugar spikes and weight gain" },
@@ -55,6 +55,91 @@ const INGREDIENT_FLAGS = {
     { pattern: /vitamin|mineral|omega-3/i, title: "Added Nutrients", description: "Fortified with beneficial vitamins and minerals" },
   ]
 };
+
+// Candy/Gummy specific patterns
+const CANDY_KEYWORDS = new Set(['gummy', 'gummies', 'candy', 'soft', 'chewy', 'skittles', 'haribo', 'trolli']);
+const STOP_WORDS = new Set(['original', 'classic', 'brand', 'new', 'natural', 'premium', 'zero', 'diet', 'size', 'sharing']);
+const BRAND_LEXICON = new Set(['skittles', 'mars', 'wrigley', 'haribo', 'trolli', 'coca', 'coke', 'coca-cola', 'pepsi', 'kirkland', 'trader', "joe's", "trader joe's"]);
+
+// Text sanitization for manual input
+function sanitizeQuery(rawQuery: string): { cleaned: string, brandTokens: string[], hasCandy: boolean, categoryHint?: string } {
+  const cleaned = rawQuery
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")   // remove commas, punctuation
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  
+  // Remove stop words
+  const tokens = cleaned.split(/\s+/).filter(token => !STOP_WORDS.has(token) && token.length > 0);
+  const brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+  const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token));
+  
+  const categoryHint = hasCandy ? 'candy' : undefined;
+  
+  return {
+    cleaned: tokens.join(' '),
+    brandTokens,
+    hasCandy,
+    categoryHint
+  };
+}
+
+// Generate candy-specific health flags and scoring
+function generateCandyHealthFlags(productName: string, hasCandy: boolean): HealthFlag[] {
+  if (!hasCandy) return [];
+
+  const flags: HealthFlag[] = [];
+  
+  // Add sugar warning for candy
+  flags.push({
+    type: 'warning',
+    icon: '🍭',
+    title: 'added_sugars_high',
+    description: 'High in added sugars; limit portion size.'
+  });
+  
+  // Add artificial colors warning for candy
+  flags.push({
+    type: 'warning', 
+    icon: '🎨',
+    title: 'artificial_colors',
+    description: 'Contains artificial colors (e.g., Red 40, Yellow 5/6, Blue 1).'
+  });
+  
+  return flags;
+}
+
+// Calculate health score with candy penalties
+function calculateHealthScore(flags: HealthFlag[], hasCandy: boolean = false): number {
+  // Lower base score for candy
+  let score = hasCandy ? 4.0 : 7.0;
+  
+  // Apply heuristic sugar penalty for candy even without ingredient data
+  const sugarPenalty = hasCandy ? 3.0 : 0;
+  
+  // Count penalty by severity
+  const additivePenalty = flags.filter(f => /color|dye|titanium|bht|bha|tbhq/i.test(f.title)).length * 1.0;
+  
+  flags.forEach(flag => {
+    switch (flag.type) {
+      case 'danger':
+        score -= 2.0;
+        break;
+      case 'warning':
+        score -= 1.0;
+        break;
+      case 'good':
+        score += 1.0;
+        break;
+    }
+  });
+
+  // Apply penalties
+  score -= sugarPenalty;
+  score -= additivePenalty;
+
+  return Math.max(0, Math.min(10, score));
+}
 
 // Product name extraction function
 function extractProductNamesFromText(text: string): string[] {
@@ -119,9 +204,14 @@ function extractProductNamesFromText(text: string): string[] {
     .slice(0, 3); // Return top 3 candidates
 }
 
-function analyzeIngredients(ingredients: string[]): HealthFlag[] {
+function analyzeIngredients(ingredients: string[], hasCandy: boolean = false): HealthFlag[] {
   const flags: HealthFlag[] = [];
   const ingredientText = ingredients.join(' ').toLowerCase();
+
+  // Add candy-specific flags first
+  if (hasCandy) {
+    flags.push(...generateCandyHealthFlags('', hasCandy));
+  }
 
   // Check for danger flags
   INGREDIENT_FLAGS.danger.forEach(flag => {
@@ -162,25 +252,6 @@ function analyzeIngredients(ingredients: string[]): HealthFlag[] {
   return flags;
 }
 
-function calculateHealthScore(flags: HealthFlag[]): number {
-  let score = 7.0; // Start with neutral score
-  
-  flags.forEach(flag => {
-    switch (flag.type) {
-      case 'danger':
-        score -= 2.0;
-        break;
-      case 'warning':
-        score -= 1.0;
-        break;
-      case 'good':
-        score += 1.0;
-        break;
-    }
-  });
-
-  return Math.max(0, Math.min(10, score));
-}
 
 async function fetchProductByBarcode(barcode: string): Promise<any | null> {
   try {
@@ -399,8 +470,8 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
         product.ingredients_text.split(',').map((ing: string) => ing.trim()) : 
         [];
       
-      const healthFlags = analyzeIngredients(ingredients);
-      const healthScore = calculateHealthScore(healthFlags);
+      const healthFlags = analyzeIngredients(ingredients, false);
+      const healthScore = calculateHealthScore(healthFlags, false);
       
       return {
         productName: product.product_name || "Unknown Product",
@@ -468,8 +539,8 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
     console.log('Sending GPT prompt with product name candidates:', productNameHint);
     
     const gptResult = await analyzeWithGPT(gptPrompt);
-    const healthFlags = analyzeIngredients(gptResult.ingredients || []);
-    const healthScore = calculateHealthScore(healthFlags);
+    const healthFlags = analyzeIngredients(gptResult.ingredients || [], false);
+    const healthScore = calculateHealthScore(healthFlags, false);
     
     // If GPT couldn't detect a product name but we have candidates from text, use the best candidate
     let finalProductName = gptResult.productName || "Detected Food";
@@ -500,27 +571,72 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
     });
   }
 
-  // Step 4: Process text input
-  const gptPrompt = `Analyze this food or product: "${input.content}". 
-  Return a JSON object with:
-  {
-    "productName": "product or food name",
-    "ingredients": ["list of likely ingredients"],
-    "nutritionSummary": "brief nutritional overview"
-  }`;
+  // Step 4: Process text/voice input with enhanced candy detection and rules
+  console.log(`Processing text input: ${input.content}`);
   
-  const gptResult = await analyzeWithGPT(gptPrompt);
-  const healthFlags = analyzeIngredients(gptResult.ingredients || []);
-  const healthScore = calculateHealthScore(healthFlags);
+  // Sanitize and analyze the query
+  const { cleaned, brandTokens, hasCandy, categoryHint } = sanitizeQuery(input.content);
+  
+  console.log('manual_query:', {
+    reqId: 'manual',
+    q: cleaned,
+    brandTokens,
+    hasCandy,
+    categoryHint,
+    selected: { source: hasCandy ? 'generic_candy' : 'generic', brand: 'none', name: cleaned }
+  });
+  
+  let productName = input.content;
+  let gptResult: any = {};
+  
+  // If candy is detected, create generic candy result with proper scoring
+  if (hasCandy) {
+    productName = `${brandTokens.length > 0 ? brandTokens[0] + ' ' : ''}${cleaned} (candy)`;
+    gptResult = {
+      productName: productName,
+      ingredients: ['sugar', 'corn syrup', 'artificial colors', 'artificial flavors', 'gelatin'],
+      nutritionSummary: 'High sugar candy product - consume in moderation'
+    };
+  } else {
+    // Use GPT for non-candy items
+    const gptPrompt = `Analyze this food or product: "${cleaned}". 
+    Return a JSON object with:
+    {
+      "productName": "product or food name",
+      "ingredients": ["list of likely ingredients"],
+      "nutritionSummary": "brief nutritional overview"
+    }`;
+    
+    gptResult = await analyzeWithGPT(gptPrompt);
+  }
+  
+  const healthFlags = analyzeIngredients(gptResult.ingredients || [], hasCandy);
+  const healthScore = calculateHealthScore(healthFlags, hasCandy);
+  
+  // Ensure we always have at least 2 recommendations
+  let recommendations = generateRecommendations(healthFlags);
+  if (recommendations.length < 2) {
+    if (hasCandy) {
+      recommendations = [
+        'Treat as an occasional snack; prefer smaller portions.',
+        'Pair sweets with a protein/fiber snack to balance blood sugar.'
+      ];
+    } else {
+      recommendations = [
+        'Continue making mindful food choices',
+        'Focus on whole, unprocessed foods when possible'
+      ];
+    }
+  }
   
   return {
-    productName: gptResult.productName || input.content,
+    productName: gptResult.productName || productName,
     ingredients: gptResult.ingredients || [],
     healthFlags,
     healthScore,
-    nutritionData: null, // Text analysis doesn't provide structured nutrition data
+    nutritionData: gptResult.nutritionSummary || null,
     summary: generateHealthSummary(healthFlags, healthScore),
-    recommendations: generateRecommendations(healthFlags)
+    recommendations: recommendations
   };
 }
 
@@ -562,6 +678,15 @@ function generateHealthSummary(flags: HealthFlag[], score: number): string {
 function generateRecommendations(flags: HealthFlag[]): string[] {
   const recommendations = [];
   
+  // Check for candy-specific flags first
+  if (flags.some(f => f.title.includes("added_sugars_high"))) {
+    recommendations.push("Treat as an occasional snack; prefer smaller portions.");
+  }
+  
+  if (flags.some(f => f.title.includes("artificial_colors"))) {
+    recommendations.push("Consider alternatives without artificial colors when possible.");
+  }
+  
   if (flags.some(f => f.title.includes("Seed Oils"))) {
     recommendations.push("Look for products using olive oil, avocado oil, or coconut oil instead");
   }
@@ -581,6 +706,11 @@ function generateRecommendations(flags: HealthFlag[]): string[] {
   if (recommendations.length === 0) {
     recommendations.push("Continue making mindful food choices");
     recommendations.push("Focus on whole, unprocessed foods when possible");
+  }
+  
+  // Ensure we always have at least 2 recommendations
+  if (recommendations.length === 1) {
+    recommendations.push("Pair with nutrient-dense foods for balanced nutrition");
   }
   
   return recommendations;

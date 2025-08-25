@@ -206,25 +206,40 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
       
       // Check if image recognition failed based on various criteria
+      // NEW: Treat generic success as success (≥2 recommendations OR any healthFlags OR any nutritionSummary fields)
+      const hasValidRecommendations = Array.isArray(data.recommendations) && data.recommendations.length >= 2;
+      const hasHealthFlags = Array.isArray(data.healthFlags) && data.healthFlags.length > 0;
+      const hasNutritionData = data.nutritionSummary && typeof data.nutritionSummary === 'object' && 
+                              Object.keys(data.nutritionSummary).length > 0;
+      
+      // Debug log for success evaluation
+      console.log('scan_success_eval:', {
+        hasName: !!data.productName && data.productName !== 'Unknown Product' && data.productName !== 'Error',
+        hasBarcode: !!data.barcode,
+        recs: Array.isArray(data.recommendations) ? data.recommendations.length : 0,
+        flags: Array.isArray(data.healthFlags) ? data.healthFlags.length : 0,
+        hasValidRecommendations,
+        hasHealthFlags,
+        hasNutritionData
+      });
+      
       const isImageRecognitionFailure = (
-        // No meaningful product name detected
-        !data.productName || 
-        data.productName === 'Unknown Product' || 
-        data.productName === 'Unknown Item' || 
-        data.productName === 'Error' ||
-        data.productName === 'Detected Food' ||
-        // Very low confidence or health score indicating poor recognition
-        data.healthScore === 0 ||
-        // Specific failure indicators in health flags
-        data.healthFlags?.some((flag: any) => 
-          flag.title === 'Processing Error' || 
-          flag.title === 'Product Not Found' ||
-          flag.description?.includes('Unable to parse') ||
-          flag.description?.includes('couldn\'t identify')
-        ) ||
-        // Empty or minimal ingredients suggesting failed recognition
-        (!data.ingredients || data.ingredients.length === 0 || 
-         (data.ingredients.length === 1 && data.ingredients[0] === 'Unable to parse ingredients'))
+        // Only fail if no useful content AND has error indicators
+        (!hasValidRecommendations && !hasHealthFlags && !hasNutritionData) &&
+        (
+          // No meaningful product name detected
+          !data.productName || 
+          data.productName === 'Unknown Product' || 
+          data.productName === 'Unknown Item' || 
+          data.productName === 'Error' ||
+          // Specific failure indicators in health flags
+          data.healthFlags?.some((flag: any) => 
+            flag.title === 'Processing Error' || 
+            flag.title === 'Product Not Found' ||
+            flag.description?.includes('Unable to parse') ||
+            flag.description?.includes('couldn\'t identify')
+          )
+        )
       );
 
       if (isImageRecognitionFailure) {
