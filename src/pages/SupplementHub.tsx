@@ -1492,6 +1492,17 @@ const SupplementHub = () => {
           ))}
         </div>
 
+        {/* Section Divider */}
+        <div className="py-8">
+          <div className="flex items-center">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+            <div className="px-4">
+              <div className="w-2 h-2 rounded-full bg-primary/20"></div>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+          </div>
+        </div>
+
         {/* Analysis State */}
         {isAnalyzing && (
           <Card className="glass-card border-0 rounded-3xl">
