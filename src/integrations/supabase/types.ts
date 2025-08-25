@@ -8852,6 +8852,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_active_challenge_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_challenge_podium_winners: {
         Args: { challenge_id_param: string; month_year?: string }
         Returns: {
