@@ -148,6 +148,7 @@ const Supplements = () => {
         </CardContent>
       </Card>
 
+      {/* My Supplements Section */}
       <div className="text-center pt-4">
         <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
           My supplements
@@ -157,7 +158,7 @@ const Supplements = () => {
         </p>
       </div>
 
-      {/* Camera & Upload Options */}
+      {/* Camera & Upload Options - Moved here */}
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
