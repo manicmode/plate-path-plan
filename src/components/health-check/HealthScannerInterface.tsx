@@ -51,6 +51,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const startCamera = async () => {
     try {
+      console.log("[HS] camera_init");
       // ✅ 1. Ensure video element is created and mounted
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
@@ -121,6 +122,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = async () => {
+    console.log("[HS] capture_start");
     console.log("📸 HealthScannerInterface.captureImage called!");
     
     if (!videoRef.current || !canvasRef.current) {
@@ -154,6 +156,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     ctx.drawImage(video, 0, 0);
     
     const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log("[HS] capture_done", `${video.videoWidth}x${video.videoHeight}`);
     console.log("📸 Raw image captured:", {
       dataLength: rawImageData.length,
       dataPrefix: rawImageData.substring(0, 50)
@@ -161,6 +164,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
     // Normalize the image (compress, strip EXIF, ensure proper format)
     try {
+      console.log("[HS] normalize_start");
       console.log("🔄 Normalizing image...");
       const normalized = await normalizeHealthScanImage(rawImageData, {
         maxWidth: 1280,
@@ -170,6 +174,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         stripExif: true
       });
 
+      console.log("[HS] normalize_done");
       console.log("✅ Image normalized successfully!", {
         originalSize: normalized.originalSize,
         compressedSize: normalized.compressedSize,
@@ -183,18 +188,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       // Try to detect barcodes in the image first
       try {
+        const startTime = Date.now();
+        console.log("[HS] barcode_scan_start");
         console.log("🔍 Checking for barcodes in image...");
         const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
           body: { imageBase64: imageData.split(',')[1] }
         });
         
+        const scanMs = Date.now() - startTime;
+        
         if (error) {
+          console.log("[HS] barcode_scan_result", { code: null, format: null, ms: scanMs, attempts: 1 });
           console.error("❌ Barcode detection error:", error);
         } else {
           console.log("✅ Barcode detection result:", barcodeData);
           
           // If barcode was found, proceed with it
           if (barcodeData.barcode) {
+            console.log("[HS] barcode_scan_result", { code: barcodeData.barcode, format: 'unknown', ms: scanMs, attempts: 1 });
             console.log("📊 Barcode found:", barcodeData.barcode);
             
             // If we have valid product data from OpenFoodFacts API
@@ -206,10 +217,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onCapture(imageData + `&barcode=${barcodeData.barcode}`);
             return;
           } else {
+            console.log("[HS] barcode_scan_result", { code: null, format: null, ms: scanMs, attempts: 1 });
             console.log("⚠️ No barcode found in image, proceeding with image analysis");
           }
         }
       } catch (barcodeError) {
+        console.log("[HS] barcode_scan_result", { code: null, format: null, ms: Date.now() - Date.now(), attempts: 1 });
         console.error("❌ Error during barcode detection:", barcodeError);
       }
       
@@ -217,6 +230,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       console.log("⏰ Proceeding with standard image analysis...");
       onCapture(imageData);
     } catch (normalizationError) {
+      console.log("[HS] normalize_error", String(normalizationError));
       console.error("❌ Image normalization failed:", normalizationError);
       // Fallback to raw image if normalization fails
       console.log("🔄 Using raw image as fallback...");

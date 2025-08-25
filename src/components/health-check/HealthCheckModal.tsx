@@ -144,6 +144,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
       
       if (detectedBarcode) {
+        console.log("[HS] decision", { hasBarcode: true, hasOFF: false, hasOCR: false, plateConf: 0, willScore: true, willFallback: false });
         console.log('📊 Barcode detected in image:', detectedBarcode);
         setAnalysisType('barcode');
         setLoadingMessage('Processing barcode...');
@@ -535,6 +536,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
 // Helper function to handle barcode input specifically
 export const handleBarcodeInput = async (barcode: string, userId?: string) => {
+  console.log("[HS] off_fetch_start", { code: barcode });
   console.log('📊 Processing barcode input:', barcode);
   
   const { data, error } = await supabase.functions.invoke('health-check-processor', {
@@ -546,9 +548,11 @@ export const handleBarcodeInput = async (barcode: string, userId?: string) => {
   });
 
   if (error) {
+    console.log("[HS] off_fetch_result", { status: 'error', hasProduct: false });
     throw new Error(error.message || 'Failed to analyze barcode');
   }
 
+  console.log("[HS] off_fetch_result", { status: 'success', hasProduct: !!data?.productName });
   console.log('✅ Barcode processor response:', data);
   console.log('🏥 Health Score:', data.healthScore);
   console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
