@@ -132,7 +132,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             onClick={onClose}
             className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
           >
-            <X className="w-5 h-5 text-foreground/60 hover:text-foreground" />
+            <X className="w-5 h-5 text-foreground hover:text-primary" />
           </button>
         </div>
         
@@ -156,7 +156,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   className={`w-7 h-7 transition-all duration-200 ${
                     i < starCount 
                       ? 'text-yellow-400 fill-yellow-400 drop-shadow-lg' 
-                      : 'text-muted-foreground'
+                      : 'text-foreground/40'
                   }`} 
                 />
               ))}
@@ -304,7 +304,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center text-muted-foreground font-medium">
+              <div className="p-4 text-center text-foreground font-medium">
                 Nutrition facts not available from scan data
               </div>
             )}
@@ -324,12 +324,12 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
                 {/* This would come from the API - for now showing a placeholder */}
-                <span className="text-foreground">
-                  {result.healthProfile.additives && result.healthProfile.additives.length > 0 
-                    ? result.healthProfile.additives.join(', ')
-                    : 'Ingredient list not available from scan data'
-                  }
-                </span>
+                  <span className="text-foreground">
+                    {result.healthProfile.additives && result.healthProfile.additives.length > 0 
+                      ? result.healthProfile.additives.join(', ')
+                      : 'Ingredient list not available from scan data'
+                    }
+                  </span>
               </p>
             </div>
           </CardContent>
@@ -338,8 +338,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         {/* 💬 5. AI COACH COMMENTARY */}
         <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <h3 className="text-xl font-bold text-purple-800 flex items-center">
-              <Zap className="w-6 h-6 text-purple-600 mr-3" />
+            <h3 className="text-xl font-bold text-foreground flex items-center">
+              <Zap className="w-6 h-6 text-primary mr-3" />
               AI Coach Insights
             </h3>
           </CardHeader>
@@ -351,10 +351,10 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   <div className="flex items-start space-x-3">
                     <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <h4 className="font-semibold text-red-800 mb-2">Health Warnings</h4>
+                      <h4 className="font-semibold text-destructive mb-2">Health Warnings</h4>
                       <ul className="space-y-1">
                         {result.personalizedWarnings.map((warning, index) => (
-                          <li key={index} className="text-red-700">{warning}</li>
+                          <li key={index} className="text-destructive">{warning}</li>
                         ))}
                       </ul>
                     </div>
@@ -368,10 +368,10 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   <div className="flex items-start space-x-3">
                     <ShieldCheck className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <h4 className="font-semibold text-blue-800 mb-2">Recommendations</h4>
+                      <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
                       <ul className="space-y-1">
                         {result.suggestions.map((suggestion, index) => (
-                          <li key={index} className="text-blue-700">{suggestion}</li>
+                          <li key={index} className="text-foreground">{suggestion}</li>
                         ))}
                       </ul>
                     </div>
@@ -385,28 +385,28 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   <div className="space-y-3">
                     {result.healthScore >= 8 ? (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "This is a great option if you're avoiding added sugars and processed ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Keep up the excellent work with mindful food choices - your body will thank you!"
                         </p>
                       </>
                     ) : result.healthScore >= 4 ? (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "This product is okay in moderation, but consider alternatives with cleaner ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Some users prefer products without artificial additives for optimal health benefits."
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "Consider avoiding this product regularly - it contains several concerning ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Look for simpler alternatives with whole food ingredients and fewer additives."
                         </p>
                       </>
