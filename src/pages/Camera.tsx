@@ -23,6 +23,7 @@ import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useMealScoring } from '@/hooks/useMealScoring';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { toastOnce } from '@/lib/toastOnce';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -119,6 +120,9 @@ const CameraPage = () => {
   const [showSharedBarcodeScanner, setShowSharedBarcodeScanner] = useState(false);
   const [barcodeProductData, setBarcodeProductData] = useState(null);
   const [showConfirmAdd, setShowConfirmAdd] = useState(false);
+  
+  // Store detected food data for multi-AI confirmation flow
+  const [multiAIDetectedData, setMultiAIDetectedData] = useState<Map<string, {name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>>(new Map());
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
   const [showBarcodeNotFound, setShowBarcodeNotFound] = useState(false);
   const [failedBarcode, setFailedBarcode] = useState('');
@@ -1431,6 +1435,8 @@ console.log('Global search enabled:', enableGlobalSearch);
     setBarcodeProductData(null);
     setShowSharedBarcodeScanner(true);
   };
+
+  const handleVoiceRecording = async () => {
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
     
     if (isRecording) {
@@ -1839,10 +1845,6 @@ console.log('Global search enabled:', enableGlobalSearch);
     resetErrorState();
     setShowVoiceEntry(true);
   };
-
-  
-  // Store detected food data for multi-AI confirmation flow
-  const [multiAIDetectedData, setMultiAIDetectedData] = useState<Map<string, {name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>>(new Map());
 
   const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>) => {
     console.log('=== MULTI-AI CONFIRMATION ===');
@@ -3184,8 +3186,8 @@ console.log('Global search enabled:', enableGlobalSearch);
         <ActivityLoggingSection />
       </div>
       
-    </div>
-  );
+     </div>
+   );
 };
 
 export default CameraPage;
