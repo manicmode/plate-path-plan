@@ -1,100 +1,21 @@
 {
-  "gmo_risk_ingredients": [
-    "soy", "corn", "canola", "sugar beet", "cottonseed",
-    "soybean oil", "corn syrup", "high fructose corn syrup",
-    "canola oil", "cottonseed oil", "vegetable oil"
-  ],
-  "problematic_additives": {
-    "artificial_colors": [
-      "yellow #5", "yellow #6", "red #40", "red #3", 
-      "blue #1", "blue #2", "green #3", "orange b"
-    ],
-    "preservatives": [
-      "sodium benzoate", "potassium sorbate", "bha", "bht", "tbhq",
-      "sodium nitrite", "sodium nitrate", "potassium bromate"
-    ],
-    "artificial_sweeteners": [
-      "aspartame", "sucralose", "acesulfame potassium", "saccharin",
-      "neotame", "advantame"
-    ],
-    "flavor_enhancers": [
-      "monosodium glutamate", "msg", "autolyzed yeast extract",
-      "hydrolyzed vegetable protein", "natural flavors"
-    ],
-    "emulsifiers": [
-      "carrageenan", "polysorbate 80", "sodium stearoyl lactylate",
-      "mono- and diglycerides", "lecithin"
-    ]
+  "gmoRiskIngredients": ["soy", "corn", "canola", "sugar beet"],
+  "additives": {
+    "tbhq": { "aliases": ["tbhq"], "severity": "med", "reason": "Contains TBHQ (synthetic antioxidant/preservative)." },
+    "bht":  { "aliases": ["bht", "butylated hydroxytoluene"], "severity": "med", "reason": "Contains BHT (synthetic antioxidant)." },
+    "bha":  { "aliases": ["bha", "butylated hydroxyanisole"], "severity": "med", "reason": "Contains BHA (synthetic antioxidant)." },
+    "nitrite": { "aliases": ["sodium nitrite","nitrite"], "severity": "med", "reason": "Cured meat nitrites/nitrates." },
+    "red40": { "aliases": ["red 40","allura red"], "severity": "low", "reason": "Artificial color (Red 40)." },
+    "yellow5": { "aliases": ["yellow 5","tartrazine"], "severity": "low", "reason": "Artificial color (Yellow 5)." },
+    "potassium_bromate": { "aliases": ["potassium bromate"], "severity": "high", "reason": "Potassium bromate flagged in some regulations." }
   },
-  "allergens": [
-    "milk", "eggs", "fish", "shellfish", "tree nuts", 
-    "peanuts", "wheat", "soybeans", "sesame"
-  ],
-  "nutrition_thresholds": {
-    "sodium_high_mg": 400,
-    "sugar_high_g": 15,
-    "saturated_fat_high_g": 5,
-    "trans_fat_danger_g": 0.5,
-    "protein_good_g": 10,
-    "fiber_good_g": 3
+  "nutrientThresholds": {
+    "sodium_high_pct_dv": 0.2,
+    "added_sugars_high_pct_dv": 0.1
   },
-  "default_insights": [
-    {
-      "type": "neutral",
-      "title": "Nutritional Assessment",
-      "description": "Product analyzed for health factors and ingredient quality",
-      "icon": "🔬",
-      "priority": 5
-    },
-    {
-      "type": "neutral", 
-      "title": "Balanced Consumption",
-      "description": "Consider overall dietary balance and moderation in consumption",
-      "icon": "⚖️",
-      "priority": 4
-    },
-    {
-      "type": "positive",
-      "title": "Whole Foods Focus",
-      "description": "Prioritize whole, minimally processed foods when possible",
-      "icon": "🌾",
-      "priority": 6
-    },
-    {
-      "type": "warning",
-      "title": "Candy/Sweets Guidance",
-      "description": "Treat as an occasional snack; prefer smaller portions",
-      "icon": "🍭",
-      "priority": 7
-    },
-    {
-      "type": "neutral",
-      "title": "Sugar Balance",
-      "description": "Pair sweets with a protein/fiber snack to blunt spikes",
-      "icon": "⚖️",
-      "priority": 6
-    }
-  ],
-  "plate_food_tips": {
-    "vegetables": {
-      "positive": "Rich in vitamins, minerals, and fiber - excellent nutritional choice",
-      "tip": "Aim for colorful variety to maximize nutrient diversity"
-    },
-    "proteins": {
-      "positive": "Good protein source for muscle health and satiety",
-      "tip": "Consider lean options and plant-based proteins for variety"
-    },
-    "carbs": {
-      "neutral": "Provides energy - choose complex carbs when possible",
-      "tip": "Whole grains offer more nutrients and fiber than refined options"
-    },
-    "dairy": {
-      "neutral": "Source of calcium and protein",
-      "tip": "Choose unsweetened varieties to avoid added sugars"
-    },
-    "processed_foods": {
-      "warning": "Highly processed foods may contain additives and excess sodium",
-      "tip": "Rinse canned items to reduce sodium content"
-    }
-  }
+  "defaultInsights": [
+    "Choosing organic/non-GMO helps avoid GMO-risk crops like soy, corn, and canola.",
+    "Rinse canned beans to reduce sodium.",
+    "Favor minimally processed foods to reduce additives."
+  ]
 }

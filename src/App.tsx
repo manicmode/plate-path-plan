@@ -48,7 +48,7 @@ import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const Index = lazy(() => import('@/pages/Index'));
-const CameraPageNew = lazy(() => import('@/pages/CameraPageNew'));
+const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Friends = lazy(() => import('@/pages/Friends'));
 const CoachMain = lazy(() => import('@/pages/CoachMain'));
@@ -126,7 +126,7 @@ const prefetchCriticalComponents = () => {
   // Prefetch main navigation components after the app has loaded
   setTimeout(() => {
     import('@/pages/Home');
-    import('@/pages/CameraPageNew');
+    import('@/pages/Camera');
     import('@/pages/Analytics');
     import('@/pages/CoachMain');
     import('@/pages/Explore');
@@ -241,7 +241,7 @@ function AppContent() {
                     } />
                     <Route path="/camera" element={
                       <ProtectedRoute>
-                        <CameraPageNew />
+                        <Camera />
                       </ProtectedRoute>
                     } />
                     <Route path="/analytics" element={

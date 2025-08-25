@@ -1,6 +1,6 @@
 // Security headers and configuration for Edge Functions
 export const getSecurityHeaders = () => ({
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.gstatic.com https://www.googletagmanager.com https://js.stripe.com; style-src 'self' 'unsafe-inline' 'nonce-*'; img-src 'self' data: blob: https:; connect-src 'self' https://tfhub.dev https://www.kaggle.com https://storage.googleapis.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in https://world.openfoodfacts.org https://js.stripe.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob:;",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'nonce-*'; style-src 'self' 'unsafe-inline' 'nonce-*'; img-src 'self' data: blob: https:; connect-src 'self' https://tfhub.dev https://www.kaggle.com https://storage.googleapis.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests;",
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
