@@ -1,4 +1,3 @@
-
 import { useState, useRef, lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,11 +11,6 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
-import SupplementEducationCard, { SupplementEducationCard as SupplementEducationCardNamed } from '@/components/supplements/SupplementEducationCard';
-import { SafeBoundary } from '@/components/common/SafeBoundary';
-
-// Safe component reference
-const EducationCard = SupplementEducationCard ?? SupplementEducationCardNamed;
 
 const Supplements = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -154,74 +148,13 @@ const Supplements = () => {
         </CardContent>
       </Card>
 
-      {/* Supplement Education */}
-      <div className="space-y-4">
-        <div className="text-center">
-          <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
-            General recommendations just for you
-          </h2>
-          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
-            Evidence-based supplement insights tailored to your health goals
-          </p>
-        </div>
-
-        {/* Recommendation Cards - Restored */}
-        <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 gap-4'}`}>
-          {/* Single Recommendation Card */}
-          <Card className="glass-card border-0 rounded-3xl">
-            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-              <div className="flex items-start space-x-4">
-                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} gradient-primary rounded-2xl flex items-center justify-center flex-shrink-0`}>
-                  <Heart className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white mb-1`}>
-                        Omega-3 Fish Oil
-                      </h3>
-                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mb-2`}>
-                        Based on your metabolism and heart health goals
-                      </p>
-                      <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                        Supports cardiovascular health and cognitive function. Recommended dosage: 1000mg daily with meals.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => handleQuickAdd({ name: 'Omega-3', dosage: 1000, unit: 'mg', icon: Heart })}
-                      className={`glass-button ${isMobile ? 'h-8 text-xs px-3' : 'h-10 text-sm px-4'} rounded-xl ml-3`}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Education carousel */}
-        <div className="mt-6 sm:mt-8">
-          <SafeBoundary fallback={
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-              <div className="text-base font-semibold text-gray-900 dark:text-white">Supplement Education</div>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Content temporarily unavailable
-              </p>
-            </div>
-          }>
-            <EducationCard data-testid="supp-edu-card" />
-          </SafeBoundary>
-        </div>
-
-        <div className="text-center pt-4">
-          <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
-            My supplements
-          </h2>
-          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
-            Track your daily supplement intake
-          </p>
-        </div>
+      <div className="text-center pt-4">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
+          My supplements
+        </h2>
+        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+          Track your daily supplement intake
+        </p>
       </div>
 
       {/* Camera & Upload Options */}

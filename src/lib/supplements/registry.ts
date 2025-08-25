@@ -5,6 +5,15 @@ import { SHOW_SUPP_EDU, PARTNER_ACME } from '@/lib/flags';
 import baseCatalog from '@/content/supplements/baseCatalog';
 import baseTips from '@/content/supplements/baseTips';
 
+export type SupplementProduct = {
+  slug: string;
+  name: string;
+  categories: string[];
+  short: string;
+  price?: number;
+  tags?: string[];
+};
+
 export type Registry = {
   catalog: Record<string, SupplementCatalogItem>; // keyed by slug
   tips: SupplementTip[];
@@ -123,3 +132,47 @@ export async function loadRegistry(): Promise<Registry> {
     };
   }
 }
+
+// Standardized API functions
+export const productMap: Record<string, SupplementProduct> = {};
+
+export function getProductBySlug(slug: string): SupplementProduct | undefined {
+  return productMap[slug];
+}
+
+export const allProducts: SupplementProduct[] = [];
+
+// Initialize productMap and allProducts from registry
+let registryPromise: Promise<Registry> | null = null;
+
+async function initializeProducts() {
+  if (registryPromise) return registryPromise;
+  
+  registryPromise = loadRegistry().then((registry) => {
+    // Clear existing data
+    Object.keys(productMap).forEach(key => delete productMap[key]);
+    allProducts.length = 0;
+    
+    // Convert catalog items to standardized format
+    Object.values(registry.catalog).forEach((item) => {
+      const product: SupplementProduct = {
+        slug: item.slug,
+        name: item.name,
+        categories: item.tags || [],
+        short: item.shortDesc || '',
+        price: item.defaultPrice,
+        tags: item.tags
+      };
+      
+      productMap[item.slug] = product;
+      allProducts.push(product);
+    });
+    
+    return registry;
+  });
+  
+  return registryPromise;
+}
+
+// Auto-initialize on module load
+initializeProducts();

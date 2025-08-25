@@ -216,7 +216,7 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
     // Base tip → navigate to product page if ctaEnabled
     if ((tip as any).ctaEnabled && tip.productSlug) {
-      navigate(`/supplements/${tip.productSlug}`);
+      navigate(`/supplements/${tip.productSlug}`, { state: { from: 'hub' } });
       return;
     }
     

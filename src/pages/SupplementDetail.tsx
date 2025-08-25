@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,18 @@ import { type SupplementCatalogItem } from '@/types/supplements';
 const SupplementDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [product, setProduct] = useState<SupplementCatalogItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const from = (location.state as { from?: 'hub' | 'tracker' } | null)?.from;
+
+  const handleBack = () => {
+    if (from === 'hub') return navigate('/supplement-hub', { replace: true });
+    if (from === 'tracker') return navigate('/supplements', { replace: true });
+    navigate(-1);
+  };
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -51,7 +60,7 @@ const SupplementDetail = () => {
     return (
       <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <Button
-          onClick={() => navigate('/supplements')}
+          onClick={handleBack}
           variant="ghost"
           className="mb-4"
         >
@@ -80,7 +89,7 @@ const SupplementDetail = () => {
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Back Navigation */}
       <Button
-        onClick={() => navigate('/supplements')}
+        onClick={handleBack}
         variant="ghost"
         className="mb-4"
       >

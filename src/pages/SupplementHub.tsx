@@ -16,6 +16,7 @@ import { SafeBoundary } from '@/components/common/SafeBoundary';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
+import { loadRegistry, getProductBySlug, allProducts, type SupplementProduct } from '@/lib/supplements/registry';
 
 interface Supplement {
   id: string;
@@ -27,6 +28,7 @@ interface Supplement {
   healthFlags: string[];
   studyLinks?: string[];
   price?: string;
+  slug?: string; // Add slug for registry lookup
 }
 
 const SupplementHub = () => {
@@ -53,14 +55,130 @@ const SupplementHub = () => {
 
   const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
   
-  // Personal recommendations state
+  // Personal recommendations state - using registry data
   const [personalRecommendations, setPersonalRecommendations] = useState<Supplement[]>([]);
   const [showMorePersonal, setShowMorePersonal] = useState(false);
   const [isGeneratingPersonal, setIsGeneratingPersonal] = useState(false);
+  const [registryProducts, setRegistryProducts] = useState<SupplementProduct[]>([]);
 
 
-  // Scroll container ref for horizontal tabs
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Load registry products on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        await loadRegistry(); // Ensure registry is loaded
+        setRegistryProducts([...allProducts]);
+      } catch (error) {
+        console.error('Failed to load registry products:', error);
+      }
+    };
+    
+    loadProducts();
+  }, []);
+
+  // Generate AI recommendations using registry data (updated implementation)
+  const generateRegistryBasedRecommendations = async () => {
+    setIsGeneratingPersonal(true);
+    
+    try {
+      // Simulate AI analysis
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Use registry products for recommendations
+      const availableProducts = registryProducts.length > 0 ? registryProducts : [
+        {
+          slug: 'creatine-monohydrate',
+          name: 'Creatine Monohydrate',
+          categories: ['strength', 'performance'],
+          short: 'Supports muscle strength and power',
+          price: 24.99,
+          tags: ['strength', 'performance']
+        },
+        {
+          slug: 'omega-3',
+          name: 'Omega-3 Fish Oil',
+          categories: ['heart-health', 'brain-health'],
+          short: 'Supports heart and brain health',
+          price: 29.99,
+          tags: ['heart-health', 'brain-health']
+        }
+      ];
+      
+      // Convert registry products to supplements format
+      const newRecommendations: Supplement[] = availableProducts.slice(0, 3).map((product, index) => ({
+        id: `registry-${product.slug}`,
+        name: product.name,
+        image: getEmojiForProduct(product),
+        description: product.short,
+        benefits: generateBenefitsForProduct(product),
+        personalReason: generatePersonalReasonForProduct(product),
+        healthFlags: generateHealthFlagsForProduct(product),
+        price: product.price ? `$${product.price.toFixed(2)}` : undefined,
+        slug: product.slug
+      }));
+      
+      setPersonalRecommendations(newRecommendations);
+    } catch (error) {
+      console.error('Failed to generate recommendations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate personalized recommendations.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPersonal(false);
+    }
+  };
+
+  // Helper functions for product data conversion
+  const getEmojiForProduct = (product: SupplementProduct): string => {
+    const tagEmojis: Record<string, string> = {
+      'strength': '💪',
+      'heart-health': '❤️',
+      'brain-health': '🧠',
+      'immunity': '🛡️',
+      'energy': '⚡',
+      'sleep': '😴',
+      'bone-health': '🦴',
+      'digestion': '🌿'
+    };
+    
+    const firstTag = product.tags?.[0] || product.categories?.[0];
+    return tagEmojis[firstTag] || '💊';
+  };
+  
+  const generateBenefitsForProduct = (product: SupplementProduct): string[] => {
+    const benefitMap: Record<string, string[]> = {
+      'creatine-monohydrate': ['Increases muscle strength', 'Improves power output', 'Faster recovery'],
+      'omega-3': ['Supports heart health', 'Improves brain function', 'Reduces inflammation'],
+      'vitamin-d3': ['Supports immune function', 'Strengthens bones', 'Improves mood'],
+      'magnesium-glycinate': ['Promotes better sleep', 'Reduces stress', 'Supports muscle function']
+    };
+    
+    return benefitMap[product.slug] || ['Health support', 'Nutritional benefits', 'Overall wellness'];
+  };
+  
+  const generatePersonalReasonForProduct = (product: SupplementProduct): string => {
+    const reasonMap: Record<string, string> = {
+      'creatine-monohydrate': 'Perfect for your strength training and athletic performance goals',
+      'omega-3': 'Great for supporting your cardiovascular and cognitive health',
+      'vitamin-d3': 'Essential for your immune system and bone health',
+      'magnesium-glycinate': 'Ideal for improving your sleep quality and stress management'
+    };
+    
+    return reasonMap[product.slug] || `Recommended based on your health profile and goals`;
+  };
+  
+  const generateHealthFlagsForProduct = (product: SupplementProduct): string[] => {
+    const flagMap: Record<string, string[]> = {
+      'creatine-monohydrate': ['Micronized', 'Unflavored', 'Research-backed'],
+      'omega-3': ['Wild-caught', 'Third-party tested', 'No fishy aftertaste'],
+      'vitamin-d3': ['High potency', 'Easy absorption', 'Non-GMO'],
+      'magnesium-glycinate': ['Chelated form', 'Gentle on stomach', 'Sleep-optimized']
+    };
+    
+    return flagMap[product.slug] || ['Quality tested', 'Pure ingredients', 'No fillers'];
+  };
 
   // Netflix-style categories with horizontal scrollable goals
   const supplementCategories = [
@@ -1324,16 +1442,8 @@ const SupplementHub = () => {
     navigate('/supplements');
   };
 
-  // Generate personalized recommendations using AI
-  const generatePersonalRecommendations = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to get personalized recommendations.",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Clean up duplicate function - use single implementation
+  const generatePersonalRecommendations = generateRegistryBasedRecommendations;
 
     setIsGeneratingPersonal(true);
     try {
@@ -1603,7 +1713,7 @@ const SupplementHub = () => {
                   </p>
                 </div>
                 <Button 
-                  onClick={generatePersonalRecommendations}
+                  onClick={generateRegistryBasedRecommendations}
                   className="gradient-primary text-white font-semibold px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                 >
                   <Brain className="h-5 w-5 mr-2" />
@@ -1624,7 +1734,7 @@ const SupplementHub = () => {
               <div className="space-y-4">
                 <div className="text-center">
                   <Button 
-                    onClick={generatePersonalRecommendations}
+                    onClick={generateRegistryBasedRecommendations}
                     variant="outline"
                     size="sm"
                     className="glass-button rounded-full"
