@@ -51,24 +51,7 @@
     
     /* iOS viewport height fixes */
     --vh: 1vh;
-  }
-
-  /* Scanner-specific iOS safe area and dvh classes */
-  .scanner-root {
-    height: calc(var(--vh, 1vh) * 100);
-  }
-  
-  @supports (height: 100dvh) {
-    .scanner-root { 
-      height: 100dvh; /* modern iOS/Chrome */
-    }
-  }
-  
-  .scanner-safe {
-    padding-top: max(env(safe-area-inset-top), 12px);
-    padding-bottom: max(env(safe-area-inset-bottom), 12px);
-  }
-
+    
     /* Enhanced Futuristic Color System - Light Mode */
     --emerald: 174 100% 50%;
     --electric-blue: 218 100% 59%;
@@ -159,7 +142,23 @@
     --activity-steps-glow: 0 8px 32px rgba(34, 197, 94, 0.4);
     --activity-exercise-glow: 0 8px 32px rgba(239, 68, 68, 0.4);
   }
-}
+
+  /* Scanner-specific iOS safe area and dvh classes */
+  .scanner-root {
+    height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  @supports (height: 100dvh) {
+    .scanner-root { 
+      height: 100dvh; /* modern iOS/Chrome */
+    }
+  }
+  
+  .scanner-safe {
+    padding-top: max(env(safe-area-inset-top), 12px);
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+
 
 @layer base {
   * {
