@@ -198,8 +198,8 @@ const CameraPageNew = () => {
 
       {/* Modals */}
       <BarcodeLogModal
-        isOpen={showBarcodeLogModal}
-        onClose={() => setShowBarcodeLogModal(false)}
+        open={showBarcodeLogModal}
+        onOpenChange={setShowBarcodeLogModal}
       />
 
       {showManualEdit && (

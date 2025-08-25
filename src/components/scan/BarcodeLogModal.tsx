@@ -3,16 +3,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import ScanBarcodeScreen from '@/features/log/ScanBarcodeScreen';
 
 interface BarcodeLogModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export const BarcodeLogModal: React.FC<BarcodeLogModalProps> = ({
-  isOpen,
-  onClose
+  open,
+  onOpenChange
 }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-full max-h-full p-0 m-0 border-0 bg-transparent">
         <DialogHeader className="sr-only">
           <DialogTitle>Scan Barcode for Logging</DialogTitle>
@@ -22,7 +22,7 @@ export const BarcodeLogModal: React.FC<BarcodeLogModalProps> = ({
         </DialogHeader>
         
         <div className="fixed inset-0 z-50">
-          <ScanBarcodeScreen onClose={onClose} />
+          <ScanBarcodeScreen onClose={() => onOpenChange(false)} />
         </div>
       </DialogContent>
     </Dialog>
