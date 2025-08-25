@@ -143,19 +143,20 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const barcodeMatch = imageData.match(/&barcode=(\d+)$/);
       const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
       
+      // Clean image data if it contains a barcode parameter
+      const cleanImageData = detectedBarcode ? 
+        imageData.replace(/&barcode=\d+$/, '') : 
+        imageData;
+      
       if (detectedBarcode) {
-        console.log("[HS] decision", { hasBarcode: true, hasOFF: false, hasOCR: false, plateConf: 0, willScore: true, willFallback: false });
         console.log('📊 Barcode detected in image:', detectedBarcode);
         setAnalysisType('barcode');
         setLoadingMessage('Processing barcode...');
         
-        // Remove the barcode part from the image data
-        const cleanImageData = imageData.replace(/&barcode=\d+$/, '');
-        
-        // Use the dedicated barcode processor
+        // Use the dedicated barcode processor with enhanced OFF lookup
         try {
           console.log('🔄 Processing barcode:', detectedBarcode);
-          const result = await handleBarcodeInput(detectedBarcode, user?.id);
+          const result = await handleBarcodeInputEnhanced(detectedBarcode, user?.id);
           
           if (!result) {
             console.log('⚠️ No results from barcode lookup, falling back to image analysis');
@@ -200,7 +201,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             },
             personalizedWarnings: Array.isArray(result.recommendations) ? 
               result.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
-            suggestions: Array.isArray(result.recommendations) ? result.recommendations : [result.summary || 'No specific recommendations available.'],
+            suggestions: Array.isArray(result.recommendations) ? result.recommendations : ['No specific recommendations available.'],
             overallRating: result.healthScore >= 80 ? 'excellent' : 
                           result.healthScore >= 60 ? 'good' : 
                           result.healthScore >= 40 ? 'fair' : 
@@ -226,12 +227,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // If no barcode or barcode processing failed, proceed with image analysis
       setAnalysisType('image');
       
-      console.log('🖼️ About to call enhanced-health-scanner function...');
+      // Evidence gating: only proceed if we expect good results
+      const shouldSkipGPT = !(detectedBarcode || hasHighQualityPlate(cleanImageData));
       
-      // Clean image data if it contains a barcode parameter
-      const cleanImageData = detectedBarcode ? 
-        imageData.replace(/&barcode=\d+$/, '') : 
-        imageData;
+      if (shouldSkipGPT) {
+        console.log('🚨 Low confidence image - redirecting to manual entry');
+        setPhase('error');
+        return;
+      }
+      
+      console.log('🖼️ About to call enhanced-health-scanner function...');
         
       // Use enhanced scanner with structured results
       const payload = {
@@ -534,28 +539,141 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   );
 };
 
-// Helper function to handle barcode input specifically
-export const handleBarcodeInput = async (barcode: string, userId?: string) => {
-  console.log("[HS] off_fetch_start", { code: barcode });
-  console.log('📊 Processing barcode input:', barcode);
+// Enhanced barcode processor with direct OFF lookup
+export const handleBarcodeInputEnhanced = async (barcode: string, userId?: string) => {
+  console.log('📊 Processing barcode input with enhanced OFF lookup:', barcode);
   
-  const { data, error } = await supabase.functions.invoke('health-check-processor', {
-    body: {
-      inputType: 'barcode',
-      data: barcode,
-      userId: userId
+  try {
+    // Direct OpenFoodFacts lookup (v2 then v1 fallback)
+    let offProduct = null;
+    
+    // Try v2 API first
+    try {
+      const v2Response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      const v2Data = await v2Response.json();
+      
+      if (v2Data.status === 1 && v2Data.product) {
+        offProduct = v2Data.product;
+        console.log('✅ OFF v2 API success');
+      }
+    } catch (v2Error) {
+      console.log('⚠️ OFF v2 API failed, trying v1...');
     }
-  });
-
-  if (error) {
-    console.log("[HS] off_fetch_result", { status: 'error', hasProduct: false });
-    throw new Error(error.message || 'Failed to analyze barcode');
+    
+    // Fallback to v1 API
+    if (!offProduct) {
+      try {
+        const v1Response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+        const v1Data = await v1Response.json();
+        
+        if (v1Data.status === 1 && v1Data.product) {
+          offProduct = v1Data.product;
+          console.log('✅ OFF v1 API success');
+        }
+      } catch (v1Error) {
+        console.log('❌ OFF v1 API failed');
+      }
+    }
+    
+    if (!offProduct) {
+      console.info('[HS] off', { status: 'not_found', hasProduct: false });
+      return null;
+    }
+    
+    console.info('[HS] off', { status: 'success', hasProduct: true });
+    
+    // Map OFF product to our health analysis format
+    const healthData = mapOFFToHealthAnalysis(offProduct, barcode);
+    return healthData;
+    
+  } catch (error) {
+    console.info('[HS] off', { status: 'error', hasProduct: false });
+    console.error('❌ Enhanced barcode processing failed:', error);
+    return null;
   }
+};
 
-  console.log("[HS] off_fetch_result", { status: 'success', hasProduct: !!data?.productName });
-  console.log('✅ Barcode processor response:', data);
-  console.log('🏥 Health Score:', data.healthScore);
-  console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
+// Map OpenFoodFacts product to health analysis format
+function mapOFFToHealthAnalysis(offProduct: any, barcode: string) {
+  const productName = offProduct.product_name || offProduct.product_name_en || 'Unknown Product';
+  const brand = offProduct.brands || '';
+  const ingredients = offProduct.ingredients_text || '';
+  const nutriments = offProduct.nutriments || {};
   
-  return data;
+  // Calculate health score based on nutrition and ingredients
+  let healthScore = 50; // Base score
+  
+  // Adjust based on nutrition
+  if (nutriments.salt_100g && nutriments.salt_100g > 1.5) healthScore -= 15;
+  if (nutriments.sugars_100g && nutriments.sugars_100g > 15) healthScore -= 10;
+  if (nutriments.saturated_fat_100g && nutriments.saturated_fat_100g > 5) healthScore -= 10;
+  if (nutriments.fiber_100g && nutriments.fiber_100g > 3) healthScore += 10;
+  if (nutriments.proteins_100g && nutriments.proteins_100g > 10) healthScore += 5;
+  
+  // Adjust based on ingredients
+  const ingredientsLower = ingredients.toLowerCase();
+  if (ingredientsLower.includes('organic')) healthScore += 15;
+  if (ingredientsLower.includes('artificial') || ingredientsLower.includes('preservative')) healthScore -= 10;
+  if (ingredientsLower.includes('high fructose corn syrup')) healthScore -= 20;
+  
+  healthScore = Math.max(0, Math.min(100, healthScore));
+  
+  // Generate health flags
+  const healthFlags = [];
+  if (nutriments.salt_100g && nutriments.salt_100g > 1.5) {
+    healthFlags.push({
+      title: 'High Sodium',
+      description: `Contains ${nutriments.salt_100g.toFixed(1)}g salt per 100g`,
+      type: 'warning'
+    });
+  }
+  if (nutriments.sugars_100g && nutriments.sugars_100g > 15) {
+    healthFlags.push({
+      title: 'High Sugar',
+      description: `Contains ${nutriments.sugars_100g.toFixed(1)}g sugar per 100g`,
+      type: 'warning'
+    });
+  }
+  if (ingredientsLower.includes('artificial')) {
+    healthFlags.push({
+      title: 'Artificial Ingredients',
+      description: 'Contains artificial colors or flavors',
+      type: 'warning'
+    });
+  }
+  
+  return {
+    productName,
+    healthScore,
+    healthFlags,
+    nutritionSummary: {
+      calories: nutriments.energy_kcal_100g || nutriments['energy-kcal_100g'],
+      protein: nutriments.proteins_100g,
+      carbs: nutriments.carbohydrates_100g,
+      fat: nutriments.fat_100g,
+      fiber: nutriments.fiber_100g,
+      sugar: nutriments.sugars_100g,
+      sodium: nutriments.sodium_100g
+    },
+    ingredients: ingredients ? ingredients.split(',').map((i: string) => i.trim()) : [],
+    recommendations: [
+      healthScore >= 70 ? 'This is a relatively healthy choice!' : 
+      healthScore >= 40 ? 'Consider this as an occasional treat.' :
+      'Look for healthier alternatives when possible.',
+      `Barcode: ${barcode} • Source: OpenFoodFacts`
+    ],
+    barcode
+  };
+}
+
+// Check if image has high-quality plate/food content
+function hasHighQualityPlate(imageData: string): boolean {
+  // Placeholder - in production this would use basic image analysis
+  // For now, assume true to maintain existing behavior
+  return true;
+}
+
+// Keep original function for backward compatibility
+export const handleBarcodeInput = async (barcode: string, userId?: string) => {
+  return handleBarcodeInputEnhanced(barcode, userId);
 };

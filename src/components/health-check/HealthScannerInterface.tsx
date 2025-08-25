@@ -52,19 +52,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const startCamera = async () => {
     try {
       console.log("[HS] camera_init");
-      // ✅ 1. Ensure video element is created and mounted
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
         console.error("[VIDEO] videoRef is null — video element not mounted");
         return;
       }
 
-      // ✅ 3. Confirm HTTPS is enforced on mobile
       if (location.protocol !== 'https:') {
         console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
       }
 
-      // ✅ 4. Confirm camera permissions
       if (navigator.permissions) {
         navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
           console.log("[PERMISSION] Camera permission state:", res.state);
@@ -73,27 +69,20 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
       }
 
-      // ✅ 2. Add logging inside getUserMedia() block
       console.log("[CAMERA] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
 
-      // ✅ 2. Stream received logging
       console.log("[CAMERA] Stream received:", mediaStream);
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        
-        // ✅ 5. Visually confirm that the <video> tag is rendering
-        videoRef.current.style.border = "2px solid red";
-        
         console.log("[CAMERA] srcObject set, playing video");
       } else {
         console.error("[CAMERA] videoRef.current is null");
       }
     } catch (error) {
-      // ✅ 2. Enhanced error logging
       console.error("[CAMERA FAIL] getUserMedia error:", error);
       console.error('Error accessing camera:', error);
     }
@@ -123,7 +112,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const captureImage = async () => {
     console.log("[HS] capture_start");
-    console.log("📸 HealthScannerInterface.captureImage called!");
     
     if (!videoRef.current || !canvasRef.current) {
       console.error("❌ Missing video or canvas ref!", {
@@ -133,7 +121,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.log("🎵 Playing camera sound...");
     playCameraClickSound();
     setIsScanning(true);
     
@@ -146,27 +133,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.log("🖼️ Drawing video to canvas...", {
-      videoWidth: video.videoWidth,
-      videoHeight: video.videoHeight
-    });
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
     const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
     console.log("[HS] capture_done", `${video.videoWidth}x${video.videoHeight}`);
-    console.log("📸 Raw image captured:", {
-      dataLength: rawImageData.length,
-      dataPrefix: rawImageData.substring(0, 50)
-    });
 
     // Normalize the image (compress, strip EXIF, ensure proper format)
     try {
-      console.log("[HS] normalize_start");
-      console.log("🔄 Normalizing image...");
-      const normalized = await normalizeHealthScanImage(rawImageData, {
+      // Create blob from canvas for CSP safety
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvasRef.current?.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob from canvas'));
+        }, 'image/jpeg', 0.85);
+      });
+      
+      const normalized = await normalizeHealthScanImage(new File([blob], 'capture.jpg', { type: 'image/jpeg' }), {
         maxWidth: 1280,
         maxHeight: 1280,
         quality: 0.85,
@@ -174,66 +158,62 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         stripExif: true
       });
 
-      console.log("[HS] normalize_done");
-      console.log("✅ Image normalized successfully!", {
-        originalSize: normalized.originalSize,
-        compressedSize: normalized.compressedSize,
-        dimensions: `${normalized.width}x${normalized.height}`,
-        compressionRatio: `${(normalized.compressionRatio * 100).toFixed(1)}%`,
-        finalDataLength: normalized.dataUrl.length
-      });
-
       const imageData = normalized.dataUrl;
     
       
-      // Try to detect barcodes in the image first
+      // Enhanced barcode detection with multi-pass ZXing
       try {
-        const startTime = Date.now();
-        console.log("[HS] barcode_scan_start");
-        console.log("🔍 Checking for barcodes in image...");
-        const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
-          body: { imageBase64: imageData.split(',')[1] }
+        console.log("🔍 Starting enhanced barcode detection...");
+        
+        // Create blob from normalized image for decoder
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        const barcodeBlob = await new Promise<Blob>((resolve, reject) => {
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx?.drawImage(img, 0, 0);
+            
+            canvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Failed to create blob for barcode detection'));
+            }, 'image/jpeg', 0.9);
+          };
+          img.onerror = reject;
+          img.src = imageData;
         });
         
-        const scanMs = Date.now() - startTime;
+        // Use enhanced decoder
+        const { decodeUPCFromImageBlob } = await import('@/lib/barcode/decoder');
+        const barcodeResult = await Promise.race([
+          decodeUPCFromImageBlob(barcodeBlob),
+          new Promise<{ code: null; attempts: 0; ms: number }>((resolve) => 
+            setTimeout(() => resolve({ code: null, attempts: 0, ms: 1200 }), 1200)
+          )
+        ]);
         
-        if (error) {
-          console.log("[HS] barcode_scan_result", { code: null, format: null, ms: scanMs, attempts: 1 });
-          console.error("❌ Barcode detection error:", error);
-        } else {
-          console.log("✅ Barcode detection result:", barcodeData);
+        console.info('[HS] barcode', { code: barcodeResult.code, ms: barcodeResult.ms, attempts: barcodeResult.attempts });
+        
+        if (barcodeResult.code) {
+          console.log("📊 Enhanced barcode detection successful:", barcodeResult.code);
           
-          // If barcode was found, proceed with it
-          if (barcodeData.barcode) {
-            console.log("[HS] barcode_scan_result", { code: barcodeData.barcode, format: 'unknown', ms: scanMs, attempts: 1 });
-            console.log("📊 Barcode found:", barcodeData.barcode);
-            
-            // If we have valid product data from OpenFoodFacts API
-            if (barcodeData.productData) {
-              console.log("🛒 OpenFoodFacts product found:", barcodeData.productData.product_name);
-            }
-            
-            // Send the full image but include the barcode info for processing
-            onCapture(imageData + `&barcode=${barcodeData.barcode}`);
-            return;
-          } else {
-            console.log("[HS] barcode_scan_result", { code: null, format: null, ms: scanMs, attempts: 1 });
-            console.log("⚠️ No barcode found in image, proceeding with image analysis");
-          }
+          // Short-circuit to OFF lookup
+          onCapture(imageData + `&barcode=${barcodeResult.code}`);
+          return;
+        } else {
+          console.log("⚠️ No barcode found after enhanced detection, proceeding with image analysis");
         }
       } catch (barcodeError) {
-        console.log("[HS] barcode_scan_result", { code: null, format: null, ms: Date.now() - Date.now(), attempts: 1 });
-        console.error("❌ Error during barcode detection:", barcodeError);
+        console.error("❌ Enhanced barcode detection failed:", barcodeError);
       }
       
       // No barcode found, proceed with standard image capture
-      console.log("⏰ Proceeding with standard image analysis...");
       onCapture(imageData);
     } catch (normalizationError) {
-      console.log("[HS] normalize_error", String(normalizationError));
       console.error("❌ Image normalization failed:", normalizationError);
       // Fallback to raw image if normalization fails
-      console.log("🔄 Using raw image as fallback...");
       onCapture(rawImageData);
     } finally {
       setIsScanning(false);

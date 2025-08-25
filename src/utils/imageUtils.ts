@@ -15,9 +15,25 @@ export async function prepareImage(file: File): Promise<Blob> {
       stripExif: true
     });
     
-    // Convert data URL back to blob
-    const response = await fetch(normalized.dataUrl);
-    const blob = await response.blob();
+    // Convert data URL back to blob using canvas.toBlob() (CSP-safe)
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob from canvas'));
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = reject;
+      img.src = normalized.dataUrl;
+    });
     
     console.log("✅ Image prepared:", {
       originalSize: normalized.originalSize,
