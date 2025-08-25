@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
+import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -31,6 +32,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { user } = useAuth();
+  
+  // iOS viewport fix
+  useViewportUnitsFix();
+
+  // Prevent body scroll while scanner is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { 
+      document.body.style.overflow = ""; 
+    };
+  }, []);
+
+  // Debug log on mount
+  useEffect(() => {
+    console.log("scanner_mount", {
+      innerHeight: window.innerHeight,
+      vv: window.visualViewport?.height,
+      support_dvh: CSS.supports("height","100dvh"),
+    });
+  }, []);
 
   useEffect(() => {
     if (currentView === 'scanner') {
@@ -84,8 +105,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         
-        // ✅ 5. Visually confirm that the <video> tag is rendering
-        videoRef.current.style.border = "2px solid red";
+        // Video element ready for streaming
         
         console.log("[CAMERA] srcObject set, playing video");
       } else {
@@ -324,58 +344,65 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner View
   if (currentView === 'scanner') {
     return (
-      <div className="relative w-full h-full bg-black flex flex-col">
-        <div className="flex-1 relative overflow-hidden">
+      <div className="scanner-root scanner-safe fixed inset-0 z-[100] bg-black grid"
+           style={{ gridTemplateRows: "auto 1fr auto" }}>
+        <header className="relative px-4 pb-2">
+          {onCancel && (
+            <button 
+              onClick={onCancel}
+              className="absolute left-4 top-0 translate-y-[-4px] bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg font-medium transition-colors"
+            >
+              <X className="w-4 h-4 inline mr-1" />
+              Cancel
+            </button>
+          )}
+          <h2 className="text-center text-white font-semibold text-lg">
+            🧪 Health Inspector Scanner
+          </h2>
+          <p className="text-center text-white/70 text-sm mt-1">
+            Scan a barcode or aim at a meal to inspect its health profile.
+          </p>
+        </header>
+
+        <main className="relative overflow-hidden">
+          {/* Camera preview */}
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <canvas ref={canvasRef} className="hidden" />
           
-          {/* Scanning Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
-              <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
-                isScanning ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'shadow-[0_0_30px_rgba(34,197,94,0.4)]'
-              }`}>
-                <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
-                <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
-                
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className={`transition-all duration-300 ${isScanning ? 'animate-pulse' : 'animate-bounce'}`}>
-                    <Target className={`w-16 h-16 transition-colors ${
-                      isScanning ? 'text-red-400' : 'text-green-400'
-                    }`} />
-                  </div>
+          {/* Center overlay */}
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <div className="w-[78%] max-w-[340px] aspect-[1.4/1] rounded-[22px] border-2 border-emerald-400 shadow-[0_0_36px_rgba(16,185,129,0.45)]">
+              {/* Corner brackets */}
+              <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg"></div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg"></div>
+              <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg"></div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg"></div>
+              
+              {/* Center target */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className={`transition-all duration-300 ${isScanning ? 'animate-pulse' : 'animate-bounce'}`}>
+                  <Target className={`w-16 h-16 transition-colors ${
+                    isScanning ? 'text-red-400' : 'text-emerald-400'
+                  }`} />
                 </div>
-                
-                {isScanning && (
-                  <div className="absolute inset-0 overflow-hidden rounded-3xl">
-                    <div className="w-full h-1 bg-red-500 animate-[slide_0.5s_ease-in-out_infinite] shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
-                  </div>
-                )}
               </div>
+              
+              {/* Scanning animation */}
+              {isScanning && (
+                <div className="absolute inset-0 overflow-hidden rounded-[22px]">
+                  <div className="w-full h-1 bg-red-500 animate-[slide_0.5s_ease-in-out_infinite] shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Header Text */}
-          <div className="absolute top-8 left-4 right-4 text-center">
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
-              <h2 className="text-white text-lg font-bold mb-2">
-                🔬 Health Inspector Scanner
-              </h2>
-              <p className="text-green-300 text-sm animate-pulse">
-                Scan a food barcode or aim your camera at a meal to inspect its health profile!
-              </p>
-            </div>
-          </div>
-
-          {/* Grid Overlay */}
+          {/* Grid overlay */}
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <div className="w-full h-full" style={{
               backgroundImage: `
@@ -385,55 +412,38 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
-        </div>
+        </main>
 
-        {/* Bottom Controls */}
-        <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
-          <div className="flex flex-col space-y-4">
-            {/* Cancel Button */}
-            {onCancel && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={onCancel}
-                  className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
-                >
-                  <X className="w-5 h-5 mr-2" />
-                  Cancel
-                </Button>
-              </div>
+        <footer className="px-4 pt-3 space-y-3">
+          {/* Manual Entry Button */}
+          <Button
+            onClick={handleManualEntry}
+            variant="outline"
+            className="w-full bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
+          >
+            <Keyboard className="w-5 h-5 mr-2" />
+            🔢 Enter Barcode Manually
+          </Button>
+
+          {/* Main Analyze Button */}
+          <Button
+            onClick={captureImage}
+            disabled={isScanning}
+            className="w-full relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
+                     text-white font-bold py-4 text-lg border-2 border-green-400 
+                     shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
+                     transition-all duration-300 disabled:opacity-50"
+          >
+            <div className="flex items-center justify-center">
+              <Zap className={`w-6 h-6 mr-3 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
+              {isScanning ? '🔍 SCANNING...' : '🚨 ANALYZE NOW'}
+            </div>
+            {!isScanning && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
             )}
-
-            {/* Manual Entry Button */}
-            <Button
-              onClick={handleManualEntry}
-              variant="outline"
-              className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-            >
-              <Keyboard className="w-5 h-5 mr-2" />
-              🔢 Enter Barcode Manually
-            </Button>
-
-            {/* Main Analyze Button - Updated to Green */}
-            <Button
-              onClick={captureImage}
-              disabled={isScanning}
-              className="relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
-                       text-white font-bold py-4 text-lg border-2 border-green-400 
-                       shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
-                       transition-all duration-300 disabled:opacity-50"
-              style={{ backgroundColor: isScanning ? '#22c55e' : '#3ddb85' }}
-            >
-              <div className="flex items-center justify-center">
-                <Zap className={`w-6 h-6 mr-3 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
-                {isScanning ? '🔍 SCANNING...' : '🚨 ANALYZE NOW'}
-              </div>
-              {!isScanning && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
-              )}
-            </Button>
-          </div>
-        </div>
+          </Button>
+        </footer>
       </div>
     );
   }
@@ -441,7 +451,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Manual Entry View
   if (currentView === 'manual') {
     return (
-      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
+      <div className="scanner-root scanner-safe fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
         <div className="p-6 border-b bg-card">
           <div className="flex items-center space-x-4">
             <Button
@@ -529,7 +539,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Image Not Recognized View
   if (currentView === 'notRecognized') {
     return (
-      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
+      <div className="scanner-root scanner-safe fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
         <div className="p-6 border-b bg-card">
           <div className="flex items-center space-x-4">
             <Button

@@ -118,7 +118,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   const starCount = getStarRating(result.healthScore);
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full scanner-root bg-background">
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         
         {/* 🧬 Health Report Title */}

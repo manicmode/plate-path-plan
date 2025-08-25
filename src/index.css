@@ -48,6 +48,26 @@
     --tab-inactive-foreground: 220 9% 46%;
 
     --radius: 1rem;
+    
+    /* iOS viewport height fixes */
+    --vh: 1vh;
+  }
+
+  /* Scanner-specific iOS safe area and dvh classes */
+  .scanner-root {
+    height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  @supports (height: 100dvh) {
+    .scanner-root { 
+      height: 100dvh; /* modern iOS/Chrome */
+    }
+  }
+  
+  .scanner-safe {
+    padding-top: max(env(safe-area-inset-top), 12px);
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
 
     /* Enhanced Futuristic Color System - Light Mode */
     --emerald: 174 100% 50%;
