@@ -185,6 +185,20 @@
   }
 }
 
+/* Use dynamic viewport units on iOS so the footer never slides under the home indicator */
+@supports (height: 100dvh) {
+  .min-h-dvh { min-height: 100dvh; }
+}
+@supports not (height: 100dvh) {
+  /* Fallback for older Safari – allow your existing --vh fix to drive this if you have it */
+  .min-h-dvh { min-height: calc(var(--vh, 1vh) * 100); }
+}
+
+/* Bottom safe-area padding helper */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 12px);
+}
+
 @layer utilities {
   /* Enhanced Text Wrapping Utilities */
   .text-wrap-anywhere {

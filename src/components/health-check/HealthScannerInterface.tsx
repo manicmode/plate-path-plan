@@ -380,8 +380,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner View
   if (currentView === 'scanner') {
     return (
-      <div className="relative w-full h-full bg-black flex flex-col">
-        <div className="flex-1 relative overflow-hidden">
+      <div className="relative flex flex-col min-h-dvh bg-black">
+        {/* camera/video area */}
+        <main className="flex-1 relative overflow-hidden">
           <video
             ref={videoRef}
             autoPlay
@@ -441,55 +442,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
-        </div>
+        </main>
 
-        {/* Bottom Controls */}
-        <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
-          <div className="flex flex-col space-y-4">
-            {/* Cancel Button */}
-            {onCancel && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={onCancel}
-                  className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
-                >
-                  <X className="w-5 h-5 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            )}
-
-            {/* Manual Entry Button */}
-            <Button
-              onClick={handleManualEntry}
-              variant="outline"
-              className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-            >
-              <Keyboard className="w-5 h-5 mr-2" />
-              🔢 Enter Barcode Manually
-            </Button>
-
-            {/* Main Analyze Button - Updated to Green */}
-            <Button
-              onClick={captureImage}
-              disabled={isScanning}
-              className="relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
-                       text-white font-bold py-4 text-lg border-2 border-green-400 
-                       shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
-                       transition-all duration-300 disabled:opacity-50"
-              style={{ backgroundColor: isScanning ? '#22c55e' : '#3ddb85' }}
-            >
-              <div className="flex items-center justify-center">
-                <Zap className={`w-6 h-6 mr-3 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
-                {isScanning ? '🔍 SCANNING...' : '🚨 ANALYZE NOW'}
-              </div>
-              {!isScanning && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
-              )}
-            </Button>
-          </div>
-        </div>
+        {/* Sticky footer (always visible) */}
+        <footer className="sticky bottom-0 z-40 bg-black/70 backdrop-blur-md px-4 pt-3 pb-safe">
+          <ScannerActions
+            onAnalyze={captureImage}
+            onCancel={onCancel}
+            onEnterBarcode={handleManualEntry}
+            isScanning={isScanning}
+          />
+        </footer>
       </div>
     );
   }
@@ -689,3 +652,50 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   return null;
 };
+
+// ScannerActions component with swapped button order
+function ScannerActions({
+  onAnalyze,
+  onEnterBarcode,
+  onCancel,
+  isScanning = false,
+}: {
+  onAnalyze: () => void;
+  onEnterBarcode: () => void;
+  onCancel?: () => void;
+  isScanning?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      {/* GREEN CTA FIRST (bigger hit area) */}
+      <button
+        onClick={onAnalyze}
+        disabled={isScanning}
+        className="h-14 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        <Zap className={`w-6 h-6 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
+        {isScanning ? '🔍 SCANNING...' : '🧪 ANALYZE NOW'}
+      </button>
+
+      {/* Middle: Enter Barcode Manually (unchanged) */}
+      <button
+        onClick={onEnterBarcode}
+        className="h-12 rounded-xl bg-zinc-800 text-zinc-100 flex items-center justify-center gap-2"
+      >
+        <Keyboard className="w-5 h-5" />
+        ⌨️ Enter Barcode Manually
+      </button>
+
+      {/* Red cancel LAST */}
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="h-12 rounded-xl bg-red-600/90 text-white flex items-center justify-center gap-2"
+        >
+          <X className="w-5 h-5" />
+          ✖️ Cancel
+        </button>
+      )}
+    </div>
+  );
+}
