@@ -1,32 +1,46 @@
 // Comprehensive barcode diagnostics for Health Scanner
-export type DecodeAttempt = {
-  pass: number;
-  roi: { x: number; y: number; w: number; h: number }; // in canvas pixels
-  scale: number;        // 1.0, 0.75, 0.5, etc.
-  rotation: number;     // 0, 90, 180, 270, ±8
-  inverted: boolean;    // true if luminance inverted
-  imageSize: { w: number; h: number };     // canvas size
-  dpr: number;          // devicePixelRatio used
-  elapsedMs: number;    // time spent on this pass
-  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error';
-  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'CODE_128' | string;
-  code?: string;
-};
-
 export type ScanReport = {
-  reqId: string;
-  videoConstraints: any;
-  captureSize: { w: number; h: number };   // before normalization
-  normalizedSize: { w: number; h: number }; // after normalization
-  roiStrategy: 'reticle' | 'center-box';
-  attempts: DecodeAttempt[];
+  captureSize: { w: number; h: number };
+  normalizedSize: { w: number; h: number };
+  roi: { x: number; y: number; w: number; h: number; strategy: string };
+  devicePixelRatio: number;
+  constraints: any;
+  attempts: Array<{
+    idx: number;
+    rotation: number;
+    scale: number;
+    inverted: boolean;
+    crop: string;
+    outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error';
+    format?: string;
+    code?: string;
+    elapsedMs: number;
+  }>;
   final: {
     success: boolean;
     code?: string;
-    normalizedAs?: string; // e.g. UPC_A normalized from leading-0 EAN13
+    normalizedAs?: string;
     checkDigitOk?: boolean;
-    offLookup?: { status: 'hit' | 'miss' | 'error'; ms: number; http?: number }
+    offLookup?: { status: 'hit' | 'miss' | 'error'; http?: number; ms?: number };
+    willScore: boolean;
+    willFallback: boolean;
+    totalMs: number;
   };
+};
+
+// Legacy type for backward compatibility
+export type DecodeAttempt = {
+  pass: number;
+  roi: { x: number; y: number; w: number; h: number };
+  scale: number;
+  rotation: number;
+  inverted: boolean;
+  imageSize: { w: number; h: number };
+  dpr: number;
+  elapsedMs: number;
+  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error';
+  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'CODE_128' | string;
+  code?: string;
 };
 
 // Store last 3 reports globally for debugging
@@ -34,6 +48,89 @@ declare global {
   interface Window {
     __HS_LAST_REPORTS?: ScanReport[];
   }
+}
+
+// Global tracking
+let currentReport: ScanReport | null = null;
+
+export function startScanReport(
+  captureSize: { w: number; h: number },
+  normalizedSize: { w: number; h: number },
+  roi: { x: number; y: number; w: number; h: number; strategy: string },
+  devicePixelRatio: number,
+  constraints: any
+): void {
+  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1') return;
+  
+  currentReport = {
+    captureSize,
+    normalizedSize,
+    roi,
+    devicePixelRatio,
+    constraints,
+    attempts: [],
+    final: {
+      success: false,
+      willScore: false,
+      willFallback: false,
+      totalMs: 0
+    }
+  };
+}
+
+export function logAttempt(
+  idx: number,
+  rotation: number,
+  scale: number,
+  inverted: boolean,
+  crop: string,
+  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error',
+  elapsedMs: number,
+  format?: string,
+  code?: string
+): void {
+  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1' || !currentReport) return;
+  
+  currentReport.attempts.push({
+    idx,
+    rotation,
+    scale,
+    inverted,
+    crop,
+    outcome,
+    format,
+    code,
+    elapsedMs
+  });
+}
+
+export function finalizeScanReport(
+  success: boolean,
+  totalMs: number,
+  code?: string,
+  normalizedAs?: string,
+  checkDigitOk?: boolean,
+  offLookup?: { status: 'hit' | 'miss' | 'error'; http?: number; ms?: number },
+  willScore: boolean = false,
+  willFallback: boolean = false
+): ScanReport | null {
+  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1' || !currentReport) return null;
+  
+  currentReport.final = {
+    success,
+    code,
+    normalizedAs,
+    checkDigitOk,
+    offLookup,
+    willScore,
+    willFallback,
+    totalMs
+  };
+  
+  storeScanReport(currentReport);
+  const report = currentReport;
+  currentReport = null;
+  return report;
 }
 
 export function storeScanReport(report: ScanReport) {
@@ -47,7 +144,7 @@ export function storeScanReport(report: ScanReport) {
       window.__HS_LAST_REPORTS = window.__HS_LAST_REPORTS.slice(0, 3);
     }
     
-    console.log('[HS_DIAG]', report);
+    console.info('[HS_DIAG]', report);
   }
 }
 

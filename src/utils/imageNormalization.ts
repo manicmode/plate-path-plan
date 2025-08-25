@@ -75,11 +75,11 @@ export async function normalizeHealthScanImage(
   console.log('📏 Original image size:', originalSize, 'bytes');
 
   try {
-    // Compression options
+    // Compression options - Disable web worker to avoid CSP violations
     const compressionOptions = {
       maxSizeMB: 10, // Max 10MB
       maxWidthOrHeight: Math.max(maxWidth, maxHeight),
-      useWebWorker: true,
+      useWebWorker: false, // Disable to avoid CSP worker-src violations
       fileType: `image/${format.toLowerCase()}` as const,
       quality: quality,
       // EXIF handling

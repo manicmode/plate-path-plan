@@ -1,4 +1,4 @@
-import { DecodeAttempt, ScanReport, storeScanReport } from './diagnostics';
+import { ScanReport, startScanReport, logAttempt, finalizeScanReport } from './diagnostics';
 
 export type EnhancedDecodeResult = {
   code: string | null;
@@ -22,23 +22,25 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
   normalizedSize?: { w: number; h: number }
 ): Promise<EnhancedDecodeResult> {
   const startTime = Date.now();
-  const attempts: DecodeAttempt[] = [];
   const dpr = window.devicePixelRatio || 1;
   
-  let report: ScanReport | null = null;
-  
+  // Initialize diagnostics if debug mode is enabled
   if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-    report = {
-      reqId,
-      videoConstraints: videoConstraints || {},
-      captureSize: captureSize || { w: 0, h: 0 },
-      normalizedSize: normalizedSize || { w: 0, h: 0 },
-      roiStrategy: 'center-box',
-      attempts: [],
-      final: {
-        success: false
-      }
+    const roi = {
+      x: (normalizedSize?.w || 0) * 0.1,
+      y: (normalizedSize?.h || 0) * 0.35,
+      w: (normalizedSize?.w || 0) * 0.8,
+      h: (normalizedSize?.h || 0) * 0.3,
+      strategy: 'center-band-30'
     };
+    
+    startScanReport(
+      captureSize || { w: 0, h: 0 },
+      normalizedSize || { w: 0, h: 0 },
+      roi,
+      dpr,
+      videoConstraints || {}
+    );
   }
   
   try {
@@ -47,17 +49,17 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
     const img = await loadImage(imageUrl);
     URL.revokeObjectURL(imageUrl);
     
-    // Enhanced multi-pass strategy with more coverage
+    // Multi-pass strategy with horizontal band ROI for UPC/EAN detection
     const cropConfigs = [
-      { x: 0.15, y: 0.3, w: 0.7, h: 0.4 },   // Center ROI (primary)
-      { x: 0.1, y: 0.1, w: 0.8, h: 0.3 },    // Top strip (wider)
-      { x: 0.1, y: 0.6, w: 0.8, h: 0.3 },    // Bottom strip (wider)
-      { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },  // Tighter center
+      { name: 'center-band-30', x: 0.1, y: 0.35, w: 0.8, h: 0.3 },    // Primary horizontal band
+      { name: 'center-box', x: 0.2, y: 0.3, w: 0.6, h: 0.4 },         // Center square
+      { name: 'top-band', x: 0.1, y: 0.15, w: 0.8, h: 0.25 },         // Upper horizontal band
+      { name: 'bottom-band', x: 0.1, y: 0.6, w: 0.8, h: 0.25 },       // Lower horizontal band
     ];
     
-    const scales = [1.0, 0.8, 1.2, 0.6];  // More scale variations
-    const rotations = [0, 90, 180, 270, 5, -5, 10, -10];  // More rotation variants
-    const luminanceModes = ['normal', 'inverted'];
+    const scales = [1.0, 0.75, 0.5];  // Ensure minimum resolution ≥ 1080px
+    const rotations = [0, 90, 180, 270, 8, -8];  // TRY_HARDER rotations
+    const luminanceModes = [false, true];  // normal, inverted
     
     let passNumber = 0;
     
@@ -65,7 +67,7 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
     for (const crop of cropConfigs) {
       for (const scale of scales) {
         for (const rotation of rotations) {
-          for (const luminanceMode of luminanceModes) {
+          for (const inverted of luminanceModes) {
             passNumber++;
             const passStart = Date.now();
             
@@ -78,20 +80,20 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
             const cropX = img.width * crop.x;
             const cropY = img.height * crop.y;
             
-            // Ensure minimum resolution (1280px min dimension)
+            // Ensure minimum resolution (shorter side ≥ 1080px for barcode detection)
             const minDimension = Math.min(cropW * scale, cropH * scale);
             let adjustedScale = scale;
-            if (minDimension < 1280 && minDimension > 0) {
-              adjustedScale = Math.max(scale, 1280 / Math.min(cropW, cropH));
+            if (minDimension < 1080 && minDimension > 0) {
+              adjustedScale = Math.max(scale, 1080 / Math.min(cropW, cropH));
             }
             
             // Set canvas size based on rotation
             if (rotation === 90 || rotation === 270) {
-              canvas.width = Math.max(512, cropH * adjustedScale);
-              canvas.height = Math.max(512, cropW * adjustedScale);
+              canvas.width = Math.max(1080, cropH * adjustedScale);
+              canvas.height = Math.max(1080, cropW * adjustedScale);
             } else {
-              canvas.width = Math.max(512, cropW * adjustedScale);
-              canvas.height = Math.max(512, cropH * adjustedScale);
+              canvas.width = Math.max(1080, cropW * adjustedScale);
+              canvas.height = Math.max(1080, cropH * adjustedScale);
             }
             
             // Apply rotation and drawing
@@ -110,7 +112,7 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
             );
             
             // Apply luminance inversion if needed
-            if (luminanceMode === 'inverted') {
+            if (inverted) {
               const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
               for (let i = 0; i < imageData.data.length; i += 4) {
                 imageData.data[i] = 255 - imageData.data[i];     // R
@@ -127,35 +129,26 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
             
             const passElapsed = Date.now() - passStart;
             
-            const attempt: DecodeAttempt = {
-              pass: passNumber,
-              roi: { x: cropX, y: cropY, w: cropW, h: cropH },
-              scale: adjustedScale,
-              rotation,
-              inverted: luminanceMode === 'inverted',
-              imageSize: { w: canvas.width, h: canvas.height },
-              dpr,
-              elapsedMs: passElapsed,
-              outcome,
-              format,
-              code
-            };
-            
-            attempts.push(attempt);
+            // Log attempt for diagnostics
+            if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+              logAttempt(passNumber, rotation, adjustedScale, inverted, crop.name, outcome, passElapsed, format, code);
+            }
             
             if (code && isValidUPCEAN(code)) {
               const normalizedResult = normalizeUPCCode(code, format);
+              const totalMs = Date.now() - startTime;
               
-              if (report) {
-                report.attempts = attempts;
-                report.final = {
-                  success: true,
-                  code,
-                  normalizedAs: normalizedResult.normalizedCode,
-                  checkDigitOk: normalizedResult.checkDigitValid
-                };
-                storeScanReport(report);
-              }
+              // Finalize scan report
+              const report = finalizeScanReport(
+                true,
+                totalMs,
+                code,
+                normalizedResult.normalizedCode,
+                normalizedResult.checkDigitValid,
+                undefined, // OFF lookup will be handled separately
+                true, // willScore
+                false // willFallback
+              );
               
               return {
                 code: normalizedResult.normalizedCode,
@@ -163,7 +156,7 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
                 normalizedAs: normalizedResult.normalizedCode !== code ? normalizedResult.normalizedCode : undefined,
                 checkDigitOk: normalizedResult.checkDigitValid,
                 attempts: passNumber,
-                ms: Date.now() - startTime,
+                ms: totalMs,
                 report
               };
             }
@@ -178,32 +171,44 @@ export async function decodeUPCFromImageBlobWithDiagnostics(
     }
     
     // No barcode found
-    if (report) {
-      report.attempts = attempts;
-      report.final = { success: false };
-      storeScanReport(report);
-    }
+    const totalMs = Date.now() - startTime;
+    const report = finalizeScanReport(
+      false,
+      totalMs,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false, // willScore
+      true // willFallback
+    );
     
     return {
       code: null,
       attempts: passNumber,
-      ms: Date.now() - startTime,
+      ms: totalMs,
       report
     };
     
   } catch (error) {
     console.error('Enhanced barcode decode error:', error);
     
-    if (report) {
-      report.attempts = attempts;
-      report.final = { success: false };
-      storeScanReport(report);
-    }
+    const totalMs = Date.now() - startTime;
+    const report = finalizeScanReport(
+      false,
+      totalMs,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      true
+    );
     
     return {
       code: null,
-      attempts: attempts.length,
-      ms: Date.now() - startTime,
+      attempts: 0,
+      ms: totalMs,
       report
     };
   }
@@ -301,20 +306,36 @@ function normalizeUPCCode(code: string, format?: string): {
 }
 
 /**
- * Validate UPC/EAN check digit
+ * Validate UPC/EAN check digit with correct UPC-A parity
  */
 function isValidUPCEAN(code: string): boolean {
   if (!code || !/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)) {
     return false;
   }
   
-  // UPC-A (12 digits) / EAN-13 (13 digits) check digit validation
-  if (code.length === 12 || code.length === 13) {
+  // UPC-A (12 digits) check digit validation - correct parity
+  if (code.length === 12) {
     const digits = code.slice(0, -1).split('').map(Number);
     const checkDigit = parseInt(code.slice(-1));
     
     let sum = 0;
     for (let i = 0; i < digits.length; i++) {
+      // UPC-A parity: odd positions (1st, 3rd, 5th...) * 3, even positions * 1
+      sum += digits[i] * (i % 2 === 0 ? 3 : 1);
+    }
+    
+    const calculatedCheck = (10 - (sum % 10)) % 10;
+    return calculatedCheck === checkDigit;
+  }
+  
+  // EAN-13 (13 digits) check digit validation
+  if (code.length === 13) {
+    const digits = code.slice(0, -1).split('').map(Number);
+    const checkDigit = parseInt(code.slice(-1));
+    
+    let sum = 0;
+    for (let i = 0; i < digits.length; i++) {
+      // EAN-13 parity: odd positions * 1, even positions * 3
       sum += digits[i] * (i % 2 === 0 ? 1 : 3);
     }
     

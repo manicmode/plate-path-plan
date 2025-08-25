@@ -76,7 +76,7 @@ export async function runBarcodeTests(): Promise<void> {
   console.log('[HS_TEST] Running barcode test suite...');
   
   const testCases = [
-    { name: 'Skittles UPC', path: '/test/skittles_upc.jpg', expectedCode: '022000287311' }
+    { name: 'Sample UPC', path: '/test/skittles_upc.jpg', expectedCode: '036000291452' }
   ];
   
   for (const testCase of testCases) {

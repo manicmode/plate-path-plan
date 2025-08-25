@@ -8,7 +8,7 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 import { decodeUPCFromImageBlobWithDiagnostics } from '@/lib/barcode/enhancedDecoder';
-import { copyDebugToClipboard } from '@/lib/barcode/diagnostics';
+import { copyDebugToClipboard, startScanReport } from '@/lib/barcode/diagnostics';
 import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
 
 interface HealthScannerInterfaceProps {
@@ -77,13 +77,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
 
       console.log("[CAMERA] Requesting camera stream...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      // Enhanced camera constraints for barcode detection
+      const constraints = {
         video: { 
           facingMode: 'environment',
           width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          height: { ideal: 1080 },
+          focusMode: 'continuous'
         }
-      });
+      };
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
       console.log("[CAMERA] Stream received:", mediaStream);
       setStream(mediaStream);
@@ -152,20 +156,21 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     
     const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
 
-    // Normalize the image (compress, strip EXIF, ensure proper format)
+    // DON'T downscale for barcode detection - capture full resolution
     try {
-      // Create blob from canvas for CSP safety
+      // Create blob from canvas for CSP safety - use full resolution
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvasRef.current?.toBlob((blob) => {
           if (blob) resolve(blob);
           else reject(new Error('Failed to create blob from canvas'));
-        }, 'image/jpeg', 0.85);
+        }, 'image/jpeg', 0.9); // Higher quality for barcode detection
       });
       
+      // For barcode path: preserve full resolution, only strip EXIF
       const normalized = await normalizeHealthScanImage(new File([blob], 'capture.jpg', { type: 'image/jpeg' }), {
-        maxWidth: 1280,
-        maxHeight: 1280,
-        quality: 0.85,
+        maxWidth: Math.max(video.videoWidth, 1920), // Don't downscale below video resolution
+        maxHeight: Math.max(video.videoHeight, 1080),
+        quality: 0.9, // Higher quality for barcode detection
         format: 'JPEG',
         stripExif: true
       });
@@ -196,11 +201,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         // Use enhanced decoder with diagnostics
         const reqId = `hs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const constraints = {
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        };
+        
         const barcodeResult = await Promise.race([
           decodeUPCFromImageBlobWithDiagnostics(
             barcodeBlob, 
             reqId,
-            { video: { facingMode: 'environment' } },
+            constraints,
             { w: video.videoWidth, h: video.videoHeight },
             { w: img.width, h: img.height }
           ),
