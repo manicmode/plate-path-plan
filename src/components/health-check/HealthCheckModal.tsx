@@ -144,17 +144,32 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         imageData.replace(/&barcode=\d+$/, '') : 
         imageData;
       
-      if (detectedBarcode) {
-        setAnalysisType('barcode');
-        setLoadingMessage('Processing barcode...');
-        
-        // Use the dedicated barcode processor with enhanced OFF lookup
-        try {
-          const result = await handleBarcodeInputEnhanced(detectedBarcode, user?.id);
+        if (detectedBarcode) {
+          setAnalysisType('barcode');
+          setLoadingMessage('Processing barcode...');
+          
+          const offLookupStart = Date.now();
+          
+          if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+            console.log('[HS] off_lookup_start', { barcode: detectedBarcode });
+          }
+          
+          // Use the dedicated barcode processor with enhanced OFF lookup
+          try {
+            const result = await handleBarcodeInputEnhanced(detectedBarcode, user?.id);
+          
+          const offLookupMs = Date.now() - offLookupStart;
           
           if (!result) {
             // If barcode lookup fails, continue with regular image analysis
+            if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+              console.log('[HS] off_lookup', { status: 'miss', ms: offLookupMs, barcode: detectedBarcode });
+            }
             return handleImageCapture(cleanImageData);
+          }
+          
+          if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+            console.log('[HS] off_lookup', { status: 'hit', ms: offLookupMs, barcode: detectedBarcode });
           }
           
           if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
@@ -226,6 +241,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       }
       
       if (!willScore) {
+        // Route to manual entry fallback instead of error
         setPhase('error');
         return;
       }

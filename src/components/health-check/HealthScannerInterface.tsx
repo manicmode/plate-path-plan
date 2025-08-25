@@ -352,8 +352,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="scanner-root" style={{
-        height: 'calc(var(--vh, 1vh) * 100)',
-        minHeight: '100dvh',
+        height: '100dvh',
         display: 'grid',
         gridTemplateRows: 'auto 1fr auto',
         overflow: 'hidden',
@@ -397,7 +396,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
-              maxHeight: 'calc(100% - 160px - var(--safe-bottom, 0px))',
+              maxHeight: 'calc(100% - 180px - env(safe-area-inset-bottom))',
               maxWidth: 'calc(100% - 40px)'
             }}>
               <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
@@ -473,7 +472,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           gridRow: 3,
           position: 'sticky',
           bottom: 0,
-          padding: '12px 16px calc(16px + max(env(safe-area-inset-bottom), 16px))',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+          paddingTop: '12px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
           background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
           backdropFilter: 'blur(8px)'
         }}>
@@ -530,8 +532,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'manual') {
     return (
       <div className="scanner-root" style={{
-        height: 'calc(var(--vh, 1vh) * 100)',
-        minHeight: '100dvh',
+        height: '100dvh',
         display: 'grid',
         gridTemplateRows: 'auto 1fr auto',
         overflow: 'hidden',
