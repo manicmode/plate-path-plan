@@ -6,7 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Enhanced interfaces for structured results
+// Legacy response format that UI expects (keep UI unchanged)
+interface BackendResponse {
+  productName: string;
+  healthScore: number;
+  healthFlags: Array<{
+    type: 'danger' | 'warning' | 'good';
+    icon: string;
+    title: string;
+    description: string;
+  }>;
+  nutritionSummary: any;
+  ingredients: string[];
+  recommendations: string[];
+  generalSummary?: string;
+  barcode?: string;
+}
+
+// Enhanced interfaces for internal processing
 interface ScanResult {
   success: boolean;
   mode: 'ping' | 'scan';
@@ -972,6 +989,63 @@ function transformToProductResult(offProduct: any, barcode?: string): ProductRes
   };
 }
 
+/**
+ * CRITICAL: Legacy response mapper 
+ * Converts rich ScanResult to BackendResponse format that UI expects
+ * This keeps the UI unchanged while providing enhanced analysis
+ */
+function toLegacyBackendResponse(scan: ScanResult): BackendResponse {
+  // Extract product name from various sources
+  const name = scan.product?.name ||
+    (scan.plateItems && scan.plateItems.length > 0 ? 
+      scan.plateItems.map(item => item.name).join(', ') : 
+      'Food item');
+
+  // Convert health flags to legacy format
+  const healthFlags = (scan.product?.flags || []).map(flag => ({
+    type: flag.type,
+    icon: '⚠️', // Default icon - UI will override with proper icons
+    title: flag.title,
+    description: flag.description
+  }));
+
+  // Extract nutrition data if available
+  const nutritionSummary = scan.product?.nutrition || {};
+
+  // Extract ingredients
+  const ingredients = scan.product?.ingredients || [];
+
+  // Convert insights to recommendations (what UI shows as suggestions)
+  const recommendations = scan.insights.map(insight => insight.description);
+
+  // Calculate health score (0-10 scale matching UI expectations)
+  const baseScore = 8; // Start optimistic
+  const dangerPenalty = (scan.product?.flags || []).filter(f => f.type === 'danger').length * 3;
+  const warningPenalty = (scan.product?.flags || []).filter(f => f.type === 'warning').length * 1.5;
+  const healthScore = Math.max(0, Math.min(10, baseScore - dangerPenalty - warningPenalty));
+
+  // Set general summary for plate items
+  const generalSummary = scan.plateItems && scan.plateItems.length > 0 ? 
+    `Detected ${scan.plateItems.length} food items on plate` : 
+    undefined;
+
+  // Extract barcode if detected
+  const barcode = scan.product?.barcode;
+
+  return {
+    productName: name,
+    healthScore: Math.round(healthScore * 10) / 10, // Round to 1 decimal
+    healthFlags,
+    nutritionSummary,
+    ingredients,
+    recommendations: recommendations.length >= 2 ? recommendations : [
+      'Product analyzed for health factors',
+      'Consider overall dietary balance and moderation'
+    ],
+    generalSummary,
+    barcode
+  };
+}
 // Main serve function
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -982,9 +1056,12 @@ serve(async (req) => {
     console.log('🚀 Enhanced Health Scanner function called');
     
     const body = await req.json();
-    console.log('📦 Request body:', JSON.stringify(body, null, 2));
+    console.log('📦 Request body:', {
+      mode: body.mode,
+      dataLength: body.imageBase64?.length || 0
+    });
     
-    const { imageBase64, mode = 'scan' } = body;
+    const { imageBase64, mode = 'scan', format = 'legacy' } = body;
     
     if (!imageBase64) {
       throw new Error('Missing imageBase64 parameter');
@@ -993,51 +1070,38 @@ serve(async (req) => {
     // Clean base64 data
     const cleanImageData = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
     
-    const result = await processScanRequest(cleanImageData, mode);
+    const scanResult = await processScanRequest(cleanImageData, mode);
     
-    return new Response(JSON.stringify(result), {
+    // Return legacy format by default (what UI expects)
+    // Use ?format=scan for debugging raw ScanResult
+    const response = format === 'scan' ? scanResult : toLegacyBackendResponse(scanResult);
+    
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('💥 Enhanced Health Scanner error:', error);
     
-    const errorResult: ScanResult = {
-      success: false,
-      mode: 'scan',
-      confidence: 0,
-      insights: [
-        {
-          type: 'negative',
-          title: 'Processing Error',
-          description: `Failed to analyze image: ${error.message}`,
-          icon: '❌',
-          priority: 10
-        },
-        {
-          type: 'neutral',
-          title: 'Try Again',
-          description: 'Please retake the photo or try manual entry',
-          icon: '🔄',
-          priority: 9
-        }
-      ],
-      nextAction: {
-        action: 'retake',
+    // Return legacy error format that UI can handle
+    const errorResponse: BackendResponse = {
+      productName: 'Processing Error',
+      healthScore: 0,
+      healthFlags: [{
+        type: 'danger',
+        icon: '❌',
         title: 'Analysis Failed',
-        description: 'Something went wrong during processing',
-        buttons: [
-          { label: 'Retake Photo', action: 'retake', variant: 'primary' },
-          { label: 'Manual Entry', action: 'manual_entry', variant: 'secondary' }
-        ]
-      },
-      metadata: {
-        processingTime: 0,
-        detectorsUsed: []
-      }
+        description: `Error: ${error.message}`
+      }],
+      nutritionSummary: {},
+      ingredients: [],
+      recommendations: [
+        'Image processing failed - please try again',
+        'Consider retaking the photo or using manual entry'
+      ]
     };
     
-    return new Response(JSON.stringify(errorResult), {
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
