@@ -15,6 +15,8 @@ import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
+import { SharedBarcodeScanner } from '@/components/scan/SharedBarcodeScanner';
+import { ConfirmAddFoodModal } from '@/components/scan/ConfirmAddFoodModal';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
@@ -114,6 +116,9 @@ const CameraPage = () => {
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showSharedBarcodeScanner, setShowSharedBarcodeScanner] = useState(false);
+  const [barcodeProductData, setBarcodeProductData] = useState(null);
+  const [showConfirmAdd, setShowConfirmAdd] = useState(false);
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
   const [showBarcodeNotFound, setShowBarcodeNotFound] = useState(false);
   const [failedBarcode, setFailedBarcode] = useState('');
@@ -859,8 +864,252 @@ const CameraPage = () => {
     };
   };
 
-  // Barcode lookup function - Enhanced with ingredient detection
+  // Original barcode lookup function - Enhanced with ingredient detection  
   const handleBarcodeDetected = async (barcode: string) => {
+    try {
+      setIsLoadingBarcode(true);
+      setInputSource('barcode');
+      console.log('=== BARCODE LOOKUP START ===');
+      console.log('Barcode detected:', barcode);
+
+      // CRITICAL: Complete state reset to prevent contamination
+      setRecognizedFoods([]);
+      setVisionResults(null);
+      setVoiceResults(null);
+      setShowSummaryPanel(false);
+      setSummaryItems([]);
+      setReviewItems([]);
+      setShowReviewScreen(false);
+      setShowError(false);
+      setErrorMessage('');
+
+      // Validate barcode format
+      const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+      if (!/^\d{8,14}$/.test(cleanBarcode)) {
+        throw new Error('Invalid barcode format. Please check the barcode number.');
+      }
+
+// Global barcode search is intentionally forced OFF for now.
+// Runtime is hardcoded to false; the profile toggle is ignored until rollout.
+const enableGlobalSearch = false;
+console.log('Global search enabled:', enableGlobalSearch);
+
+      console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
+      
+      // Test function deployment with health check
+      try {
+        const healthResponse = await supabase.functions.invoke('barcode-lookup-global', {
+          body: { health: true }
+        });
+        console.log('Health check response:', healthResponse);
+      } catch (healthError) {
+        console.error('Health check failed:', healthError);
+        if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
+          toast.error("Service temporarily unavailable", {
+            description: "Please enter product manually below",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          setIsLoadingBarcode(false);
+          return;
+        }
+      }
+      
+      console.log('=== STEP 2: CALLING BARCODE LOOKUP FUNCTION ===');
+      
+      // Generate unique request ID to prevent stale responses
+      const requestId = crypto.randomUUID();
+      console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch, requestId });
+      
+      // Reduced timeout for faster fallback to manual entry
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Function call timeout after 8 seconds')), 8000)
+      );
+      
+      const functionCall = supabase.functions.invoke('barcode-lookup-global', {
+        body: { 
+          barcode: cleanBarcode,
+          enableGlobalSearch,
+          requestId
+        }
+      });
+      
+      const response = await Promise.race([functionCall, timeoutPromise]) as any;
+      
+      console.log('=== FUNCTION RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response error:', response.error);
+      console.log('Response received for request ID:', requestId);
+
+      // Enhanced error handling for 404 and deployment issues
+      if (response.error) {
+        console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
+        
+        // Handle specific error types with immediate fallback to manual entry
+        if (response.error.message?.includes('404') || 
+            response.error.message?.includes('Not Found') ||
+            response.error.message?.includes('FunctionsError')) {
+          console.error('Function deployment issue detected - 404 error');
+          
+          toast.error("Service temporarily unavailable", {
+            description: "Enter product details manually",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
+        }
+        
+        if (response.error.message?.includes('timeout') || 
+            response.error.message?.includes('Timeout') ||
+            response.error.message === 'Function call timeout after 8 seconds') {
+          console.error('Function timeout detected');
+          
+          toast.error("Request timed out", {
+            description: "Try manual entry instead",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
+        }
+        
+        throw error; // Re-throw to show generic error
+      }
+
+      // Enhanced product not found handling with immediate manual fallback
+      if (!response.data?.success) {
+        console.log('=== BARCODE LOOKUP FAILED ===', response.data?.message);
+        
+        const message = response.data?.message || 'Product not found in database';
+        const enhancedMessage = `${message} - Enter details manually`;
+        setFailedBarcode(cleanBarcode);
+        
+        toast.error(enhancedMessage, {
+          description: "We'll help you add the product manually",
+          action: {
+            label: "Enter Manually",
+            onClick: () => {
+              setShowBarcodeNotFound(true);
+              setFailedBarcode(cleanBarcode);
+            }
+          }
+        });
+        
+        setShowBarcodeNotFound(true);
+        return;
+      }
+
+      // PROCESSING SUCCESSFUL RESPONSE
+      const product = response.data.product;
+      console.log('=== BARCODE LOOKUP SUCCESS ===');
+      console.log('Product found:', product);
+      
+      // Reset error state
+      setShowError(false);
+      setErrorMessage('');
+      
+      // Convert product to FoodData
+      const recognizedFood = {
+        name: product.name,
+        brand: product.brand,
+        calories: product.nutrition?.calories || 0,
+        protein: product.nutrition?.protein || 0,
+        carbs: product.nutrition?.carbs || 0,
+        fat: product.nutrition?.fat || 0,
+        fiber: product.nutrition?.fiber || 0,
+        sugar: product.nutrition?.sugar || 0,
+        sodium: product.nutrition?.sodium || 0,
+        saturated_fat: product.nutrition?.saturated_fat || 0,
+        isBranded: true,
+        source: 'barcode',
+        confidence: 95, // High confidence for barcode scans
+        
+        // Additional product data
+        ingredients: product.ingredients,
+        barcode: cleanBarcode,
+        servingSize: product.serving?.text || product.serving?.amount || '100g',
+        ...(product.allergens && { allergens: product.allergens }),
+        ...(product.additives && { additives: product.additives }),
+        ...(product.nova && { nova: product.nova }),
+        ...(product.nutriscore && { nutriscore: product.nutriscore }),
+        
+        debugLog: `OFF Product: ${product.name} | Brand: ${product.brand || 'Generic'}`
+      };
+
+      console.log('Converted to FoodData:', recognizedFood);
+      
+      // CRITICAL: Set results and show summary
+      setRecognizedFoods([recognizedFood]);
+      setShowSummaryPanel(true);
+      setShowMultiAIDetection(false);
+      
+      // Clear any existing error states
+      setShowBarcodeNotFound(false);
+      setFailedBarcode('');
+      
+      console.log('=== BARCODE PROCESSING COMPLETE ===');
+
+    } catch (error) {
+      console.error('=== BARCODE LOOKUP ERROR ===', error);
+      
+      // Convert specific error types to user-friendly messages
+      let errorMessage = 'Failed to lookup product';
+      
+      if (error.message?.includes('Invalid barcode')) {
+        errorMessage = error.message;
+      } else if (error.message?.includes('timeout') || error.message?.includes('8 seconds')) {
+        errorMessage = 'Request timed out - please try again or enter manually';
+      } else if (error.message?.includes('404') || error.message?.includes('temporarily unavailable')) {
+        errorMessage = 'Service temporarily unavailable - please try entering manually';
+      } else if (error.message?.includes('Function call failed')) {
+        errorMessage = 'Service temporarily unavailable - please try entering manually';
+      }
+      
+      // Show toast with manual entry option
+      toast.error(errorMessage, {
+        description: "You can enter the product details manually",
+        action: {
+          label: 'Enter Manually',
+          onClick: () => {
+            setFailedBarcode(barcode);
+            setShowBarcodeNotFound(true);
+          }
+        },
+        duration: 8000
+      });
+      
+      // Automatically show manual entry modal for service unavailable errors
+      if (errorMessage.includes('temporarily unavailable') || errorMessage.includes('404')) {
+        setFailedBarcode(barcode);
+        setShowBarcodeNotFound(true);
+      }
+      
+      throw error; // Re-throw so calling function can handle appropriately
+    } finally {
+      setIsLoadingBarcode(false);
+    }
+  };
     try {
       setIsLoadingBarcode(true);
       setInputSource('barcode');
@@ -1097,7 +1346,91 @@ console.log('Global search enabled:', enableGlobalSearch);
     }
   };
 
-  const handleVoiceRecording = async () => {
+  // Enhanced barcode detection handler using shared scanner
+  const handleSharedBarcodeDetected = async (code: { raw: string; type: 'ean13' | 'upc' | 'ean8' | 'qr' }) => {
+    try {
+      setIsLoadingBarcode(true);
+      console.log('=== SHARED BARCODE DETECTED ===', code);
+
+      // Close scanner immediately
+      setShowSharedBarcodeScanner(false);
+
+      // Call enhanced-health-scanner with barcode mode
+      const requestId = crypto.randomUUID();
+      console.log('🔍 Calling enhanced-health-scanner for barcode:', code.raw);
+
+      const response = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: { 
+          mode: 'barcode', 
+          barcode: code.raw, 
+          source: 'log',
+          requestId 
+        }
+      });
+
+      if (response.error) {
+        console.error('Enhanced health scanner error:', response.error);
+        throw new Error(response.error.message || 'Backend error');
+      }
+
+      const result = response.data;
+      console.log('✅ Enhanced health scanner result:', result);
+
+      if (result && result.productName && !result.fallback) {
+        // Success - show confirm add modal
+        setBarcodeProductData(result);
+        setShowConfirmAdd(true);
+      } else {
+        // Fallback or no match
+        toastOnce('error', `No product found for barcode ${code.raw}. Try manual entry.`);
+        setShowBarcodeNotFound(true);
+        setFailedBarcode(code.raw);
+      }
+
+    } catch (error) {
+      console.error('❌ Shared barcode detection error:', error);
+      toastOnce('error', 'Failed to lookup product - please try again');
+    } finally {
+      setIsLoadingBarcode(false);
+    }
+  };
+
+  // Confirm add food to log
+  const handleConfirmAddFood = async (productData: any, serving: { amount: number; unit: string }) => {
+    try {
+      console.log('🍽️ Confirming add food to log:', { productData, serving });
+
+      const { addFoodLog } = await import('@/lib/logs/addFoodLog');
+      
+      await addFoodLog({
+        source: 'barcode',
+        barcode: productData.barcode,
+        productName: productData.productName,
+        brand: productData.brand,
+        nutrients: productData.nutritionSummary,
+        ingredients: productData.ingredients,
+        serving,
+        additives: productData.additives,
+        allergens: productData.allergens,
+        offId: productData.offId,
+        nova: productData.nova
+      });
+
+      // Close modals and reset
+      setShowConfirmAdd(false);
+      setBarcodeProductData(null);
+      
+    } catch (error) {
+      console.error('❌ Failed to add food to log:', error);
+      toastOnce('error', 'Failed to add food to log - please try again');
+    }
+  };
+
+  const handleBackToScanner = () => {
+    setShowConfirmAdd(false);
+    setBarcodeProductData(null);
+    setShowSharedBarcodeScanner(true);
+  };
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
     
     if (isRecording) {
@@ -2194,6 +2527,8 @@ console.log('Global search enabled:', enableGlobalSearch);
     // Reset barcode-related state
     setIsLoadingBarcode(false);
     setShowBarcodeScanner(false);
+    setShowSharedBarcodeScanner(false);
+    setShowConfirmAdd(false);
     
     // Reset summary panel state
     setShowSummaryPanel(false);
@@ -2411,10 +2746,10 @@ console.log('Global search enabled:', enableGlobalSearch);
                     )}
                   </Button>
                   
-                  {/* Scan Barcode Tab */}
+                   {/* Scan Barcode Tab - NEW SHARED SCANNER */}
                   <Button
                     onClick={() => {
-                      setShowBarcodeScanner(true);
+                      setShowSharedBarcodeScanner(true);
                       setInputSource('barcode');
                       resetErrorState();
                     }}
