@@ -2782,6 +2782,7 @@ export type Database = {
           goal_type: Database["public"]["Enums"]["habit_goal_type"]
           id: string
           is_active: boolean
+          is_public: boolean | null
           min_viable: string | null
           name: string
           slug: string
@@ -2806,6 +2807,7 @@ export type Database = {
           goal_type: Database["public"]["Enums"]["habit_goal_type"]
           id?: string
           is_active?: boolean
+          is_public?: boolean | null
           min_viable?: string | null
           name: string
           slug: string
@@ -2830,6 +2832,7 @@ export type Database = {
           goal_type?: Database["public"]["Enums"]["habit_goal_type"]
           id?: string
           is_active?: boolean
+          is_public?: boolean | null
           min_viable?: string | null
           name?: string
           slug?: string
@@ -3448,6 +3451,7 @@ export type Database = {
       }
       meditation_sessions: {
         Row: {
+          audio_path: string | null
           audio_url: string
           category: string
           created_at: string | null
@@ -3455,10 +3459,12 @@ export type Database = {
           duration: number
           id: string
           image_url: string | null
+          is_free: boolean | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          audio_path?: string | null
           audio_url: string
           category: string
           created_at?: string | null
@@ -3466,10 +3472,12 @@ export type Database = {
           duration: number
           id?: string
           image_url?: string | null
+          is_free?: boolean | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          audio_path?: string | null
           audio_url?: string
           category?: string
           created_at?: string | null
@@ -3477,6 +3485,7 @@ export type Database = {
           duration?: number
           id?: string
           image_url?: string | null
+          is_free?: boolean | null
           title?: string
           updated_at?: string | null
         }

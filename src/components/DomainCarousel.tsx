@@ -42,6 +42,12 @@ export function DomainCarousel({ domain, title, onStartHabit, onDetailsClick }: 
 
   useEffect(() => {
     const initializeData = async () => {
+      // Only fetch templates if user is authenticated
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
         // Fetch templates and user habits in parallel
         const [templatesResponse] = await Promise.all([

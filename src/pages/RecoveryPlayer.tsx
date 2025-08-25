@@ -22,6 +22,8 @@ interface SessionData {
   description: string;
   duration: number;
   audio_url: string;
+  audio_path?: string;
+  is_free?: boolean;
   category: string;
   id: string;
 }
@@ -52,6 +54,7 @@ const RecoveryPlayer = () => {
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [signedAudioUrl, setSignedAudioUrl] = useState<string | null>(null);
 
   // Animation state
   const [breathingScale, setBreathingScale] = useState(1);
@@ -205,10 +208,48 @@ const RecoveryPlayer = () => {
     }
   };
 
+  // Get signed URL for audio
+  useEffect(() => {
+    let isMounted = true;
+
+    async function getSignedUrl() {
+      // If session has audio_path, use signed URL from private storage
+      if (sessionData.audio_path) {
+        try {
+          const { data, error } = await supabase
+            .storage
+            .from('meditation-audio')
+            .createSignedUrl(sessionData.audio_path, 3600); // 1 hour expiry
+
+          if (!isMounted) return;
+
+          if (error) {
+            console.error('[RecoveryPlayer] Signed URL error:', error);
+            // Fallback to direct URL if signed URL fails
+            setSignedAudioUrl(sessionData.audio_url);
+          } else {
+            setSignedAudioUrl(data?.signedUrl ?? sessionData.audio_url);
+          }
+        } catch (err) {
+          console.error('[RecoveryPlayer] Failed to get signed URL:', err);
+          if (isMounted) {
+            setSignedAudioUrl(sessionData.audio_url);
+          }
+        }
+      } else {
+        // Use direct URL for legacy sessions
+        setSignedAudioUrl(sessionData.audio_url);
+      }
+    }
+
+    getSignedUrl();
+    return () => { isMounted = false; };
+  }, [sessionData.audio_path, sessionData.audio_url]);
+
   // Handle audio events
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !signedAudioUrl) return;
 
     const handleLoadedData = () => {
       setDuration(audio.duration);
@@ -247,7 +288,7 @@ const RecoveryPlayer = () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('loadstart', handleLoadStart);
     };
-  }, []);
+  }, [signedAudioUrl]);
 
   // Breathing animation
   useEffect(() => {
@@ -385,7 +426,7 @@ const RecoveryPlayer = () => {
       {/* Audio element */}
       <audio
         ref={audioRef}
-        src={sessionData.audio_url}
+        src={signedAudioUrl || ''}
         preload="auto"
       />
 

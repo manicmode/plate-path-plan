@@ -93,6 +93,18 @@ export const useHabitTemplatesV2 = ({
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
+        // Check if user is authenticated
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setData([]);
+          setTotalCount(0);
+          setCategories([]);
+          setEquipmentOptions([]);
+          setAllTags([]);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError(null);
 

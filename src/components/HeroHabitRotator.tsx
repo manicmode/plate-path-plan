@@ -8,6 +8,7 @@ import { HabitTemplate } from '@/hooks/useHabitTemplatesV2';
 import { QuickLogSheet } from '@/components/QuickLogSheet';
 import { useUserHabits } from '@/hooks/useUserHabits';
 import { useHabitManagement } from '@/hooks/useHabitManagement';
+import { useAuth } from '@/contexts/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeroHabitRotatorProps {
@@ -41,6 +42,7 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   
+  const { user } = useAuth();
   const { hasHabit, getUserHabit, fetchUserHabits } = useUserHabits();
   const { logHabit } = useHabitManagement();
 
@@ -55,6 +57,12 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
 
   useEffect(() => {
     const initializeData = async () => {
+      // Only fetch templates if user is authenticated
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
         // Fetch templates and user habits in parallel
         const [templatesResponse] = await Promise.all([
@@ -81,7 +89,7 @@ export function HeroHabitRotator({ onStartHabit }: HeroHabitRotatorProps) {
     };
 
     initializeData();
-  }, [fetchUserHabits]);
+  }, [user, fetchUserHabits]);
 
   // Auto-advance every 6 seconds (pause on hover/focus)
   useEffect(() => {
