@@ -114,7 +114,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = async () => {
-    console.log("[HS] capture_start");
+    if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+      console.log("[HS] capture", `${videoRef.current?.videoWidth || 0}x${videoRef.current?.videoHeight || 0}`);
+    }
     
     if (!videoRef.current || !canvasRef.current) {
       console.error("❌ Missing video or canvas ref!", {
@@ -141,7 +143,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     ctx.drawImage(video, 0, 0);
     
     const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log("[HS] capture_done", `${video.videoWidth}x${video.videoHeight}`);
 
     // Normalize the image (compress, strip EXIF, ensure proper format)
     try {
@@ -162,12 +163,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       });
 
       const imageData = normalized.dataUrl;
-    
       
       // Enhanced barcode detection with multi-pass ZXing
       try {
-        console.log("🔍 Starting enhanced barcode detection...");
-        
         // Create blob from normalized image for decoder
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -197,16 +195,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           )
         ]);
         
-        console.info('[HS] barcode', { code: barcodeResult.code, ms: barcodeResult.ms, attempts: barcodeResult.attempts });
+        if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+          console.log('[HS] barcode', { code: barcodeResult.code, ms: barcodeResult.ms, attempts: barcodeResult.attempts });
+        }
         
         if (barcodeResult.code) {
-          console.log("📊 Enhanced barcode detection successful:", barcodeResult.code);
-          
           // Short-circuit to OFF lookup
           onCapture(imageData + `&barcode=${barcodeResult.code}`);
           return;
-        } else {
-          console.log("⚠️ No barcode found after enhanced detection, proceeding with image analysis");
         }
       } catch (barcodeError) {
         console.error("❌ Enhanced barcode detection failed:", barcodeError);
@@ -412,7 +408,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           gridRow: 3,
           position: 'sticky',
           bottom: 0,
-          padding: 'calc(12px) 16px calc(16px + var(--safe-bottom, 0px))',
+          padding: '12px 16px calc(16px + max(env(safe-area-inset-bottom), 16px))',
           background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
           backdropFilter: 'blur(8px)'
         }}>

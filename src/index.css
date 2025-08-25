@@ -16,6 +16,12 @@
   --safe-bottom: 0px; /* updated by hook */
 }
 
+/* Float animation for loading particles */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.6; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+}
+
 /* VOYAGE Enhanced Futuristic Design System */
 
 @layer base {
