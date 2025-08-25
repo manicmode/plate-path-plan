@@ -6,6 +6,7 @@ import { HealthScannerInterface } from './HealthScannerInterface';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { ManualEntryFallback } from './ManualEntryFallback';
+import { ResultCard } from './ResultCard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -163,39 +164,36 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // If no barcode or barcode processing failed, proceed with image analysis
       setAnalysisType('image');
       
-      console.log('🖼️ About to call health-check-processor function...');
-      console.log('📡 Function URL should be: https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/health-check-processor');
+      console.log('🖼️ About to call enhanced-health-scanner function...');
       
       // Clean image data if it contains a barcode parameter
       const cleanImageData = detectedBarcode ? 
         imageData.replace(/&barcode=\d+$/, '') : 
         imageData;
         
-      // Log the exact payload being sent
+      // Use enhanced scanner with structured results
       const payload = {
-        inputType: 'image',
-        data: cleanImageData,
-        userId: user?.id
+        imageBase64: cleanImageData,
+        mode: 'scan'
       };
       
-      console.log('📦 Payload being sent:', {
-        inputType: payload.inputType,
-        dataLength: payload.data?.length || 0,
-        userId: payload.userId
+      console.log('📦 Enhanced scanner payload:', {
+        mode: payload.mode,
+        dataLength: payload.imageBase64?.length || 0
       });
       
       let data, error;
       try {
-        console.log('🔄 Making supabase.functions.invoke call...');
-        const result = await supabase.functions.invoke('health-check-processor', {
+        console.log('🔄 Making enhanced-health-scanner call...');
+        const result = await supabase.functions.invoke('enhanced-health-scanner', {
           body: payload
         });
-        console.log("✅ Supabase Function Call Success:", result);
+        console.log("✅ Enhanced Health Scanner Success:", result);
         
         data = result.data;
         error = result.error;
       } catch (funcError) {
-        console.error("❌ Supabase Function Call Failed:", funcError);
+        console.error("❌ Enhanced Health Scanner Failed:", funcError);
         throw funcError;
       }
 

@@ -5,6 +5,7 @@ import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft } f
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
+import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -152,47 +153,77 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log("✅ Image captured successfully!", {
-      dataLength: imageData.length,
-      dataPrefix: imageData.substring(0, 50)
+    const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log("📸 Raw image captured:", {
+      dataLength: rawImageData.length,
+      dataPrefix: rawImageData.substring(0, 50)
     });
-    
-    // Try to detect barcodes in the image first
+
+    // Normalize the image (compress, strip EXIF, ensure proper format)
     try {
-      console.log("🔍 Checking for barcodes in image...");
-      const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
-        body: { imageBase64: imageData.split(',')[1] }
+      console.log("🔄 Normalizing image...");
+      const normalized = await normalizeHealthScanImage(rawImageData, {
+        maxWidth: 1280,
+        maxHeight: 1280,
+        quality: 0.85,
+        format: 'JPEG',
+        stripExif: true
       });
-      
-      if (error) {
-        console.error("❌ Barcode detection error:", error);
-      } else {
-        console.log("✅ Barcode detection result:", barcodeData);
-        
-        // If barcode was found, proceed with it
-        if (barcodeData.barcode) {
-          console.log("📊 Barcode found:", barcodeData.barcode);
-          
-          // If we have valid product data from OpenFoodFacts API
-          if (barcodeData.productData) {
-            console.log("🛒 OpenFoodFacts product found:", barcodeData.productData.product_name);
-          }
-          
-          // Send the full image but include the barcode info for processing
-          onCapture(imageData + `&barcode=${barcodeData.barcode}`);
-          return;
-        } else {
-          console.log("⚠️ No barcode found in image, proceeding with image analysis");
-        }
-      }
-    } catch (barcodeError) {
-      console.error("❌ Error during barcode detection:", barcodeError);
-    }
+
+      console.log("✅ Image normalized successfully!", {
+        originalSize: normalized.originalSize,
+        compressedSize: normalized.compressedSize,
+        dimensions: `${normalized.width}x${normalized.height}`,
+        compressionRatio: `${(normalized.compressionRatio * 100).toFixed(1)}%`,
+        finalDataLength: normalized.dataUrl.length
+      });
+
+      const imageData = normalized.dataUrl;
     
-    // No barcode found, proceed with standard image capture
-    console.log("⏰ Proceeding with standard image analysis...");
-    onCapture(imageData);
+      
+      // Try to detect barcodes in the image first
+      try {
+        console.log("🔍 Checking for barcodes in image...");
+        const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
+          body: { imageBase64: imageData.split(',')[1] }
+        });
+        
+        if (error) {
+          console.error("❌ Barcode detection error:", error);
+        } else {
+          console.log("✅ Barcode detection result:", barcodeData);
+          
+          // If barcode was found, proceed with it
+          if (barcodeData.barcode) {
+            console.log("📊 Barcode found:", barcodeData.barcode);
+            
+            // If we have valid product data from OpenFoodFacts API
+            if (barcodeData.productData) {
+              console.log("🛒 OpenFoodFacts product found:", barcodeData.productData.product_name);
+            }
+            
+            // Send the full image but include the barcode info for processing
+            onCapture(imageData + `&barcode=${barcodeData.barcode}`);
+            return;
+          } else {
+            console.log("⚠️ No barcode found in image, proceeding with image analysis");
+          }
+        }
+      } catch (barcodeError) {
+        console.error("❌ Error during barcode detection:", barcodeError);
+      }
+      
+      // No barcode found, proceed with standard image capture
+      console.log("⏰ Proceeding with standard image analysis...");
+      onCapture(imageData);
+    } catch (normalizationError) {
+      console.error("❌ Image normalization failed:", normalizationError);
+      // Fallback to raw image if normalization fails
+      console.log("🔄 Using raw image as fallback...");
+      onCapture(rawImageData);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleManualEntry = () => {
