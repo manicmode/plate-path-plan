@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Droplets, Pill, Sparkles } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useCameraState } from '@/hooks/useCameraState';
 import { CameraActions } from '@/components/camera/CameraActions';
@@ -16,9 +16,11 @@ import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { SessionPickerModal } from '@/components/meditation/SessionPickerModal';
 import { HabitAddModal, HabitConfig } from '@/components/habit-central/HabitAddModal';
 import { HabitTemplate } from '@/components/habit-central/CarouselHabitCard';
+import { useNavigate } from 'react-router-dom';
 
 const CameraPageNew = () => {
   useScrollToTop();
+  const navigate = useNavigate();
   
   // New modal states for Exercise/Recovery/Habit
   const [showExerciseModal, setShowExerciseModal] = useState(false);
@@ -167,9 +169,6 @@ const CameraPageNew = () => {
                 disabled={!!processingStep}
                 onBarcodeCapture={handleBarcodeCapture}
                 onManualEntry={handleManualEntry}
-                onExerciseLog={handleExerciseLog}
-                onRecoveryLog={handleRecoveryLog}
-                onHabitLog={handleHabitLog}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
               />
@@ -230,6 +229,80 @@ const CameraPageNew = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Exercise, Recovery & Habits Card */}
+      <Card className="w-full shadow-2xl border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 mt-6">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            Exercise, Recovery & Habits
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Track your fitness, wellness, and daily habits
+          </p>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          {/* Exercise Log */}
+          <Button
+            onClick={handleExerciseLog}
+            className="h-14 w-full gradient-primary flex items-center justify-between px-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/50"
+            size="lg"
+          >
+            <div className="flex items-center space-x-3">
+              <Sparkles className="h-5 w-5" />
+              <span className="text-base font-medium">Exercise Log</span>
+            </div>
+            <div className="h-4 w-4 opacity-60">→</div>
+          </Button>
+
+          {/* Recovery Log */}
+          <Button
+            onClick={handleRecoveryLog}
+            className="h-14 w-full gradient-primary flex items-center justify-between px-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/50"
+            size="lg"
+          >
+            <div className="flex items-center space-x-3">
+              <Sparkles className="h-5 w-5" />
+              <span className="text-base font-medium">Recovery Log</span>
+            </div>
+            <div className="h-4 w-4 opacity-60">→</div>
+          </Button>
+
+          {/* Habit Log */}
+          <Button
+            onClick={handleHabitLog}
+            className="h-14 w-full gradient-primary flex items-center justify-between px-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/50"
+            size="lg"
+          >
+            <div className="flex items-center space-x-3">
+              <Sparkles className="h-5 w-5" />
+              <span className="text-base font-medium">Habit Log</span>
+            </div>
+            <div className="h-4 w-4 opacity-60">→</div>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Hydration and Supplement Logs */}
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <Button
+          onClick={() => navigate('/hydration')}
+          className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+          size="lg"
+        >
+          <Droplets className="h-6 w-6" />
+          <span className="text-sm font-medium">Hydration Logs</span>
+        </Button>
+
+        <Button
+          onClick={() => navigate('/supplements')}
+          className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+          size="lg"
+        >
+          <Pill className="h-6 w-6" />
+          <span className="text-sm font-medium">Supplement Logs</span>
+        </Button>
+      </div>
 
       {/* Modals */}
       <BarcodeLogModal

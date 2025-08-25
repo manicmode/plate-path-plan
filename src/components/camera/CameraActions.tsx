@@ -21,11 +21,6 @@ interface CameraActionsProps {
   // Manual entry
   onManualEntry: () => void;
   
-  // New logging handlers
-  onExerciseLog: () => void;
-  onRecoveryLog: () => void;
-  onHabitLog: () => void;
-  
   // Tab switching
   activeTab: 'main' | 'saved' | 'recent';
   onTabChange: (tab: 'main' | 'saved' | 'recent') => void;
@@ -41,9 +36,6 @@ export const CameraActions: React.FC<CameraActionsProps> = ({
   disabled = false,
   onBarcodeCapture,
   onManualEntry,
-  onExerciseLog,
-  onRecoveryLog,
-  onHabitLog,
   activeTab,
   onTabChange
 }) => {
@@ -142,36 +134,6 @@ export const CameraActions: React.FC<CameraActionsProps> = ({
         >
           <Clock className="h-6 w-6" />
           <span className="text-sm font-medium">Recent Logs</span>
-        </Button>
-
-        {/* Exercise Log */}
-        <Button
-          onClick={onExerciseLog}
-          className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          size="lg"
-        >
-          <Sparkles className="h-6 w-6" />
-          <span className="text-sm font-medium">Exercise Log</span>
-        </Button>
-
-        {/* Recovery Log */}
-        <Button
-          onClick={onRecoveryLog}
-          className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          size="lg"
-        >
-          <Sparkles className="h-6 w-6" />
-          <span className="text-sm font-medium">Recovery Log</span>
-        </Button>
-
-        {/* Habit Log */}
-        <Button
-          onClick={onHabitLog}
-          className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          size="lg"
-        >
-          <Sparkles className="h-6 w-6" />
-          <span className="text-sm font-medium">Habit Log</span>
         </Button>
 
         {/* Hydration Logs */}
