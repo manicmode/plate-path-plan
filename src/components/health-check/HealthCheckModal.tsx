@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
@@ -11,9 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
-import { adaptScanResult, ScanResult } from '@/types/healthScan';
-import { prepareImage } from '@/utils/imageUtils';
-import { logScanEvent } from '@/lib/healthScanEvents';
 
 interface HealthCheckModalProps {
   isOpen: boolean;
@@ -50,16 +47,13 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type Phase = "idle" | "capturing" | "uploading" | "processing" | "result" | "error" | "retake";
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [scan, setScan] = useState<ScanResult | null>(null);
-  const [requestId, setRequestId] = useState<string | undefined>();
+  const [currentState, setCurrentState] = useState<ModalState>('scanner');
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
@@ -69,66 +63,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setPhase("idle");
-      setScan(null);
-      setError(null);
+      setCurrentState('scanner');
       setAnalysisResult(null);
       setLoadingMessage('');
     }
   }, [isOpen]);
-
-  const callScanner = useCallback(async (blob: Blob, mode?: "ping") => {
-    setPhase("processing");
-    setError(null);
-    const traceId = crypto.randomUUID();
-    try {
-      const res = await fetch(`/functions/v1/enhanced-health-scanner` + (mode ? `?mode=${mode}` : ""), {
-        method: "POST",
-        headers: { "content-type": "image/jpeg", "x-trace-id": traceId },
-        body: blob,
-      });
-      const raw = await res.json();
-      const adapted = adaptScanResult(raw);
-      setScan(adapted);
-      setRequestId(adapted.requestId ?? traceId);
-      setPhase("result");
-      
-      logScanEvent("scan_result", { 
-        status: adapted.status, 
-        flags: adapted.flags?.length, 
-        requestId: traceId 
-      });
-    } catch (e: any) {
-      console.error("scan_error", { traceId, err: String(e) });
-      logScanEvent("scan_error", { error: String(e), traceId });
-      setError("We couldn't process the photo. Try retaking with better lighting.");
-      setPhase("error");
-    }
-  }, []);
-
-  async function onPhotoSelected(file: File) {
-    setPhase("uploading");
-    try {
-      const blob = await prepareImage(file); // ensures JPEG + orientation + resize
-      await callScanner(blob);
-    } catch (e: any) {
-      setError("Couldn't read the image. Please try again.");
-      setPhase("error");
-    }
-  }
-
-  function handleRetake() {
-    setScan(null);
-    setError(null);
-    setPhase("retake"); // your UI should re-open the camera/file picker
-  }
-
-  function handleManualSearch() {
-    setPhase("idle"); // keep existing manual flow
-    // Optionally close modal or keep as side panel
-  }
-
-  const nextActions = useMemo(() => scan?.nextActions ?? [], [scan]);
 
   const handleImageCapture = async (imageData: string) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
@@ -136,7 +75,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     console.log("👤 User ID:", user?.id || "NO USER");
     
     try {
-      setPhase('processing');
+      setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
       // Check if image contains a barcode (appended from HealthScannerInterface)
@@ -207,7 +146,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           };
           
           setAnalysisResult(analysisResult);
-          setPhase('result');
+          setCurrentState('report');
           
           // Trigger daily score calculation after health scan completion
           if (user?.id) {
@@ -299,7 +238,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             flag.title === 'Product Not Found'
           )
         });
-        setPhase('error');
+        setCurrentState('fallback');
         return;
       }
       
@@ -350,7 +289,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
 
       setAnalysisResult(analysisResult);
-      setPhase('result');
+      setCurrentState('report');
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
@@ -363,13 +302,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         description: "Unable to analyze the image. Please try again or use manual entry.",
         variant: "destructive",
       });
-      setPhase('error');
+      setCurrentState('fallback');
     }
   };
 
   const handleManualEntry = async (query: string, type: 'text' | 'voice') => {
     try {
-      setPhase('processing');
+      setCurrentState('loading');
       setAnalysisType('manual');
       setLoadingMessage(type === 'voice' ? 'Processing voice input...' : 'Searching food database...');
       
@@ -430,7 +369,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
 
       setAnalysisResult(result);
-      setPhase('result');
+      setCurrentState('report');
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
@@ -443,19 +382,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         description: `Unable to process ${type} input. Please try again.`,
         variant: "destructive",
       });
-      setPhase('error');
+      setCurrentState('fallback');
     }
   };
 
   const handleScanAnother = () => {
-    setPhase("idle");
-    setScan(null);
+    setCurrentState('scanner');
     setAnalysisResult(null);
   };
 
   const handleClose = () => {
-    setPhase("idle");
-    setScan(null);
+    setCurrentState('scanner');
     setAnalysisResult(null);
     onClose();
   };
@@ -464,69 +401,42 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
-          phase === 'result' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
+          currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
       >
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {(phase === "idle" || phase === "retake") && (
+          {currentState === 'scanner' && (
             <HealthScannerInterface 
               onCapture={handleImageCapture}
-              onManualEntry={() => setPhase("idle")}
+              onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
               onCancel={handleClose}
             />
           )}
 
-          {phase === "uploading" && <p className="text-center p-8 text-foreground">Uploading photo…</p>}
-          {phase === "processing" && <p className="text-center p-8 text-foreground">Analyzing… one moment</p>}
-
-          {phase === "error" && (
-            <div className="p-8 space-y-2">
-              <p className="text-red-500">{error}</p>
-              <div className="flex gap-2">
-                <Button onClick={handleRetake} className="btn">Retake</Button>
-                <Button onClick={handleManualSearch} className="btn-secondary">Manual Search</Button>
-              </div>
-            </div>
+          {currentState === 'loading' && (
+            <HealthAnalysisLoading 
+              message={loadingMessage}
+              analysisType={analysisType}
+            />
           )}
 
-        {phase === "result" && scan && (
-          <ResultCard
-            scan={scan}
-            requestId={requestId}
-            onRetake={handleRetake}
-            onManualSearch={handleManualSearch}
-            onConfirmItems={() => {/* open per-item confirm list you already planned */}}
-            onChoosePortion={() => {/* open portion sliders */}}
-            onOpenFacts={() => {/* open product details / OFF page */}}
-          />
-        )}
+          {currentState === 'report' && analysisResult && (
+            <HealthReportPopup
+              result={analysisResult}
+              onScanAnother={handleScanAnother}
+              onClose={handleClose}
+            />
+          )}
 
-        {/* Legacy fallback handling for old flow */}
-        {phase === "idle" && analysisResult && (
-          <HealthReportPopup
-            result={analysisResult}
-            onScanAnother={handleScanAnother}
-            onClose={handleClose}
-          />
-        )}
-
-        {/* Loading and error states for legacy flows */}
-        {(phase === "processing" && analysisType === 'manual') && (
-          <HealthAnalysisLoading 
-            message={loadingMessage}
-            analysisType={analysisType}
-          />
-        )}
-
-        {phase === "idle" && !scan && !analysisResult && (
-          <ManualEntryFallback
-            onManualEntry={handleManualEntry}
-            onBack={() => setPhase("idle")}
-          />
-        )}
+          {currentState === 'fallback' && (
+            <ManualEntryFallback
+              onManualEntry={handleManualEntry}
+              onBack={() => setCurrentState('scanner')}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>

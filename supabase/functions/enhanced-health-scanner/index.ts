@@ -1,27 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Load rules configuration
-let RULES_CONFIG: any = null;
-try {
-  const rulesContent = await Deno.readTextFile('./rules.json');
-  RULES_CONFIG = JSON.parse(rulesContent);
-} catch (error) {
-  console.warn('Could not load rules.json, using defaults:', error);
-  RULES_CONFIG = {
-    gmoRiskIngredients: ["soy", "corn", "canola", "sugar beet"],
-    additives: {
-      "tbhq": { "aliases": ["tbhq"], "severity": "med", "reason": "Contains TBHQ (synthetic antioxidant/preservative)." }
-    },
-    nutrientThresholds: {
-      "sodium_high_pct_dv": 0.2
-    },
-    defaultInsights: [
-      "Choosing organic/non-GMO helps avoid GMO-risk crops like soy, corn, and canola."
-    ]
-  };
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -994,35 +973,21 @@ function transformToProductResult(offProduct: any, barcode?: string): ProductRes
 }
 
 // Main serve function
-serve(async (request) => {
-  // Add requestId + latency + minimal PII-free logs
-  const t0 = Date.now();
-  const reqId = request.headers.get("x-trace-id") ?? crypto.randomUUID();
-  
-  if (request.method === 'OPTIONS') {
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Enhanced Health Scanner function called', { reqId });
+    console.log('🚀 Enhanced Health Scanner function called');
     
-    const url = new URL(request.url);
-    const mode = url.searchParams.get('mode') || 'scan';
+    const body = await req.json();
+    console.log('📦 Request body:', JSON.stringify(body, null, 2));
     
-    let imageBase64: string;
+    const { imageBase64, mode = 'scan' } = body;
     
-    if (request.headers.get('content-type')?.includes('image/')) {
-      // Direct image upload
-      const buffer = await request.arrayBuffer();
-      imageBase64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    } else {
-      // JSON payload
-      const body = await request.json();
-      imageBase64 = body.imageBase64;
-      
-      if (!imageBase64) {
-        throw new Error('Missing imageBase64 parameter');
-      }
+    if (!imageBase64) {
+      throw new Error('Missing imageBase64 parameter');
     }
     
     // Clean base64 data
@@ -1030,18 +995,12 @@ serve(async (request) => {
     
     const result = await processScanRequest(cleanImageData, mode);
     
-    // ... after computing result:
-    const latencyMs = Date.now() - t0;
-    console.log(JSON.stringify({ reqId, at: "scan_done", latencyMs, status: result.success ? "ok" : "error", hasBarcode: !!result.product?.barcode }));
-    
-    return new Response(JSON.stringify({ ...result, requestId: reqId, latencyMs }), { 
-      headers: { ...corsHeaders, "content-type": "application/json" }
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    const latencyMs = Date.now() - t0;
     console.error('💥 Enhanced Health Scanner error:', error);
-    console.log(JSON.stringify({ reqId, at: "scan_error", latencyMs, error: String(error) }));
     
     const errorResult: ScanResult = {
       success: false,
@@ -1073,12 +1032,12 @@ serve(async (request) => {
         ]
       },
       metadata: {
-        processingTime: latencyMs,
+        processingTime: 0,
         detectorsUsed: []
       }
     };
     
-    return new Response(JSON.stringify({ ...errorResult, requestId: reqId, latencyMs }), {
+    return new Response(JSON.stringify(errorResult), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
