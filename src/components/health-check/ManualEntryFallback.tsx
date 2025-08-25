@@ -42,19 +42,21 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
   return (
     <div
       className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-900"
-      style={{ height: "calc(var(--vh, 1vh) * 100)" }}
+      style={{ 
+        height: "100dvh",
+        paddingBottom: "env(safe-area-inset-bottom)"
+      }}
     >
-      {/* inner grid */}
+      {/* inner grid with proper safe areas */}
       <div
         className="grid h-full"
         style={{ 
-          gridTemplateRows: "auto 1fr auto", 
-          paddingTop: "max(env(safe-area-inset-top),12px)", 
-          paddingBottom: "max(env(safe-area-inset-bottom),12px)" 
+          gridTemplateRows: "auto 1fr auto",
+          paddingTop: "max(env(safe-area-inset-top), 12px)"
         }}
       >
         {/* Header */}
-        <header className="p-6">
+        <header className="p-6 flex-shrink-0">
           <div className="flex items-center space-x-4 mb-6">
             <Button
               onClick={onBack}
@@ -71,8 +73,14 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
           </div>
         </header>
 
-        {/* Content */}
-        <main className="overflow-y-auto min-h-0 px-6 space-y-6">
+        {/* Content with proper iOS scrolling */}
+        <main 
+          className="overflow-y-auto min-h-0 px-6 space-y-6 flex-1"
+          style={{ 
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain"
+          }}
+        >
         {/* Error Message */}
         <Card className="bg-red-900/20 border-red-400/30 backdrop-blur-sm">
           <CardContent className="p-6 text-center">
@@ -192,7 +200,7 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
         </main>
 
         {/* Footer */}
-        <footer className="sticky bottom-0 pt-3 bg-gradient-to-t from-black/40 to-transparent px-6">
+        <footer className="flex-shrink-0 pt-3 bg-gradient-to-t from-black/40 to-transparent px-6">
           {/* Footer content here if needed */}
         </footer>
       </div>

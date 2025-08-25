@@ -120,6 +120,38 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
+  // Helper function to crop center ROI for barcode detection
+  const cropCenterROI = (srcCanvas: HTMLCanvasElement): HTMLCanvasElement => {
+    const w = srcCanvas.width, h = srcCanvas.height;
+    const roiW = Math.round(w * 0.7);
+    const roiH = Math.round(h * 0.4);
+    const x = Math.round((w - roiW) / 2);
+    const y = Math.round((h - roiH) / 2);
+
+    const out = document.createElement('canvas');
+    out.width = roiW; 
+    out.height = roiH;
+    const ctx = out.getContext('2d')!;
+    ctx.drawImage(srcCanvas, x, y, roiW, roiH, 0, 0, roiW, roiH);
+    return out;
+  };
+
+  // Helper to convert canvas to base64 without CSP violation
+  const canvasToBase64 = async (canvas: HTMLCanvasElement): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Canvas toBlob failed'));
+          return;
+        }
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      }, 'image/jpeg', 0.85);
+    });
+  };
+
   const captureImage = async () => {
     console.log("📸 HealthScannerInterface.captureImage called!");
     
@@ -153,39 +185,39 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
-    const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log("📸 Raw image captured:", {
-      dataLength: rawImageData.length,
-      dataPrefix: rawImageData.substring(0, 50)
-    });
-
-    // Normalize the image (compress, strip EXIF, ensure proper format)
     try {
-      console.log("🔄 Normalizing image...");
-      const normalized = await normalizeHealthScanImage(rawImageData, {
-        maxWidth: 1280,
-        maxHeight: 1280,
-        quality: 0.85,
-        format: 'JPEG',
-        stripExif: true
+      console.log("🔄 Converting to base64 (CSP safe)...");
+      
+      // Convert full canvas to blob without CSP violation
+      const fullBlob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
       });
 
-      console.log("✅ Image normalized successfully!", {
-        originalSize: normalized.originalSize,
-        compressedSize: normalized.compressedSize,
-        dimensions: `${normalized.width}x${normalized.height}`,
-        compressionRatio: `${(normalized.compressionRatio * 100).toFixed(1)}%`,
-        finalDataLength: normalized.dataUrl.length
+      // Convert to base64 for processing
+      const fullBase64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(fullBlob);
       });
 
-      const imageData = normalized.dataUrl;
+      console.log("✅ Image converted successfully:", {
+        dataLength: fullBase64.length,
+        dataPrefix: fullBase64.substring(0, 50)
+      });
+
+      // Crop ROI for barcode detection
+      const roiCanvas = cropCenterROI(canvas);
+      const roiBase64 = await canvasToBase64(roiCanvas);
+
+      const imageData = fullBase64;
     
       
-      // Try to detect barcodes in the image first
+      // Try to detect barcodes in ROI first
       try {
-        console.log("🔍 Checking for barcodes in image...");
+        console.log("🔍 Checking for barcodes in ROI...");
         const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
-          body: { imageBase64: imageData.split(',')[1] }
+          body: { imageBase64: roiBase64 }
         });
         
         if (error) {
@@ -206,7 +238,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onCapture(imageData + `&barcode=${barcodeData.barcode}`);
             return;
           } else {
-            console.log("⚠️ No barcode found in image, proceeding with image analysis");
+            console.log("⚠️ No barcode found in ROI, proceeding with image analysis");
           }
         }
       } catch (barcodeError) {
@@ -216,11 +248,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // No barcode found, proceed with standard image capture
       console.log("⏰ Proceeding with standard image analysis...");
       onCapture(imageData);
-    } catch (normalizationError) {
-      console.error("❌ Image normalization failed:", normalizationError);
-      // Fallback to raw image if normalization fails
-      console.log("🔄 Using raw image as fallback...");
-      onCapture(rawImageData);
+    } catch (conversionError) {
+      console.error("❌ Image conversion failed:", conversionError);
+      // Fallback to canvas data URL
+      console.log("🔄 Using raw canvas data as fallback...");
+      const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
+      onCapture(fallbackImageData);
     } finally {
       setIsScanning(false);
     }

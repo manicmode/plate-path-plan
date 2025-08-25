@@ -208,7 +208,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
       
       // Check if image recognition failed based on various criteria
-      // NEW: Treat generic success as success (≥2 recommendations OR any healthFlags OR any nutritionSummary fields)
+      // Only treat as failure if we have explicit fallback flag or truly no evidence
       const hasValidRecommendations = Array.isArray(data.recommendations) && data.recommendations.length >= 2;
       const hasHealthFlags = Array.isArray(data.healthFlags) && data.healthFlags.length > 0;
       const hasNutritionData = data.nutritionSummary && typeof data.nutritionSummary === 'object' && 
@@ -222,25 +222,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         flags: Array.isArray(data.healthFlags) ? data.healthFlags.length : 0,
         hasValidRecommendations,
         hasHealthFlags,
-        hasNutritionData
+        hasNutritionData,
+        fallbackFlag: data.fallback
       });
       
-      const isImageRecognitionFailure = (
-        // Only fail if no useful content AND has error indicators
+      // Use explicit fallback flag from server or no evidence at all
+      const isImageRecognitionFailure = data.fallback || (
         (!hasValidRecommendations && !hasHealthFlags && !hasNutritionData) &&
         (
           // No meaningful product name detected
           !data.productName || 
           data.productName === 'Unknown Product' || 
           data.productName === 'Unknown Item' || 
-          data.productName === 'Error' ||
-          // Specific failure indicators in health flags
-          data.healthFlags?.some((flag: any) => 
-            flag.title === 'Processing Error' || 
-            flag.title === 'Product Not Found' ||
-            flag.description?.includes('Unable to parse') ||
-            flag.description?.includes('couldn\'t identify')
-          )
+          data.productName === 'Error'
         )
       );
 
