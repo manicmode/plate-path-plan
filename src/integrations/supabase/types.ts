@@ -9130,6 +9130,10 @@ export type Database = {
         Args: { group_id_param: string; uid?: string }
         Returns: boolean
       }
+      is_premium: {
+        Args: { uid?: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: { event_data: Json }
         Returns: undefined
