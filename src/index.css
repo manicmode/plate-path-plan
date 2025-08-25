@@ -5,9 +5,11 @@
   0% { transform: translateX(-200%) skewX(-12deg); }
   100% { transform: translateX(200%) skewX(-12deg); }
 }
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Global viewport fix styles */
+:root {
+  --vh: 1vh; /* fallback */
+  --safe-bottom: 0px; /* updated by hook */
+}
 
 /* VOYAGE Enhanced Futuristic Design System */
 

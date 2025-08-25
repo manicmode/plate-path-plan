@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
+import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -20,6 +21,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onManualSearch,
   onCancel
 }) => {
+  useViewportUnitsFix(); // Add viewport fix hook
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -318,8 +321,36 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner View
   if (currentView === 'scanner') {
     return (
-      <div className="relative w-full h-full bg-black flex flex-col">
-        <div className="flex-1 relative overflow-hidden">
+      <div className="scanner-root" style={{
+        height: 'calc(var(--vh, 1vh) * 100)',
+        minHeight: '100dvh',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr auto',
+        overflow: 'hidden',
+        background: 'black'
+      }}>
+        {/* Header */}
+        <div className="scanner-header" style={{ gridRow: 1, position: 'relative', zIndex: 10 }}>
+          <div className="absolute top-8 left-4 right-4 text-center">
+            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
+              <h2 className="text-white text-lg font-bold mb-2">
+                🔬 Health Inspector Scanner
+              </h2>
+              <p className="text-green-300 text-sm animate-pulse">
+                Scan a food barcode or aim your camera at a meal to inspect its health profile!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Video Container */}
+        <div className="scanner-video-wrap" style={{
+          gridRow: 2,
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden'
+        }}>
           <video
             ref={videoRef}
             autoPlay
@@ -329,9 +360,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           />
           <canvas ref={canvasRef} className="hidden" />
           
-          {/* Scanning Overlay */}
+          {/* Scanning Overlay with constrained frame */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
+            <div className="scan-frame" style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              maxHeight: 'calc(100% - 160px - var(--safe-bottom, 0px))',
+              maxWidth: 'calc(100% - 40px)'
+            }}>
               <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
                 isScanning ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'shadow-[0_0_30px_rgba(34,197,94,0.4)]'
               }`}>
@@ -357,18 +395,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             </div>
           </div>
 
-          {/* Header Text */}
-          <div className="absolute top-8 left-4 right-4 text-center">
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
-              <h2 className="text-white text-lg font-bold mb-2">
-                🔬 Health Inspector Scanner
-              </h2>
-              <p className="text-green-300 text-sm animate-pulse">
-                Scan a food barcode or aim your camera at a meal to inspect its health profile!
-              </p>
-            </div>
-          </div>
-
           {/* Grid Overlay */}
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <div className="w-full h-full" style={{
@@ -381,8 +407,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           </div>
         </div>
 
-        {/* Bottom Controls */}
-        <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
+        {/* Footer Controls */}
+        <div className="scanner-footer" style={{
+          gridRow: 3,
+          position: 'sticky',
+          bottom: 0,
+          padding: 'calc(12px) 16px calc(16px + var(--safe-bottom, 0px))',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
+          backdropFilter: 'blur(8px)'
+        }}>
           <div className="flex flex-col space-y-4">
             {/* Cancel Button */}
             {onCancel && (
@@ -407,7 +440,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               🔢 Enter Barcode Manually
             </Button>
 
-            {/* Main Analyze Button - Updated to Green */}
+            {/* Main Analyze Button */}
             <Button
               onClick={captureImage}
               disabled={isScanning}
@@ -435,7 +468,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Manual Entry View
   if (currentView === 'manual') {
     return (
-      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
+      <div className="scanner-root" style={{
+        height: 'calc(var(--vh, 1vh) * 100)',
+        minHeight: '100dvh',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr auto',
+        overflow: 'hidden',
+        background: 'hsl(var(--background))'
+      }}>
         <div className="p-6 border-b bg-card">
           <div className="flex items-center space-x-4">
             <Button
@@ -462,57 +502,70 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               onChange={(e) => setBarcodeInput(e.target.value)}
               placeholder="Scan barcode or type product name..."
               className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && barcodeInput.trim()) {
+                  handleSearchDatabase();
+                }
+              }}
             />
           </div>
 
           {/* Search Button */}
-          <Button
+          <Button 
             onClick={handleSearchDatabase}
+            className="w-full py-3 text-lg font-semibold bg-primary hover:bg-primary/90"
             disabled={!barcodeInput.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-lg"
           >
             <Search className="w-5 h-5 mr-2" />
             Search Database
           </Button>
 
-          {/* Voice Recognition Section */}
+          {/* Voice Input - Temporarily disabled */}
           <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Mic className="w-5 h-5 text-blue-500" />
-              <span className="font-medium">Voice Recognition</span>
-            </div>
-            <VoiceRecordingButton 
-              onVoiceResult={(text) => {
-                console.log('🎤 Voice result received in HealthScanner:', text);
-                setBarcodeInput(text);
-                handleSearchDatabase();
-              }}
-            />
+            <label className="text-sm font-medium text-muted-foreground">
+              Voice input temporarily unavailable
+            </label>
+            
+            <Button
+              variant="outline"
+              disabled
+              className="w-full py-3 text-lg font-semibold opacity-50"
+            >
+              <Mic className="w-5 h-5 mr-2" />
+              Voice Input (Coming Soon)
+            </Button>
           </div>
 
-          {/* Quick Suggestions - Only show after failed search/voice input */}
-          {showSuggestions && smartSuggestions.length > 0 && (
+          {/* Smart Suggestions */}
+          {(showSuggestions || smartSuggestions.length > 0) && (
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Lightbulb className="w-5 h-5 text-yellow-500" />
-                <span className="font-medium">Quick Suggestions</span>
-                {isLoadingSuggestions && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
-                )}
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                {smartSuggestions.map((suggestion, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
-                  >
-                    <span className="text-green-600 mr-2">🔍</span>
-                    {suggestion}
-                  </Button>
-                ))}
-              </div>
+              <label className="text-sm font-medium text-muted-foreground flex items-center">
+                <Lightbulb className="w-4 h-4 mr-2 text-yellow-500" />
+                Smart Suggestions
+              </label>
+              
+              {isLoadingSuggestions ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Generating suggestions...</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {smartSuggestions.map((suggestion, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className="w-full justify-start text-left p-3 h-auto bg-muted/50 hover:bg-muted border-muted-foreground/20"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-primary/60"></div>
+                        <span className="text-sm">{suggestion}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -520,110 +573,126 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     );
   }
 
-  // Image Not Recognized View
-  if (currentView === 'notRecognized') {
-    return (
-      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
-        <div className="p-6 border-b bg-card">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentView('scanner')}
-              className="rounded-full"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h2 className="text-xl font-bold text-foreground">Image Not Recognized</h2>
-          </div>
+  // Not Recognized View
+  return (
+    <div className="scanner-root" style={{
+      height: 'calc(var(--vh, 1vh) * 100)',
+      minHeight: '100dvh',
+      display: 'grid',
+      gridTemplateRows: 'auto 1fr auto',
+      overflow: 'hidden',
+      background: 'hsl(var(--background))'
+    }}>
+      <div className="p-6 border-b bg-card">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentView('scanner')}
+            className="rounded-full"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h2 className="text-xl font-bold text-foreground">Image Not Recognized</h2>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">🤔</div>
+          <h3 className="text-lg font-semibold text-foreground">
+            We couldn't identify this product
+          </h3>
+          <p className="text-muted-foreground">
+            Try one of these options to help us find the right information:
+          </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Error Message */}
-          <div className="text-center space-y-4 py-8">
-            <div className="text-6xl">🤔</div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">
-                We couldn't identify any food items or barcodes in your image.
-              </h3>
-              <p className="text-muted-foreground">
-                Try one of the options below to continue your health analysis.
-              </p>
-            </div>
-          </div>
+        {/* Manual Input Option */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-muted-foreground">
+            Type the product name or barcode
+          </label>
+          <Input
+            value={barcodeInput}
+            onChange={(e) => setBarcodeInput(e.target.value)}
+            placeholder="E.g., Coca-Cola Classic or 049000028904"
+            className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && barcodeInput.trim()) {
+                handleSearchDatabase();
+              }
+            }}
+          />
+        </div>
 
-          {/* Manual Input */}
+        <Button 
+          onClick={handleSearchDatabase}
+          className="w-full py-3 text-lg font-semibold bg-primary hover:bg-primary/90"
+          disabled={!barcodeInput.trim()}
+        >
+          <Search className="w-5 h-5 mr-2" />
+          Search Database
+        </Button>
+
+        {/* Smart Suggestions */}
+        {(showSuggestions || smartSuggestions.length > 0) && (
           <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground">
-              Type Barcode or Food Name
+            <label className="text-sm font-medium text-muted-foreground flex items-center">
+              <Lightbulb className="w-4 h-4 mr-2 text-yellow-500" />
+              Popular Products
             </label>
-            <Input
-              value={barcodeInput}
-              onChange={(e) => setBarcodeInput(e.target.value)}
-              placeholder="Enter product barcode or name..."
-              className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <Button
-              onClick={handleSearchDatabase}
-              disabled={!barcodeInput.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3"
-            >
-              <Search className="w-5 h-5 mr-2" />
-              Search Database
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              <Mic className="w-5 h-5 mr-2" />
-              🎤 Use Voice Input
-            </Button>
-          </div>
-
-          {/* Quick Suggestions - AI-powered and context-aware */}
-          {smartSuggestions.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Lightbulb className="w-5 h-5 text-yellow-500" />
-                <span className="font-medium">Quick Suggestions</span>
-                {isLoadingSuggestions && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
-                )}
+            
+            {isLoadingSuggestions ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Loading suggestions...</p>
               </div>
-              <div className="grid grid-cols-1 gap-2">
+            ) : (
+              <div className="space-y-2">
                 {smartSuggestions.map((suggestion, index) => (
                   <Button
                     key={index}
                     variant="outline"
+                    className="w-full justify-start text-left p-3 h-auto bg-muted/50 hover:bg-muted border-muted-foreground/20"
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
                   >
-                    <span className="text-green-600 mr-2">🔍</span>
-                    {suggestion}
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-primary/60"></div>
+                      <span className="text-sm">{suggestion}</span>
+                    </div>
                   </Button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Try Again Button */}
+        {/* Action Buttons */}
+        <div className="flex flex-col space-y-3 pt-4">
           <Button
             onClick={() => setCurrentView('scanner')}
             variant="outline"
-            className="w-full border-green-400 text-green-600 hover:bg-green-50"
+            className="w-full py-3 text-lg font-semibold border-2"
           >
             <Camera className="w-5 h-5 mr-2" />
-            📸 Try Scanning Again
+            Try Scanning Again
+          </Button>
+          
+          <Button
+            onClick={async () => {
+              await generateSmartSuggestions();
+              setShowSuggestions(true);
+            }}
+            variant="secondary"
+            className="w-full py-3 text-lg font-semibold"
+            disabled={isLoadingSuggestions}
+          >
+            <Lightbulb className="w-5 h-5 mr-2" />
+            {isLoadingSuggestions ? 'Loading...' : 'Show Popular Items'}
           </Button>
         </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 };
