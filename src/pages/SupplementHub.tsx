@@ -1384,14 +1384,15 @@ const SupplementHub = () => {
   const handleGoalSelect = async (goalName: string) => {
     setSelectedCategory(goalName);
     setSelectedCategoryName(goalName);
-    setIsAnalyzing(true);
+    setIsLoadingSupplements(true);
+    setShowSupplementList(true); // Open the modal
     setRecommendations([]);
     
-    // Simulate AI analysis but show results on main page instead of modal
+    // Simulate AI analysis with modal loading state
     setTimeout(() => {
       const goalSupplements = supplementDatabase[goalName] || [];
       setRecommendations(goalSupplements);
-      setIsAnalyzing(false);
+      setIsLoadingSupplements(false);
       
       if (goalSupplements.length === 0) {
         toast({
@@ -1445,10 +1446,10 @@ const SupplementHub = () => {
   // Clean up duplicate function - use single implementation
   const generatePersonalRecommendations = generateRegistryBasedRecommendations;
 
-  // Auto-select "Hormonal Balance" from Hormones & Metabolism on mount to show default recommendations
-  useEffect(() => {
-    handleGoalSelect('Hormonal Balance');
-  }, []);
+  // Don't auto-select anything on mount - let user choose
+  // useEffect(() => {
+  //   handleGoalSelect('Hormonal Balance');
+  // }, []);
 
   const displayedRecommendations = showMore ? recommendations : recommendations.slice(0, 3);
   const hasMoreRecommendations = recommendations.length > 3;
@@ -1530,80 +1531,6 @@ const SupplementHub = () => {
             <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
           </div>
         </div>
-
-        {/* Analysis State */}
-        {isAnalyzing && (
-          <Card className="glass-card border-0 rounded-3xl">
-            <CardContent className="p-6 text-center space-y-4">
-              <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-              <div className="space-y-2">
-                <h3 className="font-semibold">🧠 Analyzing Your Profile</h3>
-                <p className="text-sm text-muted-foreground">
-                  Finding the perfect supplements based on your health data, goals, and preferences...
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Recommendations */}
-        {recommendations.length > 0 && !isAnalyzing && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h2 className="text-lg font-bold flex items-center space-x-2">
-                <span>🧠</span>
-                <span>Suggested for You: {selectedCategory}</span>
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                These supplements were selected based on your profile analysis and health goals.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {displayedRecommendations.map((supplement) => (
-                <Card 
-                  key={supplement.id}
-                  className="glass-card border-0 rounded-3xl cursor-pointer hover:shadow-lg transition-all"
-                  onClick={() => handleSupplementSelect(supplement)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-4">
-                      <div className="text-4xl">{supplement.image}</div>
-                      <div className="flex-1 space-y-2">
-                        <h3 className="font-semibold">{supplement.name}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {supplement.description}
-                        </p>
-                        <div className="bg-primary/10 p-2 rounded-xl">
-                          <p className="text-xs font-medium">
-                            🧠 {supplement.personalReason}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {supplement.healthFlags.slice(0, 2).map((flag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              ✅ {flag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {hasMoreRecommendations && (
-              <Button
-                onClick={() => setShowMore(!showMore)}
-                variant="outline"
-                className="w-full glass-button rounded-2xl"
-              >
-                {showMore ? 'Show Less' : `+ Show ${recommendations.length - 3} More`}
-              </Button>
-            )}
-          </div>
-        )}
 
         {/* Personal AI Recommendations Section */}
         <Card className="glass-card border-0 rounded-3xl bg-gradient-to-br from-purple-50/50 via-blue-50/30 to-emerald-50/40 dark:from-purple-900/20 dark:via-blue-900/10 dark:to-emerald-900/15 shadow-lg border border-purple-200/30 dark:border-purple-700/30 animate-slide-up mt-12">
