@@ -148,17 +148,7 @@ const Supplements = () => {
         </CardContent>
       </Card>
 
-      {/* My Supplements Section */}
-      <div className="text-center pt-4">
-        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
-          My supplements
-        </h2>
-        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
-          Track your daily supplement intake
-        </p>
-      </div>
-
-      {/* Camera & Upload Options - Moved here */}
+      {/* Camera & Upload Options */}
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
@@ -175,6 +165,16 @@ const Supplements = () => {
           <Plus className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
           <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>Manual Entry</span>
         </Button>
+      </div>
+
+      {/* My Supplements Section */}
+      <div className="text-center pt-4">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
+          My supplements
+        </h2>
+        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+          Track your daily supplement intake
+        </p>
       </div>
 
       <input
