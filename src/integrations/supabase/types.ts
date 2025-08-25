@@ -9225,10 +9225,8 @@ export type Database = {
               _limit?: number
             }
         Returns: {
-          avatar_url: string
           body: string
           created_at: string
-          display_name: string
           id: string
           user_id: string
         }[]
@@ -9278,7 +9276,6 @@ export type Database = {
           avatar_url: string
           display_name: string
           points: number
-          rank: number
           streak: number
           user_id: string
         }[]
