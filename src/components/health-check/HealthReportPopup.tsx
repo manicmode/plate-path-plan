@@ -51,7 +51,7 @@ const CircularProgress: React.FC<{
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
-          className="text-gray-200"
+          className="text-border"
         />
         {/* Progress circle with animation */}
         <circle
@@ -130,9 +130,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-0 right-0 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-foreground/60 hover:text-foreground" />
           </button>
         </div>
         
@@ -146,17 +146,17 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <div className="mb-4">
               <CircularProgress percentage={result.healthScore * 10} size={140} strokeWidth={10} />
             </div>
-            <div className="text-sm text-muted-foreground mb-6">Health Score</div>
+            <div className="text-sm text-foreground/70 font-medium mb-6">Health Score</div>
             
             {/* Star Rating */}
             <div className="flex justify-center space-x-1 mb-6">
               {[...Array(5)].map((_, i) => (
-                <Star 
+                  <Star 
                   key={i} 
                   className={`w-7 h-7 transition-all duration-200 ${
                     i < starCount 
                       ? 'text-yellow-400 fill-yellow-400 drop-shadow-lg' 
-                      : 'text-gray-300'
+                      : 'text-foreground/30'
                   }`} 
                 />
               ))}
@@ -293,18 +293,18 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   const displayKey = getDisplayKey(key);
                   
                   return (
-                    <div key={key} className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                      <div className="text-3xl font-bold text-blue-800 mb-1">
+                    <div key={key} className="text-center p-4 bg-accent/20 border border-accent/30 rounded-xl">
+                      <div className="text-3xl font-bold text-foreground mb-1">
                         {typeof value === 'number' ? value : value}
                       </div>
-                      <div className="text-sm text-blue-600 font-medium mb-1">{unit}</div>
-                      <div className="text-xs text-blue-700 font-semibold uppercase tracking-wide">{displayKey}</div>
+                      <div className="text-sm text-foreground/80 font-medium mb-1">{unit}</div>
+                      <div className="text-xs text-foreground/70 font-semibold uppercase tracking-wide">{displayKey}</div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center text-muted-foreground">
+              <div className="p-4 text-center text-foreground/60 font-medium">
                 Nutrition facts not available from scan data
               </div>
             )}
@@ -320,11 +320,11 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             </h3>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-gray-800 leading-relaxed">
+            <div className="p-4 bg-muted/50 border border-border rounded-lg">
+              <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
                 {/* This would come from the API - for now showing a placeholder */}
-                <span className="text-gray-700">
+                <span className="text-foreground/80">
                   {result.healthProfile.additives && result.healthProfile.additives.length > 0 
                     ? result.healthProfile.additives.join(', ')
                     : 'Ingredient list not available from scan data'
