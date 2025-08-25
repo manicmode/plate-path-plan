@@ -43,7 +43,7 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
     <div
       className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-900"
       style={{ 
-        height: "100dvh",
+        height: "min(100dvh, 100vh)",
         paddingBottom: "env(safe-area-inset-bottom)"
       }}
     >
@@ -199,8 +199,13 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
           </Card>
         </main>
 
-        {/* Footer */}
-        <footer className="flex-shrink-0 pt-3 bg-gradient-to-t from-black/40 to-transparent px-6">
+        {/* Footer - sticky CTA safe area */}
+        <footer 
+          className="flex-shrink-0 pt-3 bg-gradient-to-t from-black/40 to-transparent px-6"
+          style={{ 
+            paddingBottom: "max(env(safe-area-inset-bottom), 16px)"
+          }}
+        >
           {/* Footer content here if needed */}
         </footer>
       </div>

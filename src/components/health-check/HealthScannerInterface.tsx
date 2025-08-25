@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
+import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
+import { BARCODE_V2 } from '@/lib/featureFlags';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -51,50 +53,52 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const startCamera = async () => {
     try {
-      // ✅ 1. Ensure video element is created and mounted
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
         console.error("[VIDEO] videoRef is null — video element not mounted");
         return;
       }
 
-      // ✅ 3. Confirm HTTPS is enforced on mobile
-      if (location.protocol !== 'https:') {
-        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
-      }
-
-      // ✅ 4. Confirm camera permissions
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
-          console.log("[PERMISSION] Camera permission state:", res.state);
-        }).catch((err) => {
-          console.log("[PERMISSION] Could not query camera permission:", err);
-        });
-      }
-
-      // ✅ 2. Add logging inside getUserMedia() block
-      console.log("[CAMERA] Requesting camera stream...");
+      // High-res back camera request
+      console.log("[CAMERA] Requesting high-res back camera...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 60 },
+        },
+        audio: false
       });
 
-      // ✅ 2. Stream received logging
-      console.log("[CAMERA] Stream received:", mediaStream);
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      console.log("[CAMERA] Stream received:", {
+        width: settings.width,
+        height: settings.height,
+        frameRate: settings.frameRate,
+        facingMode: settings.facingMode
+      });
+
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        
-        // ✅ 5. Visually confirm that the <video> tag is rendering
-        videoRef.current.style.border = "2px solid red";
-        
         console.log("[CAMERA] srcObject set, playing video");
-      } else {
-        console.error("[CAMERA] videoRef.current is null");
       }
     } catch (error) {
-      // ✅ 2. Enhanced error logging
-      console.error("[CAMERA FAIL] getUserMedia error:", error);
-      console.error('Error accessing camera:', error);
+      console.error("[CAMERA FAIL] getUserMedia error:", error);  
+      // Fallback to basic camera
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        setStream(fallbackStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+        }
+      } catch (fallbackError) {
+        console.error('Camera access completely failed:', fallbackError);
+      }
     }
   };
 
@@ -163,7 +167,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.log("🎵 Playing camera sound...");
+    const t0 = Date.now();
     playCameraClickSound();
     setIsScanning(true);
     
@@ -176,24 +180,52 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.log("🖼️ Drawing video to canvas...", {
-      videoWidth: video.videoWidth,
-      videoHeight: video.videoHeight
-    });
-
+    // Capture at full resolution
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
+    const captureTime = Date.now() - t0;
+    console.log("📊 Video capture:", { 
+      width: video.videoWidth, 
+      height: video.videoHeight,
+      captureType: 'VideoFrame',
+      captureTime 
+    });
+    
     try {
-      console.log("🔄 Converting to base64 (CSP safe)...");
+      let detectedBarcode: string | null = null;
+      let barcodeTime = 0;
       
-      // Convert full canvas to blob without CSP violation
+      // Multi-pass barcode scanning if BARCODE_V2 enabled
+      if (BARCODE_V2) {
+        const t1 = Date.now();
+        const scanner = new MultiPassBarcodeScanner();
+        const barcodeResult = await scanner.scan(canvas);
+        barcodeTime = Date.now() - t1;
+        
+        if (barcodeResult) {
+          detectedBarcode = barcodeResult.text;
+          console.log("🔍 barcodeScan:", {
+            attempts: 'multi-pass',
+            hit: true,
+            pass: barcodeResult.passName,
+            rotation: barcodeResult.rotation,
+            value: detectedBarcode
+          });
+        } else {
+          console.log("🔍 barcodeScan:", {
+            attempts: 'multi-pass',
+            hit: false
+          });
+        }
+      }
+      
+      // Convert to base64 using CSP-safe method
       const fullBlob: Blob = await new Promise((resolve, reject) => {
         canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
       });
 
-      // Convert to base64 for processing
       const fullBase64 = await new Promise<string>((resolve, reject) => {
         const fr = new FileReader();
         fr.onload = () => resolve(String(fr.result));
@@ -201,57 +233,47 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         fr.readAsDataURL(fullBlob);
       });
 
-      console.log("✅ Image converted successfully:", {
-        dataLength: fullBase64.length,
-        dataPrefix: fullBase64.substring(0, 50)
-      });
-
-      // Crop ROI for barcode detection
-      const roiCanvas = cropCenterROI(canvas);
-      const roiBase64 = await canvasToBase64(roiCanvas);
-
-      const imageData = fullBase64;
-    
+      const totalTime = Date.now() - t0;
       
-      // Try to detect barcodes in ROI first
-      try {
-        console.log("🔍 Checking for barcodes in ROI...");
-        const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
-          body: { imageBase64: roiBase64 }
+      // Timing logs
+      console.log("⏱️ Timing:", {
+        t_capture_ms: captureTime,
+        t_barcode_ms: barcodeTime,
+        t_total_ms: totalTime
+      });
+      
+      // Invoke function logs  
+      console.log("📡 Invoking function:", {
+        detectedBarcode,
+        hasImage: true
+      });
+      
+      // If barcode detected, short-circuit to loading → report
+      if (detectedBarcode) {
+        // Call health processor with barcode
+        const body = {
+          detectedBarcode,
+          imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
+          mode: 'scan'
+        };
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body
         });
         
-        if (error) {
-          console.error("❌ Barcode detection error:", error);
-        } else {
-          console.log("✅ Barcode detection result:", barcodeData);
-          
-          // If barcode was found, proceed with it
-          if (barcodeData.barcode) {
-            console.log("📊 Barcode found:", barcodeData.barcode);
-            
-            // If we have valid product data from OpenFoodFacts API
-            if (barcodeData.productData) {
-              console.log("🛒 OpenFoodFacts product found:", barcodeData.productData.product_name);
-            }
-            
-            // Send the full image but include the barcode info for processing
-            onCapture(imageData + `&barcode=${barcodeData.barcode}`);
-            return;
-          } else {
-            console.log("⚠️ No barcode found in ROI, proceeding with image analysis");
-          }
+        if (!error && data) {
+          console.log("✅ Barcode path success:", data);
+          onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+          return;
         }
-      } catch (barcodeError) {
-        console.error("❌ Error during barcode detection:", barcodeError);
       }
       
-      // No barcode found, proceed with standard image capture
-      console.log("⏰ Proceeding with standard image analysis...");
-      onCapture(imageData);
+      // No barcode or barcode lookup failed - proceed with image analysis
+      onCapture(fullBase64);
+      
     } catch (conversionError) {
-      console.error("❌ Image conversion failed:", conversionError);
+      console.error("❌ Image processing failed:", conversionError);
       // Fallback to canvas data URL
-      console.log("🔄 Using raw canvas data as fallback...");
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {

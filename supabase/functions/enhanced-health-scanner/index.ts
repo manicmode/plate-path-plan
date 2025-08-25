@@ -78,32 +78,68 @@ const GENERAL_TIPS = Object.freeze([
 ]);
 
 /**
- * ZXing-style barcode detection from binary image data
+ * Validate and normalize barcode
  */
-async function detectBarcodeFromBinary(imageBase64: string): Promise<{ barcode?: string; confidence: number }> {
-  try {
-    console.log('🔍 Starting ZXing barcode detection...');
-    
-    // Use existing barcode-image-detector function
-    const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/barcode-image-detector`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
-      },
-      body: JSON.stringify({ imageBase64 })
-    });
-    
-    const data = await response.json();
-    if (data.barcode && /^\d{8,14}$/.test(data.barcode)) {
-      console.log('✅ ZXing barcode detected:', data.barcode);
-      return { barcode: data.barcode, confidence: 0.95 };
-    }
-    return { confidence: 0 };
-  } catch (error) {
-    console.warn('❌ ZXing barcode detection failed:', error);
-    return { confidence: 0 };
+function normalizeBarcode(barcode: string | null): string | null {
+  if (!barcode) return null;
+  const digits = barcode.replace(/\D/g, '');
+  if (/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(digits)) {
+    return digits;
   }
+  return null;
+}
+
+/**
+ * OpenFoodFacts lookup by barcode (v2 API first, then v1 fallback)
+ */
+async function fetchOFF(barcode: string): Promise<any | null> {
+  try {
+    console.log(`🔍 OpenFoodFacts v2 lookup for barcode: ${barcode}`);
+    
+    // Try v2 API first
+    let response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+    let data = await response.json();
+    
+    if (data.status === 1 && data.product) {
+      console.log('✅ OpenFoodFacts v2 hit:', data.product.product_name);
+      return { product_found: true, product: data.product };
+    }
+    
+    // Fallback to v1 API
+    console.log(`🔄 Trying OpenFoodFacts v1 fallback for barcode: ${barcode}`);
+    response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    data = await response.json();
+    
+    if (data.status === 1 && data.product) {
+      console.log('✅ OpenFoodFacts v1 hit:', data.product.product_name);
+      return { product_found: true, product: data.product };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ OpenFoodFacts lookup failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Map OpenFoodFacts product to BackendResponse
+ */
+function mapOFFtoBackendResponse(product: any): BackendResponse {
+  const ingredients = product.ingredients_text ? 
+    product.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
+    
+  const flags = generateHealthFlags(ingredients, false);
+  const healthScore = calculateHealthScore(flags, false, true);
+  
+  return {
+    productName: `${product.brands || ''} ${product.product_name || ''}`.trim() || "Unknown Product",
+    healthScore,
+    healthFlags: flags,
+    nutritionSummary: generateNutritionData(product.nutriments),
+    ingredients,
+    recommendations: generateRecommendations(flags)
+  };
 }
 
 /**
@@ -128,7 +164,7 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; 
     });
 
     const result = await response.json();
-    const rawText = result.responses[0]?.textAnnotations?.[0]?.description || '';
+    const rawText = result.responses?.[0]?.textAnnotations?.[0]?.description || '';
     
     // Normalize: lowercase, strip punctuation, collapse whitespace
     const normalized = rawText
@@ -167,26 +203,6 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; 
 }
 
 /**
- * OpenFoodFacts lookup by barcode
- */
-async function lookupByBarcode(barcode: string): Promise<any | null> {
-  try {
-    console.log(`🔍 OpenFoodFacts lookup for barcode: ${barcode}`);
-    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    const data = await response.json();
-    
-    if (data.status === 1 && data.product) {
-      console.log('✅ OpenFoodFacts hit:', data.product.product_name);
-      return data.product;
-    }
-    return null;
-  } catch (error) {
-    console.error('❌ OpenFoodFacts lookup failed:', error);
-    return null;
-  }
-}
-
-/**
  * Brand-gated name search (only with strong brand evidence)
  */
 async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): Promise<any | null> {
@@ -215,7 +231,6 @@ async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): P
     const data = await response.json();
     
     if (data.products && data.products.length > 0) {
-      // Filter out beverages if candy detected
       const filteredProducts = hasCandy ? 
         data.products.filter((product: any) => {
           const categories = (product.categories || '').toLowerCase();
@@ -337,144 +352,6 @@ function calculateHealthScore(flags: any[], hasCandy: boolean, hasStrongEvidence
   return Math.max(0, Math.min(10, score));
 }
 
-/**
- * Process health scan with barcode-first logic and confidence gating
- */
-async function processHealthScan(imageBase64: string): Promise<BackendResponse> {
-  const ctx: RequestContext = {
-    reqId: crypto.randomUUID().substring(0, 8),
-    now: new Date(),
-    ocrText: '',
-    tokens: [],
-    brandTokens: [],
-    hasCandy: false,
-    plateConf: 0
-  };
-  
-  console.log(`🚀 Processing health scan [${ctx.reqId}]`);
-  
-  let barcodeHit = false;
-  let nameHit = false;
-  let offProduct: any = null;
-  
-  // Step 1: Barcode first (highest priority)
-  const barcodeResult = await detectBarcodeFromBinary(imageBase64);
-  if (barcodeResult.barcode) {
-    ctx.barcodeFound = barcodeResult.barcode;
-    offProduct = await lookupByBarcode(barcodeResult.barcode);
-    if (offProduct) {
-      barcodeHit = true;
-      ctx.offHit = true;
-      
-      const ingredients = offProduct.ingredients_text ? 
-        offProduct.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
-        
-      const flags = generateHealthFlags(ingredients, false);
-      const healthScore = calculateHealthScore(flags, false, true);
-      
-      console.log(`✅ Barcode success [${ctx.reqId}]`, { 
-        barcode: barcodeResult.barcode, 
-        product: offProduct.product_name 
-      });
-      
-      return {
-        productName: offProduct.product_name || "Unknown Product",
-        healthScore,
-        healthFlags: flags,
-        nutritionSummary: generateNutritionData(offProduct.nutriments),
-        ingredients,
-        recommendations: generateRecommendations(flags),
-        barcode: barcodeResult.barcode
-      };
-    }
-  }
-  
-  // Step 2: OCR cleanup
-  const ocrResult = await extractAndCleanOCR(imageBase64);
-  ctx.ocrText = ocrResult.text;
-  ctx.tokens = ocrResult.cleanedTokens;
-  ctx.brandTokens = ocrResult.brandTokens;
-  ctx.hasCandy = ocrResult.hasCandy;
-  
-  // Step 3: Brand-gated name search (only with brand evidence)
-  if (ctx.brandTokens.length > 0) {
-    offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
-    if (offProduct) {
-      nameHit = true;
-      ctx.offHit = true;
-      
-      const ingredients = offProduct.ingredients_text ? 
-        offProduct.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
-        
-      const flags = generateHealthFlags(ingredients, ctx.hasCandy);
-      const healthScore = calculateHealthScore(flags, ctx.hasCandy, true);
-      
-      console.log(`✅ Name search success [${ctx.reqId}]`, { 
-        brand: ctx.brandTokens, 
-        product: offProduct.product_name 
-      });
-      
-      return {
-        productName: offProduct.product_name || "Unknown Product",
-        healthScore,
-        healthFlags: flags,
-        nutritionSummary: generateNutritionData(offProduct.nutriments),
-        ingredients,
-        recommendations: generateRecommendations(flags)
-      };
-    }
-  }
-  
-  // Step 4: Plate confidence calculation
-  ctx.plateConf = calculatePlateConfidence(ctx.tokens);
-  
-  // Step 5: Confidence gating
-  const hasStrongEvidence = barcodeHit || nameHit || ctx.plateConf >= 0.85;
-  
-  if (!hasStrongEvidence) {
-    console.log(`❌ Low confidence [${ctx.reqId}]`, { 
-      barcodeHit, nameHit, plateConf: ctx.plateConf, 
-      evidence: 'insufficient' 
-    });
-    
-    return {
-      productName: 'Unknown product',
-      healthScore: null,
-      healthFlags: [],
-      nutritionSummary: null,
-      ingredients: [],
-      recommendations: GENERAL_TIPS.slice(),
-      generalSummary: "We couldn't confidently identify this product",
-      fallback: true
-    };
-  }
-  
-  // Step 6: Generate result with evidence
-  const flags = generateHealthFlags([], ctx.hasCandy);
-  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasStrongEvidence);
-  
-  // Final logging
-  console.log(`📊 Final result [${ctx.reqId}]`, {
-    barcodeFound: !!ctx.barcodeFound,
-    offHit: ctx.offHit || false,
-    brand: ctx.brandTokens.join(',') || 'none',
-    plateConf: ctx.plateConf,
-    scored: healthScore !== null,
-    productName: 'Detected Food',
-    latencyMs: Date.now() - ctx.now.getTime()
-  });
-  
-  return {
-    productName: "Detected Food",
-    healthScore,
-    healthFlags: flags,
-    nutritionSummary: null,
-    ingredients: [],
-    recommendations: generateRecommendations(flags),
-    generalSummary: generateHealthSummary(flags, healthScore)
-  };
-}
-
 function generateNutritionData(nutriments: any): any {
   if (!nutriments) return null;
   
@@ -498,57 +375,284 @@ function generateHealthSummary(flags: any[], score: number | null): string {
   
   const dangerFlags = flags.filter(f => f.type === 'danger').length;
   const warningFlags = flags.filter(f => f.type === 'warning').length;
-
-  if (dangerFlags > 2) {
-    return "This product contains multiple concerning ingredients that may impact your health.";
-  } else if (dangerFlags > 0) {
-    return "This product contains some concerning ingredients. Consume in moderation.";
-  } else if (warningFlags > 3) {
-    return "This product has several ingredients that warrant caution.";
+  
+  if (dangerFlags > 0) {
+    return `Product contains ${dangerFlags} concerning ingredient${dangerFlags > 1 ? 's' : ''} that may pose health risks.`;
+  } else if (warningFlags > 0) {
+    return `Product has ${warningFlags} ingredient${warningFlags > 1 ? 's' : ''} worth noting for dietary awareness.`;
   } else {
-    return "This product is relatively neutral from a health perspective.";
+    return "No major concerning ingredients identified in this product.";
   }
 }
 
 function generateRecommendations(flags: any[]): string[] {
-  const recommendations = [];
+  const recommendations: string[] = [];
   
-  if (flags.some(f => f.title.includes("Added Sugars"))) {
-    recommendations.push("Consider limiting portion size due to high sugar content");
-  }
-  
-  if (flags.some(f => f.title.includes("Artificial Colors"))) {
-    recommendations.push("Look for products without artificial colors when possible");
-  }
-  
-  if (flags.some(f => f.title.includes("Preservatives"))) {
-    recommendations.push("Choose fresh or minimally processed alternatives when available");
-  }
-  
-  if (recommendations.length === 0) {
-    return GENERAL_TIPS.slice();
+  if (flags.some(f => f.type === 'danger')) {
+    recommendations.push('Consider limiting consumption frequency');
+    recommendations.push('Look for alternatives with cleaner ingredient lists');
+  } else if (flags.some(f => f.type === 'warning')) {
+    recommendations.push('Consume in moderation as part of a balanced diet');
+    recommendations.push('Be mindful of portion sizes');
+  } else {
+    recommendations.push('This product appears to have a relatively clean ingredient profile');
+    recommendations.push('Continue to read labels and make informed choices');
   }
   
   return recommendations;
 }
 
+/**
+ * Process health scan with barcode-first logic and confidence gating
+ */
+async function processHealthScan(imageBase64: string, detectedBarcode?: string | null): Promise<BackendResponse> {
+  const ctx: RequestContext = {
+    reqId: crypto.randomUUID().substring(0, 8),
+    now: new Date(),
+    ocrText: '',
+    tokens: [],
+    brandTokens: [],
+    hasCandy: false,
+    plateConf: 0
+  };
+  
+  console.log(`🚀 Processing health scan [${ctx.reqId}]`);
+  
+  let barcodeHit = false;
+  let nameHit = false;
+  let offProduct: any = null;
+  
+  // Step 1: Barcode first (highest priority) - use client-detected barcode
+  const barcode = normalizeBarcode(detectedBarcode);
+  if (barcode) {
+    ctx.barcodeFound = barcode;
+    const offResult = await fetchOFF(barcode);
+    if (offResult?.product_found) {
+      offProduct = offResult.product;
+      barcodeHit = true;
+      ctx.offHit = true;
+      
+      console.log(`✅ Barcode success [${ctx.reqId}]`, { 
+        barcode, 
+        product: offProduct.product_name 
+      });
+      
+      return mapOFFtoBackendResponse(offProduct);
+    }
+  }
+  
+  // Step 2: OCR cleanup
+  const ocrResult = await extractAndCleanOCR(imageBase64);
+  ctx.ocrText = ocrResult.text;
+  ctx.tokens = ocrResult.cleanedTokens;
+  ctx.brandTokens = ocrResult.brandTokens;
+  ctx.hasCandy = ocrResult.hasCandy;
+  
+  // Step 3: Brand-gated name search (only with brand evidence)
+  if (ctx.brandTokens.length > 0) {
+    offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
+    if (offProduct) {
+      nameHit = true;
+      ctx.offHit = true;
+      
+      console.log(`✅ Name search success [${ctx.reqId}]`, { 
+        brand: ctx.brandTokens, 
+        product: offProduct.product_name 
+      });
+      
+      return mapOFFtoBackendResponse(offProduct);
+    }
+  }
+  
+  // Step 4: Plate confidence calculation
+  ctx.plateConf = calculatePlateConfidence(ctx.tokens);
+  
+  // Step 5: Confidence gating
+  const hasStrongEvidence = barcodeHit || nameHit || ctx.plateConf >= 0.85;
+  
+  if (!hasStrongEvidence) {
+    console.log(`❌ Low confidence [${ctx.reqId}]`, { 
+      barcodeHit, nameHit, plateConf: ctx.plateConf, 
+      evidence: 'insufficient' 
+    });
+    
+    return {
+      productName: 'Unknown product',
+      healthScore: null,
+      healthFlags: [],
+      nutritionSummary: {},
+      ingredients: [],
+      recommendations: [
+        'Try scanning the barcode on the back of the package.',
+        'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+      ],
+      generalSummary: 'We could not confidently identify this item from the photo.',
+      fallback: true
+    };
+  }
+  
+  // Step 6: Generate result with evidence
+  const flags = generateHealthFlags([], ctx.hasCandy);
+  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasStrongEvidence);
+  
+  // Final logging
+  console.log(JSON.stringify({
+    reqId: ctx.reqId,
+    phase: 'done', 
+    barcodeFound: !!ctx.barcodeFound,
+    offHit: ctx.offHit || false,
+    brand: ctx.brandTokens.join(',') || 'none',
+    plateConf: ctx.plateConf,
+    scored: healthScore !== null,
+    productName: 'Detected Food',
+    latencyMs: Date.now() - ctx.now.getTime()
+  }));
+  
+  return {
+    productName: "Detected Food",
+    healthScore,
+    healthFlags: flags,
+    nutritionSummary: null,
+    ingredients: [],
+    recommendations: generateRecommendations(flags),
+    generalSummary: generateHealthSummary(flags, healthScore)
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { imageBase64, mode = 'scan' } = await req.json();
+    const { imageBase64, detectedBarcode } = await req.json();
+    const reqId = crypto.randomUUID().substring(0, 8);
+    const t0 = Date.now();
     
+    console.log(`🚀 Processing health scan [${reqId}]`);
+    
+    // Step 1: Barcode-first logic (highest priority)
+    if (detectedBarcode) {
+      const normalizedBarcode = normalizeBarcode(detectedBarcode);
+      
+      if (normalizedBarcode) {
+        console.log(`🔍 Processing barcode [${reqId}]: ${normalizedBarcode}`);
+        
+        // Try OpenFoodFacts lookup
+        const offResult = await fetchOFF(normalizedBarcode);
+        if (offResult?.product_found) {
+          console.log(JSON.stringify({
+            reqId, 
+            phase: 'barcode-first', 
+            detectedBarcode: normalizedBarcode, 
+            validBarcode: true, 
+            offHit: true, 
+            productName: offResult.product.product_name,
+            scored: true,
+            brandConf: null,
+            plateConf: null,
+            latencyMs: Date.now() - t0
+          }));
+          
+          return new Response(
+            JSON.stringify(mapOFFtoBackendResponse(offResult.product)),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // Valid barcode but no OFF match
+          console.log(JSON.stringify({
+            reqId, 
+            phase: 'barcode-first', 
+            detectedBarcode: normalizedBarcode, 
+            validBarcode: true, 
+            offHit: false, 
+            productName: 'unknown',
+            scored: false,
+            brandConf: null,
+            plateConf: null,
+            latencyMs: Date.now() - t0
+          }));
+          
+          return new Response(
+            JSON.stringify({
+              productName: 'Unknown product',
+              healthScore: null,
+              healthFlags: [],
+              nutritionSummary: null,
+              ingredients: [],
+              recommendations: [
+                'Try scanning the barcode on the back of the package.',
+                'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+              ],
+              generalSummary: 'Barcode detected but no product information found.',
+              fallback: true
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+    
+    // Step 2: Proceed with image analysis if no barcode or barcode failed
     if (!imageBase64) {
-      throw new Error('Missing imageBase64 parameter');
+      throw new Error('No image data provided');
     }
 
-    const result = await processHealthScan(imageBase64);
+    const result = await processHealthScan(imageBase64, detectedBarcode);
     
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Enhanced evidence gating
+    const hasRealEvidence = 
+      Boolean(result.barcode) ||
+      (result.productName !== 'Unknown product' && result.productName !== 'Detected Food') ||
+      ((result.healthScore !== null) && (result.healthScore > 0));
+    
+    if (!hasRealEvidence) {
+      console.log(JSON.stringify({
+        reqId, 
+        phase: 'done', 
+        barcodeFound: false, 
+        offHit: false, 
+        brand: 'none',
+        plateConf: 0, 
+        scored: false, 
+        productName: 'unknown',
+        latencyMs: Date.now() - t0
+      }));
+      
+      return new Response(
+        JSON.stringify({
+          productName: 'Unknown product',
+          healthScore: null,
+          healthFlags: [],
+          nutritionSummary: {},
+          ingredients: [],
+          recommendations: [
+            'Try scanning the barcode on the back of the package.',
+            'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+          ],
+          generalSummary: 'We could not confidently identify this item from the photo.',
+          fallback: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(JSON.stringify({
+      reqId, 
+      phase: 'done', 
+      barcodeFound: Boolean(result.barcode), 
+      offHit: Boolean(result.barcode), 
+      brand: 'image-detected',
+      plateConf: null, 
+      scored: result.healthScore !== null, 
+      productName: result.productName || 'unknown',
+      latencyMs: Date.now() - t0
+    }));
+    
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('💥 Enhanced-health-scanner error:', error);
