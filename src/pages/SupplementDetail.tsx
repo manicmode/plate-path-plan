@@ -7,6 +7,8 @@ import { ArrowLeft, ShoppingCart, Info, Star } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { loadRegistry, type Registry } from '@/lib/supplements/registry';
 import { type SupplementCatalogItem } from '@/types/supplements';
+import { useMySupplements } from '@/hooks/useMySupplements';
+import { toast } from '@/hooks/use-toast';
 
 const SupplementDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -15,8 +17,31 @@ const SupplementDetail = () => {
   const isMobile = useIsMobile();
   const [product, setProduct] = useState<SupplementCatalogItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { addSupplement } = useMySupplements();
   
   const from = (location.state as { from?: 'hub' | 'tracker' } | null)?.from;
+
+  const handlePurchase = () => {
+    if (!product) return;
+
+    // Add to unified supplement store
+    addSupplement({
+      slug: product.slug,
+      name: product.name,
+      source: 'purchase',
+    });
+
+    toast({
+      title: "Added to My Supplements!",
+      description: `${product.name} has been added to your supplement list.`,
+    });
+
+    // Mock purchase action
+    toast({
+      title: "Purchase Successful!",
+      description: `Demo: Would purchase ${product.name} for $${product.defaultPrice?.toFixed(2) || 'N/A'}`,
+    });
+  };
 
   const handleBack = () => {
     if (from === 'hub') return navigate('/supplement-hub', { replace: true });
@@ -197,10 +222,7 @@ const SupplementDetail = () => {
             </p>
             <Button 
               className={`gradient-primary rounded-2xl ${isMobile ? 'h-12' : 'h-14'} neon-glow font-semibold px-8`}
-              onClick={() => {
-                // Mock purchase action
-                alert(`Demo: Would purchase ${product.name} for $${product.defaultPrice?.toFixed(2) || 'N/A'}`);
-              }}
+              onClick={handlePurchase}
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
               Add to Cart - ${product.defaultPrice?.toFixed(2) || 'N/A'}

@@ -33,6 +33,23 @@ export function listMySupplements(): MySupp[] {
 
 export function addMySupplement(input: Omit<MySupp, 'id' | 'createdAt' | 'updatedAt'>): MySupp {
   const now = Date.now();
+  const existing = listMySupplements();
+  
+  // Check for duplicates by slug (if provided) or name
+  const isDuplicate = existing.some(supp => 
+    (input.slug && supp.slug === input.slug) || 
+    (!input.slug && supp.name.toLowerCase() === input.name.toLowerCase())
+  );
+  
+  if (isDuplicate) {
+    // Return existing item instead of creating duplicate
+    const existingItem = existing.find(supp => 
+      (input.slug && supp.slug === input.slug) || 
+      (!input.slug && supp.name.toLowerCase() === input.name.toLowerCase())
+    )!;
+    return existingItem;
+  }
+
   const newSupp: MySupp = {
     ...input,
     id: uuidv4(),
@@ -40,7 +57,6 @@ export function addMySupplement(input: Omit<MySupp, 'id' | 'createdAt' | 'update
     updatedAt: now,
   };
 
-  const existing = listMySupplements();
   const updated = [...existing, newSupp];
   store.set(MY_SUPP_STORAGE_KEY, currentUserId, updated);
   

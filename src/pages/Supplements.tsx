@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone } from 'lucide-react';
 import { useMySupplements } from '@/hooks/useMySupplements';
+import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
@@ -19,7 +20,8 @@ const Supplements = () => {
   const [dosage, setDosage] = useState('');
   const [showManualEntry, setShowManualEntry] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addSupplement } = useMySupplements();
+  const { addSupplement, supplements: mySupplements } = useMySupplements();
+  const { addSupplement: logSupplement } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { playFoodLogConfirm } = useSound();
@@ -110,6 +112,25 @@ const Supplements = () => {
     navigate('/');
   };
 
+  const handleMySupplementClick = (supplement: any) => {
+    // Use the NutritionContext to log daily intake
+    logSupplement({
+      name: supplement.name,
+      dosage: supplement.dosage ? parseFloat(supplement.dosage) : 1,
+      unit: supplement.unit || 'serving',
+      notifications: [],
+    });
+
+    // Play success sound
+    SoundGate.markConfirm();
+    playFoodLogConfirm();
+
+    toast({
+      title: "Supplement Logged!",
+      description: `${supplement.name} logged to your daily intake.`,
+    });
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div className="text-center space-y-2 sm:space-y-4">
@@ -175,6 +196,39 @@ const Supplements = () => {
           Track your daily supplement intake
         </p>
       </div>
+
+      {/* My Supplements List */}
+      {mySupplements.length > 0 && (
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+            <div className="grid gap-3">
+              {mySupplements.map((supplement) => (
+                <Button
+                  key={supplement.id}
+                  onClick={() => handleMySupplementClick(supplement)}
+                  className={`glass-button ${isMobile ? 'h-16' : 'h-18'} flex items-center justify-between px-4 rounded-2xl hover:scale-[1.02] transition-transform`}
+                  variant="outline"
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">💊</span>
+                    <div className="text-left">
+                      <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>
+                        {supplement.name}
+                      </p>
+                      {(supplement.dosage || supplement.unit) && (
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-300`}>
+                          {supplement.dosage} {supplement.unit}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Plus className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-500 dark:text-purple-400`} />
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <input
         ref={fileInputRef}
