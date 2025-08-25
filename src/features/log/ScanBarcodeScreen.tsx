@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { SharedBarcodeScanner } from '@/components/scan/SharedBarcodeScanner';
 import { ConfirmAddFoodModal } from '@/components/scan/ConfirmAddFoodModal';
-import { addFoodLog } from '@/lib/logs/addFoodLog';
+import { addFoodLog } from '@/lib/addFoodLog';
 import { supabase } from '@/integrations/supabase/client';
 import { toastOnce } from '@/lib/toastOnce';
 
