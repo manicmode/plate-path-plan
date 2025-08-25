@@ -283,27 +283,6 @@ const CameraPageNew = () => {
         </CardContent>
       </Card>
 
-      {/* Hydration and Supplement Logs */}
-      <div className="grid grid-cols-2 gap-4 mt-6">
-        <Button
-          onClick={() => navigate('/hydration')}
-          className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          size="lg"
-        >
-          <Droplets className="h-6 w-6" />
-          <span className="text-sm font-medium">Hydration Logs</span>
-        </Button>
-
-        <Button
-          onClick={() => navigate('/supplements')}
-          className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          size="lg"
-        >
-          <Pill className="h-6 w-6" />
-          <span className="text-sm font-medium">Supplement Logs</span>
-        </Button>
-      </div>
-
       {/* Modals */}
       <BarcodeLogModal
         open={showBarcodeLogModal}
