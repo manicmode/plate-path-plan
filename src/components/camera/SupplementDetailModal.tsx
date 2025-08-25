@@ -32,14 +32,14 @@ export const SupplementDetailModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 shadow-2xl data-[state=open]:translate-x-[-50%] data-[state=open]:translate-y-[-50%]">
-        {/* Header with Back Button */}
-        <div className="flex items-center space-x-4 p-6 pb-4">
+      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 shadow-2xl z-[100] data-[state=open]:translate-x-[-50%] data-[state=open]:translate-y-[-50%]">
+        {/* Header with Back Button - Higher z-index and proper spacing */}
+        <div className="flex items-center space-x-4 p-6 pb-4 relative z-[110] bg-background">
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full glass-button"
+            className="rounded-full glass-button relative z-[120]"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -47,7 +47,7 @@ export const SupplementDetailModal = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto max-h-[75vh] p-6 pb-24">
+        <div className="overflow-y-auto max-h-[75vh] p-6 pb-24 relative z-[105]">
           {/* Large Image and Name */}
           <div className="text-center space-y-4">
             <div className="text-6xl">{supplement.image}</div>
@@ -143,7 +143,7 @@ export const SupplementDetailModal = ({
         </div>
 
         {/* Sticky Buy Button */}
-        <div className="sticky bottom-0 left-0 right-0 bg-background p-4 border-t border-border z-10">
+        <div className="sticky bottom-0 left-0 right-0 bg-background p-4 border-t border-border z-[110]">
           <Button
             onClick={() => onBuyNow(supplement)}
             className="w-full h-14 text-lg font-bold gradient-primary text-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
