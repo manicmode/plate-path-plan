@@ -11,14 +11,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
 import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
-
-// Apply security headers on app initialization
-applySecurityHeaders();
+import { addMobileBootTelemetry, safeServiceWorkerCleanup, trackMobileErrors } from "./lib/mobileDebugger";
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+// Apply security headers on app initialization
+applySecurityHeaders();
+
+// Initialize mobile debugging for boot issues
+if (isMobile) {
+  addMobileBootTelemetry();
+  trackMobileErrors();
+  safeServiceWorkerCleanup();
+}
 
 console.log('🔍 App initialization starting...', {
   isMobile,
@@ -94,7 +102,7 @@ const root = createRoot(rootElement);
 
 // Enhanced global error handlers for mobile debugging
 window.addEventListener('error', (event) => {
-  console.error('🚨 Global error caught:', {
+  const errorDetails = {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,
@@ -104,18 +112,44 @@ window.addEventListener('error', (event) => {
     isMobile,
     timestamp: new Date().toISOString(),
     url: window.location.href
-  });
+  };
+  
+  console.error('🚨 Global error caught:', errorDetails);
+  
+  // Additional mobile-specific error details
+  if (isMobile && event.error) {
+    console.error('🔍 Mobile error details:', {
+      errorType: event.error.constructor?.name,
+      isNetworkError: event.message?.includes('Failed to fetch') || event.message?.includes('NetworkError'),
+      isImportError: event.message?.includes('import') || event.filename?.includes('chunk'),
+      isServiceWorkerError: event.message?.includes('service worker') || event.message?.includes('ServiceWorker'),
+      userAgent: navigator.userAgent
+    });
+  }
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('🚨 Unhandled promise rejection:', {
+  const errorDetails = {
     reason: event.reason,
     promise: event.promise,
     stack: event.reason?.stack,
     isMobile,
     timestamp: new Date().toISOString(),
     url: window.location.href
-  });
+  };
+  
+  console.error('🚨 Unhandled promise rejection:', errorDetails);
+  
+  // Additional mobile-specific rejection details
+  if (isMobile && event.reason) {
+    console.error('🔍 Mobile rejection details:', {
+      rejectionType: typeof event.reason,
+      isImportRejection: String(event.reason).includes('import') || String(event.reason).includes('Loading'),
+      isNetworkRejection: String(event.reason).includes('fetch') || String(event.reason).includes('network'),
+      isFirebaseRejection: String(event.reason).includes('firebase') || String(event.reason).includes('messaging'),
+      reasonString: String(event.reason).substring(0, 200)
+    });
+  }
 });
 
 // Add visibility change handlers to track app state transitions
@@ -151,6 +185,24 @@ if (isIOS && isSafari) {
     console.log('iOS Safari storage test:', testStorage() ? 'passed' : 'failed');
   } catch (error) {
     console.error('iOS Safari storage test failed:', error);
+  }
+  
+  // Add iOS-specific service worker debugging
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then(registrations => {
+        console.log('🔍 iOS Safari service workers found:', registrations.length);
+        registrations.forEach((reg, i) => {
+          console.log(`🔍 Service worker ${i}:`, {
+            scope: reg.scope,
+            state: reg.active?.state,
+            scriptURL: reg.active?.scriptURL
+          });
+        });
+      })
+      .catch(error => {
+        console.error('Failed to get service worker registrations on iOS:', error);
+      });
   }
 }
 

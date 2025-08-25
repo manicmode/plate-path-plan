@@ -30,16 +30,28 @@ export const useVersionCheck = () => {
   }, []);
 
   const checkForUpdates = () => {
-    const currentVersion = APP_VERSION.FULL;
-    localStorage.setItem('app_version', currentVersion);
-    
-    // Force service worker update if available
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(registration => {
-          registration.update();
-        });
-      });
+    try {
+      const currentVersion = APP_VERSION.FULL;
+      localStorage.setItem('app_version', currentVersion);
+      
+      // Safely handle service worker updates
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(registrations => {
+            console.log('🔍 Found service worker registrations:', registrations.length);
+            registrations.forEach((registration, index) => {
+              console.log(`🔍 Updating service worker ${index}:`, registration.scope);
+              registration.update().catch(error => {
+                console.warn(`Service worker ${index} update failed:`, error);
+              });
+            });
+          })
+          .catch(error => {
+            console.warn('Failed to get service worker registrations:', error);
+          });
+      }
+    } catch (error) {
+      console.error('Error in checkForUpdates:', error);
     }
   };
 
