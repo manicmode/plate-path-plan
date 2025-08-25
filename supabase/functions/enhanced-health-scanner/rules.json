@@ -1,0 +1,21 @@
+{
+  "gmoRiskIngredients": ["soy", "corn", "canola", "sugar beet"],
+  "additives": {
+    "tbhq": { "aliases": ["tbhq"], "severity": "med", "reason": "Contains TBHQ (synthetic antioxidant/preservative)." },
+    "bht":  { "aliases": ["bht", "butylated hydroxytoluene"], "severity": "med", "reason": "Contains BHT (synthetic antioxidant)." },
+    "bha":  { "aliases": ["bha", "butylated hydroxyanisole"], "severity": "med", "reason": "Contains BHA (synthetic antioxidant)." },
+    "nitrite": { "aliases": ["sodium nitrite","nitrite"], "severity": "med", "reason": "Cured meat nitrites/nitrates." },
+    "red40": { "aliases": ["red 40","allura red"], "severity": "low", "reason": "Artificial color (Red 40)." },
+    "yellow5": { "aliases": ["yellow 5","tartrazine"], "severity": "low", "reason": "Artificial color (Yellow 5)." },
+    "potassium_bromate": { "aliases": ["potassium bromate"], "severity": "high", "reason": "Potassium bromate flagged in some regulations." }
+  },
+  "nutrientThresholds": {
+    "sodium_high_pct_dv": 0.2,
+    "added_sugars_high_pct_dv": 0.1
+  },
+  "defaultInsights": [
+    "Choosing organic/non-GMO helps avoid GMO-risk crops like soy, corn, and canola.",
+    "Rinse canned beans to reduce sodium.",
+    "Favor minimally processed foods to reduce additives."
+  ]
+}
