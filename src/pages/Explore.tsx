@@ -84,7 +84,7 @@ const Explore = () => {
     {
       id: 'supplement-hub',
       title: 'Supplement Hub',
-      emoji: '🧪',
+      emoji: '💊',
       color: 'from-purple-300 to-pink-600',
       shadowColor: 'shadow-purple-500/20',
     },

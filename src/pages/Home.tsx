@@ -1802,7 +1802,7 @@ const Home = () => {
               {
                 id: 'supplement-hub',
                 title: 'Supplement Hub',
-                emoji: '🧪',
+                emoji: '💊',
                 color: 'from-purple-500 via-purple-400 to-pink-500',
                 shadowColor: 'shadow-purple-500/30',
                 glowColor: 'hover:shadow-purple-400/50',
