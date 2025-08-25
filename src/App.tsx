@@ -40,6 +40,24 @@ import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
 import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
+import { SupplementEducationCard } from '@/components/supplements/SupplementEducationCard';
+
+// DEBUG: DiagnosticBoundary – TEMPORARY
+function DiagnosticBoundary({ children }: { children: React.ReactNode }) {
+  const [err, setErr] = React.useState<Error | null>(null);
+  return err ? (
+    <div style={{ padding: 8, border: '1px solid #f66', borderRadius: 8, background: '#2b1d1d' }}>
+      <strong style={{ color: '#f88' }}>SupplementEducationCard crashed</strong>
+      <pre style={{ whiteSpace: 'pre-wrap', color: '#fdd', fontSize: 12 }}>{String(err.stack || err.message || err)}</pre>
+    </div>
+  ) : (
+    <ErrorCatcher onError={setErr}>{children}</ErrorCatcher>
+  );
+}
+function ErrorCatcher({ children, onError }: { children: React.ReactNode; onError: (e: Error)=>void }) {
+  try { return <>{children}</>; } catch (e) { onError(e as Error); return null; }
+}
+
 import OnboardingGate from '@/routes/OnboardingGate';
 
 
@@ -323,6 +341,14 @@ function AppContent() {
                         <ProtectedRoute>
                           <HabitCentralPage />
                         </ProtectedRoute>
+                      } />
+                      {/* DEBUG: Card-only test route */}
+                      <Route path="/__debug/supp-edu" element={
+                        <div style={{ padding: 16 }}>
+                          <DiagnosticBoundary>
+                            <SupplementEducationCard />
+                          </DiagnosticBoundary>
+                        </div>
                       } />
                       {/* Voice Agent - New realtime voice system */}
                       <Route path="/voice-agent" element={

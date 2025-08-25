@@ -40,6 +40,7 @@ const FALLBACK_TIPS: SupplementTip[] = [
 ];
 
 export async function loadRegistry(): Promise<Registry> {
+  console.info('[SuppEdu.registry] getTips start');
   try {
     if (!SHOW_SUPP_EDU) {
       return { catalog: {}, tips: FALLBACK_TIPS };
@@ -62,7 +63,9 @@ export async function loadRegistry(): Promise<Registry> {
     };
 
     // Start with base tips (static import cannot throw at runtime)
+    console.info('[SuppEdu.registry] importing baseTips');
     let tips: SupplementTip[] = Array.isArray(baseTips) ? [...baseTips] : [];
+    console.info('[SuppEdu.registry] baseTips length', Array.isArray(baseTips) ? baseTips.length : baseTips);
 
     // Merge base catalog if available
     if (Array.isArray(baseCatalog) && baseCatalog.length > 0) {
@@ -101,8 +104,10 @@ export async function loadRegistry(): Promise<Registry> {
     }
 
     const finalTips = deduped.length ? deduped : FALLBACK_TIPS;
+    console.info('[SuppEdu.registry] getTips returning length', finalTips?.length);
     return { catalog, tips: finalTips };
   } catch (err) {
+    console.error('[SuppEdu.registry] getTips threw', err);
     console.error('[SuppEdu.registry] hard failure', err);
     return { 
       catalog: {

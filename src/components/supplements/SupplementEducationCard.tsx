@@ -39,16 +39,23 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Load registry and persisted index on mount
   useEffect(() => {
+    console.info('[SuppEdu] mount');
     let alive = true;
     const loadData = async () => {
       try {
-        const reg = await loadRegistry();
+        console.info('[SuppEdu] loading tips…');
+        const reg = await loadRegistry().catch(e => { 
+          console.error('[SuppEdu] getTips error', e); 
+          return undefined; 
+        });
+        console.info('[SuppEdu] tips result', Array.isArray(reg?.tips) ? reg.tips.length : reg);
+        
         if (alive) {
           setRegistry(reg);
           
           // Load persisted index after we have the registry using safe localStorage
           const savedIndex = safeGetLastIndex(user?.id);
-          if (savedIndex >= 0 && savedIndex < reg.tips.length) {
+          if (savedIndex >= 0 && reg && savedIndex < reg.tips.length) {
             setCurrentIndex(savedIndex);
           }
         }
@@ -76,6 +83,7 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
     loadData();
     return () => {
+      console.info('[SuppEdu] unmount');
       alive = false;
     };
   }, [user?.id]);
@@ -105,6 +113,9 @@ export const SupplementEducationCardComponent = ({ className = '' }: SupplementE
 
   // Get current tips array
   const tips = registry?.tips || [];
+  
+  // Add temporary defensive logs right before render
+  console.info('[SuppEdu.render] tips?', Array.isArray(tips), tips?.length, tips?.[0]);
 
 
   // Save current index to localStorage
