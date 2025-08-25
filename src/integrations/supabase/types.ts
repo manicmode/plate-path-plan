@@ -8713,6 +8713,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      award_points_secure: {
+        Args: { p_base_amount: number; p_multiplier?: number; p_reason: string }
+        Returns: undefined
+      }
       award_recovery_xp: {
         Args: {
           p_duration_minutes?: number
