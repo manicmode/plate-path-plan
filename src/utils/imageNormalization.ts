@@ -45,28 +45,33 @@ export async function normalizeHealthScanImage(
 
   // Convert string data URL to File if needed (CSP-safe)
   if (typeof file === 'string') {
-    // Use canvas conversion instead of fetch for CSP safety
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Failed to create blob from canvas'));
-        }, 'image/jpeg', 0.85);
-      };
-      img.onerror = reject;
-      img.src = file;
-    });
-    
-    inputFile = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
-    originalSize = blob.size;
+    try {
+      // Use canvas conversion instead of fetch for CSP safety
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx?.drawImage(img, 0, 0);
+          
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Failed to create blob from canvas'));
+          }, 'image/jpeg', 0.85);
+        };
+        img.onerror = reject;
+        img.src = file;
+      });
+      
+      inputFile = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
+      originalSize = blob.size;
+    } catch (error) {
+      console.error('Failed to convert dataURL to File:', error);
+      throw new Error('The file given is not an image');
+    }
   } else {
     inputFile = file;
     originalSize = file.size;

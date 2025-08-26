@@ -140,6 +140,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       // A) CAPTURE FULL-RES FRAME (from video; do NOT compress yet)
       const video = videoRef.current;
+      await video.play(); // Ensure dimensions are available on iOS
+      
       const vw = video.videoWidth, vh = video.videoHeight;
       const frameCanvas = document.createElement('canvas');
       frameCanvas.width = vw; 
@@ -151,8 +153,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // B) CROP ROI FROM VIDEO PIXELS (center ~70% x 40%)
       const roiW = Math.round(vw * 0.70);
       const roiH = Math.round(vh * 0.40);
-      const roiX = Math.round((vw - roiW) / 2);
-      const roiY = Math.round((vh - roiH) / 2);
+      const x = Math.round((vw - roiW) / 2);
+      const y = Math.round((vh - roiH) / 2);
+
+      console.log('[HS] roi', {
+        vw: video.videoWidth, vh: video.videoHeight,
+        roiW, roiH, x, y
+      });
 
       // If ROI too small, fall back to full frame
       let roiCanvas: HTMLCanvasElement;
@@ -162,17 +169,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         roiCanvas = document.createElement('canvas');
         roiCanvas.width = roiW; 
         roiCanvas.height = roiH;
-        const rx = roiCanvas.getContext('2d')!;
+        const rx = roiCanvas.getContext('2d', { willReadFrequently: true })!;
         rx.imageSmoothingEnabled = false;
-        rx.drawImage(frameCanvas, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+        rx.drawImage(frameCanvas, x, y, roiW, roiH, 0, 0, roiW, roiH);
       }
 
-      // C) BARCODE FIRST (budget ~1500ms) — BEFORE ANY NORMALIZATION
-      const tDecode = performance.now();
-      const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 1500 });
+      // C) BARCODE FIRST (budget ~2500ms) — BEFORE ANY NORMALIZATION
+      console.time('[HS] decode');
+      const t0 = performance.now();
+      const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 2500 });
+      console.timeEnd('[HS] decode');
       const chosen = chooseBarcode(dec);
-      console.log('[HS] barcode_ms:', Math.round(performance.now() - tDecode));
-      console.log('[HS] barcode_result:', chosen ?? null);
+      console.log('[HS] barcode_ms:', Math.round(performance.now() - t0));
+      console.log('[HS] barcode_result:', {
+        raw: chosen?.raw ?? null,
+        type: chosen?.type ?? null,
+        checksumOk: chosen?.checksumOk ?? null,
+        reason: dec?.reason ?? null
+      });
 
       // D) OFF lookup even if checksumOk === false, as long as 8/12/13/14 digits present
       let off: any = null;
@@ -182,9 +196,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: { mode: 'barcode', barcode: chosen.raw, source: 'health' }
         });
         off = error ? { status: 'error', product: null } : { status: 200, product: data };
-        console.log('[HS] off_result', { status: off.status, hit: !!off.product });
+        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         
-        if (off.product) {
+        if (!error && data) {
           // Push ScanReport for forensics
           if (typeof window !== 'undefined') {
             (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS ?? [];
@@ -197,9 +211,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
                 success: true, 
                 code: chosen.raw, 
                 checksumOk: chosen.checksumOk, 
-                off: { status: off.status, hit: true }, 
+                off: { status: 200, hit: true }, 
                 reason: dec.reason, 
-                totalMs: performance.now() - tDecode 
+                totalMs: performance.now() - t0
               }
             });
           }
@@ -212,6 +226,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           ctx.drawImage(video, 0, 0);
           const imageData = canvas.toDataURL('image/jpeg', 0.8);
           
+          const totalMs = Math.round(performance.now() - t0);
+          console.log('[HS] analyze_total:', totalMs);
           console.timeEnd('[HS] analyze_total');
           onCapture(imageData + `&barcode=${chosen.raw}`);
           return;
@@ -219,18 +235,37 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
 
       // E) ONLY NOW normalize/OCR fallback
-      const normalized = await normalizeHealthScanImage(new File([await new Promise<Blob>((resolve) => {
-        frameCanvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.9);
-      })], 'capture.jpg'), {
-        maxWidth: Math.max(vw, 1920),
-        maxHeight: Math.max(vh, 1080),
-        quality: 0.9,
-        format: 'JPEG',
-        stripExif: true
-      });
+      try {
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          frameCanvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('toBlob returned null'));
+          }, 'image/jpeg', 0.90);
+        });
+        
+        console.log('[HS] normalized_blob', { type: blob.type, size: blob.size });
+        
+        const file = new File([blob], `scan_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const normalized = await normalizeHealthScanImage(file, {
+          maxWidth: Math.max(vw, 1920),
+          maxHeight: Math.max(vh, 1080),
+          quality: 0.9,
+          format: 'JPEG',
+          stripExif: true
+        });
 
-      console.timeEnd('[HS] analyze_total');
-      onCapture(normalized.dataUrl);
+        const totalMs = Math.round(performance.now() - t0);
+        console.log('[HS] analyze_total:', totalMs);
+        console.timeEnd('[HS] analyze_total');
+        onCapture(normalized.dataUrl);
+      } catch (err) {
+        console.warn('[HS] normalize_error', String(err));
+        // Continue with manual fallback UI
+        const totalMs = Math.round(performance.now() - t0);
+        console.log('[HS] analyze_total:', totalMs);
+        console.timeEnd('[HS] analyze_total');
+        setCurrentView('notRecognized');
+      }
 
     } catch (e) {
       console.error('[HS] analyze_error', e);

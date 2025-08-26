@@ -105,9 +105,11 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
     if (!videoRef.current || !canvasRef.current) return;
     
     console.log('[HS] analyze_start');
-    console.time('[HS] analyze_total');
+    const t0 = performance.now();
 
     const video = videoRef.current;
+    await video.play(); // Ensure dimensions are available on iOS
+    
     const vw = video.videoWidth, vh = video.videoHeight;
     
     // A) Capture full-res frame
@@ -121,8 +123,13 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
     // B) Crop ROI in video pixel space (70% x 40% center)
     const roiW = Math.round(vw * 0.70);
     const roiH = Math.round(vh * 0.40);
-    const roiX = Math.round((vw - roiW) / 2);
-    const roiY = Math.round((vh - roiH) / 2);
+    const x = Math.round((vw - roiW) / 2);
+    const y = Math.round((vh - roiH) / 2);
+
+    console.log('[HS] roi', {
+      vw: video.videoWidth, vh: video.videoHeight,
+      roiW, roiH, x, y
+    });
 
     let roiCanvas: HTMLCanvasElement;
     if (roiW < 320 || roiH < 200) {
@@ -131,17 +138,23 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
       roiCanvas = document.createElement('canvas');
       roiCanvas.width = roiW; 
       roiCanvas.height = roiH;
-      const rx = roiCanvas.getContext('2d')!;
+      const rx = roiCanvas.getContext('2d', { willReadFrequently: true })!;
       rx.imageSmoothingEnabled = false;
-      rx.drawImage(frameCanvas, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+      rx.drawImage(frameCanvas, x, y, roiW, roiH, 0, 0, roiW, roiH);
     }
 
     // C) Barcode FIRST
-    const tDecode = performance.now();
-    const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 1500 });
+    console.time('[HS] decode');
+    const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 2500 });
+    console.timeEnd('[HS] decode');
     const chosen = chooseBarcode(dec);
-    console.log('[HS] barcode_ms:', Math.round(performance.now() - tDecode));
-    console.log('[HS] barcode_result:', chosen ?? null);
+    console.log('[HS] barcode_ms:', Math.round(performance.now() - t0));
+    console.log('[HS] barcode_result:', {
+      raw: chosen?.raw ?? null,
+      type: chosen?.type ?? null,
+      checksumOk: chosen?.checksumOk ?? null,
+      reason: dec?.reason ?? null
+    });
 
     // D) OFF lookup even if checksumOk === false, as long as 8/12/13/14 digits present
     if (chosen?.raw && /^[0-9]{8,14}$/.test(chosen.raw)) {
@@ -149,17 +162,18 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
       const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
         body: { mode: 'barcode', barcode: chosen.raw, source: 'log' }
       });
-      const off = error ? { status: 'error', product: null } : { status: 200, product: data };
-      console.log('[HS] off_result', { status: off.status, hit: !!off.product });
+      console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
       
-      if (off.product) {
-        console.timeEnd('[HS] analyze_total');
+      if (!error && data) {
+        const totalMs = Math.round(performance.now() - t0);
+        console.log('[HS] analyze_total:', totalMs);
         await processBarcode(chosen.raw);
         return;
       }
     }
 
-    console.timeEnd('[HS] analyze_total');
+    const totalMs = Math.round(performance.now() - t0);
+    console.log('[HS] analyze_total:', totalMs);
     toast.error('No barcode detected. Try manual entry.');
   };
 
