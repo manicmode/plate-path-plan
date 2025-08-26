@@ -2268,7 +2268,7 @@ console.log('Global search enabled:', enableGlobalSearch);
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
       </div>
 
       {/* Processing Status */}
