@@ -1510,6 +1510,7 @@ console.log('Global search enabled:', enableGlobalSearch);
     setErrorType('');
     setErrorMessage('');
     setErrorSuggestions([]);
+    setIsLoadingBarcode(false); // Reset barcode loading state
   };
 
   const handleTabFoodSelect = (food: any) => {
@@ -2437,6 +2438,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                      onClick={() => {
                        setShowLogBarcodeScanner(true);
                        setInputSource('barcode');
+                       setIsLoadingBarcode(false); // Reset loading state when opening scanner
                        resetErrorState();
                      }}
                      disabled={isLoadingBarcode}
