@@ -226,7 +226,7 @@ export const HabitsCard = () => {
   };
 
   return (
-    <Card>
+    <Card className="mb-20">
       <CardHeader>
         <CardTitle className="flex items-center justify-center gap-2 text-cyan-400">
           <CheckCircle2 className="h-5 w-5" />
