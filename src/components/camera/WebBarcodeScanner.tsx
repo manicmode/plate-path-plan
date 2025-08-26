@@ -79,12 +79,22 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
 
     console.time('[LOG] analyze_total');
+    setIsDecoding(true);
     setIsFrozen(true);
-    setIsScanning(true);
     
     try {
       const video = videoRef.current;
-      await video.play();
+      
+      // Ensure video is ready before processing
+      if (!video.videoWidth || !video.videoHeight) {
+        await new Promise<void>((resolve) => {
+          const handler = () => {
+            video.removeEventListener('loadedmetadata', handler);
+            resolve();
+          };
+          video.addEventListener('loadedmetadata', handler, { once: true });
+        });
+      }
       
       // Apply zoom constraint before capture (NO auto-torch!)
       if (stream) {
@@ -155,8 +165,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       console.error('[LOG] Scan error:', error);
       setError('Failed to scan barcode. Please try again.');
     } finally {
-      // Never auto-disable torch - let user control it
-      setIsScanning(false);
+      // CRITICAL: Always cleanup to prevent hangs
+      setIsDecoding(false);
       setIsFrozen(false);
       console.timeEnd('[LOG] analyze_total');
     }

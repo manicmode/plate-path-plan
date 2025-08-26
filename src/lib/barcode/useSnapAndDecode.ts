@@ -35,10 +35,29 @@ export function useSnapAndDecode() {
       console.log(`${logPrefix} analyze_start`);
       
       // Optional: Add toast for PWA testing when console isn't available
-      if (logPrefix === '[HS]' && window.location.search.includes('debug=toast')) {
+      if (window.location.search.includes('debug=toast')) {
         const { toast } = await import('sonner');
         toast.info(`${logPrefix} analyze_start`);
       }
+      
+      // Ensure video is ready before processing
+      if (!videoEl.videoWidth || !videoEl.videoHeight) {
+        await new Promise<void>((resolve) => {
+          const handler = () => {
+            videoEl.removeEventListener('loadedmetadata', handler);
+            resolve();
+          };
+          videoEl.addEventListener('loadedmetadata', handler, { once: true });
+        });
+      }
+
+      // Log ROI info
+      const vw = videoEl.videoWidth;
+      const vh = videoEl.videoHeight;
+      const roiW = Math.round(vw * roi.wPct);
+      const roiH = Math.round(vh * roi.hPct);
+      const dpr = window.devicePixelRatio || 1;
+      console.log(`${logPrefix} roi`, { vw, vh, roiW, roiH, dpr });
       
       // Get the current stream for torch support
       streamRef.current = videoEl.srcObject as MediaStream;
@@ -56,18 +75,18 @@ export function useSnapAndDecode() {
 
       if (result.raw) {
         const chosenBarcode = chooseBarcode(result.result);
-      console.log(`${logPrefix} barcode_result:`, {
-        raw: chosenBarcode,
-        type: result.result?.format || null,
-        checksumOk: result.result?.checkDigitValid || null,
-        reason: 'decoded'
-      });
-      
-      // Optional: Add toast for PWA testing
-      if (window.location.search.includes('debug=toast')) {
-        const { toast } = await import('sonner');
-        toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
-      }
+        console.log(`${logPrefix} barcode_result:`, {
+          raw: chosenBarcode,
+          type: result.result?.format || null,
+          checksumOk: result.result?.checkDigitValid || null,
+          reason: 'decoded'
+        });
+        
+        // Optional: Add toast for PWA testing
+        if (window.location.search.includes('debug=toast')) {
+          const { toast } = await import('sonner');
+          toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
+        }
 
         return {
           ok: true,
@@ -110,7 +129,7 @@ export function useSnapAndDecode() {
         reason: 'error'
       };
     } finally {
-      // Always unfreeze
+      // Always unfreeze - CRITICAL for preventing hangs
       unfreezeVideo(videoEl);
     }
   };
