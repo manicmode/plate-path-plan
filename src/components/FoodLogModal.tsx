@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
 import { startScanReport, finalizeScanReport, copyDebugToClipboard } from '@/lib/barcode/diagnostics';
+import { cropReticleROIFromVideo } from '@/lib/barcode/roiUtils';
 
 interface FoodLogModalProps {
   open: boolean;
@@ -103,34 +104,26 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
     
-    if (!ctx) return;
+    // Create DPR-correct ROI directly from video (no pre-compression)
+    const roiCanvas = cropReticleROIFromVideo(video);
 
-    // Full resolution capture
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-
-    // Convert to blob for barcode decoding
+    // Convert ROI canvas to blob for barcode decoding
     const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((blob) => {
+      roiCanvas.toBlob((blob) => {
         if (blob) resolve(blob);
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.95);
     });
 
     if (!blob) return;
 
-    // Enhanced barcode decode with ROI
-    const roiRect = {
-      x: Math.floor(canvas.width * 0.1),
-      y: Math.floor(canvas.height * 0.35),
-      w: Math.floor(canvas.width * 0.8),
-      h: Math.floor(canvas.height * 0.3)
-    };
-
-    const result = await enhancedBarcodeDecode(blob, roiRect, window.devicePixelRatio, 1500);
+    // Enhanced barcode decode with full ROI
+    const result = await enhancedBarcodeDecode(
+      blob, 
+      { x: 0, y: 0, w: roiCanvas.width, h: roiCanvas.height }, // Full ROI area
+      window.devicePixelRatio, 
+      1500
+    );
     
     if (result.success && result.code) {
       await processBarcode(result.code);

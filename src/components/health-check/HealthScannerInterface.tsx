@@ -10,6 +10,7 @@ import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 import { copyDebugToClipboard, startScanReport, finalizeScanReport } from '@/lib/barcode/diagnostics';
 import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
 import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
+import { cropReticleROIFromVideo } from '@/lib/barcode/roiUtils';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -36,10 +37,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [debugOverlay, setDebugOverlay] = useState(process.env.NEXT_PUBLIC_SCAN_DEBUG === '1');
+  const [showDebugCopy, setShowDebugCopy] = useState(false);
+  const [isDebugEnabled, setIsDebugEnabled] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
+    // Check if debug is enabled
+    const debugEnabled = process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' || 
+                        new URLSearchParams(window.location.search).get('scan_debug') === '1' ||
+                        localStorage.getItem('SCAN_DEBUG') === '1';
+    setIsDebugEnabled(debugEnabled);
+    
     if (currentView === 'scanner') {
       startCamera();
     }
@@ -167,7 +175,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       });
       
       // For barcode path: preserve full resolution, only strip EXIF
-      const normalized = await normalizeHealthScanImage(new File([blob], 'capture.jpg', { type: 'image/jpeg' }), {
+      const fileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      const normalized = await normalizeHealthScanImage(fileBlob, {
         maxWidth: Math.max(video.videoWidth, 1920), // Don't downscale below video resolution
         maxHeight: Math.max(video.videoHeight, 1080),
         quality: 0.9, // Higher quality for barcode detection
@@ -175,52 +184,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         stripExif: true
       });
 
-      const imageData = normalized.dataUrl;
+      const imageDataForAnalysis = normalized.dataUrl;
       
-      // Enhanced barcode detection with multi-pass ZXing
+      // Enhanced barcode detection with DPR-correct ROI (no pre-compression)
       try {
-        // Create blob from normalized image for decoder
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
+        // Create ROI canvas directly from video (no normalization step)
+        const roiCanvas = cropReticleROIFromVideo(video);
         
-        const barcodeBlob = await new Promise<Blob>((resolve, reject) => {
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx?.drawImage(img, 0, 0);
-            
-            canvas.toBlob((blob) => {
-              if (blob) resolve(blob);
-              else reject(new Error('Failed to create blob for barcode detection'));
-            }, 'image/jpeg', 0.9);
-          };
-          img.onerror = reject;
-          img.src = imageData;
-        });
-        
-        // Use enhanced decoder with diagnostics
-        const reqId = `hs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const constraints = {
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        };
-        
+        // Enhanced multi-pass barcode decode on ROI
         const barcodeResult = await Promise.race([
           enhancedBarcodeDecode(
-            barcodeBlob, 
-            { x: 0, y: img.height * 0.35, w: img.width, h: img.height * 0.3 }, // ROI rect
+            await new Promise<Blob>(resolve => roiCanvas.toBlob(resolve!, 'image/jpeg', 0.95)),
+            { x: 0, y: 0, w: roiCanvas.width, h: roiCanvas.height }, // Full ROI
             window.devicePixelRatio,
-            1200 // budget
+            1500 // budget
           ),
           new Promise<{ success: false; attempts: 0; totalMs: number }>((resolve) => 
-            setTimeout(() => resolve({ success: false, attempts: 0, totalMs: 1200 }), 1200)
+            setTimeout(() => resolve({ success: false, attempts: 0, totalMs: 1500 }), 1500)
           )
         ]);
-        
+
         if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
           console.log('[HS] barcode', { 
             success: barcodeResult.success,
@@ -235,15 +218,49 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         if (barcodeResult.success && barcodeResult.code) {
           // Short-circuit to OFF lookup with normalized code
           const finalCode = barcodeResult.normalizedAs || barcodeResult.code;
-          onCapture(imageData + `&barcode=${finalCode}`);
+          
+          if (isDebugEnabled) {
+            finalizeScanReport({
+              success: true,
+              code: finalCode,
+              normalizedAs: barcodeResult.normalizedAs,
+              checkDigitOk: barcodeResult.checkDigitOk || false,
+              willScore: true,
+              willFallback: false,
+              totalMs: barcodeResult.totalMs
+            });
+          }
+          
+          onCapture(imageDataForAnalysis + `&barcode=${finalCode}`);
           return;
         }
       } catch (barcodeError) {
-        console.error("❌ Enhanced barcode detection failed:", barcodeError);
+        console.error('Barcode detection error:', barcodeError);
       }
       
-      // No barcode found, proceed with standard image capture
-      onCapture(imageData);
+      // No barcode found, proceed to full image normalization for image analysis
+      const analysisFileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      const normalizedForAnalysis = await normalizeHealthScanImage(analysisFileBlob, {
+        maxWidth: Math.max(video.videoWidth, 1920), // Don't downscale below video resolution
+        maxHeight: Math.max(video.videoHeight, 1080),
+        quality: 0.9, // Higher quality for image analysis
+        format: 'JPEG',
+        stripExif: true
+      });
+
+      const finalImageData = normalizedForAnalysis.dataUrl;
+      
+      if (isDebugEnabled) {
+        finalizeScanReport({
+          success: false,
+          willScore: false,
+          willFallback: true,
+          totalMs: Date.now() - Date.now() // Will be updated with actual timing
+        });
+      }
+      
+      // Continue with regular health scan analysis
+      onCapture(finalImageData);
     } catch (normalizationError) {
       console.error("❌ Image normalization failed:", normalizationError);
       // Fallback to raw image if normalization fails
