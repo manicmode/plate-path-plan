@@ -24,6 +24,25 @@ interface BackendResponse {
   fallback?: boolean;
 }
 
+// Log product structure for direct consumption by Log UI
+interface LogProduct {
+  barcode: string;
+  brand?: string;
+  productName: string;
+  imageUrl?: string;
+  serving?: { amount: number; unit: string; grams?: number };
+  nutriments: {
+    calories?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
+    sugar_g?: number;
+    sodium_mg?: number;
+  };
+  ingredients: string[];
+}
+
 interface RequestContext {
   reqId: string;
   now: Date;
@@ -185,6 +204,57 @@ function mapOFFtoBackendResponse(product: any): BackendResponse {
     ingredients,
     recommendations: generateRecommendations(flags)
   };
+}
+
+/**
+ * Map OpenFoodFacts product to LogProduct for direct Log UI consumption
+ */
+function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
+  const n = product?.nutriments ?? {};
+
+  // Serving math
+  const perServing = product?.nutrition_data_per === 'serving';
+  const svRaw = (product?.serving_size || '').trim();
+  const m = svRaw.match(/([\d.]+)\s*([a-zA-Z]+)?/);
+  const svAmount = m ? parseFloat(m[1]) : undefined;
+  const svUnit = m?.[2]?.toLowerCase() || (perServing ? 'serving' : '100g');
+
+  const pick = (key100: string, keyServ: string) =>
+    perServing ? n[keyServ] ?? n[key100] : n[key100];
+
+  const kcal = pick('energy-kcal_100g','energy-kcal_serving') ??
+               (pick('energy_100g','energy_serving') && 
+                 Number(pick('energy_100g','energy_serving')) / 4.184);
+
+  const logProduct: LogProduct = {
+    barcode,
+    brand: product?.brands?.split(',')[0]?.trim(),
+    productName: product?.product_name || product?.generic_name || 'Unknown product',
+    imageUrl: product?.image_front_small_url || product?.image_url,
+    serving: svAmount ? { amount: svAmount, unit: svUnit } : undefined,
+    nutriments: {
+      calories: kcal ? Math.round(Number(kcal)) : undefined,
+      protein_g: num(pick('proteins_100g','proteins_serving')),
+      carbs_g: num(pick('carbohydrates_100g','carbohydrates_serving')),
+      fat_g: num(pick('fat_100g','fat_serving')),
+      fiber_g: num(pick('fiber_100g','fiber_serving')),
+      sugar_g: num(pick('sugars_100g','sugars_serving')),
+      sodium_mg: toMg(num(pick('sodium_100g','sodium_serving'))) 
+                 ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving')))
+    },
+    ingredients: parseIngredients(product)
+  };
+
+  function num(v: any) { return v == null ? undefined : Number(v); }
+  function toMg(g?: number) { return g == null ? undefined : Math.round(g * 1000); }
+  function fromSaltToSodiumMg(g?: number) { return g == null ? undefined : Math.round(g * 1000 * 0.393); }
+  function parseIngredients(p: any) {
+    if (Array.isArray(p?.ingredients)) return p.ingredients.map((i: any) => i.text).filter(Boolean);
+    const t = p?.ingredients_text || '';
+    return t.split(/[·•,;()\[\]]/).map(s => s.trim()).filter(Boolean);
+  }
+
+  return logProduct;
 }
 
 /**
@@ -581,10 +651,10 @@ serve(async (req) => {
       const norm = normalizeBarcode(body.barcode);
       if (!norm) {
         return new Response(JSON.stringify({ 
-          fallback: true, 
+          ok: false, 
           reason: 'invalid_barcode' 
         }), { 
-          status: 200, 
+          status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
@@ -600,11 +670,11 @@ serve(async (req) => {
       if (offResult?.error) {
         console.log(`❌ OFF error [${reqId}]:`, offResult.message);
         return new Response(JSON.stringify({ 
-          fallback: true, 
+          ok: false, 
           reason: 'off_error', 
           status: offResult.status 
         }), { 
-          status: 200, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
@@ -612,17 +682,20 @@ serve(async (req) => {
       if (!offResult?.product_found) {
         console.log(`❌ OFF miss [${reqId}]: ${norm.type} not found`);
         return new Response(JSON.stringify({ 
-          fallback: true, 
+          ok: false, 
           reason: 'off_miss' 
         }), { 
-          status: 200, 
+          status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
 
       console.log(`✅ OFF hit [${reqId}]:`, offResult.product.product_name);
+      
+      // Return normalized LogProduct format for Log scanner
+      const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
       return new Response(
-        JSON.stringify(mapOFFtoBackendResponse(offResult.product)),
+        JSON.stringify({ ok: true, source: 'off', product: logProduct }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

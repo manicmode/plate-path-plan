@@ -90,7 +90,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       setIsLookingUp(true);
       
-      // Use same endpoint as Health Scan with proper timeout
+      // Use same endpoint as Health Scan
       const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
         body: { mode: 'barcode', barcode, source: 'log' }
       });
@@ -102,7 +102,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         console.log(`[LOG] off_error:`, error);
       } else {
         status = 200;
-        hit = !!result && !result.fallback;
+        hit = !!result?.ok && !!result.product;
         data = result;
       }
       
@@ -158,10 +158,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         const lookupResult = await handleOffLookup(result.raw);
         
-        if (lookupResult.hit && lookupResult.data && !lookupResult.data.fallback) {
+        if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
           onBarcodeDetected(result.raw);
           onOpenChange(false);
-        } else if (lookupResult.data?.fallback) {
+        } else if (lookupResult.data && !lookupResult.data.ok) {
           const reason = lookupResult.data.reason || 'unknown';
           const msg = reason === 'off_miss' && /^\d{8}$/.test(result.raw)
             ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
@@ -234,98 +234,90 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-6">
-              {/* Scanning Frame */}
-              <div className="relative mb-8">
-                {/* Main scanning frame with cyan corners */}
-                <div className="relative w-80 h-48 border-2 border-transparent">
-                  {/* Corner indicators */}
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-cyan-400"></div>
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-cyan-400"></div>
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-cyan-400"></div>
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-cyan-400"></div>
-                  
-                  {/* Grid overlay */}
-                  <div className="absolute inset-2 opacity-30">
-                    <div className="w-full h-full grid grid-cols-4 grid-rows-3 gap-0">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <div key={i} className="border border-cyan-400/20"></div>
-                      ))}
-                    </div>
+            <div className="flex-1 flex items-center justify-center pointer-events-none">
+              {/* Centered scan frame */}
+              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4]">
+                {/* Corner indicators */}
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400"></div>
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
+                
+                {/* Grid overlay */}
+                <div className="absolute inset-4 opacity-20">
+                  <div className="w-full h-full grid grid-cols-6 grid-rows-3 gap-0">
+                    {Array.from({ length: 18 }).map((_, i) => (
+                      <div key={i} className="border border-cyan-400/30"></div>
+                    ))}
                   </div>
-                  
-                  {/* Scanning line */}
-                  {isDecoding && (
-                    <div className="absolute top-1/2 left-2 right-2 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
-                  )}
                 </div>
                 
-                <p className="text-white/90 text-center mt-4 text-sm">
-                  Align the barcode within the frame and tap "Snap & Decode"
-                </p>
-                <p className="text-white/70 text-center mt-1 text-xs">
-                  Instant barcode detection with 1-second analysis
-                </p>
+                {/* Scanning line animation */}
+                {(isDecoding || isLookingUp) && (
+                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
+                )}
               </div>
             </div>
 
-            {/* Bottom Controls */}
-            <div className="p-6 bg-gradient-to-t from-black/70 to-transparent">
-              <div className="space-y-4">
-                {/* Main Action Button */}
-                <Button
-                  onClick={handleSnapAndDecode}
-                  disabled={isDecoding || isLookingUp || !stream}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
-                >
-                  {isDecoding ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                      Analyzing...
-                    </>
-                  ) : isLookingUp ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                      Looking up...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-5 w-5 mr-2" />
-                      Snap & Decode
-                    </>
-                  )}
-                </Button>
+            {/* Bottom Controls - Safe area */}
+            <footer className="absolute bottom-0 inset-x-0 pb-safe px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
+              {/* Instructions text */}
+              <div className="text-center text-white/90 mb-4">
+                <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
+                <p className="text-xs text-white/70 mt-1">Supports UPC-A, EAN-13, and EAN-8 codes</p>
+              </div>
+              
+              {/* Main Action Button */}
+              <Button
+                onClick={handleSnapAndDecode}
+                disabled={isDecoding || isLookingUp || !stream}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
+              >
+                {isDecoding ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                    Decoding...
+                  </>
+                ) : isLookingUp ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                    Looking up product...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-5 w-5 mr-2" />
+                    Snap & Decode
+                  </>
+                )}
+              </Button>
 
-                {/* Secondary Actions */}
-                <div className="flex gap-3">
-                  {/* Torch Toggle */}
-                  {isTorchSupported && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={toggleTorch}
-                      className={`flex-1 border-white/30 text-white hover:bg-white/20 ${
-                        torchEnabled ? 'bg-white/20' : 'bg-transparent'
-                      }`}
-                    >
-                      <FlashlightIcon className={`h-4 w-4 mr-2 ${torchEnabled ? 'text-yellow-300' : ''}`} />
-                      {torchEnabled ? 'Flash On' : 'Flash Off'}
-                    </Button>
-                  )}
-                  
-                  {/* Manual Entry */}
+              {/* Secondary Actions */}
+              <div className="flex gap-3">
+                {/* Torch Toggle */}
+                {isTorchSupported && (
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={onManualEntry}
-                    className="flex-1 border-white/30 text-white hover:bg-white/20"
+                    onClick={toggleTorch}
+                    className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
+                      torchEnabled ? 'bg-white/20' : 'bg-transparent'
+                    }`}
                   >
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Enter Manually
+                    <FlashlightIcon className={`h-4 w-4 mr-2 ${torchEnabled ? 'text-yellow-300' : ''}`} />
+                    {torchEnabled ? 'Flash On' : 'Flash Off'}
                   </Button>
-                </div>
+                )}
+                
+                {/* Manual Entry */}
+                <Button
+                  variant="outline"
+                  onClick={onManualEntry}
+                  className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  Enter Manually
+                </Button>
               </div>
-            </div>
+            </footer>
           </div>
 
           {/* Error State */}

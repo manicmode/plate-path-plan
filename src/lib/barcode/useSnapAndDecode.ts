@@ -19,8 +19,9 @@ export function useSnapAndDecode() {
   const ensurePreviewPlaying = (video: HTMLVideoElement) => {
     const track = video.srcObject && (video.srcObject as MediaStream).getVideoTracks?.()?.[0];
     if (!track || track.readyState === 'ended') {
-      // Stream ended, would need to restart camera but let UI handle that
-      console.log('Video track ended, UI should handle restart');
+      // Stream ended, restart camera
+      console.log('[SNAP] restarting camera stream');
+      restartCamera(video).catch(() => {});
       return;
     }
     if (video.paused) {
@@ -166,20 +167,18 @@ export function useSnapAndDecode() {
         reason: 'error'
       };
     } finally {
-      // Always unfreeze and ensure preview is live - CRITICAL for preventing hangs
+      // CRITICAL: Always unfreeze video and restore preview
       try { 
         unfreezeVideo(videoEl); 
       } catch (e) {
         console.warn(`${logPrefix} unfreeze error:`, e);
       }
       
-      // Ensure camera track is still active
-      const track = videoEl.srcObject && (videoEl.srcObject as MediaStream).getVideoTracks?.()?.[0];
-      if (!track || track.readyState === 'ended') {
-        console.log(`${logPrefix} restarting camera stream`);
-        await restartCamera(videoEl);
-      } else {
+      // Ensure video is playing
+      try {
         ensurePreviewPlaying(videoEl);
+      } catch (e) {
+        console.warn(`${logPrefix} preview restart error:`, e);
       }
       
       inFlightRef.current = false;

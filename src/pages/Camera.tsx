@@ -931,8 +931,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' }
         });
         
-        status = response.error ? 'error' : 200;
-        hit = !!response.data && !response.data.fallback;
+        status = response.error ? response.error.status || 'error' : 200;
+        hit = !!response.data?.ok && !!response.data.product;
         
         if (response.error) {
           console.error('=== FUNCTION INVOCATION ERROR ===');
@@ -968,7 +968,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('Response data:', data);
         
         // Handle enhanced-health-scanner response structure
-        if (!data || data.fallback) {
+        if (!data?.ok || !data.product) {
           const reason = data?.reason || 'unknown';
           console.log('=== BARCODE LOOKUP FAILED ===', reason);
           
@@ -996,24 +996,24 @@ console.log('Global search enabled:', enableGlobalSearch);
         }
 
         // Success - process the food data from enhanced-health-scanner
-        const foodData = data;  // enhanced-health-scanner returns data directly
+        const p = data.product;  // LogProduct from enhanced-health-scanner
         console.log('=== PROCESSING FOOD DATA ===');
         
         // Log successful OFF result 
         console.log('[LOG] off_result', { status: 200, hit: true });
 
-        // Transform barcode data to RecognizedFood format
+        // Transform LogProduct to RecognizedFood format
         const recognizedFood: RecognizedFood = {
-          name: foodData.productName || 'Unknown Product',
-          calories: foodData.calories || 0,
-          protein: foodData.protein || 0,
-          carbs: foodData.carbs || 0,
-          fat: foodData.fat || 0,
-          fiber: foodData.fiber || 0,
-          sugar: foodData.sugar || 0,
-          sodium: foodData.sodium || 0,
+          name: `${p.brand ? p.brand + ' ' : ''}${p.productName}`.trim(),
+          calories: p.nutriments.calories || 0,
+          protein: p.nutriments.protein_g || 0,
+          carbs: p.nutriments.carbs_g || 0,
+          fat: p.nutriments.fat_g || 0,
+          fiber: p.nutriments.fiber_g || 0,
+          sugar: p.nutriments.sugar_g || 0,
+          sodium: p.nutriments.sodium_mg || 0,
           confidence: 95,
-          serving: foodData.serving || 'As labeled'
+          serving: p.serving ? `${p.serving.amount} ${p.serving.unit}` : 'As labeled'
         };
 
         console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
@@ -1034,8 +1034,8 @@ console.log('Global search enabled:', enableGlobalSearch);
         });
         addToHistory({
           barcode: cleanBarcode,
-          productName: foodData.productName,
-          brand: foodData.brand || '',
+          productName: p.productName,
+          brand: p.brand || '',
           source: 'barcode_lookup',
           nutrition: {
             calories: recognizedFood.calories,
