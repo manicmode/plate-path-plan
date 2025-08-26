@@ -153,14 +153,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const startCamera = async () => {
     try {
-      console.log("[LOG] Requesting camera stream...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
+      console.log("[LOG] Requesting torch-capable camera stream...");
+      
+      // Import torch-capable camera utility
+      const { startTorchCapableCamera } = await import('@/lib/camera/torchCapableCamera');
+      
+      const mediaStream = await startTorchCapableCamera({
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       });
 
       if (videoRef.current) {

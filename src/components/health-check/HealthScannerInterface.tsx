@@ -131,16 +131,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         return;
       }
 
-      // High-res back camera request with optimized constraints
-      console.log("[CAMERA] Requesting high-res back camera...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
-        },
-        audio: false
+      // Import torch-capable camera utility
+      const { startTorchCapableCamera } = await import('@/lib/camera/torchCapableCamera');
+      
+      console.log("[CAMERA] Requesting torch-capable camera...");
+      const mediaStream = await startTorchCapableCamera({
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
       });
 
       const videoTrack = mediaStream.getVideoTracks()[0];
@@ -159,20 +157,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         console.log("[CAMERA] srcObject set, playing video");
       }
     } catch (error) {
-      console.error("[CAMERA FAIL] getUserMedia error:", error);  
-      // Fallback to basic camera
-      try {
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        setStream(fallbackStream);
-        updateStreamRef(fallbackStream); // Update hook's stream reference for torch functionality
-        if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
-        }
-      } catch (fallbackError) {
-        console.error('Camera access completely failed:', fallbackError);
-      }
+      console.error("[CAMERA FAIL] Torch-capable camera failed:", error);  
+      console.log("[CAMERA] Camera access completely failed - no fallback needed as torch-capable utility handles fallbacks internally");
     }
   };
 

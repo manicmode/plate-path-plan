@@ -211,8 +211,47 @@ export function useSnapAndDecode() {
     });
     
     if (!isTorchSupported(track)) {
-      console.log('[TORCH] Torch not supported on this track');
-      return;
+      console.log('[TORCH] Current track does not support torch, attempting stream upgrade...');
+      
+      try {
+        // Import torch-capable camera utility
+        const { upgradeTorchCapableStream } = await import('@/lib/camera/torchCapableCamera');
+        
+        // Attempt to upgrade to torch-capable stream
+        const upgradedStream = await upgradeTorchCapableStream(streamRef.current);
+        
+        if (upgradedStream !== streamRef.current) {
+          console.log('[TORCH] Stream upgraded successfully');
+          streamRef.current = upgradedStream;
+          
+          // Update video element with new stream
+          const videoElements = document.querySelectorAll('video');
+          videoElements.forEach(video => {
+            if (video.srcObject === streamRef.current || !video.srcObject) {
+              video.srcObject = upgradedStream;
+            }
+          });
+          
+          // Check if upgraded stream supports torch
+          const upgradedTrack = upgradedStream.getVideoTracks()[0];
+          if (!isTorchSupported(upgradedTrack)) {
+            console.log('[TORCH] Upgraded stream still does not support torch');
+            return;
+          }
+          
+          // Try torch with upgraded stream
+          await toggleTorch(upgradedTrack, on);
+          console.log('[TORCH] Successfully toggled torch on upgraded stream to', on);
+          setTorchEnabled(on);
+          return;
+        } else {
+          console.log('[TORCH] Stream upgrade not needed or failed');
+          return;
+        }
+      } catch (error) {
+        console.error('[TORCH] Stream upgrade failed:', error);
+        return;
+      }
     }
     
     try {
