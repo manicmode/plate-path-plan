@@ -31,6 +31,8 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import ConfirmFoodLog from '@/components/ConfirmFoodLog';
+import { mapServerToLogProduct, LogProduct, BarcodeProduct } from '@/lib/log/mappers';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
@@ -105,6 +107,10 @@ const CameraPage = () => {
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
+  
+  // New state for barcode log confirmation
+  const [showLogBarcodeConfirm, setShowLogBarcodeConfirm] = useState(false);
+  const [logProduct, setLogProduct] = useState<LogProduct | null>(null);
   const [showVoiceAnalyzing, setShowVoiceAnalyzing] = useState(false);
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
   const [showProcessingNextItem, setShowProcessingNextItem] = useState(false);
@@ -996,55 +1002,53 @@ console.log('Global search enabled:', enableGlobalSearch);
         }
 
         // Success - process the food data from enhanced-health-scanner
-        const p = data.product;  // LogProduct from enhanced-health-scanner
+        const p = data.product;  // BarcodeProduct from enhanced-health-scanner
         console.log('=== PROCESSING FOOD DATA ===');
         
         // Log successful OFF result 
         console.log('[LOG] off_result', { status: 200, hit: true });
 
-        // Transform LogProduct to RecognizedFood format
-        const recognizedFood: RecognizedFood = {
-          name: `${p.brand ? p.brand + ' ' : ''}${p.productName}`.trim(),
-          calories: p.nutriments.calories || 0,
-          protein: p.nutriments.protein_g || 0,
-          carbs: p.nutriments.carbs_g || 0,
-          fat: p.nutriments.fat_g || 0,
-          fiber: p.nutriments.fiber_g || 0,
-          sugar: p.nutriments.sugar_g || 0,
-          sodium: p.nutriments.sodium_mg || 0,
-          confidence: 95,
-          serving: p.serving ? `${p.serving.amount} ${p.serving.unit}` : 'As labeled'
-        };
+        // Map server response to LogProduct format
+        const mappedLogProduct = mapServerToLogProduct(p as BarcodeProduct);
+        
+        console.log('[LOG] confirm_open', {
+          name: mappedLogProduct.name,
+          barcode: mappedLogProduct.barcode,
+          hasNutrition: !!(mappedLogProduct.nutrition.calories || mappedLogProduct.nutrition.protein),
+          flags: mappedLogProduct.healthFlags.length
+        });
 
-        console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
-        setRecognizedFoods([recognizedFood]);
-        setShowConfirmation(true);
+        // Set LogProduct and show new confirmation modal
+        setLogProduct(mappedLogProduct);
+        setShowLogBarcodeConfirm(true);
+        
+        // Add to history for barcode tracking
         addRecentBarcode({
           barcode: cleanBarcode,
-          productName: recognizedFood.name,
+          productName: mappedLogProduct.name,
           nutrition: {
-            calories: recognizedFood.calories,
-            protein: recognizedFood.protein,
-            carbs: recognizedFood.carbs,
-            fat: recognizedFood.fat,
-            fiber: recognizedFood.fiber,
-            sugar: recognizedFood.sugar,
-            sodium: recognizedFood.sodium
+            calories: mappedLogProduct.nutrition.calories || 0,
+            protein: mappedLogProduct.nutrition.protein || 0,
+            carbs: mappedLogProduct.nutrition.carbs || 0,
+            fat: mappedLogProduct.nutrition.fat || 0,
+            fiber: mappedLogProduct.nutrition.fiber || 0,
+            sugar: mappedLogProduct.nutrition.sugar || 0,
+            sodium: mappedLogProduct.nutrition.sodium || 0
           }
         });
         addToHistory({
           barcode: cleanBarcode,
-          productName: p.productName,
-          brand: p.brand || '',
+          productName: mappedLogProduct.name,
+          brand: mappedLogProduct.brand || '',
           source: 'barcode_lookup',
           nutrition: {
-            calories: recognizedFood.calories,
-            protein: recognizedFood.protein,
-            carbs: recognizedFood.carbs,
-            fat: recognizedFood.fat,
-            fiber: recognizedFood.fiber,
-            sugar: recognizedFood.sugar,
-            sodium: recognizedFood.sodium
+            calories: mappedLogProduct.nutrition.calories || 0,
+            protein: mappedLogProduct.nutrition.protein || 0,
+            carbs: mappedLogProduct.nutrition.carbs || 0,
+            fat: mappedLogProduct.nutrition.fat || 0,
+            fiber: mappedLogProduct.nutrition.fiber || 0,
+            sugar: mappedLogProduct.nutrition.sugar || 0,
+            sodium: mappedLogProduct.nutrition.sodium || 0
           }
         });
         
@@ -2769,6 +2773,17 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowProcessingNextItem(false);
         }}
         totalItems={pendingItems.length}
+      />
+
+      {/* New Log Barcode Confirmation Modal */}
+      <ConfirmFoodLog
+        isOpen={showLogBarcodeConfirm}
+        onClose={() => {
+          setShowLogBarcodeConfirm(false);
+          setLogProduct(null);
+        }}
+        onConfirm={handleConfirmFood}
+        logProduct={logProduct}
       />
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
