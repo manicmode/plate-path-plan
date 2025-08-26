@@ -20,7 +20,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 export const RecoveryCard = () => {
   const { user } = useAuth();
   const [logService] = useState(() => createLogService(user?.id));
-  const [activeTab, setActiveTab] = useTabState('recovery', 'log', user?.id);
+  const [activeTab, setActiveTab] = useTabState('recovery', 'favorites', user?.id);
   
   // Form state
   const [formData, setFormData] = useState({

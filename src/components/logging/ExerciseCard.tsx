@@ -20,7 +20,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 export const ExerciseCard = () => {
   const { user } = useAuth();
   const [logService] = useState(() => createLogService(user?.id));
-  const [activeTab, setActiveTab] = useTabState('exercise', 'log', user?.id);
+  const [activeTab, setActiveTab] = useTabState('exercise', 'templates', user?.id);
   
   // Form state
   const [formData, setFormData] = useState({
