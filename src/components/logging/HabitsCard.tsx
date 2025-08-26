@@ -236,8 +236,8 @@ export const HabitsCard = () => {
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2" role="tablist">
-            <TabsTrigger value="my-habits" role="tab" aria-selected={activeTab === 'my-habits'}>My Habits</TabsTrigger>
             <TabsTrigger value="log-custom" role="tab" aria-selected={activeTab === 'log-custom'}>Log Custom</TabsTrigger>
+            <TabsTrigger value="my-habits" role="tab" aria-selected={activeTab === 'my-habits'}>My Habits</TabsTrigger>
           </TabsList>
           
           <TabsContent value="my-habits" className="space-y-4" role="tabpanel" aria-labelledby="my-habits-tab">
