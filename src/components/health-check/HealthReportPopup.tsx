@@ -256,8 +256,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               <div className="flex items-center space-x-3 p-4 bg-primary/10 border border-primary/30 rounded-lg">
                 <CheckCircle className="w-6 h-6 text-primary" />
                 <div>
-                  <span className="text-primary-foreground font-medium">No concerning ingredients detected for your health profile!</span>
-                  <p className="text-primary-foreground text-sm mt-1">This product appears to be safe based on your health conditions.</p>
+                  <span className="text-primary-foreground dark:text-primary font-medium">No concerning ingredients detected for your health profile!</span>
+                  <p className="text-primary-foreground dark:text-primary text-sm mt-1">This product appears to be safe based on your health conditions.</p>
                 </div>
               </div>
             )}
