@@ -12,45 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
-// Helper function for non-blocking suggestions
-async function fetchSuggestionsSafe(result: any) {
-  try {
-    const payload = {
-      name: result.name ?? '',
-      brand: result.brand ?? '',
-      calories: result.nutrition?.calories ?? null,
-      macros: {
-        protein_g: result.nutrition?.protein_g ?? null,
-        carbs_g: result.nutrition?.carbs_g ?? null,
-        fat_g: result.nutrition?.fat_g ?? null,
-        fiber_g: result.nutrition?.fiber_g ?? null,
-        sugar_g: result.nutrition?.sugar_g ?? null,
-        sodium_mg: result.nutrition?.sodium_mg ?? null,
-      },
-      flags: result.health?.flags ?? [],
-      ingredients_text: result.ingredientsText ?? null,
-    };
-    
-    console.log('[HS] sugg_start', { size: JSON.stringify(payload).length });
-    
-    // Create a promise race with timeout
-    const suggestionPromise = supabase.functions.invoke('generate-smart-suggestions', {
-      body: payload
-    });
-    
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('timeout')), 10000)
-    );
-    
-    const { data, error } = await Promise.race([suggestionPromise, timeoutPromise]) as any;
-    
-    console.log('[HS] sugg_result', { ok: !error, hasData: !!data });
-    // Optionally store suggestions but never block UI
-  } catch (e) {
-    console.log('[HS] sugg_error', { err: String(e) });
-  }
-}
-
 /**
  * Optimize image payload to stay under ~300KB while maintaining quality
  */
@@ -337,77 +298,100 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         throw new Error(error.message || 'Failed to analyze image');
       }
 
-      console.log('✅ Enhanced Health Scanner response:', data);
+      console.log('✅ Health check processor response:', data);
+      console.log('🏥 Health Score:', data.healthScore);
+      console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
       
-      // Import and use adapter to convert new schema to legacy schema
-      const { adaptEnhancedToLegacy } = await import('@/lib/health/adaptEnhancedResponse');
-      const legacyData = adaptEnhancedToLegacy(data);
+      // Check if image recognition failed based on various criteria
+      // Only treat as failure if we have explicit fallback flag or truly no evidence
+      const hasValidRecommendations = Array.isArray(data.recommendations) && data.recommendations.length >= 2;
+      const hasHealthFlags = Array.isArray(data.healthFlags) && data.healthFlags.length > 0;
+      const hasNutritionData = data.nutritionSummary && typeof data.nutritionSummary === 'object' && 
+                              Object.keys(data.nutritionSummary).length > 0;
       
-      console.log('🏥 Health Score:', legacyData.healthScore);
-      console.log('🚩 Health Flags:', legacyData.healthFlags?.length || 0, 'flags detected');
-      
-      // Debug log for success evaluation with adapted data
-      const hasName = !!legacyData.productName && legacyData.productName.trim().length >= 3;
-      const hasBarcode = !!legacyData.barcode;
-      
+      // Debug log for success evaluation
       console.log('scan_success_eval:', {
-        hasName,
-        hasBarcode,
-        productName: legacyData.productName,
-        healthScore: legacyData.healthScore,
-        flags: legacyData.healthFlags?.length || 0,
-        rawResponse: { ok: data?.ok, source: data?.source, reason: data?.reason }
+        hasName: !!data.productName && data.productName !== 'Unknown Product' && data.productName !== 'Error',
+        hasBarcode: !!data.barcode,
+        recs: Array.isArray(data.recommendations) ? data.recommendations.length : 0,
+        flags: Array.isArray(data.healthFlags) ? data.healthFlags.length : 0,
+        hasValidRecommendations,
+        hasHealthFlags,
+        hasNutritionData,
+        fallbackFlag: data.fallback
       });
       
-      // Relaxed success criteria for photo mode: accept if we have either barcode OR reasonable name
-      const isImageRecognitionFailure = !data?.ok || (!hasName && !hasBarcode);
+      // Use explicit fallback flag from server or no evidence at all
+      const isImageRecognitionFailure = data.fallback || (
+        (!hasValidRecommendations && !hasHealthFlags && !hasNutritionData) &&
+        (
+          // No meaningful product name detected
+          !data.productName || 
+          data.productName === 'Unknown Product' || 
+          data.productName === 'Unknown Item' || 
+          data.productName === 'Error'
+        )
+      );
 
       if (isImageRecognitionFailure) {
         console.log('🚨 Image recognition failed - redirecting to manual entry');
-        console.log('💡 Failure reason:', data?.reason || 'no_data');
+        console.log('💡 Failure criteria met:', {
+          productName: data.productName,
+          healthScore: data.healthScore,
+          ingredientsCount: data.ingredients?.length || 0,
+          hasErrorFlags: data.healthFlags?.some((flag: any) => 
+            flag.title === 'Processing Error' || 
+            flag.title === 'Product Not Found'
+          )
+        });
         setCurrentState('fallback');
         return;
       }
       
-      console.log('[HS] accept_photo_result', { hasName, hasBarcode, name: legacyData.productName });
-      
-      // Log analysis type based on source
-      if (data?.source === 'barcode') {
-        console.log('📊 Barcode recognition successful');
+      // Log whether barcode was detected or Google Vision/GPT was used
+      if (data.barcode) {
+        console.log('📊 Barcode detected in response:', data.barcode);
         setAnalysisType('barcode');
       } else {
-        console.log('🔍 OCR recognition successful');
-        setAnalysisType('image');
+        console.log('🔍 No barcode found - using Google Vision + GPT analysis');
       }
       
-      // Transform the adapted data to match frontend interface
+      // Transform the backend response to match frontend interface
       const analysisResult: HealthAnalysisResult = {
-        itemName: legacyData.productName || 'Unknown Item',
-        healthScore: legacyData.healthScore || 0,
-        ingredientFlags: (legacyData.healthFlags || []).map((flag: any) => ({
-          ingredient: flag.label,
-          flag: flag.label,
-          severity: flag.level === 'danger' ? 'high' : flag.level === 'warning' ? 'medium' : 'low'
+        itemName: data.productName || 'Unknown Item',
+        healthScore: data.healthScore || 0,
+        ingredientFlags: (data.healthFlags || []).map((flag: any) => ({
+          ingredient: flag.title,
+          flag: flag.description,
+          severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
         })),
-        nutritionData: legacyData.nutritionSummary || {},
+        nutritionData: data.nutritionSummary || {},
         healthProfile: {
-          isOrganic: legacyData.ingredientsText?.toLowerCase().includes('organic') || false,
-          isGMO: legacyData.ingredientsText?.toLowerCase().includes('gmo') || false,
-          allergens: legacyData.ingredientsText ? 
-            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
-              legacyData.ingredientsText!.toLowerCase().includes(allergen)
-            ) : [],
-          preservatives: legacyData.ingredientsText?.toLowerCase().includes('preservative') ? 
-            ['preservatives'] : [],
-          additives: legacyData.ingredientsText?.toLowerCase().includes('artificial') ? 
-            ['artificial additives'] : []
+          isOrganic: data.ingredients?.includes('organic') || false,
+          isGMO: data.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
+          allergens: data.ingredients?.filter((ing: string) => 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
+              ing.toLowerCase().includes(allergen)
+            )
+          ) || [],
+          preservatives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('preservative') || 
+            ing.toLowerCase().includes('sodium benzoate') ||
+            ing.toLowerCase().includes('potassium sorbate')
+          ) || [],
+          additives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('artificial') || 
+            ing.toLowerCase().includes('flavor') ||
+            ing.toLowerCase().includes('color')
+          ) || []
         },
-        personalizedWarnings: [],
-        suggestions: ['Analysis complete. Check nutritional information above for details.'],
-        overallRating: (legacyData.healthScore || 0) >= 80 ? 'excellent' : 
-                      (legacyData.healthScore || 0) >= 60 ? 'good' : 
-                      (legacyData.healthScore || 0) >= 40 ? 'fair' : 
-                      (legacyData.healthScore || 0) >= 20 ? 'poor' : 'avoid'
+        personalizedWarnings: Array.isArray(data.recommendations) ? 
+          data.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
+        suggestions: Array.isArray(data.recommendations) ? data.recommendations : [data.generalSummary || 'No specific recommendations available.'],
+        overallRating: data.healthScore >= 80 ? 'excellent' : 
+                      data.healthScore >= 60 ? 'good' : 
+                      data.healthScore >= 40 ? 'fair' : 
+                      data.healthScore >= 20 ? 'poor' : 'avoid'
       };
 
       setAnalysisResult(analysisResult);
@@ -416,33 +400,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
         triggerDailyScoreCalculation(user.id);
-      }
-
-      // Generate smart suggestions in background (non-blocking)
-      if (legacyData && (legacyData.productName || legacyData.barcode)) {
-        const recognizedFood = {
-          name: legacyData.productName || '',
-          brand: legacyData.brand || '',
-          nutrition: {
-            calories: legacyData.nutritionSummary?.calories || null,
-            protein_g: legacyData.nutritionSummary?.protein || null,
-            carbs_g: legacyData.nutritionSummary?.carbs || null,
-            fat_g: legacyData.nutritionSummary?.fat || null,
-            fiber_g: legacyData.nutritionSummary?.fiber || null,
-            sugar_g: legacyData.nutritionSummary?.sugar || null,
-            sodium_mg: legacyData.nutritionSummary?.sodium || null,
-          },
-          health: {
-            flags: (legacyData.healthFlags || []).map((flag: any) => flag.label || '').filter(Boolean)
-          },
-          ingredientsText: legacyData.ingredientsText || null
-        };
-        
-        // Use requestIdleCallback for better perf, fallback to setTimeout
-        const scheduleTask = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 1));
-        scheduleTask(() => {
-          fetchSuggestionsSafe(recognizedFood).catch(() => {});
-        });
       }
     } catch (error) {
       console.error('❌ Analysis failed:', error);

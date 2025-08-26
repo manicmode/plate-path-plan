@@ -37,44 +37,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
-  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
-
-  // New response type for enhanced health scanner
-  type HealthScanResponse = {
-    ok: boolean;
-    source?: 'barcode' | 'ocr';
-    reason?: string;
-    product?: {
-      code?: string;
-      name?: string;
-      brand?: string;
-      image?: string | null;
-      ingredientsText?: string | null;
-      nutriments?: {
-        calories?: number|null;
-        protein_g?: number|null;
-        carbs_g?: number|null;
-        fat_g?: number|null;
-        sugar_g?: number|null;
-        fiber_g?: number|null;
-        sodium_mg?: number|null;
-      };
-    };
-    health?: {
-      score?: number;
-      flags?: Array<{ kind: 'danger'|'warn'|'info'; label: string }>;
-    };
-    debug?: {
-      ocrTokens?: string[];
-      offQuery?: string;
-      offHits?: number;
-      bestScore?: number;
-    };
-  };
-
-  const showImageNotRecognized = (reason?: string) => {
-    setCurrentView('notRecognized');
-  };
+  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
 
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
@@ -153,7 +116,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       });
 
       setStream(mediaStream);
-      updateStreamRef(mediaStream); // Update hook's stream reference for torch functionality
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         console.log("[CAMERA] srcObject set, playing video");
@@ -166,7 +128,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           video: { facingMode: 'environment' }
         });
         setStream(fallbackStream);
-        updateStreamRef(fallbackStream); // Update hook's stream reference for torch functionality
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
         }
@@ -586,36 +547,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       stillCanvas.canvas.toBlob(async (blob) => {
         if (!blob) return;
         
-        // Check size and skip recompression if already ≤300KB
-        console.log('[HS] payload_kb:', Math.round(blob.size/1024));
-        const optimizedBlob = blob.size <= 300 * 1024 ? blob : await optimizeBlobSize(blob, 300);
-        
+        const optimizedBlob = await optimizeBlobSize(blob, 300);
         const fr = new FileReader();
         fr.onload = async () => {
           const base64 = String(fr.result).split(',')[1] || '';
           
           try {
-            const { data, error } = await supabase.functions.invoke<HealthScanResponse>('enhanced-health-scanner', {
-              body: { image_b64: base64, hasDetectedBarcode: false }
+            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+              body: { mode: 'scan', image_b64: base64, hasDetectedBarcode: false }
             });
             
-            console.log('[HSF] off_result', {
-              ok: data?.ok,
-              source: data?.source,
-              reason: data?.reason,
-              bestScore: data?.debug?.bestScore,
-              offHits: data?.debug?.offHits,
-            });
+            console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
             
-            if (data?.ok && data?.product) {
-              // Map to existing modal model (no UI changes)
+            if (data && data.recognized) {
               onCapture(stillCanvas.canvas.toDataURL('image/jpeg', 0.8));
             } else {
-              showImageNotRecognized(data?.reason ?? 'not_recognized');
+              setCurrentView('notRecognized');
             }
           } catch (e) {
             console.warn('[HS] analyzer_exception', { e });
-            showImageNotRecognized('network_error');
+            setCurrentView('notRecognized');
           }
         };
         fr.readAsDataURL(optimizedBlob);
@@ -729,26 +680,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const handleFlashlightToggle = async () => {
-    console.log('[HS] handleFlashlightToggle called', { 
-      hasStream: !!stream, 
-      torchEnabled,
-      torchSupported: torchSupported()
-    });
-    
-    if (!stream) {
-      console.log('[HS] No stream available for flashlight toggle');
-      return;
-    }
+    if (!stream) return;
     
     const newTorchState = !torchEnabled;
-    console.log('[HS] Attempting to toggle torch to:', newTorchState);
-    
-    try {
-      await setTorch(newTorchState);
-      console.log('[HS] Flashlight toggle completed successfully');
-    } catch (error) {
-      console.error('[HS] Flashlight toggle failed:', error);
-    }
+    await setTorch(newTorchState);
   };
 
   const handleManualEntry = () => {
@@ -928,7 +863,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
             torchEnabled={torchEnabled}
-            torchSupported={torchSupported()}
+            torchSupported={stream ? isTorchSupported(stream.getVideoTracks()[0]) : false}
           />
         </footer>
       </div>

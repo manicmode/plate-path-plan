@@ -4,19 +4,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin'
 };
-
-// Helper function to safely parse numbers
-function num(x: any): number | null {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -26,32 +19,6 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
-  // Safely parse request body with schema validation
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    body = {};
-  }
-
-  // Create safe payload that tolerates missing fields
-  const safePayload = {
-    name: String(body?.name ?? body?.userInput ?? ''),
-    brand: String(body?.brand ?? ''),
-    calories: num(body?.calories),
-    macros: {
-      protein_g: num(body?.macros?.protein_g),
-      carbs_g: num(body?.macros?.carbs_g),
-      fat_g: num(body?.macros?.fat_g),
-      fiber_g: num(body?.macros?.fiber_g),
-      sugar_g: num(body?.macros?.sugar_g),
-      sodium_mg: num(body?.macros?.sodium_mg),
-    },
-    flags: Array.isArray(body?.flags) ? body.flags.slice(0, 12) : [],
-    ingredients_text: String(body?.ingredients_text ?? ''),
-    userId: body?.userId // Keep for legacy compatibility
-  };
 
   const functionName = 'generate-smart-suggestions';
   const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
@@ -105,8 +72,8 @@ serve(async (req) => {
       event_type: 'success'
     }).catch(console.error);
 
+    const { userInput, userId } = await req.json();
     let suggestions: string[] = [];
-    const userInput = safePayload.name || safePayload.brand || '';
 
     // Priority 1: User Context - Generate suggestions based on user input
     if (userInput && userInput.trim()) {
@@ -200,12 +167,11 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.log('sugg_error', String(error));
-    // Always return 200 with empty suggestions on error
+    console.error('Error in generate-smart-suggestions:', error);
     return new Response(
-      JSON.stringify({ suggestions: [] }),
+      JSON.stringify({ error: error.message }),
       { 
-        status: 200, 
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
