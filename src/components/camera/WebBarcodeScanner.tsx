@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Camera, AlertCircle } from 'lucide-react';
-import jsQR from 'jsqr';
 
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
@@ -96,12 +95,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        // TODO: Replace with ZXing barcode detection if needed
+        // For now, this component is not actively used since barcode scanning
+        // is handled by the ZXing-based scanner in HealthScannerInterface
+        console.log('[WebBarcodeScanner] Scanning frame (jsQR removed)');
         
-        if (code) {
-          onBarcodeDetected(code.data);
-          cleanup();
-        }
       }
     }, 100);
   };

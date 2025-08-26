@@ -42,7 +42,7 @@ import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 // Import smoke tests for development
 import '@/utils/smokeTests';
-import jsQR from 'jsqr';
+// jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
 
 interface RecognizedFood {
   name: string;
@@ -397,9 +397,9 @@ const CameraPage = () => {
         ctx.drawImage(img, 0, 0);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        
-        resolve(code ? code.data : null);
+        // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
+        console.log('[Camera] QR detection removed - using ZXing barcode scanner instead');
+        resolve(null); // Always return null since QR scanning is disabled
       };
       img.onerror = () => resolve(null);
       img.src = imageDataUrl;
