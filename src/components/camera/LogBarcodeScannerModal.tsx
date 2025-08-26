@@ -348,7 +348,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className="flex-1 flex items-start justify-center px-4 pt-16">
               {/* Centered scan frame */}
               <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
                 {/* Corner indicators */}
@@ -374,7 +374,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-0 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
+            <footer className="absolute bottom-0 inset-x-0 pb-8 mb-4 px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
               {/* Instructions text */}
               <div className="text-center text-white/90 mb-4">
                 <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
