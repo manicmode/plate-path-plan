@@ -86,7 +86,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         status = error.status || 'error';
       } else {
         status = 200;
-        hit = !!result;
+        hit = !!result && !result.fallback;
         data = result;
       }
       
@@ -113,14 +113,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
     
     const now = Date.now();
-    if (now - lastAttempt < 800) {
+    if (now - lastAttempt < 600) {
       console.log('[LOG] decode_cancelled: cooldown');
       return;
     }
     
     if (!videoRef.current) return;
     
-    console.log('[LOG] analyze_start');
     console.time('[LOG] analyze_total');
     setIsDecoding(true);
     setIsFrozen(true);
@@ -141,9 +140,15 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         const lookupResult = await handleOffLookup(result.raw);
         
-        if (lookupResult.hit && lookupResult.data) {
+        if (lookupResult.hit && lookupResult.data && !lookupResult.data.fallback) {
           onBarcodeDetected(result.raw);
           onOpenChange(false);
+        } else if (lookupResult.data?.fallback) {
+          const reason = lookupResult.data.reason || 'unknown';
+          const msg = reason === 'off_miss' && /^\d{8}$/.test(result.raw)
+            ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
+            : 'No product match. Try again or enter manually.';
+          toast.info(msg);
         } else {
           toast.error('Barcode not found in database. Try scanning again or enter manually.');
         }
@@ -155,8 +160,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       console.error('[LOG] Snap & decode error:', error);
       toast.error('Failed to scan barcode. Please try again.');
     } finally {
-      setIsDecoding(false);
-      setIsFrozen(false);
+      // Add small delay before re-enabling to prevent rapid-fire attempts
+      setTimeout(() => {
+        setIsDecoding(false);
+        setIsFrozen(false);
+      }, 450);
       console.timeEnd('[LOG] analyze_total');
     }
   };

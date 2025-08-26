@@ -78,15 +78,60 @@ const GENERAL_TIPS = Object.freeze([
 ]);
 
 /**
- * Validate and normalize barcode
+ * Validate and normalize barcode with type detection
  */
-function normalizeBarcode(barcode: string | null): string | null {
-  if (!barcode) return null;
-  const digits = barcode.replace(/\D/g, '');
-  if (/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(digits)) {
-    return digits;
-  }
-  return null;
+function normalizeBarcode(input: string): { raw: string; type: string; checksumOk: boolean } | null {
+  if (!input) return null;
+  const raw = input.replace(/\D/g, '');
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(raw)) return null;
+
+  const len = raw.length;
+  const type = len === 8 ? 'EAN_8'
+             : len === 12 ? 'UPC_A'
+             : len === 13 ? 'EAN_13'
+             : 'ITF_14';
+
+  const checksumOk =
+    type === 'EAN_8' ? validateEAN8(raw) :
+    type === 'UPC_A' ? validateUPCA(raw) :
+    type === 'EAN_13' ? validateEAN13(raw) :
+    true; // ITF-14 often external check
+
+  return { raw, type, checksumOk };
+}
+
+/**
+ * EAN-8 checksum validation
+ */
+function validateEAN8(s: string): boolean {
+  // weights: 3x on odd indices (0-based), 1x on even → mod 10
+  const sum = [...s.slice(0,7)]
+    .map((d,i) => (+d) * (i%2===0 ? 3 : 1))
+    .reduce((a,b)=>a+b,0);
+  const check = (10 - (sum % 10)) % 10;
+  return check === +s[7];
+}
+
+/**
+ * UPC-A checksum validation
+ */
+function validateUPCA(s: string): boolean {
+  const sum = [...s.slice(0,11)]
+    .map((d,i) => (+d) * (i%2===0 ? 3 : 1))
+    .reduce((a,b)=>a+b,0);
+  const check = (10 - (sum % 10)) % 10;
+  return check === +s[11];
+}
+
+/**
+ * EAN-13 checksum validation
+ */
+function validateEAN13(s: string): boolean {
+  const sum = [...s.slice(0,12)]
+    .map((d,i) => (+d) * (i%2===0 ? 1 : 3))
+    .reduce((a,b)=>a+b,0);
+  const check = (10 - (sum % 10)) % 10;
+  return check === +s[12];
 }
 
 /**
@@ -423,17 +468,17 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
   let offProduct: any = null;
   
   // Step 1: Barcode first (highest priority) - use client-detected barcode
-  const barcode = normalizeBarcode(detectedBarcode);
-  if (barcode) {
-    ctx.barcodeFound = barcode;
-    const offResult = await fetchOFF(barcode);
+  const barcodeNorm = normalizeBarcode(detectedBarcode);
+  if (barcodeNorm) {
+    ctx.barcodeFound = barcodeNorm.raw;
+    const offResult = await fetchOFF(barcodeNorm.raw);
     if (offResult?.product_found) {
       offProduct = offResult.product;
       barcodeHit = true;
       ctx.offHit = true;
       
       console.log(`✅ Barcode success [${ctx.reqId}]`, { 
-        barcode, 
+        barcode: barcodeNorm.raw, 
         product: offProduct.product_name 
       });
       
@@ -525,26 +570,77 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, detectedBarcode } = await req.json();
+    const body = await req.json();
     const reqId = crypto.randomUUID().substring(0, 8);
     const t0 = Date.now();
     
     console.log(`🚀 Processing health scan [${reqId}]`);
-    
-    // Step 1: Barcode-first logic (highest priority)
-    if (detectedBarcode) {
-      const normalizedBarcode = normalizeBarcode(detectedBarcode);
+
+    // Handle barcode mode for Log scanner
+    if (body.mode === 'barcode' && body.barcode) {
+      const norm = normalizeBarcode(body.barcode);
+      if (!norm) {
+        return new Response(JSON.stringify({ 
+          fallback: true, 
+          reason: 'invalid_barcode' 
+        }), { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      console.log(`🔍 Processing barcode [${reqId}]: ${norm.raw} (${norm.type})`);
       
-      if (normalizedBarcode) {
-        console.log(`🔍 Processing barcode [${reqId}]: ${normalizedBarcode}`);
+      const offResult = await fetchOFF(norm.raw).catch(e => ({ 
+        error: true, 
+        status: 500, 
+        message: String(e) 
+      }));
+      
+      if (offResult?.error) {
+        console.log(`❌ OFF error [${reqId}]:`, offResult.message);
+        return new Response(JSON.stringify({ 
+          fallback: true, 
+          reason: 'off_error', 
+          status: offResult.status 
+        }), { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+      
+      if (!offResult?.product_found) {
+        console.log(`❌ OFF miss [${reqId}]: ${norm.type} not found`);
+        return new Response(JSON.stringify({ 
+          fallback: true, 
+          reason: 'off_miss' 
+        }), { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      console.log(`✅ OFF hit [${reqId}]:`, offResult.product.product_name);
+      return new Response(
+        JSON.stringify(mapOFFtoBackendResponse(offResult.product)),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Step 1: Original barcode-first logic for Health Scan
+    if (body.detectedBarcode) {
+      const norm = normalizeBarcode(body.detectedBarcode);
+      
+      if (norm) {
+        console.log(`🔍 Processing barcode [${reqId}]: ${norm.raw} (${norm.type})`);
         
         // Try OpenFoodFacts lookup
-        const offResult = await fetchOFF(normalizedBarcode);
+        const offResult = await fetchOFF(norm.raw);
         if (offResult?.product_found) {
           console.log(JSON.stringify({
             reqId, 
             phase: 'barcode-first', 
-            detectedBarcode: normalizedBarcode, 
+            detectedBarcode: norm.raw, 
             validBarcode: true, 
             offHit: true, 
             productName: offResult.product.product_name,
@@ -563,7 +659,7 @@ serve(async (req) => {
           console.log(JSON.stringify({
             reqId, 
             phase: 'barcode-first', 
-            detectedBarcode: normalizedBarcode, 
+            detectedBarcode: norm.raw, 
             validBarcode: true, 
             offHit: false, 
             productName: 'unknown',
@@ -594,11 +690,11 @@ serve(async (req) => {
     }
     
     // Step 2: Proceed with image analysis if no barcode or barcode failed
-    if (!imageBase64) {
+    if (!body.imageBase64) {
       throw new Error('No image data provided');
     }
 
-    const result = await processHealthScan(imageBase64, detectedBarcode);
+    const result = await processHealthScan(body.imageBase64, body.detectedBarcode);
     
     // Enhanced evidence gating
     const hasRealEvidence = 
@@ -674,7 +770,7 @@ serve(async (req) => {
     };
     
     return new Response(JSON.stringify(errorResponse), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
