@@ -323,12 +323,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <div className="p-4 bg-muted/50 border border-border rounded-lg">
               <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
-                {/* This would come from the API - for now showing a placeholder */}
+                {/* Now using full ingredient list from legacy adapter instead of additives only */}
                   <span className="text-foreground">
-                    {result.healthProfile.additives && result.healthProfile.additives.length > 0 
-                      ? result.healthProfile.additives.join(', ')
-                      : 'Ingredient list not available from scan data'
-                    }
+                    {result.ingredientsText || 'Ingredient list not available from scan data'}
                   </span>
               </p>
             </div>

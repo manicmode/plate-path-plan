@@ -21,6 +21,7 @@ interface HealthCheckModalProps {
 export interface HealthAnalysisResult {
   itemName: string;
   healthScore: number;
+  ingredientsText?: string; // Full ingredient list from product data
   ingredientFlags: Array<{
     ingredient: string;
     flag: string;
@@ -204,25 +205,21 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         throw new Error(error.message || 'Failed to analyze image');
       }
 
-      // Add detailed telemetry to debug mapping issues
-      console.group('[HS] edge_payload');
-      console.log('product.name', data.product?.name);
-      console.log('product.code', data.product?.code);
-      console.log('ingredientsText', data.product?.ingredientsText);
-      console.log('ingredients[] len', data.product?.ingredients?.length);
-      console.log('flags len', data.product?.health?.flags?.length);
-      console.log('score', data.product?.health?.score);
-      console.groupEnd();
-
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
 
-      console.group('[HS] legacy_payload');
-      console.log('productName', legacy.productName);
-      console.log('barcode', legacy.barcode);
-      console.log('ingredientsText', legacy.ingredientsText?.slice(0,200));
-      console.log('flags len', legacy.healthFlags?.length);
-      console.log('score', legacy.healthScore);
+      // Root-Cause Analysis telemetry as requested
+      console.groupCollapsed('[HS] RCA');
+      console.log('edge.product.name', data.product?.name);
+      console.log('edge.product.code', data.product?.code);
+      console.log('edge.product.ingredientsText', data.product?.ingredientsText?.slice(0,200));
+      console.log('edge.product.ingredients.len', data.product?.ingredients?.length ?? 0);
+      console.log('edge.product.health.flags.len', data.product?.health?.flags?.length ?? 0);
+      console.log('legacy.productName', legacy.productName);
+      console.log('legacy.barcode', legacy.barcode);
+      console.log('legacy.ingredientsText', legacy.ingredientsText?.slice(0,200));
+      console.log('legacy.healthFlags.len', legacy.healthFlags?.length ?? 0);
+      console.log('legacy.nutrition keys', legacy.nutrition ? Object.keys(legacy.nutrition) : null);
       console.groupEnd();
 
       const hasName = !!(legacy.productName && legacy.productName.trim().length >= 3);
@@ -247,28 +244,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         console.log('🔍 No barcode found - using Google Vision + GPT analysis');
       }
       
-      // Guard against lost flags/ingredients
-      if (legacy.ingredientsText && legacy.healthFlags.length > 0) {
-        const reportFlags = legacy.healthFlags.map((flag) => ({
-          ingredient: flag.key, // Use the ingredient name from flag key (e.g., "canola_oil" -> "Canola Oil")  
-          flag: flag.description || flag.label || '',
-          severity: flag.severity === 'danger' ? 'high' as const : flag.severity === 'warning' ? 'medium' as const : 'low' as const
-        }));
-        
-        if (reportFlags.length === 0) {
-          console.warn('[HS] BUG: flags lost on mapping', { flags: legacy.healthFlags });
-        }
-      }
-
-      if (data.product?.ingredients?.length > 3 && legacy.ingredientsText?.split(',').length === 1) {
-        console.warn('[HS] BUG: ingredients collapsed', { len: data.product?.ingredients?.length });
-      }
-
+      // Build the report model ONLY from legacy (not OCR tokens)
+      const globalFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
+      
       // Transform the legacy adapted response to match frontend interface  
       const analysisResult: HealthAnalysisResult = {
         itemName: legacy.productName || 'Unknown Item',
         healthScore: legacy.healthScore || 0,
-        ingredientFlags: legacy.healthFlags.map((flag) => {
+        ingredientsText: legacy.ingredientsText, // Pass full ingredient list
+        ingredientFlags: globalFlags.map((flag) => {
           // Extract ingredient name from key or use label as fallback
           const ingredientName = flag.key.split('_').map(word => 
             word.charAt(0).toUpperCase() + word.slice(1)
@@ -301,13 +285,29 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               ing.toLowerCase().includes('color')
             ) : []
         },
-        personalizedWarnings: legacy.healthFlags.filter(flag => flag.severity === 'danger').map(flag => flag.label),
-        suggestions: legacy.healthFlags.filter(flag => flag.severity === 'warning').map(flag => flag.description || flag.label),
+        personalizedWarnings: globalFlags.filter(flag => flag.severity === 'danger').map(flag => flag.label),
+        suggestions: globalFlags.filter(flag => flag.severity === 'warning').map(flag => flag.description || flag.label),
         overallRating: legacy.healthScore >= 80 ? 'excellent' : 
                       legacy.healthScore >= 60 ? 'good' : 
                       legacy.healthScore >= 40 ? 'fair' : 
                       legacy.healthScore >= 20 ? 'poor' : 'avoid'
       };
+
+      // Add requested report model telemetry
+      console.group('[HS] report_model');
+      console.log('ingredientsText', legacy.ingredientsText?.slice(0,200));
+      console.log('flags.global.len', analysisResult.ingredientFlags?.length ?? 0);
+      console.log('flags.personalized.len', analysisResult.personalizedWarnings?.length ?? 0);
+      console.log('nutrition keys', analysisResult.nutritionData ? Object.keys(analysisResult.nutritionData) : null);
+      console.groupEnd();
+
+      // Guardrails to detect data loss regressions
+      if (legacy.ingredientsText && (!legacy.ingredientsText || legacy.ingredientsText.length < 10)) {
+        console.warn('[HS] BUG: ingredients collapsed', { legacyLen: legacy.ingredientsText.length });
+      }
+      if ((legacy.healthFlags?.length ?? 0) > 0 && (analysisResult.ingredientFlags?.length ?? 0) === 0) {
+        console.warn('[HS] BUG: flags lost in mapping', { legacy: legacy.healthFlags });
+      }
 
       setAnalysisResult(analysisResult);
       setCurrentState('report');
