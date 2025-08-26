@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Zap, FlashlightIcon, Edit3 } from 'lucide-react';
+import { X, Zap } from 'lucide-react';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { setTorch } from '@/lib/scan/torch';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -27,8 +28,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [isTorchSupported, setIsTorchSupported] = useState(false);
 
-  const { snapAndDecode, setTorch, isTorchSupported, torchEnabled } = useSnapAndDecode();
+  const { snapAndDecode } = useSnapAndDecode();
 
   // Constants for decode parameters
   const BUDGET_MS = 900;
@@ -50,10 +53,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       console.log("[LOG] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: 'environment',
+          facingMode: { exact: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 }
-        }
+        },
+        audio: false
       });
 
       if (videoRef.current) {
@@ -61,10 +65,44 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         await videoRef.current.play();
         setStream(mediaStream);
         setError(null);
+        
+        // Check torch support
+        const track = mediaStream.getVideoTracks()[0];
+        if (track && typeof track.getCapabilities === 'function') {
+          const caps = track.getCapabilities() as any;
+          setIsTorchSupported(!!(caps && 'torch' in caps && caps.torch));
+        }
       }
     } catch (err) {
       console.error("[LOG] Camera access error:", err);
-      setError('Unable to access camera. Please check permissions and try again.');
+      // Fallback without exact facing mode if first attempt fails
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        });
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+          setStream(mediaStream);
+          setError(null);
+          
+          // Check torch support
+          const track = mediaStream.getVideoTracks()[0];
+          if (track && typeof track.getCapabilities === 'function') {
+            const caps = track.getCapabilities() as any;
+            setIsTorchSupported(!!(caps && 'torch' in caps && caps.torch));
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("[LOG] Camera fallback error:", fallbackErr);
+        setError('Unable to access camera. Please check permissions and try again.');
+      }
     }
   };
 
@@ -183,10 +221,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const toggleTorch = async () => {
+    if (!videoRef.current) return;
+    
     try {
-      await setTorch(!torchEnabled);
+      const success = await setTorch(videoRef.current, !torchEnabled);
+      if (success) {
+        setTorchEnabled(!torchEnabled);
+      } else {
+        toast('Flash not supported on this device');
+      }
     } catch (error) {
       console.error("Error toggling torch:", error);
+      toast('Flash not supported on this device');
     }
   };
 
@@ -194,15 +240,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none"
+        showCloseButton={false}
+        style={{
+          '--scanner-header-h': '72px',
+          '--scanner-actions-h': '200px'
+        } as React.CSSProperties}
       >
         <div className="relative w-full h-full bg-black overflow-hidden">
-          {/* Video Element */}
+          {/* Video Element - Behind everything */}
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
               filter: isFrozen ? 'brightness(0.3)' : 'none',
               transition: 'filter 0.2s ease'
@@ -218,107 +269,116 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
           )}
 
-          {/* UI Overlay */}
-          <div className="absolute inset-0 flex flex-col">
-            {/* Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-b from-black/70 to-transparent">
-              <h2 className="text-white text-xl font-semibold">Scan Barcode</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20"
-              >
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
+          {/* Header */}
+          <header 
+            className="pt-safe-top px-4 pb-2 bg-gradient-to-b from-black/70 to-transparent flex justify-between items-center"
+            style={{ height: 'var(--scanner-header-h)' }}
+          >
+            <h2 className="text-white text-xl font-semibold">Scan Barcode</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="text-white hover:bg-white/20"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </header>
 
-            {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center pointer-events-none">
-              {/* Centered scan frame */}
-              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4]">
-                {/* Corner indicators */}
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
-                
-                {/* Grid overlay */}
-                <div className="absolute inset-4 opacity-20">
-                  <div className="w-full h-full grid grid-cols-6 grid-rows-3 gap-0">
-                    {Array.from({ length: 18 }).map((_, i) => (
-                      <div key={i} className="border border-cyan-400/30"></div>
-                    ))}
+          {/* Center Content - Vertically centered scan frame */}
+          <div
+            className="relative px-4"
+            style={{
+              minHeight: 'calc(100vh - var(--scanner-header-h) - var(--scanner-actions-h))',
+            }}
+          >
+            <div className="grid place-items-center h-full">
+              <div className="relative z-10 pointer-events-none">
+                {/* Centered scan frame */}
+                <div className="relative w-[82vw] max-w-[680px] aspect-[7/4]">
+                  {/* Corner indicators */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
+                  
+                  {/* Grid overlay */}
+                  <div className="absolute inset-4 opacity-20">
+                    <div className="w-full h-full grid grid-cols-6 grid-rows-3 gap-0">
+                      {Array.from({ length: 18 }).map((_, i) => (
+                        <div key={i} className="border border-cyan-400/30"></div>
+                      ))}
+                    </div>
                   </div>
+                  
+                  {/* Scanning line animation */}
+                  {(isDecoding || isLookingUp) && (
+                    <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
+                  )}
                 </div>
-                
-                {/* Scanning line animation */}
-                {(isDecoding || isLookingUp) && (
-                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
-                )}
               </div>
             </div>
+          </div>
 
-            {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-0 inset-x-0 pb-safe px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
-              {/* Instructions text */}
-              <div className="text-center text-white/90 mb-4">
-                <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
-                <p className="text-xs text-white/70 mt-1">Supports UPC-A, EAN-13, and EAN-8 codes</p>
-              </div>
-              
-              {/* Main Action Button */}
-              <Button
-                onClick={handleSnapAndDecode}
-                disabled={isDecoding || isLookingUp || !stream}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
-              >
-                {isDecoding ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Decoding...
-                  </>
-                ) : isLookingUp ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Looking up product...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-5 w-5 mr-2" />
-                    Snap & Decode
-                  </>
-                )}
-              </Button>
+          {/* Bottom Controls - Safe area */}
+          <footer 
+            className="pb-safe-bottom pt-3 px-4 bg-gradient-to-t from-black/80 via-black/60 to-transparent absolute bottom-0 inset-x-0 space-y-3"
+            style={{ height: 'var(--scanner-actions-h)' }}
+          >
+            {/* Instructions text */}
+            <div className="text-center text-white/90 mb-4">
+              <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
+              <p className="text-xs text-white/70 mt-1">Supports UPC-A, EAN-13, and EAN-8 codes</p>
+            </div>
+            
+            {/* Main Action Button */}
+            <Button
+              onClick={handleSnapAndDecode}
+              disabled={isDecoding || isLookingUp || !stream}
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
+            >
+              {isDecoding ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Decoding...
+                </>
+              ) : isLookingUp ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Looking up product...
+                </>
+              ) : (
+                <>
+                  ⚡️ Snap & Decode
+                </>
+              )}
+            </Button>
 
-              {/* Secondary Actions */}
-              <div className="flex gap-3">
-                {/* Torch Toggle */}
-                {isTorchSupported && (
-                  <Button
-                    variant="outline"
-                    onClick={toggleTorch}
-                    className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
-                      torchEnabled ? 'bg-white/20' : 'bg-transparent'
-                    }`}
-                  >
-                    <FlashlightIcon className={`h-4 w-4 mr-2 ${torchEnabled ? 'text-yellow-300' : ''}`} />
-                    {torchEnabled ? 'Flash On' : 'Flash Off'}
-                  </Button>
-                )}
-                
-                {/* Manual Entry */}
+            {/* Secondary Actions */}
+            <div className="flex gap-3">
+              {/* Torch Toggle */}
+              {isTorchSupported && (
                 <Button
                   variant="outline"
-                  onClick={onManualEntry}
-                  className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
+                  onClick={toggleTorch}
+                  className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
+                    torchEnabled ? 'bg-white/20' : 'bg-transparent'
+                  }`}
                 >
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Enter Manually
+                  💡 {torchEnabled ? 'Flash On' : 'Flash Off'}
                 </Button>
-              </div>
-            </footer>
-          </div>
+              )}
+              
+              {/* Manual Entry */}
+              <Button
+                variant="outline"
+                onClick={onManualEntry}
+                className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
+              >
+                ✏️ Enter Manually
+              </Button>
+            </div>
+          </footer>
 
           {/* Error State */}
           {error && (
