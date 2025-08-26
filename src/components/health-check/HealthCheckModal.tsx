@@ -12,6 +12,90 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
+/**
+ * Optimize image payload to stay under ~300KB while maintaining quality
+ */
+const optimizeImagePayload = async (dataUrl: string): Promise<string> => {
+  const MAX_SIZE_KB = 300;
+  const MAX_WIDTH = 1024;
+  const INITIAL_QUALITY = 0.82;
+  
+  try {
+    // If already small enough, return as-is
+    const base64Part = dataUrl.split(',')[1] || '';
+    const currentSizeKB = (base64Part.length * 3) / 4 / 1024;
+    
+    if (currentSizeKB <= MAX_SIZE_KB) {
+      console.log(`📏 Image already optimized: ${Math.round(currentSizeKB)}KB`);
+      return base64Part; // Return just the base64 part without data: prefix
+    }
+    
+    console.log(`📏 Optimizing image: ${Math.round(currentSizeKB)}KB -> target: ${MAX_SIZE_KB}KB`);
+    
+    // Create image and canvas for resizing
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+    
+    // Calculate new dimensions (maintain aspect ratio, cap longest edge)
+    let { width, height } = img;
+    if (width > height && width > MAX_WIDTH) {
+      height = (height * MAX_WIDTH) / width;
+      width = MAX_WIDTH;
+    } else if (height > MAX_WIDTH) {
+      width = (width * MAX_WIDTH) / height;
+      height = MAX_WIDTH;
+    }
+    
+    // Create canvas and resize
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    // Try different quality levels to hit target size
+    let quality = INITIAL_QUALITY;
+    let optimizedDataUrl = '';
+    let attempts = 0;
+    
+    while (attempts < 5) {
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', quality);
+      });
+      
+      // Convert blob to base64
+      const reader = new FileReader();
+      optimizedDataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const base64 = optimizedDataUrl.split(',')[1];
+      const sizeKB = (base64.length * 3) / 4 / 1024;
+      
+      console.log(`📏 Attempt ${attempts + 1}: quality=${quality.toFixed(2)}, size=${Math.round(sizeKB)}KB`);
+      
+      if (sizeKB <= MAX_SIZE_KB || quality <= 0.3) {
+        return base64; // Return optimized base64 without data: prefix
+      }
+      
+      quality -= 0.1;
+      attempts++;
+    }
+    
+    // Fallback: return the last attempt
+    return optimizedDataUrl.split(',')[1];
+  } catch (error) {
+    console.warn('📏 Image optimization failed, using original:', error);
+    return dataUrl.split(',')[1] || ''; // Return original base64 part
+  }
+};
+
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -171,9 +255,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         imageData.replace(/&barcode=\d+$/, '') : 
         imageData;
         
+      // Optimize image payload size - keep under ~300KB
+      const optimizedImageData = await optimizeImagePayload(cleanImageData);
+        
       // Use enhanced scanner with structured results
       const payload = {
-        imageBase64: cleanImageData,
+        imageBase64: optimizedImageData,
         mode: 'scan',
         detectedBarcode: detectedBarcode || null
       };
@@ -186,6 +273,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       let data, error;
       try {
+        console.time('[HS] analyze_total');
         console.log('🔄 Making enhanced-health-scanner call...');
         const result = await supabase.functions.invoke('enhanced-health-scanner', {
           body: payload
@@ -194,9 +282,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         
         data = result.data;
         error = result.error;
+        
+        if (error) {
+          console.warn('[HS] analyzer_unreachable', { error });
+          throw new Error(error.message || 'Analyzer temporarily unreachable. Check network & retry.');
+        }
       } catch (funcError) {
-        console.error("❌ Enhanced Health Scanner Failed:", funcError);
-        throw funcError;
+        console.warn('[HS] analyzer_exception', { error: funcError });
+        throw new Error('Analyzer failed (network/CORS). Please retry.');
+      } finally {
+        console.timeEnd('[HS] analyze_total');
       }
 
       if (error) {
