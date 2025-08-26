@@ -39,6 +39,43 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { user } = useAuth();
   const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
 
+  // New response type for enhanced health scanner
+  type HealthScanResponse = {
+    ok: boolean;
+    source?: 'barcode' | 'ocr';
+    reason?: string;
+    product?: {
+      code?: string;
+      name?: string;
+      brand?: string;
+      image?: string | null;
+      ingredientsText?: string | null;
+      nutriments?: {
+        calories?: number|null;
+        protein_g?: number|null;
+        carbs_g?: number|null;
+        fat_g?: number|null;
+        sugar_g?: number|null;
+        fiber_g?: number|null;
+        sodium_mg?: number|null;
+      };
+    };
+    health?: {
+      score?: number;
+      flags?: Array<{ kind: 'danger'|'warn'|'info'; label: string }>;
+    };
+    debug?: {
+      ocrTokens?: string[];
+      offQuery?: string;
+      offHits?: number;
+      bestScore?: number;
+    };
+  };
+
+  const showImageNotRecognized = (reason?: string) => {
+    setCurrentView('notRecognized');
+  };
+
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
   const ROI = { widthPct: 0.70, heightPct: 0.35 };
@@ -549,26 +586,36 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       stillCanvas.canvas.toBlob(async (blob) => {
         if (!blob) return;
         
-        const optimizedBlob = await optimizeBlobSize(blob, 300);
+        // Check size and skip recompression if already ≤300KB
+        console.log('[HS] payload_kb:', Math.round(blob.size/1024));
+        const optimizedBlob = blob.size <= 300 * 1024 ? blob : await optimizeBlobSize(blob, 300);
+        
         const fr = new FileReader();
         fr.onload = async () => {
           const base64 = String(fr.result).split(',')[1] || '';
           
           try {
-            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-              body: { mode: 'scan', image_b64: base64, hasDetectedBarcode: false }
+            const { data, error } = await supabase.functions.invoke<HealthScanResponse>('enhanced-health-scanner', {
+              body: { image_b64: base64, hasDetectedBarcode: false }
             });
             
-            console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+            console.log('[HSF] off_result', {
+              ok: data?.ok,
+              source: data?.source,
+              reason: data?.reason,
+              bestScore: data?.debug?.bestScore,
+              offHits: data?.debug?.offHits,
+            });
             
-            if (data && data.recognized) {
+            if (data?.ok && data?.product) {
+              // Map to existing modal model (no UI changes)
               onCapture(stillCanvas.canvas.toDataURL('image/jpeg', 0.8));
             } else {
-              setCurrentView('notRecognized');
+              showImageNotRecognized(data?.reason ?? 'not_recognized');
             }
           } catch (e) {
             console.warn('[HS] analyzer_exception', { e });
-            setCurrentView('notRecognized');
+            showImageNotRecognized('network_error');
           }
         };
         fr.readAsDataURL(optimizedBlob);

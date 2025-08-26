@@ -7,6 +7,39 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
+// New stable response schema - never 500s
+type HealthScanResponse = {
+  ok: boolean;
+  source?: 'barcode' | 'ocr';
+  reason?: string;                  // e.g. 'no_hits', 'low_score', 'invalid_image'
+  product?: {
+    code?: string;
+    name?: string;
+    brand?: string;
+    image?: string | null;
+    ingredientsText?: string | null;
+    nutriments?: {
+      calories?: number|null;
+      protein_g?: number|null;
+      carbs_g?: number|null;
+      fat_g?: number|null;
+      sugar_g?: number|null;
+      fiber_g?: number|null;
+      sodium_mg?: number|null;
+    };
+  };
+  health?: {
+    score?: number;                 // 0–100
+    flags?: Array<{ kind: 'danger'|'warn'|'info'; label: string }>;
+  };
+  debug?: {
+    ocrTokens?: string[];
+    offQuery?: string;
+    offHits?: number;
+    bestScore?: number;
+  };
+};
+
 // Legacy response format that UI expects (keep UI unchanged)
 interface BackendResponse {
   productName: string;
@@ -23,48 +56,6 @@ interface BackendResponse {
   generalSummary?: string;
   barcode?: string;
   fallback?: boolean;
-}
-
-// Log product structure for direct consumption by Log UI
-interface LogProduct {
-  productName: string;
-  barcode: string;
-  imageUrl?: string;
-
-  nutrition: {
-    calories: number;    // kcal per serving (or per 100g mapped to serving if serving exists)
-    protein_g: number;
-    carbs_g: number;
-    fat_g: number;
-    fiber_g: number;
-    sugar_g: number;
-    sodium_mg: number;
-  };
-
-  ingredients: string[]; // flat, cleaned list
-
-  health: {
-    score: number; // 0..100
-    flags: Array<{
-      id: string;                         // 'high_sugar' | 'high_sodium' | 'artificial_colors' | 'preservatives' | 'good_fiber' | ...
-      label: string;                      // human label, e.g., 'High Sugar'
-      level: 'good' | 'warning' | 'danger';
-      emoji?: string;                     // optional emoji
-      details?: string;                   // optional short note
-    }>;
-  };
-}
-
-interface RequestContext {
-  reqId: string;
-  now: Date;
-  ocrText: string;
-  tokens: string[];
-  brandTokens: string[];
-  hasCandy: boolean;
-  barcodeFound?: string;
-  offHit?: boolean;
-  plateConf: number;
 }
 
 // Read-only health rules (immutable)
@@ -108,9 +99,21 @@ const GENERAL_TIPS = Object.freeze([
   'Consider portion sizes and frequency of consumption'
 ]);
 
-/**
- * Validate and normalize barcode with type detection
- */
+function createErrorResponse(reason: string, message: string): Response {
+  const errorResponse: HealthScanResponse = {
+    ok: false,
+    reason,
+    debug: {}
+  };
+  
+  console.log(`[HSF] final: { ok: false, reason: '${reason}' }`);
+  
+  return new Response(JSON.stringify(errorResponse), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 function normalizeBarcode(input: string): { raw: string; type: string; checksumOk: boolean } | null {
   if (!input) return null;
   const raw = input.replace(/\D/g, '');
@@ -131,11 +134,7 @@ function normalizeBarcode(input: string): { raw: string; type: string; checksumO
   return { raw, type, checksumOk };
 }
 
-/**
- * EAN-8 checksum validation
- */
 function validateEAN8(s: string): boolean {
-  // weights: 3x on odd indices (0-based), 1x on even → mod 10
   const sum = [...s.slice(0,7)]
     .map((d,i) => (+d) * (i%2===0 ? 3 : 1))
     .reduce((a,b)=>a+b,0);
@@ -143,9 +142,6 @@ function validateEAN8(s: string): boolean {
   return check === +s[7];
 }
 
-/**
- * UPC-A checksum validation
- */
 function validateUPCA(s: string): boolean {
   const sum = [...s.slice(0,11)]
     .map((d,i) => (+d) * (i%2===0 ? 3 : 1))
@@ -154,9 +150,6 @@ function validateUPCA(s: string): boolean {
   return check === +s[11];
 }
 
-/**
- * EAN-13 checksum validation
- */
 function validateEAN13(s: string): boolean {
   const sum = [...s.slice(0,12)]
     .map((d,i) => (+d) * (i%2===0 ? 1 : 3))
@@ -165,9 +158,6 @@ function validateEAN13(s: string): boolean {
   return check === +s[12];
 }
 
-/**
- * OpenFoodFacts lookup by barcode (v2 API first, then v1 fallback)
- */
 async function fetchOFF(barcode: string): Promise<any | null> {
   try {
     console.log(`🔍 OpenFoodFacts v2 lookup for barcode: ${barcode}`);
@@ -198,194 +188,27 @@ async function fetchOFF(barcode: string): Promise<any | null> {
   }
 }
 
-/**
- * Map OpenFoodFacts product to BackendResponse
- */
-function mapOFFtoBackendResponse(product: any): BackendResponse {
-  const ingredients = product.ingredients_text ? 
-    product.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
+async function searchOFFByQuery(query: string): Promise<any[]> {
+  try {
+    const encodedQuery = encodeURIComponent(query);
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_simple=1&json=1&fields=code,product_name,brands,images,ingredients_text_en,nutriments&page_size=10&search_terms=${encodedQuery}`;
     
-  const flags = generateHealthFlags(ingredients, false);
-  const healthScore = calculateHealthScore(flags, false, true);
-  
-  return {
-    productName: `${product.brands || ''} ${product.product_name || ''}`.trim() || "Unknown Product",
-    healthScore,
-    healthFlags: flags,
-    nutritionSummary: generateNutritionData(product.nutriments),
-    ingredients,
-    recommendations: generateRecommendations(flags)
-  };
-}
-
-/**
- * Map OpenFoodFacts product to LogProduct for direct Log UI consumption
- */
-function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
-  const n = product?.nutriments ?? {};
-
-  // Serving math - prefer serving data, fallback to 100g
-  const perServing = product?.nutrition_data_per === 'serving';
-  const pick = (key100: string, keyServ: string) =>
-    perServing ? n[keyServ] ?? n[key100] : n[key100];
-
-  const kcal = pick('energy-kcal_100g','energy-kcal_serving') ??
-               (pick('energy_100g','energy_serving') && 
-                 Number(pick('energy_100g','energy_serving')) / 4.184);
-
-  const nutrition = {
-    calories: kcal ? Math.round(Number(kcal)) : 0,
-    protein_g: num(pick('proteins_100g','proteins_serving')) || 0,
-    carbs_g: num(pick('carbohydrates_100g','carbohydrates_serving')) || 0,
-    fat_g: num(pick('fat_100g','fat_serving')) || 0,
-    fiber_g: num(pick('fiber_100g','fiber_serving')) || 0,
-    sugar_g: num(pick('sugars_100g','sugars_serving')) || 0,
-      sodium_mg: (toMg(num(pick('sodium_100g','sodium_serving'))) 
-                 ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving')))) || 0
-  };
-
-  // Parse ingredients
-  const ingredients = parseIngredients(product);
-
-  // Generate health flags
-  const health = generateHealthFlags(ingredients, nutrition);
-
-  const logProduct: LogProduct = {
-    productName: product?.product_name || product?.generic_name || 'Unknown product',
-    barcode,
-    imageUrl: product?.image_front_small_url || product?.image_url,
-    nutrition,
-    ingredients,
-    health
-  };
-
-  function num(v: any) { return v == null ? undefined : Number(v); }
-  function toMg(g?: number) { return g == null ? undefined : Math.round(g * 1000); }
-  function fromSaltToSodiumMg(g?: number) { return g == null ? undefined : Math.round(g * 1000 * 0.393); }
-
-  function parseIngredients(p: any): string[] {
-    // Try ingredients array first
-    if (Array.isArray(p?.ingredients)) {
-      return p.ingredients.map((i: any) => i.text || i.id || String(i)).filter(Boolean);
-    }
+    const response = await fetch(url);
+    const data = await response.json();
     
-    // Fallback to ingredients_text with various locale attempts
-    const textOptions = [
-      p?.ingredients_text_en,
-      p?.ingredients_text,
-      p?.ingredients_text_fr,
-      p?.ingredients_text_es
-    ].filter(Boolean);
-
-    if (textOptions.length > 0) {
-      const text = textOptions[0];
-      return text.split(/[·•,;()\[\]]/)
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 0);
-    }
-    
+    return data.products || [];
+  } catch (error) {
+    console.error('❌ OFF search failed:', error);
     return [];
   }
-
-  function generateHealthFlags(ingredients: string[], nutrition: any): { score: number; flags: any[] } {
-    const flags: any[] = [];
-    const ingredientText = ingredients.join(' ').toLowerCase();
-
-    // High sugar flag (warning) - per serving
-    if (nutrition.sugar_g >= 22.5) {
-      flags.push({
-        id: 'high_sugar',
-        label: 'High Sugar',
-        level: 'warning',
-        emoji: '🍭',
-        details: 'High in added sugars; limit portion size.'
-      });
-    }
-
-    // High sodium flag (warning) - per serving  
-    if (nutrition.sodium_mg >= 600) {
-      flags.push({
-        id: 'high_sodium',
-        label: 'High Sodium',
-        level: 'warning',
-        emoji: '🧂',
-        details: 'High sodium content may contribute to high blood pressure.'
-      });
-    }
-
-    // Good fiber flag
-    if (nutrition.fiber_g >= 5) {
-      flags.push({
-        id: 'good_fiber',
-        label: 'Good Fiber',
-        level: 'good',
-        emoji: '🌾',
-        details: 'Good source of dietary fiber.'
-      });
-    }
-
-    // Artificial colors detection
-    const artificialColors = ['red 40', 'yellow 5', 'yellow 6', 'blue 1', 'blue 2'];
-    const hasArtificialColors = artificialColors.some(color => 
-      ingredientText.includes(color) || ingredientText.includes(color.replace(' ', ''))
-    );
-    
-    if (hasArtificialColors || ingredientText.includes('artificial color')) {
-      flags.push({
-        id: 'artificial_colors',
-        label: 'Artificial Colors',
-        level: 'warning',
-        emoji: '🎨',
-        details: 'Contains artificial colors (e.g., Red 40, Yellow 5/6, Blue 1).'
-      });
-    }
-
-    // Preservatives detection
-    const preservatives = ['bha', 'bht', 'sodium benzoate', 'potassium sorbate', 'tbhq'];
-    const hasPreservatives = preservatives.some(pres => ingredientText.includes(pres));
-    
-    if (hasPreservatives) {
-      flags.push({
-        id: 'preservatives',
-        label: 'Preservatives',
-        level: 'warning',
-        emoji: '⚗️',
-        details: 'Contains preservatives - some linked to allergic reactions.'
-      });
-    }
-
-    // Calculate health score
-    let score = 80; // Base score
-    flags.forEach(flag => {
-      switch (flag.level) {
-        case 'danger':
-          score -= 20;
-          break;
-        case 'warning':
-          score -= 10;
-          break;
-        case 'good':
-          score += 5;
-          break;
-      }
-    });
-
-    score = Math.max(0, Math.min(100, score));
-
-    return { score, flags };
-  }
-
-  return logProduct;
 }
 
-/**
- * Extract and clean OCR text
- */
-async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; cleanedTokens: string[]; brandTokens: string[]; hasCandy: boolean }> {
+async function extractTextWithOCR(imageBase64: string): Promise<string[]> {
   try {
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!apiKey) {
-      throw new Error('Google Vision API key not configured');
+      console.warn('Google Vision API key not configured');
+      return [];
     }
 
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
@@ -394,383 +217,305 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; 
       body: JSON.stringify({
         requests: [{
           image: { content: imageBase64 },
-          features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+          features: [{ type: 'TEXT_DETECTION', maxResults: 10 }]
         }]
       })
     });
 
     const result = await response.json();
-    const rawText = result.responses?.[0]?.textAnnotations?.[0]?.description || '';
+    const text = result.responses?.[0]?.textAnnotations?.[0]?.description || '';
     
-    // Normalize: lowercase, strip punctuation, collapse whitespace
-    const normalized = rawText
+    // Extract tokens (letters/digits only)
+    const tokens = text
       .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+      .split(/[^\w']+/)
+      .filter(token => token.length >= 2 && /[a-z]/.test(token))
+      .slice(0, 20); // Limit to first 20 tokens
     
-    // Remove stop-words and packaging tokens
-    const tokens = normalized.split(/\s+/)
-      .filter(token => token.length > 0 && !STOP_WORDS.has(token));
-    
-    // Extract brand evidence
-    const brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
-    
-    // Candy detection (only from current OCR tokens)
-    const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token));
-    
-    console.log('📝 OCR processed:', { 
-      rawLength: rawText.length, 
-      tokens: tokens.length, 
-      brandTokens, 
-      hasCandy 
-    });
-    
-    return { 
-      text: rawText,
-      cleanedTokens: tokens, 
-      brandTokens, 
-      hasCandy 
-    };
+    return tokens;
   } catch (error) {
-    console.error('❌ OCR extraction failed:', error);
-    return { text: '', cleanedTokens: [], brandTokens: [], hasCandy: false };
+    console.error('OCR extraction failed:', error);
+    return [];
   }
 }
 
-/**
- * Brand-gated name search (only with strong brand evidence)
- */
-async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): Promise<any | null> {
-  if (brandTokens.length === 0) {
-    console.log('❌ No brand evidence - skipping name search');
-    return null;
+function jaroWinklerSimilarity(s1: string, s2: string): number {
+  if (s1 === s2) return 1.0;
+  
+  const maxLen = Math.max(s1.length, s2.length);
+  const matchWindow = Math.floor(maxLen / 2) - 1;
+  
+  if (matchWindow < 0) return 0;
+  
+  const s1Matches = new Array(s1.length).fill(false);
+  const s2Matches = new Array(s2.length).fill(false);
+  
+  let matches = 0;
+  
+  // Find matches
+  for (let i = 0; i < s1.length; i++) {
+    const start = Math.max(0, i - matchWindow);
+    const end = Math.min(i + matchWindow + 1, s2.length);
+    
+    for (let j = start; j < end; j++) {
+      if (s2Matches[j] || s1[i] !== s2[j]) continue;
+      
+      s1Matches[i] = s2Matches[j] = true;
+      matches++;
+      break;
+    }
   }
   
-  try {
-    const searchQuery = brandTokens.join(' ');
-    console.log(`🔍 Brand-gated search: ${searchQuery}`);
+  if (matches === 0) return 0;
+  
+  // Calculate transpositions
+  let transpositions = 0;
+  let k = 0;
+  
+  for (let i = 0; i < s1.length; i++) {
+    if (!s1Matches[i]) continue;
     
-    const searchParams = new URLSearchParams({
-      search_terms: searchQuery,
-      search_simple: '1',
-      action: 'process',
-      json: '1',
-      page_size: '3'
-    });
+    while (!s2Matches[k]) k++;
     
-    if (hasCandy) {
-      searchParams.set('categories', 'candy,gummies,sweets');
-    }
-    
-    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
-    const data = await response.json();
-    
-    if (data.products && data.products.length > 0) {
-      const filteredProducts = hasCandy ? 
-        data.products.filter((product: any) => {
-          const categories = (product.categories || '').toLowerCase();
-          return !categories.includes('beverage') && !categories.includes('drink');
-        }) : data.products;
-        
-      if (filteredProducts.length > 0) {
-        console.log('✅ Brand search hit:', filteredProducts[0].product_name);
-        return filteredProducts[0];
+    if (s1[i] !== s2[k]) transpositions++;
+    k++;
+  }
+  
+  const jaro = (matches / s1.length + matches / s2.length + (matches - transpositions / 2) / matches) / 3;
+  
+  // Winkler prefix bonus
+  let prefix = 0;
+  for (let i = 0; i < Math.min(s1.length, s2.length, 4); i++) {
+    if (s1[i] === s2[i]) prefix++;
+    else break;
+  }
+  
+  return jaro + (0.1 * prefix * (1 - jaro));
+}
+
+function getBrandTokens(tokens: string[]): string[] {
+  return tokens.filter(token => 
+    BRAND_LEXICON.has(token) || 
+    (token.length >= 3 && /^[A-Z]/.test(token) && !STOP_WORDS.has(token.toLowerCase()))
+  );
+}
+
+function toMg(grams: number | null): number | null {
+  return grams !== null ? Math.round(grams * 1000) : null;
+}
+
+function fromSaltToSodiumMg(saltGrams: number | null): number | null {
+  return saltGrams !== null ? Math.round(saltGrams * 393.4) : null; // sodium = salt * 0.3934, then to mg
+}
+
+function safeNum(value: any): number | null {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function mapOFFProduct(product: any, code?: string): HealthScanResponse {
+  const pick = (...keys: string[]) => {
+    for (const key of keys) {
+      if (product.nutriments && product.nutriments[key] != null) {
+        return product.nutriments[key];
       }
     }
-    
     return null;
-  } catch (error) {
-    console.error('❌ Brand search failed:', error);
-    return null;
-  }
+  };
+
+  const calories = safeNum(pick('energy-kcal_100g', 'energy-kcal_serving', 'energy_100g')) || 
+                   Math.round((safeNum(pick('energy_100g', 'energy_serving')) || 0) / 4.184);
+
+  const sodium_mg = toMg(safeNum(pick('sodium_100g', 'sodium_serving'))) ??
+                    fromSaltToSodiumMg(safeNum(pick('salt_100g', 'salt_serving'))) ?? 0;
+
+  const productData: HealthScanResponse = {
+    ok: true,
+    source: code ? 'barcode' : 'ocr',
+    product: {
+      code: code || product.code || undefined,
+      name: product.product_name || 'Unknown Product',
+      brand: product.brands || undefined,
+      image: product.images?.front?.url || product.image_url || null,
+      ingredientsText: product.ingredients_text_en || product.ingredients_text || null,
+      nutriments: {
+        calories: calories || null,
+        protein_g: safeNum(pick('proteins_100g', 'proteins_serving')),
+        carbs_g: safeNum(pick('carbohydrates_100g', 'carbohydrates_serving')),
+        fat_g: safeNum(pick('fat_100g', 'fat_serving')),
+        sugar_g: safeNum(pick('sugars_100g', 'sugars_serving')),
+        fiber_g: safeNum(pick('fiber_100g', 'fiber_serving')),
+        sodium_mg: sodium_mg
+      }
+    },
+    health: {
+      score: calculateHealthScore(product),
+      flags: generateHealthFlags(product)
+    }
+  };
+
+  return productData;
 }
 
-/**
- * Calculate plate confidence (mock implementation)
- */
-function calculatePlateConfidence(tokens: string[]): number {
-  const foodKeywords = ['chicken', 'rice', 'vegetables', 'salad', 'pasta', 'bread', 'meat'];
-  const matches = tokens.filter(token => foodKeywords.includes(token)).length;
-  return Math.min(0.9, matches * 0.3);
+function calculateHealthScore(product: any): number {
+  let score = 70; // Base score
+
+  const nutrients = product.nutriments || {};
+  
+  // Deduct for high sodium
+  const sodium = nutrients.sodium_100g || 0;
+  if (sodium > 1.5) score -= 20; // High sodium
+  else if (sodium > 0.6) score -= 10; // Medium sodium
+
+  // Deduct for high sugar
+  const sugar = nutrients.sugars_100g || 0;
+  if (sugar > 15) score -= 15; // High sugar
+  else if (sugar > 10) score -= 8; // Medium sugar
+
+  // Deduct for high saturated fat
+  const satFat = nutrients['saturated-fat_100g'] || 0;
+  if (satFat > 5) score -= 10; // High saturated fat
+
+  // Add for fiber
+  const fiber = nutrients.fiber_100g || 0;
+  if (fiber > 5) score += 10; // Good fiber
+  else if (fiber > 3) score += 5; // Some fiber
+
+  return Math.max(0, Math.min(100, score));
 }
 
-/**
- * Generate health flags from ingredients
- */
-function generateHealthFlags(ingredients: string[], hasCandy: boolean): any[] {
-  const flags: any[] = [];
-  const ingredientText = ingredients.join(' ').toLowerCase();
-
-  // Candy-specific flags (only when hasCandy is true)
-  if (hasCandy) {
-    flags.push({
-      type: 'warning',
-      icon: '🍭',
-      title: 'Added Sugars High',
-      description: 'High in added sugars; limit portion size.'
-    });
-    
-    // Only add colors flag if ingredients suggest colors
-    if (ingredientText.includes('color') || ingredientText.includes('red') || ingredientText.includes('yellow')) {
-      flags.push({
-        type: 'warning',
-        icon: '🎨',
-        title: 'Artificial Colors',
-        description: 'Contains artificial colors (e.g., Red 40, Yellow 5/6, Blue 1).'
-      });
-    }
+function generateHealthFlags(product: any): Array<{ kind: 'danger'|'warn'|'info'; label: string }> {
+  const flags = [];
+  const nutrients = product.nutriments || {};
+  
+  // Check sodium
+  const sodium = nutrients.sodium_100g || 0;
+  if (sodium > 1.5) {
+    flags.push({ kind: 'danger' as const, label: 'High Sodium' });
+  } else if (sodium > 0.6) {
+    flags.push({ kind: 'warn' as const, label: 'Moderate Sodium' });
   }
 
-  // Check for dangerous ingredients
-  HEALTH_RULES.additives.artificial_colors.forEach(color => {
-    if (ingredientText.includes(color)) {
-      flags.push({
-        type: 'danger',
-        icon: '🎨',
-        title: 'Artificial Colors',
-        description: `Contains ${color} - linked to hyperactivity in children`
-      });
-    }
-  });
+  // Check sugar
+  const sugar = nutrients.sugars_100g || 0;
+  if (sugar > 15) {
+    flags.push({ kind: 'danger' as const, label: 'High Sugar' });
+  } else if (sugar > 10) {
+    flags.push({ kind: 'warn' as const, label: 'Moderate Sugar' });
+  }
 
-  // Check for preservatives
-  HEALTH_RULES.additives.preservatives.forEach(preservative => {
-    if (ingredientText.includes(preservative)) {
-      flags.push({
-        type: 'warning',
-        icon: '⚗️',
-        title: 'Preservatives',
-        description: `Contains ${preservative} - some linked to allergic reactions`
-      });
-    }
-  });
-
-  // Check for artificial sweeteners
-  HEALTH_RULES.additives.sweeteners.forEach(sweetener => {
-    if (ingredientText.includes(sweetener)) {
-      flags.push({
-        type: 'danger',
-        icon: '🧪',
-        title: 'Artificial Sweeteners',
-        description: `Contains ${sweetener} - may disrupt gut microbiome`
-      });
-    }
-  });
+  // Check fiber (positive)
+  const fiber = nutrients.fiber_100g || 0;
+  if (fiber > 5) {
+    flags.push({ kind: 'info' as const, label: 'Good Fiber Source' });
+  }
 
   return flags;
 }
 
-/**
- * Calculate health score with confidence gating
- */
-function calculateHealthScore(flags: any[], hasCandy: boolean, hasStrongEvidence: boolean): number | null {
-  if (!hasStrongEvidence) {
-    return null; // No score without confidence
-  }
-  
-  let score = hasCandy ? 3.0 : 7.0; // Lower base for candy
-  
-  flags.forEach(flag => {
-    switch (flag.type) {
-      case 'danger':
-        score -= 2.0;
-        break;
-      case 'warning':
-        score -= 1.0;
-        break;
-      case 'good':
-        score += 1.0;
-        break;
-    }
-  });
-  
-  return Math.max(0, Math.min(10, score));
-}
-
-function generateNutritionData(nutriments: any): any {
-  if (!nutriments) return null;
-  
-  const nutritionData: any = {};
-  
-  if (nutriments.energy_kcal_100g) nutritionData.calories = Math.round(nutriments.energy_kcal_100g);
-  if (nutriments.fat_100g) nutritionData.fat = parseFloat(nutriments.fat_100g.toFixed(1));
-  if (nutriments.carbohydrates_100g) nutritionData.carbs = parseFloat(nutriments.carbohydrates_100g.toFixed(1));
-  if (nutriments.proteins_100g) nutritionData.protein = parseFloat(nutriments.proteins_100g.toFixed(1));
-  if (nutriments.sodium_100g) nutritionData.sodium = parseFloat((nutriments.sodium_100g / 1000).toFixed(3));
-  if (nutriments.fiber_100g) nutritionData.fiber = parseFloat(nutriments.fiber_100g.toFixed(1));
-  if (nutriments.sugars_100g) nutritionData.sugar = parseFloat(nutriments.sugars_100g.toFixed(1));
-  
-  return Object.keys(nutritionData).length > 0 ? nutritionData : null;
-}
-
-function generateHealthSummary(flags: any[], score: number | null): string {
-  if (score === null) {
-    return "Unable to provide health assessment - insufficient product information";
-  }
-  
-  const dangerFlags = flags.filter(f => f.type === 'danger').length;
-  const warningFlags = flags.filter(f => f.type === 'warning').length;
-  
-  if (dangerFlags > 0) {
-    return `Product contains ${dangerFlags} concerning ingredient${dangerFlags > 1 ? 's' : ''} that may pose health risks.`;
-  } else if (warningFlags > 0) {
-    return `Product has ${warningFlags} ingredient${warningFlags > 1 ? 's' : ''} worth noting for dietary awareness.`;
-  } else {
-    return "No major concerning ingredients identified in this product.";
-  }
-}
-
-function generateRecommendations(flags: any[]): string[] {
-  const recommendations: string[] = [];
-  
-  if (flags.some(f => f.type === 'danger')) {
-    recommendations.push('Consider limiting consumption frequency');
-    recommendations.push('Look for alternatives with cleaner ingredient lists');
-  } else if (flags.some(f => f.type === 'warning')) {
-    recommendations.push('Consume in moderation as part of a balanced diet');
-    recommendations.push('Be mindful of portion sizes');
-  } else {
-    recommendations.push('This product appears to have a relatively clean ingredient profile');
-    recommendations.push('Continue to read labels and make informed choices');
-  }
-  
-  return recommendations;
-}
-
-/**
- * Process health scan with barcode-first logic and confidence gating
- */
-async function processHealthScan(imageBase64: string, detectedBarcode?: string | null): Promise<BackendResponse> {
-  const ctx: RequestContext = {
-    reqId: crypto.randomUUID().substring(0, 8),
-    now: new Date(),
-    ocrText: '',
-    tokens: [],
-    brandTokens: [],
-    hasCandy: false,
-    plateConf: 0
-  };
-  
-  console.log(`🚀 Processing health scan [${ctx.reqId}]`);
-  
-  let barcodeHit = false;
-  let nameHit = false;
-  let offProduct: any = null;
-  
-  // Step 1: Barcode first (highest priority) - use client-detected barcode
-  const barcodeNorm = normalizeBarcode(detectedBarcode);
-  if (barcodeNorm) {
-    ctx.barcodeFound = barcodeNorm.raw;
-    const offResult = await fetchOFF(barcodeNorm.raw);
-    if (offResult?.product_found) {
-      offProduct = offResult.product;
-      barcodeHit = true;
-      ctx.offHit = true;
-      
-      console.log(`✅ Barcode success [${ctx.reqId}]`, { 
-        barcode: barcodeNorm.raw, 
-        product: offProduct.product_name 
-      });
-      
-      return mapOFFtoBackendResponse(offProduct);
-    }
-  }
-  
-  // Step 2: OCR cleanup
-  const ocrResult = await extractAndCleanOCR(imageBase64);
-  ctx.ocrText = ocrResult.text;
-  ctx.tokens = ocrResult.cleanedTokens;
-  ctx.brandTokens = ocrResult.brandTokens;
-  ctx.hasCandy = ocrResult.hasCandy;
-  
-  console.log(`[HSF] ocr_tokens:`, ctx.tokens.slice(0, 8)); // Log first 8 tokens
-  
-  // Step 3: Brand-gated name search (only with brand evidence)
-  if (ctx.brandTokens.length > 0) {
-    offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
-    if (offProduct) {
-      nameHit = true;
-      ctx.offHit = true;
-      
-      console.log(`✅ Name search success [${ctx.reqId}]`, { 
-        brand: ctx.brandTokens, 
-        product: offProduct.product_name 
-      });
-      
-      return mapOFFtoBackendResponse(offProduct);
-    }
-  }
-  
-  // Step 4: Plate confidence calculation
-  ctx.plateConf = calculatePlateConfidence(ctx.tokens);
-  
-  // Step 5: Confidence gating with OCR tuning
-  const SCORE_MIN = 0.40;
-  const SCORE_MIN_WITH_BRAND = 0.35;
-  const BRAND_BOOST = 1.25;
-  
-  // Apply brand boost to plate confidence
-  let adjustedPlateConf = ctx.plateConf;
-  if (ctx.brandTokens.length > 0) {
-    adjustedPlateConf = Math.min(1.0, ctx.plateConf * BRAND_BOOST);
-  }
-  
-  const effectiveScoreMin = ctx.brandTokens.length > 0 ? SCORE_MIN_WITH_BRAND : SCORE_MIN;
-  const hasStrongEvidence = barcodeHit || nameHit || adjustedPlateConf >= effectiveScoreMin;
-  
-  if (!hasStrongEvidence) {
-    console.log(`❌ Low confidence [${ctx.reqId}]`, { 
-      barcodeHit, nameHit, plateConf: ctx.plateConf, adjustedPlateConf,
-      brandTokens: ctx.brandTokens.length,
-      effectiveScoreMin,
-      evidence: 'insufficient' 
-    });
+async function tryOCRRecognition(imageBase64: string, reqId: string): Promise<HealthScanResponse> {
+  try {
+    // Extract OCR tokens
+    const ocrTokens = await extractTextWithOCR(imageBase64);
+    console.log(`[HSF] ocr_tokens:`, ocrTokens.slice(0, 8));
     
-       console.log(`[HSF] scan_final: { recognized: false, reason: "low_confidence" }`);
-       
-       return {
-      productName: 'Unknown product',
-      healthScore: null,
-      healthFlags: [],
-      nutritionSummary: {},
-      ingredients: [],
-      recommendations: [
-        'Try scanning the barcode on the back of the package.',
-        'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
-      ],
-      generalSummary: 'We could not confidently identify this item from the photo.',
-      fallback: true
+    if (ocrTokens.length === 0) {
+      return { ok: false, reason: 'no_text', debug: { ocrTokens } };
+    }
+
+    // Build query with brand tokens and top tokens
+    const brandTokens = getBrandTokens(ocrTokens);
+    const topTokens = ocrTokens.slice(0, 6).filter(token => !STOP_WORDS.has(token));
+    const query = [...brandTokens, ...topTokens].join(' ').trim();
+    
+    console.log(`[HSF] off_query: "${query}"`);
+    
+    if (!query) {
+      return { ok: false, reason: 'no_query', debug: { ocrTokens } };
+    }
+
+    // Search OFF
+    const searchResults = await searchOFFByQuery(query);
+    console.log(`[HSF] off_hits: ${searchResults.length}`);
+    
+    if (searchResults.length === 0) {
+      return { 
+        ok: false, 
+        reason: 'no_hits',
+        debug: { ocrTokens, offQuery: query, offHits: 0 }
+      };
+    }
+
+    // Score results
+    let bestProduct = null;
+    let bestScore = 0;
+
+    for (const product of searchResults) {
+      let score = 0;
+      
+      // Brand overlap bonus
+      const productBrands = (product.brands || '').toLowerCase().split(/[,\s]+/);
+      const brandOverlap = brandTokens.some(token => 
+        productBrands.some(brand => brand.includes(token.toLowerCase()))
+      );
+      if (brandOverlap) score += 60;
+
+      // Name similarity bonus  
+      const productName = (product.product_name || '').toLowerCase();
+      const ocrString = ocrTokens.join(' ').toLowerCase();
+      const similarity = jaroWinklerSimilarity(productName, ocrString);
+      score += similarity * 40;
+
+      if (score > bestScore && (product.product_name || '').length >= 3) {
+        bestScore = score;
+        bestProduct = product;
+      }
+    }
+
+    console.log(`[HSF] best_score: ${Math.round(bestScore)}`);
+
+    if (bestScore >= 55 && bestProduct) {
+      const result = mapOFFProduct(bestProduct);
+      result.debug = {
+        ocrTokens,
+        offQuery: query,
+        offHits: searchResults.length,
+        bestScore: Math.round(bestScore)
+      };
+      return result;
+    }
+
+    return {
+      ok: false,
+      reason: 'low_score',
+      debug: {
+        ocrTokens,
+        offQuery: query,
+        offHits: searchResults.length,
+        bestScore: Math.round(bestScore)
+      }
     };
+
+  } catch (error) {
+    console.error('OCR recognition failed:', error);
+    return { ok: false, reason: 'ocr_error', debug: {} };
   }
-  
-  // Step 6: Generate result with evidence
-  const flags = generateHealthFlags([], ctx.hasCandy);
-  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasStrongEvidence);
-  
-   // Final logging  
-   console.log(`[HSF] scan_final: { recognized: true, reason: "confidence_gating" }`);
-   
-   console.log(JSON.stringify({
-    reqId: ctx.reqId,
-    phase: 'done', 
-    barcodeFound: !!ctx.barcodeFound,
-    offHit: ctx.offHit || false,
-    brand: ctx.brandTokens.join(',') || 'none',
-    plateConf: ctx.plateConf,
-    scored: healthScore !== null,
-    productName: 'Detected Food',
-    latencyMs: Date.now() - ctx.now.getTime()
-  }));
-  
+}
+
+// Legacy function for backward compatibility
+async function processHealthScan(imageBase64: string, detectedBarcode?: string | null): Promise<BackendResponse> {
   return {
-    productName: "Detected Food",
-    healthScore,
-    healthFlags: flags,
+    productName: "Unknown product",
+    healthScore: null,
+    healthFlags: [],
     nutritionSummary: null,
     ingredients: [],
-    recommendations: generateRecommendations(flags),
-    generalSummary: generateHealthSummary(flags, healthScore)
+    recommendations: [
+      'Try scanning the barcode on the back of the package.',
+      'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+    ],
+    generalSummary: 'We could not confidently identify this item from the photo.',
+    fallback: true
   };
 }
 
@@ -780,210 +525,92 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error('Invalid JSON body:', e);
+      return createErrorResponse('invalid_body', 'Invalid JSON in request body');
+    }
+
     const reqId = crypto.randomUUID().substring(0, 8);
     const t0 = Date.now();
     
     console.log(`🚀 Processing health scan [${reqId}]`);
 
-    // Handle barcode mode for Log scanner
+    // Handle barcode mode for Log scanner (keep existing logic)
     if (body.mode === 'barcode' && body.barcode) {
       const norm = normalizeBarcode(body.barcode);
       if (!norm) {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          reason: 'invalid_barcode' 
-        }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return createErrorResponse('invalid_barcode', 'Invalid barcode format');
       }
 
       console.log(`🔍 Processing barcode [${reqId}]: ${norm.raw} (${norm.type})`);
       
-      const offResult = await fetchOFF(norm.raw).catch(e => ({ 
-        error: true, 
-        status: 500, 
-        message: String(e) 
-      }));
-      
-      if (offResult?.error) {
-        console.log(`❌ OFF error [${reqId}]:`, offResult.message);
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          reason: 'off_error', 
-          status: offResult.status 
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
+      const offResult = await fetchOFF(norm.raw).catch(e => null);
       
       if (!offResult?.product_found) {
         console.log(`❌ OFF miss [${reqId}]: ${norm.type} not found`);
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          reason: 'off_miss' 
-        }), { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return createErrorResponse('off_miss', 'Product not found in database');
       }
 
-      // Transform OpenFoodFacts product to LogProduct
-      const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
-      console.log('✅ OFF hit [' + reqId + ']: ' + logProduct.productName);
-      return new Response(
-        JSON.stringify({ ok: true, product: logProduct }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const result = mapOFFProduct(offResult.product, norm.raw);
+      console.log('✅ OFF hit [' + reqId + ']: ' + result.product?.name);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
-    
-    // Step 1: Original barcode-first logic for Health Scan
+
+    // Handle new photo mode with barcode first, then OCR fallback
     if (body.detectedBarcode) {
+      console.log('[HS] still_barcode_result: checking detected barcode...');
       const norm = normalizeBarcode(body.detectedBarcode);
       
       if (norm) {
-        console.log(`🔍 Processing barcode [${reqId}]: ${norm.raw} (${norm.type})`);
+        console.log(`[HS] still_barcode_result: { raw: "${norm.raw}", type: "${norm.type}", checksumOk: ${norm.checksumOk} }`);
         
-        // Try OpenFoodFacts lookup
-        const offResult = await fetchOFF(norm.raw);
+        const offResult = await fetchOFF(norm.raw).catch(e => null);
         if (offResult?.product_found) {
-          console.log(JSON.stringify({
-            reqId, 
-            phase: 'barcode-first', 
-            detectedBarcode: norm.raw, 
-            validBarcode: true, 
-            offHit: true, 
-            productName: offResult.product.product_name,
-            scored: true,
-            brandConf: null,
-            plateConf: null,
-            latencyMs: Date.now() - t0
-          }));
-          
-          return new Response(
-            JSON.stringify(mapOFFtoBackendResponse(offResult.product)),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        } else {
-          // Valid barcode but no OFF match
-          console.log(JSON.stringify({
-            reqId, 
-            phase: 'barcode-first', 
-            detectedBarcode: norm.raw, 
-            validBarcode: true, 
-            offHit: false, 
-            productName: 'unknown',
-            scored: false,
-            brandConf: null,
-            plateConf: null,
-            latencyMs: Date.now() - t0
-          }));
-          
-          return new Response(
-            JSON.stringify({
-              productName: 'Unknown product',
-              healthScore: null,
-              healthFlags: [],
-              nutritionSummary: null,
-              ingredients: [],
-              recommendations: [
-                'Try scanning the barcode on the back of the package.',
-                'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
-              ],
-              generalSummary: 'Barcode detected but no product information found.',
-              fallback: true
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          const result = mapOFFProduct(offResult.product, norm.raw);
+          console.log(`[HSF] final: { ok: true, source: 'barcode', reason: 'barcode_match' }`);
+          return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
+      } else {
+        console.log(`[HS] still_barcode_result: { reason: 'invalid_format' }`);
       }
-    }
-    
-    // Step 2: Proceed with image analysis if no barcode or barcode failed
-    if (!body.imageBase64) {
-      throw new Error('No image data provided');
+    } else {
+      console.log(`[HS] still_barcode_result: { reason: 'no_barcode' }`);
     }
 
-    const result = await processHealthScan(body.imageBase64, body.detectedBarcode);
-    
-    // Enhanced evidence gating
-    const hasRealEvidence = 
-      Boolean(result.barcode) ||
-      (result.productName !== 'Unknown product' && result.productName !== 'Detected Food') ||
-      ((result.healthScore !== null) && (result.healthScore > 0));
-    
-    if (!hasRealEvidence) {
-      console.log(JSON.stringify({
-        reqId, 
-        phase: 'done', 
-        barcodeFound: false, 
-        offHit: false, 
-        brand: 'none',
-        plateConf: 0, 
-        scored: false, 
-        productName: 'unknown',
-        latencyMs: Date.now() - t0
-      }));
-      
-      return new Response(
-        JSON.stringify({
-          productName: 'Unknown product',
-          healthScore: null,
-          healthFlags: [],
-          nutritionSummary: {},
-          ingredients: [],
-          recommendations: [
-            'Try scanning the barcode on the back of the package.',
-            'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
-          ],
-          generalSummary: 'We could not confidently identify this item from the photo.',
-          fallback: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Step 2: Handle new photo mode with OCR fallback
+    const imageB64 = body.image_b64 || body.imageBase64;
+    if (!imageB64) {
+      console.log(`❌ No image data [${reqId}]`);
+      return createErrorResponse('no_image', 'No image data provided');
     }
+
+    console.log('[HS] still_pass_start');
     
-    console.log(JSON.stringify({
-      reqId, 
-      phase: 'done', 
-      barcodeFound: Boolean(result.barcode), 
-      offHit: Boolean(result.barcode), 
-      brand: 'image-detected',
-      plateConf: null, 
-      scored: result.healthScore !== null, 
-      productName: result.productName || 'unknown',
-      latencyMs: Date.now() - t0
-    }));
+    // Try OCR-based product recognition
+    const ocrResult = await tryOCRRecognition(imageB64, reqId);
     
-    return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    if (ocrResult.ok && ocrResult.product) {
+      console.log(`[HSF] final: { ok: true, source: '${ocrResult.source}', reason: '${ocrResult.reason}' }`);
+      return new Response(JSON.stringify(ocrResult), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return OCR failure result
+    console.log(`[HSF] final: { ok: false, source: 'ocr', reason: '${ocrResult.reason}' }`);
+    return new Response(JSON.stringify(ocrResult), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
     console.error('💥 Enhanced-health-scanner error:', error);
-    
-    const errorResponse: BackendResponse = {
-      productName: "Error",
-      healthScore: null,
-      healthFlags: [{
-        type: 'danger' as const,
-        icon: '❌',
-        title: 'Processing Error',
-        description: `Failed to analyze: ${error.message}`
-      }],
-      nutritionSummary: null,
-      ingredients: [],
-      recommendations: GENERAL_TIPS.slice(),
-      generalSummary: "Unable to process request due to internal error",
-      fallback: true
-    };
-    
-    return new Response(JSON.stringify(errorResponse), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return createErrorResponse('internal_error', 'Internal processing error');
   }
 });
