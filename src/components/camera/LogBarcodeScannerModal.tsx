@@ -308,7 +308,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   onClick={onManualEntry}
                   className="flex-1 h-12 rounded-xl bg-white/8 text-white/90 hover:bg-white/12 border-0"
                 >
-                  <Edit3 className="h-4 w-4 mr-2" />
                   ✍️ Enter Manually
                 </Button>
                 
@@ -322,7 +321,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                         : 'bg-white/8 text-white/90 hover:bg-white/12'
                     }`}
                   >
-                    <FlashlightIcon className="h-4 w-4 mr-2" />
                     🔦 {torchEnabled ? 'Flash On' : 'Flash Off'}
                   </Button>
                 )}

@@ -33,6 +33,7 @@ import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import ConfirmFoodLog from '@/components/ConfirmFoodLog';
 import { mapServerToLogProduct, LogProduct, BarcodeProduct } from '@/lib/log/mappers';
+import { normalizeToConfirmFood, ConfirmFoodPayload } from '@/lib/food/normalize';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
@@ -1008,15 +1009,42 @@ console.log('Global search enabled:', enableGlobalSearch);
         // Log successful OFF result 
         console.log('[LOG] off_result', { status: 200, hit: true });
 
-        // Map server response to LogProduct format
-        const mappedLogProduct = mapServerToLogProduct(p as BarcodeProduct);
+        // Normalize server response to client format
+        const normalizedProduct = normalizeToConfirmFood(p);
         
         console.log('[LOG] confirm_open', {
-          name: mappedLogProduct.name,
-          barcode: mappedLogProduct.barcode,
-          hasNutrition: !!(mappedLogProduct.nutrition.calories || mappedLogProduct.nutrition.protein),
-          flags: mappedLogProduct.healthFlags.length
+          name: normalizedProduct.name,
+          barcode: normalizedProduct.barcode,
+          hasNutrition: !!(normalizedProduct.nutrition.calories || normalizedProduct.nutrition.protein_g),
+          flags: normalizedProduct.health.flags.length
         });
+
+        const mappedLogProduct = {
+          name: normalizedProduct.name,
+          brand: p.brand,
+          barcode: normalizedProduct.barcode,
+          imageUrl: normalizedProduct.imageUrl,
+          nutrition: {
+            calories: normalizedProduct.nutrition.calories,
+            protein: normalizedProduct.nutrition.protein_g,
+            carbs: normalizedProduct.nutrition.carbs_g,
+            fat: normalizedProduct.nutrition.fat_g,
+            sugar: normalizedProduct.nutrition.sugar_g,
+            fiber: normalizedProduct.nutrition.fiber_g,
+            sodium: normalizedProduct.nutrition.sodium_mg,
+            serving: p.nutritionSummary?.servingSize,
+          },
+          ingredients: normalizedProduct.ingredients,
+          additives: normalizedProduct.additives,
+          allergens: normalizedProduct.allergens,
+          healthFlags: normalizedProduct.health.flags.map(f => ({
+            type: (f.level === 'danger' ? 'danger' : f.level === 'warn' ? 'warning' : 'good') as 'danger' | 'warning' | 'good',
+            title: f.kind,
+            description: f.note,
+          })),
+          healthScore: normalizedProduct.health.score,
+          nova: p.nova,
+        } as LogProduct;
 
         // Set LogProduct and show new confirmation modal
         setLogProduct(mappedLogProduct);
