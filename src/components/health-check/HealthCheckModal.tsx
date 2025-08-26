@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
@@ -11,9 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
-import { adaptScanResult, ScanResult } from '@/types/healthScan';
-import { prepareImage } from '@/utils/imageUtils';
-import { logScanEvent } from '@/lib/healthScanEvents';
 
 interface HealthCheckModalProps {
   isOpen: boolean;
@@ -50,16 +47,13 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type Phase = "idle" | "capturing" | "uploading" | "processing" | "result" | "error" | "retake";
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [scan, setScan] = useState<ScanResult | null>(null);
-  const [requestId, setRequestId] = useState<string | undefined>();
+  const [currentState, setCurrentState] = useState<ModalState>('scanner');
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
@@ -69,112 +63,49 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setPhase("idle");
-      setScan(null);
-      setError(null);
+      setCurrentState('scanner');
       setAnalysisResult(null);
       setLoadingMessage('');
     }
   }, [isOpen]);
 
-  const callScanner = useCallback(async (blob: Blob, mode?: "ping") => {
-    setPhase("processing");
-    setError(null);
-    const traceId = crypto.randomUUID();
-    try {
-      const res = await fetch(`/functions/v1/enhanced-health-scanner` + (mode ? `?mode=${mode}` : ""), {
-        method: "POST",
-        headers: { "content-type": "image/jpeg", "x-trace-id": traceId },
-        body: blob,
-      });
-      const raw = await res.json();
-      const adapted = adaptScanResult(raw);
-      setScan(adapted);
-      setRequestId(adapted.requestId ?? traceId);
-      setPhase("result");
-      
-      logScanEvent("scan_result", { 
-        status: adapted.status, 
-        flags: adapted.flags?.length, 
-        requestId: traceId 
-      });
-    } catch (e: any) {
-      console.error("scan_error", { traceId, err: String(e) });
-      logScanEvent("scan_error", { error: String(e), traceId });
-      setError("We couldn't process the photo. Try retaking with better lighting.");
-      setPhase("error");
-    }
-  }, []);
-
-  async function onPhotoSelected(file: File) {
-    setPhase("uploading");
-    try {
-      const blob = await prepareImage(file); // ensures JPEG + orientation + resize
-      await callScanner(blob);
-    } catch (e: any) {
-      setError("Couldn't read the image. Please try again.");
-      setPhase("error");
-    }
-  }
-
-  function handleRetake() {
-    setScan(null);
-    setError(null);
-    setPhase("retake"); // your UI should re-open the camera/file picker
-  }
-
-  function handleManualSearch() {
-    setPhase("idle"); // keep existing manual flow
-    // Optionally close modal or keep as side panel
-  }
-
-  const nextActions = useMemo(() => scan?.nextActions ?? [], [scan]);
-
   const handleImageCapture = async (imageData: string) => {
+    console.log("🚀 HealthCheckModal.handleImageCapture called!");
+    console.log("📥 Image data received:", imageData ? `${imageData.length} characters` : "NO DATA");
+    console.log("👤 User ID:", user?.id || "NO USER");
+    
     try {
-      setPhase('processing');
+      setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
       // Check if image contains a barcode (appended from HealthScannerInterface)
       const barcodeMatch = imageData.match(/&barcode=(\d+)$/);
       const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
       
-      // Clean image data if it contains a barcode parameter
-      const cleanImageData = detectedBarcode ? 
-        imageData.replace(/&barcode=\d+$/, '') : 
-        imageData;
-      
-        if (detectedBarcode) {
-          setAnalysisType('barcode');
-          setLoadingMessage('Processing barcode...');
-          
-          const offLookupStart = Date.now();
-          
-          if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-            console.log('[HS] off_lookup_start', { barcode: detectedBarcode });
-          }
-          
-          // Use the dedicated barcode processor with enhanced OFF lookup
-          try {
-            const result = await handleBarcodeInputEnhanced(detectedBarcode, user?.id);
-          
-          const offLookupMs = Date.now() - offLookupStart;
+      if (detectedBarcode) {
+        console.log('📊 Barcode detected in image:', detectedBarcode);
+        setAnalysisType('barcode');
+        setLoadingMessage('Processing barcode...');
+        
+        // Remove the barcode part from the image data
+        const cleanImageData = imageData.replace(/&barcode=\d+$/, '');
+        
+        // Use the dedicated barcode processor
+        try {
+          console.log('🔄 Processing barcode:', detectedBarcode);
+          const result = await handleBarcodeInput(detectedBarcode, user?.id);
           
           if (!result) {
+            console.log('⚠️ No results from barcode lookup, falling back to image analysis');
             // If barcode lookup fails, continue with regular image analysis
-            if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-              console.log('[HS] off_lookup', { status: 'miss', ms: offLookupMs, barcode: detectedBarcode });
-            }
             return handleImageCapture(cleanImageData);
           }
           
-          if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-            console.log('[HS] off_lookup', { status: 'hit', ms: offLookupMs, barcode: detectedBarcode });
-          }
-          
-          if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-            console.log('[HS] off', { status: 'success', hasProduct: true });
-          }
+          // Log successful barcode analysis
+          console.log('✅ Barcode analysis complete:', {
+            productName: result.productName,
+            healthScore: result.healthScore
+          });
           
           // Transform the backend response to match frontend interface
           const analysisResult: HealthAnalysisResult = {
@@ -207,7 +138,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             },
             personalizedWarnings: Array.isArray(result.recommendations) ? 
               result.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
-            suggestions: Array.isArray(result.recommendations) ? result.recommendations : ['No specific recommendations available.'],
+            suggestions: Array.isArray(result.recommendations) ? result.recommendations : [result.summary || 'No specific recommendations available.'],
             overallRating: result.healthScore >= 80 ? 'excellent' : 
                           result.healthScore >= 60 ? 'good' : 
                           result.healthScore >= 40 ? 'fair' : 
@@ -215,7 +146,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           };
           
           setAnalysisResult(analysisResult);
-          setPhase('result');
+          setCurrentState('report');
           
           // Trigger daily score calculation after health scan completion
           if (user?.id) {
@@ -226,37 +157,40 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         } catch (barcodeError) {
           console.error('❌ Barcode analysis failed:', barcodeError);
           // Continue with image analysis as fallback
+          console.log('🔄 Falling back to image analysis...');
         }
       }
       
       // If no barcode or barcode processing failed, proceed with image analysis
       setAnalysisType('image');
       
-      // Evidence gating: only proceed if we expect good results (plate confidence >= 0.85)
-      const plateConf = hasHighQualityPlate(cleanImageData) ? 0.9 : 0.3; // Mock confidence for now
-      const willScore = detectedBarcode || plateConf >= 0.85;
+      console.log('🖼️ About to call enhanced-health-scanner function...');
       
-      if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-        console.log('[HS] decision', { willScore, willFallback: !willScore, plateConf });
-      }
-      
-      if (!willScore) {
-        // Route to manual entry fallback instead of error
-        setPhase('error');
-        return;
-      }
+      // Clean image data if it contains a barcode parameter
+      const cleanImageData = detectedBarcode ? 
+        imageData.replace(/&barcode=\d+$/, '') : 
+        imageData;
         
       // Use enhanced scanner with structured results
       const payload = {
         imageBase64: cleanImageData,
-        mode: 'scan'
+        mode: 'scan',
+        detectedBarcode: detectedBarcode || null
       };
+      
+      console.log('📦 Enhanced scanner payload:', {
+        mode: payload.mode,
+        dataLength: payload.imageBase64?.length || 0,
+        hasDetectedBarcode: !!detectedBarcode
+      });
       
       let data, error;
       try {
+        console.log('🔄 Making enhanced-health-scanner call...');
         const result = await supabase.functions.invoke('enhanced-health-scanner', {
           body: payload
         });
+        console.log("✅ Enhanced Health Scanner Success:", result);
         
         data = result.data;
         error = result.error;
@@ -268,32 +202,63 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if (error) {
         throw new Error(error.message || 'Failed to analyze image');
       }
+
+      console.log('✅ Health check processor response:', data);
+      console.log('🏥 Health Score:', data.healthScore);
+      console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
       
       // Check if image recognition failed based on various criteria
-      const isImageRecognitionFailure = (
-        // No meaningful product name detected
-        !data.productName || 
-        data.productName === 'Unknown Product' || 
-        data.productName === 'Unknown Item' || 
-        data.productName === 'Error' ||
-        data.productName === 'Detected Food' ||
-        // Very low confidence or health score indicating poor recognition
-        data.healthScore === 0 ||
-        // Specific failure indicators in health flags
-        data.healthFlags?.some((flag: any) => 
-          flag.title === 'Processing Error' || 
-          flag.title === 'Product Not Found' ||
-          flag.description?.includes('Unable to parse') ||
-          flag.description?.includes('couldn\'t identify')
-        ) ||
-        // Empty or minimal ingredients suggesting failed recognition
-        (!data.ingredients || data.ingredients.length === 0 || 
-         (data.ingredients.length === 1 && data.ingredients[0] === 'Unable to parse ingredients'))
+      // Only treat as failure if we have explicit fallback flag or truly no evidence
+      const hasValidRecommendations = Array.isArray(data.recommendations) && data.recommendations.length >= 2;
+      const hasHealthFlags = Array.isArray(data.healthFlags) && data.healthFlags.length > 0;
+      const hasNutritionData = data.nutritionSummary && typeof data.nutritionSummary === 'object' && 
+                              Object.keys(data.nutritionSummary).length > 0;
+      
+      // Debug log for success evaluation
+      console.log('scan_success_eval:', {
+        hasName: !!data.productName && data.productName !== 'Unknown Product' && data.productName !== 'Error',
+        hasBarcode: !!data.barcode,
+        recs: Array.isArray(data.recommendations) ? data.recommendations.length : 0,
+        flags: Array.isArray(data.healthFlags) ? data.healthFlags.length : 0,
+        hasValidRecommendations,
+        hasHealthFlags,
+        hasNutritionData,
+        fallbackFlag: data.fallback
+      });
+      
+      // Use explicit fallback flag from server or no evidence at all
+      const isImageRecognitionFailure = data.fallback || (
+        (!hasValidRecommendations && !hasHealthFlags && !hasNutritionData) &&
+        (
+          // No meaningful product name detected
+          !data.productName || 
+          data.productName === 'Unknown Product' || 
+          data.productName === 'Unknown Item' || 
+          data.productName === 'Error'
+        )
       );
 
       if (isImageRecognitionFailure) {
-        setPhase('error');
+        console.log('🚨 Image recognition failed - redirecting to manual entry');
+        console.log('💡 Failure criteria met:', {
+          productName: data.productName,
+          healthScore: data.healthScore,
+          ingredientsCount: data.ingredients?.length || 0,
+          hasErrorFlags: data.healthFlags?.some((flag: any) => 
+            flag.title === 'Processing Error' || 
+            flag.title === 'Product Not Found'
+          )
+        });
+        setCurrentState('fallback');
         return;
+      }
+      
+      // Log whether barcode was detected or Google Vision/GPT was used
+      if (data.barcode) {
+        console.log('📊 Barcode detected in response:', data.barcode);
+        setAnalysisType('barcode');
+      } else {
+        console.log('🔍 No barcode found - using Google Vision + GPT analysis');
       }
       
       // Transform the backend response to match frontend interface
@@ -335,7 +300,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
 
       setAnalysisResult(analysisResult);
-      setPhase('result');
+      setCurrentState('report');
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
@@ -348,13 +313,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         description: "Unable to analyze the image. Please try again or use manual entry.",
         variant: "destructive",
       });
-      setPhase('error');
+      setCurrentState('fallback');
     }
   };
 
   const handleManualEntry = async (query: string, type: 'text' | 'voice') => {
     try {
-      setPhase('processing');
+      setCurrentState('loading');
       setAnalysisType('manual');
       setLoadingMessage(type === 'voice' ? 'Processing voice input...' : 'Searching food database...');
       
@@ -364,7 +329,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         body: {
           inputType: type,
           data: query,
-          userId: user?.id
+          userId: user?.id,
+          detectedBarcode: null
         }
       });
 
@@ -415,7 +381,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
 
       setAnalysisResult(result);
-      setPhase('result');
+      setCurrentState('report');
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
@@ -428,19 +394,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         description: `Unable to process ${type} input. Please try again.`,
         variant: "destructive",
       });
-      setPhase('error');
+      setCurrentState('fallback');
     }
   };
 
   const handleScanAnother = () => {
-    setPhase("idle");
-    setScan(null);
+    setCurrentState('scanner');
     setAnalysisResult(null);
   };
 
   const handleClose = () => {
-    setPhase("idle");
-    setScan(null);
+    setCurrentState('scanner');
     setAnalysisResult(null);
     onClose();
   };
@@ -449,193 +413,68 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
-          phase === 'result' || phase === 'error' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
+          currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
       >
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {(phase === "idle" || phase === "retake") && (
+          {currentState === 'scanner' && (
             <HealthScannerInterface 
               onCapture={handleImageCapture}
-              onManualEntry={() => setPhase("idle")}
+              onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
               onCancel={handleClose}
             />
           )}
 
-        {/* Processing Phase - Show loading animation */}
-        {phase === "processing" && (
-          <HealthAnalysisLoading 
-            message={loadingMessage || 'Analyzing...'}
-            analysisType={analysisType}
-          />
-        )}
+          {currentState === 'loading' && (
+            <HealthAnalysisLoading 
+              message={loadingMessage}
+              analysisType={analysisType}
+            />
+          )}
 
-        {/* Show results */}
-        {phase === "result" && analysisResult && (
-          <HealthReportPopup
-            result={analysisResult}
-            onScanAnother={handleScanAnother}
-            onClose={handleClose}
-          />
-        )}
+          {currentState === 'report' && analysisResult && (
+            <HealthReportPopup
+              result={analysisResult}
+              onScanAnother={handleScanAnother}
+              onClose={handleClose}
+            />
+          )}
 
-        {phase === "error" && (
-          <ManualEntryFallback
-            onManualEntry={handleManualEntry}
-            onBack={() => setPhase("retake")}
-          />
-        )}
-
-        {/* Legacy scan result flow */}
-        {phase === "result" && scan && !analysisResult && (
-          <ResultCard
-            scan={scan}
-            requestId={requestId}
-            onRetake={handleRetake}
-            onManualSearch={handleManualSearch}
-            onConfirmItems={() => {}}
-            onChoosePortion={() => {}}
-            onOpenFacts={() => {}}
-          />
-        )}
+          {currentState === 'fallback' && (
+            <ManualEntryFallback
+              onManualEntry={handleManualEntry}
+              onBack={() => setCurrentState('scanner')}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 };
 
-// Enhanced barcode processor with direct OFF lookup
-export const handleBarcodeInputEnhanced = async (barcode: string, userId?: string) => {
-  try {
-    // Direct OpenFoodFacts lookup (v2 then v1 fallback)
-    let offProduct = null;
-    
-    // Try v2 API first
-    try {
-      const v2Response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-      const v2Data = await v2Response.json();
-      
-      if (v2Data.status === 1 && v2Data.product) {
-        offProduct = v2Data.product;
-      }
-    } catch (v2Error) {
-      // Continue to v1 fallback
-    }
-    
-    // Fallback to v1 API
-    if (!offProduct) {
-      try {
-        const v1Response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-        const v1Data = await v1Response.json();
-        
-        if (v1Data.status === 1 && v1Data.product) {
-          offProduct = v1Data.product;
-        }
-      } catch (v1Error) {
-        // Both failed
-      }
-    }
-    
-    if (!offProduct) {
-      return null;
-    }
-    
-    // Map OFF product to our health analysis format
-    const productName = offProduct.product_name || offProduct.product_name_en || 'Unknown Product';
-    const ingredients = offProduct.ingredients_text || offProduct.ingredients_text_en || '';
-    const nutritionData = offProduct.nutriments || {};
-    
-    // Calculate basic health score based on available data
-    let healthScore = 50; // Base score
-    
-    // Positive factors
-    if (offProduct.labels_tags?.some((label: string) => label.includes('organic'))) healthScore += 20;
-    if (offProduct.additives_n === 0) healthScore += 15;
-    if (offProduct.nova_group <= 2) healthScore += 10;
-    
-    // Negative factors
-    if (offProduct.additives_n > 5) healthScore -= 20;
-    if (offProduct.nova_group >= 4) healthScore -= 15;
-    if (nutritionData.salt_100g > 1.5) healthScore -= 10;
-    if (nutritionData.sugars_100g > 15) healthScore -= 10;
-    
-    // Ensure score is within bounds
-    healthScore = Math.max(0, Math.min(100, healthScore));
-    
-    // Generate health flags based on OFF data
-    const healthFlags = [];
-    
-    if (offProduct.additives_n > 0) {
-      healthFlags.push({
-        title: 'Food Additives',
-        description: `Contains ${offProduct.additives_n} food additives`,
-        type: offProduct.additives_n > 5 ? 'danger' : 'warning'
-      });
-    }
-    
-    if (offProduct.nova_group >= 4) {
-      healthFlags.push({
-        title: 'Ultra-processed Food',
-        description: 'This is classified as an ultra-processed food (NOVA Group 4)',
-        type: 'warning'
-      });
-    }
-    
-    if (nutritionData.salt_100g > 1.5) {
-      healthFlags.push({
-        title: 'High Salt Content',
-        description: `High salt content: ${nutritionData.salt_100g}g per 100g`,
-        type: 'warning'
-      });
-    }
-    
-    if (nutritionData.sugars_100g > 15) {
-      healthFlags.push({
-        title: 'High Sugar Content',
-        description: `High sugar content: ${nutritionData.sugars_100g}g per 100g`,
-        type: 'warning'
-      });
-    }
-    
-    return {
-      productName,
-      healthScore,
-      healthFlags,
-      ingredients: ingredients ? ingredients.split(',').map((ing: string) => ing.trim()) : [],
-      nutritionSummary: {
-        calories: nutritionData.energy_kcal_100g || nutritionData.energy_100g,
-        protein: nutritionData.proteins_100g,
-        carbs: nutritionData.carbohydrates_100g,
-        fat: nutritionData.fat_100g,
-        fiber: nutritionData.fiber_100g,
-        sugar: nutritionData.sugars_100g,
-        sodium: nutritionData.sodium_100g
-      },
-      recommendations: [
-        healthScore >= 80 ? 'This product has a good nutritional profile.' :
-        healthScore >= 60 ? 'This product is acceptable for occasional consumption.' :
-        healthScore >= 40 ? 'Consider this as an occasional treat.' :
-        'Look for healthier alternatives when possible.',
-        `Barcode: ${barcode} • Source: OpenFoodFacts`
-      ],
-      barcode
-    };
-  } catch (error) {
-    console.error('❌ Error in enhanced barcode processor:', error);
-    return null;
-  }
-}
-
-// Check if image has high-quality plate/food content
-function hasHighQualityPlate(imageData: string): boolean {
-  // Placeholder - in production this would use basic image analysis
-  // For now, assume true to maintain existing behavior
-  return true;
-}
-
-// Keep original function for backward compatibility
+// Helper function to handle barcode input specifically
 export const handleBarcodeInput = async (barcode: string, userId?: string) => {
-  return handleBarcodeInputEnhanced(barcode, userId);
+  console.log('📊 Processing barcode input:', barcode);
+  
+  const { data, error } = await supabase.functions.invoke('health-check-processor', {
+    body: {
+      inputType: 'barcode',
+      data: barcode,
+      userId: userId,
+      detectedBarcode: barcode
+    }
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to analyze barcode');
+  }
+
+  console.log('✅ Barcode processor response:', data);
+  console.log('🏥 Health Score:', data.healthScore);
+  console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
+  
+  return data;
 };

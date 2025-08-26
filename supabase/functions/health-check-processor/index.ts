@@ -17,10 +17,11 @@ interface HealthReport {
   productName: string;
   ingredients: string[];
   healthFlags: HealthFlag[];
-  healthScore: number;
+  healthScore: number | null;
   nutritionData: any;
   summary: string;
   recommendations: string[];
+  fallback?: boolean;
 }
 
 interface ProcessedInput {
@@ -29,132 +30,294 @@ interface ProcessedInput {
   imageData?: string;
 }
 
-// Health analysis patterns
-const INGREDIENT_FLAGS = {
-  danger: [
-    { pattern: /high fructose corn syrup|HFCS/i, title: "High Fructose Corn Syrup", description: "Linked to obesity and metabolic dysfunction" },
-    { pattern: /soybean oil|canola oil|vegetable oil|corn oil/i, title: "Refined Seed Oils", description: "High in inflammatory omega-6 fatty acids" },
-    { pattern: /monosodium glutamate|MSG/i, title: "MSG", description: "May trigger headaches and digestive issues" },
-    { pattern: /aspartame|sucralose|acesulfame/i, title: "Artificial Sweeteners", description: "May disrupt gut microbiome and metabolism" },
-    { pattern: /sodium nitrite|sodium nitrate/i, title: "Nitrites/Nitrates", description: "Potential carcinogenic compounds in processed meats" },
-    { pattern: /trans fat|partially hydrogenated/i, title: "Trans Fats", description: "Increases risk of heart disease and inflammation" },
-    { pattern: /yellow #5|red #40|blue #1|artificial color/i, title: "Artificial Colors", description: "Linked to hyperactivity and allergic reactions" },
-  ],
-  warning: [
-    { pattern: /sugar|glucose|fructose|dextrose/i, title: "Added Sugars", description: "Contributes to blood sugar spikes and weight gain" },
-    { pattern: /sodium/i, title: "High Sodium", description: "May contribute to high blood pressure" },
-    { pattern: /preservative|BHA|BHT|sodium benzoate/i, title: "Preservatives", description: "Some linked to allergic reactions and health concerns" },
-    { pattern: /natural flavor|artificial flavor/i, title: "Natural/Artificial Flavors", description: "Vague ingredient that may contain additives" },
-    { pattern: /carrageenan/i, title: "Carrageenan", description: "May cause digestive inflammation in sensitive individuals" },
-  ],
-  good: [
-    { pattern: /organic/i, title: "Organic", description: "Free from synthetic pesticides and GMOs" },
-    { pattern: /whole grain|quinoa|brown rice/i, title: "Whole Grains", description: "Rich in fiber and nutrients" },
-    { pattern: /olive oil|avocado oil|coconut oil/i, title: "Healthy Oils", description: "Contains beneficial fats and antioxidants" },
-    { pattern: /probiotic|live cultures/i, title: "Probiotics", description: "Supports digestive and immune health" },
-    { pattern: /vitamin|mineral|omega-3/i, title: "Added Nutrients", description: "Fortified with beneficial vitamins and minerals" },
-  ]
-};
-
-// Product name extraction function
-function extractProductNamesFromText(text: string): string[] {
-  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-  const candidates: string[] = [];
-  
-  // Common brand patterns (case insensitive)
-  const knownBrands = [
-    'kirkland', 'oatly', 'ben & jerry\'s', 'coca cola', 'pepsi', 'heinz', 'kellogg\'s',
-    'general mills', 'nabisco', 'kraft', 'nestle', 'unilever', 'procter & gamble',
-    'johnson & johnson', 'tide', 'dove', 'axe', 'degree', 'suave', 'tresemme',
-    'pantene', 'head & shoulders', 'oral-b', 'crest', 'gillette', 'venus',
-    'always', 'tampax', 'pampers', 'huggies', 'bounty', 'charmin', 'cottonelle',
-    'scott', 'viva', 'brawny', 'sparkle', 'angel soft', 'quilted northern'
-  ];
-  
-  // Product type keywords
-  const productTypes = [
-    'milk', 'almond milk', 'oat milk', 'yogurt', 'cheese', 'butter', 'cream',
-    'ice cream', 'frozen', 'organic', 'natural', 'whole', 'low fat', 'fat free',
-    'unsweetened', 'vanilla', 'chocolate', 'strawberry', 'blueberry'
-  ];
-  
-  // Look for brand names in text
-  lines.forEach(line => {
-    const lowerLine = line.toLowerCase();
-    
-    // Check for known brands
-    knownBrands.forEach(brand => {
-      if (lowerLine.includes(brand)) {
-        candidates.push(line);
-      }
-    });
-    
-    // Look for lines with product types
-    if (productTypes.some(type => lowerLine.includes(type))) {
-      candidates.push(line);
-    }
-    
-    // Look for lines that appear to be product names (capitalized words, reasonable length)
-    if (line.length > 3 && line.length < 50 && /^[A-Z]/.test(line) && !/^\d/.test(line)) {
-      candidates.push(line);
-    }
-  });
-  
-  // Remove duplicates and sort by relevance
-  const uniqueCandidates = [...new Set(candidates)];
-  
-  // Prioritize shorter, cleaner names that look like product names
-  return uniqueCandidates
-    .filter(candidate => candidate.length > 3 && candidate.length < 50)
-    .sort((a, b) => {
-      // Prefer lines with brand names
-      const aHasBrand = knownBrands.some(brand => a.toLowerCase().includes(brand));
-      const bHasBrand = knownBrands.some(brand => b.toLowerCase().includes(brand));
-      if (aHasBrand && !bHasBrand) return -1;
-      if (!aHasBrand && bHasBrand) return 1;
-      
-      // Prefer shorter, cleaner names
-      return a.length - b.length;
-    })
-    .slice(0, 3); // Return top 3 candidates
+interface RequestContext {
+  reqId: string;
+  now: Date;
+  ocrText: string;
+  tokens: string[];
+  brandTokens: string[];
+  hasCandy: boolean;
+  barcodeFound?: string;
+  offHit?: boolean;
+  plateConf: number;
 }
 
-function analyzeIngredients(ingredients: string[]): HealthFlag[] {
+// Read-only health rules configuration (immutable)
+const HEALTH_RULES = Object.freeze({
+  gmo_risk: Object.freeze([
+    'soy', 'corn', 'canola', 'sugar beet', 'cottonseed',
+    'soybean oil', 'corn syrup', 'high fructose corn syrup',
+    'canola oil', 'cottonseed oil'
+  ]),
+  
+  additives: Object.freeze({
+    artificial_colors: Object.freeze(['yellow #5', 'red #40', 'blue #1', 'yellow #6', 'red #3', 'blue #2']),
+    preservatives: Object.freeze(['sodium benzoate', 'potassium sorbate', 'bha', 'bht', 'tbhq']),
+    sweeteners: Object.freeze(['aspartame', 'sucralose', 'acesulfame potassium', 'saccharin']),
+    flavor_enhancers: Object.freeze(['monosodium glutamate', 'msg', 'autolyzed yeast extract']),
+    emulsifiers: Object.freeze(['carrageenan', 'polysorbate 80', 'sodium stearoyl lactylate'])
+  }),
+  
+  allergens: Object.freeze([
+    'milk', 'eggs', 'fish', 'shellfish', 'tree nuts', 
+    'peanuts', 'wheat', 'soybeans', 'sesame'
+  ]),
+  
+  nutrition_limits: Object.freeze({
+    sodium_high: 20,
+    sugar_high: 15,
+    saturated_fat_high: 20,
+    trans_fat_danger: 0.5
+  })
+});
+
+// Read-only lexicons (immutable)
+const STOP_WORDS = Object.freeze(new Set([
+  'original', 'natural', 'flavored', 'sweet', 'crunchy', 'family', 'size', 
+  'net', 'wt', 'gluten', 'free', 'non', 'gmo', 'keto', 'certified', 'made', 'with'
+]));
+
+const BRAND_LEXICON = Object.freeze(new Set([
+  'skittles', 'mars', 'trader', "joe's", "trader joe's", 'nutrail', 
+  'nature\'s path', 'cascadian farm', 'haribo', 'trolli', 'kirkland'
+]));
+
+const CANDY_KEYWORDS = Object.freeze(new Set([
+  'candy', 'gummy', 'gummies', 'taffy', 'lollipop', 'chewy candy'
+]));
+
+const GENERAL_TIPS = Object.freeze([
+  'Focus on whole, unprocessed foods when possible',
+  'Check ingredient lists for hidden additives',
+  'Consider portion sizes and frequency of consumption'
+]);
+
+/**
+ * ZXing-style barcode detection from binary image data
+ */
+async function detectBarcodeFromBinary(imageBase64: string): Promise<{ barcode?: string; confidence: number }> {
+  try {
+    console.log('🔍 Starting ZXing barcode detection...');
+    
+    // Use existing barcode-image-detector function
+    const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/barcode-image-detector`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+      },
+      body: JSON.stringify({ imageBase64 })
+    });
+    
+    const data = await response.json();
+    if (data.barcode && /^\d{8,14}$/.test(data.barcode)) {
+      console.log('✅ ZXing barcode detected:', data.barcode);
+      return { barcode: data.barcode, confidence: 0.95 };
+    }
+    return { confidence: 0 };
+  } catch (error) {
+    console.warn('❌ ZXing barcode detection failed:', error);
+    return { confidence: 0 };
+  }
+}
+
+/**
+ * Extract and clean OCR text
+ */
+async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; cleanedTokens: string[]; brandTokens: string[]; hasCandy: boolean }> {
+  try {
+    const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+    if (!apiKey) {
+      throw new Error('Google Vision API key not configured');
+    }
+
+    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: imageBase64 },
+          features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+        }]
+      })
+    });
+
+    const result = await response.json();
+    const rawText = result.responses[0]?.textAnnotations?.[0]?.description || '';
+    
+    // Normalize: lowercase, strip punctuation, collapse whitespace
+    const normalized = rawText
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Remove stop-words and packaging tokens
+    const tokens = normalized.split(/\s+/)
+      .filter(token => token.length > 0 && !STOP_WORDS.has(token));
+    
+    // Extract brand evidence
+    const brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+    
+    // Candy detection (only from current OCR tokens)
+    const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token));
+    
+    console.log('📝 OCR processed:', { 
+      rawLength: rawText.length, 
+      tokens: tokens.length, 
+      brandTokens, 
+      hasCandy 
+    });
+    
+    return { 
+      text: rawText,
+      cleanedTokens: tokens, 
+      brandTokens, 
+      hasCandy 
+    };
+  } catch (error) {
+    console.error('❌ OCR extraction failed:', error);
+    return { text: '', cleanedTokens: [], brandTokens: [], hasCandy: false };
+  }
+}
+
+/**
+ * OpenFoodFacts lookup by barcode
+ */
+async function lookupByBarcode(barcode: string): Promise<any | null> {
+  try {
+    console.log(`🔍 OpenFoodFacts lookup for barcode: ${barcode}`);
+    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data = await response.json();
+    
+    if (data.status === 1 && data.product) {
+      console.log('✅ OpenFoodFacts hit:', data.product.product_name);
+      return data.product;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ OpenFoodFacts lookup failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Brand-gated name search (only with strong brand evidence)
+ */
+async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): Promise<any | null> {
+  if (brandTokens.length === 0) {
+    console.log('❌ No brand evidence - skipping name search');
+    return null;
+  }
+  
+  try {
+    const searchQuery = brandTokens.join(' ');
+    console.log(`🔍 Brand-gated search: ${searchQuery}`);
+    
+    const searchParams = new URLSearchParams({
+      search_terms: searchQuery,
+      search_simple: '1',
+      action: 'process',
+      json: '1',
+      page_size: '3'
+    });
+    
+    if (hasCandy) {
+      searchParams.set('categories', 'candy,gummies,sweets');
+    }
+    
+    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
+    const data = await response.json();
+    
+    if (data.products && data.products.length > 0) {
+      // Filter out beverages if candy detected
+      const filteredProducts = hasCandy ? 
+        data.products.filter((product: any) => {
+          const categories = (product.categories || '').toLowerCase();
+          return !categories.includes('beverage') && !categories.includes('drink');
+        }) : data.products;
+        
+      if (filteredProducts.length > 0) {
+        console.log('✅ Brand search hit:', filteredProducts[0].product_name);
+        return filteredProducts[0];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Brand search failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculate plate confidence (mock implementation)
+ */
+function calculatePlateConfidence(tokens: string[]): number {
+  const foodKeywords = ['chicken', 'rice', 'vegetables', 'salad', 'pasta', 'bread', 'meat'];
+  const matches = tokens.filter(token => foodKeywords.includes(token)).length;
+  return Math.min(0.9, matches * 0.3);
+}
+
+/**
+ * Generate health flags from ingredients
+ */
+function generateHealthFlags(ingredients: string[], hasCandy: boolean): HealthFlag[] {
   const flags: HealthFlag[] = [];
   const ingredientText = ingredients.join(' ').toLowerCase();
 
-  // Check for danger flags
-  INGREDIENT_FLAGS.danger.forEach(flag => {
-    if (flag.pattern.test(ingredientText)) {
-      flags.push({
-        type: 'danger',
-        icon: '🔥',
-        title: flag.title,
-        description: flag.description
-      });
-    }
-  });
-
-  // Check for warning flags
-  INGREDIENT_FLAGS.warning.forEach(flag => {
-    if (flag.pattern.test(ingredientText)) {
+  // Candy-specific flags (only when hasCandy is true)
+  if (hasCandy) {
+    flags.push({
+      type: 'warning',
+      icon: '🍭',
+      title: 'Added Sugars High',
+      description: 'High in added sugars; limit portion size.'
+    });
+    
+    // Only add colors flag if ingredients suggest colors
+    if (ingredientText.includes('color') || ingredientText.includes('red') || ingredientText.includes('yellow')) {
       flags.push({
         type: 'warning',
-        icon: '⚠️',
-        title: flag.title,
-        description: flag.description
+        icon: '🎨',
+        title: 'Artificial Colors',
+        description: 'Contains artificial colors (e.g., Red 40, Yellow 5/6, Blue 1).'
+      });
+    }
+  }
+
+  // Check for dangerous ingredients
+  HEALTH_RULES.additives.artificial_colors.forEach(color => {
+    if (ingredientText.includes(color)) {
+      flags.push({
+        type: 'danger',
+        icon: '🎨',
+        title: 'Artificial Colors',
+        description: `Contains ${color} - linked to hyperactivity in children`
       });
     }
   });
 
-  // Check for good flags
-  INGREDIENT_FLAGS.good.forEach(flag => {
-    if (flag.pattern.test(ingredientText)) {
+  // Check for preservatives
+  HEALTH_RULES.additives.preservatives.forEach(preservative => {
+    if (ingredientText.includes(preservative)) {
       flags.push({
-        type: 'good',
-        icon: '✅',
-        title: flag.title,
-        description: flag.description
+        type: 'warning',
+        icon: '⚗️',
+        title: 'Preservatives',
+        description: `Contains ${preservative} - some linked to allergic reactions`
+      });
+    }
+  });
+
+  // Check for artificial sweeteners
+  HEALTH_RULES.additives.sweeteners.forEach(sweetener => {
+    if (ingredientText.includes(sweetener)) {
+      flags.push({
+        type: 'danger',
+        icon: '🧪',
+        title: 'Artificial Sweeteners',
+        description: `Contains ${sweetener} - may disrupt gut microbiome`
       });
     }
   });
@@ -162,8 +325,15 @@ function analyzeIngredients(ingredients: string[]): HealthFlag[] {
   return flags;
 }
 
-function calculateHealthScore(flags: HealthFlag[]): number {
-  let score = 7.0; // Start with neutral score
+/**
+ * Calculate health score with confidence gating
+ */
+function calculateHealthScore(flags: HealthFlag[], hasCandy: boolean, hasStrongEvidence: boolean): number | null {
+  if (!hasStrongEvidence) {
+    return null; // No score without confidence
+  }
+  
+  let score = hasCandy ? 3.0 : 7.0; // Lower base for candy
   
   flags.forEach(flag => {
     switch (flag.type) {
@@ -178,349 +348,238 @@ function calculateHealthScore(flags: HealthFlag[]): number {
         break;
     }
   });
-
+  
   return Math.max(0, Math.min(10, score));
 }
 
-async function fetchProductByBarcode(barcode: string): Promise<any | null> {
-  try {
-    console.log(`Fetching product data for barcode: ${barcode}`);
-    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    const data = await response.json();
-    
-    if (data.status === 1 && data.product) {
-      return data.product;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching product by barcode:', error);
-    return null;
-  }
-}
-
-async function analyzeImageWithGoogleVision(imageData: string): Promise<{ labels: string[], text: string }> {
-  try {
-    console.log('🔍 Starting Google Vision analysis...');
-    const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
-    if (!apiKey) {
-      console.error('❌ Google Vision API key not configured');
-      throw new Error('Google Vision API key not configured');
-    }
-
-    console.log('🖼️ Making Google Vision API request...');
-    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: imageData },
-          features: [
-            { type: 'LABEL_DETECTION', maxResults: 10 },
-            { type: 'TEXT_DETECTION', maxResults: 5 }
-          ]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Google Vision API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      throw new Error(`Google Vision API failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ Google Vision response received:', {
-      hasResponses: !!result.responses,
-      hasLabels: !!result.responses?.[0]?.labelAnnotations,
-      hasText: !!result.responses?.[0]?.textAnnotations
-    });
-
-    // Extract results from Vision API
-    const labelAnnotations = result.responses[0]?.labelAnnotations || [];
-    const logoAnnotations = result.responses[0]?.logoAnnotations || [];
-    const textAnnotations = result.responses[0]?.textAnnotations || [];
-    
-    const labels = labelAnnotations.map((label: any) => label.description);
-    const logos = logoAnnotations.map((logo: any) => ({ 
-      description: logo.description, 
-      score: logo.score 
-    }));
-    const text = textAnnotations[0]?.description || '';
-
-    console.log('🏷️ Extracted labels:', labels.slice(0, 5));
-    console.log('📱 Detected logos:', logos);
-    console.log('📝 Extracted text preview:', text.substring(0, 200));
-    
-    // Extract potential product names from text
-    const productNameCandidates = extractProductNamesFromText(text);
-    console.log('🎯 Product name candidates:', productNameCandidates);
-
-    return { labels, text };
-  } catch (error) {
-    console.error('💥 Critical error in Google Vision analysis:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    throw error; // Re-throw to be handled by calling function
-  }
-}
-
-async function transcribeAudio(audioData: string): Promise<string> {
-  try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Convert base64 to binary
-    const binaryAudio = Uint8Array.from(atob(audioData), c => c.charCodeAt(0));
-    
-    const formData = new FormData();
-    const blob = new Blob([binaryAudio], { type: 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
-    formData.append('model', 'whisper-1');
-
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: formData,
-    });
-
-    const result = await response.json();
-    return result.text || '';
-  } catch (error) {
-    console.error('Error transcribing audio:', error);
-    return '';
-  }
-}
-
-async function analyzeWithGPT(prompt: string): Promise<any> {
-  try {
-    console.log('🤖 Starting OpenAI GPT analysis...');
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('❌ OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
-    }
-
-    console.log('📤 Making OpenAI API request...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a nutrition expert. Provide accurate ingredient lists and nutritional analysis. Return responses in valid JSON format only.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      throw new Error(`OpenAI API failed: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ OpenAI response received');
-    
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      console.error('❌ No content in OpenAI response:', data);
-      throw new Error('OpenAI returned empty response');
-    }
-    
-    try {
-      // Strip markdown code block formatting if present
-      let cleanContent = content.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      const parsedContent = JSON.parse(cleanContent);
-      console.log('✅ Successfully parsed JSON response');
-      return parsedContent;
-    } catch (parseError) {
-      console.error('❌ Failed to parse JSON response:', {
-        error: parseError.message,
-        content: content.substring(0, 200)
-      });
-      // If not valid JSON, return a structured response
-      return {
-        productName: "Unknown Product",
-        ingredients: ["Unable to parse ingredients"],
-        nutritionSummary: content || "No analysis available"
-      };
-    }
-  } catch (error) {
-    console.error('💥 Critical error in OpenAI GPT analysis:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    throw error; // Re-throw to be handled by calling function
-  }
-}
-
-async function processInput(input: ProcessedInput): Promise<HealthReport> {
-  console.log(`Processing ${input.type} input:`, input.content);
-
-  // Step 1: Check if input is a barcode
-  const barcodeMatch = input.content.match(/\b\d{8,13}\b/);
-  if (barcodeMatch || input.type === 'barcode') {
-    const barcode = barcodeMatch ? barcodeMatch[0] : input.content;
-    console.log(`Detected barcode: ${barcode}`);
-    
-    const product = await fetchProductByBarcode(barcode);
-    if (product) {
-      const ingredients = product.ingredients_text ? 
-        product.ingredients_text.split(',').map((ing: string) => ing.trim()) : 
-        [];
-      
-      const healthFlags = analyzeIngredients(ingredients);
-      const healthScore = calculateHealthScore(healthFlags);
-      
-      return {
-        productName: product.product_name || "Unknown Product",
-        ingredients,
-        healthFlags,
-        healthScore,
-        nutritionData: generateNutritionData(product.nutriments),
-        summary: generateHealthSummary(healthFlags, healthScore),
-        recommendations: generateRecommendations(healthFlags)
-      };
-    } else {
-      return {
-        productName: "Product Not Found",
-        ingredients: [],
-        healthFlags: [{
-          type: 'warning',
-          icon: '❓',
-          title: "Product Not Found",
-          description: "We couldn't find this product in the barcode database. Please try taking a photo of the product or enter ingredients manually."
-        }],
-        healthScore: 0,
-        nutritionData: null,
-        summary: "Product not found in database",
-        recommendations: ["Try taking a photo of the product", "Enter ingredients manually"]
-      };
-    }
-  }
-
-  // Step 2: Process image input
-  if (input.type === 'image' && input.imageData) {
-    const { labels, text } = await analyzeImageWithGoogleVision(input.imageData);
-    
-    // Extract product name candidates from text using our specialized function
-    const productNameCandidates = extractProductNamesFromText(text);
-    console.log(`Found ${productNameCandidates.length} potential product names from text:`, productNameCandidates);
-    
-    // Check if barcode was found in image text
-    const imageBarcodeMatch = text.match(/\b\d{8,13}\b/);
-    if (imageBarcodeMatch) {
-      console.log(`Found barcode in image: ${imageBarcodeMatch[0]}`);
-      return await processInput({
-        type: 'barcode',
-        content: imageBarcodeMatch[0]
-      });
-    }
-
-    // Analyze detected food
-    const foodLabels = labels.filter(label => 
-      !['text', 'font', 'number', 'brand'].includes(label.toLowerCase())
-    );
-    
-    // Use extracted product name candidates in the GPT prompt if available
-    const productNameHint = productNameCandidates.length > 0 
-      ? `Product name candidates: ${productNameCandidates.join(', ')}. ` 
-      : '';
-    
-    const gptPrompt = `${productNameHint}Analyze this food product based on image detection results: ${foodLabels.join(', ')}. 
-    Return a JSON object with:
-    {
-      "productName": "detected food name - be specific with brand if possible",
-      "ingredients": ["list of likely ingredients"],
-      "nutritionSummary": "brief nutritional overview"
-    }`;
-    
-    console.log('Sending GPT prompt with product name candidates:', productNameHint);
-    
-    const gptResult = await analyzeWithGPT(gptPrompt);
-    const healthFlags = analyzeIngredients(gptResult.ingredients || []);
-    const healthScore = calculateHealthScore(healthFlags);
-    
-    // If GPT couldn't detect a product name but we have candidates from text, use the best candidate
-    let finalProductName = gptResult.productName || "Detected Food";
-    if ((finalProductName === "Detected Food" || finalProductName === "Unknown Product") && productNameCandidates.length > 0) {
-      finalProductName = productNameCandidates[0]; // Use the best candidate
-      console.log(`Using extracted product name from text: ${finalProductName}`);
-    }
-    
-    return {
-      productName: finalProductName,
-      ingredients: gptResult.ingredients || [],
-      healthFlags,
-      healthScore,
-      nutritionData: gptResult.nutritionSummary || null,
-      summary: generateHealthSummary(healthFlags, healthScore),
-      recommendations: generateRecommendations(healthFlags)
-    };
-  }
-
-  // Step 3: Process voice input
-  if (input.type === 'voice') {
-    const transcription = await transcribeAudio(input.content);
-    console.log(`Voice transcription: ${transcription}`);
-    
-    return await processInput({
-      type: 'text',
-      content: transcription
-    });
-  }
-
-  // Step 4: Process text input
-  const gptPrompt = `Analyze this food or product: "${input.content}". 
-  Return a JSON object with:
-  {
-    "productName": "product or food name",
-    "ingredients": ["list of likely ingredients"],
-    "nutritionSummary": "brief nutritional overview"
-  }`;
+/**
+ * Map OpenFoodFacts product to BackendResponse format
+ */
+function mapOFFtoBackendResponse(off: any): HealthReport {
+  const productName = `${off.brands ?? ''} ${off.product_name ?? ''}`.trim();
+  const ingredients = off.ingredients_text ? 
+    off.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
   
-  const gptResult = await analyzeWithGPT(gptPrompt);
-  const healthFlags = analyzeIngredients(gptResult.ingredients || []);
-  const healthScore = calculateHealthScore(healthFlags);
+  const healthFlags = generateHealthFlags(ingredients, false);
+  const healthScore = calculateHealthScore(healthFlags, false, true);
   
   return {
-    productName: gptResult.productName || input.content,
-    ingredients: gptResult.ingredients || [],
+    productName: productName || "Unknown Product",
+    ingredients,
     healthFlags,
     healthScore,
-    nutritionData: null, // Text analysis doesn't provide structured nutrition data
+    nutritionData: generateNutritionData(off.nutriments),
     summary: generateHealthSummary(healthFlags, healthScore),
     recommendations: generateRecommendations(healthFlags)
+  };
+}
+
+/**
+ * Process input with barcode-first logic and confidence gating
+ */
+async function processInput(input: ProcessedInput, detectedBarcode?: string): Promise<HealthReport> {
+  const ctx: RequestContext = {
+    reqId: crypto.randomUUID().substring(0, 8),
+    now: new Date(),
+    ocrText: '',
+    tokens: [],
+    brandTokens: [],
+    hasCandy: false,
+    plateConf: 0
+  };
+  
+  const t0 = Date.now();
+  console.log(`🚀 Processing ${input.type} input [${ctx.reqId}]`);
+  
+  let barcodeHit = false;
+  let nameHit = false;
+  let offProduct: any = null;
+  let barcodeFound = false;
+  
+  // Step 1: Barcode first (highest priority) - prefer client-detected barcode
+  const digits = (detectedBarcode ?? '').replace(/\D/g, '');
+  const looksLikeBarcode = /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(digits);
+  
+  if (looksLikeBarcode) {
+    barcodeFound = true;
+    barcodeHit = true;
+    ctx.barcodeFound = digits;
+    
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${digits}.json`);
+    const j = await r.json().catch(() => null);
+    if (j?.status === 1 && j.product) {
+      offProduct = j.product;
+      ctx.offHit = true;
+      
+      console.log(`✅ Barcode success [${ctx.reqId}]`, { barcode: digits, product: offProduct.product_name });
+      
+      // Short-circuit on OFF hit
+      const result = mapOFFtoBackendResponse(offProduct);
+      
+      // Success logging
+      console.log(JSON.stringify({
+        reqId: ctx.reqId, 
+        phase: 'done', 
+        barcodeFound, 
+        offHit: true, 
+        brand: offProduct.brands ?? 'none',
+        plateConf: null, 
+        scored: true,
+        productName: result.productName, 
+        latencyMs: Date.now() - t0
+      }));
+      
+      return result;
+    }
+  }
+  
+  if (!detectedBarcode) {
+    console.log(JSON.stringify({ reqId: ctx.reqId, at: 'no_client_barcode' }));
+  }
+  
+  // Fallback barcode detection for legacy paths
+  if (input.type === 'barcode' || (input.type === 'image' && !detectedBarcode)) {
+    const barcode = input.content.match(/\b\d{8,14}\b/)?.[0] || 
+                   (input.type === 'image' && input.imageData ? 
+                    (await detectBarcodeFromBinary(input.imageData)).barcode : null);
+    
+    if (barcode && !barcodeFound) {
+      barcodeFound = true;
+      barcodeHit = true;
+      ctx.barcodeFound = barcode;
+      offProduct = await lookupByBarcode(barcode);
+      if (offProduct) {
+        ctx.offHit = true;
+        
+        console.log(`✅ Legacy barcode success [${ctx.reqId}]`, { barcode, product: offProduct.product_name });
+        
+        const result = mapOFFtoBackendResponse(offProduct);
+        
+        // Success logging
+        console.log(JSON.stringify({
+          reqId: ctx.reqId, 
+          phase: 'done', 
+          barcodeFound, 
+          offHit: true, 
+          brand: offProduct.brands ?? 'none',
+          plateConf: null, 
+          scored: true,
+          productName: result.productName, 
+          latencyMs: Date.now() - t0
+        }));
+        
+        return result;
+      }
+    }
+  }
+  
+  // Step 2: OCR cleanup for image inputs
+  if (input.type === 'image' && input.imageData) {
+    const ocrResult = await extractAndCleanOCR(input.imageData);
+    ctx.ocrText = ocrResult.text;
+    ctx.tokens = ocrResult.cleanedTokens;
+    ctx.brandTokens = ocrResult.brandTokens;
+    ctx.hasCandy = ocrResult.hasCandy;
+    
+    // Brand-gated name search (only with brand evidence)
+    if (ctx.brandTokens.length > 0) {
+      offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
+      if (offProduct) {
+        nameHit = true;
+        ctx.offHit = true;
+        
+        const ingredients = offProduct.ingredients_text ? 
+          offProduct.ingredients_text.split(',').map((ing: string) => ing.trim()) : [];
+          
+        const flags = generateHealthFlags(ingredients, ctx.hasCandy);
+        const healthScore = calculateHealthScore(flags, ctx.hasCandy, true);
+        
+        console.log(`✅ Name search success [${ctx.reqId}]`, { brand: ctx.brandTokens, product: offProduct.product_name });
+        
+        return {
+          productName: offProduct.product_name || "Unknown Product",
+          ingredients,
+          healthFlags: flags,
+          healthScore,
+          nutritionData: generateNutritionData(offProduct.nutriments),
+          summary: generateHealthSummary(flags, healthScore),
+          recommendations: generateRecommendations(flags)
+        };
+      }
+    }
+  }
+  
+  // Step 3: Text input processing
+  if (input.type === 'text' || input.type === 'voice') {
+    const normalized = input.content.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    const tokens = normalized.split(/\s+/)
+      .filter(token => token.length > 0 && !STOP_WORDS.has(token));
+    
+    ctx.tokens = tokens;
+    ctx.brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+    ctx.hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token));
+  }
+  
+  // Step 4: Plate confidence calculation
+  ctx.plateConf = calculatePlateConfidence(ctx.tokens);
+  
+  // Step 5: Safety gate (no score without evidence)
+  const hasRealEvidence = 
+    Boolean(barcodeHit) ||
+    Boolean(nameHit) ||
+    ((ctx.plateConf ?? 0) >= 0.85);
+  
+  if (!hasRealEvidence) {
+    console.log(`❌ Low confidence [${ctx.reqId}]`, { 
+      barcodeHit, nameHit, plateConf: ctx.plateConf, 
+      evidence: 'insufficient' 
+    });
+    
+    return {
+      productName: 'Unknown product',
+      healthScore: null,
+      healthFlags: [],
+      nutritionData: null,
+      ingredients: [],
+      recommendations: [
+        'Try scanning the barcode on the back of the package.',
+        'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+      ],
+      summary: 'We could not confidently identify this item from the photo.',
+      fallback: true
+    };
+  }
+  
+  // Step 6: Generate result with evidence
+  const flags = generateHealthFlags([], ctx.hasCandy);
+  const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasRealEvidence);
+  const resolvedName = input.content || "Detected Food";
+  
+  // Success logging
+  console.log(JSON.stringify({
+    reqId: ctx.reqId, 
+    phase: 'done', 
+    barcodeFound, 
+    offHit: ctx.offHit || false, 
+    brand: ctx.brandTokens.join(',') || 'none',
+    plateConf: ctx.plateConf, 
+    scored: hasRealEvidence,
+    productName: resolvedName, 
+    latencyMs: Date.now() - t0
+  }));
+  
+  return {
+    productName: resolvedName,
+    ingredients: [],
+    healthFlags: flags,
+    healthScore,
+    nutritionData: null,
+    summary: generateHealthSummary(flags, healthScore),
+    recommendations: generateRecommendations(flags)
   };
 }
 
@@ -529,58 +588,53 @@ function generateNutritionData(nutriments: any): any {
   
   const nutritionData: any = {};
   
-  // Convert per 100g values to standard serving format
   if (nutriments.energy_kcal_100g) nutritionData.calories = Math.round(nutriments.energy_kcal_100g);
   if (nutriments.fat_100g) nutritionData.fat = parseFloat(nutriments.fat_100g.toFixed(1));
   if (nutriments.carbohydrates_100g) nutritionData.carbs = parseFloat(nutriments.carbohydrates_100g.toFixed(1));
   if (nutriments.proteins_100g) nutritionData.protein = parseFloat(nutriments.proteins_100g.toFixed(1));
-  if (nutriments.sodium_100g) nutritionData.sodium = parseFloat((nutriments.sodium_100g / 1000).toFixed(3)); // Convert mg to g
+  if (nutriments.sodium_100g) nutritionData.sodium = parseFloat((nutriments.sodium_100g / 1000).toFixed(3));
   if (nutriments.fiber_100g) nutritionData.fiber = parseFloat(nutriments.fiber_100g.toFixed(1));
   if (nutriments.sugars_100g) nutritionData.sugar = parseFloat(nutriments.sugars_100g.toFixed(1));
   
   return Object.keys(nutritionData).length > 0 ? nutritionData : null;
 }
 
-function generateHealthSummary(flags: HealthFlag[], score: number): string {
+function generateHealthSummary(flags: HealthFlag[], score: number | null): string {
+  if (score === null) {
+    return "Unable to provide health assessment - insufficient product information";
+  }
+  
   const dangerFlags = flags.filter(f => f.type === 'danger').length;
   const warningFlags = flags.filter(f => f.type === 'warning').length;
-  const goodFlags = flags.filter(f => f.type === 'good').length;
 
   if (dangerFlags > 2) {
-    return "This product contains multiple concerning ingredients that may impact your health. Consider avoiding or limiting consumption.";
+    return "This product contains multiple concerning ingredients that may impact your health.";
   } else if (dangerFlags > 0) {
-    return "This product contains some concerning ingredients. Consume in moderation and be aware of potential health impacts.";
+    return "This product contains some concerning ingredients. Consume in moderation.";
   } else if (warningFlags > 3) {
-    return "This product has several ingredients that warrant caution. Consider healthier alternatives when possible.";
-  } else if (goodFlags > warningFlags) {
-    return "This product has several beneficial ingredients. It can be part of a healthy diet when consumed mindfully.";
+    return "This product has several ingredients that warrant caution.";
   } else {
-    return "This product is relatively neutral from a health perspective. Focus on overall dietary patterns for optimal health.";
+    return "This product is relatively neutral from a health perspective.";
   }
 }
 
 function generateRecommendations(flags: HealthFlag[]): string[] {
   const recommendations = [];
   
-  if (flags.some(f => f.title.includes("Seed Oils"))) {
-    recommendations.push("Look for products using olive oil, avocado oil, or coconut oil instead");
+  if (flags.some(f => f.title.includes("Added Sugars"))) {
+    recommendations.push("Consider limiting portion size due to high sugar content");
   }
   
-  if (flags.some(f => f.title.includes("Sugar"))) {
-    recommendations.push("Choose unsweetened versions or products with natural sweeteners");
+  if (flags.some(f => f.title.includes("Artificial Colors"))) {
+    recommendations.push("Look for products without artificial colors when possible");
   }
   
   if (flags.some(f => f.title.includes("Preservatives"))) {
-    recommendations.push("Opt for fresh or minimally processed alternatives");
-  }
-  
-  if (flags.some(f => f.title.includes("Artificial"))) {
-    recommendations.push("Select products with natural ingredients and fewer additives");
+    recommendations.push("Choose fresh or minimally processed alternatives when available");
   }
   
   if (recommendations.length === 0) {
-    recommendations.push("Continue making mindful food choices");
-    recommendations.push("Focus on whole, unprocessed foods when possible");
+    return GENERAL_TIPS.slice();
   }
   
   return recommendations;
@@ -592,69 +646,32 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Health-check-processor function called');
-    
     const requestBody = await req.json();
-    console.log('📦 Request body received:', JSON.stringify(requestBody, null, 2));
+    const { type, content, imageData, inputType, data, userId, detectedBarcode } = requestBody;
     
-    // Handle both old and new parameter formats
-    const { 
-      type, 
-      content, 
-      imageData,
-      inputType, 
-      data, 
-      userId 
-    } = requestBody;
-    
-    // Map parameters from frontend format to function format
     const processType = inputType || type;
     const processContent = data || content;
-    const processImageData = imageData;
-    
-    console.log('🔍 Processed parameters:', {
-      processType,
-      processContent: processContent ? `${processContent.substring(0, 50)}...` : 'null',
-      hasImageData: !!processImageData,
-      userId
-    });
     
     if (!processType || !processContent) {
-      const errorMsg = `Missing required fields. Received: type=${processType}, content=${!!processContent}`;
-      console.error('❌ Validation error:', errorMsg);
-      throw new Error(errorMsg);
+      throw new Error(`Missing required fields. type=${processType}, content=${!!processContent}`);
     }
 
     const input: ProcessedInput = {
       type: processType,
       content: processContent,
-      imageData: processImageData
+      imageData: imageData
     };
 
-    console.log('⚙️ Starting health report processing...');
-    const healthReport = await processInput(input);
+    const healthReport = await processInput(input, detectedBarcode);
     
-    console.log('✅ Generated health report successfully:', {
-      productName: healthReport.productName,
-      healthScore: healthReport.healthScore,
-      flagsCount: healthReport.healthFlags.length
-    });
-
     return new Response(JSON.stringify(healthReport), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('💥 Critical error in health-check-processor:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    console.error('💥 Health-check-processor error:', error);
     
-    // Return detailed error information for debugging
     const errorResponse = {
-      error: error.message,
-      errorType: error.name,
       productName: "Error",
       ingredients: [],
       healthFlags: [{
@@ -663,10 +680,11 @@ serve(async (req) => {
         title: 'Processing Error',
         description: `Failed to analyze: ${error.message}`
       }],
-      healthScore: 0,
+      healthScore: null,
       nutritionData: null,
       summary: "Unable to process request due to internal error",
-      recommendations: ["Please try again", "Check that all required data is provided"]
+      recommendations: GENERAL_TIPS.slice(),
+      fallback: true
     };
     
     return new Response(JSON.stringify(errorResponse), {

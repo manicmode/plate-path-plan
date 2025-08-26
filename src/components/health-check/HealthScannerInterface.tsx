@@ -6,11 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
-import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
-import { copyDebugToClipboard, startScanReport, finalizeScanReport } from '@/lib/barcode/diagnostics';
-import { enhancedBarcodeDecode, chooseBarcode } from '@/lib/barcode/enhancedDecoder';
-import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
-import { cropReticleROIFromVideo } from '@/lib/barcode/roiUtils';
+import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
+import { BARCODE_V2 } from '@/lib/featureFlags';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -25,8 +22,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onManualSearch,
   onCancel
 }) => {
-  useViewportUnitsFix(); // Add viewport fix hook
-  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -37,25 +32,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showDebugCopy, setShowDebugCopy] = useState(false);
-  const [isDebugEnabled, setIsDebugEnabled] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    // Disable debug by default for performance
-    const debugEnabled = false;
-    setIsDebugEnabled(debugEnabled);
-    
     if (currentView === 'scanner') {
       startCamera();
     }
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
-        setStream(null);
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
       }
     };
   }, [currentView]);
@@ -68,38 +53,52 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const startCamera = async () => {
     try {
-      if (isDebugEnabled) console.log("[HS] camera_init");
+      console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
         console.error("[VIDEO] videoRef is null — video element not mounted");
         return;
       }
 
-      if (isDebugEnabled && location.protocol !== 'https:') {
-        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
-      }
-      // Enhanced camera constraints for barcode detection
-      const constraints = {
-        video: { 
-          facingMode: 'environment',
+      // High-res back camera request
+      console.log("[CAMERA] Requesting high-res back camera...");
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          focusMode: 'continuous'
-        }
-      };
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          frameRate: { ideal: 30, max: 60 },
+        },
+        audio: false
+      });
 
-      if (isDebugEnabled) console.log("[CAMERA] Stream received:", mediaStream);
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      console.log("[CAMERA] Stream received:", {
+        width: settings.width,
+        height: settings.height,
+        frameRate: settings.frameRate,
+        facingMode: settings.facingMode
+      });
+
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        if (isDebugEnabled) console.log("[CAMERA] srcObject set, playing video");
-      } else {
-        console.error("[CAMERA] videoRef.current is null");
+        console.log("[CAMERA] srcObject set, playing video");
       }
     } catch (error) {
-      console.error("[CAMERA FAIL] getUserMedia error:", error);
-      console.error('Error accessing camera:', error);
+      console.error("[CAMERA FAIL] getUserMedia error:", error);  
+      // Fallback to basic camera
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        setStream(fallbackStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+        }
+      } catch (fallbackError) {
+        console.error('Camera access completely failed:', fallbackError);
+      }
     }
   };
 
@@ -125,209 +124,219 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const analyzeNow = async () => {
-    try {
-      console.log('[HS] analyze_start');
-      console.time('[HS] analyze_total');
+  // Helper function to crop center ROI for barcode detection
+  const cropCenterROI = (srcCanvas: HTMLCanvasElement): HTMLCanvasElement => {
+    const w = srcCanvas.width, h = srcCanvas.height;
+    const roiW = Math.round(w * 0.7);
+    const roiH = Math.round(h * 0.4);
+    const x = Math.round((w - roiW) / 2);
+    const y = Math.round((h - roiH) / 2);
 
-      if (!videoRef.current || !canvasRef.current) {
-        console.error("❌ Missing video or canvas ref!");
-        return;
-      }
+    const out = document.createElement('canvas');
+    out.width = roiW; 
+    out.height = roiH;
+    const ctx = out.getContext('2d')!;
+    ctx.drawImage(srcCanvas, x, y, roiW, roiH, 0, 0, roiW, roiH);
+    return out;
+  };
 
-      playCameraClickSound();
-      setIsScanning(true);
-      
-      // A) CAPTURE FULL-RES FRAME (from video; do NOT compress yet)
-      const video = videoRef.current;
-      await video.play(); // Ensure dimensions are available on iOS
-      
-      const vw = video.videoWidth, vh = video.videoHeight;
-      const frameCanvas = document.createElement('canvas');
-      frameCanvas.width = vw; 
-      frameCanvas.height = vh;
-      const fx = frameCanvas.getContext('2d')!;
-      fx.imageSmoothingEnabled = false;
-      fx.drawImage(video, 0, 0, vw, vh);
-
-      // B) CROP ROI FROM VIDEO PIXELS (center ~70% x 40%)
-      const roiW = Math.round(vw * 0.70);
-      const roiH = Math.round(vh * 0.40);
-      const x = Math.round((vw - roiW) / 2);
-      const y = Math.round((vh - roiH) / 2);
-
-      console.log('[HS] roi', {
-        vw: video.videoWidth, vh: video.videoHeight,
-        roiW, roiH, x, y
-      });
-
-      // If ROI too small, fall back to full frame
-      let roiCanvas: HTMLCanvasElement;
-      if (roiW < 320 || roiH < 200) {
-        roiCanvas = frameCanvas;
-      } else {
-        roiCanvas = document.createElement('canvas');
-        roiCanvas.width = roiW; 
-        roiCanvas.height = roiH;
-        const rx = roiCanvas.getContext('2d', { willReadFrequently: true })!;
-        rx.imageSmoothingEnabled = false;
-        rx.drawImage(frameCanvas, x, y, roiW, roiH, 0, 0, roiW, roiH);
-      }
-
-      // C) BARCODE FIRST (budget ~2500ms) — BEFORE ANY NORMALIZATION
-      console.time('[HS] decode');
-      const t0 = performance.now();
-      const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 2500 });
-      console.timeEnd('[HS] decode');
-      const chosen = chooseBarcode(dec);
-      console.log('[HS] barcode_ms:', Math.round(performance.now() - t0));
-      console.log('[HS] barcode_result:', {
-        raw: chosen?.raw ?? null,
-        type: chosen?.type ?? null,
-        checksumOk: chosen?.checksumOk ?? null,
-        reason: dec?.reason ?? null
-      });
-
-      // D) OFF lookup even if checksumOk === false, as long as 8/12/13/14 digits present
-      let off: any = null;
-      if (chosen?.raw && /^[0-9]{8,14}$/.test(chosen.raw)) {
-        console.log('[HS] off_fetch_start', { code: chosen.raw });
-        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: chosen.raw, source: 'health' }
-        });
-        off = error ? { status: 'error', product: null } : { status: 200, product: data };
-        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        
-        if (!error && data) {
-          // Push ScanReport for forensics
-          if (typeof window !== 'undefined') {
-            (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS ?? [];
-            (window as any).__HS_LAST_REPORTS.unshift({
-              reqId: Date.now().toString(36),
-              device: { dpr: window.devicePixelRatio, videoW: vw, videoH: vh },
-              capture: { frameW: frameCanvas.width, frameH: frameCanvas.height, roiW: roiCanvas.width, roiH: roiCanvas.height },
-              attempts: dec.attempts,
-              final: { 
-                success: true, 
-                code: chosen.raw, 
-                checksumOk: chosen.checksumOk, 
-                off: { status: 200, hit: true }, 
-                reason: dec.reason, 
-                totalMs: performance.now() - t0
-              }
-            });
-          }
-          
-          // Create normalized image data for the rest of the pipeline
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d')!;
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          const imageData = canvas.toDataURL('image/jpeg', 0.8);
-          
-          const totalMs = Math.round(performance.now() - t0);
-          console.log('[HS] analyze_total:', totalMs);
-          console.timeEnd('[HS] analyze_total');
-          onCapture(imageData + `&barcode=${chosen.raw}`);
+  // Helper to convert canvas to base64 without CSP violation
+  const canvasToBase64 = async (canvas: HTMLCanvasElement): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Canvas toBlob failed'));
           return;
         }
-      }
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      }, 'image/jpeg', 0.85);
+    });
+  };
 
-      // E) ONLY NOW normalize/OCR fallback
+  // Capture high-resolution still image
+  const captureStill = async (): Promise<{ canvas: HTMLCanvasElement; captureType: 'ImageCapture' | 'VideoFrame' }> => {
+    if (!videoRef.current) throw new Error('Video not ready');
+    
+    const video = videoRef.current;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    
+    console.log(`📹 Video dimensions: ${videoWidth}×${videoHeight}`);
+    
+    // Try ImageCapture API for highest quality
+    if (stream && 'ImageCapture' in window) {
       try {
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          frameCanvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error('toBlob returned null'));
-          }, 'image/jpeg', 0.90);
+        const track = stream.getVideoTracks()[0];
+        const imageCapture = new (window as any).ImageCapture(track);
+        
+        // Get highest quality photo
+        const blob = await imageCapture.takePhoto();
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(img, 0, 0);
+            resolve(void 0);
+          };
+          img.onerror = reject;
+          img.src = URL.createObjectURL(blob);
         });
         
-        console.log('[HS] normalized_blob', { type: blob.type, size: blob.size });
-        
-        const file = new File([blob], `scan_${Date.now()}.jpg`, { type: 'image/jpeg' });
-        const normalized = await normalizeHealthScanImage(file, {
-          maxWidth: Math.max(vw, 1920),
-          maxHeight: Math.max(vh, 1080),
-          quality: 0.9,
-          format: 'JPEG',
-          stripExif: true
-        });
-
-        const totalMs = Math.round(performance.now() - t0);
-        console.log('[HS] analyze_total:', totalMs);
-        console.timeEnd('[HS] analyze_total');
-        onCapture(normalized.dataUrl);
-      } catch (err) {
-        console.warn('[HS] normalize_error', String(err));
-        // Continue with manual fallback UI
-        const totalMs = Math.round(performance.now() - t0);
-        console.log('[HS] analyze_total:', totalMs);
-        console.timeEnd('[HS] analyze_total');
-        setCurrentView('notRecognized');
+        console.log(`📸 ImageCapture: ${canvas.width}×${canvas.height}`);
+        return { canvas, captureType: 'ImageCapture' };
+      } catch (error) {
+        console.warn('ImageCapture failed, falling back to video frame:', error);
       }
+    }
+    
+    // Fallback: capture from video element at full resolution
+    const canvas = document.createElement('canvas');
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+    
+    console.log(`📸 VideoFrame: ${canvas.width}×${canvas.height}`);
+    return { canvas, captureType: 'VideoFrame' };
+  };
 
-    } catch (e) {
-      console.error('[HS] analyze_error', e);
-      console.timeEnd('[HS] analyze_total');
-      // Fall back to generic path
-      return runGenericImagePath();
+  const captureImage = async () => {
+    console.log("📸 HealthScannerInterface.captureImage called!");
+    
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("❌ Missing video or canvas ref!", {
+        video: !!videoRef.current,
+        canvas: !!canvasRef.current
+      });
+      return;
+    }
+
+    const t0 = Date.now();
+    playCameraClickSound();
+    setIsScanning(true);
+    
+    try {
+      // Capture high-res still
+      const { canvas, captureType } = await captureStill();
+      const captureTime = Date.now() - t0;
+      
+      console.log("📊 Video capture:", { 
+        width: canvas.width, 
+        height: canvas.height,
+        captureType,
+        captureTime 
+      });
+      
+      let detectedBarcode: string | null = null;
+      let barcodeTime = 0;
+      let barcodeResult: any = null;
+      
+      // Multi-pass barcode scanning if BARCODE_V2 enabled
+      if (BARCODE_V2) {
+        const t1 = Date.now();
+        const scanner = new MultiPassBarcodeScanner();
+        barcodeResult = await scanner.scan(canvas);
+        barcodeTime = Date.now() - t1;
+        
+        if (barcodeResult) {
+          detectedBarcode = barcodeResult.text;
+          console.log("🔍 barcodeScan:", {
+            attempts: barcodeResult.scale ? 'multi-scale' : 'multi-pass',
+            hit: true,
+            pass: barcodeResult.passName,
+            rotation: barcodeResult.rotation,
+            scale: barcodeResult.scale,
+            format: barcodeResult.format,
+            checkDigit: barcodeResult.checkDigitValid,
+            value: detectedBarcode
+          });
+        } else {
+          console.log("🔍 barcodeScan:", {
+            attempts: 'multi-pass',
+            hit: false
+          });
+        }
+      }
+      
+      // Convert to base64 using CSP-safe method
+      const fullBlob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+      });
+
+      const fullBase64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(fullBlob);
+      });
+
+      const totalTime = Date.now() - t0;
+      
+      // Timing logs
+      console.log("⏱️ Timing:", {
+        t_capture_ms: captureTime,
+        t_barcode_ms: barcodeTime,
+        t_total_ms: totalTime
+      });
+      
+      // Invoke function logs  
+      console.log("📡 Invoking function:", {
+        detectedBarcode,
+        hasImage: true
+      });
+      
+      // If barcode detected with valid check digit, short-circuit to OFF lookup
+      if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
+        console.log("🎯 Barcode path - short-circuiting to OFF lookup");
+        
+        // Call health processor with barcode
+        const body = {
+          detectedBarcode,
+          imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
+          mode: 'scan'
+        };
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body
+        });
+        
+        if (!error && data && !data.fallback) {
+          console.log("✅ Barcode path success:", data);
+          onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+          return;
+        } else {
+          console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
+        }
+      }
+      
+      // No barcode or barcode lookup failed - proceed with image analysis
+      onCapture(fullBase64);
+      
+    } catch (conversionError) {
+      console.error("❌ Image processing failed:", conversionError);
+      // Fallback to basic canvas capture
+      const canvas = canvasRef.current!;
+      const video = videoRef.current!;
+      const ctx = canvas.getContext('2d')!;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
+      const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
+      onCapture(fallbackImageData);
     } finally {
       setIsScanning(false);
     }
   };
-
-  const runGenericImagePath = async (frame?: HTMLCanvasElement) => {
-    try {
-      // Create blob from canvas for CSP safety
-      const canvas = frame || canvasRef.current!;
-      const video = videoRef.current!;
-      
-      if (!frame) {
-        const ctx = canvas.getContext('2d')!;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-      }
-      
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Failed to create blob from canvas'));
-        }, 'image/jpeg', 0.9);
-      });
-      
-      // Normalize for image analysis
-      const fileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
-      const normalized = await normalizeHealthScanImage(fileBlob, {
-        maxWidth: Math.max(video.videoWidth, 1920),
-        maxHeight: Math.max(video.videoHeight, 1080),
-        quality: 0.9,
-        format: 'JPEG',
-        stripExif: true
-      });
-
-      if (isDebugEnabled) {
-        finalizeScanReport({
-          success: false,
-          willScore: false,
-          willFallback: true,
-          totalMs: Date.now() - Date.now()
-        });
-      }
-      
-      onCapture(normalized.dataUrl);
-    } catch (error) {
-      console.error("❌ Generic image path failed:", error);
-      // Final fallback to raw image
-      const canvas = canvasRef.current!;
-      const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
-      onCapture(rawImageData);
-    }
-  };
-
-  // Alias for backward compatibility
-  const captureImage = analyzeNow;
 
   const handleManualEntry = () => {
     setCurrentView('manual');
@@ -349,7 +358,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: {
             inputType: 'text',
             data: barcodeInput.trim(),
-            userId: user?.id
+            userId: user?.id,
+            detectedBarcode: null
           }
         });
         
@@ -427,35 +437,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner View
   if (currentView === 'scanner') {
     return (
-      <div className="scanner-root" style={{
-        height: '100dvh',
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr auto',
-        overflow: 'hidden',
-        background: 'black'
-      }}>
-        {/* Header */}
-        <div className="scanner-header" style={{ gridRow: 1, position: 'relative', zIndex: 10 }}>
-          <div className="absolute top-8 left-4 right-4 text-center">
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
-              <h2 className="text-white text-lg font-bold mb-2">
-                🔬 Health Inspector Scanner
-              </h2>
-              <p className="text-green-300 text-sm animate-pulse">
-                Scan a food barcode or aim your camera at a meal to inspect its health profile!
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Video Container */}
-        <div className="scanner-video-wrap" style={{
-          gridRow: 2,
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden'
-        }}>
+      <div className="relative flex flex-col min-h-dvh bg-black">
+        {/* camera/video area */}
+        <main className="flex-1 relative overflow-hidden">
           <video
             ref={videoRef}
             autoPlay
@@ -465,16 +449,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           />
           <canvas ref={canvasRef} className="hidden" />
           
-          {/* Scanning Overlay with constrained frame */}
+          {/* Scanning Overlay */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="scan-frame" style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              maxHeight: 'calc(100% - 180px - env(safe-area-inset-bottom))',
-              maxWidth: 'calc(100% - 40px)'
-            }}>
+            <div className="relative">
               <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
                 isScanning ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'shadow-[0_0_30px_rgba(34,197,94,0.4)]'
               }`}>
@@ -500,6 +477,18 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             </div>
           </div>
 
+          {/* Header Text */}
+          <div className="absolute top-8 left-4 right-4 text-center">
+            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
+              <h2 className="text-white text-lg font-bold mb-2">
+                🔬 Health Inspector Scanner
+              </h2>
+              <p className="text-green-300 text-sm animate-pulse">
+                Scan a food barcode or aim your camera at a meal to inspect its health profile!
+              </p>
+            </div>
+          </div>
+
           {/* Grid Overlay */}
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <div className="w-full h-full" style={{
@@ -510,96 +499,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
+        </main>
 
-          {/* Debug Overlay - Only visible when NEXT_PUBLIC_SCAN_DEBUG==='1' */}
-          {process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' && (
-            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  const success = await copyDebugToClipboard();
-                  if (success) {
-                    console.log('[HS_DEBUG] Scan report copied to clipboard');
-                  }
-                }}
-                className="bg-black/80 border-yellow-400 text-yellow-300 text-xs px-2 py-1"
-              >
-                Copy Debug
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  console.log('[HS_DEBUG] Running test harness...');
-                  await runBarcodeTests();
-                }}
-                className="bg-black/80 border-blue-400 text-blue-300 text-xs px-2 py-1"
-              >
-                Test Harness
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Controls */}
-        <div className="scanner-footer" style={{
-          gridRow: 3,
-          position: 'sticky',
-          bottom: 0,
-          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-          paddingTop: '12px',
-          paddingLeft: '16px',
-          paddingRight: '16px',
-          background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div className="flex flex-col space-y-4">
-            {/* Cancel Button */}
-            {onCancel && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={onCancel}
-                  className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
-                >
-                  <X className="w-5 h-5 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            )}
-
-            {/* Manual Entry Button */}
-            <Button
-              onClick={handleManualEntry}
-              variant="outline"
-              className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-            >
-              <Keyboard className="w-5 h-5 mr-2" />
-              🔢 Enter Barcode Manually
-            </Button>
-
-            {/* Main Analyze Button */}
-            <Button
-              onClick={captureImage}
-              disabled={isScanning}
-              className="relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
-                       text-white font-bold py-4 text-lg border-2 border-green-400 
-                       shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
-                       transition-all duration-300 disabled:opacity-50"
-              style={{ backgroundColor: isScanning ? '#22c55e' : '#3ddb85' }}
-            >
-              <div className="flex items-center justify-center">
-                <Zap className={`w-6 h-6 mr-3 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
-                {isScanning ? '🔍 SCANNING...' : '🚨 ANALYZE NOW'}
-              </div>
-              {!isScanning && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
-              )}
-            </Button>
-          </div>
-        </div>
+        {/* Sticky footer (always visible) */}
+        <footer className="sticky bottom-0 z-40 bg-black/70 backdrop-blur-md px-4 pt-3 pb-safe">
+          <ScannerActions
+            onAnalyze={captureImage}
+            onCancel={onCancel}
+            onEnterBarcode={handleManualEntry}
+            isScanning={isScanning}
+          />
+        </footer>
       </div>
     );
   }
@@ -607,13 +517,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Manual Entry View
   if (currentView === 'manual') {
     return (
-      <div className="scanner-root" style={{
-        height: '100dvh',
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr auto',
-        overflow: 'hidden',
-        background: 'hsl(var(--background))'
-      }}>
+      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
         <div className="p-6 border-b bg-card">
           <div className="flex items-center space-x-4">
             <Button
@@ -640,70 +544,57 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               onChange={(e) => setBarcodeInput(e.target.value)}
               placeholder="Scan barcode or type product name..."
               className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && barcodeInput.trim()) {
-                  handleSearchDatabase();
-                }
-              }}
             />
           </div>
 
           {/* Search Button */}
-          <Button 
+          <Button
             onClick={handleSearchDatabase}
-            className="w-full py-3 text-lg font-semibold bg-primary hover:bg-primary/90"
             disabled={!barcodeInput.trim()}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-lg"
           >
             <Search className="w-5 h-5 mr-2" />
             Search Database
           </Button>
 
-          {/* Voice Input - Temporarily disabled */}
+          {/* Voice Recognition Section */}
           <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground">
-              Voice input temporarily unavailable
-            </label>
-            
-            <Button
-              variant="outline"
-              disabled
-              className="w-full py-3 text-lg font-semibold opacity-50"
-            >
-              <Mic className="w-5 h-5 mr-2" />
-              Voice Input (Coming Soon)
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Mic className="w-5 h-5 text-blue-500" />
+              <span className="font-medium">Voice Recognition</span>
+            </div>
+            <VoiceRecordingButton 
+              onVoiceResult={(text) => {
+                console.log('🎤 Voice result received in HealthScanner:', text);
+                setBarcodeInput(text);
+                handleSearchDatabase();
+              }}
+            />
           </div>
 
-          {/* Smart Suggestions */}
-          {(showSuggestions || smartSuggestions.length > 0) && (
+          {/* Quick Suggestions - Only show after failed search/voice input */}
+          {showSuggestions && smartSuggestions.length > 0 && (
             <div className="space-y-3">
-              <label className="text-sm font-medium text-muted-foreground flex items-center">
-                <Lightbulb className="w-4 h-4 mr-2 text-yellow-500" />
-                Smart Suggestions
-              </label>
-              
-              {isLoadingSuggestions ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Generating suggestions...</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {smartSuggestions.map((suggestion, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className="w-full justify-start text-left p-3 h-auto bg-muted/50 hover:bg-muted border-muted-foreground/20"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-primary/60"></div>
-                        <span className="text-sm">{suggestion}</span>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                <span className="font-medium">Quick Suggestions</span>
+                {isLoadingSuggestions && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {smartSuggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
+                  >
+                    <span className="text-green-600 mr-2">🔍</span>
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -711,126 +602,157 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     );
   }
 
-  // Not Recognized View
-  return (
-    <div className="scanner-root" style={{
-      height: 'calc(var(--vh, 1vh) * 100)',
-      minHeight: '100dvh',
-      display: 'grid',
-      gridTemplateRows: 'auto 1fr auto',
-      overflow: 'hidden',
-      background: 'hsl(var(--background))'
-    }}>
-      <div className="p-6 border-b bg-card">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCurrentView('scanner')}
-            className="rounded-full"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h2 className="text-xl font-bold text-foreground">Image Not Recognized</h2>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="text-center space-y-4">
-          <div className="text-6xl">🤔</div>
-          <h3 className="text-lg font-semibold text-foreground">
-            We couldn't identify this product
-          </h3>
-          <p className="text-muted-foreground">
-            Try one of these options to help us find the right information:
-          </p>
+  // Image Not Recognized View
+  if (currentView === 'notRecognized') {
+    return (
+      <div className="w-full h-full bg-background flex flex-col overflow-hidden">
+        <div className="p-6 border-b bg-card">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentView('scanner')}
+              className="rounded-full"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h2 className="text-xl font-bold text-foreground">Image Not Recognized</h2>
+          </div>
         </div>
 
-        {/* Manual Input Option */}
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-muted-foreground">
-            Type the product name or barcode
-          </label>
-          <Input
-            value={barcodeInput}
-            onChange={(e) => setBarcodeInput(e.target.value)}
-            placeholder="E.g., Coca-Cola Classic or 049000028904"
-            className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && barcodeInput.trim()) {
-                handleSearchDatabase();
-              }
-            }}
-          />
-        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Error Message */}
+          <div className="text-center space-y-4 py-8">
+            <div className="text-6xl">🤔</div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">
+                We couldn't identify any food items or barcodes in your image.
+              </h3>
+              <p className="text-muted-foreground">
+                Try one of the options below to continue your health analysis.
+              </p>
+            </div>
+          </div>
 
-        <Button 
-          onClick={handleSearchDatabase}
-          className="w-full py-3 text-lg font-semibold bg-primary hover:bg-primary/90"
-          disabled={!barcodeInput.trim()}
-        >
-          <Search className="w-5 h-5 mr-2" />
-          Search Database
-        </Button>
-
-        {/* Smart Suggestions */}
-        {(showSuggestions || smartSuggestions.length > 0) && (
+          {/* Manual Input */}
           <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground flex items-center">
-              <Lightbulb className="w-4 h-4 mr-2 text-yellow-500" />
-              Popular Products
+            <label className="text-sm font-medium text-muted-foreground">
+              Type Barcode or Food Name
             </label>
-            
-            {isLoadingSuggestions ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Loading suggestions...</p>
+            <Input
+              value={barcodeInput}
+              onChange={(e) => setBarcodeInput(e.target.value)}
+              placeholder="Enter product barcode or name..."
+              className="text-lg py-3 bg-muted/50 border-2 focus:border-primary"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleSearchDatabase}
+              disabled={!barcodeInput.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3"
+            >
+              <Search className="w-5 h-5 mr-2" />
+              Search Database
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              <Mic className="w-5 h-5 mr-2" />
+              🎤 Use Voice Input
+            </Button>
+          </div>
+
+          {/* Quick Suggestions - AI-powered and context-aware */}
+          {smartSuggestions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                <span className="font-medium">Quick Suggestions</span>
+                {isLoadingSuggestions && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 {smartSuggestions.map((suggestion, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    className="w-full justify-start text-left p-3 h-auto bg-muted/50 hover:bg-muted border-muted-foreground/20"
                     onClick={() => handleSuggestionClick(suggestion)}
+                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
                   >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 rounded-full bg-primary/60"></div>
-                      <span className="text-sm">{suggestion}</span>
-                    </div>
+                    <span className="text-green-600 mr-2">🔍</span>
+                    {suggestion}
                   </Button>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col space-y-3 pt-4">
+          {/* Try Again Button */}
           <Button
             onClick={() => setCurrentView('scanner')}
             variant="outline"
-            className="w-full py-3 text-lg font-semibold border-2"
+            className="w-full border-green-400 text-green-600 hover:bg-green-50"
           >
             <Camera className="w-5 h-5 mr-2" />
-            Try Scanning Again
-          </Button>
-          
-          <Button
-            onClick={async () => {
-              await generateSmartSuggestions();
-              setShowSuggestions(true);
-            }}
-            variant="secondary"
-            className="w-full py-3 text-lg font-semibold"
-            disabled={isLoadingSuggestions}
-          >
-            <Lightbulb className="w-5 h-5 mr-2" />
-            {isLoadingSuggestions ? 'Loading...' : 'Show Popular Items'}
+            📸 Try Scanning Again
           </Button>
         </div>
       </div>
+    );
+  }
+
+  return null;
+};
+
+// ScannerActions component with swapped button order
+function ScannerActions({
+  onAnalyze,
+  onEnterBarcode,
+  onCancel,
+  isScanning = false,
+}: {
+  onAnalyze: () => void;
+  onEnterBarcode: () => void;
+  onCancel?: () => void;
+  isScanning?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      {/* GREEN CTA FIRST (bigger hit area) */}
+      <button
+        onClick={onAnalyze}
+        disabled={isScanning}
+        className="h-14 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        <Zap className={`w-6 h-6 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
+        {isScanning ? '🔍 SCANNING...' : '🧪 ANALYZE NOW'}
+      </button>
+
+      {/* Middle: Enter Barcode Manually (unchanged) */}
+      <button
+        onClick={onEnterBarcode}
+        className="h-12 rounded-xl bg-zinc-800 text-zinc-100 flex items-center justify-center gap-2"
+      >
+        <Keyboard className="w-5 h-5" />
+        ⌨️ Enter Barcode Manually
+      </button>
+
+      {/* Red cancel LAST */}
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="h-12 rounded-xl bg-red-600/90 text-white flex items-center justify-center gap-2"
+        >
+          <X className="w-5 h-5" />
+          ✖️ Cancel
+        </button>
+      )}
     </div>
   );
-};
+}

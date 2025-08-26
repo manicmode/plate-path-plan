@@ -51,7 +51,7 @@ const CircularProgress: React.FC<{
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
-          className="text-gray-200"
+          className="text-border"
         />
         {/* Progress circle with animation */}
         <circle
@@ -91,9 +91,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
-    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-green-500', bgColor: 'bg-green-50 border-green-200' };
-    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600', bgColor: 'bg-yellow-50 border-yellow-200' };
-    return { label: 'Avoid', icon: '❌', color: 'text-red-500', bgColor: 'bg-red-50 border-red-200' };
+    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
+    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
+    return { label: 'Avoid', icon: '❌', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/30' };
   };
 
   const getScoreMessage = (score: number) => {
@@ -130,9 +130,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-0 right-0 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-foreground hover:text-primary" />
           </button>
         </div>
         
@@ -146,17 +146,17 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <div className="mb-4">
               <CircularProgress percentage={result.healthScore * 10} size={140} strokeWidth={10} />
             </div>
-            <div className="text-sm text-muted-foreground mb-6">Health Score</div>
+            <div className="text-sm text-foreground font-medium mb-6">Health Score</div>
             
             {/* Star Rating */}
             <div className="flex justify-center space-x-1 mb-6">
               {[...Array(5)].map((_, i) => (
-                <Star 
+                  <Star 
                   key={i} 
                   className={`w-7 h-7 transition-all duration-200 ${
                     i < starCount 
-                      ? 'text-yellow-400 fill-yellow-400 drop-shadow-lg' 
-                      : 'text-gray-300'
+                      ? 'text-yellow-600 dark:text-yellow-400 fill-yellow-600 dark:fill-yellow-400 drop-shadow-lg' 
+                      : 'text-foreground/40'
                   }`} 
                 />
               ))}
@@ -179,7 +179,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         <Card className="bg-card border-border backdrop-blur-sm">
           <CardHeader className="pb-4">
             <h3 className="text-xl font-bold text-foreground flex items-center">
-              <AlertTriangle className="w-6 h-6 text-orange-500 mr-3" />
+              <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mr-3" />
               Flagged Ingredients
               {result.ingredientFlags.length > 0 && (
                 <Badge variant="destructive" className="ml-2">
@@ -192,10 +192,10 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             {result.ingredientFlags.length > 0 ? (
               <div className="space-y-4">
                 {/* Warning Summary */}
-                <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                <div className="p-4 bg-destructive/10 border-l-4 border-destructive rounded-lg">
                   <div className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-                    <p className="text-red-800 font-semibold">
+                    <AlertTriangle className="w-5 h-5 text-destructive mr-2" />
+                    <p className="text-destructive-foreground font-semibold">
                       This product contains {result.ingredientFlags.length} ingredient{result.ingredientFlags.length > 1 ? 's' : ''} 
                       that may not align with your health profile.
                     </p>
@@ -207,9 +207,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   {result.ingredientFlags.map((flag, index) => {
                     const getSeverityColor = (severity: string) => {
                       switch (severity.toLowerCase()) {
-                        case 'high': return { bg: 'bg-red-50 border-red-200', text: 'text-red-800', icon: 'text-red-500' };
-                        case 'medium': return { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', icon: 'text-orange-500' };
-                        default: return { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-800', icon: 'text-yellow-500' };
+                        case 'high': return { bg: 'bg-destructive/10 border-destructive/30', text: 'text-destructive-foreground', icon: 'text-destructive' };
+                        case 'medium': return { bg: 'bg-orange-500/10 border-orange-500/30', text: 'text-orange-600 dark:text-orange-400', icon: 'text-orange-500' };
+                        default: return { bg: 'bg-yellow-500/10 border-yellow-500/30', text: 'text-yellow-600 dark:text-yellow-400', icon: 'text-yellow-500' };
                       }
                     };
 
@@ -245,19 +245,19 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                 </div>
 
                 {/* Health Condition Context */}
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-blue-700 text-sm">
+                <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                  <p className="text-primary-foreground text-sm">
                     💡 <strong>Note:</strong> These warnings are personalized based on your health profile. 
                     Consult with your healthcare provider for specific dietary guidance.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-500" />
+              <div className="flex items-center space-x-3 p-4 bg-primary/10 border border-primary/30 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-primary" />
                 <div>
-                  <span className="text-green-800 font-medium">No concerning ingredients detected for your health profile!</span>
-                  <p className="text-green-700 text-sm mt-1">This product appears to be safe based on your health conditions.</p>
+                  <span className="text-primary-foreground font-medium">No concerning ingredients detected for your health profile!</span>
+                  <p className="text-primary-foreground text-sm mt-1">This product appears to be safe based on your health conditions.</p>
                 </div>
               </div>
             )}
@@ -293,18 +293,18 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   const displayKey = getDisplayKey(key);
                   
                   return (
-                    <div key={key} className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                      <div className="text-3xl font-bold text-blue-800 mb-1">
+                    <div key={key} className="text-center p-4 bg-accent/20 border border-accent/30 rounded-xl">
+                      <div className="text-3xl font-bold text-foreground mb-1">
                         {typeof value === 'number' ? value : value}
                       </div>
-                      <div className="text-sm text-blue-600 font-medium mb-1">{unit}</div>
-                      <div className="text-xs text-blue-700 font-semibold uppercase tracking-wide">{displayKey}</div>
+                      <div className="text-sm text-foreground font-medium mb-1">{unit}</div>
+                      <div className="text-xs text-foreground font-semibold uppercase tracking-wide">{displayKey}</div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center text-muted-foreground">
+              <div className="p-4 text-center text-foreground font-medium">
                 Nutrition facts not available from scan data
               </div>
             )}
@@ -320,26 +320,26 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             </h3>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-gray-800 leading-relaxed">
+            <div className="p-4 bg-muted/50 border border-border rounded-lg">
+              <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
                 {/* This would come from the API - for now showing a placeholder */}
-                <span className="text-gray-700">
-                  {result.healthProfile.additives && result.healthProfile.additives.length > 0 
-                    ? result.healthProfile.additives.join(', ')
-                    : 'Ingredient list not available from scan data'
-                  }
-                </span>
+                  <span className="text-foreground">
+                    {result.healthProfile.additives && result.healthProfile.additives.length > 0 
+                      ? result.healthProfile.additives.join(', ')
+                      : 'Ingredient list not available from scan data'
+                    }
+                  </span>
               </p>
             </div>
           </CardContent>
         </Card>
 
         {/* 💬 5. AI COACH COMMENTARY */}
-        <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 backdrop-blur-sm">
+        <Card className="bg-card border-border backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <h3 className="text-xl font-bold text-purple-800 flex items-center">
-              <Zap className="w-6 h-6 text-purple-600 mr-3" />
+            <h3 className="text-xl font-bold text-foreground flex items-center">
+              <Zap className="w-6 h-6 text-primary mr-3" />
               AI Coach Insights
             </h3>
           </CardHeader>
@@ -347,14 +347,14 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <div className="space-y-4">
               {/* Personalized Warnings */}
               {result.personalizedWarnings.length > 0 && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
                   <div className="flex items-start space-x-3">
-                    <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
                     <div>
-                      <h4 className="font-semibold text-red-800 mb-2">Health Warnings</h4>
+                      <h4 className="font-semibold text-destructive-foreground mb-2">Health Warnings</h4>
                       <ul className="space-y-1">
                         {result.personalizedWarnings.map((warning, index) => (
-                          <li key={index} className="text-red-700">{warning}</li>
+                          <li key={index} className="text-destructive-foreground">{warning}</li>
                         ))}
                       </ul>
                     </div>
@@ -364,14 +364,14 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               
               {/* Suggestions */}
               {result.suggestions.length > 0 && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
                   <div className="flex items-start space-x-3">
-                    <ShieldCheck className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <ShieldCheck className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                     <div>
-                      <h4 className="font-semibold text-blue-800 mb-2">Recommendations</h4>
+                      <h4 className="font-semibold text-primary-foreground mb-2">Recommendations</h4>
                       <ul className="space-y-1">
                         {result.suggestions.map((suggestion, index) => (
-                          <li key={index} className="text-blue-700">{suggestion}</li>
+                          <li key={index} className="text-foreground">{suggestion}</li>
                         ))}
                       </ul>
                     </div>
@@ -381,32 +381,32 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               
               {/* Enhanced Default commentary */}
               {result.personalizedWarnings.length === 0 && result.suggestions.length === 0 && (
-                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="p-4 bg-muted border border-border rounded-lg">
                   <div className="space-y-3">
                     {result.healthScore >= 8 ? (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "This is a great option if you're avoiding added sugars and processed ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Keep up the excellent work with mindful food choices - your body will thank you!"
                         </p>
                       </>
                     ) : result.healthScore >= 4 ? (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "This product is okay in moderation, but consider alternatives with cleaner ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Some users prefer products without artificial additives for optimal health benefits."
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-purple-800 font-medium">
+                        <p className="text-foreground font-medium">
                           "Consider avoiding this product regularly - it contains several concerning ingredients."
                         </p>
-                        <p className="text-purple-700">
+                        <p className="text-foreground">
                           "Look for simpler alternatives with whole food ingredients and fewer additives."
                         </p>
                       </>
@@ -422,7 +422,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
           <Button
             onClick={() => {/* Handle save to log */}}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-xl mr-2">💾</span>
             Save
@@ -431,7 +431,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           <Button
             onClick={() => {/* Handle flag item */}}
             variant="outline"
-            className="border-2 border-red-400 text-red-600 hover:bg-red-50 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="border-2 border-destructive/50 text-destructive hover:bg-destructive/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <Flag className="w-5 h-5 mr-2" />
             Flag Item
@@ -440,7 +440,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           <Button
             onClick={onScanAnother}
             variant="outline"
-            className="border-2 border-blue-400 text-blue-600 hover:bg-blue-50 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="border-2 border-primary/50 text-primary hover:bg-primary/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
             Scan Another
@@ -448,7 +448,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
 
           <Button
             onClick={onClose}
-            className="bg-red-500 hover:bg-red-600 text-white py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
           >
             <X className="w-5 h-5 mr-2" />
             Cancel

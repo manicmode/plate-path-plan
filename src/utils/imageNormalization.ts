@@ -43,35 +43,12 @@ export async function normalizeHealthScanImage(
   let inputFile: File;
   let originalSize: number;
 
-  // Convert string data URL to File if needed (CSP-safe)
+  // Convert string data URL to File if needed
   if (typeof file === 'string') {
-    try {
-      // Use canvas conversion instead of fetch for CSP safety
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx?.drawImage(img, 0, 0);
-          
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error('Failed to create blob from canvas'));
-          }, 'image/jpeg', 0.85);
-        };
-        img.onerror = reject;
-        img.src = file;
-      });
-      
-      inputFile = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
-      originalSize = blob.size;
-    } catch (error) {
-      console.error('Failed to convert dataURL to File:', error);
-      throw new Error('The file given is not an image');
-    }
+    const response = await fetch(file);
+    const blob = await response.blob();
+    inputFile = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
+    originalSize = blob.size;
   } else {
     inputFile = file;
     originalSize = file.size;
@@ -80,11 +57,11 @@ export async function normalizeHealthScanImage(
   console.log('📏 Original image size:', originalSize, 'bytes');
 
   try {
-    // Compression options - Disable web worker to avoid CSP violations
+    // Compression options
     const compressionOptions = {
       maxSizeMB: 10, // Max 10MB
       maxWidthOrHeight: Math.max(maxWidth, maxHeight),
-      useWebWorker: false, // Disable to avoid CSP worker-src violations
+      useWebWorker: true,
       fileType: `image/${format.toLowerCase()}` as const,
       quality: quality,
       // EXIF handling
