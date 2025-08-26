@@ -1027,7 +1027,7 @@ function ScannerActions({
           className="h-12 rounded-xl bg-red-600/90 text-white flex items-center justify-center gap-2"
         >
           <X className="w-5 h-5" />
-          ✖️ Cancel
+          Cancel
         </button>
       )}
     </div>
