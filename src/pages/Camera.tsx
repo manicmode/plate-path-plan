@@ -30,7 +30,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
-import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+// FoodConfirmationCard removed - using ConfirmFoodLog instead
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { ConfirmFoodLog } from '@/components/logging/ConfirmFoodLog';
 import { NormalizedProduct } from '@/lib/food/types';
@@ -165,9 +165,35 @@ const CameraPage = () => {
   // Processing state moved from duplicate declaration below
   const [isProcessingFood, setIsProcessingFood] = useState(false);
   
+  // Confirm Food Log handler for barcode flow
+  const handleConfirmFoodFromBarcode = async (scaled: NormalizedProduct, portion: number) => {
+    try {
+      const result = await addFood({
+        name: scaled.name,
+        calories: scaled.nutrition.calories || 0,
+        protein: scaled.nutrition.protein_g || 0,
+        carbs: scaled.nutrition.carbs_g || 0,
+        fat: scaled.nutrition.fat_g || 0,
+        fiber: scaled.nutrition.fiber_g || 0,
+        sugar: scaled.nutrition.sugar_g || 0,
+        sodium: scaled.nutrition.sodium_mg || 0,
+        confidence: 95,
+      });
+      
+      await scoreMealAfterInsert?.(result, null);
+      if (refetchSavedFoods) await refetchSavedFoods();
+      
+      toast.success(`${scaled.name} logged successfully! 🎉`);
+      setConfirmOpen(false);
+    } catch (error) {
+      console.error('Error saving food:', error);
+      toast.error('Failed to save food. Please try again.');
+    }
+  };
+
   // Confirm Food Log states
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmProduct, setConfirmProduct] = useState<any>(null);
+  const [confirmProduct, setConfirmProduct] = useState<NormalizedProduct | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -2546,43 +2572,7 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Food Confirmation Card */}
-      <FoodConfirmationCard
-        isOpen={showConfirmation}
-        isProcessingFood={isProcessingFood}
-        onClose={() => {
-          setShowConfirmation(false);
-          setIsProcessingFood(false); // Reset processing state when closing
-          // Reset multi-item flow if needed
-          if (pendingItems.length > 0) {
-            setPendingItems([]);
-            setCurrentItemIndex(0);
-          }
-          setShowTransition(false);
-          // Return to the appropriate previous screen
-          if (selectedImage && !showSummaryPanel) {
-            // Return to camera analysis view
-            setIsAnalyzing(false);
-          } else if (summaryItems.length > 0) {
-            // Return to summary panel if it was the previous screen
-            setShowSummaryPanel(true);
-          } else {
-            // Reset to camera home
-            resetState();
-          }
-        }}
-        onConfirm={handleConfirmFood}
-        onSkip={handleSkipFood}
-        onCancelAll={handleCancelAll}
-        foodItem={recognizedFoods[0] || null}
-        showSkip={pendingItems.length > 1}
-        currentIndex={currentItemIndex}
-        onVoiceAnalyzingComplete={() => {
-          setShowVoiceAnalyzing(false);
-          setShowProcessingNextItem(false);
-        }}
-        totalItems={pendingItems.length}
-      />
+      {/* Legacy Food Confirmation Card removed - using ConfirmFoodLog for barcodes */}
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
       {inputSource !== 'barcode' && (
@@ -2666,36 +2656,12 @@ const CameraPage = () => {
         debugInfo={(recognizedFoods[0] as any)?.servingDebug}
       />
 
-      {/* Activity Logging Section - Exercise, Recovery, Habits */}
       {/* Confirm Food Log Modal */}
       <ConfirmFoodLog
         open={confirmOpen}
         product={confirmProduct}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={async (scaled: NormalizedProduct, portion: number) => {
-          try {
-            await addFood({
-              name: scaled.name,
-              calories: scaled.nutrition.calories || 0,
-              protein: scaled.nutrition.protein_g || 0,
-              carbs: scaled.nutrition.carbs_g || 0,
-              fat: scaled.nutrition.fat_g || 0,
-              fiber: scaled.nutrition.fiber_g || 0,
-              sugar: scaled.nutrition.sugar_g || 0,
-              sodium: scaled.nutrition.sodium_mg || 0,
-              confidence: 95,
-            });
-            
-            await scoreMealAfterInsert?.();
-            if (refetchSavedFoods) await refetchSavedFoods();
-            
-            toast.success(`${scaled.name} logged successfully! 🎉`);
-            setConfirmOpen(false);
-          } catch (error) {
-            console.error('Error saving food:', error);
-            toast.error('Failed to save food. Please try again.');
-          }
-        }}
+        onConfirm={handleConfirmFoodFromBarcode}
       />
 
       <div className="mt-8">
