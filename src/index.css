@@ -199,6 +199,20 @@
   padding-bottom: calc(env(safe-area-inset-bottom, 0) + 12px);
 }
 
+/* Ensure -webkit-backdrop-filter is available where needed */
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Respect users who prefer less motion: reduce blur & fade */
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-blur-md {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
+
 @layer utilities {
   /* Enhanced Text Wrapping Utilities */
   .text-wrap-anywhere {
