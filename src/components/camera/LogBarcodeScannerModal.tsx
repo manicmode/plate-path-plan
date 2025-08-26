@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Zap, FlashlightIcon, Edit3 } from 'lucide-react';
@@ -28,12 +28,102 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
 
+  // Autoscan refs
+  const inFlightRef = useRef(false);
+  const rafRef = useRef<number>(0);
+  const cooldownUntilRef = useRef(0);
+  const hitsRef = useRef<{code:string,t:number}[]>([]);
+  const runningRef = useRef(false);
+
   const { snapAndDecode, setTorch, isTorchSupported, torchEnabled } = useSnapAndDecode();
+
+  // Feature flag for autoscan
+  const AUTOSCAN_ENABLED = process.env.NEXT_PUBLIC_BARCODE_AUTOSCAN === '1';
 
   // Constants for decode parameters
   const BUDGET_MS = 900;
   const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
   const COOLDOWN_MS = 600;
+
+  // Quick decode for autoscan with better tolerance
+  const quickDecode = useCallback(async (video: HTMLVideoElement, opts: { budgetMs: number }) => {
+    if (!video.videoWidth || !video.videoHeight) return null;
+    
+    try {
+      const result = await snapAndDecode({
+        videoEl: video,
+        budgetMs: opts.budgetMs,
+        roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+        logPrefix: '[LOG]'
+      });
+      
+      return result.ok ? { ok: true, code: result.raw } : null;
+    } catch (error) {
+      return null;
+    }
+  }, [snapAndDecode, ROI]);
+
+  // Autoscan functions
+  const startAutoscan = useCallback(() => {
+    if (!AUTOSCAN_ENABLED) return;
+    console.log('[LOG] autoscan_start');
+    runningRef.current = true;
+    hitsRef.current = [];
+    const tick = async () => {
+      if (!runningRef.current) return;
+      const now = performance.now();
+      
+      if (now < cooldownUntilRef.current || inFlightRef.current || !videoRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      
+      inFlightRef.current = true;
+      try {
+        const result = await quickDecode(videoRef.current, { budgetMs: 180 });
+        if (result?.ok && /^\d{8,14}$/.test(result.code)) {
+          console.log('[LOG] quick_hit', { code: result.code });
+          hitsRef.current.push({ code: result.code, t: now });
+          hitsRef.current = hitsRef.current.filter(h => now - h.t <= 600);
+          
+          const last = hitsRef.current[hitsRef.current.length - 1].code;
+          const count = hitsRef.current.filter(h => h.code === last).length;
+          
+          if (count >= 3) {
+            console.log('[LOG] stable_lock', { code: last });
+            setIsFrozen(true);
+            stopAutoscan();
+            
+            const lookupResult = await handleOffLookup(last);
+            if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
+              onBarcodeDetected(last);
+              onOpenChange(false);
+            } else {
+              setIsFrozen(false);
+              startAutoscan(); // Resume if no match
+            }
+            return;
+          }
+        } else {
+          cooldownUntilRef.current = now + 120;
+        }
+      } finally {
+        inFlightRef.current = false;
+        if (runningRef.current) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [AUTOSCAN_ENABLED, quickDecode, onBarcodeDetected, onOpenChange]);
+
+  const stopAutoscan = useCallback(() => {
+    console.log('[LOG] autoscan_stop');
+    runningRef.current = false;
+    cancelAnimationFrame(rafRef.current);
+    inFlightRef.current = false;
+    hitsRef.current = [];
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -45,15 +135,26 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     return cleanup;
   }, [open]);
 
+  useEffect(() => {
+    if (open && stream) {
+      // Start autoscan when camera is ready
+      startAutoscan();
+    }
+    return () => {
+      stopAutoscan();
+    };
+  }, [open, stream, startAutoscan, stopAutoscan]);
+
   const startCamera = async () => {
     try {
       console.log("[LOG] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: 'environment',
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 }
-        }
+        },
+        audio: false
       });
 
       if (videoRef.current) {
@@ -69,9 +170,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const cleanup = () => {
+    stopAutoscan();
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setStream(null);
     setIsDecoding(false);
     setIsFrozen(false);
     setIsLookingUp(false);
@@ -138,6 +244,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     
     if (!videoRef.current) return;
     
+    // Pause autoscan during manual decode
+    const wasRunning = runningRef.current;
+    if (wasRunning) stopAutoscan();
+    
     console.time('[LOG] analyze_total');
     setIsDecoding(true);
     setIsFrozen(true);
@@ -177,6 +287,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       setTimeout(() => {
         setIsDecoding(false);
         setIsFrozen(false);
+        // Resume autoscan if it was running
+        if (wasRunning && AUTOSCAN_ENABLED) {
+          startAutoscan();
+        }
       }, 450); // Small cooldown before allowing next attempt
       console.timeEnd('[LOG] analyze_total');
     }
@@ -221,8 +335,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-b from-black/70 to-transparent">
-              <h2 className="text-white text-xl font-semibold">Scan Barcode</h2>
+            <div className="flex justify-between items-center p-4 bg-gradient-to-b from-black/70 to-transparent pt-[env(safe-area-inset-top)]">
+              <h2 className="text-white text-xl font-semibold text-center flex-1">Scan Barcode</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -234,9 +348,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center pointer-events-none">
+            <div className="flex-1 flex items-center justify-center px-4">
               {/* Centered scan frame */}
-              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4]">
+              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
                 {/* Corner indicators */}
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
@@ -260,7 +374,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-0 inset-x-0 pb-safe px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
+            <footer className="absolute bottom-0 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
               {/* Instructions text */}
               <div className="text-center text-white/90 mb-4">
                 <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
@@ -302,8 +416,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                       torchEnabled ? 'bg-white/20' : 'bg-transparent'
                     }`}
                   >
-                    <FlashlightIcon className={`h-4 w-4 mr-2 ${torchEnabled ? 'text-yellow-300' : ''}`} />
-                    {torchEnabled ? 'Flash On' : 'Flash Off'}
+                    {torchEnabled ? '💡 Flash On' : '💡 Flash Off'}
                   </Button>
                 )}
                 
@@ -313,8 +426,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   onClick={onManualEntry}
                   className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
                 >
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Enter Manually
+                  ✏️ Enter Manually
                 </Button>
               </div>
             </footer>
