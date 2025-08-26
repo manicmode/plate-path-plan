@@ -15,6 +15,7 @@ import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
+import { FoodLogModal } from '@/components/FoodLogModal';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
@@ -114,6 +115,7 @@ const CameraPage = () => {
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showFoodLogModal, setShowFoodLogModal] = useState(false);
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
   const [showBarcodeNotFound, setShowBarcodeNotFound] = useState(false);
   const [failedBarcode, setFailedBarcode] = useState('');
@@ -2411,11 +2413,10 @@ console.log('Global search enabled:', enableGlobalSearch);
                     )}
                   </Button>
                   
-                  {/* Scan Barcode Tab */}
+                   {/* Scan Barcode Tab */}
                   <Button
                     onClick={() => {
-                      setShowBarcodeScanner(true);
-                      setInputSource('barcode');
+                      setShowFoodLogModal(true);
                       resetErrorState();
                     }}
                     disabled={isLoadingBarcode}
@@ -2836,6 +2837,12 @@ console.log('Global search enabled:', enableGlobalSearch);
       <ManualFoodEntry
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
+      />
+
+      {/* Food Log Modal */}
+      <FoodLogModal 
+        open={showFoodLogModal}
+        onOpenChange={setShowFoodLogModal}
       />
 
       {/* Debug Panel - Dev only */}

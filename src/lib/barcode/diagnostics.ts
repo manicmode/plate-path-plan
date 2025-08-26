@@ -1,21 +1,26 @@
-// Comprehensive barcode diagnostics for Health Scanner
+// Forensic barcode diagnostics for Health Scanner
+export type Attempt = {
+  idx: number;
+  crop: 'full' | 'bandH' | 'bandV' | 'q1' | 'q2' | 'q3' | 'q4';
+  scale: number;
+  rotation: number;
+  inverted: boolean;
+  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Error';
+  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'UPC_E' | 'CODE_128' | 'ITF';
+  code?: string;
+  elapsedMs: number;
+  roi: { w: number; h: number };
+  dpr: number;
+};
+
 export type ScanReport = {
-  captureSize: { w: number; h: number };
-  normalizedSize: { w: number; h: number };
-  roi: { x: number; y: number; w: number; h: number; strategy: string };
-  devicePixelRatio: number;
-  constraints: any;
-  attempts: Array<{
-    idx: number;
-    rotation: number;
-    scale: number;
-    inverted: boolean;
-    crop: string;
-    outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error';
-    format?: string;
-    code?: string;
-    elapsedMs: number;
-  }>;
+  reqId: string;
+  env: { innerHeight: number; cssVh: string; dpr: number };
+  constraints?: any;
+  captureSize?: { w: number; h: number };
+  normalizedSize?: { w: number; h: number };
+  roiStrategy: 'reticle' | 'center';
+  attempts: Attempt[];
   final: {
     success: boolean;
     code?: string;
@@ -54,20 +59,22 @@ declare global {
 let currentReport: ScanReport | null = null;
 
 export function startScanReport(
-  captureSize: { w: number; h: number },
-  normalizedSize: { w: number; h: number },
-  roi: { x: number; y: number; w: number; h: number; strategy: string },
-  devicePixelRatio: number,
-  constraints: any
+  reqId: string,
+  env: { innerHeight: number; cssVh: string; dpr: number },
+  roiStrategy: 'reticle' | 'center',
+  constraints?: any,
+  captureSize?: { w: number; h: number },
+  normalizedSize?: { w: number; h: number }
 ): void {
-  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1') return;
+  if (!isDebugEnabled()) return;
   
   currentReport = {
+    reqId,
+    env,
+    constraints,
     captureSize,
     normalizedSize,
-    roi,
-    devicePixelRatio,
-    constraints,
+    roiStrategy,
     attempts: [],
     final: {
       success: false,
@@ -78,54 +85,16 @@ export function startScanReport(
   };
 }
 
-export function logAttempt(
-  idx: number,
-  rotation: number,
-  scale: number,
-  inverted: boolean,
-  crop: string,
-  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error',
-  elapsedMs: number,
-  format?: string,
-  code?: string
-): void {
-  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1' || !currentReport) return;
+export function logAttempt(attempt: Attempt): void {
+  if (!isDebugEnabled() || !currentReport) return;
   
-  currentReport.attempts.push({
-    idx,
-    rotation,
-    scale,
-    inverted,
-    crop,
-    outcome,
-    format,
-    code,
-    elapsedMs
-  });
+  currentReport.attempts.push(attempt);
 }
 
-export function finalizeScanReport(
-  success: boolean,
-  totalMs: number,
-  code?: string,
-  normalizedAs?: string,
-  checkDigitOk?: boolean,
-  offLookup?: { status: 'hit' | 'miss' | 'error'; http?: number; ms?: number },
-  willScore: boolean = false,
-  willFallback: boolean = false
-): ScanReport | null {
-  if (process.env.NEXT_PUBLIC_SCAN_DEBUG !== '1' || !currentReport) return null;
+export function finalizeScanReport(final: ScanReport['final']): ScanReport | null {
+  if (!isDebugEnabled() || !currentReport) return null;
   
-  currentReport.final = {
-    success,
-    code,
-    normalizedAs,
-    checkDigitOk,
-    offLookup,
-    willScore,
-    willFallback,
-    totalMs
-  };
+  currentReport.final = final;
   
   storeScanReport(currentReport);
   const report = currentReport;
@@ -133,8 +102,15 @@ export function finalizeScanReport(
   return report;
 }
 
+// Helper function to check if debug is enabled
+function isDebugEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' || 
+         new URLSearchParams(window.location.search).get('scan_debug') === '1' ||
+         localStorage.getItem('SCAN_DEBUG') === '1';
+}
+
 export function storeScanReport(report: ScanReport) {
-  if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
+  if (isDebugEnabled()) {
     if (!window.__HS_LAST_REPORTS) {
       window.__HS_LAST_REPORTS = [];
     }

@@ -8,7 +8,8 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 import { decodeUPCFromImageBlobWithDiagnostics } from '@/lib/barcode/enhancedDecoder';
-import { copyDebugToClipboard, startScanReport } from '@/lib/barcode/diagnostics';
+import { copyDebugToClipboard, startScanReport, finalizeScanReport } from '@/lib/barcode/diagnostics';
+import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
 import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
 
 interface HealthScannerInterfaceProps {
