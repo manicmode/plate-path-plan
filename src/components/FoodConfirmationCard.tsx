@@ -458,7 +458,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
            className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
            title="Confirm Food Log"
            description="We'll save these items to your log."
-           showCloseButton={false}
          >
           <div className="p-6">
             {/* Unknown Product Alert */}
