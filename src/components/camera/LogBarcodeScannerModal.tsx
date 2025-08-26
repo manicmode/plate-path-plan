@@ -6,6 +6,8 @@ import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
+import { logScoreNorm } from '@/lib/health/extractScore';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -211,6 +213,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       
       clearTimeout(timeout);
       
+      // Forensic logging for Log → Confirm flow
+      console.log('[LOG PIPELINE]', 'enhanced-health-scanner', { mode: 'barcode', barcode, source: 'log' });
+      
       if (error) {
         status = error.status || 'error';
         console.log(`[LOG] off_error:`, error);
@@ -218,6 +223,24 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         status = 200;
         hit = !!result?.ok && !!result.product;
         data = result;
+        
+        if (result) {
+          // RCA telemetry for Log flow
+          const legacy = toLegacyFromEdge(result);
+          console.groupCollapsed('[LOG] RCA legacy');
+          console.log('edge.product.name', result?.product?.name);
+          console.log('edge.product.health.score', result?.product?.health?.score);
+          console.log('edge.product.health.flags.len', result?.product?.health?.flags?.length ?? 0);
+          console.log('legacy.productName', legacy?.productName);
+          console.log('legacy.healthScore', legacy?.healthScore);
+          console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
+          console.log('legacy.ingredientsText.len', legacy?.ingredientsText?.length ?? 0);
+          console.groupEnd();
+          
+          // Score normalization telemetry
+          logScoreNorm('score_norm:log.edge', result?.product?.health?.score, null);
+          logScoreNorm('score_norm:log.legacy', legacy?.healthScore, null);
+        }
       }
       
     } catch (error: any) {

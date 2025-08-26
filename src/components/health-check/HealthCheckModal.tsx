@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
+import { logScoreNorm } from '@/lib/health/extractScore';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -116,6 +117,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         // Use the dedicated barcode processor
         try {
           console.log('🔄 Processing barcode:', detectedBarcode);
+          console.log('[HS PIPELINE]', 'health-check-processor (likely)', { barcode: detectedBarcode });
           const result = await handleBarcodeInput(detectedBarcode, user?.id);
           
           if (!result) {
@@ -126,6 +128,21 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           
           // Use the tolerant adapter to normalize the data (same as Log flow)
           const legacy = toLegacyFromEdge(result);
+          
+          // RCA telemetry for barcode-photo path
+          console.groupCollapsed('[HS] RCA (barcode-photo)');
+          console.log('edge/result.product.name', result?.product?.name);
+          console.log('edge/result.product.health.score', result?.product?.health?.score);
+          console.log('edge/result.product.health.flags.len', result?.product?.health?.flags?.length ?? 0);
+          console.log('edge/result.health.score', result?.health?.score);
+          console.groupEnd();
+          
+          console.groupCollapsed('[HS] RCA legacy (barcode-photo)');
+          console.log('legacy.productName', legacy?.productName);
+          console.log('legacy.healthScore', legacy?.healthScore);
+          console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
+          console.log('legacy.ingredientsText.len', legacy?.ingredientsText?.length ?? 0);
+          console.groupEnd();
 
           // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
           const scorePct =
@@ -134,6 +151,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             extractScore(result?.health?.score) ??
             extractScore((result as any)?.healthScore);
           const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
+          
+          // Score normalization telemetry
+          logScoreNorm('score_norm:barcode-photo.edge', result?.product?.health?.score ?? result?.health?.score, null);
+          logScoreNorm('score_norm:barcode-photo.legacy', legacy?.healthScore, null);
 
           // Flags: prefer adapter global flags; if empty, fall back to top-level result.healthFlags
           const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
@@ -266,6 +287,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       let data, error;
       try {
         console.log('🔄 Making enhanced-health-scanner call...');
+        console.log('[HS PIPELINE]', 'enhanced-health-scanner', { mode: payload.mode });
         const result = await supabase.functions.invoke('enhanced-health-scanner', {
           body: payload
         });
@@ -285,15 +307,21 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
 
-      // RCA + telemetry (right after enhanced-health-scanner returns)
-      console.groupCollapsed('[HS] RCA');
+      // RCA telemetry for image-only path
+      console.groupCollapsed('[HS] RCA (image)');
       console.log('edge.product.name', data?.product?.name);
       console.log('edge.product.code', data?.product?.code);
+      console.log('edge.product.health.score', data?.product?.health?.score);
       console.log('edge.product.ingredientsText', data?.product?.ingredientsText?.slice(0,200));
       console.log('edge.product.ingredients.len', data?.product?.ingredients?.length ?? 0);
       console.log('edge.product.health.flags.len', data?.product?.health?.flags?.length ?? 0);
+      console.log('edge.health.score', data?.health?.score);
+      console.groupEnd();
+      
+      console.groupCollapsed('[HS] RCA legacy (image)');
       console.log('legacy.productName', legacy?.productName);
       console.log('legacy.barcode', legacy?.barcode);
+      console.log('legacy.healthScore', legacy?.healthScore);
       console.log('legacy.ingredientsText', legacy?.ingredientsText?.slice(0,200));
       console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
       console.log('legacy.nutrition.keys', legacy?.nutrition ? Object.keys(legacy.nutrition) : null);
@@ -315,6 +343,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         extractScore(data?.health?.score) ??
         extractScore((data as any)?.healthScore);
       const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
+      
+      // Score normalization telemetry
+      logScoreNorm('score_norm:image.edge', data?.product?.health?.score ?? data?.health?.score, null);
+      logScoreNorm('score_norm:image.legacy', legacy?.healthScore, null);
 
       // Log whether barcode was detected or Google Vision/GPT was used
       if (data.barcode) {
