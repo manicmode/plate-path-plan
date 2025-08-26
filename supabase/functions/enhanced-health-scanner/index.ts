@@ -239,8 +239,8 @@ function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
     fat_g: num(pick('fat_100g','fat_serving')) || 0,
     fiber_g: num(pick('fiber_100g','fiber_serving')) || 0,
     sugar_g: num(pick('sugars_100g','sugars_serving')) || 0,
-    sodium_mg: toMg(num(pick('sodium_100g','sodium_serving'))) 
-               ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving'))) || 0
+      sodium_mg: (toMg(num(pick('sodium_100g','sodium_serving'))) 
+                 ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving')))) || 0
   };
 
   // Parse ingredients
