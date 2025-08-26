@@ -196,13 +196,33 @@ export function useSnapAndDecode() {
   };
 
   const setTorch = async (on: boolean): Promise<void> => {
-    if (!streamRef.current) return;
+    console.log('[TORCH] setTorch called', { on, hasStream: !!streamRef.current });
+    
+    if (!streamRef.current) {
+      console.log('[TORCH] No stream available for torch control');
+      return;
+    }
     
     const track = streamRef.current.getVideoTracks()[0];
-    if (!isTorchSupported(track)) return;
+    console.log('[TORCH] Video track:', { 
+      track: !!track, 
+      readyState: track?.readyState, 
+      kind: track?.kind 
+    });
     
-    await toggleTorch(track, on);
-    setTorchEnabled(on);
+    if (!isTorchSupported(track)) {
+      console.log('[TORCH] Torch not supported on this track');
+      return;
+    }
+    
+    try {
+      await toggleTorch(track, on);
+      console.log('[TORCH] Successfully toggled torch to', on);
+      setTorchEnabled(on);
+    } catch (error) {
+      console.error('[TORCH] Failed to toggle torch:', error);
+      // Don't update UI state if torch toggle failed
+    }
   };
 
   const getTorchSupported = (): boolean => {

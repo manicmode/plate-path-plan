@@ -307,10 +307,19 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const toggleTorch = async () => {
+    console.log('[LOG] toggleTorch called', { 
+      torchEnabled, 
+      isTorchSupported: isTorchSupported(),
+      hasStream: !!stream
+    });
+    
     try {
-      await setTorch(!torchEnabled);
+      const newState = !torchEnabled;
+      console.log('[LOG] Attempting to toggle torch to:', newState);
+      await setTorch(newState);
+      console.log('[LOG] Torch toggle completed successfully');
     } catch (error) {
-      console.error("Error toggling torch:", error);
+      console.error("[LOG] Error toggling torch:", error);
     }
   };
 

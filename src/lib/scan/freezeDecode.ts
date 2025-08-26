@@ -154,18 +154,33 @@ export function chooseBarcode(result: any): string | null {
  * Toggle torch on/off for a video track
  */
 export function toggleTorch(track: MediaStreamTrack, on: boolean): Promise<void> {
+  console.log('[TORCH] toggleTorch called', { on, trackKind: track?.kind });
+  
   const caps = track.getCapabilities?.();
+  console.log('[TORCH] Track capabilities:', { 
+    hasCaps: !!caps, 
+    hasTorch: caps && 'torch' in caps,
+    capabilities: caps ? Object.keys(caps) : 'none'
+  });
+  
   if (!caps || !('torch' in caps)) {
-    console.log('[TORCH] torch not supported');
+    console.log('[TORCH] torch not supported - no capabilities or torch missing');
     return Promise.resolve();
   }
+  
+  console.log('[TORCH] Applying torch constraint:', { torch: on });
   
   return track.applyConstraints({ 
     advanced: [{ torch: on } as any] 
   }).then(() => {
-    console.log('[TORCH] torch', { on });
+    console.log('[TORCH] torch constraint applied successfully', { on });
   }).catch((error) => {
-    console.log('[TORCH] torch failed:', error);
+    console.error('[TORCH] torch constraint failed:', { 
+      error: error.message || error,
+      name: error.name,
+      constraint: { torch: on }
+    });
+    throw error; // Re-throw so the caller knows it failed
   });
 }
 
@@ -173,9 +188,21 @@ export function toggleTorch(track: MediaStreamTrack, on: boolean): Promise<void>
  * Check if torch is supported on the given track
  */
 export function isTorchSupported(track?: MediaStreamTrack): boolean {
-  if (!track) return false;
+  if (!track) {
+    console.log('[TORCH] isTorchSupported: no track provided');
+    return false;
+  }
+  
   const caps = track.getCapabilities?.();
-  return !!(caps && 'torch' in caps);
+  const supported = !!(caps && 'torch' in caps);
+  console.log('[TORCH] isTorchSupported:', { 
+    supported, 
+    hasCaps: !!caps, 
+    trackKind: track.kind,
+    readyState: track.readyState 
+  });
+  
+  return supported;
 }
 
 /**

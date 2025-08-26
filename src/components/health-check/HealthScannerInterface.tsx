@@ -729,10 +729,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const handleFlashlightToggle = async () => {
-    if (!stream) return;
+    console.log('[HS] handleFlashlightToggle called', { 
+      hasStream: !!stream, 
+      torchEnabled,
+      torchSupported: torchSupported()
+    });
+    
+    if (!stream) {
+      console.log('[HS] No stream available for flashlight toggle');
+      return;
+    }
     
     const newTorchState = !torchEnabled;
-    await setTorch(newTorchState);
+    console.log('[HS] Attempting to toggle torch to:', newTorchState);
+    
+    try {
+      await setTorch(newTorchState);
+      console.log('[HS] Flashlight toggle completed successfully');
+    } catch (error) {
+      console.error('[HS] Flashlight toggle failed:', error);
+    }
   };
 
   const handleManualEntry = () => {
