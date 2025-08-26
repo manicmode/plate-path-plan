@@ -7,7 +7,7 @@ import { X, ScanBarcode, Loader2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
-import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
+import { enhancedBarcodeDecode, chooseBarcode } from '@/lib/barcode/enhancedDecoder';
 import { startScanReport, finalizeScanReport, copyDebugToClipboard } from '@/lib/barcode/diagnostics';
 import { cropReticleROIFromVideo } from '@/lib/barcode/roiUtils';
 
@@ -130,11 +130,11 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
         finalizeScanReport({
           success: true,
           code: result.code,
-          normalizedAs: result.normalizedAs,
-          checkDigitOk: result.checkDigitOk || false,
+          normalizedAs: chooseBarcode(result),
+          checkDigitOk: result.checksumOk || false,
           willScore: true,
           willFallback: false,
-          totalMs: result.totalMs
+          totalMs: result.ms
         });
       }
     } else {
@@ -145,7 +145,7 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
           success: false,
           willScore: false,
           willFallback: true,
-          totalMs: result.totalMs
+          totalMs: result.ms
         });
       }
     }

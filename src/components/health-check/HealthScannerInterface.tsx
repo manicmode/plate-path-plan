@@ -170,30 +170,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       // 3) BARCODE PASS (budget ~1500ms) — BEFORE ANY NORMALIZATION
       console.time('[HS] barcode_ms');
-      const roiBlob = await new Promise<Blob>(resolve => roi.toBlob(resolve!, 'image/jpeg', 0.95));
-      const scan = await enhancedBarcodeDecode(roiBlob, { x: 0, y: 0, w: roiW, h: roiH }, window.devicePixelRatio || 1, 1500);
+      const dec = await enhancedBarcodeDecode({ sourceCanvas: roi, timeoutMs: 1600 });
       console.timeEnd('[HS] barcode_ms');
-      console.log('[HS] barcode_result', scan);
+      console.log('[HS] barcode_result', {
+        success: dec?.success ?? false,
+        code: dec?.normalized?.upca ?? dec?.normalized?.ean13 ?? dec?.code ?? null,
+        format: dec?.format ?? null,
+        checksumOk: dec?.checksumOk ?? null,
+        attempts: dec?.attempts?.length ?? 0
+      });
 
-      // Log diagnostics if enabled
-      if (window) {
-        (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS || [];
-        (window as any).__HS_LAST_REPORTS.unshift({
-          meta: { videoSize: {w, h}, roiSize: {w: roiW, h: roiH} },
-          attempts: scan?.attempts ?? [],
-          final: { success: !!(scan?.success && scan.code), code: scan?.code }
-        });
-        (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS.slice(0, 3);
-      }
+      const code =
+        dec?.normalized?.upca    // prefer UPC-A 12-digit
+        ?? dec?.normalized?.ean13
+        ?? dec?.code
+        ?? null;
 
-      if (scan?.success && scan.code) {
-        const code = scan.normalizedAs ?? scan.code;
+      // TEMP hotfix: if code is 12/13 digits numeric, try OFF even if checksumOk === false
+      const looksLikeUPCOrEAN = !!code && /^[0-9]{12,13}$/.test(code);
 
-        console.log('[HS] off_fetch_start', code);
+      if (looksLikeUPCOrEAN) {
+        console.log('[HS] off_fetch_start', { code });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: code, source: 'health' }
         });
-        console.log('[HS] off_result', { ok: !error, name: data?.productName });
+        console.log('[HS] off_result', { status: error ? 'error' : 'ok', hit: !!data?.productName });
 
         if (!error && data) {
           // Show the normal fun loading -> report (NO GPT on this path)
@@ -201,12 +202,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             finalizeScanReport({
               success: true,
               code,
-              normalizedAs: scan.normalizedAs,
-              checkDigitOk: scan.checkDigitOk || false,
+              normalizedAs: dec.normalized?.upca ?? dec.normalized?.ean13,
+              checkDigitOk: dec.checksumOk || false,
               willScore: true,
               willFallback: false,
-              totalMs: scan.totalMs,
-              offLookup: { status: 'hit', ms: scan.totalMs }
+              totalMs: dec.ms,
+              offLookup: { status: 'hit', ms: dec.ms }
             });
           }
           

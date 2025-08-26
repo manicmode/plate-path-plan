@@ -1,15 +1,18 @@
 // Enhanced multi-pass barcode decoder with forensic logging
 import { logAttempt, ScanReport, Attempt } from './diagnostics';
 
-export type DecodeResult = {
+export type BarcodeDecodeResult = {
   success: boolean;
-  code?: string;
-  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'UPC_E' | 'CODE_128' | 'ITF';
-  normalizedAs?: string;
-  checkDigitOk?: boolean;
-  attempts: number;
-  totalMs: number;
+  code?: string;             // raw read
+  format?: 'EAN_13'|'UPC_A'|'EAN_8'|'UPC_E'|'CODE_128'|'CODE_39'|'ITF';
+  checksumOk?: boolean;
+  normalized?: { upca?: string; ean13?: string }; // both when derivable
+  attempts: Attempt[];       // already implemented
+  ms: number;
+  reason?: 'NotFound'|'ChecksumFail'|'Timeout';
 };
+
+export type DecodeResult = BarcodeDecodeResult;
 
 // UPC-A checksum validation (corrected parity)
 function validateUPCA(code: string): boolean {
@@ -44,37 +47,48 @@ function validateEAN13(code: string): boolean {
 }
 
 // Normalize EAN-13 with leading 0 to UPC-A (proper normalization)
-function normalizeBarcode(code: string, format: string): { code: string; normalizedAs?: string; checkDigitOk: boolean } {
+function normalizeBarcode(code: string, format: string): { code: string; normalizedAs?: string; checkDigitOk: boolean; normalized?: { upca?: string; ean13?: string } } {
   // EAN-13 starting with 0 should be normalized to UPC-A
   if (format === 'EAN_13' && code.startsWith('0') && code.length === 13) {
     const upcA = code.substring(1);
-    if (validateUPCA(upcA)) {
-      return {
-        code: upcA,
-        normalizedAs: 'UPC_A',
-        checkDigitOk: true
-      };
-    }
-  }
-  
-  // Validate the original format
-  if (format === 'UPC_A' && code.length === 12) {
+    const isValidUPC = validateUPCA(upcA);
+    const isValidEAN = validateEAN13(code);
+    
     return {
-      code,
-      checkDigitOk: validateUPCA(code)
+      code: isValidUPC ? upcA : code,
+      normalizedAs: isValidUPC ? upcA : undefined,
+      checkDigitOk: isValidUPC,
+      normalized: { upca: isValidUPC ? upcA : undefined, ean13: isValidEAN ? code : undefined }
     };
   }
   
-  if (format === 'EAN_13' && code.length === 13) {
-    return {
-      code,
-      checkDigitOk: validateEAN13(code)
+  // If format === 'UPC_A', set normalized.ean13 = '0' + code
+  if (format === 'UPC_A') {
+    const isValidUPC = validateUPCA(code);
+    const ean13 = '0' + code;
+    const isValidEAN = validateEAN13(ean13);
+    
+    return { 
+      code, 
+      checkDigitOk: isValidUPC,
+      normalized: { upca: isValidUPC ? code : undefined, ean13: isValidEAN ? ean13 : undefined }
+    };
+  } else if (format === 'EAN_13') {
+    const isValid = validateEAN13(code);
+    return { 
+      code, 
+      checkDigitOk: isValid,
+      normalized: { ean13: isValid ? code : undefined }
     };
   }
   
   // For other formats, assume valid for now
   return { code, checkDigitOk: true };
 }
+
+// Export helper for choosing barcode
+export const chooseBarcode = (r: BarcodeDecodeResult | null) =>
+  r?.normalized?.upca ?? r?.normalized?.ean13 ?? r?.code ?? null;
 
 // Multi-pass enhanced decoder with ROI crops
 export async function enhancedBarcodeDecode(
@@ -85,32 +99,33 @@ export async function enhancedBarcodeDecode(
 ): Promise<DecodeResult>;
 
 export async function enhancedBarcodeDecode(
-  roiCanvas: HTMLCanvasElement, 
+  input: { sourceCanvas: HTMLCanvasElement; timeoutMs?: number; } | HTMLCanvasElement, 
   opts?: { budgetMs?: number; dpr?: number }
-): Promise<{
-  success: boolean;
-  code?: string;
-  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'UPC_E' | 'CODE_128' | 'ITF';
-  normalizedAs?: string;
-  checkDigitOk?: boolean;
-  attempts: Array<{ crop: string; rotation: number; scale: number; inverted: boolean; outcome: 'OK'|'NotFound'|'Checksum'; ms: number }>;
-  totalMs: number;
-}>;
+): Promise<BarcodeDecodeResult>;
 
 export async function enhancedBarcodeDecode(
-  imageBlobOrCanvas: Blob | HTMLCanvasElement,
+  input: Blob | HTMLCanvasElement | { sourceCanvas: HTMLCanvasElement; timeoutMs?: number; },
   roiRectOrOpts?: { x: number; y: number; w: number; h: number } | { budgetMs?: number; dpr?: number },
   dpr?: number,
   budget?: number
-): Promise<any> {
+): Promise<BarcodeDecodeResult> {
   const startTime = Date.now();
   let attempts = 0;
   const actualBudget = budget || 1500;
   
   // Handle overloaded function signatures
-  if (imageBlobOrCanvas instanceof HTMLCanvasElement) {
-    // New signature: enhancedBarcodeDecode(canvas, opts)
-    const canvas = imageBlobOrCanvas;
+  if (input && typeof input === 'object' && 'sourceCanvas' in input) {
+    // New signature: enhancedBarcodeDecode({ sourceCanvas, timeoutMs })
+    const canvas = input.sourceCanvas;
+    const canvasBudget = input.timeoutMs || 1500;
+    const actualDpr = window.devicePixelRatio || 1;
+    
+    return processCanvas(canvas, canvasBudget, actualDpr, startTime);
+  }
+  
+  if (input instanceof HTMLCanvasElement) {
+    // Legacy signature: enhancedBarcodeDecode(canvas, opts)
+    const canvas = input;
     const opts = roiRectOrOpts as { budgetMs?: number; dpr?: number } || {};
     const canvasBudget = opts.budgetMs || 1500;
     const actualDpr = opts.dpr || window.devicePixelRatio || 1;
@@ -119,7 +134,7 @@ export async function enhancedBarcodeDecode(
   }
   
   // Legacy signature: enhancedBarcodeDecode(blob, roiRect, dpr, budget)
-  const imageBlob = imageBlobOrCanvas as Blob;
+  const imageBlob = input as Blob;
   const roiRect = roiRectOrOpts as { x: number; y: number; w: number; h: number };
   
   // Create image from blob
@@ -133,7 +148,7 @@ export async function enhancedBarcodeDecode(
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        resolve({ success: false, attempts: 0, totalMs: Date.now() - startTime });
+        resolve({ success: false, attempts: [], ms: Date.now() - startTime, reason: 'NotFound' });
         return;
       }
       
@@ -161,7 +176,7 @@ export async function enhancedBarcodeDecode(
           for (const rotation of rotations) {
             for (const inverted of polarities) {
               if (Date.now() - startTime > actualBudget) {
-                resolve({ success: false, attempts, totalMs: Date.now() - startTime });
+                resolve({ success: false, attempts: [], ms: Date.now() - startTime, reason: 'Timeout' });
                 return;
               }
               
@@ -231,10 +246,23 @@ export async function enhancedBarcodeDecode(
                       success: true,
                       code: normalized.code,
                       format: result.format as any,
-                      normalizedAs: normalized.normalizedAs,
-                      checkDigitOk: true,
-                      attempts,
-                      totalMs: attemptEnd - startTime
+                      checksumOk: true,
+                      normalized: normalized.normalized,
+                      attempts: [],
+                      ms: attemptEnd - startTime
+                    });
+                    return;
+                  } else {
+                    // Store checksum failed result for potential temp hotfix
+                    resolve({
+                      success: false,
+                      code: result.code,
+                      format: result.format as any,
+                      checksumOk: false,
+                      normalized: normalized.normalized,
+                      attempts: [],
+                      ms: attemptEnd - startTime,
+                      reason: 'ChecksumFail'
                     });
                     return;
                   }
@@ -274,19 +302,19 @@ export async function enhancedBarcodeDecode(
         }
       }
       
-      resolve({ success: false, attempts, totalMs: Date.now() - startTime });
+      resolve({ success: false, attempts: [], ms: Date.now() - startTime, reason: 'NotFound' });
     };
     
     image.onerror = () => {
       URL.revokeObjectURL(imageUrl);
-      resolve({ success: false, attempts: 0, totalMs: Date.now() - startTime });
+      resolve({ success: false, attempts: [], ms: Date.now() - startTime, reason: 'NotFound' });
     };
     
     image.src = imageUrl;
   });
 }
 
-async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: number, startTime: number): Promise<any> {
+async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: number, startTime: number): Promise<BarcodeDecodeResult> {
   let attempts = 0;
   
   // Crop strategies
@@ -309,7 +337,7 @@ async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: num
       for (const rotation of rotations) {
         for (const inverted of polarities) {
           if (Date.now() - startTime > budget) {
-            return { success: false, attempts, totalMs: Date.now() - startTime };
+            return { success: false, attempts: [], ms: Date.now() - startTime, reason: 'Timeout' };
           }
           
           const attemptStart = Date.now();
@@ -362,17 +390,22 @@ async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: num
                   success: true,
                   code: normalized.code,
                   format: result.format as any,
-                  normalizedAs: normalized.normalizedAs,
-                  checkDigitOk: true,
-                  attempts: [{
-                    crop: crop.name,
-                    rotation,
-                    scale,
-                    inverted,
-                    outcome: 'OK',
-                    ms: attemptEnd - attemptStart
-                  }],
-                  totalMs: attemptEnd - startTime
+                  checksumOk: true,
+                  normalized: normalized.normalized,
+                  attempts: [],
+                  ms: attemptEnd - startTime
+                };
+              } else {
+                // Store checksum failed result for potential temp hotfix
+                return {
+                  success: false,
+                  code: result.code,
+                  format: result.format as any,
+                  checksumOk: false,
+                  normalized: normalized.normalized,
+                  attempts: [],
+                  ms: attemptEnd - startTime,
+                  reason: 'ChecksumFail'
                 };
               }
             }
@@ -384,7 +417,7 @@ async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: num
     }
   }
   
-  return { success: false, attempts, totalMs: Date.now() - startTime };
+  return { success: false, attempts: [], ms: Date.now() - startTime, reason: 'NotFound' };
 }
 
 // Try to decode a canvas using local ZXing (no external API)

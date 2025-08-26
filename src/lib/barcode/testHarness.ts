@@ -1,4 +1,4 @@
-import { enhancedBarcodeDecode } from './enhancedDecoder';
+import { enhancedBarcodeDecode, chooseBarcode } from './enhancedDecoder';
 import { ScanReport } from './diagnostics';
 
 /**
@@ -59,7 +59,7 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
       code: result.code,
       format: result.format,
       attempts: result.attempts,
-      totalMs: result.totalMs
+      ms: result.ms
     });
     // Create a mock scan report for testing
     const mockReport: ScanReport = {
@@ -74,11 +74,11 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
       final: {
         success: result.success,
         code: result.code,
-        normalizedAs: result.normalizedAs,
-        checkDigitOk: result.checkDigitOk || false,
+        normalizedAs: chooseBarcode(result),
+        checkDigitOk: result.checksumOk || false,
         willScore: result.success,
         willFallback: !result.success,
-        totalMs: result.totalMs
+        totalMs: result.ms
       }
     };
     
