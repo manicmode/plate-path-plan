@@ -921,6 +921,9 @@ console.log('Global search enabled:', enableGlobalSearch);
       const requestId = crypto.randomUUID();
       console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch, requestId });
       
+      // Add logging for barcode lookup
+      console.log('[LOG] off_fetch_start', { code: cleanBarcode });
+      
       // Reduced timeout for faster fallback to manual entry
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Function call timeout after 8 seconds')), 8000)
@@ -993,12 +996,15 @@ console.log('Global search enabled:', enableGlobalSearch);
       }
 
       if (!response.data?.success) {
-        console.log('=== BARCODE LOOKUP FAILED ===', response.data?.message);
-        
-        // Show barcode not found modal for better UX
-        setFailedBarcode(cleanBarcode);
-        setShowBarcodeNotFound(true);
-        return;
+      console.log('=== BARCODE LOOKUP FAILED ===', response.data?.message);
+      
+      // Add logging for failed barcode lookup
+      console.log('[LOG] off_result', { status: 'error', hit: false });
+
+      // Show barcode not found modal for better UX
+      setFailedBarcode(cleanBarcode);
+      setShowBarcodeNotFound(true);
+      return;
       }
 
       const product = response.data.product;
@@ -1008,6 +1014,9 @@ console.log('Global search enabled:', enableGlobalSearch);
       console.log('Product region:', product.region);
       console.log('Ingredients available:', product.ingredients_available);
       console.log('Ingredients text length:', product.ingredients_text?.length || 0);
+      
+      // Add logging for successful barcode lookup
+      console.log('[LOG] off_result', { status: 200, hit: true });
 
       // Create food item from barcode data
       const foodItem = {
@@ -1069,6 +1078,9 @@ console.log('Global search enabled:', enableGlobalSearch);
 
     } catch (error) {
       console.error('=== BARCODE LOOKUP ERROR ===', error);
+      
+      // Add logging for barcode lookup error
+      console.log('[LOG] off_result', { status: 'error', hit: false });
       
       // Enhanced error messaging with fallback options
       const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';

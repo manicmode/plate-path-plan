@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { X, Camera, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { supabase } from '@/integrations/supabase/client';
-import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
@@ -21,8 +21,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
-  const [torchEnabled, setTorchEnabled] = useState(false);
   const scanningIntervalRef = useRef<NodeJS.Timeout>();
+  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -73,18 +73,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   };
 
   const handleAnalyzeNow = async () => {
-    console.log('[HS] analyze_start');
-    
     if (!videoRef.current) {
-      console.error('[HS] Video ref not available');
+      console.error('[LOG] Video ref not available');
       return;
     }
 
-    const t0 = performance.now();
+    console.time('[LOG] analyze_total');
     setIsFrozen(true);
     setIsScanning(true);
-    
-    let track: MediaStreamTrack | null = null;
     
     try {
       const video = videoRef.current;
@@ -92,80 +88,79 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       
       // Apply zoom constraint before capture (NO auto-torch!)
       if (stream) {
-        track = stream.getVideoTracks()[0];
+        const track = stream.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({ 
               advanced: [{ zoom: ZOOM } as any] 
             });
-            console.log('[HS] zoom applied:', ZOOM);
+            console.log('[LOG] zoom applied:', ZOOM);
           } catch (zoomError) {
-            console.log('[HS] zoom not supported:', zoomError);
+            console.log('[LOG] zoom not supported:', zoomError);
           }
         }
       }
 
-      // Use shared freeze frame and decode helper
-      const { raw } = await freezeFrameAndDecode(video, {
-        roi: ROI,
-        budgetMs: QUICK_BUDGET_MS
+      // Use shared hook
+      const result = await snapAndDecode({
+        videoEl: video,
+        budgetMs: QUICK_BUDGET_MS,
+        roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+        logPrefix: '[LOG]'
       });
 
       // Return early on any 8/12/13/14-digit hit
-      if (raw && /^\d{8,14}$/.test(raw)) {
-        console.log('[HS] off_fetch_start', { code: raw });
-        onBarcodeDetected(raw);
+      if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
+        console.log('[LOG] off_fetch_start', { code: result.raw });
+        onBarcodeDetected(result.raw);
         cleanup();
         onClose();
-        console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+        console.timeEnd('[LOG] analyze_total');
         return; 
       }
 
       // 2) Burst fallback (parallel capture and race)
-      console.log('[HS] burst_start');
+      console.log('[LOG] burst_start');
       const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
         await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
-        return await freezeFrameAndDecode(video, { roi: ROI, budgetMs: QUICK_BUDGET_MS });
+        return await snapAndDecode({
+          videoEl: video,
+          budgetMs: QUICK_BUDGET_MS,
+          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+          logPrefix: '[LOG]'
+        });
       });
 
       const winner = await Promise.race(burstPromises);
-      const raw2 = chooseBarcode(winner.result);
-      if (raw2 && /^\d{8,14}$/.test(raw2)) {
-        console.log('[HS] off_fetch_start', { code: raw2 });
-        onBarcodeDetected(raw2);
+      if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
+        console.log('[LOG] off_fetch_start', { code: winner.raw });
+        onBarcodeDetected(winner.raw);
         cleanup();
         onClose();
-        console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+        console.timeEnd('[LOG] analyze_total');
         return; 
       }
 
       // 3) No barcode found
-      console.log('[HS] no_barcode_found');
+      console.log('[LOG] no_barcode_found');
       setError('No barcode detected. Please try again with better lighting.');
       
     } catch (error) {
-      console.error('[HS] Scan error:', error);
+      console.error('[LOG] Scan error:', error);
       setError('Failed to scan barcode. Please try again.');
     } finally {
       // Never auto-disable torch - let user control it
       setIsScanning(false);
-      if (videoRef.current) {
-        unfreezeVideo(videoRef.current);
-      }
       setIsFrozen(false);
-      console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+      console.timeEnd('[LOG] analyze_total');
     }
   };
 
   const handleFlashlightToggle = async () => {
     if (!stream) return;
     
-    const track = stream.getVideoTracks()[0];
-    if (!isTorchSupported(track)) return;
-    
     const newTorchState = !torchEnabled;
-    await toggleTorch(track, newTorchState);
-    setTorchEnabled(newTorchState);
+    await setTorch(newTorchState);
   };
 
   // Warm-up the decoder on modal open  
@@ -324,7 +319,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             </button>
             
             {/* Flashlight Toggle */}
-            {stream && isTorchSupported(stream.getVideoTracks()[0]) && (
+            {stream && torchSupported && (
               <button
                 onClick={handleFlashlightToggle}
                 disabled={isScanning}

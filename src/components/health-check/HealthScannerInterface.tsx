@@ -9,6 +9,7 @@ import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { BARCODE_V2 } from '@/lib/featureFlags';
 import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -35,8 +36,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
-  const [torchEnabled, setTorchEnabled] = useState(false);
   const { user } = useAuth();
+  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
 
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
@@ -361,8 +362,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = async () => {
-    console.log('[HS] analyze_start');
-    
     if (!videoRef.current || !canvasRef.current) {
       console.error("❌ Missing video or canvas ref!", {
         video: !!videoRef.current,
@@ -371,14 +370,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    const t0 = performance.now();
-    
-    // 1) freeze preview immediately
+    console.time('[HS] analyze_total');
     setIsFrozen(true);
     playCameraClickSound();
     setIsScanning(true);
-    
-    let track: MediaStreamTrack | null = null;
     
     try {
       const video = videoRef.current;
@@ -386,7 +381,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       // Apply zoom constraint before capture (NO auto-torch!)
       if (stream) {
-        track = stream.getVideoTracks()[0];
+        const track = stream.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({ 
@@ -399,17 +394,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // Use shared freeze frame and decode helper
-      const { raw, result } = await freezeFrameAndDecode(video, {
-        roi: ROI,
-        budgetMs: QUICK_BUDGET_MS
+      // Use shared hook
+      const result = await snapAndDecode({
+        videoEl: video,
+        budgetMs: QUICK_BUDGET_MS,
+        roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+        logPrefix: '[HS]'
       });
 
       // Return early on any 8/12/13/14-digit hit (even if checksum is false)
-      if (raw && /^\d{8,14}$/.test(raw)) {
-        console.log('[HS] off_fetch_start', { code: raw });
+      if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
+        console.log('[HS] off_fetch_start', { code: result.raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: raw, source: 'health' }
+          body: { mode: 'barcode', barcode: result.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         if (data && !error) { 
@@ -425,10 +422,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             fr.readAsDataURL(fullBlob);
           });
           
-          onCapture(fullBase64 + `&barcode=${raw}`);
-          unfreezeVideo(video);
+          onCapture(fullBase64 + `&barcode=${result.raw}`);
           setIsFrozen(false);
-          console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+          console.timeEnd('[HS] analyze_total');
           return; 
         }
       }
@@ -437,15 +433,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       console.log('[HS] burst_start');
       const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
         await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
-        return await freezeFrameAndDecode(video, { roi: ROI, budgetMs: QUICK_BUDGET_MS });
+        return await snapAndDecode({
+          videoEl: video,
+          budgetMs: QUICK_BUDGET_MS,
+          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+          logPrefix: '[HS]'
+        });
       });
 
       const winner = await Promise.race(burstPromises);
-      const raw2 = chooseBarcode(winner.result);
-      if (raw2 && /^\d{8,14}$/.test(raw2)) {
-        console.log('[HS] off_fetch_start', { code: raw2 });
+      if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
+        console.log('[HS] off_fetch_start', { code: winner.raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: raw2, source: 'health' }
+          body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         if (data && !error) { 
@@ -460,10 +460,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             fr.readAsDataURL(fullBlob);
           });
           
-          onCapture(fullBase64 + `&barcode=${raw2}`);
-          unfreezeVideo(video);
+          onCapture(fullBase64 + `&barcode=${winner.raw}`);
           setIsFrozen(false);
-          console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+          console.timeEnd('[HS] analyze_total');
           return; 
         }
       }
@@ -492,7 +491,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         unfreezeVideo(videoRef.current);
       }
       setIsFrozen(false);
-      console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+      console.timeEnd('[HS] analyze_total');
     }
   };
 
@@ -568,12 +567,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const handleFlashlightToggle = async () => {
     if (!stream) return;
     
-    const track = stream.getVideoTracks()[0];
-    if (!isTorchSupported(track)) return;
-    
     const newTorchState = !torchEnabled;
-    await toggleTorch(track, newTorchState);
-    setTorchEnabled(newTorchState);
+    await setTorch(newTorchState);
   };
 
   const handleManualEntry = () => {

@@ -17,9 +17,9 @@ export interface FreezeDecodeResult {
  */
 export async function freezeFrameAndDecode(
   video: HTMLVideoElement, 
-  { roi = { widthPct: 0.7, heightPct: 0.35 }, budgetMs = 900 }: FreezeDecodeOptions = {}
+  { roi = { widthPct: 0.7, heightPct: 0.35 }, budgetMs = 900, logPrefix = '[HS]' }: FreezeDecodeOptions & { logPrefix?: string } = {}
 ): Promise<FreezeDecodeResult> {
-  console.time('[HS] snap_total');
+  console.time(`${logPrefix} snap_total`);
   
   const vw = video.videoWidth;
   const vh = video.videoHeight;
@@ -35,18 +35,18 @@ export async function freezeFrameAndDecode(
 
   try {
     if (ic?.takePhoto) {                           // Best quality (iOS 16+ varies)
-      console.log('[HS] snap_src: takePhoto');
+      console.log(`${logPrefix} snap_src: takePhoto`);
       const blob = await ic.takePhoto();
       bitmap = await createImageBitmap(blob);
     } else if (ic?.grabFrame) {
-      console.log('[HS] snap_src: grabFrame');
+      console.log(`${logPrefix} snap_src: grabFrame`);
       bitmap = await ic.grabFrame();
     } else {
-      console.log('[HS] snap_src: drawImage');
+      console.log(`${logPrefix} snap_src: drawImage`);
       // we'll draw from <video> directly
     }
   } catch { 
-    console.log('[HS] snap_src: drawImage (fallback)');
+    console.log(`${logPrefix} snap_src: drawImage (fallback)`);
     /* fall through to drawImage */ 
   }
 
@@ -71,23 +71,23 @@ export async function freezeFrameAndDecode(
   roiCanvas.width = cw; 
   roiCanvas.height = ch;
   roiCanvas.getContext('2d')!.drawImage(overlay, cx, cy, cw, ch, 0, 0, cw, ch);
-  console.log('[HS] roi', { vw, vh, roiW: cw, roiH: ch });
+  console.log(`${logPrefix} roi`, { vw, vh, roiW: cw, roiH: ch });
 
   // Decode with ZXing (no torch!)
-  console.time('[HS] decode');
+  console.time(`${logPrefix} decode`);
   const scanner = new MultiPassBarcodeScanner();
   const result = await scanner.scanQuick(roiCanvas);
-  console.timeEnd('[HS] decode');
+  console.timeEnd(`${logPrefix} decode`);
   
   const raw = result?.text ?? null;
-  console.log('[HS] barcode_result:', { 
+  console.log(`${logPrefix} barcode_result:`, { 
     raw, 
     type: result?.format ?? null, 
     checksumOk: result?.checkDigitValid ?? null, 
     reason: result ? 'decoded' : 'not_found' 
   });
 
-  console.timeEnd('[HS] snap_total');
+  console.timeEnd(`${logPrefix} snap_total`);
   return { raw, result, overlay, video };
 }
 
@@ -156,16 +156,16 @@ export function chooseBarcode(result: any): string | null {
 export function toggleTorch(track: MediaStreamTrack, on: boolean): Promise<void> {
   const caps = track.getCapabilities?.();
   if (!caps || !('torch' in caps)) {
-    console.log('[HS] torch not supported');
+    console.log('[TORCH] torch not supported');
     return Promise.resolve();
   }
   
   return track.applyConstraints({ 
     advanced: [{ torch: on } as any] 
   }).then(() => {
-    console.log('[HS] torch', { on });
+    console.log('[TORCH] torch', { on });
   }).catch((error) => {
-    console.log('[HS] torch failed:', error);
+    console.log('[TORCH] torch failed:', error);
   });
 }
 
