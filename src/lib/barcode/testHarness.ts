@@ -53,10 +53,10 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
     canvas.width = imageDimensions.width;
     canvas.height = imageDimensions.height;
     
-    const img = new Image();
-    img.src = URL.createObjectURL(blob);
-    await new Promise(resolve => { img.onload = resolve; });
-    ctx.drawImage(img, 0, 0);
+    const canvasImg = new Image();
+    canvasImg.src = URL.createObjectURL(blob);
+    await new Promise(resolve => { canvasImg.onload = resolve; });
+    ctx.drawImage(canvasImg, 0, 0);
     
     const result = await enhancedBarcodeDecode({ canvas, budgetMs: 2000 });
     const chosen = chooseBarcode(result);
