@@ -103,48 +103,123 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             return handleImageCapture(cleanImageData);
           }
           
-          // Log successful barcode analysis
-          console.log('✅ Barcode analysis complete:', {
-            productName: result.productName,
-            healthScore: result.healthScore
-          });
-          
-          // Transform the backend response to match frontend interface
+          // Use the tolerant adapter to normalize the data (same as Log flow)
+          const legacy = toLegacyFromEdge(result);
+
+          // RCA telemetry so we can see exactly what we're mapping
+          console.groupCollapsed('[HS] RCA (barcode-photo)');
+          console.log('edge.product.name', result?.product?.name);
+          console.log('edge.product.code', result?.product?.code);
+          console.log('edge.product.ingredientsText', result?.product?.ingredientsText?.slice(0,200));
+          console.log('edge.product.ingredients.len', result?.product?.ingredients?.length ?? 0);
+          console.log('edge.product.health.flags.len', result?.product?.health?.flags?.length ?? 0);
+          console.log('legacy.productName', legacy?.productName);
+          console.log('legacy.barcode', legacy?.barcode);
+          console.log('legacy.ingredientsText', legacy?.ingredientsText?.slice(0,200));
+          console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
+          console.log('legacy.nutrition.keys', legacy?.nutrition ? Object.keys(legacy.nutrition) : null);
+          console.groupEnd();
+
+          // Accept if name or barcode exists (same gate as image path)
+          const hasName = !!(legacy?.productName && legacy.productName.trim().length >= 3);
+          const hasBarcode = !!legacy?.barcode;
+          if (!(hasName || hasBarcode)) {
+            setCurrentState('fallback');
+            return;
+          }
+
+          // Map global flags exactly like Log
+          const globalFlagsRaw = Array.isArray(legacy?.healthFlags) ? legacy.healthFlags : [];
+          const reportFlags = globalFlagsRaw.map((f: any) => ({
+            ingredient: f.title || f.label || f.key || 'Ingredient',
+            flag: f.description || '',
+            severity: /danger|high/i.test(f.type||f.level||f.severity) ? 'high'
+                    : /warn|med/i.test(f.type||f.level||f.severity) ? 'medium'
+                    : 'low',
+          }));
+
+          // Prefer full ingredients text from adapter
+          const ingredientsText = legacy?.ingredientsText;
+
+          // Nutrition normalizer to the Health Report's expected keys
+          function mapNutrition(n: any) {
+            if (!n) return undefined;
+            const pick = (obj: any, ...keys: string[]) => {
+              for (const k of keys) if (obj && obj[k] != null) return obj[k];
+              return undefined;
+            };
+            return {
+              calories: pick(n, 'calories', 'energy_kcal', 'kcal'),
+              protein:  pick(n, 'protein', 'protein_g'),
+              carbs:    pick(n, 'carbs', 'carbohydrates', 'carbs_g', 'carbohydrates_g'),
+              fat:      pick(n, 'fat', 'fat_g'),
+              fiber:    pick(n, 'fiber', 'fiber_g'),
+              sugar:    pick(n, 'sugar', 'sugars', 'sugar_g', 'sugars_g'),
+              sodium:   pick(n, 'sodium', 'sodium_mg'),
+            };
+          }
+
+          const report = {
+            name: legacy?.productName ?? 'Unknown Item',
+            barcode: legacy?.barcode ?? null,
+            ingredientsText,
+            flags: reportFlags,                 // ← drives "Flagged Ingredients"
+            personalizedWarnings: [],          // keep separate; do NOT replace `flags`
+            healthScore: legacy?.healthScore ?? 0,
+            nutrition: mapNutrition(legacy?.nutrition),
+          };
+
+          // Guardrails: surface any silent collapses
+          if (legacy?.ingredientsText && (!report.ingredientsText || report.ingredientsText.length < 10)) {
+            console.warn('[HS] BUG: ingredients collapsed (barcode-photo)', { legacyLen: legacy.ingredientsText.length });
+          }
+          if ((legacy?.healthFlags?.length ?? 0) > 0 && (report.flags?.length ?? 0) === 0) {
+            console.warn('[HS] BUG: flags lost in mapping (barcode-photo)', { legacy: legacy.healthFlags });
+          }
+
+          console.group('[HS] report_model (barcode-photo)');
+          console.log('ingredientsText', report.ingredientsText?.slice(0,200));
+          console.log('flags.global.len', report.flags?.length ?? 0);
+          console.log('nutrition.keys', report.nutrition ? Object.keys(report.nutrition) : null);
+          console.groupEnd();
+
+          // Transform to match frontend interface
           const analysisResult: HealthAnalysisResult = {
-            itemName: result.productName || 'Unknown Item',
-            healthScore: result.healthScore || 0,
-            ingredientFlags: (result.healthFlags || []).map((flag: any) => ({
-              ingredient: flag.title,
-              flag: flag.description,
-              severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
+            itemName: report.name,
+            healthScore: report.healthScore,
+            ingredientsText: report.ingredientsText,
+            ingredientFlags: report.flags.map(f => ({
+              ingredient: f.ingredient,
+              flag: f.flag,
+              severity: f.severity as 'low' | 'medium' | 'high'
             })),
-            nutritionData: result.nutritionSummary || {},
+            nutritionData: report.nutrition || {},
             healthProfile: {
-              isOrganic: result.ingredients?.includes('organic') || false,
-              isGMO: result.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
-              allergens: result.ingredients?.filter((ing: string) => 
-                ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
-                  ing.toLowerCase().includes(allergen)
-                )
-              ) || [],
-              preservatives: result.ingredients?.filter((ing: string) => 
-                ing.toLowerCase().includes('preservative') || 
-                ing.toLowerCase().includes('sodium benzoate') ||
-                ing.toLowerCase().includes('potassium sorbate')
-              ) || [],
-              additives: result.ingredients?.filter((ing: string) => 
-                ing.toLowerCase().includes('artificial') || 
-                ing.toLowerCase().includes('flavor') ||
-                ing.toLowerCase().includes('color')
-              ) || []
+              isOrganic: report.ingredientsText?.includes('organic') || false,
+              isGMO: report.ingredientsText?.toLowerCase().includes('gmo') || false,
+              allergens: report.ingredientsText ? 
+                ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+                  report.ingredientsText!.toLowerCase().includes(allergen)
+                ) : [],
+              preservatives: report.ingredientsText ? 
+                report.ingredientsText.split(',').filter(ing => 
+                  ing.toLowerCase().includes('preservative') || 
+                  ing.toLowerCase().includes('sodium benzoate') ||
+                  ing.toLowerCase().includes('potassium sorbate')
+                ) : [],
+              additives: report.ingredientsText ? 
+                report.ingredientsText.split(',').filter(ing => 
+                  ing.toLowerCase().includes('artificial') || 
+                  ing.toLowerCase().includes('flavor') ||
+                  ing.toLowerCase().includes('color')
+                ) : []
             },
-            personalizedWarnings: Array.isArray(result.recommendations) ? 
-              result.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
-            suggestions: Array.isArray(result.recommendations) ? result.recommendations : [result.summary || 'No specific recommendations available.'],
-            overallRating: result.healthScore >= 80 ? 'excellent' : 
-                          result.healthScore >= 60 ? 'good' : 
-                          result.healthScore >= 40 ? 'fair' : 
-                          result.healthScore >= 20 ? 'poor' : 'avoid'
+            personalizedWarnings: report.personalizedWarnings,
+            suggestions: report.flags.filter(f => f.severity === 'medium').map(f => f.flag),
+            overallRating: report.healthScore >= 80 ? 'excellent' : 
+                          report.healthScore >= 60 ? 'good' : 
+                          report.healthScore >= 40 ? 'fair' : 
+                          report.healthScore >= 20 ? 'poor' : 'avoid'
           };
           
           setAnalysisResult(analysisResult);
