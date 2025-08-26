@@ -571,19 +571,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         };
         fr.readAsDataURL(optimizedBlob);
       }, 'image/jpeg', 0.82);
-            setIsFrozen(false);
-            console.timeEnd('[HS] analyze_total');
-            return; 
-          }
-        } catch (burstError) {
-          console.warn('[HS] burst_exception', { error: burstError });
-          // Continue to full pipeline
-        }
-      }
-
-      // 3) Last resort: run the existing full-pass pipeline
-      const still = await captureStillFromVideo(video);
-      await runExistingFullDecodePipeline(still);
       
     } catch (conversionError) {
       console.error("❌ Image processing failed:", conversionError);
@@ -599,13 +586,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
-      // Never auto-disable torch - let user control it
+      safeTimeEnd('[HS] analyze_total');
       setIsScanning(false);
-      if (videoRef.current) {
-        unfreezeVideo(videoRef.current);
-      }
       setIsFrozen(false);
-      console.timeEnd('[HS] analyze_total');
     }
   };
 
