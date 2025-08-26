@@ -356,7 +356,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center px-4 -mt-20">
+            <div className="flex-1 flex items-center justify-center px-4 -mt-32">
               {/* Centered scan frame */}
               <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
                 {/* Corner indicators */}
