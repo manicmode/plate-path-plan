@@ -32,6 +32,74 @@ interface ScanAttempt {
 export class MultiPassBarcodeScanner {
   private reader: BrowserMultiFormatReader;
   
+  // Quick decode mode with fewer attempts (≤ 1s)
+  async scanQuick(canvas: HTMLCanvasElement): Promise<BarcodeResult | null> {
+    const startTime = performance.now();
+    const roiCanvas = this.computeROI(canvas);
+    
+    console.log(`🔍 Quick barcode scan - ROI: ${roiCanvas.width}×${roiCanvas.height}px`);
+    
+    const quickAttempts: ScanAttempt[] = [
+      {
+        name: 'roi-quick',
+        cropFn: () => roiCanvas,
+        scales: [1, 0.75],
+        rotations: [0, 90]
+      }
+    ];
+
+    let totalPasses = 0;
+    
+    for (const attempt of quickAttempts) {
+      const baseCanvas = attempt.cropFn(canvas);
+      
+      for (const scale of attempt.scales) {
+        const scaledCanvas = scale === 1.0 ? baseCanvas : this.scaleCanvas(baseCanvas, scale);
+        
+        for (const rotation of attempt.rotations) {
+          totalPasses++;
+          
+          try {
+            const rotatedCanvas = rotation === 0 ? scaledCanvas : this.rotateCanvas(scaledCanvas, rotation);
+            
+            // Try normal and inverted versions
+            const candidates = [rotatedCanvas, this.invertCanvas(rotatedCanvas)];
+            
+            for (const candidateCanvas of candidates) {
+              totalPasses++;
+              const result = await this.decodeFromCanvas(candidateCanvas);
+              
+              if (result && result.getText()) {
+                const decodeTime = performance.now() - startTime;
+                const barcodeText = result.getText();
+                const format = result.getBarcodeFormat()?.toString() || 'UNKNOWN';
+                const checkDigitValid = this.validateCheckDigit(barcodeText, format);
+                
+                console.log(`✅ Quick barcode decoded: ${barcodeText} (${format}) - ${Math.round(decodeTime)}ms`);
+                
+                return {
+                  text: barcodeText,
+                  passName: attempt.name,
+                  rotation,
+                  scale,
+                  format,
+                  decodeTimeMs: Math.round(decodeTime),
+                  checkDigitValid
+                };
+              }
+            }
+          } catch (error) {
+            // Continue to next attempt - expected behavior
+          }
+        }
+      }
+    }
+    
+    const decodeTime = performance.now() - startTime;
+    console.log(`❌ No barcode detected in quick scan after ${totalPasses} passes in ${Math.round(decodeTime)}ms`);
+    return null;
+  }
+  
   constructor() {
     const hints = new Map();
     hints.set(DecodeHintType.TRY_HARDER, true);

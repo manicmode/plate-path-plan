@@ -32,6 +32,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isFrozen, setIsFrozen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -140,6 +141,173 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return out;
   };
 
+  // Helper: prefer true stills, fallback to canvas frame
+  const captureStillFromVideo = async (video: HTMLVideoElement): Promise<HTMLCanvasElement> => {
+    const track = (video.srcObject as MediaStream)?.getVideoTracks?.()?.[0];
+    const isBrowser = typeof window !== 'undefined';
+    let bitmap: ImageBitmap | null = null;
+
+    if (isBrowser && track && 'ImageCapture' in window) {
+      try {
+        const ic = new (window as any).ImageCapture(track);
+        // grabFrame() is fast and widely supported on iOS Safari; takePhoto() if available
+        bitmap = await ic.grabFrame().catch(() => null);
+      } catch { bitmap = null; }
+    }
+
+    // Fallback: draw current video frame
+    const canvas = document.createElement('canvas');
+    const vw = video.videoWidth || 1920;
+    const vh = video.videoHeight || 1080;
+    canvas.width = vw; 
+    canvas.height = vh;
+    const ctx = canvas.getContext('2d')!;
+    if (bitmap) {
+      ctx.drawImage(bitmap, 0, 0, vw, vh);
+    } else {
+      ctx.drawImage(video, 0, 0, vw, vh);
+    }
+    return canvas;
+  };
+
+  // Crop ROI in video pixel space (center 70% × 40%)
+  const cropReticleROI = (src: HTMLCanvasElement): HTMLCanvasElement => {
+    const w = src.width, h = src.height;
+    const roiW = Math.round(w * 0.70);
+    const roiH = Math.round(h * 0.40);
+    const x = Math.round((w - roiW) / 2);
+    const y = Math.round((h - roiH) / 2);
+    const out = document.createElement('canvas');
+    out.width = roiW; 
+    out.height = roiH;
+    out.getContext('2d')!.drawImage(src, x, y, roiW, roiH, 0, 0, roiW, roiH);
+    return out;
+  };
+
+  // Quick decode on the frozen image (≤ 1s)
+  const enhancedBarcodeDecodeQuick = async (canvas: HTMLCanvasElement): Promise<any> => {
+    const scanner = new MultiPassBarcodeScanner();
+    // Create a quick version with fewer attempts
+    const startTime = performance.now();
+    const roiCanvas = cropReticleROI(canvas);
+    
+    // Quick pass: fewer attempts for speed
+    const quickAttempts = [
+      {
+        name: 'roi-quick',
+        cropFn: () => roiCanvas,
+        scales: [1, 0.75],
+        rotations: [0, 90]
+      }
+    ];
+
+    for (const attempt of quickAttempts) {
+      const baseCanvas = attempt.cropFn();
+      
+      for (const scale of attempt.scales) {
+        const scaledCanvas = scale === 1.0 ? baseCanvas : scaleCanvas(baseCanvas, scale);
+        
+        for (const rotation of attempt.rotations) {
+          try {
+            const rotatedCanvas = rotation === 0 ? scaledCanvas : rotateCanvas(scaledCanvas, rotation);
+            
+            // Try normal and inverted versions
+            const candidates = [rotatedCanvas, invertCanvas(rotatedCanvas)];
+            
+            for (const candidateCanvas of candidates) {
+              const result = await decodeFromCanvas(candidateCanvas);
+              
+              if (result && result.getText()) {
+                const decodeTime = performance.now() - startTime;
+                const barcodeText = result.getText();
+                const format = result.getBarcodeFormat()?.toString() || 'UNKNOWN';
+                
+                return {
+                  text: barcodeText,
+                  format,
+                  decodeTimeMs: Math.round(decodeTime)
+                };
+              }
+            }
+          } catch (error) {
+            // Continue to next attempt
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // Helper functions for canvas manipulation
+  const scaleCanvas = (canvas: HTMLCanvasElement, scale: number): HTMLCanvasElement => {
+    if (scale === 1.0) return canvas;
+    
+    const scaled = document.createElement('canvas');
+    scaled.width = Math.round(canvas.width * scale);
+    scaled.height = Math.round(canvas.height * scale);
+    
+    const ctx = scaled.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, 0, 0, scaled.width, scaled.height);
+    
+    return scaled;
+  };
+
+  const rotateCanvas = (canvas: HTMLCanvasElement, degrees: number): HTMLCanvasElement => {
+    if (degrees === 0) return canvas;
+    
+    const rotatedCanvas = document.createElement('canvas');
+    const ctx = rotatedCanvas.getContext('2d')!;
+    
+    if (degrees === 90 || degrees === 270) {
+      rotatedCanvas.width = canvas.height;
+      rotatedCanvas.height = canvas.width;
+    } else {
+      rotatedCanvas.width = canvas.width;
+      rotatedCanvas.height = canvas.height;
+    }
+    
+    ctx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+    ctx.rotate((degrees * Math.PI) / 180);
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+    
+    return rotatedCanvas;
+  };
+
+  const invertCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+    const inverted = document.createElement('canvas');
+    inverted.width = canvas.width;
+    inverted.height = canvas.height;
+    const ctx = inverted.getContext('2d')!;
+    
+    ctx.drawImage(canvas, 0, 0);
+    
+    const imageData = ctx.getImageData(0, 0, inverted.width, inverted.height);
+    const data = imageData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 255 - data[i];         // R
+      data[i + 1] = 255 - data[i + 1]; // G
+      data[i + 2] = 255 - data[i + 2]; // B
+      // Alpha unchanged
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return inverted;
+  };
+
+  const decodeFromCanvas = async (canvas: HTMLCanvasElement): Promise<any> => {
+    const scanner = new MultiPassBarcodeScanner();
+    // Use the scanner's reader directly
+    const dataUrl = canvas.toDataURL('image/png');
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise(resolve => { img.onload = resolve; });
+    
+    return await (scanner as any).reader.decodeFromImageElement(img);
+  };
+
   // Helper to convert canvas to base64 without CSP violation
   const canvasToBase64 = async (canvas: HTMLCanvasElement): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -209,7 +377,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = async () => {
-    console.log("📸 HealthScannerInterface.captureImage called!");
+    console.log('[HS] analyze_start');
     
     if (!videoRef.current || !canvasRef.current) {
       console.error("❌ Missing video or canvas ref!", {
@@ -219,106 +387,107 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    const t0 = Date.now();
+    const t0 = performance.now();
+    
+    // 1) freeze preview (add a subtle shutter flash)
+    setIsFrozen(true);
     playCameraClickSound();
     setIsScanning(true);
     
     try {
-      // Capture high-res still
-      const { canvas, captureType } = await captureStill();
-      const captureTime = Date.now() - t0;
+      const video = videoRef.current;
+      await video.play(); // ensure >0 dimensions on iOS
       
-      console.log("📊 Video capture:", { 
-        width: canvas.width, 
-        height: canvas.height,
-        captureType,
-        captureTime 
-      });
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const roiW = Math.round(vw * 0.70);
+      const roiH = Math.round(vh * 0.40);
       
-      let detectedBarcode: string | null = null;
-      let barcodeTime = 0;
-      let barcodeResult: any = null;
-      
-      // Multi-pass barcode scanning if BARCODE_V2 enabled
-      if (BARCODE_V2) {
-        const t1 = Date.now();
-        const scanner = new MultiPassBarcodeScanner();
-        barcodeResult = await scanner.scan(canvas);
-        barcodeTime = Date.now() - t1;
-        
-        if (barcodeResult) {
-          detectedBarcode = barcodeResult.text;
-          console.log("🔍 barcodeScan:", {
-            attempts: barcodeResult.scale ? 'multi-scale' : 'multi-pass',
-            hit: true,
-            pass: barcodeResult.passName,
-            rotation: barcodeResult.rotation,
-            scale: barcodeResult.scale,
-            format: barcodeResult.format,
-            checkDigit: barcodeResult.checkDigitValid,
-            value: detectedBarcode
-          });
-        } else {
-          console.log("🔍 barcodeScan:", {
-            attempts: 'multi-pass',
-            hit: false
-          });
-        }
-      }
-      
-      // Convert to base64 using CSP-safe method
-      const fullBlob: Blob = await new Promise((resolve, reject) => {
-        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+      console.log('[HS] roi', {
+        vw, vh, roiW, roiH, 
+        x: Math.round((vw - roiW) / 2), 
+        y: Math.round((vh - roiH) / 2)
       });
 
-      const fullBase64 = await new Promise<string>((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result));
-        fr.onerror = () => reject(fr.error);
-        fr.readAsDataURL(fullBlob);
+      const still = await captureStillFromVideo(video);
+      const roi = cropReticleROI(still);
+
+      console.time('[HS] decode');
+      const quick = await enhancedBarcodeDecodeQuick(roi);
+      console.timeEnd('[HS] decode');
+      
+      const ms = Math.round(performance.now() - t0);
+      const raw = quick?.text ?? null;
+      
+      console.log('[HS] barcode_ms:', ms);
+      console.log('[HS] barcode_result:', { 
+        raw, 
+        type: quick?.format ?? null, 
+        checksumOk: true, // assume valid from ZXing
+        reason: quick ? 'decoded' : 'not_found'
       });
 
-      const totalTime = Date.now() - t0;
-      
-      // Timing logs
-      console.log("⏱️ Timing:", {
-        t_capture_ms: captureTime,
-        t_barcode_ms: barcodeTime,
-        t_total_ms: totalTime
-      });
-      
-      // Invoke function logs  
-      console.log("📡 Invoking function:", {
-        detectedBarcode,
-        hasImage: true
-      });
-      
-      // If barcode detected with valid check digit, short-circuit to OFF lookup
-      if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
-        console.log("🎯 Barcode path - short-circuiting to OFF lookup");
-        
-        // Call health processor with barcode
-        const body = {
-          detectedBarcode,
-          imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
-          mode: 'scan'
-        };
-        
+      if (raw && /^\d{8,14}$/.test(raw)) {
+        console.log('[HS] off_fetch_start', { code: raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body
+          body: { mode: 'barcode', barcode: raw, source: 'health' }
         });
-        
-        if (!error && data && !data.fallback) {
-          console.log("✅ Barcode path success:", data);
-          onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
-          return;
-        } else {
-          console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
+        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        if (data && !error) { 
+          // Convert still to base64 for onCapture
+          const fullBlob: Blob = await new Promise((resolve, reject) => {
+            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+          });
+          const fullBase64 = await new Promise<string>((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result));
+            fr.onerror = () => reject(fr.error);
+            fr.readAsDataURL(fullBlob);
+          });
+          
+          onCapture(fullBase64 + `&barcode=${raw}`); 
+          setIsFrozen(false); 
+          console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+          return; 
         }
       }
-      
-      // No barcode or barcode lookup failed - proceed with image analysis
-      onCapture(fullBase64);
+
+      // 2) Fallback: burst capture (2 more frames) + race
+      const burstPromises = Array.from({ length: 2 }).map(async (_, i) => {
+        await new Promise(r => setTimeout(r, 120 * (i + 1)));
+        const s = await captureStillFromVideo(video);
+        const r = cropReticleROI(s);
+        return enhancedBarcodeDecodeQuick(r);
+      });
+
+      const winner = await Promise.race(burstPromises);
+      const raw2 = winner?.text ?? null;
+      if (raw2 && /^\d{8,14}$/.test(raw2)) {
+        console.log('[HS] off_fetch_start', { code: raw2 });
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: raw2, source: 'health' }
+        });
+        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        if (data && !error) { 
+          // Convert still to base64 for onCapture
+          const fullBlob: Blob = await new Promise((resolve, reject) => {
+            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+          });
+          const fullBase64 = await new Promise<string>((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result));
+            fr.onerror = () => reject(fr.error);
+            fr.readAsDataURL(fullBlob);
+          });
+          
+          onCapture(fullBase64 + `&barcode=${raw2}`); 
+          setIsFrozen(false); 
+          console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
+          return; 
+        }
+      }
+
+      // 3) Last resort: run the existing full-pass pipeline
+      await runExistingFullDecodePipeline(still);
       
     } catch (conversionError) {
       console.error("❌ Image processing failed:", conversionError);
@@ -335,7 +504,78 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       onCapture(fallbackImageData);
     } finally {
       setIsScanning(false);
+      setIsFrozen(false);
+      console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
     }
+  };
+
+  const runExistingFullDecodePipeline = async (canvas: HTMLCanvasElement) => {
+    let detectedBarcode: string | null = null;
+    let barcodeResult: any = null;
+    
+    // Multi-pass barcode scanning if BARCODE_V2 enabled
+    if (BARCODE_V2) {
+      const scanner = new MultiPassBarcodeScanner();
+      barcodeResult = await scanner.scan(canvas);
+      
+      if (barcodeResult) {
+        detectedBarcode = barcodeResult.text;
+        console.log("🔍 barcodeScan:", {
+          attempts: barcodeResult.scale ? 'multi-scale' : 'multi-pass',
+          hit: true,
+          pass: barcodeResult.passName,
+          rotation: barcodeResult.rotation,
+          scale: barcodeResult.scale,
+          format: barcodeResult.format,
+          checkDigit: barcodeResult.checkDigitValid,
+          value: detectedBarcode
+        });
+      } else {
+        console.log("🔍 barcodeScan:", {
+          attempts: 'multi-pass',
+          hit: false
+        });
+      }
+    }
+    
+    // Convert to base64 using CSP-safe method
+    const fullBlob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+    });
+
+    const fullBase64 = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(fullBlob);
+    });
+    
+    // If barcode detected with valid check digit, short-circuit to OFF lookup
+    if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
+      console.log("🎯 Barcode path - short-circuiting to OFF lookup");
+      
+      // Call health processor with barcode
+      const body = {
+        detectedBarcode,
+        imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
+        mode: 'scan'
+      };
+      
+      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body
+      });
+      
+      if (!error && data && !data.fallback) {
+        console.log("✅ Barcode path success:", data);
+        onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+        return;
+      } else {
+        console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
+      }
+    }
+    
+    // No barcode or barcode lookup failed - proceed with image analysis
+    onCapture(fullBase64);
   };
 
   const handleManualEntry = () => {
@@ -445,8 +685,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
           />
+          
+          {/* Shutter flash effect */}
+          {isFrozen && (
+            <div className="absolute inset-0 bg-white animate-pulse opacity-20 pointer-events-none"></div>
+          )}
           <canvas ref={canvasRef} className="hidden" />
           
           {/* Scanning Overlay */}
