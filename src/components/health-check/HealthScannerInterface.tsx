@@ -8,7 +8,7 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { BARCODE_V2 } from '@/lib/featureFlags';
-import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported, stillFrameBarcodePass, safeTime, safeTimeEnd } from '@/lib/scan/freezeDecode';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
 interface HealthScannerInterfaceProps {
@@ -427,7 +427,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.time('[HS] analyze_total');
+    safeTime('[HS] analyze_total');
     setIsFrozen(true);
     playCameraClickSound();
     setIsScanning(true);
@@ -509,45 +509,68 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // 2) Burst fallback (parallel capture and race)
-      console.log('[HS] burst_start');
-      const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
-        await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
-        return await snapAndDecode({
-          videoEl: video,
-          budgetMs: QUICK_BUDGET_MS,
-          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-          logPrefix: '[HS]'
-        });
+      // No live barcode found - try still frame barcode pass before OCR
+      console.log('barcodeScan: { attempts: "multi-pass", hit: false }');
+      
+      // First, try still frame barcode detection
+      const stillCanvas = await captureStill();
+      const stillResult = await stillFrameBarcodePass(stillCanvas.canvas, { 
+        budgetMs: 700, 
+        logPrefix: '[HS]' 
       });
-
-      const winner = await Promise.race(burstPromises);
-      if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
-        console.log('[HS] off_fetch_start', { code: winner.raw });
+      
+      // If still frame found a barcode, use it
+      if (stillResult.raw && /^\d{8,14}$/.test(stillResult.raw)) {
+        console.log('[HS] off_fetch_start', { code: stillResult.raw });
+        
         try {
           const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-            body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
+            body: { mode: 'barcode', barcode: stillResult.raw, source: 'health' }
           });
           console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
           
-          if (error) {
-            console.warn('[HS] analyzer_unreachable', { error });
-            throw new Error('Analyzer temporarily unreachable. Check network & retry.');
+          if (data && !error) { 
+            const processedImageData = stillCanvas.canvas.toDataURL('image/jpeg', 0.8);
+            onCapture(processedImageData);
+            return; // Early return on success
           }
+        } catch (e) {
+          console.warn('[HS] analyzer_exception', { e });
+          // Fall through to OCR
+        }
+      }
+      
+      // No barcode found in still frame - fall back to OCR analysis
+      console.log('About to call enhanced-health-scanner function...');
+      
+      // Optimize payload and call OCR analysis
+      stillCanvas.canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        
+        const optimizedBlob = await optimizeBlobSize(blob, 300);
+        const fr = new FileReader();
+        fr.onload = async () => {
+          const base64 = String(fr.result).split(',')[1] || '';
           
-          if (data && !error) {
-            const still = await captureStillFromVideo(video);
-            const fullBlob: Blob = await new Promise((resolve, reject) => {
-              still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
-            });
-            const fullBase64 = await new Promise<string>((resolve, reject) => {
-              const fr = new FileReader();
-              fr.onload = () => resolve(String(fr.result));
-              fr.onerror = () => reject(fr.error);
-              fr.readAsDataURL(fullBlob);
+          try {
+            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+              body: { mode: 'scan', image_b64: base64, hasDetectedBarcode: false }
             });
             
-            onCapture(fullBase64 + `&barcode=${winner.raw}`);
+            console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+            
+            if (data && data.recognized) {
+              onCapture(stillCanvas.canvas.toDataURL('image/jpeg', 0.8));
+            } else {
+              setCurrentView('notRecognized');
+            }
+          } catch (e) {
+            console.warn('[HS] analyzer_exception', { e });
+            setCurrentView('notRecognized');
+          }
+        };
+        fr.readAsDataURL(optimizedBlob);
+      }, 'image/jpeg', 0.82);
             setIsFrozen(false);
             console.timeEnd('[HS] analyze_total');
             return; 

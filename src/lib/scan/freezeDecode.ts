@@ -177,3 +177,164 @@ export function isTorchSupported(track?: MediaStreamTrack): boolean {
   const caps = track.getCapabilities?.();
   return !!(caps && 'torch' in caps);
 }
+
+/**
+ * Safe timer helpers to avoid "Timer already exists" errors
+ */
+export function safeTime(label: string): void {
+  try {
+    console.time(label);
+  } catch {
+    // Timer already exists, ignore
+  }
+}
+
+export function safeTimeEnd(label: string): void {
+  try {
+    console.timeEnd(label);
+  } catch {
+    // Timer doesn't exist, ignore
+  }
+}
+
+/**
+ * Still frame barcode detection with multi-crop and rotation
+ */
+export async function stillFrameBarcodePass(
+  canvas: HTMLCanvasElement,
+  { budgetMs = 700, logPrefix = '[HS]' }: { budgetMs?: number; logPrefix?: string } = {}
+): Promise<{ raw: string | null; result: any; reason: string }> {
+  console.log(`${logPrefix} still_pass_start`);
+  safeTime(`${logPrefix} still_pass_ms`);
+  
+  const startTime = performance.now();
+  
+  try {
+    // Use existing MultiPassBarcodeScanner instead of direct ZXing
+    const scanner = new MultiPassBarcodeScanner();
+    
+    // Create 3 crops: top 35%, center 40%, bottom 35%
+    const crops = [
+      createCrop(canvas, 0, 0, 1.0, 0.35),      // top 35%
+      createCrop(canvas, 0, 0.3, 1.0, 0.4),    // center 40%
+      createCrop(canvas, 0, 0.65, 1.0, 0.35)   // bottom 35%
+    ];
+    
+    // Try each crop with 0° and 90° rotations
+    for (const crop of crops) {
+      if (performance.now() - startTime > budgetMs) break;
+      
+      const rotations = [0, 90];
+      for (const rotation of rotations) {
+        if (performance.now() - startTime > budgetMs) break;
+        
+        try {
+          const testCanvas = rotation === 0 ? crop : rotateCanvas(crop, rotation);
+          const result = await scanner.scanQuick(testCanvas);
+          
+          if (result && result.text) {
+            const raw = result.text;
+            const isValidLength = /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(raw);
+            
+            if (isValidLength) {
+              safeTimeEnd(`${logPrefix} still_pass_ms`);
+              console.log(`${logPrefix} still_barcode_result:`, {
+                raw,
+                type: result.format || 'unknown',
+                checksumOk: result.checkDigitValid || true,
+                reason: 'still_frame_decoded'
+              });
+              
+              return {
+                raw,
+                result: {
+                  text: raw,
+                  format: result.format,
+                  checkDigitValid: result.checkDigitValid
+                },
+                reason: 'still_frame_decoded'
+              };
+            }
+          }
+        } catch (e) {
+          // Continue to next crop/rotation
+          continue;
+        }
+      }
+    }
+    
+    // No barcode found
+    safeTimeEnd(`${logPrefix} still_pass_ms`);
+    console.log(`${logPrefix} still_barcode_result:`, {
+      raw: null,
+      type: null,
+      checksumOk: null,
+      reason: 'not_found_still'
+    });
+    
+    return { raw: null, result: null, reason: 'not_found_still' };
+    
+  } catch (error) {
+    safeTimeEnd(`${logPrefix} still_pass_ms`);
+    console.log(`${logPrefix} still_barcode_result:`, {
+      raw: null,
+      type: null,
+      checksumOk: null,
+      reason: 'still_error'
+    });
+    
+    return { raw: null, result: null, reason: 'still_error' };
+  }
+}
+
+/**
+ * Create a crop from canvas
+ */
+function createCrop(
+  canvas: HTMLCanvasElement, 
+  x: number, 
+  y: number, 
+  w: number, 
+  h: number
+): HTMLCanvasElement {
+  const cropCanvas = document.createElement('canvas');
+  const srcW = canvas.width;
+  const srcH = canvas.height;
+  
+  const cropX = Math.round(srcW * x);
+  const cropY = Math.round(srcH * y);
+  const cropW = Math.round(srcW * w);
+  const cropH = Math.round(srcH * h);
+  
+  cropCanvas.width = cropW;
+  cropCanvas.height = cropH;
+  
+  const ctx = cropCanvas.getContext('2d')!;
+  ctx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+  
+  return cropCanvas;
+}
+
+/**
+ * Rotate canvas by degrees
+ */
+function rotateCanvas(canvas: HTMLCanvasElement, degrees: number): HTMLCanvasElement {
+  if (degrees === 0) return canvas;
+  
+  const rotated = document.createElement('canvas');
+  const ctx = rotated.getContext('2d')!;
+  
+  if (degrees === 90 || degrees === 270) {
+    rotated.width = canvas.height;
+    rotated.height = canvas.width;
+  } else {
+    rotated.width = canvas.width;
+    rotated.height = canvas.height;
+  }
+  
+  ctx.translate(rotated.width / 2, rotated.height / 2);
+  ctx.rotate((degrees * Math.PI) / 180);
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  
+  return rotated;
+}

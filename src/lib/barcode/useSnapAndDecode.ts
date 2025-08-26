@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported, safeTime, safeTimeEnd } from '@/lib/scan/freezeDecode';
 
 export type DecodeOutcome = {
   ok: boolean;
@@ -76,6 +76,7 @@ export function useSnapAndDecode() {
 
     try {
       console.log(`${logPrefix} analyze_start`);
+      safeTime(`${logPrefix} analyze_total`);
       
       // Optional: Add toast for PWA testing when console isn't available
       if (window.location.search.includes('debug=toast')) {
@@ -131,6 +132,7 @@ export function useSnapAndDecode() {
           toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
         }
 
+        safeTimeEnd(`${logPrefix} analyze_total`);
         return {
           ok: true,
           raw: chosenBarcode,
@@ -148,6 +150,7 @@ export function useSnapAndDecode() {
           reason: 'not_found'
         });
 
+        safeTimeEnd(`${logPrefix} analyze_total`);
         return {
           ok: false,
           attempts,
@@ -165,6 +168,7 @@ export function useSnapAndDecode() {
         reason: 'error'
       });
 
+      safeTimeEnd(`${logPrefix} analyze_total`);
       return {
         ok: false,
         attempts,
