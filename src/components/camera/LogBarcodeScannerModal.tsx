@@ -307,7 +307,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none"
+        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
       >
         <div className="relative w-full h-full bg-black overflow-hidden">
           {/* Video Element */}
