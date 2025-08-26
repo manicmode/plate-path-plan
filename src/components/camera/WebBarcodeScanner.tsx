@@ -112,6 +112,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       // Return early on any 8/12/13/14-digit hit
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         console.log('[LOG] off_fetch_start', { code: result.raw });
+        
+        // Optional: Add toast for PWA testing
+        if (window.location.search.includes('debug=toast')) {
+          const { toast } = await import('sonner');
+          toast.info(`[LOG] off_fetch_start: ${result.raw}`);
+        }
         onBarcodeDetected(result.raw);
         cleanup();
         onClose();

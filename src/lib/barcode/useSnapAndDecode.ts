@@ -34,6 +34,12 @@ export function useSnapAndDecode() {
     try {
       console.log(`${logPrefix} analyze_start`);
       
+      // Optional: Add toast for PWA testing when console isn't available
+      if (logPrefix === '[HS]' && window.location.search.includes('debug=toast')) {
+        const { toast } = await import('sonner');
+        toast.info(`${logPrefix} analyze_start`);
+      }
+      
       // Get the current stream for torch support
       streamRef.current = videoEl.srcObject as MediaStream;
       
@@ -50,12 +56,18 @@ export function useSnapAndDecode() {
 
       if (result.raw) {
         const chosenBarcode = chooseBarcode(result.result);
-        console.log(`${logPrefix} barcode_result:`, {
-          raw: chosenBarcode,
-          type: result.result?.format || null,
-          checksumOk: result.result?.checkDigitValid || null,
-          reason: 'decoded'
-        });
+      console.log(`${logPrefix} barcode_result:`, {
+        raw: chosenBarcode,
+        type: result.result?.format || null,
+        checksumOk: result.result?.checkDigitValid || null,
+        reason: 'decoded'
+      });
+      
+      // Optional: Add toast for PWA testing
+      if (window.location.search.includes('debug=toast')) {
+        const { toast } = await import('sonner');
+        toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
+      }
 
         return {
           ok: true,

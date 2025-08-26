@@ -405,10 +405,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // Return early on any 8/12/13/14-digit hit (even if checksum is false)
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         console.log('[HS] off_fetch_start', { code: result.raw });
+        
+        // Optional: Add toast for PWA testing  
+        if (window.location.search.includes('debug=toast')) {
+          const { toast } = await import('sonner');
+          toast.info(`[HS] off_fetch_start: ${result.raw}`);
+        }
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: result.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        
+        // Optional: Add toast for PWA testing
+        if (window.location.search.includes('debug=toast')) {
+          const { toast } = await import('sonner');
+          toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
+        }
         if (data && !error) { 
           // Convert to base64 for result
           const still = await captureStillFromVideo(video);
