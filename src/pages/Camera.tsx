@@ -2853,13 +2853,13 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
       {/* Manual Barcode Entry Modal */}
-      {showManualBarcodeEntry && (
-        <ManualBarcodeEntry
-          onBarcodeEntered={handleBarcodeDetected}
-          onCancel={() => setShowManualBarcodeEntry(false)}
-          isProcessing={isAnalyzing}
-        />
-      )}
+      <ManualBarcodeEntry
+        open={showManualBarcodeEntry}
+        onOpenChange={setShowManualBarcodeEntry}
+        onBarcodeEntered={handleBarcodeDetected}
+        onCancel={() => setShowManualBarcodeEntry(false)}
+        isProcessing={isAnalyzing}
+      />
 
       {/* Manual Food Entry Modal */}
       <ManualFoodEntry
