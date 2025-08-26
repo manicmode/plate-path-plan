@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
-import { decodeUPCFromImageBlobWithDiagnostics } from '@/lib/barcode/enhancedDecoder';
 import { copyDebugToClipboard, startScanReport, finalizeScanReport } from '@/lib/barcode/diagnostics';
 import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
 import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
@@ -211,31 +210,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         };
         
         const barcodeResult = await Promise.race([
-          decodeUPCFromImageBlobWithDiagnostics(
+          enhancedBarcodeDecode(
             barcodeBlob, 
-            reqId,
-            constraints,
-            { w: video.videoWidth, h: video.videoHeight },
-            { w: img.width, h: img.height }
+            { x: 0, y: img.height * 0.35, w: img.width, h: img.height * 0.3 }, // ROI rect
+            window.devicePixelRatio,
+            1200 // budget
           ),
-          new Promise<{ code: null; attempts: 0; ms: number }>((resolve) => 
-            setTimeout(() => resolve({ code: null, attempts: 0, ms: 1200 }), 1200)
+          new Promise<{ success: false; attempts: 0; totalMs: number }>((resolve) => 
+            setTimeout(() => resolve({ success: false, attempts: 0, totalMs: 1200 }), 1200)
           )
         ]);
         
         if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
           console.log('[HS] barcode', { 
-            code: barcodeResult.code, 
-            normalizedAs: 'normalizedAs' in barcodeResult ? barcodeResult.normalizedAs : undefined,
-            checkDigitOk: 'checkDigitOk' in barcodeResult ? barcodeResult.checkDigitOk : undefined,
-            ms: barcodeResult.ms, 
+            success: barcodeResult.success,
+            code: barcodeResult.success ? barcodeResult.code : undefined, 
+            normalizedAs: barcodeResult.success ? barcodeResult.normalizedAs : undefined,
+            checkDigitOk: barcodeResult.success ? barcodeResult.checkDigitOk : undefined,
+            totalMs: barcodeResult.totalMs, 
             attempts: barcodeResult.attempts 
           });
         }
         
-        if (barcodeResult.code) {
+        if (barcodeResult.success && barcodeResult.code) {
           // Short-circuit to OFF lookup with normalized code
-          const finalCode = ('normalizedAs' in barcodeResult && barcodeResult.normalizedAs) || barcodeResult.code;
+          const finalCode = barcodeResult.normalizedAs || barcodeResult.code;
           onCapture(imageData + `&barcode=${finalCode}`);
           return;
         }

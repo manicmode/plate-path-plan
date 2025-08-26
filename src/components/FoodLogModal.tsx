@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, ScanBarcode, Loader2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/auth/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
 import { startScanReport, finalizeScanReport, copyDebugToClipboard } from '@/lib/barcode/diagnostics';

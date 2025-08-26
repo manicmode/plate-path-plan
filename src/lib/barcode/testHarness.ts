@@ -1,4 +1,4 @@
-import { decodeUPCFromImageBlobWithDiagnostics } from './enhancedDecoder';
+import { enhancedBarcodeDecode } from './enhancedDecoder';
 import { ScanReport } from './diagnostics';
 
 /**
@@ -39,25 +39,50 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
       img.src = imageUrl;
     });
     
-    // Run decode with diagnostics
-    const reqId = `test-${Date.now()}`;
-    const result = await decodeUPCFromImageBlobWithDiagnostics(
+    // Run decode with enhanced decoder
+    const roiRect = {
+      x: 0,
+      y: Math.floor(imageDimensions.height * 0.35),
+      w: imageDimensions.width,
+      h: Math.floor(imageDimensions.height * 0.3)
+    };
+    
+    const result = await enhancedBarcodeDecode(
       blob,
-      reqId,
-      { test: true, imagePath },
-      { w: imageDimensions.width, h: imageDimensions.height },
-      { w: imageDimensions.width, h: imageDimensions.height }
+      roiRect,
+      window.devicePixelRatio,
+      2000
     );
     
     console.log('[HS_TEST] Test decode complete:', {
-      success: !!result.code,
+      success: result.success,
       code: result.code,
       format: result.format,
       attempts: result.attempts,
-      ms: result.ms
+      totalMs: result.totalMs
     });
+    // Create a mock scan report for testing
+    const mockReport: ScanReport = {
+      reqId: `test-${Date.now()}`,
+      env: {
+        innerHeight: window.innerHeight,
+        cssVh: '1vh',
+        dpr: window.devicePixelRatio
+      },
+      roiStrategy: 'center',
+      attempts: [],
+      final: {
+        success: result.success,
+        code: result.code,
+        normalizedAs: result.normalizedAs,
+        checkDigitOk: result.checkDigitOk || false,
+        willScore: result.success,
+        willFallback: !result.success,
+        totalMs: result.totalMs
+      }
+    };
     
-    return result.report || null;
+    return mockReport;
     
   } catch (error) {
     console.error('[HS_TEST] Test harness failed:', error);

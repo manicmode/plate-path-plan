@@ -1,374 +1,312 @@
-import { ScanReport, startScanReport, logAttempt, finalizeScanReport } from './diagnostics';
+// Enhanced multi-pass barcode decoder with forensic logging
+import { logAttempt, ScanReport, Attempt } from './diagnostics';
 
-export type EnhancedDecodeResult = {
-  code: string | null;
-  format?: string;
+export type DecodeResult = {
+  success: boolean;
+  code?: string;
+  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'UPC_E' | 'CODE_128' | 'ITF';
   normalizedAs?: string;
   checkDigitOk?: boolean;
   attempts: number;
-  ms: number;
-  report?: ScanReport;
+  totalMs: number;
 };
 
-/**
- * Enhanced multi-pass barcode decoder with comprehensive diagnostics
- * Implements ZXing-style strategy with detailed logging
- */
-export async function decodeUPCFromImageBlobWithDiagnostics(
-  blob: Blob,
-  reqId: string,
-  videoConstraints?: any,
-  captureSize?: { w: number; h: number },
-  normalizedSize?: { w: number; h: number }
-): Promise<EnhancedDecodeResult> {
-  const startTime = Date.now();
-  const dpr = window.devicePixelRatio || 1;
+// UPC-A checksum validation
+function validateUPCA(code: string): boolean {
+  if (code.length !== 12) return false;
   
-  // Initialize diagnostics if debug mode is enabled
-  if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-    const roi = {
-      x: (normalizedSize?.w || 0) * 0.1,
-      y: (normalizedSize?.h || 0) * 0.35,
-      w: (normalizedSize?.w || 0) * 0.8,
-      h: (normalizedSize?.h || 0) * 0.3,
-      strategy: 'center-band-30'
-    };
-    
-    startScanReport(
-      captureSize || { w: 0, h: 0 },
-      normalizedSize || { w: 0, h: 0 },
-      roi,
-      dpr,
-      videoConstraints || {}
-    );
+  let oddSum = 0;
+  let evenSum = 0;
+  
+  for (let i = 0; i < 11; i++) {
+    const digit = parseInt(code[i]);
+    if (i % 2 === 0) {
+      oddSum += digit; // positions 1,3,5,7,9,11 (0-indexed: 0,2,4,6,8,10)
+    } else {
+      evenSum += digit; // positions 2,4,6,8,10 (0-indexed: 1,3,5,7,9)
+    }
   }
   
-  try {
-    // Convert blob to image element
-    const imageUrl = URL.createObjectURL(blob);
-    const img = await loadImage(imageUrl);
-    URL.revokeObjectURL(imageUrl);
-    
-    // Multi-pass strategy with horizontal band ROI for UPC/EAN detection
-    const cropConfigs = [
-      { name: 'center-band-30', x: 0.1, y: 0.35, w: 0.8, h: 0.3 },    // Primary horizontal band
-      { name: 'center-box', x: 0.2, y: 0.3, w: 0.6, h: 0.4 },         // Center square
-      { name: 'top-band', x: 0.1, y: 0.15, w: 0.8, h: 0.25 },         // Upper horizontal band
-      { name: 'bottom-band', x: 0.1, y: 0.6, w: 0.8, h: 0.25 },       // Lower horizontal band
-    ];
-    
-    const scales = [1.0, 0.75, 0.5];  // Ensure minimum resolution ≥ 1080px
-    const rotations = [0, 90, 180, 270, 8, -8];  // TRY_HARDER rotations
-    const luminanceModes = [false, true];  // normal, inverted
-    
-    let passNumber = 0;
-    
-    // Try each combination until we find a barcode
-    for (const crop of cropConfigs) {
-      for (const scale of scales) {
-        for (const rotation of rotations) {
-          for (const inverted of luminanceModes) {
-            passNumber++;
-            const passStart = Date.now();
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d')!;
-            
-            // Calculate ROI in canvas pixels
-            const cropW = img.width * crop.w;
-            const cropH = img.height * crop.h;
-            const cropX = img.width * crop.x;
-            const cropY = img.height * crop.y;
-            
-            // Ensure minimum resolution (shorter side ≥ 1080px for barcode detection)
-            const minDimension = Math.min(cropW * scale, cropH * scale);
-            let adjustedScale = scale;
-            if (minDimension < 1080 && minDimension > 0) {
-              adjustedScale = Math.max(scale, 1080 / Math.min(cropW, cropH));
-            }
-            
-            // Set canvas size based on rotation
-            if (rotation === 90 || rotation === 270) {
-              canvas.width = Math.max(1080, cropH * adjustedScale);
-              canvas.height = Math.max(1080, cropW * adjustedScale);
-            } else {
-              canvas.width = Math.max(1080, cropW * adjustedScale);
-              canvas.height = Math.max(1080, cropH * adjustedScale);
-            }
-            
-            // Apply rotation and drawing
-            ctx.save();
-            if (rotation !== 0) {
-              ctx.translate(canvas.width / 2, canvas.height / 2);
-              ctx.rotate((rotation * Math.PI) / 180);
-              ctx.translate(-canvas.width / 2, -canvas.height / 2);
-            }
-            
-            // Draw cropped and scaled image
-            ctx.drawImage(
-              img,
-              cropX, cropY, cropW, cropH,
-              0, 0, canvas.width, canvas.height
-            );
-            
-            // Apply luminance inversion if needed
-            if (inverted) {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              for (let i = 0; i < imageData.data.length; i += 4) {
-                imageData.data[i] = 255 - imageData.data[i];     // R
-                imageData.data[i + 1] = 255 - imageData.data[i + 1]; // G
-                imageData.data[i + 2] = 255 - imageData.data[i + 2]; // B
+  const total = (oddSum * 3) + evenSum;
+  const checkDigit = (10 - (total % 10)) % 10;
+  return checkDigit === parseInt(code[11]);
+}
+
+// EAN-13 checksum validation  
+function validateEAN13(code: string): boolean {
+  if (code.length !== 13) return false;
+  
+  let oddSum = 0;
+  let evenSum = 0;
+  
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(code[i]);
+    if (i % 2 === 0) {
+      oddSum += digit;
+    } else {
+      evenSum += digit;
+    }
+  }
+  
+  const total = oddSum + (evenSum * 3);
+  const checkDigit = (10 - (total % 10)) % 10;
+  return checkDigit === parseInt(code[12]);
+}
+
+// Normalize EAN-13 with leading 0 to UPC-A
+function normalizeBarcode(code: string, format: string): { code: string; normalizedAs?: string; checkDigitOk: boolean } {
+  if (format === 'EAN_13' && code.startsWith('0') && code.length === 13) {
+    const upcA = code.substring(1);
+    const upcAValid = validateUPCA(upcA);
+    return {
+      code: upcA,
+      normalizedAs: 'UPC_A',
+      checkDigitOk: upcAValid
+    };
+  }
+  
+  if (format === 'UPC_A' && code.length === 12) {
+    return {
+      code,
+      checkDigitOk: validateUPCA(code)
+    };
+  }
+  
+  if (format === 'EAN_13' && code.length === 13) {
+    return {
+      code,
+      checkDigitOk: validateEAN13(code)
+    };
+  }
+  
+  return { code, checkDigitOk: false };
+}
+
+// Multi-pass enhanced decoder with ROI crops
+export async function enhancedBarcodeDecode(
+  imageBlob: Blob,
+  roiRect: { x: number; y: number; w: number; h: number },
+  dpr: number,
+  budget: number = 1500
+): Promise<DecodeResult> {
+  const startTime = Date.now();
+  let attempts = 0;
+  
+  // Create image from blob
+  const imageUrl = URL.createObjectURL(imageBlob);
+  const image = new Image();
+  
+  return new Promise((resolve) => {
+    image.onload = async () => {
+      URL.revokeObjectURL(imageUrl);
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve({ success: false, attempts: 0, totalMs: Date.now() - startTime });
+        return;
+      }
+      
+      canvas.width = image.width;
+      canvas.height = image.height;
+      ctx.drawImage(image, 0, 0);
+      
+      // Crop strategies
+      const crops: Array<{name: 'full' | 'bandH' | 'bandV' | 'q1' | 'q2' | 'q3' | 'q4', rect: {x:number,y:number,w:number,h:number}}> = [
+        { name: 'full', rect: { x: 0, y: 0, w: canvas.width, h: canvas.height } },
+        { name: 'bandH', rect: { x: 0, y: Math.floor(canvas.height * 0.35), w: canvas.width, h: Math.floor(canvas.height * 0.30) } },
+        { name: 'bandV', rect: { x: Math.floor(canvas.width * 0.35), y: 0, w: Math.floor(canvas.width * 0.30), h: canvas.height } },
+        { name: 'q1', rect: { x: 0, y: 0, w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+        { name: 'q2', rect: { x: Math.floor(canvas.width * 0.5), y: 0, w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+        { name: 'q3', rect: { x: 0, y: Math.floor(canvas.height * 0.5), w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+        { name: 'q4', rect: { x: Math.floor(canvas.width * 0.5), y: Math.floor(canvas.height * 0.5), w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } }
+      ];
+      
+      const scales = [1.0, 0.75, 0.5];
+      const rotations = [0, 90, 180, 270, -8, 8];
+      const polarities = [false, true]; // normal, inverted
+      
+      for (const crop of crops) {
+        for (const scale of scales) {
+          for (const rotation of rotations) {
+            for (const inverted of polarities) {
+              if (Date.now() - startTime > budget) {
+                resolve({ success: false, attempts, totalMs: Date.now() - startTime });
+                return;
               }
-              ctx.putImageData(imageData, 0, 0);
-            }
-            
-            ctx.restore();
-            
-            // Try to decode this processed image
-            const { code, format, outcome } = await tryDecodeCanvasWithDiagnostics(canvas, passNumber);
-            
-            const passElapsed = Date.now() - passStart;
-            
-            // Log attempt for diagnostics
-            if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-              logAttempt(passNumber, rotation, adjustedScale, inverted, crop.name, outcome, passElapsed, format, code);
-            }
-            
-            if (code && isValidUPCEAN(code)) {
-              const normalizedResult = normalizeUPCCode(code, format);
-              const totalMs = Date.now() - startTime;
               
-              // Finalize scan report
-              const report = finalizeScanReport(
-                true,
-                totalMs,
-                code,
-                normalizedResult.normalizedCode,
-                normalizedResult.checkDigitValid,
-                undefined, // OFF lookup will be handled separately
-                true, // willScore
-                false // willFallback
-              );
+              const attemptStart = Date.now();
+              attempts++;
               
-              return {
-                code: normalizedResult.normalizedCode,
-                format: normalizedResult.format,
-                normalizedAs: normalizedResult.normalizedCode !== code ? normalizedResult.normalizedCode : undefined,
-                checkDigitOk: normalizedResult.checkDigitValid,
-                attempts: passNumber,
-                ms: totalMs,
-                report
-              };
-            }
-            
-            // Abort if taking too long
-            if (Date.now() - startTime > 1200) {
-              break;
+              try {
+                // Create cropped canvas
+                const cropCanvas = document.createElement('canvas');
+                const cropCtx = cropCanvas.getContext('2d');
+                if (!cropCtx) continue;
+                
+                const finalW = Math.floor(crop.rect.w * scale);
+                const finalH = Math.floor(crop.rect.h * scale);
+                
+                cropCanvas.width = finalW;
+                cropCanvas.height = finalH;
+                
+                // Apply rotation
+                if (rotation !== 0) {
+                  cropCtx.save();
+                  cropCtx.translate(finalW / 2, finalH / 2);
+                  cropCtx.rotate((rotation * Math.PI) / 180);
+                  cropCtx.translate(-finalW / 2, -finalH / 2);
+                }
+                
+                // Apply inversion
+                if (inverted) {
+                  cropCtx.filter = 'invert(1)';
+                }
+                
+                cropCtx.drawImage(
+                  canvas,
+                  crop.rect.x, crop.rect.y, crop.rect.w, crop.rect.h,
+                  0, 0, finalW, finalH
+                );
+                
+                if (rotation !== 0) {
+                  cropCtx.restore();
+                }
+                
+                // Try to decode this canvas
+                const result = await tryDecodeCanvas(cropCanvas);
+                const attemptEnd = Date.now();
+                
+                if (result && result.code) {
+                  const normalized = normalizeBarcode(result.code, result.format);
+                  
+                  const attempt: Attempt = {
+                    idx: attempts,
+                    crop: crop.name,
+                    scale,
+                    rotation,
+                    inverted,
+                    outcome: normalized.checkDigitOk ? 'OK' : 'Checksum',
+                    format: result.format as any,
+                    code: result.code,
+                    elapsedMs: attemptEnd - attemptStart,
+                    roi: { w: finalW, h: finalH },
+                    dpr
+                  };
+                  
+                  logAttempt(attempt);
+                  
+                  if (normalized.checkDigitOk) {
+                    resolve({
+                      success: true,
+                      code: normalized.code,
+                      format: result.format as any,
+                      normalizedAs: normalized.normalizedAs,
+                      checkDigitOk: true,
+                      attempts,
+                      totalMs: attemptEnd - startTime
+                    });
+                    return;
+                  }
+                } else {
+                  const attempt: Attempt = {
+                    idx: attempts,
+                    crop: crop.name,
+                    scale,
+                    rotation,
+                    inverted,
+                    outcome: 'NotFound',
+                    elapsedMs: attemptEnd - attemptStart,
+                    roi: { w: finalW, h: finalH },
+                    dpr
+                  };
+                  
+                  logAttempt(attempt);
+                }
+              } catch (error) {
+                const attemptEnd = Date.now();
+                const attempt: Attempt = {
+                  idx: attempts,
+                  crop: crop.name,
+                  scale,
+                  rotation,
+                  inverted,
+                  outcome: 'Error',
+                  elapsedMs: attemptEnd - attemptStart,
+                  roi: { w: 0, h: 0 },
+                  dpr
+                };
+                
+                logAttempt(attempt);
+              }
             }
           }
         }
       }
-    }
-    
-    // No barcode found
-    const totalMs = Date.now() - startTime;
-    const report = finalizeScanReport(
-      false,
-      totalMs,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      false, // willScore
-      true // willFallback
-    );
-    
-    return {
-      code: null,
-      attempts: passNumber,
-      ms: totalMs,
-      report
+      
+      resolve({ success: false, attempts, totalMs: Date.now() - startTime });
     };
     
-  } catch (error) {
-    console.error('Enhanced barcode decode error:', error);
-    
-    const totalMs = Date.now() - startTime;
-    const report = finalizeScanReport(
-      false,
-      totalMs,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      false,
-      true
-    );
-    
-    return {
-      code: null,
-      attempts: 0,
-      ms: totalMs,
-      report
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl);
+      resolve({ success: false, attempts: 0, totalMs: Date.now() - startTime });
     };
-  }
-}
-
-/**
- * Load image from URL
- */
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
+    
+    image.src = imageUrl;
   });
 }
 
-/**
- * Try to decode barcode from canvas with detailed diagnostics
- */
-async function tryDecodeCanvasWithDiagnostics(canvas: HTMLCanvasElement, passNumber: number): Promise<{
-  code: string | null;
-  format?: string;
-  outcome: 'OK' | 'NotFound' | 'Checksum' | 'Format' | 'Error';
-}> {
+// Try to decode a canvas using external API
+async function tryDecodeCanvas(canvas: HTMLCanvasElement): Promise<{code: string; format: string} | null> {
   try {
     // Convert canvas to base64
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    const base64 = dataUrl.split(',')[1];
+    const base64Data = dataUrl.split(',')[1];
     
-    // Use existing barcode detector function
-    const response = await fetch('/functions/v1/barcode-image-detector', {
+    // Call barcode detection API
+    const response = await fetch('https://api.qrserver.com/v1/read-qr-code/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ 
-        imageBase64: base64,
-        pass: passNumber // Include pass number for backend diagnostics
-      })
+      body: `fileToUpload=data:image/jpeg;base64,${base64Data}`,
     });
     
-    const result = await response.json();
-    const code = result.barcode || null;
+    if (!response.ok) return null;
     
-    if (code) {
-      // Validate the code
-      if (!isValidUPCEAN(code)) {
-        return { code: null, outcome: 'Checksum' };
+    const results = await response.json();
+    if (results && results[0] && results[0].symbol && results[0].symbol[0]) {
+      const decoded = results[0].symbol[0];
+      if (decoded.data && decoded.data.trim()) {
+        return {
+          code: decoded.data.trim(),
+          format: determineFormat(decoded.data.trim())
+        };
       }
-      
-      const format = getUPCFormat(code);
-      if (!format || format === 'Unknown') {
-        return { code: null, outcome: 'Format' };
-      }
-      
-      return { code, format, outcome: 'OK' };
     }
     
-    return { code: null, outcome: 'NotFound' };
-    
+    return null;
   } catch (error) {
-    if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-      console.error(`[HS_DIAG] Pass ${passNumber} decode error:`, error);
-    }
-    return { code: null, outcome: 'Error' };
+    return null;
   }
 }
 
-/**
- * Normalize UPC codes (EAN-13 starting with 0 → UPC-A)
- */
-function normalizeUPCCode(code: string, format?: string): {
-  normalizedCode: string;
-  format: string;
-  checkDigitValid: boolean;
-} {
-  const checkDigitValid = isValidUPCEAN(code);
+// Determine barcode format from code
+function determineFormat(code: string): string {
+  const length = code.length;
   
-  // EAN-13 starting with 0 should be normalized to UPC-A
-  if (code.length === 13 && code.startsWith('0')) {
-    const upcA = code.substring(1); // Remove leading 0
-    return {
-      normalizedCode: upcA,
-      format: 'UPC-A',
-      checkDigitValid: isValidUPCEAN(upcA)
-    };
+  if (length === 12) {
+    return 'UPC_A';
+  } else if (length === 13) {
+    return 'EAN_13';
+  } else if (length === 8) {
+    return 'EAN_8';
+  } else if (length === 6 || length === 7) {
+    return 'UPC_E';
+  } else {
+    return 'CODE_128';
   }
-  
-  return {
-    normalizedCode: code,
-    format: format || getUPCFormat(code),
-    checkDigitValid
-  };
 }
 
-/**
- * Validate UPC/EAN check digit with correct UPC-A parity
- */
-function isValidUPCEAN(code: string): boolean {
-  if (!code || !/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)) {
-    return false;
-  }
-  
-  // UPC-A (12 digits) check digit validation - correct parity
-  if (code.length === 12) {
-    const digits = code.slice(0, -1).split('').map(Number);
-    const checkDigit = parseInt(code.slice(-1));
-    
-    let sum = 0;
-    for (let i = 0; i < digits.length; i++) {
-      // UPC-A parity: odd positions (1st, 3rd, 5th...) * 3, even positions * 1
-      sum += digits[i] * (i % 2 === 0 ? 3 : 1);
-    }
-    
-    const calculatedCheck = (10 - (sum % 10)) % 10;
-    return calculatedCheck === checkDigit;
-  }
-  
-  // EAN-13 (13 digits) check digit validation
-  if (code.length === 13) {
-    const digits = code.slice(0, -1).split('').map(Number);
-    const checkDigit = parseInt(code.slice(-1));
-    
-    let sum = 0;
-    for (let i = 0; i < digits.length; i++) {
-      // EAN-13 parity: odd positions * 1, even positions * 3
-      sum += digits[i] * (i % 2 === 0 ? 1 : 3);
-    }
-    
-    const calculatedCheck = (10 - (sum % 10)) % 10;
-    return calculatedCheck === checkDigit;
-  }
-  
-  // EAN-8 (8 digits) check digit validation
-  if (code.length === 8) {
-    const digits = code.slice(0, -1).split('').map(Number);
-    const checkDigit = parseInt(code.slice(-1));
-    
-    let sum = 0;
-    for (let i = 0; i < digits.length; i++) {
-      sum += digits[i] * (i % 2 === 0 ? 3 : 1);
-    }
-    
-    const calculatedCheck = (10 - (sum % 10)) % 10;
-    return calculatedCheck === checkDigit;
-  }
-  
-  return true; // For other lengths, assume valid
-}
-
-/**
- * Determine UPC format from code length
- */
-function getUPCFormat(code: string): string {
-  switch (code.length) {
-    case 8: return 'EAN-8';
-    case 12: return 'UPC-A';
-    case 13: return 'EAN-13';
-    case 14: return 'EAN-14';
-    default: return 'Unknown';
-  }
-}
+// Compatibility export for backward compatibility
+export const decodeUPCFromImageBlobWithDiagnostics = enhancedBarcodeDecode;
