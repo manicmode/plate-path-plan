@@ -36,9 +36,9 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
   };
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-900 flex flex-col">
+    <div className="w-full h-full bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-900 flex flex-col overflow-y-auto">
       {/* Header */}
-      <div className="p-6">
+      <div className="p-6 flex-shrink-0">
         <div className="flex items-center space-x-4 mb-6">
           <Button
             onClick={onBack}
@@ -56,7 +56,7 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 pb-6 space-y-6">
+      <div className="flex-1 px-6 pb-6 space-y-6 min-h-0 overflow-y-auto" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
         {/* Error Message */}
         <Card className="bg-red-900/20 border-red-400/30 backdrop-blur-sm">
           <CardContent className="p-6 text-center">

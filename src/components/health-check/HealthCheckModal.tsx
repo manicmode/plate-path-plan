@@ -449,7 +449,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
-          phase === 'result' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
+          phase === 'result' || phase === 'error' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
       >
