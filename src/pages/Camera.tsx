@@ -928,8 +928,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       
       try {
         const response = await supabase.functions.invoke('barcode-lookup-global', {
-          body: { barcode: cleanBarcode },
-          signal: controller.signal
+          body: { barcode: cleanBarcode }
         });
         
         status = response.error ? 'error' : 200;
@@ -987,7 +986,6 @@ console.log('Global search enabled:', enableGlobalSearch);
           
           setShowBarcodeNotFound(true);
           setFailedBarcode(cleanBarcode);
-          addRecentBarcode(cleanBarcode);
           return;
         }
 
@@ -1015,8 +1013,34 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
         setRecognizedFoods([recognizedFood]);
         setShowConfirmation(true);
-        addRecentBarcode(cleanBarcode);
-        addToHistory({ barcode: cleanBarcode, product: foodData });
+        addRecentBarcode({
+          barcode: cleanBarcode,
+          productName: recognizedFood.name,
+          nutrition: {
+            calories: recognizedFood.calories,
+            protein: recognizedFood.protein,
+            carbs: recognizedFood.carbs,
+            fat: recognizedFood.fat,
+            fiber: recognizedFood.fiber,
+            sugar: recognizedFood.sugar,
+            sodium: recognizedFood.sodium
+          }
+        });
+        addToHistory({
+          barcode: cleanBarcode,
+          productName: foodData.productName,
+          brand: foodData.brand || '',
+          source: 'barcode_lookup',
+          nutrition: {
+            calories: recognizedFood.calories,
+            protein: recognizedFood.protein,
+            carbs: recognizedFood.carbs,
+            fat: recognizedFood.fat,
+            fiber: recognizedFood.fiber,
+            sugar: recognizedFood.sugar,
+            sodium: recognizedFood.sodium
+          }
+        });
         
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -1041,68 +1065,31 @@ console.log('Global search enabled:', enableGlobalSearch);
           status = 'error';
         }
         console.error('=== BARCODE LOOKUP ERROR ===', error);
-        throw error;
-    } catch (error) {
-      console.error('=== BARCODE LOOKUP ERROR ===', error);
-      
-      // Add logging for barcode lookup error
-      console.log('[LOG] off_result', { status: 'error', hit: false });
-      
-      // Enhanced error messaging with fallback options
-      const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
-      
-      toast.error("Barcode lookup failed", {
-        description: errorMessage,
-        action: {
-          label: "Enter Manually",
-          onClick: () => {
-            setShowBarcodeNotFound(true);
-            setFailedBarcode(cleanBarcode);
+        
+        // Enhanced error messaging with fallback options
+        const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
+        
+        toast.error("Barcode lookup failed", {
+          description: errorMessage,
+          action: {
+            label: "Enter Manually",
+            onClick: () => {
+              setShowBarcodeNotFound(true);
+              setFailedBarcode(cleanBarcode);
+            }
           }
-        }
-      });
-      
-      setShowBarcodeNotFound(true);
-      setFailedBarcode(cleanBarcode);
-      
-    } finally {
-      setIsLoadingBarcode(false);
-    }
-  };
-      setInputSource('barcode');
-
-      // Product info is already displayed in the confirmation popup, no need for success toast
-      console.log('=== BARCODE CONFIRMATION READY ===');
-
-    } catch (error) {
-      console.error('=== BARCODE LOOKUP ERROR ===', error);
-      
-      // Add logging for barcode lookup error
-      console.log('[LOG] off_result', { status: 'error', hit: false });
-      
-      // Enhanced error messaging with fallback options
-      const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
-      
-      // Show user-friendly error with manual entry option
-      toast.error(errorMessage, {
-        action: {
-          label: 'Enter Manually',
-          onClick: () => {
-            setFailedBarcode(barcode);
-            setShowBarcodeNotFound(true);
-          }
-        },
-        duration: 8000
-      });
-      
-      // Automatically show manual entry modal for service unavailable errors
-      if (errorMessage.includes('temporarily unavailable') || errorMessage.includes('404')) {
-        setFailedBarcode(barcode);
+        });
+        
         setShowBarcodeNotFound(true);
+        setFailedBarcode(cleanBarcode);
+        
+      } finally {
+        clearTimeout(timeout);
+        console.log('[LOG] off_result', { status, hit });
+        setIsLoadingBarcode(false);
       }
-      
-      throw error; // Re-throw so calling function can handle appropriately
-    } finally {
+    } catch (outerError) {
+      console.error('=== OUTER BARCODE ERROR ===', outerError);
       setIsLoadingBarcode(false);
     }
   };

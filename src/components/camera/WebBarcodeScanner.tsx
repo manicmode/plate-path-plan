@@ -79,8 +79,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
 
     console.time('[LOG] analyze_total');
-    setIsDecoding(true);
-    setIsFrozen(true);
+      setIsScanning(true);
+      setIsFrozen(true);
     
     try {
       const video = videoRef.current;
@@ -166,7 +166,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       setError('Failed to scan barcode. Please try again.');
     } finally {
       // CRITICAL: Always cleanup to prevent hangs
-      setIsDecoding(false);
+      setIsScanning(false);
       setIsFrozen(false);
       console.timeEnd('[LOG] analyze_total');
     }
