@@ -569,7 +569,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
               <Slider
                 value={portionPercentage}
-                onValueChange={setPortionPercentage}
+                onValueChange={(values) => {
+                  setPortionPercentage(values);
+                  // Add forensics logging for portion changes
+                  const pct = values[0];
+                  const scaledCalories = Math.round((currentFoodItem?.calories || 0) * (pct / 100));
+                  console.log('[LOG] portion_change', { pct, calories: scaledCalories });
+                }}
                 max={100}
                 min={0}
                 step={25}

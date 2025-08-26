@@ -25,6 +25,7 @@ import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
+import { LogProduct } from '@/lib/food/types';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
@@ -56,6 +57,9 @@ interface RecognizedFood {
   sodium: number;
   confidence: number;
   serving?: string;
+  image?: string;
+  ingredientsText?: string;
+  ingredientsAvailable?: boolean;
   voiceContext?: {
     originalText: string;
     itemIndex: number;
@@ -995,8 +999,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           return;
         }
 
-        // Success - process the food data from enhanced-health-scanner
-        const p = data.product;  // LogProduct from enhanced-health-scanner
+        // Transform LogProduct to RecognizedFood format + add ingredients/health data
+        const p = data.product as LogProduct; // Now has ingredients + health data
         console.log('=== PROCESSING FOOD DATA ===');
         
         // Log successful OFF result 
@@ -1004,17 +1008,31 @@ console.log('Global search enabled:', enableGlobalSearch);
 
         // Transform LogProduct to RecognizedFood format
         const recognizedFood: RecognizedFood = {
-          name: `${p.brand ? p.brand + ' ' : ''}${p.productName}`.trim(),
-          calories: p.nutriments.calories || 0,
-          protein: p.nutriments.protein_g || 0,
-          carbs: p.nutriments.carbs_g || 0,
-          fat: p.nutriments.fat_g || 0,
-          fiber: p.nutriments.fiber_g || 0,
-          sugar: p.nutriments.sugar_g || 0,
-          sodium: p.nutriments.sodium_mg || 0,
+          name: p.productName.trim(),
+          calories: p.nutrition.calories || 0,
+          protein: p.nutrition.protein_g || 0,
+          carbs: p.nutrition.carbs_g || 0,
+          fat: p.nutrition.fat_g || 0,
+          fiber: p.nutrition.fiber_g || 0,
+          sugar: p.nutrition.sugar_g || 0,
+          sodium: p.nutrition.sodium_mg || 0,
           confidence: 95,
-          serving: p.serving ? `${p.serving.amount} ${p.serving.unit}` : 'As labeled'
+          serving: 'As labeled',
+          // Add ingredients data for the modal
+          ingredientsText: p.ingredients.length > 0 ? p.ingredients.join(', ') : undefined,
+          ingredientsAvailable: p.ingredients.length > 0,
+          // Store health data for potential future use
+          image: p.imageUrl
         };
+
+        // Add forensics logging
+        console.log('[LOG] confirm_open', {
+          name: p.productName,
+          barcode: cleanBarcode,
+          hasIngredients: p.ingredients?.length > 0,
+          flags: p.health?.flags?.map(f => f.id),
+          score: p.health?.score
+        });
 
         console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
         setRecognizedFoods([recognizedFood]);
@@ -1035,7 +1053,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         addToHistory({
           barcode: cleanBarcode,
           productName: p.productName,
-          brand: p.brand || '',
+          brand: '',
           source: 'barcode_lookup',
           nutrition: {
             calories: recognizedFood.calories,
