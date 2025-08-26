@@ -37,7 +37,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
-  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
+  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
 
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
@@ -116,6 +116,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       });
 
       setStream(mediaStream);
+      updateStreamRef(mediaStream); // Update hook's stream reference for torch functionality
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         console.log("[CAMERA] srcObject set, playing video");
@@ -128,6 +129,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           video: { facingMode: 'environment' }
         });
         setStream(fallbackStream);
+        updateStreamRef(fallbackStream); // Update hook's stream reference for torch functionality
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
         }
@@ -863,7 +865,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
             torchEnabled={torchEnabled}
-            torchSupported={stream ? isTorchSupported(stream.getVideoTracks()[0]) : false}
+            torchSupported={torchSupported()}
           />
         </footer>
       </div>

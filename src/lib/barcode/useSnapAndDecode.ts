@@ -214,7 +214,7 @@ export function useSnapAndDecode() {
   return {
     snapAndDecode,
     setTorch,
-    isTorchSupported: getTorchSupported(),
+    isTorchSupported: getTorchSupported,
     torchEnabled,
     updateStreamRef
   };
