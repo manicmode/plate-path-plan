@@ -37,8 +37,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const { snapAndDecode, setTorch, isTorchSupported, torchEnabled } = useSnapAndDecode();
 
-  // Feature flag for autoscan
-  const AUTOSCAN_ENABLED = process.env.NEXT_PUBLIC_BARCODE_AUTOSCAN === '1';
+  // Feature flag for autoscan (set to true to enable)
+  const AUTOSCAN_ENABLED = false;
 
   // Constants for decode parameters
   const BUDGET_MS = 900;
