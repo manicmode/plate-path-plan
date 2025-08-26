@@ -8,7 +8,7 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { BARCODE_V2 } from '@/lib/featureFlags';
-import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported, stillFrameBarcodePass, safeTime, safeTimeEnd } from '@/lib/scan/freezeDecode';
+import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
 interface HealthScannerInterfaceProps {
@@ -204,64 +204,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return canvas;
   };
 
-  // Optimize blob to target size while maintaining quality
-  const optimizeBlobSize = async (originalBlob: Blob, targetSizeKB: number): Promise<Blob> => {
-    const targetBytes = targetSizeKB * 1024;
-    
-    if (originalBlob.size <= targetBytes) {
-      console.log(`📏 Blob already optimized: ${Math.round(originalBlob.size/1024)}KB`);
-      return originalBlob;
-    }
-    
-    console.log(`📏 Optimizing blob: ${Math.round(originalBlob.size/1024)}KB -> target: ${targetSizeKB}KB`);
-    
-    // Convert blob to canvas for resizing
-    const img = new Image();
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    
-    return new Promise((resolve) => {
-      img.onload = () => {
-        // Calculate new dimensions (maintain aspect ratio, cap at 1024px)
-        let { width, height } = img;
-        const MAX_DIMENSION = 1024;
-        
-        if (width > height && width > MAX_DIMENSION) {
-          height = (height * MAX_DIMENSION) / width;
-          width = MAX_DIMENSION;
-        } else if (height > MAX_DIMENSION) {
-          width = (width * MAX_DIMENSION) / height;
-          height = MAX_DIMENSION;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Try different quality levels
-        let quality = 0.82;
-        const tryQuality = () => {
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              resolve(originalBlob);
-              return;
-            }
-            
-            if (blob.size <= targetBytes || quality <= 0.3) {
-              resolve(blob);
-            } else {
-              quality -= 0.1;
-              tryQuality();
-            }
-          }, 'image/jpeg', quality);
-        };
-        
-        tryQuality();
-      };
-      
-      img.src = URL.createObjectURL(originalBlob);
-    });
-  };
+  // Crop ROI in video pixel space (center 70% × 35% - tighter band)
   const cropReticleROI = (src: HTMLCanvasElement): HTMLCanvasElement => {
     const w = src.width, h = src.height;
     const roiW = Math.round(w * ROI.widthPct);
@@ -427,7 +370,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    safeTime('[HS] analyze_total');
+    console.time('[HS] analyze_total');
     setIsFrozen(true);
     playCameraClickSound();
     setIsScanning(true);
@@ -468,109 +411,77 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const { toast } = await import('sonner');
           toast.info(`[HS] off_fetch_start: ${result.raw}`);
         }
-        try {
-          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-            body: { mode: 'barcode', barcode: result.raw, source: 'health' }
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: result.raw, source: 'health' }
+        });
+        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        
+        // Optional: Add toast for PWA testing
+        if (window.location.search.includes('debug=toast')) {
+          const { toast } = await import('sonner');
+          toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
+        }
+        if (data && !error) { 
+          // Convert to base64 for result
+          const still = await captureStillFromVideo(video);
+          const fullBlob: Blob = await new Promise((resolve, reject) => {
+            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
           });
-          console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+          const fullBase64 = await new Promise<string>((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result));
+            fr.onerror = () => reject(fr.error);
+            fr.readAsDataURL(fullBlob);
+          });
           
-          if (error) {
-            console.warn('[HS] analyzer_unreachable', { error });
-            throw new Error('Analyzer temporarily unreachable. Check network & retry.');
-          }
-          
-          // Optional: Add toast for PWA testing
-          if (window.location.search.includes('debug=toast')) {
-            const { toast } = await import('sonner');
-            toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
-          }
-          
-          if (data && !error) { 
-            // Convert to base64 for result
-            const still = await captureStillFromVideo(video);
-            const fullBlob: Blob = await new Promise((resolve, reject) => {
-              still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
-            });
-            const fullBase64 = await new Promise<string>((resolve, reject) => {
-              const fr = new FileReader();
-              fr.onload = () => resolve(String(fr.result));
-              fr.onerror = () => reject(fr.error);
-              fr.readAsDataURL(fullBlob);
-            });
-            
-            onCapture(fullBase64 + `&barcode=${result.raw}`);
-            setIsFrozen(false);
-            console.timeEnd('[HS] analyze_total');
-            return; 
-          }
-        } catch (analyzerError) {
-          console.warn('[HS] analyzer_exception', { error: analyzerError });
-          // Continue to next step
+          onCapture(fullBase64 + `&barcode=${result.raw}`);
+          setIsFrozen(false);
+          console.timeEnd('[HS] analyze_total');
+          return; 
         }
       }
 
-      // No live barcode found - try still frame barcode pass before OCR
-      console.log('barcodeScan: { attempts: "multi-pass", hit: false }');
-      
-      // First, try still frame barcode detection
-      const stillCanvas = await captureStill();
-      const stillResult = await stillFrameBarcodePass(stillCanvas.canvas, { 
-        budgetMs: 700, 
-        logPrefix: '[HS]' 
+      // 2) Burst fallback (parallel capture and race)
+      console.log('[HS] burst_start');
+      const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
+        await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
+        return await snapAndDecode({
+          videoEl: video,
+          budgetMs: QUICK_BUDGET_MS,
+          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+          logPrefix: '[HS]'
+        });
       });
-      
-      // If still frame found a barcode, use it
-      if (stillResult.raw && /^\d{8,14}$/.test(stillResult.raw)) {
-        console.log('[HS] off_fetch_start', { code: stillResult.raw });
-        
-        try {
-          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-            body: { mode: 'barcode', barcode: stillResult.raw, source: 'health' }
+
+      const winner = await Promise.race(burstPromises);
+      if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
+        console.log('[HS] off_fetch_start', { code: winner.raw });
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
+        });
+        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        if (data && !error) { 
+          const still = await captureStillFromVideo(video);
+          const fullBlob: Blob = await new Promise((resolve, reject) => {
+            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
           });
-          console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+          const fullBase64 = await new Promise<string>((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result));
+            fr.onerror = () => reject(fr.error);
+            fr.readAsDataURL(fullBlob);
+          });
           
-          if (data && !error) { 
-            const processedImageData = stillCanvas.canvas.toDataURL('image/jpeg', 0.8);
-            onCapture(processedImageData);
-            return; // Early return on success
-          }
-        } catch (e) {
-          console.warn('[HS] analyzer_exception', { e });
-          // Fall through to OCR
+          onCapture(fullBase64 + `&barcode=${winner.raw}`);
+          setIsFrozen(false);
+          console.timeEnd('[HS] analyze_total');
+          return; 
         }
       }
-      
-      // No barcode found in still frame - fall back to OCR analysis
-      console.log('About to call enhanced-health-scanner function...');
-      
-      // Optimize payload and call OCR analysis
-      stillCanvas.canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        
-        const optimizedBlob = await optimizeBlobSize(blob, 300);
-        const fr = new FileReader();
-        fr.onload = async () => {
-          const base64 = String(fr.result).split(',')[1] || '';
-          
-          try {
-            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-              body: { mode: 'scan', image_b64: base64, hasDetectedBarcode: false }
-            });
-            
-            console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-            
-            if (data && data.recognized) {
-              onCapture(stillCanvas.canvas.toDataURL('image/jpeg', 0.8));
-            } else {
-              setCurrentView('notRecognized');
-            }
-          } catch (e) {
-            console.warn('[HS] analyzer_exception', { e });
-            setCurrentView('notRecognized');
-          }
-        };
-        fr.readAsDataURL(optimizedBlob);
-      }, 'image/jpeg', 0.82);
+
+      // 3) Last resort: run the existing full-pass pipeline
+      const still = await captureStillFromVideo(video);
+      await runExistingFullDecodePipeline(still);
       
     } catch (conversionError) {
       console.error("❌ Image processing failed:", conversionError);
@@ -586,9 +497,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
-      safeTimeEnd('[HS] analyze_total');
+      // Never auto-disable torch - let user control it
       setIsScanning(false);
+      if (videoRef.current) {
+        unfreezeVideo(videoRef.current);
+      }
       setIsFrozen(false);
+      console.timeEnd('[HS] analyze_total');
     }
   };
 
@@ -623,20 +538,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     
     // Convert to base64 using CSP-safe method
     const fullBlob: Blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.82);
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
     });
 
-    // Optimize blob size for network reliability (<= 300KB)
-    const optimizedBlob = await optimizeBlobSize(fullBlob, 300);
-    
     const fullBase64 = await new Promise<string>((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(String(fr.result));
       fr.onerror = () => reject(fr.error);
-      fr.readAsDataURL(optimizedBlob);
+      fr.readAsDataURL(fullBlob);
     });
-    
-    console.log(`📏 Optimized payload: ${Math.round((optimizedBlob.size)/1024)}KB`);
     
     // If barcode detected with valid check digit, short-circuit to OFF lookup
     if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
@@ -646,32 +556,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const body = {
         detectedBarcode,
         imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
-        mode: 'scan',
-        device: { 
-          dpr: window.devicePixelRatio || 1, 
-          vw: (videoRef.current?.videoWidth || 1920), 
-          vh: (videoRef.current?.videoHeight || 1080)
-        },
-        hasDetectedBarcode: true
+        mode: 'scan'
       };
       
-      try {
-        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body
-        });
-        
-        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        
-        if (!error && data && !data.fallback) {
-          console.log("✅ Barcode path success:", data);
-          onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
-          return;
-        } else {
-          console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
-        }
-      } catch (funcError) {
-        console.warn('[HS] barcode_lookup_exception', { error: funcError });
-        // Continue to image analysis fallback
+      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body
+      });
+      
+      if (!error && data && !data.fallback) {
+        console.log("✅ Barcode path success:", data);
+        onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+        return;
+      } else {
+        console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
       }
     }
     

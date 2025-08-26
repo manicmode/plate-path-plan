@@ -214,7 +214,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (error) {
         status = error.status || 'error';
         console.log(`[LOG] off_error:`, error);
-        console.warn('[LOG] analyzer_unreachable', { error });
       } else {
         status = 200;
         hit = !!result?.ok && !!result.product;
@@ -229,7 +228,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       } else {
         status = 'error';
         console.log(`[LOG] off_error:`, error);
-        console.warn('[LOG] analyzer_exception', { error });
       }
     } finally {
       setIsLookingUp(false);
