@@ -8,7 +8,7 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 import { copyDebugToClipboard, startScanReport, finalizeScanReport } from '@/lib/barcode/diagnostics';
-import { enhancedBarcodeDecode } from '@/lib/barcode/enhancedDecoder';
+import { enhancedBarcodeDecode, chooseBarcode } from '@/lib/barcode/enhancedDecoder';
 import { decodeTestImage, runBarcodeTests } from '@/lib/barcode/testHarness';
 import { cropReticleROIFromVideo } from '@/lib/barcode/roiUtils';
 
@@ -127,7 +127,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const analyzeNow = async () => {
     try {
-      if (isDebugEnabled) console.log('[HS] analyze_start');
+      console.log('[HS] analyze_start');
+      console.time('[HS] analyze_total');
 
       if (!videoRef.current || !canvasRef.current) {
         console.error("❌ Missing video or canvas ref!");
@@ -137,69 +138,69 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       playCameraClickSound();
       setIsScanning(true);
       
-      // 1) CAPTURE FULL-RES FRAME (from video; do NOT compress yet)
+      // A) CAPTURE FULL-RES FRAME (from video; do NOT compress yet)
       const video = videoRef.current;
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      const frame = document.createElement('canvas');
-      frame.width = w; 
-      frame.height = h;
-      const fx = frame.getContext('2d')!;
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const frameCanvas = document.createElement('canvas');
+      frameCanvas.width = vw; 
+      frameCanvas.height = vh;
+      const fx = frameCanvas.getContext('2d')!;
       fx.imageSmoothingEnabled = false;
-      fx.drawImage(video, 0, 0, w, h);
+      fx.drawImage(video, 0, 0, vw, vh);
 
-      // 2) CROP ROI FROM VIDEO PIXELS (center ~70% x 40%)
-      const roi = document.createElement('canvas');
-      const roiW = Math.round(w * 0.70);
-      const roiH = Math.round(h * 0.40);
-      const roiX = Math.round((w - roiW) / 2);
-      const roiY = Math.round((h - roiH) / 2);
-      roi.width = roiW; 
-      roi.height = roiH;
-      const rx = roi.getContext('2d')!;
-      rx.imageSmoothingEnabled = false;
-      rx.drawImage(frame, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+      // B) CROP ROI FROM VIDEO PIXELS (center ~70% x 40%)
+      const roiW = Math.round(vw * 0.70);
+      const roiH = Math.round(vh * 0.40);
+      const roiX = Math.round((vw - roiW) / 2);
+      const roiY = Math.round((vh - roiH) / 2);
 
-      // 3) BARCODE PASS (budget ~1500ms) — BEFORE ANY NORMALIZATION
-      if (isDebugEnabled) console.time('[HS] barcode_ms');
-      const dec = await enhancedBarcodeDecode({ sourceCanvas: roi, timeoutMs: 1600 });
-      if (isDebugEnabled) console.timeEnd('[HS] barcode_ms');
-      if (isDebugEnabled) console.log('[HS] barcode_result', {
-        success: dec?.success ?? false,
-        code: dec?.normalized?.upca ?? dec?.normalized?.ean13 ?? dec?.code ?? null,
-        format: dec?.format ?? null,
-        checksumOk: dec?.checksumOk ?? null,
-        attempts: dec?.attempts?.length ?? 0
-      });
+      // If ROI too small, fall back to full frame
+      let roiCanvas: HTMLCanvasElement;
+      if (roiW < 320 || roiH < 200) {
+        roiCanvas = frameCanvas;
+      } else {
+        roiCanvas = document.createElement('canvas');
+        roiCanvas.width = roiW; 
+        roiCanvas.height = roiH;
+        const rx = roiCanvas.getContext('2d')!;
+        rx.imageSmoothingEnabled = false;
+        rx.drawImage(frameCanvas, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+      }
 
-      const code =
-        dec?.normalized?.upca    // prefer UPC-A 12-digit
-        ?? dec?.normalized?.ean13
-        ?? dec?.code
-        ?? null;
+      // C) BARCODE FIRST (budget ~1500ms) — BEFORE ANY NORMALIZATION
+      const tDecode = performance.now();
+      const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 1500 });
+      const chosen = chooseBarcode(dec);
+      console.log('[HS] barcode_ms:', Math.round(performance.now() - tDecode));
+      console.log('[HS] barcode_result:', chosen ?? null);
 
-      // TEMP hotfix: if code is 12/13 digits numeric, try OFF even if checksumOk === false
-      const looksLikeUPCOrEAN = !!code && /^[0-9]{12,13}$/.test(code);
-
-      if (looksLikeUPCOrEAN) {
-        if (isDebugEnabled) console.log('[HS] off_fetch_start', { code });
+      // D) OFF lookup even if checksumOk === false, as long as 8/12/13/14 digits present
+      let off: any = null;
+      if (chosen?.raw && /^[0-9]{8,14}$/.test(chosen.raw)) {
+        console.log('[HS] off_fetch_start', { code: chosen.raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: code, source: 'health' }
+          body: { mode: 'barcode', barcode: chosen.raw, source: 'health' }
         });
-        if (isDebugEnabled) console.log('[HS] off_result', { status: error ? 'error' : 'ok', hit: !!data?.productName });
-
-        if (!error && data) {
-          // Show the normal fun loading -> report (NO GPT on this path)
-          if (isDebugEnabled) {
-            finalizeScanReport({
-              success: true,
-              code,
-              normalizedAs: dec.normalized?.upca ?? dec.normalized?.ean13,
-              checkDigitOk: dec.checksumOk || false,
-              willScore: true,
-              willFallback: false,
-              totalMs: dec.ms,
-              offLookup: { status: 'hit', ms: dec.ms }
+        off = error ? { status: 'error', product: null } : { status: 200, product: data };
+        console.log('[HS] off_result', { status: off.status, hit: !!off.product });
+        
+        if (off.product) {
+          // Push ScanReport for forensics
+          if (typeof window !== 'undefined') {
+            (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS ?? [];
+            (window as any).__HS_LAST_REPORTS.unshift({
+              reqId: Date.now().toString(36),
+              device: { dpr: window.devicePixelRatio, videoW: vw, videoH: vh },
+              capture: { frameW: frameCanvas.width, frameH: frameCanvas.height, roiW: roiCanvas.width, roiH: roiCanvas.height },
+              attempts: dec.attempts,
+              final: { 
+                success: true, 
+                code: chosen.raw, 
+                checksumOk: chosen.checksumOk, 
+                off: { status: off.status, hit: true }, 
+                reason: dec.reason, 
+                totalMs: performance.now() - tDecode 
+              }
             });
           }
           
@@ -211,16 +212,29 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           ctx.drawImage(video, 0, 0);
           const imageData = canvas.toDataURL('image/jpeg', 0.8);
           
-          onCapture(imageData + `&barcode=${code}`);
+          console.timeEnd('[HS] analyze_total');
+          onCapture(imageData + `&barcode=${chosen.raw}`);
           return;
         }
       }
 
-      // 4) ONLY IF NO BARCODE: now run existing normalization/OCR path
-      return runGenericImagePath(frame);
+      // E) ONLY NOW normalize/OCR fallback
+      const normalized = await normalizeHealthScanImage(new File([await new Promise<Blob>((resolve) => {
+        frameCanvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.9);
+      })], 'capture.jpg'), {
+        maxWidth: Math.max(vw, 1920),
+        maxHeight: Math.max(vh, 1080),
+        quality: 0.9,
+        format: 'JPEG',
+        stripExif: true
+      });
+
+      console.timeEnd('[HS] analyze_total');
+      onCapture(normalized.dataUrl);
 
     } catch (e) {
       console.error('[HS] analyze_error', e);
+      console.timeEnd('[HS] analyze_total');
       // Fall back to generic path
       return runGenericImagePath();
     } finally {

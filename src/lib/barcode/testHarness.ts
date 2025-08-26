@@ -47,16 +47,23 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
       h: Math.floor(imageDimensions.height * 0.3)
     };
     
-    const result = await enhancedBarcodeDecode(
-      blob,
-      roiRect,
-      window.devicePixelRatio,
-      2000
-    );
+    // Use new canvas-based signature
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = imageDimensions.width;
+    canvas.height = imageDimensions.height;
+    
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    await new Promise(resolve => { img.onload = resolve; });
+    ctx.drawImage(img, 0, 0);
+    
+    const result = await enhancedBarcodeDecode({ canvas, budgetMs: 2000 });
+    const chosen = chooseBarcode(result);
     
     console.log('[HS_TEST] Test decode complete:', {
       success: result.success,
-      code: result.code,
+      code: chosen?.raw || null,
       format: result.format,
       attempts: result.attempts,
       ms: result.ms
@@ -73,8 +80,8 @@ export async function decodeTestImage(imagePath: string): Promise<ScanReport | n
       attempts: [],
       final: {
         success: result.success,
-        code: result.code,
-        normalizedAs: chooseBarcode(result),
+        code: chosen?.raw || null,
+        normalizedAs: chosen?.raw || undefined,
         checkDigitOk: result.checksumOk || false,
         willScore: result.success,
         willFallback: !result.success,

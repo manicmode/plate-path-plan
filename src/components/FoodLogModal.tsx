@@ -103,53 +103,64 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
 
   const captureAndDecode = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    
+    console.log('[HS] analyze_start');
+    console.time('[HS] analyze_total');
 
     const video = videoRef.current;
+    const vw = video.videoWidth, vh = video.videoHeight;
     
-    // Create DPR-correct ROI directly from video (no pre-compression)
-    const roiCanvas = cropReticleROIFromVideo(video);
+    // A) Capture full-res frame
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = vw; 
+    frameCanvas.height = vh;
+    const fx = frameCanvas.getContext('2d')!;
+    fx.imageSmoothingEnabled = false;
+    fx.drawImage(video, 0, 0, vw, vh);
 
-    // Convert ROI canvas to blob for barcode decoding
-    const blob = await new Promise<Blob>((resolve) => {
-      roiCanvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-      }, 'image/jpeg', 0.95);
-    });
+    // B) Crop ROI in video pixel space (70% x 40% center)
+    const roiW = Math.round(vw * 0.70);
+    const roiH = Math.round(vh * 0.40);
+    const roiX = Math.round((vw - roiW) / 2);
+    const roiY = Math.round((vh - roiH) / 2);
 
-    if (!blob) return;
-
-    // Enhanced barcode decode using new canvas signature
-    const result = await enhancedBarcodeDecode(roiCanvas, { 
-      budgetMs: 1500, 
-      dpr: window.devicePixelRatio 
-    });
-    
-    if (result.success && result.code) {
-      await processBarcode(result.code);
-      
-      if (isDebugEnabled) {
-        finalizeScanReport({
-          success: true,
-          code: result.code,
-          normalizedAs: chooseBarcode(result),
-          checkDigitOk: result.checksumOk || false,
-          willScore: true,
-          willFallback: false,
-          totalMs: result.ms
-        });
-      }
+    let roiCanvas: HTMLCanvasElement;
+    if (roiW < 320 || roiH < 200) {
+      roiCanvas = frameCanvas;
     } else {
-      toast.error('No barcode detected. Try manual entry.');
+      roiCanvas = document.createElement('canvas');
+      roiCanvas.width = roiW; 
+      roiCanvas.height = roiH;
+      const rx = roiCanvas.getContext('2d')!;
+      rx.imageSmoothingEnabled = false;
+      rx.drawImage(frameCanvas, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+    }
+
+    // C) Barcode FIRST
+    const tDecode = performance.now();
+    const dec = await enhancedBarcodeDecode({ canvas: roiCanvas, budgetMs: 1500 });
+    const chosen = chooseBarcode(dec);
+    console.log('[HS] barcode_ms:', Math.round(performance.now() - tDecode));
+    console.log('[HS] barcode_result:', chosen ?? null);
+
+    // D) OFF lookup even if checksumOk === false, as long as 8/12/13/14 digits present
+    if (chosen?.raw && /^[0-9]{8,14}$/.test(chosen.raw)) {
+      console.log('[HS] off_fetch_start', { code: chosen.raw });
+      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: { mode: 'barcode', barcode: chosen.raw, source: 'log' }
+      });
+      const off = error ? { status: 'error', product: null } : { status: 200, product: data };
+      console.log('[HS] off_result', { status: off.status, hit: !!off.product });
       
-      if (isDebugEnabled) {
-        finalizeScanReport({
-          success: false,
-          willScore: false,
-          willFallback: true,
-          totalMs: result.ms
-        });
+      if (off.product) {
+        console.timeEnd('[HS] analyze_total');
+        await processBarcode(chosen.raw);
+        return;
       }
     }
+
+    console.timeEnd('[HS] analyze_total');
+    toast.error('No barcode detected. Try manual entry.');
   };
 
   const processBarcode = async (barcode: string) => {
@@ -452,8 +463,9 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
           )}
         </div>
 
-        {/* Debug Button */}
-        {isDebugEnabled && (
+        {/* Debug Button - Only when debug enabled */}
+        {(process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' || 
+          (typeof localStorage !== 'undefined' && localStorage.getItem('scan_debug') === '1')) && (
           <Button
             onClick={copyDebugToClipboard}
             className="fixed bottom-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 h-auto"
