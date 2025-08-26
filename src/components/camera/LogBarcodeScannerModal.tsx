@@ -3,7 +3,6 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Zap, FlashlightIcon, Edit3 } from 'lucide-react';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
-import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -12,6 +11,18 @@ interface LogBarcodeScannerModalProps {
   onOpenChange: (open: boolean) => void;
   onBarcodeDetected: (barcode: string) => void;
   onManualEntry: () => void;
+}
+
+// Scan Frame Component
+function ScanFrame() {
+  return (
+    <div className="relative mx-auto max-w-[680px] aspect-[16/10]">
+      {/* frame border with corner glow */}
+      <div className="scan-frame absolute inset-0 rounded-[22px]" />
+      {/* subtle grid overlay */}
+      <div className="absolute inset-[10px] rounded-[16px] opacity-35 mix-blend-screen scan-grid" />
+    </div>
+  );
 }
 
 export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
@@ -194,75 +205,75 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none"
+        showCloseButton={false}
       >
-        <div className="relative w-full h-full bg-black overflow-hidden">
-          {/* Video Element */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-            style={{
-              filter: isFrozen ? 'brightness(0.3)' : 'none',
-              transition: 'filter 0.2s ease'
-            }}
-          />
-
-          {/* Frozen Overlay */}
-          {isFrozen && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="animate-pulse text-lg">Processing...</div>
-              </div>
-            </div>
-          )}
-
-          {/* UI Overlay */}
-          <div className="absolute inset-0 flex flex-col">
-            {/* Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-b from-black/70 to-transparent">
-              <h2 className="text-white text-xl font-semibold">Scan Barcode</h2>
+        <div className="relative flex flex-col min-h-dvh bg-black overflow-hidden">
+          {/* Header with centered title */}
+          <header className="sticky top-0 z-50 pt-safe px-4 pb-2 bg-gradient-to-b from-black/60 to-black/0 backdrop-blur-md">
+            <div className="grid grid-cols-3 items-center">
+              <span aria-hidden="true" /> {/* left spacer for true centering */}
+              <h1 className="justify-self-center text-white text-xl font-semibold tracking-wide scan-title">
+                Scan Barcode
+              </h1>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20"
+                className="justify-self-end p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border-0"
+                aria-label="Close"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
+          </header>
 
-            {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center pointer-events-none">
-              {/* Centered scan frame */}
-              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4]">
-                {/* Corner indicators */}
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
-                
-                {/* Grid overlay */}
-                <div className="absolute inset-4 opacity-20">
-                  <div className="w-full h-full grid grid-cols-6 grid-rows-3 gap-0">
-                    {Array.from({ length: 18 }).map((_, i) => (
-                      <div key={i} className="border border-cyan-400/30"></div>
-                    ))}
-                  </div>
+          {/* Main video area with centered frame */}
+          <main className="relative flex-1">
+            {/* Video sits behind */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                filter: isFrozen ? 'brightness(0.3)' : 'none',
+                transition: 'filter 0.2s ease'
+              }}
+            />
+
+            {/* Frame container - vertically centered */}
+            <div className="pointer-events-none absolute inset-x-6 sm:inset-x-12 top-1/2 -translate-y-1/2">
+              <ScanFrame />
+              
+              {/* Scanning line animation - only while decoding */}
+              {isDecoding && (
+                <div className="pointer-events-none absolute inset-0 rounded-[22px] overflow-hidden">
+                  <div className="scanline" />
                 </div>
-                
-                {/* Scanning line animation */}
-                {(isDecoding || isLookingUp) && (
-                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-0 inset-x-0 pb-safe px-4 space-y-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8">
+            {/* Processing overlay */}
+            {(isDecoding || isLookingUp) && (
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <div className="text-white text-center bg-black/60 backdrop-blur-md rounded-2xl px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    <span className="text-lg font-medium">
+                      {isDecoding ? 'Decoding...' : 'Looking up product...'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Bottom Controls - Safe area */}
+          <footer className="sticky bottom-0 z-50 bg-gradient-to-t from-black/70 to-black/0 px-4 pt-3 pb-safe">
+            <div className="flex flex-col gap-3 max-w-[680px] mx-auto">
               {/* Instructions text */}
-              <div className="text-center text-white/90 mb-4">
+              <div className="text-center text-white/90">
                 <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
                 <p className="text-xs text-white/70 mt-1">Supports UPC-A, EAN-13, and EAN-8 codes</p>
               </div>
@@ -271,7 +282,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               <Button
                 onClick={handleSnapAndDecode}
                 disabled={isDecoding || isLookingUp || !stream}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
+                className="h-14 rounded-2xl text-lg font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50"
               >
                 {isDecoding ? (
                   <>
@@ -286,44 +297,43 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 ) : (
                   <>
                     <Zap className="h-5 w-5 mr-2" />
-                    Snap & Decode
+                    ⚡ Snap & Decode
                   </>
                 )}
               </Button>
 
               {/* Secondary Actions */}
               <div className="flex gap-3">
-                {/* Torch Toggle */}
-                {isTorchSupported && (
-                  <Button
-                    variant="outline"
-                    onClick={toggleTorch}
-                    className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
-                      torchEnabled ? 'bg-white/20' : 'bg-transparent'
-                    }`}
-                  >
-                    <FlashlightIcon className={`h-4 w-4 mr-2 ${torchEnabled ? 'text-yellow-300' : ''}`} />
-                    {torchEnabled ? 'Flash On' : 'Flash Off'}
-                  </Button>
-                )}
-                
-                {/* Manual Entry */}
                 <Button
-                  variant="outline"
                   onClick={onManualEntry}
-                  className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
+                  className="flex-1 h-12 rounded-xl bg-white/8 text-white/90 hover:bg-white/12 border-0"
                 >
                   <Edit3 className="h-4 w-4 mr-2" />
-                  Enter Manually
+                  ✍️ Enter Manually
                 </Button>
+                
+                {/* Torch toggle if supported */}
+                {isTorchSupported && (
+                  <Button
+                    onClick={toggleTorch}
+                    className={`h-12 px-4 rounded-xl border-0 ${
+                      torchEnabled 
+                        ? 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30' 
+                        : 'bg-white/8 text-white/90 hover:bg-white/12'
+                    }`}
+                  >
+                    <FlashlightIcon className="h-4 w-4 mr-2" />
+                    🔦 {torchEnabled ? 'Flash On' : 'Flash Off'}
+                  </Button>
+                )}
               </div>
-            </footer>
-          </div>
+            </div>
+          </footer>
 
           {/* Error State */}
           {error && (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-6">
-              <div className="text-center">
+            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-6 z-50">
+              <div className="text-center bg-black/60 backdrop-blur-md rounded-2xl p-6">
                 <p className="text-white text-lg mb-4">{error}</p>
                 <Button
                   onClick={startCamera}
