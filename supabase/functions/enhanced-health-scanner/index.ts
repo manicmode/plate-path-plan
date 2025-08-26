@@ -1,5 +1,5 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { NormalizedProduct, HealthFlag, HealthFlagLevel } from './types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,35 +24,23 @@ interface BackendResponse {
   fallback?: boolean;
 }
 
-// Normalized product structure for both Health Scan and Log flows
-interface NormalizedProduct {
+// Log product structure for direct consumption by Log UI
+interface LogProduct {
   barcode: string;
-  name: string;
   brand?: string;
+  productName: string;
   imageUrl?: string;
-  nutrition: {
+  serving?: { amount: number; unit: string; grams?: number };
+  nutriments: {
     calories?: number;
     protein_g?: number;
     carbs_g?: number;
     fat_g?: number;
-    sugar_g?: number;
     fiber_g?: number;
+    sugar_g?: number;
     sodium_mg?: number;
-    serving_size?: string;
   };
   ingredients: string[];
-  ingredients_text?: string;
-  additives?: string[];
-  allergens?: string[];
-  health: {
-    score?: number;
-    flags: Array<{
-      id: string;
-      level: "danger" | "warning" | "info" | "ok";
-      label: string;
-      details?: string;
-    }>;
-  };
 }
 
 interface RequestContext {
@@ -219,32 +207,10 @@ function mapOFFtoBackendResponse(product: any): BackendResponse {
 }
 
 /**
- * Map OpenFoodFacts product to NormalizedProduct for both flows
+ * Map OpenFoodFacts product to LogProduct for direct Log UI consumption
  */
-function mapOFFtoNormalizedProduct(product: any, barcode: string): NormalizedProduct {
+function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
   const n = product?.nutriments ?? {};
-
-  // Handle ingredients with locale fallbacks
-  const ingredientsText = product?.ingredients_text_en || 
-                         product?.ingredients_text || 
-                         product?.ingredients_text_es ||
-                         product?.ingredients_text_fr ||
-                         '';
-  
-  // Parse ingredients
-  const ingredients = Array.isArray(product?.ingredients) 
-    ? product.ingredients.map((ing: any) => ing.text || ing.id || String(ing)).filter(Boolean)
-    : splitIngredientsList(ingredientsText);
-
-  // Parse additives - strip prefixes and normalize
-  const additives = (product?.additives_tags || product?.additives_original_tags || [])
-    .map((tag: string) => tag.replace(/^en:|^fr:|^es:/, '').toLowerCase())
-    .filter(Boolean);
-
-  // Parse allergens - strip prefixes and normalize  
-  const allergens = (product?.allergens_tags || [])
-    .map((tag: string) => tag.replace(/^en:|^fr:|^es:/, '').toLowerCase())
-    .filter(Boolean);
 
   // Serving math
   const perServing = product?.nutrition_data_per === 'serving';
@@ -260,147 +226,35 @@ function mapOFFtoNormalizedProduct(product: any, barcode: string): NormalizedPro
                (pick('energy_100g','energy_serving') && 
                  Number(pick('energy_100g','energy_serving')) / 4.184);
 
-  const nutrition = {
-    calories: kcal ? Math.round(Number(kcal)) : undefined,
-    protein_g: num(pick('proteins_100g','proteins_serving')),
-    carbs_g: num(pick('carbohydrates_100g','carbohydrates_serving')),
-    fat_g: num(pick('fat_100g','fat_serving')),
-    sugar_g: num(pick('sugars_100g','sugars_serving')),
-    fiber_g: num(pick('fiber_100g','fiber_serving')),
-    sodium_mg: toMg(num(pick('sodium_100g','sodium_serving'))) 
-              ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving'))),
-    serving_size: svAmount ? `${svAmount} ${svUnit}` : undefined
+  const logProduct: LogProduct = {
+    barcode,
+    brand: product?.brands?.split(',')[0]?.trim(),
+    productName: product?.product_name || product?.generic_name || 'Unknown product',
+    imageUrl: product?.image_front_small_url || product?.image_url,
+    serving: svAmount ? { amount: svAmount, unit: svUnit } : undefined,
+    nutriments: {
+      calories: kcal ? Math.round(Number(kcal)) : undefined,
+      protein_g: num(pick('proteins_100g','proteins_serving')),
+      carbs_g: num(pick('carbohydrates_100g','carbohydrates_serving')),
+      fat_g: num(pick('fat_100g','fat_serving')),
+      fiber_g: num(pick('fiber_100g','fiber_serving')),
+      sugar_g: num(pick('sugars_100g','sugars_serving')),
+      sodium_mg: toMg(num(pick('sodium_100g','sodium_serving'))) 
+                 ?? fromSaltToSodiumMg(num(pick('salt_100g','salt_serving')))
+    },
+    ingredients: parseIngredients(product)
   };
-
-  // Compute health flags and score using shared logic
-  const health = computeHealthData(ingredients, ingredientsText, nutrition, additives);
 
   function num(v: any) { return v == null ? undefined : Number(v); }
   function toMg(g?: number) { return g == null ? undefined : Math.round(g * 1000); }
   function fromSaltToSodiumMg(g?: number) { return g == null ? undefined : Math.round(g * 1000 * 0.393); }
-  function splitIngredientsList(text?: string): string[] {
-    if (!text) return [];
-    return text.split(/[,;•·()]/).map(s => s.trim()).filter(Boolean);
+  function parseIngredients(p: any) {
+    if (Array.isArray(p?.ingredients)) return p.ingredients.map((i: any) => i.text).filter(Boolean);
+    const t = p?.ingredients_text || '';
+    return t.split(/[·•,;()\[\]]/).map(s => s.trim()).filter(Boolean);
   }
 
-  return {
-    barcode: barcode || product?.code || '',
-    name: product?.product_name || product?.generic_name || 'Unknown product',
-    brand: product?.brands?.split(',')[0]?.trim(),
-    imageUrl: product?.image_front_small_url || product?.image_url,
-    nutrition,
-    ingredients,
-    ingredients_text: ingredientsText,
-    additives,
-    allergens,
-    health
-  };
-}
-
-/**
- * Shared health calculator for both flows
- */
-function computeHealthData(
-  ingredients: string[], 
-  ingredientsText: string, 
-  nutrition: any,
-  additives: string[] = []
-): { score?: number; flags: Array<{ id: string; level: string; label: string; details?: string }> } {
-  const flags: Array<{ id: string; level: string; label: string; details?: string }> = [];
-  const ingredientLower = (ingredientsText || ingredients.join(' ')).toLowerCase();
-
-  // High sugar check
-  const sugar = nutrition?.sugar_g;
-  if (sugar && sugar >= 18) {
-    flags.push({
-      id: 'high_sugar',
-      level: sugar >= 25 ? 'danger' : 'warning',
-      label: 'High Sugar',
-      details: `${sugar}g sugar per serving`
-    });
-  }
-
-  // Artificial colors detection
-  const colorRegex = /(red\s?40|allura\s?red|yellow\s?5|tartrazine|yellow\s?6|sunset\s?yellow|blue\s?1|blue\s?2|green\s?3)/i;
-  if (colorRegex.test(ingredientLower)) {
-    flags.push({
-      id: 'artificial_colors',
-      level: 'warning',
-      label: 'Artificial Colors',
-      details: 'Contains Red 40, Yellow 5/6, Blue 1, or other artificial colors'
-    });
-  }
-
-  // Preservatives of concern
-  const preservativeRegex = /(bha|bht|tbhq|sodium\s+benzoate|potassium\s+sorbate)/i;
-  if (preservativeRegex.test(ingredientLower)) {
-    flags.push({
-      id: 'preservatives',
-      level: 'warning', 
-      label: 'Preservatives of Concern',
-      details: 'Contains BHA, BHT, TBHQ, or other concerning preservatives'
-    });
-  }
-
-  // Artificial sweeteners
-  const sweetenerRegex = /(aspartame|acesulfame\s*k|sucralose|saccharin)/i;
-  if (sweetenerRegex.test(ingredientLower)) {
-    flags.push({
-      id: 'artificial_sweeteners',
-      level: 'warning',
-      label: 'Artificial Sweeteners',
-      details: 'Contains aspartame, sucralose, or other artificial sweeteners'
-    });
-  }
-
-  // High sodium
-  const sodium = nutrition?.sodium_mg;
-  if (sodium && sodium > 800) {
-    flags.push({
-      id: 'high_sodium',
-      level: sodium > 1200 ? 'danger' : 'warning',
-      label: 'High Sodium',
-      details: `${sodium}mg sodium per serving`
-    });
-  }
-
-  // Positive flags
-  if (ingredientLower.includes('whole grain') && (!sugar || sugar < 10)) {
-    flags.push({
-      id: 'whole_grains',
-      level: 'ok',
-      label: 'Whole Grains',
-      details: 'Contains whole grain ingredients'
-    });
-  }
-
-  if (sodium && sodium < 140) {
-    flags.push({
-      id: 'low_sodium',
-      level: 'ok', 
-      label: 'Low Sodium',
-      details: 'Low in sodium'
-    });
-  }
-
-  // Calculate health score if we have enough data
-  let score: number | undefined = undefined;
-  if (nutrition && (nutrition.calories || nutrition.sugar_g || nutrition.sodium_mg)) {
-    score = 70; // Base score
-    
-    // Deduct for concerning ingredients
-    flags.forEach(flag => {
-      switch (flag.level) {
-        case 'danger': score! -= 20; break;
-        case 'warning': score! -= 10; break;
-        case 'ok': score! += 10; break;
-      }
-    });
-    
-    score = Math.max(0, Math.min(100, score));
-  }
-
-  return { score, flags };
+  return logProduct;
 }
 
 /**
@@ -838,10 +692,10 @@ serve(async (req) => {
 
       console.log(`✅ OFF hit [${reqId}]:`, offResult.product.product_name);
       
-      // Return normalized product format for Log scanner
-      const normalizedProduct = mapOFFtoNormalizedProduct(offResult.product, norm.raw);
+      // Return normalized LogProduct format for Log scanner
+      const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
       return new Response(
-        JSON.stringify({ ok: true, product: normalizedProduct }),
+        JSON.stringify({ ok: true, source: 'off', product: logProduct }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
