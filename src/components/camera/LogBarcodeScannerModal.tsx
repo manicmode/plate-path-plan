@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { X, Zap, FlashlightIcon, Edit3 } from 'lucide-react';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -23,8 +25,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [isDecoding, setIsDecoding] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [autoSnapCompleted, setAutoSnapCompleted] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lastAttempt, setLastAttempt] = useState(0);
 
   const { snapAndDecode, setTorch, isTorchSupported, torchEnabled } = useSnapAndDecode();
 
@@ -63,7 +65,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     setIsLookingUp(false);
   };
 
-  const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number }> => {
+  const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
     console.log(`[LOG] off_fetch_start`, { code: barcode });
     
     const controller = new AbortController();
@@ -71,23 +73,22 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     
     let hit = false;
     let status: string | number = 'error';
+    let data = null;
     
     try {
       setIsLookingUp(true);
-      // Use the existing barcode-lookup-global for Log flow consistency
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/barcode-lookup-global`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ barcode }),
-        signal: controller.signal
+      // Use same endpoint as Health Scan
+      const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: { mode: 'barcode', barcode, source: 'log' }
       });
       
-      status = response.status;
-      const data = await response.json();
-      hit = !!data?.data || !!data?.product;
+      if (error) {
+        status = error.status || 'error';
+      } else {
+        status = 200;
+        hit = !!result;
+        data = result;
+      }
       
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -101,15 +102,30 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
     
     console.log(`[LOG] off_result`, { status, hit });
-    return { hit, status };
+    return { hit, status, data };
   };
 
   const handleSnapAndDecode = async () => {
+    // Single-flight guard with cooldown
+    if (isDecoding) {
+      console.log('[LOG] decode_cancelled: busy');
+      return;
+    }
+    
+    const now = Date.now();
+    if (now - lastAttempt < 800) {
+      console.log('[LOG] decode_cancelled: cooldown');
+      return;
+    }
+    
     if (!videoRef.current) return;
     
+    console.log('[LOG] analyze_start');
     console.time('[LOG] analyze_total');
     setIsDecoding(true);
     setIsFrozen(true);
+    setError(null);
+    setLastAttempt(now);
     
     try {
       const video = videoRef.current;
@@ -125,19 +141,19 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         const lookupResult = await handleOffLookup(result.raw);
         
-        if (lookupResult.hit) {
+        if (lookupResult.hit && lookupResult.data) {
           onBarcodeDetected(result.raw);
           onOpenChange(false);
         } else {
-          setError('Barcode not found in database. Try scanning again or enter manually.');
+          toast.error('Barcode not found in database. Try scanning again or enter manually.');
         }
       } else {
-        setError('No barcode detected. Please try again with better lighting.');
+        toast.info('No barcode detected. Try again with better lighting.');
       }
       
     } catch (error) {
       console.error('[LOG] Snap & decode error:', error);
-      setError('Failed to scan barcode. Please try again.');
+      toast.error('Failed to scan barcode. Please try again.');
     } finally {
       setIsDecoding(false);
       setIsFrozen(false);
@@ -145,11 +161,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
   };
 
-  // Auto-snap on modal open
+  // Camera setup on modal open (no auto-snap)
   useEffect(() => {
     if (!open) {
       cleanup();
-      setAutoSnapCompleted(false);
       setError(null);
       return;
     }
@@ -158,34 +173,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
     const init = async () => {
       await startCamera();
-      
-      if (cancelled) return;
-      
-      // Wait for video to be ready, then auto-snap
-      if (videoRef.current) {
-        await new Promise<void>((resolve) => {
-          const video = videoRef.current!;
-          if (video.videoWidth > 0) {
-            resolve();
-          } else {
-            const handler = () => {
-              video.removeEventListener('loadedmetadata', handler);
-              resolve();
-            };
-            video.addEventListener('loadedmetadata', handler, { once: true });
-          }
-        });
-        
-        if (cancelled) return;
-        
-        // Small delay then auto-snap
-        setTimeout(() => {
-          if (!cancelled) {
-            setAutoSnapCompleted(true);
-            handleSnapAndDecode();
-          }
-        }, 500);
-      }
     };
 
     init();
@@ -276,7 +263,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               <div className="flex gap-3">
                 <Button
                   onClick={handleSnapAndDecode}
-                  disabled={isDecoding || !autoSnapCompleted}
+                  disabled={isDecoding}
                   className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-semibold rounded-2xl shadow-lg"
                 >
                   <Zap className={`w-5 h-5 mr-2 ${isDecoding ? 'animate-spin' : 'animate-pulse'}`} />
@@ -324,7 +311,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
               {/* Instructions */}
               <p className="text-center text-sm text-zinc-400">
-                Align barcode in the cyan frame. Scanner will analyze automatically when ready.
+                Align barcode in the cyan frame and tap "Snap & Decode" to analyze.
               </p>
             </div>
           </div>
