@@ -32,6 +32,7 @@ import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryRevi
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
+import { ConfirmFoodLog } from '@/components/ConfirmFoodLog';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
@@ -162,6 +163,10 @@ const CameraPage = () => {
   
   // Processing state moved from duplicate declaration below
   const [isProcessingFood, setIsProcessingFood] = useState(false);
+  
+  // Confirm Food Log states
+  const [showConfirmFoodLog, setShowConfirmFoodLog] = useState(false);
+  const [confirmFoodProduct, setConfirmFoodProduct] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
