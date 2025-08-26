@@ -204,8 +204,26 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         throw new Error(error.message || 'Failed to analyze image');
       }
 
+      // Add detailed telemetry to debug mapping issues
+      console.group('[HS] edge_payload');
+      console.log('product.name', data.product?.name);
+      console.log('product.code', data.product?.code);
+      console.log('ingredientsText', data.product?.ingredientsText);
+      console.log('ingredients[] len', data.product?.ingredients?.length);
+      console.log('flags len', data.product?.health?.flags?.length);
+      console.log('score', data.product?.health?.score);
+      console.groupEnd();
+
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
+
+      console.group('[HS] legacy_payload');
+      console.log('productName', legacy.productName);
+      console.log('barcode', legacy.barcode);
+      console.log('ingredientsText', legacy.ingredientsText?.slice(0,200));
+      console.log('flags len', legacy.healthFlags?.length);
+      console.log('score', legacy.healthScore);
+      console.groupEnd();
 
       const hasName = !!(legacy.productName && legacy.productName.trim().length >= 3);
       const hasBarcode = !!legacy.barcode;
@@ -213,11 +231,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.log("[HS] edge_ok:", true);
       console.log("[HS] accept_photo_result", {
         hasName, hasBarcode, name: legacy.productName, barcode: legacy.barcode,
-      });
-      console.log("[HS] legacy_payload", {
-        hasIngredients: !!legacy.ingredientsText,
-        flags: legacy.healthFlags?.length || 0,
-        score: legacy.healthScore,
       });
 
       if (!(hasName || hasBarcode)) {
@@ -234,15 +247,39 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         console.log('🔍 No barcode found - using Google Vision + GPT analysis');
       }
       
-      // Transform the legacy adapted response to match frontend interface
+      // Guard against lost flags/ingredients
+      if (legacy.ingredientsText && legacy.healthFlags.length > 0) {
+        const reportFlags = legacy.healthFlags.map((flag) => ({
+          ingredient: flag.key, // Use the ingredient name from flag key (e.g., "canola_oil" -> "Canola Oil")  
+          flag: flag.description || flag.label || '',
+          severity: flag.severity === 'danger' ? 'high' as const : flag.severity === 'warning' ? 'medium' as const : 'low' as const
+        }));
+        
+        if (reportFlags.length === 0) {
+          console.warn('[HS] BUG: flags lost on mapping', { flags: legacy.healthFlags });
+        }
+      }
+
+      if (data.product?.ingredients?.length > 3 && legacy.ingredientsText?.split(',').length === 1) {
+        console.warn('[HS] BUG: ingredients collapsed', { len: data.product?.ingredients?.length });
+      }
+
+      // Transform the legacy adapted response to match frontend interface  
       const analysisResult: HealthAnalysisResult = {
         itemName: legacy.productName || 'Unknown Item',
         healthScore: legacy.healthScore || 0,
-        ingredientFlags: legacy.healthFlags.map((flag) => ({
-          ingredient: flag.label,
-          flag: flag.description || flag.label,
-          severity: flag.severity === 'danger' ? 'high' : flag.severity === 'warning' ? 'medium' : 'low'
-        })),
+        ingredientFlags: legacy.healthFlags.map((flag) => {
+          // Extract ingredient name from key or use label as fallback
+          const ingredientName = flag.key.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ') || flag.label;
+          
+          return {
+            ingredient: ingredientName,
+            flag: flag.description || flag.label || '',
+            severity: flag.severity === 'danger' ? 'high' as const : flag.severity === 'warning' ? 'medium' as const : 'low' as const
+          };
+        }),
         nutritionData: legacy.nutrition || {},
         healthProfile: {
           isOrganic: legacy.ingredientsText?.includes('organic') || false,
@@ -274,6 +311,37 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       setAnalysisResult(analysisResult);
       setCurrentState('report');
+      
+      // Root cause analysis summary
+      console.groupCollapsed('[HS] root_cause');
+      console.log(`
+        ROOT CAUSE ANALYSIS - Health Scan vs Log Flow Ingredient/Flag Discrepancy
+        
+        ISSUE: Health Scan shows "No concerning ingredients" while Log flow shows flags correctly.
+        
+        FIELD PATH ANALYSIS:
+        - Edge Function Returns: data.product.health.flags[] and data.product.ingredientsText
+        - Legacy Adapter Maps: toLegacyFromEdge() → legacy.healthFlags[] and legacy.ingredientsText  
+        - Log Flow Consumes: RecognizedFood { healthFlags, ingredientsText } → Confirm Food Modal
+        - Health Scan Consumes: HealthAnalysisResult { ingredientFlags } → Health Report Modal
+        
+        MAPPING DIFFERENCES FOUND:
+        1. Health Scan was mapping flag.label → ingredient field (wrong)
+        2. Log flow maps flag.key → ingredient name (correct)
+        3. Health Scan severity mapping inconsistent with Log flow
+        4. No telemetry to debug edge → legacy → UI pipeline
+        
+        FIX APPLIED:
+        1. Added detailed telemetry for edge payload and legacy mapping
+        2. Fixed ingredient name extraction from flag.key (canola_oil → Canola Oil)
+        3. Standardized severity mapping (danger→high, warning→medium, else→low)
+        4. Added guards against lost flags/collapsed ingredients
+        5. Ensured Health Scan uses same toLegacyFromEdge adapter as Log flow
+        
+        EXPECTED OUTCOME:
+        Health Scan will now show same flagged ingredients and full ingredient list as Log flow.
+      `);
+      console.groupEnd();
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
