@@ -335,20 +335,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-b from-black/70 to-transparent pt-[env(safe-area-inset-top)]">
-              <h2 className="text-white text-xl font-semibold text-center flex-1">Scan Barcode</h2>
+            <div className="relative flex items-center p-4 bg-gradient-to-b from-black/70 to-transparent pt-[env(safe-area-inset-top)]">
+              <h2 className="text-white text-xl font-semibold text-center w-full">Scan Barcode</h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20"
+                className="absolute right-4 text-white hover:bg-white/20"
               >
                 <X className="h-6 w-6" />
               </Button>
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-start justify-center px-4 pt-16">
+            <div className="flex-1 flex items-center justify-center px-4">
               {/* Centered scan frame */}
               <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
                 {/* Corner indicators */}
