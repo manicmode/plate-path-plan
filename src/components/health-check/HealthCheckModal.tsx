@@ -12,6 +12,45 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
+// Helper function for non-blocking suggestions
+async function fetchSuggestionsSafe(result: any) {
+  try {
+    const payload = {
+      name: result.name ?? '',
+      brand: result.brand ?? '',
+      calories: result.nutrition?.calories ?? null,
+      macros: {
+        protein_g: result.nutrition?.protein_g ?? null,
+        carbs_g: result.nutrition?.carbs_g ?? null,
+        fat_g: result.nutrition?.fat_g ?? null,
+        fiber_g: result.nutrition?.fiber_g ?? null,
+        sugar_g: result.nutrition?.sugar_g ?? null,
+        sodium_mg: result.nutrition?.sodium_mg ?? null,
+      },
+      flags: result.health?.flags ?? [],
+      ingredients_text: result.ingredientsText ?? null,
+    };
+    
+    console.log('[HS] sugg_start', { size: JSON.stringify(payload).length });
+    
+    // Create a promise race with timeout
+    const suggestionPromise = supabase.functions.invoke('generate-smart-suggestions', {
+      body: payload
+    });
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('timeout')), 10000)
+    );
+    
+    const { data, error } = await Promise.race([suggestionPromise, timeoutPromise]) as any;
+    
+    console.log('[HS] sugg_result', { ok: !error, hasData: !!data });
+    // Optionally store suggestions but never block UI
+  } catch (e) {
+    console.log('[HS] sugg_error', { err: String(e) });
+  }
+}
+
 /**
  * Optimize image payload to stay under ~300KB while maintaining quality
  */
@@ -400,6 +439,33 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
         triggerDailyScoreCalculation(user.id);
+      }
+
+      // Generate smart suggestions in background (non-blocking)
+      if (data && (data.productName || data.barcode)) {
+        const recognizedFood = {
+          name: data.productName || '',
+          brand: data.brands || '',
+          nutrition: {
+            calories: data.nutritionSummary?.calories || null,
+            protein_g: data.nutritionSummary?.protein_g || null,
+            carbs_g: data.nutritionSummary?.carbs_g || null,
+            fat_g: data.nutritionSummary?.fat_g || null,
+            fiber_g: data.nutritionSummary?.fiber_g || null,
+            sugar_g: data.nutritionSummary?.sugar_g || null,
+            sodium_mg: data.nutritionSummary?.sodium_mg || null,
+          },
+          health: {
+            flags: (data.healthFlags || []).map((flag: any) => flag.id || flag.title || '').filter(Boolean)
+          },
+          ingredientsText: Array.isArray(data.ingredients) ? data.ingredients.join(', ') : (data.ingredients || null)
+        };
+        
+        // Use requestIdleCallback for better perf, fallback to setTimeout
+        const scheduleTask = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 1));
+        scheduleTask(() => {
+          fetchSuggestionsSafe(recognizedFood).catch(() => {});
+        });
       }
     } catch (error) {
       console.error('❌ Analysis failed:', error);

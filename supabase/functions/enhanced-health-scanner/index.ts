@@ -684,6 +684,8 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
   ctx.brandTokens = ocrResult.brandTokens;
   ctx.hasCandy = ocrResult.hasCandy;
   
+  console.log(`[HSF] ocr_tokens:`, ctx.tokens.slice(0, 8)); // Log first 8 tokens
+  
   // Step 3: Brand-gated name search (only with brand evidence)
   if (ctx.brandTokens.length > 0) {
     offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
@@ -703,16 +705,31 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
   // Step 4: Plate confidence calculation
   ctx.plateConf = calculatePlateConfidence(ctx.tokens);
   
-  // Step 5: Confidence gating
-  const hasStrongEvidence = barcodeHit || nameHit || ctx.plateConf >= 0.85;
+  // Step 5: Confidence gating with OCR tuning
+  const SCORE_MIN = 0.40;
+  const SCORE_MIN_WITH_BRAND = 0.35;
+  const BRAND_BOOST = 1.25;
+  
+  // Apply brand boost to plate confidence
+  let adjustedPlateConf = ctx.plateConf;
+  if (ctx.brandTokens.length > 0) {
+    adjustedPlateConf = Math.min(1.0, ctx.plateConf * BRAND_BOOST);
+  }
+  
+  const effectiveScoreMin = ctx.brandTokens.length > 0 ? SCORE_MIN_WITH_BRAND : SCORE_MIN;
+  const hasStrongEvidence = barcodeHit || nameHit || adjustedPlateConf >= effectiveScoreMin;
   
   if (!hasStrongEvidence) {
     console.log(`❌ Low confidence [${ctx.reqId}]`, { 
-      barcodeHit, nameHit, plateConf: ctx.plateConf, 
+      barcodeHit, nameHit, plateConf: ctx.plateConf, adjustedPlateConf,
+      brandTokens: ctx.brandTokens.length,
+      effectiveScoreMin,
       evidence: 'insufficient' 
     });
     
-    return {
+       console.log(`[HSF] scan_final: { recognized: false, reason: "low_confidence" }`);
+       
+       return {
       productName: 'Unknown product',
       healthScore: null,
       healthFlags: [],
@@ -731,8 +748,10 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
   const flags = generateHealthFlags([], ctx.hasCandy);
   const healthScore = calculateHealthScore(flags, ctx.hasCandy, hasStrongEvidence);
   
-  // Final logging
-  console.log(JSON.stringify({
+   // Final logging  
+   console.log(`[HSF] scan_final: { recognized: true, reason: "confidence_gating" }`);
+   
+   console.log(JSON.stringify({
     reqId: ctx.reqId,
     phase: 'done', 
     barcodeFound: !!ctx.barcodeFound,
