@@ -35,7 +35,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const hitsRef = useRef<{code:string,t:number}[]>([]);
   const runningRef = useRef(false);
 
-  const { snapAndDecode, setTorch, isTorchSupported, torchEnabled } = useSnapAndDecode();
+  const { snapAndDecode, setTorch, isTorchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
@@ -139,6 +139,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (open && stream) {
       // Start autoscan when camera is ready
       startAutoscan();
+      
+      // Update the stream reference in the hook for torch functionality
+      if (videoRef.current) {
+        const { snapAndDecode } = useSnapAndDecode();
+        // Access the internal streamRef by calling snapAndDecode with minimal parameters to initialize it
+        videoRef.current.srcObject = stream;
+      }
     }
     return () => {
       stopAutoscan();
@@ -161,6 +168,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
         setStream(mediaStream);
+        // Update the stream reference for torch functionality
+        updateStreamRef(mediaStream);
         setError(null);
       }
     } catch (err) {
@@ -373,8 +382,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               </div>
             </div>
 
+            {/* Gradient Tint - Stays at bottom */}
+            <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+            
             {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-6 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-3 bg-gradient-to-t from-black via-black/80 to-transparent pt-16">
+            <footer className="absolute bottom-6 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-3 pt-16">
               {/* Instructions text */}
               <div className="text-center text-white/90 mb-4">
                 <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>

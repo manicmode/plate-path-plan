@@ -16,6 +16,11 @@ export function useSnapAndDecode() {
   const streamRef = useRef<MediaStream | null>(null);
   const inFlightRef = useRef(false);
 
+  // Method to set the stream reference from outside
+  const updateStreamRef = (stream: MediaStream | null) => {
+    streamRef.current = stream;
+  };
+
   const ensurePreviewPlaying = (video: HTMLVideoElement) => {
     const track = video.srcObject && (video.srcObject as MediaStream).getVideoTracks?.()?.[0];
     if (!track || track.readyState === 'ended') {
@@ -206,6 +211,7 @@ export function useSnapAndDecode() {
     snapAndDecode,
     setTorch,
     isTorchSupported: getTorchSupported(),
-    torchEnabled
+    torchEnabled,
+    updateStreamRef
   };
 }
