@@ -140,17 +140,16 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       // Start autoscan when camera is ready
       startAutoscan();
       
-      // Update the stream reference in the hook for torch functionality
+      // Update the stream reference for torch functionality
       if (videoRef.current) {
-        const { snapAndDecode } = useSnapAndDecode();
-        // Access the internal streamRef by calling snapAndDecode with minimal parameters to initialize it
-        videoRef.current.srcObject = stream;
+        // Simply update the stream reference directly
+        updateStreamRef(stream);
       }
     }
     return () => {
       stopAutoscan();
     };
-  }, [open, stream, startAutoscan, stopAutoscan]);
+  }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef]);
 
   const startCamera = async () => {
     try {
