@@ -133,142 +133,159 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const captureImage = async () => {
-    if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-      console.log("[HS] capture", `${videoRef.current?.videoWidth || 0}x${videoRef.current?.videoHeight || 0}`);
-    }
-    
-    if (!videoRef.current || !canvasRef.current) {
-      console.error("❌ Missing video or canvas ref!", {
-        video: !!videoRef.current,
-        canvas: !!canvasRef.current
-      });
-      return;
-    }
-
-    playCameraClickSound();
-    setIsScanning(true);
-    
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      console.error("❌ Cannot get canvas context!");
-      return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    
-    const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
-
-    // DON'T downscale for barcode detection - capture full resolution
+  const analyzeNow = async () => {
     try {
-      // Create blob from canvas for CSP safety - use full resolution
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvasRef.current?.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Failed to create blob from canvas'));
-        }, 'image/jpeg', 0.9); // Higher quality for barcode detection
-      });
-      
-      // For barcode path: preserve full resolution, only strip EXIF
-      const fileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
-      const normalized = await normalizeHealthScanImage(fileBlob, {
-        maxWidth: Math.max(video.videoWidth, 1920), // Don't downscale below video resolution
-        maxHeight: Math.max(video.videoHeight, 1080),
-        quality: 0.9, // Higher quality for barcode detection
-        format: 'JPEG',
-        stripExif: true
-      });
+      console.log('[HS] analyze_start');
 
-      const imageDataForAnalysis = normalized.dataUrl;
-      
-      // Enhanced barcode detection with DPR-correct ROI (no pre-compression)
-      try {
-        // Create ROI canvas directly from video (no normalization step)
-        const roiCanvas = cropReticleROIFromVideo(video);
-        
-        // Enhanced multi-pass barcode decode on ROI
-        const barcodeResult = await Promise.race([
-          enhancedBarcodeDecode(
-            await new Promise<Blob>(resolve => roiCanvas.toBlob(resolve!, 'image/jpeg', 0.95)),
-            { x: 0, y: 0, w: roiCanvas.width, h: roiCanvas.height }, // Full ROI
-            window.devicePixelRatio,
-            1500 // budget
-          ),
-          new Promise<{ success: false; attempts: 0; totalMs: number }>((resolve) => 
-            setTimeout(() => resolve({ success: false, attempts: 0, totalMs: 1500 }), 1500)
-          )
-        ]);
+      if (!videoRef.current || !canvasRef.current) {
+        console.error("❌ Missing video or canvas ref!");
+        return;
+      }
 
-        if (process.env.NEXT_PUBLIC_SCAN_DEBUG === '1') {
-          console.log('[HS] barcode', { 
-            success: barcodeResult.success,
-            code: barcodeResult.success ? barcodeResult.code : undefined, 
-            normalizedAs: barcodeResult.success ? barcodeResult.normalizedAs : undefined,
-            checkDigitOk: barcodeResult.success ? barcodeResult.checkDigitOk : undefined,
-            totalMs: barcodeResult.totalMs, 
-            attempts: barcodeResult.attempts 
-          });
-        }
-        
-        if (barcodeResult.success && barcodeResult.code) {
-          // Short-circuit to OFF lookup with normalized code
-          const finalCode = barcodeResult.normalizedAs || barcodeResult.code;
-          
+      playCameraClickSound();
+      setIsScanning(true);
+      
+      // 1) CAPTURE FULL-RES FRAME (from video; do NOT compress yet)
+      const video = videoRef.current;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      const frame = document.createElement('canvas');
+      frame.width = w; 
+      frame.height = h;
+      const fx = frame.getContext('2d')!;
+      fx.imageSmoothingEnabled = false;
+      fx.drawImage(video, 0, 0, w, h);
+
+      // 2) CROP ROI FROM VIDEO PIXELS (center ~70% x 40%)
+      const roi = document.createElement('canvas');
+      const roiW = Math.round(w * 0.70);
+      const roiH = Math.round(h * 0.40);
+      const roiX = Math.round((w - roiW) / 2);
+      const roiY = Math.round((h - roiH) / 2);
+      roi.width = roiW; 
+      roi.height = roiH;
+      const rx = roi.getContext('2d')!;
+      rx.imageSmoothingEnabled = false;
+      rx.drawImage(frame, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+
+      // 3) BARCODE PASS (budget ~1500ms) — BEFORE ANY NORMALIZATION
+      console.time('[HS] barcode_ms');
+      const roiBlob = await new Promise<Blob>(resolve => roi.toBlob(resolve!, 'image/jpeg', 0.95));
+      const scan = await enhancedBarcodeDecode(roiBlob, { x: 0, y: 0, w: roiW, h: roiH }, window.devicePixelRatio || 1, 1500);
+      console.timeEnd('[HS] barcode_ms');
+      console.log('[HS] barcode_result', scan);
+
+      // Log diagnostics if enabled
+      if (window) {
+        (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS || [];
+        (window as any).__HS_LAST_REPORTS.unshift({
+          meta: { videoSize: {w, h}, roiSize: {w: roiW, h: roiH} },
+          attempts: scan?.attempts ?? [],
+          final: { success: !!(scan?.success && scan.code), code: scan?.code }
+        });
+        (window as any).__HS_LAST_REPORTS = (window as any).__HS_LAST_REPORTS.slice(0, 3);
+      }
+
+      if (scan?.success && scan.code) {
+        const code = scan.normalizedAs ?? scan.code;
+
+        console.log('[HS] off_fetch_start', code);
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: code, source: 'health' }
+        });
+        console.log('[HS] off_result', { ok: !error, name: data?.productName });
+
+        if (!error && data) {
+          // Show the normal fun loading -> report (NO GPT on this path)
           if (isDebugEnabled) {
             finalizeScanReport({
               success: true,
-              code: finalCode,
-              normalizedAs: barcodeResult.normalizedAs,
-              checkDigitOk: barcodeResult.checkDigitOk || false,
+              code,
+              normalizedAs: scan.normalizedAs,
+              checkDigitOk: scan.checkDigitOk || false,
               willScore: true,
               willFallback: false,
-              totalMs: barcodeResult.totalMs
+              totalMs: scan.totalMs,
+              offLookup: { status: 'hit', ms: scan.totalMs }
             });
           }
           
-          onCapture(imageDataForAnalysis + `&barcode=${finalCode}`);
+          // Create normalized image data for the rest of the pipeline
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d')!;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          
+          onCapture(imageData + `&barcode=${code}`);
           return;
         }
-      } catch (barcodeError) {
-        console.error('Barcode detection error:', barcodeError);
+      }
+
+      // 4) ONLY IF NO BARCODE: now run existing normalization/OCR path
+      return runGenericImagePath(frame);
+
+    } catch (e) {
+      console.error('[HS] analyze_error', e);
+      // Fall back to generic path
+      return runGenericImagePath();
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const runGenericImagePath = async (frame?: HTMLCanvasElement) => {
+    try {
+      // Create blob from canvas for CSP safety
+      const canvas = frame || canvasRef.current!;
+      const video = videoRef.current!;
+      
+      if (!frame) {
+        const ctx = canvas.getContext('2d')!;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
       }
       
-      // No barcode found, proceed to full image normalization for image analysis
-      const analysisFileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
-      const normalizedForAnalysis = await normalizeHealthScanImage(analysisFileBlob, {
-        maxWidth: Math.max(video.videoWidth, 1920), // Don't downscale below video resolution
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob from canvas'));
+        }, 'image/jpeg', 0.9);
+      });
+      
+      // Normalize for image analysis
+      const fileBlob = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      const normalized = await normalizeHealthScanImage(fileBlob, {
+        maxWidth: Math.max(video.videoWidth, 1920),
         maxHeight: Math.max(video.videoHeight, 1080),
-        quality: 0.9, // Higher quality for image analysis
+        quality: 0.9,
         format: 'JPEG',
         stripExif: true
       });
 
-      const finalImageData = normalizedForAnalysis.dataUrl;
-      
       if (isDebugEnabled) {
         finalizeScanReport({
           success: false,
           willScore: false,
           willFallback: true,
-          totalMs: Date.now() - Date.now() // Will be updated with actual timing
+          totalMs: Date.now() - Date.now()
         });
       }
       
-      // Continue with regular health scan analysis
-      onCapture(finalImageData);
-    } catch (normalizationError) {
-      console.error("❌ Image normalization failed:", normalizationError);
-      // Fallback to raw image if normalization fails
+      onCapture(normalized.dataUrl);
+    } catch (error) {
+      console.error("❌ Generic image path failed:", error);
+      // Final fallback to raw image
+      const canvas = canvasRef.current!;
+      const rawImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(rawImageData);
-    } finally {
-      setIsScanning(false);
     }
   };
+
+  // Alias for backward compatibility
+  const captureImage = analyzeNow;
 
   const handleManualEntry = () => {
     setCurrentView('manual');

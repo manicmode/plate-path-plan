@@ -117,13 +117,11 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
 
     if (!blob) return;
 
-    // Enhanced barcode decode with full ROI
-    const result = await enhancedBarcodeDecode(
-      blob, 
-      { x: 0, y: 0, w: roiCanvas.width, h: roiCanvas.height }, // Full ROI area
-      window.devicePixelRatio, 
-      1500
-    );
+    // Enhanced barcode decode using new canvas signature
+    const result = await enhancedBarcodeDecode(roiCanvas, { 
+      budgetMs: 1500, 
+      dpr: window.devicePixelRatio 
+    });
     
     if (result.success && result.code) {
       await processBarcode(result.code);

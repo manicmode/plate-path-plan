@@ -81,10 +81,46 @@ export async function enhancedBarcodeDecode(
   imageBlob: Blob,
   roiRect: { x: number; y: number; w: number; h: number },
   dpr: number,
-  budget: number = 1500
-): Promise<DecodeResult> {
+  budget?: number
+): Promise<DecodeResult>;
+
+export async function enhancedBarcodeDecode(
+  roiCanvas: HTMLCanvasElement, 
+  opts?: { budgetMs?: number; dpr?: number }
+): Promise<{
+  success: boolean;
+  code?: string;
+  format?: 'UPC_A' | 'EAN_13' | 'EAN_8' | 'UPC_E' | 'CODE_128' | 'ITF';
+  normalizedAs?: string;
+  checkDigitOk?: boolean;
+  attempts: Array<{ crop: string; rotation: number; scale: number; inverted: boolean; outcome: 'OK'|'NotFound'|'Checksum'; ms: number }>;
+  totalMs: number;
+}>;
+
+export async function enhancedBarcodeDecode(
+  imageBlobOrCanvas: Blob | HTMLCanvasElement,
+  roiRectOrOpts?: { x: number; y: number; w: number; h: number } | { budgetMs?: number; dpr?: number },
+  dpr?: number,
+  budget?: number
+): Promise<any> {
   const startTime = Date.now();
   let attempts = 0;
+  const actualBudget = budget || 1500;
+  
+  // Handle overloaded function signatures
+  if (imageBlobOrCanvas instanceof HTMLCanvasElement) {
+    // New signature: enhancedBarcodeDecode(canvas, opts)
+    const canvas = imageBlobOrCanvas;
+    const opts = roiRectOrOpts as { budgetMs?: number; dpr?: number } || {};
+    const canvasBudget = opts.budgetMs || 1500;
+    const actualDpr = opts.dpr || window.devicePixelRatio || 1;
+    
+    return processCanvas(canvas, canvasBudget, actualDpr, startTime);
+  }
+  
+  // Legacy signature: enhancedBarcodeDecode(blob, roiRect, dpr, budget)
+  const imageBlob = imageBlobOrCanvas as Blob;
+  const roiRect = roiRectOrOpts as { x: number; y: number; w: number; h: number };
   
   // Create image from blob
   const imageUrl = URL.createObjectURL(imageBlob);
@@ -124,7 +160,7 @@ export async function enhancedBarcodeDecode(
         for (const scale of scales) {
           for (const rotation of rotations) {
             for (const inverted of polarities) {
-              if (Date.now() - startTime > budget) {
+              if (Date.now() - startTime > actualBudget) {
                 resolve({ success: false, attempts, totalMs: Date.now() - startTime });
                 return;
               }
@@ -248,6 +284,107 @@ export async function enhancedBarcodeDecode(
     
     image.src = imageUrl;
   });
+}
+
+async function processCanvas(canvas: HTMLCanvasElement, budget: number, dpr: number, startTime: number): Promise<any> {
+  let attempts = 0;
+  
+  // Crop strategies
+  const crops: Array<{name: 'full' | 'bandH' | 'bandV' | 'q1' | 'q2' | 'q3' | 'q4', rect: {x:number,y:number,w:number,h:number}}> = [
+    { name: 'full', rect: { x: 0, y: 0, w: canvas.width, h: canvas.height } },
+    { name: 'bandH', rect: { x: 0, y: Math.floor(canvas.height * 0.35), w: canvas.width, h: Math.floor(canvas.height * 0.30) } },
+    { name: 'bandV', rect: { x: Math.floor(canvas.width * 0.35), y: 0, w: Math.floor(canvas.width * 0.30), h: canvas.height } },
+    { name: 'q1', rect: { x: 0, y: 0, w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+    { name: 'q2', rect: { x: Math.floor(canvas.width * 0.5), y: 0, w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+    { name: 'q3', rect: { x: 0, y: Math.floor(canvas.height * 0.5), w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } },
+    { name: 'q4', rect: { x: Math.floor(canvas.width * 0.5), y: Math.floor(canvas.height * 0.5), w: Math.floor(canvas.width * 0.5), h: Math.floor(canvas.height * 0.5) } }
+  ];
+  
+  const scales = [1.0, 0.75, 0.5];
+  const rotations = [0, 90, 180, 270, -8, 8];
+  const polarities = [false, true]; // normal, inverted
+  
+  for (const crop of crops) {
+    for (const scale of scales) {
+      for (const rotation of rotations) {
+        for (const inverted of polarities) {
+          if (Date.now() - startTime > budget) {
+            return { success: false, attempts, totalMs: Date.now() - startTime };
+          }
+          
+          const attemptStart = Date.now();
+          attempts++;
+          
+          try {
+            // Create cropped canvas
+            const cropCanvas = document.createElement('canvas');
+            const cropCtx = cropCanvas.getContext('2d');
+            if (!cropCtx) continue;
+            
+            const finalW = Math.floor(crop.rect.w * scale);
+            const finalH = Math.floor(crop.rect.h * scale);
+            
+            cropCanvas.width = finalW;
+            cropCanvas.height = finalH;
+            
+            // Apply rotation
+            if (rotation !== 0) {
+              cropCtx.save();
+              cropCtx.translate(finalW / 2, finalH / 2);
+              cropCtx.rotate((rotation * Math.PI) / 180);
+              cropCtx.translate(-finalW / 2, -finalH / 2);
+            }
+            
+            // Apply inversion
+            if (inverted) {
+              cropCtx.filter = 'invert(1)';
+            }
+            
+            cropCtx.drawImage(
+              canvas,
+              crop.rect.x, crop.rect.y, crop.rect.w, crop.rect.h,
+              0, 0, finalW, finalH
+            );
+            
+            if (rotation !== 0) {
+              cropCtx.restore();
+            }
+            
+            // Try to decode this canvas
+            const result = await tryDecodeCanvas(cropCanvas);
+            const attemptEnd = Date.now();
+            
+            if (result && result.code) {
+              const normalized = normalizeBarcode(result.code, result.format);
+              
+              if (normalized.checkDigitOk) {
+                return {
+                  success: true,
+                  code: normalized.code,
+                  format: result.format as any,
+                  normalizedAs: normalized.normalizedAs,
+                  checkDigitOk: true,
+                  attempts: [{
+                    crop: crop.name,
+                    rotation,
+                    scale,
+                    inverted,
+                    outcome: 'OK',
+                    ms: attemptEnd - attemptStart
+                  }],
+                  totalMs: attemptEnd - startTime
+                };
+              }
+            }
+          } catch (error) {
+            // Continue with next attempt
+          }
+        }
+      }
+    }
+  }
+  
+  return { success: false, attempts, totalMs: Date.now() - startTime };
 }
 
 // Try to decode a canvas using local ZXing (no external API)
