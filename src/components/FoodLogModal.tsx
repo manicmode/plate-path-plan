@@ -57,9 +57,7 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
 
   // Check if debug is enabled
   React.useEffect(() => {
-    const debugEnabled = process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' || 
-                        new URLSearchParams(window.location.search).get('scan_debug') === '1' ||
-                        localStorage.getItem('SCAN_DEBUG') === '1';
+    const debugEnabled = false; // Disable debug by default for performance
     setIsDebugEnabled(debugEnabled);
   }, []);
 
@@ -93,12 +91,15 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
     }
   };
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
-  };
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, [stream]);
 
   const captureAndDecode = async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -228,7 +229,7 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
     }
   };
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setIsScanning(false);
     setShowConfirm(false);
     setManualBarcode('');
@@ -243,12 +244,12 @@ export const FoodLogModal: React.FC<FoodLogModalProps> = ({ open, onOpenChange }
       fat: 0
     });
     cleanup();
-  };
+  }, [cleanup]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     resetState();
     onOpenChange(false);
-  };
+  }, [resetState, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

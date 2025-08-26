@@ -42,10 +42,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { user } = useAuth();
 
   useEffect(() => {
-    // Check if debug is enabled
-    const debugEnabled = process.env.NEXT_PUBLIC_SCAN_DEBUG === '1' || 
-                        new URLSearchParams(window.location.search).get('scan_debug') === '1' ||
-                        localStorage.getItem('SCAN_DEBUG') === '1';
+    // Disable debug by default for performance
+    const debugEnabled = false;
     setIsDebugEnabled(debugEnabled);
     
     if (currentView === 'scanner') {
@@ -54,6 +52,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [currentView]);
@@ -66,25 +68,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const startCamera = async () => {
     try {
-      console.log("[HS] camera_init");
+      if (isDebugEnabled) console.log("[HS] camera_init");
       if (!videoRef.current) {
         console.error("[VIDEO] videoRef is null — video element not mounted");
         return;
       }
 
-      if (location.protocol !== 'https:') {
+      if (isDebugEnabled && location.protocol !== 'https:') {
         console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
       }
-
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
-          console.log("[PERMISSION] Camera permission state:", res.state);
-        }).catch((err) => {
-          console.log("[PERMISSION] Could not query camera permission:", err);
-        });
-      }
-
-      console.log("[CAMERA] Requesting camera stream...");
       // Enhanced camera constraints for barcode detection
       const constraints = {
         video: { 
@@ -97,11 +89,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      console.log("[CAMERA] Stream received:", mediaStream);
+      if (isDebugEnabled) console.log("[CAMERA] Stream received:", mediaStream);
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        console.log("[CAMERA] srcObject set, playing video");
+        if (isDebugEnabled) console.log("[CAMERA] srcObject set, playing video");
       } else {
         console.error("[CAMERA] videoRef.current is null");
       }
@@ -135,7 +127,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const analyzeNow = async () => {
     try {
-      console.log('[HS] analyze_start');
+      if (isDebugEnabled) console.log('[HS] analyze_start');
 
       if (!videoRef.current || !canvasRef.current) {
         console.error("❌ Missing video or canvas ref!");
@@ -169,10 +161,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       rx.drawImage(frame, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
 
       // 3) BARCODE PASS (budget ~1500ms) — BEFORE ANY NORMALIZATION
-      console.time('[HS] barcode_ms');
+      if (isDebugEnabled) console.time('[HS] barcode_ms');
       const dec = await enhancedBarcodeDecode({ sourceCanvas: roi, timeoutMs: 1600 });
-      console.timeEnd('[HS] barcode_ms');
-      console.log('[HS] barcode_result', {
+      if (isDebugEnabled) console.timeEnd('[HS] barcode_ms');
+      if (isDebugEnabled) console.log('[HS] barcode_result', {
         success: dec?.success ?? false,
         code: dec?.normalized?.upca ?? dec?.normalized?.ean13 ?? dec?.code ?? null,
         format: dec?.format ?? null,
@@ -190,11 +182,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const looksLikeUPCOrEAN = !!code && /^[0-9]{12,13}$/.test(code);
 
       if (looksLikeUPCOrEAN) {
-        console.log('[HS] off_fetch_start', { code });
+        if (isDebugEnabled) console.log('[HS] off_fetch_start', { code });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: code, source: 'health' }
         });
-        console.log('[HS] off_result', { status: error ? 'error' : 'ok', hit: !!data?.productName });
+        if (isDebugEnabled) console.log('[HS] off_result', { status: error ? 'error' : 'ok', hit: !!data?.productName });
 
         if (!error && data) {
           // Show the normal fun loading -> report (NO GPT on this path)

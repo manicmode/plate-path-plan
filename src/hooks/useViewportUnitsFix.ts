@@ -7,12 +7,14 @@ export function useViewportUnitsFix() {
       document.documentElement.style.setProperty("--vh", `${vh}px`);
       document.documentElement.style.setProperty("--safe-bottom", getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)") || "0px");
       
-      // Temporary telemetry
-      console.log("[HS][layout]", {
-        innerHeight: window.innerHeight,
-        vv: window.visualViewport?.height,
-        cssVh: getComputedStyle(document.documentElement).getPropertyValue("--vh"),
-      });
+      // Debug telemetry (only in debug mode)
+      if (process.env.NODE_ENV === 'development' || new URLSearchParams(window.location.search).get('debug') === '1') {
+        console.log("[HS][layout]", {
+          innerHeight: window.innerHeight,
+          vv: window.visualViewport?.height,
+          cssVh: getComputedStyle(document.documentElement).getPropertyValue("--vh"),
+        });
+      }
     };
     
     apply();
