@@ -33,11 +33,20 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
+  const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
+
+  // Tuning constants
+  const QUICK_BUDGET_MS = 900;
+  const ROI = { widthPct: 0.70, heightPct: 0.35 };
+  const BURST_COUNT = 2;
+  const BURST_DELAY_MS = 120;
+  const ZOOM = 1.5;
 
   useEffect(() => {
     if (currentView === 'scanner') {
       startCamera();
+      warmUpDecoder();
     }
     return () => {
       if (stream) {
@@ -45,6 +54,28 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
     };
   }, [currentView]);
+
+  // Warm-up the decoder on modal open
+  const warmUpDecoder = async () => {
+    try {
+      const scanner = new MultiPassBarcodeScanner();
+      
+      // Run a no-op decode on a tiny blank canvas to JIT/warm caches
+      const warmCanvas = document.createElement('canvas');
+      warmCanvas.width = 100;
+      warmCanvas.height = 50;
+      const ctx = warmCanvas.getContext('2d')!;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 100, 50);
+      
+      // Warm decode (will fail but initializes reader)
+      await scanner.scanQuick(warmCanvas).catch(() => null);
+      setWarmScanner(scanner);
+      console.log('[WARM] Decoder warmed up');
+    } catch (error) {
+      console.warn('[WARM] Decoder warm-up failed:', error);
+    }
+  };
 
   useEffect(() => {
     if (currentView === 'manual' && barcodeInputRef.current) {
@@ -60,14 +91,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         return;
       }
 
-      // High-res back camera request
+      // High-res back camera request with optimized constraints
       console.log("[CAMERA] Requesting high-res back camera...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          frameRate: { ideal: 30, max: 60 },
+          frameRate: { ideal: 30 },
         },
         audio: false
       });
@@ -170,11 +201,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return canvas;
   };
 
-  // Crop ROI in video pixel space (center 70% × 40%)
+  // Crop ROI in video pixel space (center 70% × 35% - tighter band)
   const cropReticleROI = (src: HTMLCanvasElement): HTMLCanvasElement => {
     const w = src.width, h = src.height;
-    const roiW = Math.round(w * 0.70);
-    const roiH = Math.round(h * 0.40);
+    const roiW = Math.round(w * ROI.widthPct);
+    const roiH = Math.round(h * ROI.heightPct);
     const x = Math.round((w - roiW) / 2);
     const y = Math.round((h - roiH) / 2);
     const out = document.createElement('canvas');
@@ -184,59 +215,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return out;
   };
 
-  // Quick decode on the frozen image (≤ 1s)
+  // Quick decode on the frozen image (≤ 900ms)
   const enhancedBarcodeDecodeQuick = async (canvas: HTMLCanvasElement): Promise<any> => {
-    const scanner = new MultiPassBarcodeScanner();
-    // Create a quick version with fewer attempts
-    const startTime = performance.now();
-    const roiCanvas = cropReticleROI(canvas);
-    
-    // Quick pass: fewer attempts for speed
-    const quickAttempts = [
-      {
-        name: 'roi-quick',
-        cropFn: () => roiCanvas,
-        scales: [1, 0.75],
-        rotations: [0, 90]
-      }
-    ];
-
-    for (const attempt of quickAttempts) {
-      const baseCanvas = attempt.cropFn();
-      
-      for (const scale of attempt.scales) {
-        const scaledCanvas = scale === 1.0 ? baseCanvas : scaleCanvas(baseCanvas, scale);
-        
-        for (const rotation of attempt.rotations) {
-          try {
-            const rotatedCanvas = rotation === 0 ? scaledCanvas : rotateCanvas(scaledCanvas, rotation);
-            
-            // Try normal and inverted versions
-            const candidates = [rotatedCanvas, invertCanvas(rotatedCanvas)];
-            
-            for (const candidateCanvas of candidates) {
-              const result = await decodeFromCanvas(candidateCanvas);
-              
-              if (result && result.getText()) {
-                const decodeTime = performance.now() - startTime;
-                const barcodeText = result.getText();
-                const format = result.getBarcodeFormat()?.toString() || 'UNKNOWN';
-                
-                return {
-                  text: barcodeText,
-                  format,
-                  decodeTimeMs: Math.round(decodeTime)
-                };
-              }
-            }
-          } catch (error) {
-            // Continue to next attempt
-          }
-        }
-      }
-    }
-    
-    return null;
+    const scanner = warmScanner || new MultiPassBarcodeScanner();
+    return await scanner.scanQuick(canvas);
   };
 
   // Helper functions for canvas manipulation
@@ -394,13 +376,40 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     playCameraClickSound();
     setIsScanning(true);
     
+    let track: MediaStreamTrack | null = null;
+    
     try {
       const video = videoRef.current;
       await video.play(); // ensure >0 dimensions on iOS
       
+      // Apply camera constraints before capture
+      if (stream) {
+        track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({ 
+              advanced: [{ zoom: ZOOM } as any] 
+            });
+            console.log('[HS] zoom applied:', ZOOM);
+          } catch (zoomError) {
+            console.log('[HS] zoom not supported:', zoomError);
+          }
+          
+          // Enable torch if supported
+          try {
+            await track.applyConstraints({ 
+              advanced: [{ torch: true } as any] 
+            });
+            console.log('[HS] torch enabled');
+          } catch (torchError) {
+            console.log('[HS] torch not supported:', torchError);
+          }
+        }
+      }
+      
       const vw = video.videoWidth, vh = video.videoHeight;
-      const roiW = Math.round(vw * 0.70);
-      const roiH = Math.round(vh * 0.40);
+      const roiW = Math.round(vw * ROI.widthPct);
+      const roiH = Math.round(vh * ROI.heightPct);
       
       console.log('[HS] roi', {
         vw, vh, roiW, roiH, 
@@ -422,10 +431,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       console.log('[HS] barcode_result:', { 
         raw, 
         type: quick?.format ?? null, 
-        checksumOk: true, // assume valid from ZXing
+        checksumOk: quick?.checkDigitValid ?? true,
         reason: quick ? 'decoded' : 'not_found'
       });
 
+      // Return early on any 8/12/13/14-digit hit (even if checksum is false)
       if (raw && /^\d{8,14}$/.test(raw)) {
         console.log('[HS] off_fetch_start', { code: raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -433,7 +443,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         if (data && !error) { 
-          // Convert still to base64 for onCapture
+          // Defer image conversion until needed
           const fullBlob: Blob = await new Promise((resolve, reject) => {
             still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
           });
@@ -451,16 +461,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // 2) Fallback: burst capture (2 more frames) + race
-      const burstPromises = Array.from({ length: 2 }).map(async (_, i) => {
-        await new Promise(r => setTimeout(r, 120 * (i + 1)));
+      // 2) Parallelize burst capture (race)
+      console.log('[HS] burst_start');
+      const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
+        await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
         const s = await captureStillFromVideo(video);
         const r = cropReticleROI(s);
-        return enhancedBarcodeDecodeQuick(r);
+        return { result: await enhancedBarcodeDecodeQuick(r), stillCanvas: s };
       });
 
       const winner = await Promise.race(burstPromises);
-      const raw2 = winner?.text ?? null;
+      const raw2 = winner.result?.text ?? null;
       if (raw2 && /^\d{8,14}$/.test(raw2)) {
         console.log('[HS] off_fetch_start', { code: raw2 });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -468,9 +479,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         if (data && !error) { 
-          // Convert still to base64 for onCapture
           const fullBlob: Blob = await new Promise((resolve, reject) => {
-            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+            winner.stillCanvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
           });
           const fullBase64 = await new Promise<string>((resolve, reject) => {
             const fr = new FileReader();
@@ -486,7 +496,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // 3) Last resort: run the existing full-pass pipeline
+      // 3) Last resort: run the existing full-pass pipeline (defer normalization)
       await runExistingFullDecodePipeline(still);
       
     } catch (conversionError) {
@@ -503,6 +513,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
+      // Turn off torch
+      if (track) {
+        try {
+          await track.applyConstraints({ 
+            advanced: [{ torch: false } as any] 
+          });
+        } catch (torchError) {
+          console.log('[HS] torch disable failed:', torchError);
+        }
+      }
+      
       setIsScanning(false);
       setIsFrozen(false);
       console.log('[HS] analyze_total:', Math.round(performance.now() - t0));

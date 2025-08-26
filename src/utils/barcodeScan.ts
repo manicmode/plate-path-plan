@@ -32,19 +32,21 @@ interface ScanAttempt {
 export class MultiPassBarcodeScanner {
   private reader: BrowserMultiFormatReader;
   
-  // Quick decode mode with fewer attempts (≤ 1s)
+  // Quick decode mode with narrowed search space (≤ 900ms)
   async scanQuick(canvas: HTMLCanvasElement): Promise<BarcodeResult | null> {
     const startTime = performance.now();
-    const roiCanvas = this.computeROI(canvas);
+    const BUDGET_MS = 900;
     
-    console.log(`🔍 Quick barcode scan - ROI: ${roiCanvas.width}×${roiCanvas.height}px`);
+    // Use centerH crop only for speed
+    const centerH = this.cropHorizontalBand(canvas);
+    console.log(`🔍 Quick barcode scan - centerH: ${centerH.width}×${centerH.height}px`);
     
     const quickAttempts: ScanAttempt[] = [
       {
-        name: 'roi-quick',
-        cropFn: () => roiCanvas,
-        scales: [1, 0.75],
-        rotations: [0, 90]
+        name: 'centerH',
+        cropFn: () => centerH,
+        scales: [1], // Single scale only
+        rotations: [0, 90] // Just 0 and 90 degrees
       }
     ];
 
@@ -57,6 +59,12 @@ export class MultiPassBarcodeScanner {
         const scaledCanvas = scale === 1.0 ? baseCanvas : this.scaleCanvas(baseCanvas, scale);
         
         for (const rotation of attempt.rotations) {
+          // Check budget
+          if (performance.now() - startTime > BUDGET_MS) {
+            console.log(`⏱️ Quick scan budget exceeded at ${totalPasses} passes`);
+            break;
+          }
+          
           totalPasses++;
           
           try {
@@ -86,6 +94,12 @@ export class MultiPassBarcodeScanner {
                   decodeTimeMs: Math.round(decodeTime),
                   checkDigitValid
                 };
+              }
+              
+              // Check budget after each decode attempt
+              if (performance.now() - startTime > BUDGET_MS) {
+                console.log(`⏱️ Quick scan budget exceeded at ${totalPasses} passes`);
+                break;
               }
             }
           } catch (error) {

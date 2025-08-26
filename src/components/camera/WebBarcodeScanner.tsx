@@ -19,7 +19,15 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isFrozen, setIsFrozen] = useState(false);
+  const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const scanningIntervalRef = useRef<NodeJS.Timeout>();
+
+  // Tuning constants  
+  const QUICK_BUDGET_MS = 900;
+  const ROI = { widthPct: 0.70, heightPct: 0.35 };
+  const BURST_COUNT = 2;
+  const BURST_DELAY_MS = 120;
+  const ZOOM = 1.5;
 
   // Helper: prefer true stills, fallback to canvas frame
   const captureStillFromVideo = async (video: HTMLVideoElement): Promise<HTMLCanvasElement> => {
@@ -48,11 +56,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     return canvas;
   };
 
-  // Crop ROI in video pixel space (center 70% × 40%)
+  // Crop ROI in video pixel space (center 70% × 35% - tighter band)
   const cropReticleROI = (src: HTMLCanvasElement): HTMLCanvasElement => {
     const w = src.width, h = src.height;
-    const roiW = Math.round(w * 0.70);
-    const roiH = Math.round(h * 0.40);
+    const roiW = Math.round(w * ROI.widthPct);
+    const roiH = Math.round(h * ROI.heightPct);
     const x = Math.round((w - roiW) / 2);
     const y = Math.round((h - roiH) / 2);
     const out = document.createElement('canvas');
@@ -73,13 +81,40 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     const t0 = performance.now();
     setIsFrozen(true);
     
+    let track: MediaStreamTrack | null = null;
+    
     try {
       const video = videoRef.current;
       await video.play();
       
+      // Apply camera constraints before capture
+      if (stream) {
+        track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({ 
+              advanced: [{ zoom: ZOOM } as any] 
+            });
+            console.log('[HS] zoom applied:', ZOOM);
+          } catch (zoomError) {
+            console.log('[HS] zoom not supported:', zoomError);
+          }
+          
+          // Enable torch if supported
+          try {
+            await track.applyConstraints({ 
+              advanced: [{ torch: true } as any] 
+            });
+            console.log('[HS] torch enabled');
+          } catch (torchError) {
+            console.log('[HS] torch not supported:', torchError);
+          }
+        }
+      }
+      
       const vw = video.videoWidth, vh = video.videoHeight;
-      const roiW = Math.round(vw * 0.70);
-      const roiH = Math.round(vh * 0.40);
+      const roiW = Math.round(vw * ROI.widthPct);
+      const roiH = Math.round(vh * ROI.heightPct);
       
       console.log('[HS] roi', {
         vw, vh, roiW, roiH, 
@@ -91,7 +126,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       const roi = cropReticleROI(still);
 
       console.time('[HS] decode');
-      const scanner = new MultiPassBarcodeScanner();
+      const scanner = warmScanner || new MultiPassBarcodeScanner();
       const quick = await scanner.scanQuick(roi);
       console.timeEnd('[HS] decode');
       
@@ -106,6 +141,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         reason: quick ? 'decoded' : 'not_found'
       });
 
+      // Return early on any 8/12/13/14-digit hit (even if checksum is false)
       if (raw && /^\d{8,14}$/.test(raw)) {
         console.log('[HS] off_fetch_start', { code: raw });
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -121,8 +157,17 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         }
       }
 
-      const fullResult = await scanner.scan(still);
-      const rawFull = fullResult?.text ?? null;
+      // Parallelize burst capture (race)  
+      console.log('[HS] burst_start');
+      const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
+        await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
+        const s = await captureStillFromVideo(video);
+        const r = cropReticleROI(s);
+        return await scanner.scanQuick(r);
+      });
+
+      const winner = await Promise.race(burstPromises);
+      const rawFull = winner?.text ?? null;
       if (rawFull && /^\d{8,14}$/.test(rawFull)) {
         onBarcodeDetected(rawFull);
         cleanup();
@@ -135,13 +180,47 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       console.error('[HS] Scan error:', error);
       setError('Failed to scan barcode. Please try again.');
     } finally {
+      // Turn off torch
+      if (track) {
+        try {
+          await track.applyConstraints({ 
+            advanced: [{ torch: false } as any] 
+          });
+        } catch (torchError) {
+          console.log('[HS] torch disable failed:', torchError);
+        }
+      }
+      
       setIsFrozen(false);
       console.log('[HS] analyze_total:', Math.round(performance.now() - t0));
     }
   };
 
+  // Warm-up the decoder on modal open  
+  const warmUpDecoder = async () => {
+    try {
+      const scanner = new MultiPassBarcodeScanner();
+      
+      // Run a no-op decode on a tiny blank canvas to JIT/warm caches
+      const warmCanvas = document.createElement('canvas');
+      warmCanvas.width = 100;
+      warmCanvas.height = 50;
+      const ctx = warmCanvas.getContext('2d')!;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 100, 50);
+      
+      // Warm decode (will fail but initializes reader)
+      await scanner.scanQuick(warmCanvas).catch(() => null);
+      setWarmScanner(scanner);
+      console.log('[WARM] Decoder warmed up');
+    } catch (error) {
+      console.warn('[WARM] Decoder warm-up failed:', error);
+    }
+  };
+
   useEffect(() => {
     startCamera();
+    warmUpDecoder();
     return () => {
       cleanup();
     };
