@@ -1,5 +1,5 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { NormalizedProduct, HealthFlag, HealthFlagLevel } from './types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -841,7 +841,7 @@ serve(async (req) => {
       // Return normalized product format for Log scanner
       const normalizedProduct = mapOFFtoNormalizedProduct(offResult.product, norm.raw);
       return new Response(
-        JSON.stringify({ ok: true, product: normalizedProduct }),
+        JSON.stringify({ ok: true, source: 'off', product: normalizedProduct }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

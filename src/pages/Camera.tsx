@@ -30,10 +30,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
-// FoodConfirmationCard removed - using ConfirmFoodLog instead
+import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
-import { ConfirmFoodLog } from '@/components/logging/ConfirmFoodLog';
-import { NormalizedProduct } from '@/lib/food/types';
+import { ConfirmFoodLog } from '@/components/ConfirmFoodLog';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
@@ -165,35 +164,9 @@ const CameraPage = () => {
   // Processing state moved from duplicate declaration below
   const [isProcessingFood, setIsProcessingFood] = useState(false);
   
-  // Confirm Food Log handler for barcode flow
-  const handleConfirmFoodFromBarcode = async (scaled: NormalizedProduct, portion: number) => {
-    try {
-      const result = await addFood({
-        name: scaled.name,
-        calories: scaled.nutrition.calories || 0,
-        protein: scaled.nutrition.protein_g || 0,
-        carbs: scaled.nutrition.carbs_g || 0,
-        fat: scaled.nutrition.fat_g || 0,
-        fiber: scaled.nutrition.fiber_g || 0,
-        sugar: scaled.nutrition.sugar_g || 0,
-        sodium: scaled.nutrition.sodium_mg || 0,
-        confidence: 95,
-      });
-      
-      await scoreMealAfterInsert?.(result, null);
-      if (refetchSavedFoods) await refetchSavedFoods();
-      
-      toast.success(`${scaled.name} logged successfully! 🎉`);
-      setConfirmOpen(false);
-    } catch (error) {
-      console.error('Error saving food:', error);
-      toast.error('Failed to save food. Please try again.');
-    }
-  };
-
   // Confirm Food Log states
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmProduct, setConfirmProduct] = useState<NormalizedProduct | null>(null);
+  const [showConfirmFoodLog, setShowConfirmFoodLog] = useState(false);
+  const [confirmFoodProduct, setConfirmFoodProduct] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -893,49 +866,242 @@ const CameraPage = () => {
     };
   };
 
-  // Barcode lookup function - Simplified for new confirm modal
+  // Barcode lookup function - Enhanced with ingredient detection
   const handleBarcodeDetected = async (barcode: string) => {
-    const clean = barcode.replace(/\D+/g, "");
-    console.log("[LOG] off_fetch_start", { code: clean });
-
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 4500);
-
     try {
-      const { data, error } = await supabase.functions
-        .invoke("enhanced-health-scanner", {
-          body: { mode: "barcode", barcode: clean, source: "log" }
-        });
+      setIsLoadingBarcode(true);
+      setInputSource('barcode');
+      console.log('=== BARCODE LOOKUP START ===');
+      console.log('Barcode detected:', barcode);
 
-      console.log("[LOG] off_result", { status: error ? "error" : 200, hit: !!data?.product });
+      // CRITICAL: Complete state reset to prevent contamination
+      setRecognizedFoods([]);
+      setVisionResults(null);
+      setVoiceResults(null);
+      setShowSummaryPanel(false);
+      setSummaryItems([]);
+      setReviewItems([]);
+      setShowReviewScreen(false);
+      setShowError(false);
+      setErrorMessage('');
 
-      if (error || !data?.product) {
-        // open confirm with minimal payload instead of redirecting to any legacy modal
-        setConfirmProduct({
-          barcode: clean,
-          name: data?.name || "Unknown product",
-          nutrition: {},
-          ingredients: [],
-          health: { score: undefined, flags: [{ id: "not_found", level: "info", label: "Product not found online" }] },
-        });
-        setConfirmOpen(true);
-        return;
+      // Validate barcode format
+      const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+      if (!/^\d{8,14}$/.test(cleanBarcode)) {
+        throw new Error('Invalid barcode format. Please check the barcode number.');
       }
 
-      setConfirmProduct(data.product);
-      setConfirmOpen(true);
-    } catch (e) {
-      console.log("[LOG] off_result", { status: "error", hit: false });
-      setConfirmProduct({
-        barcode: clean, name: "Lookup error",
-        nutrition: {}, ingredients: [],
-        health: { score: undefined, flags: [{ id: "lookup_error", level: "info", label: "Unable to fetch product" }] },
-      });
-      setConfirmOpen(true);
-    } finally {
-      clearTimeout(timeout);
-      // close scanner safely
-      setShowLogBarcodeScanner(false);
+// Global barcode search is intentionally forced OFF for now.
+// Runtime is hardcoded to false; the profile toggle is ignored until rollout.
+const enableGlobalSearch = false;
+console.log('Global search enabled:', enableGlobalSearch);
+
+      console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
+      
+      // Test function deployment with health check
+      try {
+        const healthResponse = await supabase.functions.invoke('barcode-lookup-global', {
+          body: { health: true }
+        });
+        console.log('Health check response:', healthResponse);
+      } catch (healthError) {
+        console.error('Health check failed:', healthError);
+        if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
+          toast.error("Service temporarily unavailable", {
+            description: "Please enter product manually below",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          setIsLoadingBarcode(false);
+          return;
+        }
+      }
+      
+      console.log('=== STEP 2: CALLING BARCODE LOOKUP FUNCTION ===');
+      
+      // Create timeout controller
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4500);
+      
+      let hit = false;
+      let status: string | number = 'error';
+      
+      try {
+        const response = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' }
+        });
+        
+        status = response.error ? response.error.status || 'error' : 200;
+        hit = !!response.data?.ok && !!response.data.product;
+        
+        if (response.error) {
+          console.error('=== FUNCTION INVOCATION ERROR ===');
+          console.error('Error object:', response.error);
+          
+          // Handle specific error types with immediate fallback to manual entry
+          if (response.error.message?.includes('404') || 
+              response.error.message?.includes('Not Found') ||
+              response.error.message?.includes('FunctionsError')) {
+            console.error('Function deployment issue detected - 404 error');
+            
+            toast.error("Service temporarily unavailable", {
+              description: "Enter product details manually",
+              action: {
+                label: "Enter Manually",
+                onClick: () => {
+                  setShowBarcodeNotFound(true);
+                  setFailedBarcode(cleanBarcode);
+                }
+              }
+            });
+            
+            setShowBarcodeNotFound(true);
+            setFailedBarcode(cleanBarcode);
+            return;
+          }
+          
+          throw new Error(response.error.message || 'Failed to lookup barcode');
+        }
+
+        const data = response.data;
+        console.log('=== LOOKUP SUCCESS ===');
+        console.log('Response data:', data);
+        
+        // Handle enhanced-health-scanner response structure
+        if (!data?.ok || !data.product) {
+          const reason = data?.reason || 'unknown';
+          console.log('=== BARCODE LOOKUP FAILED ===', reason);
+          
+          // Add logging for failed barcode lookup
+          console.log('[LOG] off_result', { status: 404, hit: false });
+          
+          const msg = reason === 'off_miss' && /^\d{8}$/.test(cleanBarcode)
+            ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
+            : 'Barcode not found in database. Would you like to add this product?';
+          
+          toast.info(msg, {
+            description: "Try scanning again or enter manually",
+            action: {
+              label: "Add Product",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
+        }
+
+        // Success - process the food data from enhanced-health-scanner
+        const p = data.product;  // LogProduct from enhanced-health-scanner
+        console.log('=== PROCESSING FOOD DATA ===');
+        
+        // Log successful OFF result 
+        console.log('[LOG] off_result', { status: 200, hit: true });
+
+        // Transform LogProduct to RecognizedFood format
+        const recognizedFood: RecognizedFood = {
+          name: `${p.brand ? p.brand + ' ' : ''}${p.productName}`.trim(),
+          calories: p.nutriments.calories || 0,
+          protein: p.nutriments.protein_g || 0,
+          carbs: p.nutriments.carbs_g || 0,
+          fat: p.nutriments.fat_g || 0,
+          fiber: p.nutriments.fiber_g || 0,
+          sugar: p.nutriments.sugar_g || 0,
+          sodium: p.nutriments.sodium_mg || 0,
+          confidence: 95,
+          serving: p.serving ? `${p.serving.amount} ${p.serving.unit}` : 'As labeled'
+        };
+
+        console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
+        setRecognizedFoods([recognizedFood]);
+        setShowConfirmation(true);
+        addRecentBarcode({
+          barcode: cleanBarcode,
+          productName: recognizedFood.name,
+          nutrition: {
+            calories: recognizedFood.calories,
+            protein: recognizedFood.protein,
+            carbs: recognizedFood.carbs,
+            fat: recognizedFood.fat,
+            fiber: recognizedFood.fiber,
+            sugar: recognizedFood.sugar,
+            sodium: recognizedFood.sodium
+          }
+        });
+        addToHistory({
+          barcode: cleanBarcode,
+          productName: p.productName,
+          brand: p.brand || '',
+          source: 'barcode_lookup',
+          nutrition: {
+            calories: recognizedFood.calories,
+            protein: recognizedFood.protein,
+            carbs: recognizedFood.carbs,
+            fat: recognizedFood.fat,
+            fiber: recognizedFood.fiber,
+            sugar: recognizedFood.sugar,
+            sodium: recognizedFood.sodium
+          }
+        });
+        
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          status = 'timeout';
+          console.error('Function timeout detected');
+          
+          toast.error("Request timed out", {
+            description: "Try manual entry instead",
+            action: {
+              label: "Enter Manually", 
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
+        } else {
+          status = 'error';
+        }
+        console.error('=== BARCODE LOOKUP ERROR ===', error);
+        
+        // Enhanced error messaging with fallback options
+        const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
+        
+        toast.error("Barcode lookup failed", {
+          description: errorMessage,
+          action: {
+            label: "Enter Manually",
+            onClick: () => {
+              setShowBarcodeNotFound(true);
+              setFailedBarcode(cleanBarcode);
+            }
+          }
+        });
+        
+        setShowBarcodeNotFound(true);
+        setFailedBarcode(cleanBarcode);
+        
+      } finally {
+        clearTimeout(timeout);
+        console.log('[LOG] off_result', { status, hit });
+        setIsLoadingBarcode(false);
+      }
+    } catch (outerError) {
+      console.error('=== OUTER BARCODE ERROR ===', outerError);
+      setIsLoadingBarcode(false);
     }
   };
 
@@ -2572,7 +2738,43 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Legacy Food Confirmation Card removed - using ConfirmFoodLog for barcodes */}
+      {/* Food Confirmation Card */}
+      <FoodConfirmationCard
+        isOpen={showConfirmation}
+        isProcessingFood={isProcessingFood}
+        onClose={() => {
+          setShowConfirmation(false);
+          setIsProcessingFood(false); // Reset processing state when closing
+          // Reset multi-item flow if needed
+          if (pendingItems.length > 0) {
+            setPendingItems([]);
+            setCurrentItemIndex(0);
+          }
+          setShowTransition(false);
+          // Return to the appropriate previous screen
+          if (selectedImage && !showSummaryPanel) {
+            // Return to camera analysis view
+            setIsAnalyzing(false);
+          } else if (summaryItems.length > 0) {
+            // Return to summary panel if it was the previous screen
+            setShowSummaryPanel(true);
+          } else {
+            // Reset to camera home
+            resetState();
+          }
+        }}
+        onConfirm={handleConfirmFood}
+        onSkip={handleSkipFood}
+        onCancelAll={handleCancelAll}
+        foodItem={recognizedFoods[0] || null}
+        showSkip={pendingItems.length > 1}
+        currentIndex={currentItemIndex}
+        onVoiceAnalyzingComplete={() => {
+          setShowVoiceAnalyzing(false);
+          setShowProcessingNextItem(false);
+        }}
+        totalItems={pendingItems.length}
+      />
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
       {inputSource !== 'barcode' && (
@@ -2656,14 +2858,7 @@ const CameraPage = () => {
         debugInfo={(recognizedFoods[0] as any)?.servingDebug}
       />
 
-      {/* Confirm Food Log Modal */}
-      <ConfirmFoodLog
-        open={confirmOpen}
-        product={confirmProduct}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmFoodFromBarcode}
-      />
-
+      {/* Activity Logging Section - Exercise, Recovery, Habits */}
       <div className="mt-8">
         <ActivityLoggingSection />
       </div>
