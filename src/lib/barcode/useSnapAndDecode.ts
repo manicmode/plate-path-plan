@@ -28,6 +28,23 @@ export function useSnapAndDecode() {
     }
   };
 
+  const restartCamera = async (video: HTMLVideoElement) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      video.srcObject = stream;
+      streamRef.current = stream;
+      await video.play();
+    } catch (error) {
+      console.error('Failed to restart camera:', error);
+    }
+  };
+
   const snapAndDecode = async (opts: {
     videoEl: HTMLVideoElement;
     budgetMs?: number;
@@ -155,7 +172,16 @@ export function useSnapAndDecode() {
       } catch (e) {
         console.warn(`${logPrefix} unfreeze error:`, e);
       }
-      ensurePreviewPlaying(videoEl);
+      
+      // Ensure camera track is still active
+      const track = videoEl.srcObject && (videoEl.srcObject as MediaStream).getVideoTracks?.()?.[0];
+      if (!track || track.readyState === 'ended') {
+        console.log(`${logPrefix} restarting camera stream`);
+        await restartCamera(videoEl);
+      } else {
+        ensurePreviewPlaying(videoEl);
+      }
+      
       inFlightRef.current = false;
       console.log(`${logPrefix} preview_resume`);
     }

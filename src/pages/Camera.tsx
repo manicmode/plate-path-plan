@@ -927,12 +927,12 @@ console.log('Global search enabled:', enableGlobalSearch);
       let status: string | number = 'error';
       
       try {
-        const response = await supabase.functions.invoke('barcode-lookup-global', {
-          body: { barcode: cleanBarcode }
+        const response = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' }
         });
         
         status = response.error ? 'error' : 200;
-        hit = !!response.data;
+        hit = !!response.data && !response.data.fallback;
         
         if (response.error) {
           console.error('=== FUNCTION INVOCATION ERROR ===');
@@ -967,14 +967,20 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('=== LOOKUP SUCCESS ===');
         console.log('Response data:', data);
         
-        if (!data?.success) {
-          console.log('=== BARCODE LOOKUP FAILED ===', data?.message);
+        // Handle enhanced-health-scanner response structure
+        if (!data || data.fallback) {
+          const reason = data?.reason || 'unknown';
+          console.log('=== BARCODE LOOKUP FAILED ===', reason);
           
           // Add logging for failed barcode lookup
           console.log('[LOG] off_result', { status: 404, hit: false });
           
-          toast.info("Barcode not found in database", {
-            description: "Would you like to add this product?",
+          const msg = reason === 'off_miss' && /^\d{8}$/.test(cleanBarcode)
+            ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
+            : 'Barcode not found in database. Would you like to add this product?';
+          
+          toast.info(msg, {
+            description: "Try scanning again or enter manually",
             action: {
               label: "Add Product",
               onClick: () => {
@@ -989,8 +995,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           return;
         }
 
-        // Success - process the food data
-        const foodData = data.data;
+        // Success - process the food data from enhanced-health-scanner
+        const foodData = data;  // enhanced-health-scanner returns data directly
         console.log('=== PROCESSING FOOD DATA ===');
         
         // Log successful OFF result 
@@ -2798,12 +2804,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
 
-      {/* Barcode Scanner Modal */}
-      <BarcodeScanner
-        isOpen={showBarcodeScanner}
-        onClose={() => setShowBarcodeScanner(false)}
-        onBarcodeDetected={handleBarcodeDetected}
-      />
+      {/* Legacy BarcodeScanner removed - using LogBarcodeScannerModal only */}
 
       {/* Log Barcode Scanner Modal - Full Screen */}
       <LogBarcodeScannerModal
@@ -2827,7 +2828,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         }}
         onTryAgain={() => {
           setShowBarcodeNotFound(false);
-          setShowBarcodeScanner(true);
+          setShowLogBarcodeScanner(true);
         }}
       />
 
