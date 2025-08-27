@@ -16,6 +16,8 @@ function extractName(edge: any): string | undefined {
   const name = pickName(
     p?.displayName,
     p?.name,
+    p?.productName,         // camelCase from LogProduct
+    p?.title,               // alternative title field
     p?.product_name_en,
     p?.product_name,
     p?.generic_name_en,
