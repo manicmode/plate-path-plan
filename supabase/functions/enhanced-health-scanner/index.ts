@@ -542,6 +542,7 @@ async function processVisionProviders(
     const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!googleApiKey) {
       steps.push({ stage: 'google', ok: false, meta: { code: 'MISSING_KEY' }});
+    } else {
       // PHASE 2: Google OCR + Logo (6s timeout for quick first hit)
       const withTimeout = <T>(promise: Promise<T>, timeoutMs = 6000): Promise<T> => {
         return new Promise((resolve, reject) => {
@@ -560,52 +561,55 @@ async function processVisionProviders(
           return aggregated;
         }
         
-        // Check if parsing succeeded and join brand tokens using comprehensive system
-        const google_ok = result.text.length > 0 && result.ocrConfidence > 0;
-        
         // Apply comprehensive brand normalization to Google results
         const brandNormResult = normalizeBrandComprehensive({
           ocrTokens: result.cleanedTokens,
           logoBrands: result.logoBrands || []
         });
         
-        // Check for decisive brand match (early-exit trigger)
-        const isDecisive = brandNormResult.confidence >= 0.7 && brandNormResult.brandGuess;
+        // Check for early-exit conditions (Trader Joe's or high-confidence brand)
+        const isDecisive = result.hasTraderJoes || 
+                          (brandNormResult.confidence >= 0.9 && brandNormResult.brandGuess);
+        
         if (isDecisive) {
-          console.log(`🚀 Early exit triggered [${reqId}]: ${brandNormResult.brandGuess} (${brandNormResult.confidence})`);
+          const finalBrand = result.hasTraderJoes ? "Trader Joe's" : brandNormResult.brandGuess;
+          const confidence = result.hasTraderJoes ? 0.9 : brandNormResult.confidence;
+          const reason = result.hasTraderJoes ? 'ocr_window_match' : brandNormResult.reason;
           
-          // Cancel OpenAI via abort signal if it was started
-          if (abortSignal && !abortSignal.aborted) {
-            (abortSignal as any).abort?.();
-          }
+          console.log(`🚀 Early exit triggered: ${finalBrand} (${confidence})`);
           
-          // Return immediate branded_candidates decision
-          return {
-            kind: 'branded_candidates',
-            productName: 'Product detected with high confidence',
-            healthScore: null,
-            healthFlags: [],
-            nutritionSummary: null,
-            ingredients: [],
-            recommendations: [`Search for "${brandNormResult.brandGuess}" products.`],
-            generalSummary: `Detected ${brandNormResult.brandGuess} product with high confidence.`,
-            candidates: [],
-            suggest: { brand: brandNormResult.brandGuess, phrase: result.cleanedTokens.slice(0, 8).join(' ') },
-            fallback: false,
-            provider_used: 'google',
-            early_exit: true,
-            steps: [...steps, { 
-              stage: 'early_exit', 
-              ok: true, 
-              meta: { 
-                provider: 'google',
-                brand: brandNormResult.brandGuess,
-                confidence: brandNormResult.confidence,
-                reason: brandNormResult.reason || 'ocr_match'
-              }
-            }]
+          // Signal for cancellation
+          steps.push({ 
+            stage: 'early_exit', 
+            ok: true, 
+            meta: { 
+              provider: 'google',
+              brand: finalBrand,
+              confidence,
+              reason,
+              atMs: Date.now()
+            }
+          });
+          
+          // Return immediately - OpenAI will be cancelled by abort signal
+          aggregated = {
+            text: result.text,
+            cleanedTokens: result.cleanedTokens,
+            brandTokens: [finalBrand],
+            hasCandy: result.hasCandy,
+            fuzzyBrands: result.fuzzyBrands,
+            ocrConfidence: result.ocrConfidence,
+            logoBrands: result.logoBrands || [],
+            brandGuess: finalBrand,
+            brandConfidence: confidence,
+            earlyExit: true,
+            earlyExitReason: reason
           };
+          return aggregated;
         }
+        
+        // Check if parsing succeeded
+        const google_ok = result.text.length > 0 && result.ocrConfidence > 0;
         
         steps.push({ 
           stage: 'ocr', 
@@ -614,7 +618,10 @@ async function processVisionProviders(
             chars: result.text.length, 
             topTokens: result.cleanedTokens.slice(0, 10),
             brandGuess: brandNormResult.brandGuess,
-            brandConfidence: brandNormResult.confidence
+            brandConfidence: brandNormResult.confidence,
+            ocrPreview: result.ocrPreview,
+            usedFullText: result.usedFullText,
+            hasTraderJoes: result.hasTraderJoes
           }
         });
         
@@ -628,7 +635,9 @@ async function processVisionProviders(
         });
         
         console.log('[VISION] end: google', { 
-          ok: google_ok 
+          ok: google_ok,
+          hasTraderJoes: result.hasTraderJoes,
+          brandGuess: brandNormResult.brandGuess
         });
         
         if (google_ok) {
@@ -641,7 +650,10 @@ async function processVisionProviders(
             ocrConfidence: result.ocrConfidence,
             logoBrands: result.logoBrands || [],
             brandGuess: brandNormResult.brandGuess,
-            brandConfidence: brandNormResult.confidence
+            brandConfidence: brandNormResult.confidence,
+            ocrPreview: result.ocrPreview,
+            usedFullText: result.usedFullText,
+            hasTraderJoes: result.hasTraderJoes
           };
           return aggregated;
         }
@@ -666,7 +678,7 @@ async function processVisionProviders(
     } else {
       try {
         console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
-        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal));
+        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), 6000); // 6s timeout
         
         // Check if cancelled
         if (abortSignal?.aborted) {
@@ -828,7 +840,7 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0,
-        max_tokens: 160, // Increased from 64
+        max_tokens: 120, // Reduced for faster response
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -943,9 +955,53 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
   }
 }
 
+// Helper functions for robust text processing
+function normalizeBrandText(s: string): string {
+  return (s || '')
+    .replace(/\u2019/g, "'")  // curly apostrophe → straight
+    .replace(/'/g, "'")       // ensure consistent apostrophes
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+    .toLowerCase();
+}
+
+function tokenize(s: string): string[] {
+  return s.split(/[^a-z0-9']+/).filter(token => token.length > 1);
+}
+
+// Detect brand sequence within window (e.g., trader + joe within 3 tokens)
+function detectWindow(tokens: string[], seq: string[], maxGap = 3): boolean {
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] === seq[0]) {
+      let found = 1;
+      for (let j = i + 1, steps = 0; j < tokens.length && steps <= maxGap && found < seq.length; j++, steps++) {
+        if (tokens[j] === seq[found]) {
+          found++;
+        }
+      }
+      if (found === seq.length) return true;
+    }
+  }
+  return false;
+}
+
+function topTokensFromText(tokens: string[]): string[] {
+  const stopWords = new Set(['the','and','of','with','other','natural','flavors','net','wt','oz','lb']);
+  const freq = new Map<string, number>();
+  for (const token of tokens) {
+    if (!stopWords.has(token) && token.length > 2) {
+      freq.set(token, (freq.get(token) || 0) + 1);
+    }
+  }
+  return Array.from(freq.entries())
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([token]) => token);
+}
+
 /**
- * Extract and clean OCR text (Google Vision) with Logo Detection and DOCUMENT_TEXT_DETECTION
- * Updated with 6s timeout and better parsing
+ * Extract and clean OCR text (Google Vision) with DOCUMENT_TEXT_DETECTION and enhanced parsing
+ * Updated with 6s timeout, better text normalization, and early-exit detection
  */
 async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal): Promise<{ 
   text: string; 
@@ -956,6 +1012,9 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
   ocrConfidence: number;
   logoBrands: string[];
   ocrField?: string;
+  ocrPreview?: string;
+  usedFullText?: boolean;
+  hasTraderJoes?: boolean;
 }> {
   try {
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
@@ -996,14 +1055,19 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
     // Parse fullTextAnnotation.text first, fallback to textAnnotations[0].description
     let rawText = '';
     let ocrField = 'none';
+    let usedFullText = false;
     
     if (result.responses?.[0]?.fullTextAnnotation?.text) {
       rawText = result.responses[0].fullTextAnnotation.text;
       ocrField = 'fullTextAnnotation';
+      usedFullText = true;
     } else if (result.responses?.[0]?.textAnnotations?.[0]?.description) {
       rawText = result.responses[0].textAnnotations[0].description;
       ocrField = 'textAnnotations';
+      usedFullText = false;
     }
+    
+    const ocrPreview = rawText.slice(0, 140);
     
     const logos = result.responses?.[0]?.logoAnnotations || [];
     
@@ -1013,22 +1077,22 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
     // Calculate OCR confidence from response
     const ocrConfidence = result.responses?.[0]?.textAnnotations?.[0]?.confidence || 0.5;
     
-    // Normalize: lowercase, strip punctuation, collapse whitespace
-    const normalized = rawText
-      .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    // Enhanced normalization with curly apostrophe handling
+    const normalized = normalizeBrandText(rawText);
+    const tokens = tokenize(normalized);
     
-    // Remove stop-words and packaging tokens
-    const tokens = normalized.split(/\s+/)
-      .filter(token => token.length > 2 && !STOP_WORDS.has(token));
+    // Detect Trader Joe's within window
+    const hasTraderJoes = detectWindow(tokens, ['trader', 'joe'], 3) || 
+                         detectWindow(tokens, ['trader', 'joes'], 3);
+    
+    // Remove stop-words for clean tokens
+    const cleanedTokens = tokens.filter(token => token.length > 2 && !STOP_WORDS.has(token));
     
     // Extract exact brand matches (legacy)
-    const exactBrandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+    const exactBrandTokens = cleanedTokens.filter(token => BRAND_LEXICON.has(token));
     
     // Extract fuzzy brand matches
-    const fuzzyBrands = extractBrandTokensWithFuzzy(tokens);
+    const fuzzyBrands = extractBrandTokensWithFuzzy(cleanedTokens);
     
     // Combine exact, fuzzy, and logo brands
     const allBrandTokens = [...exactBrandTokens];
@@ -1050,28 +1114,33 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
     });
     
     // Enhanced candy detection
-    const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token)) ||
+    const hasCandy = cleanedTokens.some(token => CANDY_KEYWORDS.has(token)) ||
                     fuzzyBrands.some(match => match.brand.includes('candy') || match.brand.includes('chocolate'));
     
     console.log('📝 OCR+Logo processed:', { 
       rawLength: rawText.length, 
-      tokens: tokens.length, 
+      tokens: cleanedTokens.length, 
       brandTokens: allBrandTokens, 
       logoBrands: logoBrands.length,
       fuzzyMatches: fuzzyBrands.length,
       hasCandy,
-      ocrConfidence
+      hasTraderJoes,
+      ocrConfidence,
+      usedFullText
     });
     
     return { 
       text: rawText,
-      cleanedTokens: tokens, 
+      cleanedTokens, 
       brandTokens: allBrandTokens, 
       hasCandy,
       fuzzyBrands,
       ocrConfidence,
       logoBrands,
-      ocrField
+      ocrField,
+      ocrPreview,
+      usedFullText,
+      hasTraderJoes
     };
   } catch (error) {
     console.error('❌ OCR+Logo extraction failed:', error);
@@ -1083,7 +1152,10 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
       fuzzyBrands: [],
       ocrConfidence: 0,
       logoBrands: [],
-      ocrField: 'none'
+      ocrField: 'none',
+      ocrPreview: '',
+      usedFullText: false,
+      hasTraderJoes: false
     };
   }
 }

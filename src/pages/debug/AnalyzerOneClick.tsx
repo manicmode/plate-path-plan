@@ -171,10 +171,11 @@ export default function AnalyzerOneClick() {
           } else {
             // Extract analysis data with brand normalization
             const analysisSteps = data.steps || [];
-            const ocrStep = analysisSteps.find((s: any) => s.stage === 'ocr');
+            const ocrStep = analysisSteps.find((s: any) => s.stage === 'ocr');  
             const logoStep = analysisSteps.find((s: any) => s.stage === 'logo');
             const openaiStep = analysisSteps.find((s: any) => s.stage === 'openai');
             const timeoutStep = analysisSteps.find((s: any) => s.stage === 'timeout');
+            const earlyExitStep = analysisSteps.find((s: any) => s.stage === 'early_exit');
             
             let notes = '';
             if (timeoutStep) {
@@ -183,6 +184,8 @@ export default function AnalyzerOneClick() {
               notes = 'MISSING_KEY';
             } else if (analysisSteps.some((s: any) => s.stage === 'openai_parse' && !s.ok)) {
               notes = 'PARSE_ERR';
+            } else if (earlyExitStep?.ok) {
+              notes = `EARLY_EXIT: ${earlyExitStep.meta?.reason || 'brand_hit'}`;
             }
 
             // Apply hot thresholds if enabled
@@ -206,7 +209,7 @@ export default function AnalyzerOneClick() {
               ...results[index],
               status: 'completed',
               ok: isSuccess,
-              brand_guess: openaiStep?.meta?.brandGuess || logoStep?.meta?.brandGuess || ocrStep?.meta?.brandGuess || openaiStep?.meta?.brand || '',
+              brand_guess: earlyExitStep?.meta?.brand || openaiStep?.meta?.brandGuess || logoStep?.meta?.brandGuess || ocrStep?.meta?.brandGuess || openaiStep?.meta?.brand || '',
               logo_brands: logoStep?.meta?.logoBrands || [],
               ocr_top_tokens: ocrStep?.meta?.topTokens?.slice(0, 5) || [],
               decision,
@@ -218,14 +221,15 @@ export default function AnalyzerOneClick() {
 
             console.log(`[ANALYZER] ${provider}_done decision:`, decision);
 
-            // Early exit check - if this provider found decisive results
-            if (isSuccess && !hasEarlyExit) {
+            // Early exit check - if this provider found decisive results or early exit was triggered
+            const hasEarlyExitNow = earlyExitStep?.ok || (isSuccess && !hasEarlyExit);
+            if (hasEarlyExitNow && !hasEarlyExit) {
               const currentTime = performance.now();
               setDecisionTime(Math.round(currentTime - runStartTime));
               setEarlyExitProvider(provider);
               setHasEarlyExit(true);
               
-              console.log('[ANALYZER] Early exit triggered', { provider, decision });
+              console.log('[ANALYZER] Early exit triggered', { provider, decision, reason: earlyExitStep?.meta?.reason });
               
               // Cancel the other provider
               if (provider === 'openai') {
