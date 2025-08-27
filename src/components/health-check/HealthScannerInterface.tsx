@@ -37,7 +37,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
-  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
+  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
 
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
@@ -55,6 +55,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      updateStreamRef(null);
     };
   }, [currentView]);
 
@@ -116,10 +117,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       });
 
       setStream(mediaStream);
+      updateStreamRef(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         console.log("[CAMERA] srcObject set, playing video");
       }
+      
+      // Log torch capabilities
+      const track = mediaStream.getVideoTracks()[0];
+      console.log('[TORCH] caps', track?.getCapabilities?.());
+      console.log('[TORCH] supported', isTorchSupported(track));
     } catch (error) {
       console.error("[CAMERA FAIL] getUserMedia error:", error);  
       // Fallback to basic camera
@@ -128,9 +135,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           video: { facingMode: 'environment' }
         });
         setStream(fallbackStream);
+        updateStreamRef(fallbackStream);
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
         }
+        
+        // Log torch capabilities for fallback stream
+        const track = fallbackStream.getVideoTracks()[0];
+        console.log('[TORCH] fallback caps', track?.getCapabilities?.());
+        console.log('[TORCH] fallback supported', isTorchSupported(track));
       } catch (fallbackError) {
         console.error('Camera access completely failed:', fallbackError);
       }
@@ -760,7 +773,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
             torchEnabled={torchEnabled}
-            torchSupported={stream ? isTorchSupported(stream.getVideoTracks()[0]) : false}
+            torchSupported={torchSupported}
           />
         </footer>
       </div>
