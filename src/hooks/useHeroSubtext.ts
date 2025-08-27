@@ -133,7 +133,7 @@ const MOTIVATIONAL_MESSAGES: HeroMessage[] = [
   }
 ];
 
-const DEFAULT_MESSAGE = "Your intelligent wellness companion is ready ✨";
+const DEFAULT_MESSAGE = "Your intelligent wellness companion is ready";
 
 export const useHeroSubtext = () => {
   const { user } = useAuth();

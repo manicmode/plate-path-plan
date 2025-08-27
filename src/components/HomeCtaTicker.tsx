@@ -658,8 +658,11 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   }
 
   return (
-    <p className={`text-gray-600 dark:text-gray-300 font-medium ${className}`}>
-      {heroMessage}
-    </p>
+    <div className={`overflow-hidden whitespace-nowrap ${className}`}>
+      <div className="inline-flex animate-marquee text-gray-600 dark:text-gray-300 font-medium">
+        <span className="pr-20">{heroMessage}</span>
+        <span className="pr-20">{heroMessage}</span>
+      </div>
+    </div>
   );
 };
