@@ -95,6 +95,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
   const { toast } = useToast();
   const { user } = useAuth();
+  const currentRunId = useRef<string | null>(null);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -109,9 +110,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleImageCapture = async (imageData: string) => {
+  const handleImageCapture = async (payload: any) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
-    console.log("📥 Image data received:", imageData ? `${imageData.length} characters` : "NO DATA");
+    console.log("📥 Payload received:", payload);
     console.log("👤 User ID:", user?.id || "NO USER");
     
     // Prevent concurrent analysis calls
@@ -119,6 +120,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.log("⚠️ Analysis already in progress, ignoring request");
       return;
     }
+    
+    // Generate unique run ID to ignore stale results
+    const runId = crypto.randomUUID();
+    currentRunId.current = runId;
     
     // Generate unique capture ID for correlation
     const currentCaptureId = crypto.randomUUID().substring(0, 8);
@@ -129,9 +134,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
-      // Check if image contains a barcode (appended from HealthScannerInterface)
-      const barcodeMatch = imageData.match(/&barcode=(\d+)$/);
-      const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
+      // Extract data from payload (either legacy string format or new object format)
+      const imageData = typeof payload === 'string' ? payload : payload.imageBase64;
+      const detectedBarcode = typeof payload === 'string' ? 
+        payload.match(/&barcode=(\d+)$/)?.[1] || null : 
+        payload.detectedBarcode;
       
       if (detectedBarcode) {
         console.log(`📊 Barcode detected in image [${currentCaptureId}]:`, detectedBarcode);
@@ -198,45 +205,89 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       }
       
       // Clean image data if it contains a barcode parameter
-      const cleanImageData = detectedBarcode ? 
+      const cleanImageData = typeof imageData === 'string' && detectedBarcode ? 
         imageData.replace(/&barcode=\d+$/, '') : 
         imageData;
         
+      // Helper to check for brand signal in steps
+      const hasBrandSignal = (steps?: any[]): boolean =>
+        !!steps?.some(s =>
+          (s.stage === 'logo' && s.ok) ||
+          (s.stage === 'ocr' && (s.meta?.topTokens ?? []).some((t: string) =>
+            /trader|kellogg|nestle|pepsi|coca|quaker|nature|kind|clif|oreo|cheerios/i.test(t)
+          )) ||
+          (s.stage === 'openai' && s.ok && (s.meta?.confidence ?? 0) >= 0.4)
+        );
+
+      // Helper to call analyzer with stale check
+      const callAnalyzer = async (analyzerPayload: any) => {
+        if (currentRunId.current !== runId) return null; // stale
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: analyzerPayload
+        });
+        
+        if (currentRunId.current !== runId) return null; // stale
+        if (error) throw new Error(error.message || 'Failed to analyze image');
+        return data;
+      };
+        
       // Use enhanced scanner with structured results
-      const payload = {
+      const analyzerPayload = {
         imageBase64: cleanImageData,
         mode: 'scan',
-        detectedBarcode: detectedBarcode || null
+        detectedBarcode: detectedBarcode || null,
+        provider: 'hybrid',
+        debug: true
       };
       
-      // A) Prove analyzer gets full-frame image (DEV-only logs)
-      const estimatedBytes = Math.floor(payload.imageBase64.length * 0.75); // base64 overhead
-      console.debug(`[ANALYZE IMG] {bytes: ${payload.imageBase64.length}, estimatedImageBytes: ${estimatedBytes}}`);
-      
       console.log(`📦 Enhanced scanner payload [${currentCaptureId}]:`, {
-        mode: payload.mode,
-        dataLength: payload.imageBase64?.length || 0,
+        mode: analyzerPayload.mode,
+        provider: analyzerPayload.provider,
+        dataLength: analyzerPayload.imageBase64?.length || 0,
         hasDetectedBarcode: !!detectedBarcode
       });
       
-      let data, error;
-      try {
-        console.log(`🔄 Making enhanced-health-scanner call [${currentCaptureId}]...`);
-        console.log('[HS PIPELINE]', 'enhanced-health-scanner', { mode: payload.mode });
-        const result = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: payload
-        });
-        console.log(`✅ Enhanced Health Scanner Success [${currentCaptureId}]:`, result);
+      // Primary analysis call
+      let data = await callAnalyzer(analyzerPayload);
+      if (!data) return; // stale
+      
+      console.debug('[HS RESULT]', { 
+        kind: data?.kind, 
+        provider: data?.provider_used, 
+        steps: data?.steps 
+      });
+
+      // One-time provider retry before showing "no detection"
+      if (data?.kind === 'none') {
+        console.log('[HS] Hybrid returned none, trying single providers...');
         
-        data = result.data;
-        error = result.error;
-      } catch (funcError) {
-        console.error(`❌ Enhanced Health Scanner Failed [${currentCaptureId}]:`, funcError);
-        throw funcError;
+        // Prefer OpenAI first (it nailed Trader Joe's at 0.99 in probe tests)
+        const openaiResult = await callAnalyzer({ ...analyzerPayload, provider: 'openai' });
+        if (!openaiResult) return; // stale
+        
+        console.debug('[HS RETRY OPENAI]', { kind: openaiResult?.kind });
+        
+        if (openaiResult?.kind === 'branded_candidates' || openaiResult?.kind === 'single_product') {
+          data = openaiResult;
+        } else {
+          // Last-resort: Google-only
+          const googleResult = await callAnalyzer({ ...analyzerPayload, provider: 'google' });
+          if (!googleResult) return; // stale
+          
+          console.debug('[HS RETRY GOOGLE]', { kind: googleResult?.kind });
+          data = googleResult?.kind !== 'none' ? googleResult : data;
+        }
       }
 
-      if (error) {
-        throw new Error(error.message || 'Failed to analyze image');
+      // Route to brand candidates when there's any brand signal in steps
+      if (data?.kind === 'none' && hasBrandSignal(data?.steps)) {
+        console.log('[HS] Found brand signal in steps, converting to candidates');
+        data = {
+          ...data,
+          kind: 'branded_candidates',
+          candidates: data?.candidates ?? []
+        };
       }
 
       // Use the tolerant adapter to map edge response to legacy fields
