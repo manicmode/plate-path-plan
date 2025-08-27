@@ -238,6 +238,24 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             {/* Bottom gradient */}
             <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
             
+            {/* Flashlight Button - Positioned above upload button */}
+            {supportsTorch && (
+              <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)]">
+                <Button
+                  onClick={toggleTorch}
+                  size="lg"
+                  className={`rounded-full w-12 h-12 p-0 transition-all duration-200 ${
+                    torchOn 
+                      ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/30' 
+                      : 'bg-gray-700 hover:bg-gray-600 text-white border border-gray-500'
+                  }`}
+                  title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
+                >
+                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-white' : 'text-gray-300'}`} />
+                </Button>
+              </div>
+            )}
+            
             {/* Bottom Controls */}
             <footer className="absolute bottom-8 inset-x-0 pb-[env(safe-area-inset-bottom)] px-8">
               {/* Instructions */}
