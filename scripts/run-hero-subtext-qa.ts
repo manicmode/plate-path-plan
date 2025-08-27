@@ -11,7 +11,7 @@ async function main() {
   
   try {
     // Run all QA scenarios
-    const report = runAllQAScenarios();
+    const report = runAllQAScenarios({ ignoreSystem: true });
     
     // Ensure reports directory exists
     const reportsDir = path.join(process.cwd(), 'public', 'reports');

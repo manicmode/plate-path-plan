@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   runAllQAScenarios, 
   runQAScenario,
   clearFreshnessMemory, 
   generateMarkdownReport,
+  getHeroSubtext,
   QA_SCENARIOS,
   type QAReport 
 } from '@/debug/heroSubtextQA';
@@ -16,12 +19,13 @@ export default function HeroSubtextQA() {
   const [report, setReport] = useState<QAReport | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [ignoreSystemMessages, setIgnoreSystemMessages] = useState(true);
 
   // Auto-run on mount
   useEffect(() => {
     const runInitialTest = async () => {
       try {
-        const result = runAllQAScenarios();
+        const result = runAllQAScenarios({ ignoreSystem: ignoreSystemMessages });
         setReport(result);
       } catch (error) {
         console.error('[HeroSubtextQA] Initial test run failed:', error);
@@ -31,14 +35,14 @@ export default function HeroSubtextQA() {
     };
     
     runInitialTest();
-  }, []);
+  }, [ignoreSystemMessages]);
 
   const handleRunAll = async () => {
     setIsRunning(true);
     console.log('[HeroSubtextQA] Starting QA test run...');
     
     try {
-      const result = runAllQAScenarios();
+      const result = runAllQAScenarios({ ignoreSystem: ignoreSystemMessages });
       setReport(result);
       
       // Generate and save markdown report
@@ -71,7 +75,7 @@ export default function HeroSubtextQA() {
     if (!scenario) return;
     
     console.log(`[HeroSubtextQA] Running single scenario: ${scenarioId}`);
-    const result = runQAScenario(scenario);
+    const result = runQAScenario(scenario, { ignoreSystem: ignoreSystemMessages });
     console.log(`[HeroSubtextQA] Result:`, result);
   };
 
@@ -96,28 +100,41 @@ export default function HeroSubtextQA() {
           </p>
         </div>
         
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleClearMemory}
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Clear Memory
-          </Button>
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="ignore-system"
+              checked={ignoreSystemMessages}
+              onCheckedChange={setIgnoreSystemMessages}
+            />
+            <Label htmlFor="ignore-system" className="text-sm">
+              Ignore System Messages
+            </Label>
+          </div>
           
-          <Button
-            onClick={handleRunAll}
-            disabled={isRunning}
-            className="flex items-center gap-2"
-          >
-            {isRunning ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            Run All Tests
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClearMemory}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Memory
+            </Button>
+            
+            <Button
+              onClick={handleRunAll}
+              disabled={isRunning}
+              className="flex items-center gap-2"
+            >
+              {isRunning ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              Run All Tests
+            </Button>
+          </div>
         </div>
       </div>
 

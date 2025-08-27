@@ -292,12 +292,18 @@ export const useHeroSubtext = () => {
     const context = buildContext();
     
     // Priority order: System → Timely → Personalized → Motivational → Default
+    // Production always includes system messages (no QA options here)
     const allMessages = [
       ...SYSTEM_MESSAGES,
       ...TIMELY_MESSAGES, 
       ...PERSONALIZED_MESSAGES,
       ...MOTIVATIONAL_MESSAGES
     ];
+
+    // Log when system message is available for production
+    if (SYSTEM_MESSAGES.length > 0) {
+      console.debug('[hero-subtext] system override selected');
+    }
 
     const matchedMessage = findMatchingMessage(allMessages, context);
     

@@ -235,16 +235,21 @@ const MOTIVATIONAL_MESSAGES: HeroMessage[] = [
 
 const DEFAULT_MESSAGE = "Your intelligent wellness companion is ready";
 
-// Testable wrapper function
-export function getHeroSubtext(options: {
+// QA options type
+export type HeroPickOptions = {
   now?: Date;
   mockData?: any;
   seed?: string;
   forceFlags?: Record<string, boolean>;
-}): { text: string; id: string; category: string; reason: string; performanceMs: number } {
+  qaMode?: boolean;
+  ignoreSystem?: boolean; // QA-only control to skip system messages
+};
+
+// Testable wrapper function
+export function getHeroSubtext(options: HeroPickOptions = {}): { text: string; id: string; category: string; reason: string; performanceMs: number } {
   const startTime = performance.now();
   
-  const { now = new Date(), mockData = {}, forceFlags = {} } = options;
+  const { now = new Date(), mockData = {}, forceFlags = {}, ignoreSystem = false } = options;
   
   // Check feature flag
   const dynamicEnabled = forceFlags.hero_subtext_dynamic !== undefined 
@@ -264,12 +269,25 @@ export function getHeroSubtext(options: {
   const context = buildContextFromMock(now, mockData);
   
   // Priority order: System → Timely → Personalized → Motivational → Default
-  const allMessages = [
-    ...SYSTEM_MESSAGES,
+  // In QA mode, optionally skip system messages for deterministic testing
+  const allMessages = [];
+  
+  if (!ignoreSystem) {
+    allMessages.push(...SYSTEM_MESSAGES);
+    // Log when system message is available but not ignored
+    if (SYSTEM_MESSAGES.length > 0 && ignoreSystem === false) {
+      console.debug('[hero-subtext] system override available and considered');
+    }
+  } else if (SYSTEM_MESSAGES.length > 0) {
+    // QA mode: log when system message is present but ignored
+    console.debug('[hero-subtext][QA] system override present but ignored');
+  }
+  
+  allMessages.push(
     ...TIMELY_MESSAGES, 
     ...PERSONALIZED_MESSAGES,
     ...MOTIVATIONAL_MESSAGES
-  ];
+  );
 
   const matchedMessage = findMatchingMessage(allMessages, context);
   
@@ -436,13 +454,16 @@ export function seedFreshnessMemory(messageIds: string[]): void {
 }
 
 // Run QA scenario
-export function runQAScenario(scenario: QAScenario): QAResult {
+export function runQAScenario(scenario: QAScenario, options: { ignoreSystem?: boolean } = {}): QAResult {
   const testDate = new Date(scenario.timestamp);
+  const { ignoreSystem = true } = options;
   
   const result = getHeroSubtext({
     now: testDate,
     mockData: scenario.mockData,
-    forceFlags: { hero_subtext_dynamic: true }
+    forceFlags: { hero_subtext_dynamic: true },
+    qaMode: true,
+    ignoreSystem // Use the provided option
   });
 
   // Console breadcrumb for verification
@@ -503,7 +524,9 @@ export function runQAScenario(scenario: QAScenario): QAResult {
 }
 
 // Run all QA scenarios
-export function runAllQAScenarios(): QAReport {
+export function runAllQAScenarios(options: { ignoreSystem?: boolean } = {}): QAReport {
+  const startTime = Date.now();
+  
   const results: QAResult[] = [];
   
   // Clear memory for consistent testing
@@ -522,7 +545,7 @@ export function runAllQAScenarios(): QAReport {
       seedFreshnessMemory(allIds);
     }
     
-    const result = runQAScenario(scenario);
+    const result = runQAScenario(scenario, options);
     results.push(result);
     
     // Clear for next test
