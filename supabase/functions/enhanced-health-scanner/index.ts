@@ -585,10 +585,14 @@ async function processHealthScanWithCandidates(imageBase64: string, reqId: strin
   
   if (singleProduct) {
     console.log(`✅ Single product found [${reqId}]: ${singleProduct.product_name}`);
-    const response = mapOFFtoBackendResponse(singleProduct);
+    const logProduct = mapOFFtoLogProduct(singleProduct, singleProduct.code || '');
     return {
-      ...response,
-      product: mapOFFtoLogProduct(singleProduct, singleProduct.code || '')
+      kind: 'single_product',
+      product: logProduct,
+      productName: logProduct.productName,
+      healthScore: logProduct.health?.score || null,
+      nutritionSummary: logProduct.nutrition,
+      fallback: false
     };
   }
 
@@ -1052,10 +1056,14 @@ serve(async (req) => {
         if (offResult?.product_found) {
           console.log(`✅ Barcode-on-still hit [${reqId}]: ${offResult.product.product_name}`);
           
+          const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
           const response = {
-            ...mapOFFtoBackendResponse(offResult.product),
             kind: 'single_product',
-            product: mapOFFtoLogProduct(offResult.product, norm.raw)
+            product: logProduct,
+            productName: logProduct.productName,
+            healthScore: logProduct.health?.score || null,
+            nutritionSummary: logProduct.nutrition,
+            fallback: false
           };
           
           return new Response(JSON.stringify(response), {
@@ -1071,7 +1079,8 @@ serve(async (req) => {
     // Add kind field and maintain compatibility
     const enhancedResult = {
       ...result,
-      kind: result.candidates ? 'multiple_candidates' : 'single_product'
+      kind: result.candidates && result.candidates.length > 1 ? 'multiple_candidates' : 
+            result.product ? 'single_product' : 'none'
     };
     
     console.log(JSON.stringify({

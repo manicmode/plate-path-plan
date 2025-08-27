@@ -437,20 +437,97 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   /**
+   * Convert LogProduct to legacy HealthAnalysisResult format
+   */
+  const legacyFromProduct = (product: any, metadata: { source: string }): HealthAnalysisResult => {
+    const itemName = product.productName || 'Unknown item';
+    const healthScore = product.health?.score ? product.health.score / 10 : 0; // Convert 0-100 to 0-10
+    
+    const ingredientFlags = (product.health?.flags || []).map((f: any) => ({
+      ingredient: f.label || 'Ingredient',
+      flag: f.details || f.label || '',
+      severity: (f.level === 'danger' ? 'high' : f.level === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+    }));
+
+    const nutritionData = {
+      calories: product.nutrition?.calories || 0,
+      protein: product.nutrition?.protein_g || 0,
+      carbs: product.nutrition?.carbs_g || 0,
+      fat: product.nutrition?.fat_g || 0,
+      fiber: product.nutrition?.fiber_g || 0,
+      sugar: product.nutrition?.sugar_g || 0,
+      sodium: product.nutrition?.sodium_mg || 0,
+    };
+
+    return {
+      itemName,
+      productName: itemName,
+      title: itemName,
+      healthScore,
+      ingredientsText: product.ingredients?.join(', '),
+      ingredientFlags,
+      nutritionData,
+      healthProfile: {
+        isOrganic: product.ingredients?.some((ing: string) => ing.toLowerCase().includes('organic')) || false,
+        isGMO: product.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
+        allergens: product.ingredients ? 
+          ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+            product.ingredients!.some((ing: string) => ing.toLowerCase().includes(allergen))
+          ) : [],
+        preservatives: product.ingredients?.filter((ing: string) => 
+          ing.toLowerCase().includes('preservative') || 
+          ing.toLowerCase().includes('sodium benzoate') ||
+          ing.toLowerCase().includes('potassium sorbate')
+        ) || [],
+        additives: product.ingredients?.filter((ing: string) => 
+          ing.toLowerCase().includes('artificial') || 
+          ing.toLowerCase().includes('flavor') ||
+          ing.toLowerCase().includes('color')
+        ) || []
+      },
+      personalizedWarnings: [],
+      suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+      overallRating: healthScore >= 8 ? 'excellent' : 
+                    healthScore >= 6 ? 'good' : 
+                    healthScore >= 4 ? 'fair' : 
+                    healthScore >= 2 ? 'poor' : 'avoid'
+    };
+  };
+
+  /**
    * Route analysis based on detection kind
    */
   const routeBasedOnKind = async (data: any, legacy: any, imageData: string, captureId: string) => {
     const kind = data?.kind || 'none';
-    console.log(`[HS] Routing based on kind: ${kind} [${captureId}]`);
+    const fallback = data?.fallback === true;
+    const hasProduct = !!data?.product;
+    const productName = data?.product?.productName || data?.productName || 'Unknown';
+    
+    console.log(`[HS] Routing DEV log [${captureId}]:`, { kind, fallback, hasProduct, productName });
     
     switch (kind) {
       case 'single_product':
-        // Standard branded product → direct to report
-        console.log(`[HS] Single product detected [${captureId}]`);
-        await processAndShowResult(legacy, data, captureId, 'image');
+        case 'branded': // Support both naming conventions
+        // Use direct product mapping when product is available, bypass toLegacyFromEdge
+        if (data.product && !fallback) {
+          console.log(`[HS] Single product with direct product data [${captureId}]`);
+          const directLegacy = legacyFromProduct(data.product, { source: 'image' });
+          setAnalysisResult(directLegacy);
+          setCurrentState('report');
+          
+          // Trigger daily score calculation
+          if (user?.id) {
+            triggerDailyScoreCalculation(user.id);
+          }
+        } else {
+          // Fallback to existing toLegacyFromEdge flow
+          console.log(`[HS] Single product using legacy adapter [${captureId}]`);
+          await processAndShowResult(legacy, data, captureId, 'image');
+        }
         break;
         
       case 'multiple_candidates':
+      case 'branded_candidates':
         // Multiple branded products → show candidate picker
         if (isInRollout('photo_meal_ui_v1', user?.id) && data.candidates && data.candidates.length > 1) {
           console.log(`[HS] Found ${data.candidates.length} candidates, showing selection UI [${captureId}]`);
