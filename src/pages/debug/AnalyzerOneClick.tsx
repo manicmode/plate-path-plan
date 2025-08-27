@@ -605,19 +605,20 @@ export default function AnalyzerOneClick() {
                           <div className="text-muted-foreground">
                             {result.ocr_top_tokens?.length > 0 ? result.ocr_top_tokens.slice(0, 8).join(', ') : 'None'}
                           </div>
-                        </div>
-                      </div>
-                    {result.steps?.some((s: any) => s.meta?.parseError) && (
-                      <div className="mt-3 p-2 bg-yellow-50 rounded">
-                        <div className="flex items-center justify-between">
-                          <span className="text-yellow-800 text-sm font-medium">Raw OpenAI Response Available</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const rawText = result.steps?.find((s: any) => s.meta?.rawText)?.meta?.rawText || 'No raw text';
-                              navigator.clipboard.writeText(rawText);
-                              toast({ title: "Copied raw OpenAI text to clipboard" });
+                         </div>
+                       </div>
+                     )}
+                     {result.steps?.some((s: any) => s.meta?.parseError) && (
+                       <div className="mt-3 p-2 bg-yellow-50 rounded">
+                         <div className="flex items-center justify-between">
+                           <span className="text-yellow-800 text-sm font-medium">Raw OpenAI Response Available</span>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               const rawText = result.steps?.find((s: any) => s.meta?.rawText)?.meta?.rawText || 'No raw text';
+                               navigator.clipboard.writeText(rawText);
+                               toast({ title: "Copied raw OpenAI text to clipboard" });
                              }}
                            >
                              <Copy className="h-3 w-3 mr-1" />
@@ -636,7 +637,19 @@ export default function AnalyzerOneClick() {
 
        {/* Test Results */}
        {testResults.map((testResult, testIndex) => (
-              </CardTitle>
+         <Card key={testIndex}>
+           <CardHeader>
+             <div className="flex items-center justify-between">
+               <CardTitle className="flex items-center gap-2">
+                 {testResult.overallPass ? (
+                   <CheckCircle className="h-5 w-5 text-green-500" />
+                 ) : (
+                   <XCircle className="h-5 w-5 text-red-500" />
+                 )}
+                 <span className={testResult.overallPass ? "text-green-600" : "text-red-600"}>
+                   {testResult.overallPass ? "PASS" : "FAIL"}
+                 </span>
+               </CardTitle>
               <Badge variant="outline">{testResult.imageFile}</Badge>
             </div>
           </CardHeader>

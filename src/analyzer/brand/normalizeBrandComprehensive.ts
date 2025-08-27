@@ -13,7 +13,6 @@ const BRAND_ALIASES: Record<string, string> = {
   "trader": "Trader Joe's",
   "joe": "Trader Joe's",
   "joes": "Trader Joe's",
-  "traderjoes": "Trader Joe's",
   
   // Other major brands
   "cocacola": "Coca-Cola",
