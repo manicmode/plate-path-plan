@@ -616,10 +616,6 @@ async function processVisionProviders(
   }
   
   return aggregated;
-    }
-  }
-  
-  return { text: '' };
 }
 
 /**
