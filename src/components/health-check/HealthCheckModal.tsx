@@ -8,6 +8,7 @@ import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
 import { BrandedCandidatesList } from './BrandedCandidatesList';
+import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { ResultCard } from './ResultCard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,8 @@ import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
+import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
+import { logMealAsSet } from '@/utils/mealLogging';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -76,7 +79,7 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates';
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
@@ -85,6 +88,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const [currentState, setCurrentState] = useState<ModalState>('scanner');
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
+  const [mealFoods, setMealFoods] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [captureId, setCaptureId] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
   const { toast } = useToast();
@@ -96,6 +102,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCurrentState('scanner');
       setAnalysisResult(null);
       setCandidates([]);
+      setMealFoods([]);
+      setIsProcessing(false);
+      setCaptureId(null);
       setLoadingMessage('');
     }
   }, [isOpen]);
@@ -104,6 +113,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
     console.log("📥 Image data received:", imageData ? `${imageData.length} characters` : "NO DATA");
     console.log("👤 User ID:", user?.id || "NO USER");
+    
+    // Prevent concurrent analysis calls
+    if (isProcessing) {
+      console.log("⚠️ Analysis already in progress, ignoring request");
+      return;
+    }
+    
+    // Generate unique capture ID for correlation
+    const currentCaptureId = crypto.randomUUID().substring(0, 8);
+    setCaptureId(currentCaptureId);
+    setIsProcessing(true);
     
     try {
       setCurrentState('loading');
@@ -114,7 +134,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
       
       if (detectedBarcode) {
-        console.log('📊 Barcode detected in image:', detectedBarcode);
+        console.log(`📊 Barcode detected in image [${currentCaptureId}]:`, detectedBarcode);
         setAnalysisType('barcode');
         setLoadingMessage('Processing barcode...');
         
@@ -123,7 +143,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         
         // Use unified barcode pipeline (same as Log flow)
         try {
-          console.log('🔄 Processing barcode:', detectedBarcode);
+          console.log(`🔄 Processing barcode [${currentCaptureId}]:`, detectedBarcode);
           console.log('[HS PIPELINE]', 'enhanced-health-scanner (unified)', { mode: 'barcode', barcode: detectedBarcode });
           
           const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -131,182 +151,44 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           });
           
           if (error || !result?.ok) {
-            console.log('⚠️ No results from unified barcode pipeline, falling back to image analysis');
+            console.log(`⚠️ No results from unified barcode pipeline [${currentCaptureId}], falling back to image analysis`);
             // If barcode lookup fails, continue with regular image analysis
             return handleImageCapture(cleanImageData);
           }
           
           // Use the tolerant adapter to normalize the data (same as Log flow)
-          console.log('[HS BARCODE] Raw result before adapter:', result);
+          console.log(`[HS BARCODE] Raw result before adapter [${currentCaptureId}]:`, result);
           const legacy = toLegacyFromEdge(result);
-          console.log('[HS BARCODE] Legacy after adapter:', legacy);
+          console.log(`[HS BARCODE] Legacy after adapter [${currentCaptureId}]:`, legacy);
           
           // Handle different statuses
           if (legacy.status === 'no_detection') {
-            console.log('[HS] No detection from barcode, showing no detection UI');
+            console.log(`[HS] No detection from barcode [${currentCaptureId}], showing no detection UI`);
             setCurrentState('no_detection');
             return;
           }
           
           if (legacy.status === 'not_found') {
-            console.log('[HS] Barcode not found, showing not found UI');
+            console.log(`[HS] Barcode not found [${currentCaptureId}], showing not found UI`);
             setCurrentState('not_found'); 
             return;
           }
           
-          // Set name once and mirror to all possible header keys
-          const itemName = legacy.productName || 'Unknown item';
-          console.log('[HS BARCODE] Final itemName:', itemName);
-          
-          // Guardrail log for verification
-          if (!legacy.productName && legacy.ingredientsText) {
-            console.warn('[HS] BUG: name missing while ingredients exist', {
-              edgeKeysPresent: Object.keys(result?.product || {}),
-              resultKeys: Object.keys(result || {}),
-              rawResult: result,
-            });
-          }
-          
-          // RCA telemetry for barcode-photo path (now unified with Log flow)
-          console.groupCollapsed('[HS] RCA (barcode-photo)');
-          console.log('edge/result.product.name', result?.product?.name);
-          console.log('edge/result.product.health.score', result?.product?.health?.score);
-          console.log('edge/result.product.health.flags.len', result?.product?.health?.flags?.length ?? 0);
-          console.log('edge/result.health.score', result?.health?.score);
-          console.groupEnd();
-          
-          console.groupCollapsed('[HS] RCA legacy (barcode-photo)');
-          console.log('legacy.productName', legacy?.productName);
-          console.log('legacy.healthScore', legacy?.healthScore);
-          console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
-          console.log('legacy.ingredientsText.len', legacy?.ingredientsText?.length ?? 0);
-          console.groupEnd();
-
-          // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
-          // Add scale guard: if already 0-10, don't divide again
-          const rawScore = legacy.healthScore ?? result?.product?.health?.score ?? result?.health?.score ?? (result as any)?.healthScore;
-          const scorePct = extractScore(rawScore);
-          const score10 = scorePct == null ? null : scorePct / 10; // Keep as null instead of 0
-          
-          // Score normalization telemetry
-          logScoreNorm('score_norm:barcode-photo.edge', result?.product?.health?.score ?? result?.health?.score, null);
-          logScoreNorm('score_norm:barcode-photo.legacy', legacy?.healthScore, null);
-
-          // Flags: prefer adapter global flags; if empty, fall back to top-level result.healthFlags
-          const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
-                          : Array.isArray((result as any)?.healthFlags) ? (result as any).healthFlags
-                          : [];
-          const ingredientFlags = rawFlags.map((f: any) => ({
-            ingredient: f.title || f.label || f.key || 'Ingredient',
-            flag:       f.description || f.label || '',
-            severity:   /danger|high/i.test(f.severity) ? 'high'
-                      : /warn|med/i.test(f.severity)   ? 'medium' : 'low',
-          }));
-
-          // Ingredients
-          const ingredientsText =
-            legacy.ingredientsText ??
-            (Array.isArray(result?.product?.ingredients) ? result.product.ingredients.join(', ') : undefined);
-
-          // Nutrition (normalize field names if needed)
-          function mapNutrition(n: any) {
-            if (!n) return undefined;
-            const pick = (obj: any, ...keys: string[]) => {
-              for (const k of keys) if (obj && obj[k] != null) return obj[k];
-              return undefined;
-            };
-            return {
-              calories: pick(n, 'calories', 'energy_kcal', 'kcal'),
-              protein:  pick(n, 'protein', 'protein_g'),
-              carbs:    pick(n, 'carbs', 'carbohydrates', 'carbs_g', 'carbohydrates_g'),
-              fat:      pick(n, 'fat', 'fat_g'),
-              fiber:    pick(n, 'fiber', 'fiber_g'),
-              sugar:    pick(n, 'sugar', 'sugars', 'sugar_g', 'sugars_g'),
-              sodium:   pick(n, 'sodium', 'sodium_mg'),
-            };
-          }
-          const nutritionData = mapNutrition(legacy.nutrition) ?? legacy.nutrition ?? undefined;
-
-          // Telemetry
-          console.groupCollapsed('[HS] report_model (barcode-photo)');
-          console.log({ edgeScore: result?.product?.health?.score ?? result?.health?.score,
-                        legacyScore: legacy.healthScore, scorePct, score10,
-                        flagsLen: ingredientFlags.length, ingredientsLen: ingredientsText?.length ?? 0 });
-          console.groupEnd();
-
-          // Determine tier without forcing "Avoid" on unknown score
-          const tier = score10 == null ? 'unknown' : score10 < 3 ? 'avoid' : score10 < 6 ? 'caution' : 'ok';
-
-          // Guardrails
-          if (ingredientsText && ingredientsText.length < 5) {
-            console.warn('[HS] BUG: ingredients collapsed', { ingredientsText });
-          }
-          if (rawFlags.length > 0 && ingredientFlags.length === 0) {
-            console.warn('[HS] BUG: flags lost in mapping', { rawFlags });
-          }
-
-          // Transform to match frontend interface - set all name aliases
-          const analysisResult: HealthAnalysisResult = {
-            itemName,
-            productName: itemName,  // alias for components reading productName
-            title: itemName,        // alias for components reading title
-            healthScore: score10 ?? 0,              // 0–10 scale for UI, but prefer null for unknown
-            ingredientsText,
-            ingredientFlags,
-            nutritionData: nutritionData || {},
-            healthProfile: {
-              isOrganic: ingredientsText?.includes('organic') || false,
-              isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
-              allergens: ingredientsText ? 
-                ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
-                  ingredientsText!.toLowerCase().includes(allergen)
-                ) : [],
-              preservatives: ingredientsText ? 
-                ingredientsText.split(',').filter(ing => 
-                  ing.toLowerCase().includes('preservative') || 
-                  ing.toLowerCase().includes('sodium benzoate') ||
-                  ing.toLowerCase().includes('potassium sorbate')
-                ) : [],
-              additives: ingredientsText ? 
-                ingredientsText.split(',').filter(ing => 
-                  ing.toLowerCase().includes('artificial') || 
-                  ing.toLowerCase().includes('flavor') ||
-                  ing.toLowerCase().includes('color')
-                ) : []
-            },
-            personalizedWarnings: [],
-            suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
-            overallRating: score10 == null ? 'avoid' : 
-                          score10 >= 8 ? 'excellent' : 
-                          score10 >= 6 ? 'good' : 
-                          score10 >= 4 ? 'fair' : 
-                          score10 >= 2 ? 'poor' : 'avoid'
-          };
-
-          console.groupCollapsed('[NAME GUARD] Barcode path');
-          console.log({ legacyName: legacy.productName, finalItemName: itemName });
-          console.groupEnd();
-          
-          setAnalysisResult(analysisResult);
-          setCurrentState('report');
-          
-          // Trigger daily score calculation after health scan completion
-          if (user?.id) {
-            triggerDailyScoreCalculation(user.id);
-          }
-          
+          // Process barcode result and show report
+          await processAndShowResult(legacy, result, currentCaptureId, 'barcode');
           return;
+          
         } catch (barcodeError) {
-          console.error('❌ Barcode analysis failed:', barcodeError);
+          console.error(`❌ Barcode analysis failed [${currentCaptureId}]:`, barcodeError);
           // Continue with image analysis as fallback
-          console.log('🔄 Falling back to image analysis...');
+          console.log(`🔄 Falling back to image analysis... [${currentCaptureId}]`);
         }
       }
       
       // If no barcode or barcode processing failed, proceed with image analysis
       setAnalysisType('image');
       
-      console.log('🖼️ About to call enhanced-health-scanner function...');
+      console.log(`🖼️ About to call enhanced-health-scanner function [${currentCaptureId}]...`);
       
       // Clean image data if it contains a barcode parameter
       const cleanImageData = detectedBarcode ? 
@@ -320,7 +202,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         detectedBarcode: detectedBarcode || null
       };
       
-      console.log('📦 Enhanced scanner payload:', {
+      console.log(`📦 Enhanced scanner payload [${currentCaptureId}]:`, {
         mode: payload.mode,
         dataLength: payload.imageBase64?.length || 0,
         hasDetectedBarcode: !!detectedBarcode
@@ -328,17 +210,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       let data, error;
       try {
-        console.log('🔄 Making enhanced-health-scanner call...');
+        console.log(`🔄 Making enhanced-health-scanner call [${currentCaptureId}]...`);
         console.log('[HS PIPELINE]', 'enhanced-health-scanner', { mode: payload.mode });
         const result = await supabase.functions.invoke('enhanced-health-scanner', {
           body: payload
         });
-        console.log("✅ Enhanced Health Scanner Success:", result);
+        console.log(`✅ Enhanced Health Scanner Success [${currentCaptureId}]:`, result);
         
         data = result.data;
         error = result.error;
       } catch (funcError) {
-        console.error("❌ Enhanced Health Scanner Failed:", funcError);
+        console.error(`❌ Enhanced Health Scanner Failed [${currentCaptureId}]:`, funcError);
         throw funcError;
       }
 
@@ -349,192 +231,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
       
-      // Check for candidates first (if feature enabled and user is in rollout)
-      if (isInRollout('photo_meal_ui_v1', user?.id) && data.candidates && data.candidates.length > 1) {
-        console.log(`[HS] Found ${data.candidates.length} candidates, showing selection UI`);
-        setCandidates(data.candidates);
-        setCurrentState('candidates');
-        return;
-      }
+      // Route based on detection kind
+      await routeBasedOnKind(data, legacy, cleanImageData, currentCaptureId);
       
-      // Handle different statuses
-      if (legacy.status === 'no_detection') {
-        console.log('[HS] No detection from image, showing no detection UI');
-        setCurrentState('no_detection');
-        return;
-      }
-      
-      if (legacy.status === 'not_found') {
-        console.log('[HS] Product not found from image, showing not found UI');
-        setCurrentState('not_found');
-        return;
-      }
-      
-      // Set name once and mirror to all possible header keys
-      const itemName = legacy.productName || 'Unknown item';
-      
-      // Guardrail log for verification
-      if (!legacy.productName && legacy.ingredientsText) {
-        console.warn('[HS] BUG: name missing while ingredients exist', {
-          edgeKeysPresent: Object.keys(data?.product || {}),
-        });
-      }
-      
-      // RCA telemetry for image-only path
-      console.groupCollapsed('[HS] RCA (image)');
-      console.log('edge.product.name', data?.product?.name);
-      console.log('edge.product.code', data?.product?.code);
-      console.log('edge.product.health.score', data?.product?.health?.score);
-      console.log('edge.product.ingredientsText', data?.product?.ingredientsText?.slice(0,200));
-      console.log('edge.product.ingredients.len', data?.product?.ingredients?.length ?? 0);
-      console.log('edge.product.health.flags.len', data?.product?.health?.flags?.length ?? 0);
-      console.log('edge.health.score', data?.health?.score);
-      console.groupEnd();
-      
-      console.groupCollapsed('[HS] RCA legacy (image)');
-      console.log('legacy.productName', legacy?.productName);
-      console.log('legacy.barcode', legacy?.barcode);
-      console.log('legacy.healthScore', legacy?.healthScore);
-      console.log('legacy.ingredientsText', legacy?.ingredientsText?.slice(0,200));
-      console.log('legacy.healthFlags.len', legacy?.healthFlags?.length ?? 0);
-      console.log('legacy.nutrition.keys', legacy?.nutrition ? Object.keys(legacy.nutrition) : null);
-      console.groupEnd();
-
-      // Accept gate: pass if we have either a decent name OR a barcode
-      const hasName = !!(legacy?.productName && legacy.productName.trim().length >= 3);
-      const hasBarcode = !!legacy?.barcode;
-
-      if (!(hasName || hasBarcode)) {
-        setCurrentState('fallback');
-        return;
-      }
-
-          // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
-          // Add scale guard: if already 0-10, don't divide again
-          const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
-          const scorePct = extractScore(rawScore);
-          const score10 = scorePct == null ? null : scorePct / 10; // Keep as null instead of 0
-      
-      // Score normalization telemetry
-      logScoreNorm('score_norm:image.edge', data?.product?.health?.score ?? data?.health?.score, null);
-      logScoreNorm('score_norm:image.legacy', legacy?.healthScore, null);
-
-      // Log whether barcode was detected or Google Vision/GPT was used
-      if (data.barcode) {
-        console.log('📊 Barcode detected in response:', data.barcode);
-        setAnalysisType('barcode');
-      } else {
-        console.log('🔍 No barcode found - using Google Vision + GPT analysis');
-      }
-
-      // Flags: prefer adapter global flags; if empty, fall back to top-level data.healthFlags
-      const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
-                      : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
-                      : [];
-      const ingredientFlags = rawFlags.map((f: any) => ({
-        ingredient: f.title || f.label || f.key || 'Ingredient',
-        flag:       f.description || f.label || '',
-        severity:   /danger|high/i.test(f.severity) ? 'high'
-                  : /warn|med/i.test(f.severity)   ? 'medium' : 'low',
-      }));
-
-      // Ingredients text: prefer full list from legacy
-      const ingredientsText = legacy?.ingredientsText;
-
-      // Nutrition (normalize field names if needed)
-      function mapNutrition(n: any) {
-        if (!n) return undefined;
-        const pick = (obj: any, ...keys: string[]) => {
-          for (const k of keys) if (obj?.[k] != null) return obj[k];
-          return undefined;
-        };
-        return {
-          calories: pick(n, 'calories', 'energy_kcal', 'kcal'),
-          protein:  pick(n, 'protein', 'protein_g'),
-          carbs:    pick(n, 'carbs', 'carbohydrates', 'carbs_g', 'carbohydrates_g'),
-          fat:      pick(n, 'fat', 'fat_g'),
-          fiber:    pick(n, 'fiber', 'fiber_g'),
-          sugar:    pick(n, 'sugar', 'sugars', 'sugar_g', 'sugars_g'),
-          sodium:   pick(n, 'sodium', 'sodium_mg'),
-        };
-      }
-      const nutritionData = mapNutrition(legacy?.nutrition) ?? legacy?.nutrition ?? undefined;
-
-      // Telemetry
-      console.groupCollapsed('[HS] report_model');
-      console.log({ edgeScore: data?.product?.health?.score ?? data?.health?.score,
-                    legacyScore: legacy.healthScore, scorePct, score10,
-                    flagsLen: ingredientFlags.length, ingredientsLen: ingredientsText?.length ?? 0 });
-      console.groupEnd();
-
-      // Determine tier without forcing "Avoid" on unknown score
-      const tier = score10 == null ? 'unknown' : score10 < 3 ? 'avoid' : score10 < 6 ? 'caution' : 'ok';
-
-      // Guardrails: log if mapping silently collapses
-      if (ingredientsText && ingredientsText.length < 5) {
-        console.warn('[HS] BUG: ingredients collapsed', { ingredientsText });
-      }
-      if (rawFlags.length > 0 && ingredientFlags.length === 0) {
-        console.warn('[HS] BUG: flags lost in mapping', { rawFlags });
-      }
-
-      // Transform to match frontend interface - set all name aliases
-      const analysisResult: HealthAnalysisResult = {
-        itemName,
-        productName: itemName,  // alias for components reading productName
-        title: itemName,        // alias for components reading title
-        healthScore: score10 ?? 0,              // 0–10 scale for UI
-        ingredientsText,
-        ingredientFlags,
-        nutritionData: nutritionData || {},
-        healthProfile: {
-          isOrganic: ingredientsText?.includes('organic') || false,
-          isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
-          allergens: ingredientsText ? 
-            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
-              ingredientsText!.toLowerCase().includes(allergen)
-            ) : [],
-          preservatives: ingredientsText ? 
-            ingredientsText.split(',').filter(ing => 
-              ing.toLowerCase().includes('preservative') || 
-              ing.toLowerCase().includes('sodium benzoate') ||
-              ing.toLowerCase().includes('potassium sorbate')
-            ) : [],
-          additives: ingredientsText ? 
-            ingredientsText.split(',').filter(ing => 
-              ing.toLowerCase().includes('artificial') || 
-              ing.toLowerCase().includes('flavor') ||
-              ing.toLowerCase().includes('color')
-            ) : []
-        },
-        personalizedWarnings: [],
-        suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
-        overallRating: score10 == null ? 'avoid' : 
-                      score10 >= 8 ? 'excellent' : 
-                      score10 >= 6 ? 'good' : 
-                      score10 >= 4 ? 'fair' : 
-                      score10 >= 2 ? 'poor' : 'avoid'
-      };
-
-      console.groupCollapsed('[NAME GUARD] Image path');
-      console.log({ legacyName: legacy.productName, finalItemName: itemName });
-      console.groupEnd();
-
-      setAnalysisResult(analysisResult);
-      setCurrentState('report');
-      
-      // Trigger daily score calculation after health scan completion
-      if (user?.id) {
-        triggerDailyScoreCalculation(user.id);
-      }
     } catch (error) {
-      console.error('❌ Analysis failed:', error);
+      console.error(`💥 Image capture error [${currentCaptureId}]:`, error);
       toast({
         title: "Analysis Failed",
-        description: "Unable to analyze the image. Please try again or use manual entry.",
+        description: "Failed to analyze the image. Please try again.",
         variant: "destructive",
       });
       setCurrentState('fallback');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -727,6 +436,240 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   };
 
+  /**
+   * Route analysis based on detection kind
+   */
+  const routeBasedOnKind = async (data: any, legacy: any, imageData: string, captureId: string) => {
+    const kind = data?.kind || 'none';
+    console.log(`[HS] Routing based on kind: ${kind} [${captureId}]`);
+    
+    switch (kind) {
+      case 'single_product':
+        // Standard branded product → direct to report
+        console.log(`[HS] Single product detected [${captureId}]`);
+        await processAndShowResult(legacy, data, captureId, 'image');
+        break;
+        
+      case 'multiple_candidates':
+        // Multiple branded products → show candidate picker
+        if (isInRollout('photo_meal_ui_v1', user?.id) && data.candidates && data.candidates.length > 1) {
+          console.log(`[HS] Found ${data.candidates.length} candidates, showing selection UI [${captureId}]`);
+          setCandidates(data.candidates);
+          setCurrentState('candidates');
+        } else {
+          // Fallback to first candidate or no detection
+          await handleFallbackFromCandidates(data, legacy, captureId);
+        }
+        break;
+        
+      case 'meal':
+        // Multi-food meal detected → show meal detection UI  
+        if (isInRollout('photo_meal_ui_v1', user?.id) && data.foods && data.foods.length > 0) {
+          console.log(`[HS] Meal detected with ${data.foods.length} foods [${captureId}]`);
+          setMealFoods(data.foods);
+          setCurrentState('meal_detection');
+        } else {
+          // Fallback to multi-detector
+          await handleMealFallback(imageData, captureId);
+        }
+        break;
+        
+      case 'none':default:
+        // No clear detection → try multi-detector as fallback
+        console.log(`[HS] No detection, trying multi-food fallback [${captureId}]`);
+        await handleMealFallback(imageData, captureId);
+        break;
+    }
+  };
+  
+  /**
+   * Handle meal detection fallback using multi-detector
+   */
+  const handleMealFallback = async (imageData: string, captureId: string) => {
+    if (!isInRollout('photo_meal_ui_v1', user?.id)) {
+      // Feature not enabled, show no detection
+      setCurrentState('no_detection');
+      return;
+    }
+    
+    try {
+      console.log(`[HS] Running multi-food detector fallback [${captureId}]`);
+      setLoadingMessage('Detecting individual foods...');
+      
+      const detectedFoods = await detectFoodsFromAllSources(imageData);
+      
+      if (detectedFoods && detectedFoods.length > 0) {
+        console.log(`[HS] Multi-detector found ${detectedFoods.length} foods [${captureId}]`);
+        setMealFoods(detectedFoods);
+        setCurrentState('meal_detection');
+      } else {
+        console.log(`[HS] Multi-detector found no foods [${captureId}]`);
+        setCurrentState('no_detection');
+      }
+    } catch (error) {
+      console.error(`[HS] Multi-detector failed [${captureId}]:`, error);
+      setCurrentState('no_detection');
+    }
+  };
+  
+  /**
+   * Handle candidates fallback
+   */
+  const handleFallbackFromCandidates = async (data: any, legacy: any, captureId: string) => {
+    if (data.candidates && data.candidates.length > 0) {
+      // Use first candidate as fallback
+      console.log(`[HS] Using first candidate as fallback [${captureId}]`);
+      await processAndShowResult(legacy, data, captureId, 'image');
+    } else {
+      console.log(`[HS] No candidates available [${captureId}]`);
+      setCurrentState('no_detection');  
+    }
+  };
+  
+  /**
+   * Process result and show appropriate report
+   */
+  const processAndShowResult = async (legacy: any, data: any, captureId: string, type: string) => {
+    // Handle different statuses
+    if (legacy.status === 'no_detection') {
+      console.log(`[HS] No detection from ${type} [${captureId}], showing no detection UI`);
+      setCurrentState('no_detection');
+      return;
+    }
+    
+    if (legacy.status === 'not_found') {
+      console.log(`[HS] ${type} not found [${captureId}], showing not found UI`);
+      setCurrentState('not_found'); 
+      return;
+    }
+    
+    // Set name once and mirror to all possible header keys
+    const itemName = legacy.productName || 'Unknown item';
+    console.log(`[HS ${type.toUpperCase()}] Final itemName [${captureId}]:`, itemName);
+    
+    // Process score, flags, and nutrition same as before
+    const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
+    const scorePct = extractScore(rawScore);
+    const score10 = scorePct == null ? null : scorePct / 10;
+    
+    const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
+                    : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
+                    : [];
+    const ingredientFlags = rawFlags.map((f: any) => ({
+      ingredient: f.title || f.label || f.key || 'Ingredient',
+      flag: f.description || f.label || '',
+      severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+    }));
+    
+    const ingredientsText = legacy.ingredientsText;
+    const nutritionData = legacy.nutrition || {};
+    
+    const analysisResult: HealthAnalysisResult = {
+      itemName,
+      productName: itemName,
+      title: itemName,
+      healthScore: score10 ?? 0,
+      ingredientsText,
+      ingredientFlags,
+      nutritionData: nutritionData || {},
+      healthProfile: {
+        isOrganic: ingredientsText?.includes('organic') || false,
+        isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
+        allergens: ingredientsText ? 
+          ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+            ingredientsText!.toLowerCase().includes(allergen)
+          ) : [],
+        preservatives: ingredientsText ? 
+          ingredientsText.split(',').filter(ing => 
+            ing.toLowerCase().includes('preservative') || 
+            ing.toLowerCase().includes('sodium benzoate') ||
+            ing.toLowerCase().includes('potassium sorbate')
+          ) : [],
+        additives: ingredientsText ? 
+          ingredientsText.split(',').filter(ing => 
+            ing.toLowerCase().includes('artificial') || 
+            ing.toLowerCase().includes('flavor') ||
+            ing.toLowerCase().includes('color')
+          ) : []
+      },
+      personalizedWarnings: [],
+      suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+      overallRating: score10 == null ? 'avoid' : 
+                    score10 >= 8 ? 'excellent' : 
+                    score10 >= 6 ? 'good' : 
+                    score10 >= 4 ? 'fair' : 
+                    score10 >= 2 ? 'poor' : 'avoid'
+    };
+    
+    setAnalysisResult(analysisResult);
+    setCurrentState('report');
+    
+    // Trigger daily score calculation
+    if (user?.id) {
+      triggerDailyScoreCalculation(user.id);
+    }
+  };
+
+  /**
+   * Handle meal confirmation from multi-food detection
+   */
+  const handleMealConfirm = async (selectedFoods: any[]) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Please log in to save meals.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setCurrentState('loading');
+      setLoadingMessage('Saving meal...');
+      
+      const result = await logMealAsSet(selectedFoods, user.id);
+      
+      if (result.success) {
+        toast({
+          title: "Meal Saved!",
+          description: `Successfully logged ${selectedFoods.length} food items as a meal.`,
+        });
+        
+        // Show meal confirmation state
+        setCurrentState('meal_confirm');
+        
+        // Auto-close after success
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else {
+        throw new Error(result.error || 'Failed to save meal');
+      }
+    } catch (error) {
+      console.error('❌ Meal confirmation failed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save meal. Please try again.",
+        variant: "destructive",
+      });
+      setCurrentState('meal_detection');
+    }
+  };
+  
+  /**
+   * Handle meal cancellation
+   */
+  const handleMealCancel = () => {
+    setCurrentState('fallback');
+  };
+  
+  /**
+   * Handle adding food manually from meal detection
+   */
+  const handleMealAddManually = () => {
+    setCurrentState('fallback');
+  };
+
   const handleCandidateSelect = async (candidateId: string) => {
     console.log(`🔍 Fetching details for candidate: ${candidateId}`);
     
@@ -870,6 +813,32 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onScanAnother={handleScanAnother}
               onClose={handleClose}
             />
+          )}
+
+          {currentState === 'meal_detection' && isInRollout('photo_meal_ui_v1', user?.id) && (
+            <MultiAIFoodDetection
+              detectedFoods={mealFoods}
+              isLoading={false}
+              onConfirm={handleMealConfirm}
+              onCancel={handleMealCancel}
+              onAddManually={handleMealAddManually}
+              onAddToResults={() => {}} // Not used in health check context
+            />
+          )}
+
+          {currentState === 'meal_confirm' && (
+            <div className="w-full min-h-screen bg-background flex items-center justify-center">
+              <div className="text-center space-y-4 p-8">
+                <div className="text-6xl mb-6">✅</div>
+                <h2 className="text-2xl font-bold text-foreground">Meal Saved Successfully!</h2>
+                <p className="text-foreground/70">Your food items have been logged as a complete meal.</p>
+                <div className="pt-4">
+                  <Button onClick={onClose} className="px-8">
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
 
           {currentState === 'candidates' && isInRollout('photo_meal_ui_v1', user?.id) && (
