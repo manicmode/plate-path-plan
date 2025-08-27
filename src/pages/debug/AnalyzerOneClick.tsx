@@ -276,11 +276,13 @@ export default function AnalyzerOneClick() {
                 id="file-upload"
                 disabled={isRunning}
               />
-              <label htmlFor="file-upload">
-                <Button variant="outline" className="cursor-pointer" disabled={isRunning}>
-                  {isRunning ? 'Running...' : 'Choose Image'}
-                </Button>
-              </label>
+              <Button 
+                variant="outline" 
+                onClick={() => document.getElementById('file-upload')?.click()} 
+                disabled={isRunning}
+              >
+                {isRunning ? 'Running...' : 'Choose Image'}
+              </Button>
             </div>
 
             <Button 
