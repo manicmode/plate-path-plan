@@ -118,6 +118,8 @@ const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
+const ScanHub = lazy(() => import('@/pages/ScanHub'));
+const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -491,17 +493,30 @@ function AppContent() {
                            <DevChallengesPage />
                          </ProtectedRoute>
                         } />
-                          <Route path="/feature-flags" element={
+                           <Route path="/feature-flags" element={
+                             <ProtectedRoute>
+                               <FeatureFlagsPage />
+                             </ProtectedRoute>
+                           } />
+                           
+                           {/* Scan Hub Routes */}
+                           <Route path="/scan" element={
+                             <ProtectedRoute>
+                               <ScanHub />
+                             </ProtectedRoute>
+                           } />
+                           <Route path="/scan/recents" element={
+                             <ProtectedRoute>
+                               <ScanRecents />
+                             </ProtectedRoute>
+                           } />
+                           
+                         {/* Debug routes for developers */}
+                          <Route path="/debug/*" element={
                             <ProtectedRoute>
-                              <FeatureFlagsPage />
+                              <DebugRoutes />
                             </ProtectedRoute>
                           } />
-                        {/* Debug routes for developers */}
-                         <Route path="/debug/*" element={
-                           <ProtectedRoute>
-                             <DebugRoutes />
-                           </ProtectedRoute>
-                         } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>

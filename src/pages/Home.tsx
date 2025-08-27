@@ -45,6 +45,7 @@ import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { useNudgeScheduler } from '@/hooks/useNudgeScheduler';
 import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { InfluencerHubCTA } from '@/components/InfluencerHubCTA';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
@@ -1847,8 +1848,13 @@ const Home = () => {
               const handleTileClick = (tileId: string) => {
                 if (tileId === 'supplement-hub') {
                   navigate('/supplement-hub');
-                } else if (tileId === 'health-check') {
-                  setIsHealthCheckOpen(true);
+                 } else if (tileId === 'health-check') {
+                   // Check if Scan Hub is enabled
+                   if (isFeatureEnabled('scan_hub_enabled')) {
+                     navigate('/scan');
+                   } else {
+                     setIsHealthCheckOpen(true);
+                   }
                 } else if (tileId === 'game-challenge') {
                   navigate('/game-and-challenge');
                 } else if (tileId === 'influencers') {
