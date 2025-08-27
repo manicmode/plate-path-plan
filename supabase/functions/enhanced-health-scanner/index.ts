@@ -1771,7 +1771,6 @@ async function processHealthScanWithCandidates(
   };
 
   // A) Enhanced evidence fusion 
-  const isDebugMode = body.debug === true;
   const visionResult = await processVisionProviders(imageBase64, provider, steps, undefined, isDebugMode, enableTracing, runId);
   const ocrResult = visionResult; // processVisionProviders now returns full OCR result
   
@@ -2302,6 +2301,53 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    
+    // ============================================================================
+    // B1) BARCODE EMERGENCY RESTORATION - Early return before any provider logic
+    // ============================================================================
+    if (body?.mode === 'barcode' && body?.barcode) {
+      console.log(`🔍 [BARCODE] Early return for barcode: ${body.barcode}`);
+      
+      try {
+        const offResult = await fetchOFF(body.barcode);
+        
+        if (offResult && offResult.product_found && offResult.product) {
+          console.log(`✅ [BARCODE] OpenFoodFacts hit: ${offResult.product.product_name}`);
+          
+          const product = offResult.product;
+          const response = {
+            ok: true,
+            product: {
+              productName: product.product_name || product.generic_name || 'Unknown product',
+              title: product.product_name || product.generic_name,
+              name: product.product_name || product.generic_name,
+              brand: product.brands || null,
+              brands: product.brands || null,
+              nutrition: product.nutriments || null,
+              ingredients: { raw: product.ingredients_text || null },
+              ingredientsText: product.ingredients_text || null,
+              health: { score: null, flags: [] }
+            }
+          };
+          
+          return new Response(JSON.stringify(response), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          console.log(`❌ [BARCODE] OpenFoodFacts miss: ${body.barcode}`);
+          return new Response(JSON.stringify({ ok: false, error: 'not_found' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (e) {
+        console.error(`❌ [BARCODE] Lookup failed:`, e);
+        return new Response(JSON.stringify({ ok: false, error: 'barcode_lookup_failed' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Continue with regular image analysis workflow...
     const { provider: requestProvider } = body;
     
     // Provider toggle 

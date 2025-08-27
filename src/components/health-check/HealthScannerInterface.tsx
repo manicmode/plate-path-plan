@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon } from 'lucide-react';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, FEATURE_FLAGS } from '@/lib/featureFlags';
 import { prepareImageForAnalysis, prepareImageForAnalysisLegacy } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -426,6 +426,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const { toast } = await import('@/components/ui/sonner');
           toast.info(`[HS] off_fetch_start: ${result.raw}`);
         }
+        
+        // B2) BARCODE PATH: Direct barcode lookup, bypass all analyzer logic
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: result.raw, source: 'health' }
         });
@@ -436,7 +438,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const { toast } = await import('@/components/ui/sonner');
           toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
         }
-        if (data && !error) { 
+        
+        if (data && !error && data.ok && data.product) { 
           // Convert to base64 for result
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -449,7 +452,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             fr.readAsDataURL(fullBlob);
           });
           
-          onCapture(fullBase64 + `&barcode=${result.raw}`);
+          // BYPASS analyzer: pass barcode data directly
+          onCapture({ imageBase64: fullBase64, detectedBarcode: result.raw });
           setIsFrozen(false);
           console.timeEnd('[HS] analyze_total');
           return; 
@@ -470,12 +474,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       const winner = await Promise.race(burstPromises);
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
-        console.log('[HS] off_fetch_start', { code: winner.raw });
-        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        // B2) Burst barcode hit - same bypass logic
+        const { data: burstData, error: burstError } = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
         });
-        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        if (data && !error) { 
+        
+        if (burstData && !burstError && burstData.ok && burstData.product) {
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
             still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
@@ -487,10 +491,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             fr.readAsDataURL(fullBlob);
           });
           
-          onCapture(fullBase64 + `&barcode=${winner.raw}`);
+          onCapture({ imageBase64: fullBase64, detectedBarcode: winner.raw });
           setIsFrozen(false);
           console.timeEnd('[HS] analyze_total');
-          return; 
+          return;
         }
       }
 
