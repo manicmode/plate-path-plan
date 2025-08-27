@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Keyboard, Mic, Search, AlertTriangle } from 'lucide-react';
-import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
+import { logFallbackEvents } from '@/lib/healthScanTelemetry';
 import { useViewportUnitsFix } from '@/hooks/useViewportUnitsFix';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
 import { SearchResultsList } from './SearchResultsList';
@@ -30,11 +31,14 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   const { 
     isRecording, 
     isProcessing,
+    transcript,
+    setTranscript,
     startRecording, 
     stopRecording, 
-    transcribedText,
-    isVoiceRecordingSupported 
-  } = useVoiceRecording();
+    isBrowserSTTSupported,
+    isServerSTTAvailable,
+    sttMethod
+  } = useProgressiveVoiceSTT();
   
   const debouncedQuery = useDebounce(textQuery, 300);
   
@@ -53,11 +57,11 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
 
   // Handle voice transcription result
   useEffect(() => {
-    if (transcribedText) {
-      setVoiceTranscript(transcribedText);
+    if (transcript) {
+      setVoiceTranscript(transcript);
       setShowVoiceEditor(true);
     }
-  }, [transcribedText]);
+  }, [transcript]);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!isFeatureEnabled('fallback_text_enabled')) {
@@ -76,8 +80,23 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     
     try {
       console.log('🔍 [ImprovedManualEntry] Searching for:', trimmed);
+      
+      // Log telemetry
+      logFallbackEvents.searchStarted('text', trimmed.length);
+      const startTime = Date.now();
+      
       const results = await searchFoodByName(trimmed);
+      const latency = Date.now() - startTime;
+      
       setSearchResults(results);
+      
+      // Log telemetry
+      logFallbackEvents.resultsReceived(
+        results.length, 
+        results.length > 0, 
+        latency, 
+        results[0]?.confidence
+      );
       
       if (results.length === 0) {
         setSearchError('No matches found. Try adding a brand name or checking spelling.');
@@ -97,13 +116,12 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     // Transform to legacy product format
     const legacyProduct = searchResultToLegacyProduct(result);
     
-    // Add telemetry
-    console.log('[TELEMETRY] fallback_result_selected', {
-      source: result.source,
-      confidence: result.confidence,
-      hasNutrition: !!result.caloriesPer100g,
-      queryLength: textQuery.length || voiceTranscript.length
-    });
+    // Log telemetry
+    logFallbackEvents.resultSelected(
+      result.source,
+      result.confidence,
+      !!result.caloriesPer100g
+    );
     
     onProductSelected(legacyProduct);
   };
@@ -115,7 +133,8 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     }
     
     console.log('[TELEMETRY] fallback_voice_started', {
-      supported: isVoiceRecordingSupported(),
+      supported: isBrowserSTTSupported(),
+      serverAvailable: isServerSTTAvailable(),
       userAgent: navigator.userAgent.substring(0, 50)
     });
     
@@ -193,7 +212,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                   />
                 </div>
                 
-                {isFeatureEnabled('fallback_voice_enabled') && isVoiceRecordingSupported() && (
+                {isFeatureEnabled('fallback_voice_enabled') && (isBrowserSTTSupported() || isServerSTTAvailable()) && (
                   <Button
                     onClick={handleVoiceRecording}
                     variant={isRecording ? "destructive" : "default"}

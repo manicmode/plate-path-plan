@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Search, Mic, Package, Zap, CheckCircle, XCircle } from 'lucide-react';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
-import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
+import { logFallbackEvents } from '@/lib/healthScanTelemetry';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -37,19 +38,22 @@ export default function HealthScanFallbacks() {
   const { 
     isRecording, 
     isProcessing, 
+    transcript,
+    setTranscript,
     startRecording, 
     stopRecording, 
-    transcribedText,
-    isVoiceRecordingSupported 
-  } = useVoiceRecording();
+    isBrowserSTTSupported,
+    isServerSTTAvailable,
+    sttMethod
+  } = useProgressiveVoiceSTT();
   
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    if (transcribedText) {
-      setVoiceTranscript(transcribedText);
+    if (transcript) {
+      setVoiceTranscript(transcript);
     }
-  }, [transcribedText]);
+  }, [transcript]);
 
   const handleTextSearch = async () => {
     if (!textQuery.trim()) return;
@@ -59,19 +63,22 @@ export default function HealthScanFallbacks() {
     setLegacyPayload(null);
     
     try {
-      console.log('[TELEMETRY] fallback_search_started', { 
-        type: 'manual',
-        queryLength: textQuery.length 
-      });
+      // Log telemetry
+      logFallbackEvents.searchStarted('text', textQuery.length);
+      const startTime = Date.now();
       
       const results = await searchFoodByName(textQuery);
+      const latency = Date.now() - startTime;
+      
       setSearchResults(results);
       
-      console.log('[TELEMETRY] fallback_results_received', {
-        count: results.length,
-        hasResults: results.length > 0,
-        topConfidence: results[0]?.confidence || 0
-      });
+      // Log telemetry
+      logFallbackEvents.resultsReceived(
+        results.length,
+        results.length > 0,
+        latency,
+        results[0]?.confidence || 0
+      );
       
     } catch (error) {
       console.error('Search failed:', error);
@@ -86,11 +93,12 @@ export default function HealthScanFallbacks() {
     const legacy = searchResultToLegacyProduct(result);
     setLegacyPayload(legacy);
     
-    console.log('[TELEMETRY] fallback_result_selected', {
-      source: result.source,
-      confidence: result.confidence,
-      hasNutrition: !!result.caloriesPer100g
-    });
+    // Log telemetry
+    logFallbackEvents.resultSelected(
+      result.source,
+      result.confidence,
+      !!result.caloriesPer100g
+    );
   };
 
   const handleVoiceTest = async () => {
@@ -99,17 +107,17 @@ export default function HealthScanFallbacks() {
       return;
     }
     
-    console.log('[TELEMETRY] fallback_voice_started', {
-      supported: isVoiceRecordingSupported(),
-      serverSTT: isFeatureEnabled('voice_stt_server_enabled')
-    });
+    // Log telemetry
+    logFallbackEvents.voiceStarted(
+      'browser', // Will be determined by the hook
+      isBrowserSTTSupported(),
+      isServerSTTAvailable()
+    );
     
     if (isRecording) {
-      const result = await stopRecording();
-      if (result) {
-        setVoiceTranscript(result);
-        toast.success('Voice transcribed: ' + result);
-      }
+      await stopRecording();
+      // Note: stopRecording() doesn't return anything meaningful
+      toast.success('Voice recording stopped');
     } else {
       await startRecording();
     }
@@ -296,7 +304,7 @@ export default function HealthScanFallbacks() {
                 <div className="flex items-center space-x-4">
                   <Button
                     onClick={handleVoiceTest}
-                    disabled={isProcessing || !isVoiceRecordingSupported()}
+                    disabled={isProcessing || !(isBrowserSTTSupported() || isServerSTTAvailable())}
                     variant={isRecording ? "destructive" : "default"}
                     className={isRecording ? 'animate-pulse' : ''}
                   >
@@ -304,9 +312,9 @@ export default function HealthScanFallbacks() {
                     {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : 'Start Recording'}
                   </Button>
                   
-                  <div className="text-sm text-gray-300">
-                    STT Method: {isFeatureEnabled('voice_stt_server_enabled') ? 'Server' : 'Browser'}
-                  </div>
+                <div className="text-sm text-gray-300">
+                  STT Method: {sttMethod === 'none' ? 'Ready' : sttMethod === 'browser' ? 'Browser' : 'Server'}
+                </div>
                 </div>
 
                 {voiceTranscript && (
@@ -327,7 +335,8 @@ export default function HealthScanFallbacks() {
                 )}
 
                 <div className="text-sm text-gray-400">
-                  <p>Supported: {isVoiceRecordingSupported() ? '✅' : '❌'}</p>
+                  <p>Browser STT: {isBrowserSTTSupported() ? '✅' : '❌'}</p>
+                  <p>Server STT: {isServerSTTAvailable() ? '✅' : '❌'}</p>
                   <p>Secure Context: {window.isSecureContext ? '✅' : '❌'}</p>
                   <p>MediaRecorder: {window.MediaRecorder ? '✅' : '❌'}</p>
                 </div>

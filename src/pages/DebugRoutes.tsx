@@ -2,6 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import DebugImageProbe from './DebugImageProbe';
 import { NudgesAudit } from './debug/NudgesAudit';
 import { NudgesQA } from './debug/NudgesQA';
+import { lazy, Suspense } from 'react';
+
+const HealthScanFallbacks = lazy(() => import('./debug/HealthScanFallbacks'));
 
 export default function DebugRoutes() {
   const navigate = useNavigate();
@@ -11,6 +14,14 @@ export default function DebugRoutes() {
   
   if (currentPath === '/debug/image-probe') {
     return <DebugImageProbe />;
+  }
+  
+  if (currentPath === '/debug/healthscan-fallbacks') {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+        <HealthScanFallbacks />
+      </Suspense>
+    );
   }
   
   if (currentPath === '/debug/nudges') {
@@ -42,11 +53,11 @@ export default function DebugRoutes() {
             <p className="text-muted-foreground">Debug nudge scheduler behavior and history</p>
           </button>
           <button 
-            onClick={() => navigate('/debug/nudges-qa')}
+            onClick={() => navigate('/debug/healthscan-fallbacks')}
             className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
           >
-            <h3 className="font-semibold">Nudge QA System</h3>
-            <p className="text-muted-foreground">Automated testing and reporting for nudge scheduler</p>
+            <h3 className="font-semibold">Health Scan Fallbacks</h3>
+            <p className="text-muted-foreground">Test and debug manual text & voice search flows</p>
           </button>
         </div>
       </div>
