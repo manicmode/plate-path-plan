@@ -657,6 +657,17 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     );
   }
 
+  // Check if current message is the default static message
+  const isDefaultMessage = heroMessage === "Your intelligent wellness companion is ready";
+  
+  if (isDefaultMessage) {
+    return (
+      <p className={`text-gray-600 dark:text-gray-300 font-medium ${className}`}>
+        {heroMessage}
+      </p>
+    );
+  }
+
   return (
     <div className={`overflow-hidden whitespace-nowrap ${className}`}>
       <div className="inline-flex animate-marquee text-gray-600 dark:text-gray-300 font-medium">
