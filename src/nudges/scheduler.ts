@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { REGISTRY, NudgeDefinition, UserNudgeContext } from './registry';
 import { getLastShownDates, get7DayCounts } from './logEvent';
+import { withQAMocks, QAMock } from './qaContext';
 
 export type SelectedNudge = {
   id: string;
@@ -12,7 +13,8 @@ export type SelectedNudge = {
 export async function selectNudgesForUser(
   userId: string, 
   limit = 2,
-  currentTime = new Date()
+  currentTime = new Date(),
+  qaMock?: QAMock
 ): Promise<SelectedNudge[]> {
   try {
     // Load nudge history for this user
@@ -21,8 +23,11 @@ export async function selectNudgesForUser(
       get7DayCounts(userId)
     ]);
 
-    // Build user context
-    const context = await buildUserContext(userId, currentTime);
+    // Build user context (with QA mocks if provided)
+    let context = await buildUserContext(userId, currentTime);
+    if (qaMock) {
+      context = withQAMocks(context, qaMock);
+    }
 
     // Check feature flags and filters
     const eligibleNudges: Array<{ definition: NudgeDefinition; reason: string }> = [];
@@ -41,9 +46,9 @@ export async function selectNudgesForUser(
         }
       }
 
-      // Check time window
-      if (definition.window) {
-        const currentHour = currentTime.getHours();
+      // Check time window (bypass for QA mode)
+      if (definition.window && !qaMock?.bypassQuietHours) {
+        const currentHour = context.currentTime.getHours();
         if (currentHour < definition.window.startHour || currentHour > definition.window.endHour) {
           continue;
         }
@@ -53,14 +58,14 @@ export async function selectNudgesForUser(
       const lastShown = lastShownDates[definition.id];
       if (lastShown) {
         const cooldownMs = definition.cooldownDays * 24 * 60 * 60 * 1000;
-        const timeSinceLastShown = currentTime.getTime() - lastShown.getTime();
+        const timeSinceLastShown = context.currentTime.getTime() - lastShown.getTime();
         if (timeSinceLastShown < cooldownMs) {
           continue;
         }
       }
 
       // Check daily cap
-      const todayStart = new Date(currentTime);
+      const todayStart = new Date(context.currentTime);
       todayStart.setHours(0, 0, 0, 0);
       
       const { data: todayShownCount } = await supabase
