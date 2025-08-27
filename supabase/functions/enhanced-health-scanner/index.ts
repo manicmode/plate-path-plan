@@ -1026,11 +1026,16 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const reqId = crypto.randomUUID().substring(0, 8);
+  const t0 = Date.now();
+  const steps: Array<{stage: string, ok: boolean, meta?: any}> = [];
+
   try {
     const body = await req.json();
     const reqId = crypto.randomUUID().substring(0, 8);
     const t0 = Date.now();
     
+    steps.push({stage: 'camera_echo', ok: true, meta: {reqId, mode: body.mode}});
     console.log(`🚀 Processing health scan [${reqId}]`);
 
     // Handle barcode mode for Log scanner
@@ -1056,10 +1061,12 @@ serve(async (req) => {
       
       if (offResult?.error) {
         console.log(`❌ OFF error [${reqId}]:`, offResult.message);
+        steps.push({stage: 'resolver_off', ok: false, meta: {code: 'off_error', msg: offResult.message}});
         return new Response(JSON.stringify({ 
           ok: false, 
           reason: 'off_error', 
-          status: offResult.status 
+          status: offResult.status,
+          steps
         }), { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -1068,9 +1075,11 @@ serve(async (req) => {
       
       if (!offResult?.product_found) {
         console.log(`❌ OFF miss [${reqId}]: ${norm.type} not found`);
+        steps.push({stage: 'resolver_off', ok: false, meta: {reason: 'off_miss'}});
         return new Response(JSON.stringify({ 
           ok: false, 
-          reason: 'off_miss' 
+          reason: 'off_miss',
+          steps
         }), { 
           status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -1079,9 +1088,10 @@ serve(async (req) => {
 
       // Transform OpenFoodFacts product to LogProduct
       const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
+      steps.push({stage: 'resolver_off', ok: true, meta: {productName: logProduct.productName}});
       console.log('✅ OFF hit [' + reqId + ']: ' + logProduct.productName);
       return new Response(
-        JSON.stringify({ ok: true, product: logProduct }),
+        JSON.stringify({ ok: true, product: logProduct, steps }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -1096,6 +1106,7 @@ serve(async (req) => {
         // Try OpenFoodFacts lookup
         const offResult = await fetchOFF(norm.raw);
         if (offResult?.product_found) {
+          steps.push({stage: 'resolver_off', ok: true, meta: {productName: offResult.product.product_name}});
           console.log(JSON.stringify({
             reqId, 
             phase: 'barcode-first', 
@@ -1115,6 +1126,7 @@ serve(async (req) => {
           );
         } else {
           // Valid barcode but no OFF match
+          steps.push({stage: 'resolver_off', ok: false, meta: {reason: 'barcode_not_found'}});
           console.log(JSON.stringify({
             reqId, 
             phase: 'barcode-first', 
@@ -1166,6 +1178,7 @@ serve(async (req) => {
         if (offResult?.product_found) {
           console.log(`✅ Barcode-on-still hit [${reqId}]: ${offResult.product.product_name}`);
           
+          steps.push({stage: 'resolver_off', ok: true, meta: {productName: offResult.product.product_name, source: 'image_barcode'}});
           const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
           const response = {
             kind: 'single_product',
@@ -1193,7 +1206,8 @@ serve(async (req) => {
       kind: result.kind || (
         result.candidates && result.candidates.length > 1 ? 'branded_candidates' : 
         result.product ? 'single_product' : 'none'
-      )
+      ),
+      steps
     };
     
     console.log(JSON.stringify({
@@ -1212,6 +1226,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 Enhanced-health-scanner error:', error);
+    steps.push({stage: 'fatal_error', ok: false, meta: {code: 'unknown_error', msg: error.message}});
     
     const errorResponse: BackendResponse = {
       productName: "Error",
@@ -1229,7 +1244,7 @@ serve(async (req) => {
       fallback: true
     };
     
-    return new Response(JSON.stringify(errorResponse), {
+    return new Response(JSON.stringify({...errorResponse, steps}), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

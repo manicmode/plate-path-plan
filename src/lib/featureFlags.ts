@@ -4,7 +4,7 @@
 
 export const FEATURE_FLAGS = {
   photo_meal_ui_v1: false, // Enable branded candidates list in health check modal (gradual rollout)
-  image_analyzer_v1: false, // Enable enhanced image analysis pipeline (staging first)
+  image_analyzer_v1: false, // Enable enhanced image analysis pipeline (DISABLED for safety until probe is green)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
