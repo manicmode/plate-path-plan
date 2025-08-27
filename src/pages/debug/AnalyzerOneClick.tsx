@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Copy, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Copy, RotateCcw, Clock, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { optimizedImagePrep, OptimizedPrepResult } from '@/lib/img/optimizedImagePrep';
 
 interface AnalysisResult {
   provider: string;
@@ -18,12 +20,34 @@ interface AnalysisResult {
   notes?: string;
   steps: any[];
   response: any;
+  elapsed_ms?: number;
+  status: 'pending' | 'running' | 'completed' | 'error' | 'timeout' | 'skipped';
+}
+
+interface ProgressStep {
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  ms?: number;
+}
+
+interface RunTelemetry {
+  run_id: string;
+  bytesBefore: number;
+  bytesAfter: number;
+  resize_ms: number;
+  openai_ms?: number;
+  google_ms?: number;
+  first_hit: 'openai' | 'google' | 'none';
+  decision: string;
+  total_ms: number;
 }
 
 interface TestResult {
   imageFile: string;
   results: AnalysisResult[];
   overallPass: boolean;
+  telemetry?: RunTelemetry;
+  imagePrep?: OptimizedPrepResult;
 }
 
 export default function AnalyzerOneClick() {
@@ -31,7 +55,11 @@ export default function AnalyzerOneClick() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [applyHotThresholds, setApplyHotThresholds] = useState(true);
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
+  const [providerResults, setProviderResults] = useState<AnalysisResult[]>([]);
+  const [hasEarlyExit, setHasEarlyExit] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.log('[ANALYZER] page_mount');
@@ -39,120 +67,237 @@ export default function AnalyzerOneClick() {
 
   const runAnalyzerAudit = async (file: File) => {
     setIsRunning(true);
-    console.log('[ANALYZER] run_start', { fileName: file.name, applyHotThresholds });
-    const results: AnalysisResult[] = [];
+    setHasEarlyExit(false);
+    setProviderResults([]);
+    
+    const runId = crypto.randomUUID().substring(0, 8);
+    const runStartTime = performance.now();
+    
+    console.log('[ANALYZER] run_start', { fileName: file.name, applyHotThresholds, runId });
+
+    // Initialize progress steps
+    const steps: ProgressStep[] = [
+      { name: 'resizing', status: 'running' },
+      { name: 'openai', status: 'pending' },
+      { name: 'google', status: 'pending' }
+    ];
+    setProgressSteps([...steps]);
 
     try {
-      // Convert file to base64
-      const base64 = await fileToBase64(file);
-      const imageBase64 = base64.split(',')[1]; // Remove data URL prefix
-
-      const providers = ['openai', 'google', 'hybrid'];
+      // Phase 1: Optimized image prep
+      const imagePrep = await optimizedImagePrep(file);
+      const imageBase64 = imagePrep.dataUrl.split(',')[1]; // Remove data URL prefix
       
-      for (const provider of providers) {
+      steps[0] = { name: 'resizing', status: 'completed', ms: imagePrep.ms };
+      setProgressSteps([...steps]);
+
+      // Phase 2: Initialize provider tracking
+      const results: AnalysisResult[] = [
+        { provider: 'openai', status: 'pending', ok: false, decision: 'none', steps: [], response: null },
+        { provider: 'google', status: 'pending', ok: false, decision: 'none', steps: [], response: null }
+      ];
+      setProviderResults([...results]);
+
+      // Phase 3: Parallel provider execution with timeouts
+      const abortController = new AbortController();
+      const TIMEOUT_MS = 8000;
+
+      const runProvider = async (provider: string, index: number): Promise<void> => {
+        const providerStartTime = performance.now();
+        
+        // Update status to running
+        results[index] = { ...results[index], status: 'running' };
+        setProviderResults([...results]);
+        
+        steps[index + 1] = { name: provider, status: 'running' };
+        setProgressSteps([...steps]);
+
         try {
-          console.log(`[ANALYZER] Testing provider: ${provider}`);
-          
-          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Provider timeout')), TIMEOUT_MS);
+          });
+
+          const analysisPromise = supabase.functions.invoke('enhanced-health-scanner', {
             body: {
               imageBase64,
               mode: 'scan',
-              provider,
+              provider: provider,
               debug: true
             }
           });
 
+          const { data, error } = await Promise.race([analysisPromise, timeoutPromise]) as any;
+          const elapsed_ms = Math.round(performance.now() - providerStartTime);
+
           if (error) {
             console.log(`[ANALYZER] ${provider}_done error:`, error.message);
-            // Check if it's a missing key error
             const isMissingKey = error.message?.includes('API key') || error.message?.includes('MISSING_KEY');
-            results.push({
-              provider,
+            
+            results[index] = {
+              ...results[index],
+              status: isMissingKey ? 'skipped' : 'error',
               ok: false,
               decision: isMissingKey ? 'skipped' : 'error',
               notes: isMissingKey ? 'MISSING_KEY' : `Error: ${error.message}`,
-              steps: [],
-              response: null
-            });
-            continue;
-          }
-
-          // Extract analysis data
-          const steps = data.steps || [];
-          const ocrStep = steps.find((s: any) => s.stage === 'ocr');
-          const logoStep = steps.find((s: any) => s.stage === 'logo');
-          const openaiStep = steps.find((s: any) => s.stage === 'openai');
-          const timeoutStep = steps.find((s: any) => s.stage === 'timeout');
-          
-          let notes = '';
-          if (timeoutStep) {
-            notes = 'TIMEOUT';
-          } else if (steps.some((s: any) => s.meta?.code === 'MISSING_KEY')) {
-            notes = 'MISSING_KEY';
-          } else if (steps.some((s: any) => s.stage === 'openai_parse' && !s.ok)) {
-            notes = 'PARSE_ERR';
-          }
-
-          // Apply hot thresholds if enabled
-          let decision = data.kind || 'none';
-          if (applyHotThresholds) {
-            const openaiConfidence = openaiStep?.meta?.confidence || 0;
-            const ocrBrandCount = ocrStep?.meta?.topTokens?.filter((t: string) => 
-              /trader|kellogg|nestle|pepsi|coca|quaker|nature|kind|clif|oreo|cheerios/i.test(t)
-            ).length || 0;
+              elapsed_ms
+            };
+          } else {
+            // Extract analysis data
+            const analysisSteps = data.steps || [];
+            const ocrStep = analysisSteps.find((s: any) => s.stage === 'ocr');
+            const logoStep = analysisSteps.find((s: any) => s.stage === 'logo');
+            const openaiStep = analysisSteps.find((s: any) => s.stage === 'openai');
+            const timeoutStep = analysisSteps.find((s: any) => s.stage === 'timeout');
             
-            if (openaiConfidence >= 0.35 || ocrBrandCount > 0) {
-              if (decision === 'none') {
-                decision = 'branded_candidates';
+            let notes = '';
+            if (timeoutStep) {
+              notes = 'TIMEOUT';
+            } else if (analysisSteps.some((s: any) => s.meta?.code === 'MISSING_KEY')) {
+              notes = 'MISSING_KEY';
+            } else if (analysisSteps.some((s: any) => s.stage === 'openai_parse' && !s.ok)) {
+              notes = 'PARSE_ERR';
+            }
+
+            // Apply hot thresholds if enabled
+            let decision = data.kind || 'none';
+            if (applyHotThresholds) {
+              const openaiConfidence = openaiStep?.meta?.confidence || 0;
+              const ocrBrandCount = ocrStep?.meta?.topTokens?.filter((t: string) => 
+                /trader|kellogg|nestle|pepsi|coca|quaker|nature|kind|clif|oreo|cheerios/i.test(t)
+              ).length || 0;
+              
+              if (openaiConfidence >= 0.35 || ocrBrandCount > 0) {
+                if (decision === 'none') {
+                  decision = 'branded_candidates';
+                }
+              }
+            }
+
+            const isSuccess = decision === 'single_product' || decision === 'branded_candidates';
+            
+            results[index] = {
+              ...results[index],
+              status: 'completed',
+              ok: isSuccess,
+              brand_guess: openaiStep?.meta?.brand || '',
+              logo_brands: logoStep?.meta?.logoBrands || [],
+              ocr_top_tokens: ocrStep?.meta?.topTokens?.slice(0, 5) || [],
+              decision,
+              notes,
+              steps: analysisSteps,
+              response: data,
+              elapsed_ms
+            };
+
+            console.log(`[ANALYZER] ${provider}_done decision:`, decision);
+
+            // Early exit check - if this provider found branded candidates
+            if (isSuccess && decision === 'branded_candidates' && !hasEarlyExit) {
+              setHasEarlyExit(true);
+              console.log('[ANALYZER] Early exit triggered', { provider, decision });
+              
+              // Navigate to HealthScan flow with candidates
+              if (data.candidates && data.candidates.length > 0) {
+                toast({
+                  title: "🎯 Product Detected!",
+                  description: `Found ${data.candidates.length} matches. Redirecting to product selection...`,
+                });
+                
+                // Store the scan data for the health check modal
+                sessionStorage.setItem('health-scan-data', JSON.stringify({
+                  imageBase64: imagePrep.dataUrl,
+                  candidates: data.candidates,
+                  provider: provider
+                }));
+                
+                // Navigate to camera page which will open the health check modal
+                setTimeout(() => {
+                  navigate('/camera?health-scan=true');
+                }, 1000);
               }
             }
           }
 
-          console.log(`[ANALYZER] ${provider}_done decision:`, decision);
-
-          results.push({
-            provider,
-            ok: decision === 'single_product' || decision === 'branded_candidates',
-            brand_guess: openaiStep?.meta?.brand || '',
-            logo_brands: logoStep?.meta?.logoBrands || [],
-            ocr_top_tokens: ocrStep?.meta?.topTokens?.slice(0, 5) || [],
-            decision,
-            notes,
-            steps,
-            response: data
-          });
-
-        } catch (providerError) {
+          steps[index + 1] = { 
+            name: provider, 
+            status: results[index].status === 'error' ? 'error' : 'completed', 
+            ms: elapsed_ms 
+          };
+          
+        } catch (providerError: any) {
+          const elapsed_ms = Math.round(performance.now() - providerStartTime);
           console.log(`[ANALYZER] ${provider}_done exception:`, providerError.message);
-          const isMissingKey = providerError.message?.includes('API key') || providerError.message?.includes('MISSING_KEY');
-          results.push({
-            provider,
-            ok: false,
-            decision: isMissingKey ? 'skipped' : 'error',
-            notes: isMissingKey ? 'MISSING_KEY' : `Exception: ${providerError.message}`,
-            steps: [],
-            response: null
-          });
-        }
-      }
+          
+          let status: 'error' | 'timeout' | 'skipped' = 'error';
+          let notes = `Exception: ${providerError.message}`;
+          
+          if (providerError.message === 'Provider timeout') {
+            status = 'timeout';
+            notes = 'TIMEOUT';
+          } else if (providerError.message?.includes('API key') || providerError.message?.includes('MISSING_KEY')) {
+            status = 'skipped';
+            notes = 'MISSING_KEY';
+          }
 
+          results[index] = {
+            ...results[index],
+            status,
+            ok: false,
+            decision: status,
+            notes,
+            elapsed_ms
+          };
+
+          steps[index + 1] = { name: provider, status: 'error', ms: elapsed_ms };
+        }
+
+        setProviderResults([...results]);
+        setProgressSteps([...steps]);
+      };
+
+      // Run providers in parallel
+      await Promise.allSettled([
+        runProvider('openai', 0),
+        runProvider('google', 1)
+      ]);
+
+      const totalMs = Math.round(performance.now() - runStartTime);
       const overallPass = results.some(r => r.ok);
+      
+      // Create telemetry
+      const telemetry: RunTelemetry = {
+        run_id: runId,
+        bytesBefore: imagePrep.bytesBefore,
+        bytesAfter: imagePrep.bytesAfter,
+        resize_ms: imagePrep.ms,
+        openai_ms: results.find(r => r.provider === 'openai')?.elapsed_ms,
+        google_ms: results.find(r => r.provider === 'google')?.elapsed_ms,
+        first_hit: results.find(r => r.ok && r.decision === 'branded_candidates')?.provider as any || 'none',
+        decision: results.find(r => r.ok)?.decision || 'none',
+        total_ms: totalMs
+      };
+
+      console.log('[ANALYZER] decision', telemetry);
       
       const testResult: TestResult = {
         imageFile: file.name,
         results,
-        overallPass
+        overallPass,
+        telemetry,
+        imagePrep
       };
 
       setTestResults(prev => [testResult, ...prev]);
 
-      toast({
-        title: overallPass ? "Analysis PASSED" : "Analysis FAILED",
-        description: `${results.filter(r => r.ok).length}/${results.length} providers succeeded`,
-        variant: overallPass ? "default" : "destructive"
-      });
+      if (!hasEarlyExit) {
+        toast({
+          title: overallPass ? "Analysis PASSED" : "Analysis FAILED",
+          description: `${results.filter(r => r.ok).length}/${results.length} providers succeeded`,
+          variant: overallPass ? "default" : "destructive"
+        });
+      }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Analyzer audit failed:', error);
       toast({
         title: "Audit Failed",
@@ -184,13 +329,14 @@ export default function AnalyzerOneClick() {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'running': return <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />;
+      case 'error': case 'timeout': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'skipped': return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
+    }
   };
 
   const getDecisionBadgeVariant = (decision: string) => {
@@ -216,6 +362,9 @@ export default function AnalyzerOneClick() {
   const resetResults = () => {
     setTestResults([]);
     setSelectedFile(null);
+    setProgressSteps([]);
+    setProviderResults([]);
+    setHasEarlyExit(false);
     console.log('[ANALYZER] reset');
   };
 
@@ -304,6 +453,108 @@ export default function AnalyzerOneClick() {
         </CardContent>
       </Card>
 
+      {/* Real-time Progress */}
+      {(progressSteps.length > 0 || providerResults.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Live Analysis Progress
+              {hasEarlyExit && (
+                <Badge variant="default" className="bg-green-500 text-white">
+                  Early Exit Triggered!
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Progress Steps */}
+            {progressSteps.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-4 mb-2">
+                  {progressSteps.map((step, index) => (
+                    <div key={step.name} className="flex items-center gap-2">
+                      {getStatusIcon(step.status)}
+                      <span className="text-sm font-medium capitalize">{step.name}</span>
+                      {step.ms && (
+                        <Badge variant="outline" className="text-xs">
+                          {step.ms}ms
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Live Provider Results */}
+            {providerResults.length > 0 && (
+              <div className="space-y-3">
+                {providerResults.map((result, index) => (
+                  <div key={result.provider} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{result.provider}</Badge>
+                        {getStatusIcon(result.status)}
+                        {result.decision !== 'none' && (
+                          <Badge variant={getDecisionBadgeVariant(result.decision)}>
+                            {result.decision}
+                          </Badge>
+                        )}
+                        {result.notes && (
+                          <Badge variant={result.decision === 'skipped' ? 'secondary' : 'destructive'}>
+                            {result.notes}
+                          </Badge>
+                        )}
+                        {result.elapsed_ms && (
+                          <Badge variant="outline" className="text-xs">
+                            {result.elapsed_ms}ms
+                          </Badge>
+                        )}
+                      </div>
+                      {result.steps.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyStepsToClipboard(result.steps)}
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy JSON
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {result.status === 'completed' && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <strong>Brand:</strong>
+                          <div className="text-muted-foreground">
+                            {result.brand_guess || 'None'}
+                          </div>
+                        </div>
+                        <div>
+                          <strong>Logos:</strong>
+                          <div className="text-muted-foreground">
+                            {result.logo_brands?.length > 0 ? result.logo_brands.join(', ') : 'None'}
+                          </div>
+                        </div>
+                        <div>
+                          <strong>OCR:</strong>
+                          <div className="text-muted-foreground">
+                            {result.ocr_top_tokens?.length > 0 ? result.ocr_top_tokens.join(', ') : 'None'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {testResults.map((testResult, testIndex) => (
         <Card key={testIndex}>
           <CardHeader>
@@ -389,6 +640,56 @@ export default function AnalyzerOneClick() {
               ))}
             </div>
           </CardContent>
+          
+          {/* Telemetry Display */}
+          {testResult.telemetry && (
+            <CardContent className="pt-0">
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Performance Telemetry
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="font-medium">Image Prep</div>
+                    <div className="text-muted-foreground">
+                      {testResult.imagePrep ? (
+                        <>
+                          {testResult.telemetry.resize_ms}ms
+                          <br />
+                          <span className="text-xs">
+                            {(testResult.imagePrep.bytesBefore / 1024 / 1024).toFixed(1)}MB → {(testResult.imagePrep.bytesAfter / 1024 / 1024).toFixed(1)}MB
+                          </span>
+                        </>
+                      ) : (
+                        `${testResult.telemetry.resize_ms}ms`
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium">OpenAI</div>
+                    <div className="text-muted-foreground">
+                      {testResult.telemetry.openai_ms ? `${testResult.telemetry.openai_ms}ms` : 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Google</div>
+                    <div className="text-muted-foreground">
+                      {testResult.telemetry.google_ms ? `${testResult.telemetry.google_ms}ms` : 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Total</div>
+                    <div className="text-muted-foreground">
+                      {testResult.telemetry.total_ms}ms
+                      <br />
+                      <span className="text-xs">First hit: {testResult.telemetry.first_hit}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
       ))}
     </div>
