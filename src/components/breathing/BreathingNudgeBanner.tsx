@@ -1,10 +1,9 @@
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Heart, Brain, Calendar, Wind } from "lucide-react"
 import { useBreathingNudgeDisplay } from "@/hooks/useBreathingNudgeDisplay"
 import { useNavigate } from "react-router-dom"
 import { useNudgeTracking } from "@/hooks/useNudgeTracking"
-import { useTheme } from "next-themes"
+import { NudgeCard } from "@/components/nudges/NudgeCard"
 
 interface BreathingNudgeBannerProps {
   onAccept?: () => void
@@ -14,11 +13,8 @@ interface BreathingNudgeBannerProps {
 export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBannerProps) => {
   const { activeNudge, acceptNudge, dismissNudge } = useBreathingNudgeDisplay()
   const navigate = useNavigate()
-  const { theme } = useTheme()
   // 🎮 Coach Gamification System
   const { trackNudgeAction } = useNudgeTracking()
-
-  const isLightMode = theme === 'light'
 
   if (!activeNudge) return null
 
@@ -40,37 +36,13 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   const getNudgeIcon = () => {
-    const iconColor = isLightMode ? "text-slate-700" : "text-white"
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return <Brain className={`h-6 w-6 ${iconColor}`} />
+        return <Brain className="h-6 w-6 text-white/90" />
       case 'daily_reminder':
-        return <Calendar className={`h-6 w-6 ${iconColor}`} />
+        return <Calendar className="h-6 w-6 text-white/90" />
       default:
-        return <Wind className={`h-6 w-6 ${iconColor}`} />
-    }
-  }
-
-  const getBannerStyle = () => {
-    if (isLightMode) {
-      switch (activeNudge.nudge_type) {
-        case 'ai_coach':
-          return "bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-300 shadow-lg"
-        case 'daily_reminder':
-          return "bg-gradient-to-r from-blue-100 to-cyan-100 border border-blue-300 shadow-lg"
-        default:
-          return "bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-300 shadow-lg"
-      }
-    }
-    
-    // Dark mode styles
-    switch (activeNudge.nudge_type) {
-      case 'ai_coach':
-        return "bg-gradient-to-r from-violet-500 to-purple-600 shadow-lg"
-      case 'daily_reminder':
-        return "bg-gradient-to-r from-blue-500 to-cyan-600 shadow-lg"
-      default:
-        return "bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg"
+        return <Wind className="h-6 w-6 text-white/90" />
     }
   }
 
@@ -85,62 +57,25 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     }
   }
 
-  console.log('BreathingNudgeBanner render:', { 
-    isLightMode, 
-    activeNudge: activeNudge?.nudge_type, 
-    bannerStyle: getBannerStyle() 
-  });
-
   return (
-    <Card className={`p-6 mb-6 rounded-xl shadow-md ${
-      isLightMode 
-        ? 'bg-white text-slate-900 border border-slate-200' 
-        : 'bg-gray-800 text-white border border-gray-700'
-    }`}>
-      <div className="flex items-start gap-4">
-        <div className={`flex-shrink-0 p-2 rounded-full ${
-          isLightMode ? 'bg-slate-200' : 'bg-neutral-700'
-        }`}>
-          {getNudgeIcon()}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
-            {getTitle()}
-          </h3>
-          <p className={`mb-4 leading-relaxed ${isLightMode ? 'text-slate-700' : 'text-slate-200'}`}>
-            {activeNudge.nudge_message}
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Button
-              onClick={handleAccept}
-              size="sm"
-              className={`font-medium flex-1 sm:flex-none ${
-                isLightMode 
-                  ? 'bg-slate-800 text-white hover:bg-slate-900' 
-                  : 'bg-white text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
-              <Heart className="h-4 w-4 mr-2" />
-              Sacred Breath
-            </Button>
-            <Button
-              onClick={handleDismiss}
-              size="sm"
-              variant="ghost"
-              className={`flex-1 sm:flex-none text-xs sm:text-sm px-3 ${
-                isLightMode 
-                  ? 'text-slate-600 hover:bg-slate-200 border border-slate-300' 
-                  : 'text-slate-300 hover:bg-neutral-800 border border-neutral-600'
-              }`}
-            >
-              In gentle time
-            </Button>
-          </div>
-        </div>
-      </div>
-    </Card>
+    <NudgeCard
+      title={getTitle()}
+      subtitle={activeNudge.nudge_message}
+      accent="breath"
+      icon={getNudgeIcon()}
+      ctaLabel="Sacred Breath"
+      onCta={handleAccept}
+      className="mb-6"
+      footer={
+        <Button
+          onClick={handleDismiss}
+          size="sm"
+          variant="ghost"
+          className="flex-1 sm:flex-none text-xs sm:text-sm px-3 text-white/70 hover:bg-white/10 border border-white/20"
+        >
+          In gentle time
+        </Button>
+      }
+    />
   )
 }
