@@ -177,35 +177,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
-            {/* Top Corner Controls - Outside Banner with breathing room */}
-            <div className="absolute top-8 left-6 z-40 pt-8 mt-[env(safe-area-inset-top)]">
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20 w-12 h-12 p-0"
-              >
-                <X className="h-8 w-8" />
-              </Button>
-            </div>
-
-            <div className="absolute top-8 right-6 z-40 pt-8 mt-[env(safe-area-inset-top)]">
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={toggleTorch}
-                disabled={!supportsTorch}
-                title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
-                className={`text-white hover:bg-white/20 w-12 h-12 p-0 ${
-                  torchOn ? 'bg-yellow-500/20' : ''
-                } ${!supportsTorch ? 'opacity-50' : ''}`}
-              >
-                <Lightbulb className={`h-8 w-8 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-              </Button>
-            </div>
-
-            {/* Header Banner - with more spacing from top */}
-            <div className="absolute top-32 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
+            {/* Header Banner - moved all the way up */}
+            <div className="absolute top-4 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
               <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
@@ -221,8 +194,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </div>
             </div>
 
-            {/* Center - Camera Viewfinder */}
-            <div className="absolute top-60 bottom-48 left-4 right-4 flex items-center justify-center">
+            {/* Center - Camera Viewfinder - positioned below banner with proper spacing */}
+            <div className="absolute top-36 bottom-48 left-4 right-4 flex items-center justify-center">
               {/* Camera frame overlay - Extended vertically to use most of the available space */}
               <div className="relative w-full max-w-[400px] h-full pointer-events-none">
                 {/* Corner indicators */}
