@@ -16,6 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { selectNudgesForUser } from '@/nudges/scheduler';
 import { logNudgeEvent } from '@/nudges/logEvent';
@@ -60,12 +61,11 @@ interface QAReport {
 
 export function NudgesQA() {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const [running, setRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState<QAReport | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
-
-  const isAdmin = true; // Simplified for now - would check actual admin status
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
