@@ -177,8 +177,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
-            {/* Header */}
-            <div className="relative flex items-center justify-between p-4 pt-8 bg-gradient-to-b from-black/70 to-transparent mt-[env(safe-area-inset-top)]">
+            {/* Header Controls */}
+            <div className="absolute top-4 left-0 right-0 flex items-center justify-between p-4 pt-8 z-30 mt-[env(safe-area-inset-top)]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -187,8 +187,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               >
                 <X className="h-6 w-6" />
               </Button>
-              
-              <h2 className="text-white text-xl font-semibold">Take Photo</h2>
               
               <Button
                 variant="ghost"
@@ -204,10 +202,27 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </Button>
             </div>
 
+            {/* Header Banner */}
+            <div className="absolute top-20 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
+              <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xl">📸</span>
+                  </div>
+                  <h2 className="text-white text-xl font-bold">
+                    📸 Photo Health Analyzer
+                  </h2>
+                </div>
+                <p className="text-green-300 text-sm animate-pulse">
+                  Take a photo of brand product or a meal for health report!
+                </p>
+              </div>
+            </div>
+
             {/* Center - Camera Viewfinder */}
-            <div className="flex-1 flex items-center justify-center px-4">
-              {/* Camera frame overlay */}
-              <div className="relative w-[85vw] max-w-[400px] aspect-square pointer-events-none">
+            <div className="flex-1 flex items-start justify-center px-4 pt-32">
+              {/* Camera frame overlay - Extended vertically */}
+              <div className="relative w-[85vw] max-w-[400px] h-[60vh] min-h-[500px] pointer-events-none">
                 {/* Corner indicators */}
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
