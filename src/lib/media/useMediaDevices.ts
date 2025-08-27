@@ -24,6 +24,7 @@ interface CameraHookResult {
   stream: MediaStream | null;
   start: () => Promise<void>;
   stop: () => void;
+  attach: (video: HTMLVideoElement) => Promise<void>;
   isActive: boolean;
   torch: CameraTorchControls;
 }
@@ -50,9 +51,9 @@ interface MicrophoneOptions {
 // Global registry for active streams (for emergency cleanup)
 const activeStreams = new Set<MediaStream>();
 
-// Auto-shutdown timer
-let autoShutdownTimer: NodeJS.Timeout | null = null;
-const AUTO_SHUTDOWN_DELAY = 30000; // 30 seconds
+// Configuration flags
+const CAMERA_MANAGER_ENABLED = process.env.CAMERA_MANAGER_ENABLED !== 'false';
+const IDLE_SHUTOFF_MS = 0; // Disabled for now
 
 /**
  * Hook for camera access with torch control
@@ -109,21 +110,35 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
     }
 
     try {
-      // iOS Safari compatibility constraints
-      const constraints: MediaStreamConstraints = {
+      // Forgiving constraints with fallbacks for iOS Safari
+      const baseConstraints: MediaStreamConstraints = {
         video: {
           facingMode: options.facingMode 
             ? { ideal: options.facingMode }
             : { ideal: 'environment' },
-          width: options.width ? { ideal: options.width } : undefined,
-          height: options.height ? { ideal: options.height } : undefined,
         },
         audio: false
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      const videoTrack = stream.getVideoTracks()[0];
+      // Add dimension constraints if specified
+      if (options.width || options.height) {
+        (baseConstraints.video as any).width = options.width ? { ideal: options.width } : undefined;
+        (baseConstraints.video as any).height = options.height ? { ideal: options.height } : undefined;
+      }
 
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(baseConstraints);
+      } catch (error) {
+        // Fallback with minimal constraints if the ideal ones fail
+        console.warn('🎥 [MEDIA] Falling back to basic constraints:', error);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false
+        });
+      }
+
+      const videoTrack = stream.getVideoTracks()[0];
       if (!videoTrack) {
         throw new Error('No video track available');
       }
@@ -139,18 +154,6 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
         console.log('🎥 [MEDIA] Video track ended');
         setIsActive(false);
       });
-
-      // Ensure torch is off initially (inline to avoid circular dependency)
-      try {
-        const capabilities = videoTrackRef.current.getCapabilities?.() as ExtendedMediaTrackCapabilities;
-        if (capabilities?.torch) {
-          await videoTrackRef.current.applyConstraints({
-            advanced: [{ torch: false } as ExtendedMediaTrackConstraintSet]
-          });
-        }
-      } catch (error) {
-        // Ignore errors for unsupported devices
-      }
       
       setIsActive(true);
       markActivity();
@@ -184,12 +187,31 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
     }
   }, [options, stop, markActivity]);
 
-  // Torch controls
+  // Video attachment helper
+  const attach = useCallback(async (video: HTMLVideoElement) => {
+    if (!streamRef.current || !video) return;
+    
+    try {
+      video.muted = true;
+      video.playsInline = true;
+      (video as any).webkitPlaysInline = true;
+      video.srcObject = streamRef.current;
+      await video.play();
+      console.log('🎥 [MEDIA] Video attached and playing');
+    } catch (error) {
+      console.warn('🎥 [MEDIA] Failed to attach/play video:', error);
+    }
+  }, []);
+
+  // Torch controls - only work after track is live
   const torch: CameraTorchControls = {
     supported: !!(videoTrackRef.current?.getCapabilities?.() as ExtendedMediaTrackCapabilities)?.torch,
     
     on: async () => {
-      if (!videoTrackRef.current) return;
+      if (!videoTrackRef.current || videoTrackRef.current.readyState !== 'live') {
+        console.warn('🔦 [MEDIA] Track not ready for torch control');
+        return;
+      }
       
       try {
         const capabilities = videoTrackRef.current.getCapabilities?.() as ExtendedMediaTrackCapabilities;
@@ -202,6 +224,7 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
         }
       } catch (error) {
         console.warn('🔦 [MEDIA] Failed to turn torch ON:', error);
+        // Don't stop the track on torch errors
       }
     },
 
@@ -217,18 +240,19 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
           console.log('🔦 [MEDIA] Torch turned OFF');
         }
       } catch (error) {
+        // Swallow errors during cleanup
         console.warn('🔦 [MEDIA] Failed to turn torch OFF:', error);
       }
     }
   };
 
-  // Auto-shutdown on idle
+  // Auto-shutdown on idle (DISABLED for now)
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || IDLE_SHUTOFF_MS === 0) return;
 
     const checkIdle = () => {
       const elapsed = Date.now() - lastActivityRef.current;
-      if (elapsed > AUTO_SHUTDOWN_DELAY && isActive) {
+      if (elapsed > IDLE_SHUTOFF_MS && isActive) {
         console.log('🎥 [MEDIA] Auto-shutdown due to inactivity');
         stop();
       }
@@ -238,15 +262,8 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
     return () => clearInterval(interval);
   }, [isActive, stop]);
 
-  // Page lifecycle guards
+  // Page lifecycle guards (DISABLED for now - only keep beforeunload)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isActive) {
-        console.log('🎥 [MEDIA] Auto-stop on page hidden');
-        stop();
-      }
-    };
-
     const handleBeforeUnload = () => {
       if (isActive) {
         console.log('🎥 [MEDIA] Auto-stop on page unload');
@@ -254,13 +271,8 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isActive, stop]);
 
   // Cleanup on unmount
@@ -274,6 +286,7 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
     stream: streamRef.current,
     start,
     stop,
+    attach,
     isActive,
     torch
   };
@@ -367,13 +380,13 @@ export function useMicrophone(options: MicrophoneOptions = {}): MicrophoneHookRe
     }
   }, [options, stop, markActivity]);
 
-  // Auto-shutdown and lifecycle - same as camera
+  // Auto-shutdown and lifecycle - disabled for now
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || IDLE_SHUTOFF_MS === 0) return;
 
     const checkIdle = () => {
       const elapsed = Date.now() - lastActivityRef.current;
-      if (elapsed > AUTO_SHUTDOWN_DELAY && isActive) {
+      if (elapsed > IDLE_SHUTOFF_MS && isActive) {
         console.log('🎤 [MEDIA] Auto-shutdown due to inactivity');
         stop();
       }
@@ -384,13 +397,6 @@ export function useMicrophone(options: MicrophoneOptions = {}): MicrophoneHookRe
   }, [isActive, stop]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isActive) {
-        console.log('🎤 [MEDIA] Auto-stop on page hidden');
-        stop();
-      }
-    };
-
     const handleBeforeUnload = () => {
       if (isActive) {
         console.log('🎤 [MEDIA] Auto-stop on page unload');
@@ -398,13 +404,8 @@ export function useMicrophone(options: MicrophoneOptions = {}): MicrophoneHookRe
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isActive, stop]);
 
   useEffect(() => {

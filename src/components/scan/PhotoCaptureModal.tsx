@@ -38,6 +38,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     try {
       console.log("[PHOTO] Starting camera with useCamera hook...");
       await camera.start();
+      if (videoRef.current) {
+        await camera.attach(videoRef.current);
+      }
       setError(null);
     } catch (err) {
       console.error("[PHOTO] Camera access error:", err);
@@ -78,12 +81,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   // Update video element when camera stream changes
   useEffect(() => {
     if (camera.stream && videoRef.current) {
-      videoRef.current.srcObject = camera.stream;
-      videoRef.current.play().catch(console.warn);
+      camera.attach(videoRef.current);
     } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }, [camera.stream]);
+  }, [camera.stream, camera.attach]);
 
   const playCameraClickSound = () => {
     try {
@@ -187,7 +189,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
 
           {/* UI Overlay */}

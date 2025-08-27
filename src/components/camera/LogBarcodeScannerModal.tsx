@@ -137,11 +137,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (!open) return;
     
     try {
-      console.log("[LOG] Starting camera with useCamera hook...");
+      console.log("[LOG_BARCODE] Starting camera...");
       await camera.start();
+      if (videoRef.current) {
+        await camera.attach(videoRef.current);
+      }
       setError(null);
     } catch (err) {
-      console.error("[LOG] Camera access error:", err);
+      console.error("[LOG_BARCODE] Camera error:", err);
       setError('Unable to access camera. Please check permissions and try again.');
     }
   }, [open, camera]);
@@ -183,8 +186,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Update video element when camera stream changes  
   useEffect(() => {
     if (camera.stream && videoRef.current) {
-      videoRef.current.srcObject = camera.stream;
-      videoRef.current.play().catch(console.warn);
+      camera.attach(videoRef.current);
       
       // Update stream ref for compatibility
       updateStreamRef(camera.stream);
@@ -196,7 +198,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }, [camera.stream, updateStreamRef, startAutoscan, AUTOSCAN_ENABLED]);
+  }, [camera.stream, camera.attach, updateStreamRef, startAutoscan, AUTOSCAN_ENABLED]);
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
     console.log(`[LOG] off_fetch_start`, { code: barcode });
@@ -364,7 +366,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
               filter: isFrozen ? 'brightness(0.3)' : 'none',
               transition: 'filter 0.2s ease'

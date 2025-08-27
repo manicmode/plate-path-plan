@@ -213,6 +213,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     try {
       console.log("[WEB] Starting camera with useCamera hook...");
       await camera.start();
+      if (videoRef.current) {
+        await camera.attach(videoRef.current);
+      }
       setIsScanning(false); // Ready to scan
       setError(null);
     } catch (err) {
@@ -224,12 +227,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   // Update video element when camera stream changes
   useEffect(() => {
     if (camera.stream && videoRef.current) {
-      videoRef.current.srcObject = camera.stream;
-      videoRef.current.play().catch(console.warn);
+      camera.attach(videoRef.current);
     } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }, [camera.stream]);
+  }, [camera.stream, camera.attach]);
 
   const cleanup = async () => {
     if (scanningIntervalRef.current) {
@@ -290,13 +292,13 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="relative bg-black rounded-xl overflow-hidden">
+      <div className="relative h-[60vh] bg-black overflow-hidden rounded-xl">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className={`w-full h-64 object-cover transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
         />
         <canvas
           ref={canvasRef}

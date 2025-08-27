@@ -68,23 +68,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       console.log("[CAMERA] Starting camera with new hook...");
       await camera.start();
       
-      if (camera.stream && videoRef.current) {
-        videoRef.current.srcObject = camera.stream;
-        await videoRef.current.play();
+      if (videoRef.current) {
+        await camera.attach(videoRef.current);
         
         // Update track ref for compatibility with existing code
-        const videoTrack = camera.stream.getVideoTracks()[0];
-        if (videoTrack) {
-          trackRef.current = videoTrack;
-          updateStreamRef(camera.stream);
-          
-          const settings = videoTrack.getSettings();
-          console.log('[HS] Stream settings:', {
-            width: settings.width,
-            height: settings.height,
-            facingMode: settings.facingMode,
-            deviceId: settings.deviceId
-          });
+        if (camera.stream) {
+          const videoTrack = camera.stream.getVideoTracks()[0];
+          if (videoTrack) {
+            trackRef.current = videoTrack;
+            updateStreamRef(camera.stream);
+            
+            const settings = videoTrack.getSettings();
+            console.log('[HS] Stream settings:', {
+              width: settings.width,
+              height: settings.height,
+              facingMode: settings.facingMode,
+              deviceId: settings.deviceId
+            });
+          }
         }
         
         console.log('[CAMERA] Camera started successfully via hook');
@@ -116,8 +117,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Update video element when camera stream changes
   useEffect(() => {
     if (camera.stream && videoRef.current) {
-      videoRef.current.srcObject = camera.stream;
-      videoRef.current.play().catch(console.warn);
+      camera.attach(videoRef.current);
       
       // Update compatibility refs
       const videoTrack = camera.stream.getVideoTracks()[0];
@@ -128,7 +128,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }, [camera.stream, updateStreamRef]);
+  }, [camera.stream, camera.attach, updateStreamRef]);
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
