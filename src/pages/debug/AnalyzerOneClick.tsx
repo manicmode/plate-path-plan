@@ -556,7 +556,7 @@ export default function AnalyzerOneClick() {
               <label className="flex items-center space-x-2">
                 <Checkbox 
                   checked={applyHotThresholds} 
-                  onCheckedChange={setApplyHotThresholds}
+                  onCheckedChange={(checked) => setApplyHotThresholds(checked === true)}
                 />
                 <span>Apply Hot Thresholds (brand confidence boost)</span>
               </label>
@@ -564,7 +564,7 @@ export default function AnalyzerOneClick() {
               <label className="flex items-center space-x-2">
                 <Checkbox 
                   checked={traceEnabled} 
-                  onCheckedChange={setTraceEnabled}
+                  onCheckedChange={(checked) => setTraceEnabled(checked === true)}
                 />
                 <span>Trace this run (debug-only server logging)</span>
               </label>
