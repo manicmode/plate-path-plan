@@ -39,11 +39,13 @@ export async function searchFoodByName(
   }
   
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    console.log('📡 [FoodSearch] Calling food-search edge function...');
     
-    console.log('📡 [FoodSearch] Calling food_search edge function...');
-    const { data, error } = await supabase.functions.invoke('food_search', {
+    // Create timeout controller for 10s timeout
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
+    
+    const { data, error } = await supabase.functions.invoke('food-search', {
       body: { 
         query: trimmedQuery,
         maxResults,
@@ -55,7 +57,20 @@ export async function searchFoodByName(
     
     if (error) {
       console.error('❌ [FoodSearch] Edge function error:', error);
-      throw new Error(error.message || 'Search function failed');
+      
+      // Create custom error with HTTP status code for better UX
+      const customError = new Error(error.message || 'Search function failed') as Error & { code?: string };
+      
+      // Map common error patterns to status codes
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        customError.code = '404';
+      } else if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
+        customError.code = '401';
+      } else if (error.message?.includes('500') || error.message?.includes('internal')) {
+        customError.code = '500';
+      }
+      
+      throw customError;
     }
     
     if (!data?.results) {

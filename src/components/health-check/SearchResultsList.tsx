@@ -19,13 +19,23 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="bg-black/40 border-white/20 backdrop-blur-sm">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center py-8">
-            <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-              <span className="text-white">Searching...</span>
-            </div>
+      <Card className="bg-white/5 border-white/10">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {/* Skeleton loading list with shimmer */}
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4 animate-pulse">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-white/10 rounded-lg"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-white/10 rounded w-3/4"></div>
+                    <div className="h-3 bg-white/5 rounded w-1/2"></div>
+                  </div>
+                  <div className="w-16 h-6 bg-white/5 rounded-full"></div>
+                </div>
+              </div>
+            ))}
+            <p className="text-gray-400 text-center text-sm">Searching OpenFoodFacts...</p>
           </div>
         </CardContent>
       </Card>
@@ -47,10 +57,10 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
   }
 
   return (
-    <Card className="bg-black/40 border-white/20 backdrop-blur-sm">
+    <Card className="bg-white/5 border-white/10">
       <CardContent className="p-4">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center">
-          <Package className="w-5 h-5 mr-2 text-blue-400" />
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+          <Package className="w-5 h-5 mr-2 text-rose-400" />
           Found {results.length} Result{results.length !== 1 ? 's' : ''}
         </h3>
         
@@ -60,20 +70,20 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
               key={`${result.source}-${result.id}-${index}`}
               onClick={() => onSelect(result)}
               variant="outline"
-              className="w-full p-4 h-auto justify-start text-left border-gray-600 hover:bg-gray-600/20 hover:border-blue-400"
+              className="w-full p-4 h-auto justify-start text-left border-white/20 hover:bg-white/10 hover:border-rose-400 rounded-xl transition-all"
             >
               <div className="flex items-start space-x-3 w-full">
                 {result.imageUrl ? (
                   <img 
                     src={result.imageUrl} 
                     alt={result.name}
-                    className="w-12 h-12 rounded object-cover flex-shrink-0"
+                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
                     <Utensils className="w-6 h-6 text-gray-400" />
                   </div>
                 )}
@@ -84,6 +94,9 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
                     {result.confidence && result.confidence > 0.8 && (
                       <Star className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                     )}
+                    <span className="text-xs bg-white/10 text-gray-300 px-2 py-1 rounded-full uppercase font-mono">
+                      {result.source}
+                    </span>
                   </div>
                   
                   <div className="flex items-center space-x-3 text-sm text-gray-300">
@@ -91,26 +104,25 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
                       <span className="truncate">{result.brand}</span>
                     )}
                     {result.caloriesPer100g && (
-                      <span className="flex-shrink-0">{result.caloriesPer100g} cal/100g</span>
+                      <span className="flex-shrink-0 text-green-400">{result.caloriesPer100g} cal/100g</span>
                     )}
                     {result.servingHint && (
                       <span className="text-gray-400 flex-shrink-0">{result.servingHint}</span>
                     )}
                   </div>
                   
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-xs text-gray-400 uppercase font-mono">
-                      {result.source}
-                    </span>
-                    {result.confidence && (
-                      <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                  {result.confidence && (
+                    <div className="flex items-center space-x-2 mt-2">
+                      <span className="text-xs text-gray-400">Match:</span>
+                      <div className="flex-1 bg-white/10 rounded-full h-1.5">
                         <div 
-                          className="bg-blue-400 rounded-full h-1.5 transition-all"
+                          className="bg-rose-400 rounded-full h-1.5 transition-all"
                           style={{ width: `${Math.round(result.confidence * 100)}%` }}
                         />
                       </div>
-                    )}
-                  </div>
+                      <span className="text-xs text-gray-400">{Math.round(result.confidence * 100)}%</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </Button>

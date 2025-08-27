@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.realtime-token]
 verify_jwt = false
+
+[functions.food-search]
+verify_jwt = false
