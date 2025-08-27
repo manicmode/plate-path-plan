@@ -90,10 +90,10 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
     p?.health?.score ?? envelope?.health?.score ?? null;
 
   const healthFlags =
-    coerceFlags(p?.health?.flags ?? envelope?.health?.flags);
+    coerceFlags(p?.health?.flags ?? envelope?.health?.flags ?? envelope?.healthFlags);
 
   const nutrition =
-    p?.nutrition ?? envelope?.nutrition ?? null;
+    p?.nutrition ?? envelope?.nutrition ?? envelope?.nutritionSummary ?? null;
 
   // Detect any meaningful signal
   const hasAnySignal = !!(
