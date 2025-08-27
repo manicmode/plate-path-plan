@@ -1,11 +1,13 @@
-import { selectNudgesForUser, NudgeCandidate, SchedulerOptions } from '../scheduler';
+import { scheduleNudges, ScheduleResult, NudgeCandidate, SelectedNudge } from '../scheduler';
 import { QAScenario, QASignals, QAHistory, QA_SCENARIOS, QA_TEST_USERS } from './scenarios';
 import { logNudgeEvent } from '../logEvent';
 
 export interface QAScenarioResult {
   scenarioId: string;
   scenario: QAScenario;
-  candidates: NudgeCandidate[];
+  selected: SelectedNudge[];
+  allowed: NudgeCandidate[];
+  allCandidates: NudgeCandidate[];
   passed: boolean;
   issues: string[];
 }
@@ -53,38 +55,36 @@ export async function runQAScenario(
     // Create QA mock with scenario signals
     const qaMock = {
       frozenNow: scenario.at,
-      bypassQuietHours: true,
+      bypassQuietHours: false, // Use real time windows
       qaHistory: scenario.history,
       qaFlags: scenario.flags,
       ...convertSignalsToQAMock(scenario.signals, qaNow),
     };
     
-    // Call scheduler with QA options
-    const schedulerOptions: SchedulerOptions = {
-      dryRun: true, // Always dry run in QA
-      ignoreFeatureFlags: true, // Force flags from scenario
-      ignoreCooldowns: !scenario.respectCooldowns,
-      ignoreDailyCaps: !scenario.respectDailyCaps,
-      ignoreWeeklyCaps: !scenario.respectWeeklyCaps,
-      returnReasons: true, // Get detailed gate reasons
-      qaNow, // Pass fixed time for deterministic results
-    };
-    
-    const candidates = await selectNudgesForUser(
+    // Use the new scheduleNudges function for real selection
+    const result = await scheduleNudges({
       userId,
-      10, // Get all candidates for analysis
-      qaNow,
-      qaMock,
-      schedulerOptions
-    ) as NudgeCandidate[];
+      now: qaNow,
+      maxPerRun: 1, // QA expects 1 per scenario
+      qaMode: true,
+      qaMock
+    });
     
-    // Validate expectations
-    const issues = validateScenarioExpectations(scenario, candidates);
+    console.log(`QA Scenario ${scenario.id}:`, {
+      selected: result.selected.map(s => s.id),
+      allowed: result.allowed.map(a => a.id),
+      expected: scenario.expect
+    });
+    
+    // Validate expectations against selected nudges
+    const issues = validateScenarioExpectations(scenario, result.selected, result.allowed);
     
     return {
       scenarioId: scenario.id,
       scenario,
-      candidates,
+      selected: result.selected,
+      allowed: result.allowed,
+      allCandidates: result.reasons,
       passed: issues.length === 0,
       issues,
     };
@@ -93,7 +93,9 @@ export async function runQAScenario(
     return {
       scenarioId: scenario.id,
       scenario,
-      candidates: [],
+      selected: [],
+      allowed: [],
+      allCandidates: [],
       passed: false,
       issues: [`Error running scenario: ${error}`],
     };
@@ -147,27 +149,30 @@ function convertSignalsToQAMock(signals: QASignals, qaNow: Date): any {
   return mock;
 }
 
-function validateScenarioExpectations(scenario: QAScenario, candidates: NudgeCandidate[]): string[] {
+function validateScenarioExpectations(
+  scenario: QAScenario, 
+  selectedNudges: SelectedNudge[], 
+  allowedNudges: NudgeCandidate[]
+): string[] {
   const issues: string[] = [];
-  const allowedNudges = candidates.filter(c => c.allowed);
-  const allowedIds = allowedNudges.map(n => n.id);
+  const selectedIds = selectedNudges.map(n => n.id);
   
-  // Check expected count
-  if (allowedNudges.length !== scenario.expect.length) {
-    issues.push(`Expected ${scenario.expect.length} nudges, got ${allowedNudges.length}`);
+  // Check expected count against selected (final) nudges
+  if (selectedIds.length !== scenario.expect.length) {
+    issues.push(`Expected ${scenario.expect.length} selected, got ${selectedIds.length}`);
   }
   
-  // Check expected nudge IDs
+  // Check expected nudge IDs in selected
   for (const expectedId of scenario.expect) {
-    if (!allowedIds.includes(expectedId)) {
-      issues.push(`Expected nudge '${expectedId}' not found`);
+    if (!selectedIds.includes(expectedId)) {
+      issues.push(`Expected nudge '${expectedId}' not selected`);
     }
   }
   
-  // Check for unexpected nudges
-  for (const allowedId of allowedIds) {
-    if (!scenario.expect.includes(allowedId)) {
-      issues.push(`Unexpected nudge '${allowedId}' was allowed`);
+  // Check for unexpected selected nudges
+  for (const selectedId of selectedIds) {
+    if (!scenario.expect.includes(selectedId)) {
+      issues.push(`Unexpected nudge '${selectedId}' was selected`);
     }
   }
   

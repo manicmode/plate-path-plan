@@ -46,7 +46,7 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     cooldownDays: 1,
     dailyCap: 1,
     maxPer7d: 7,
-    window: { startHour: 7, endHour: 22 },
+    window: { startHour: 6, endHour: 12 },
     isEligible: async (ctx: UserNudgeContext) => {
       // Check if user hasn't done mood log today
       const today = new Date().toISOString().split('T')[0];
@@ -64,14 +64,8 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     window: { startHour: 10, endHour: 20 },
     enabledFlag: 'breathing_nudges_enabled',
     isEligible: async (ctx: UserNudgeContext) => {
-      // Check if user hasn't done breathing in last 24h
-      const twentyFourHoursAgo = new Date(ctx.currentTime.getTime() - 24 * 60 * 60 * 1000);
-      const noRecentBreathing = !ctx.lastBreathingSession || ctx.lastBreathingSession < twentyFourHoursAgo;
-      
-      // Check stress condition: either high stress in last 48h OR no breathing in last 7 days
-      const hasStressOrNoRecent = ctx.stressTagsLast48h || ctx.breathingSessionsLast7d === 0;
-      
-      return noRecentBreathing && hasStressOrNoRecent;
+      // Only eligible if high stress recently
+      return ctx.stressTagsLast48h;
     },
     render: (props: NudgeRenderProps) => React.createElement(TimeToBreatheNudgeWrapper, props)
   },
@@ -83,7 +77,7 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     maxPer7d: 3,
     window: { startHour: 9, endHour: 21 },
     isEligible: async (ctx: UserNudgeContext) => {
-      // Eligible if less than 4 water logs today
+      // Eligible if low hydration
       return ctx.waterLogsToday < 4;
     },
     render: (props: NudgeRenderProps) => React.createElement(HydrationNudgeWrapper, props)
@@ -96,7 +90,7 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     maxPer7d: 3,
     window: { startHour: 10, endHour: 19 },
     isEligible: async (ctx: UserNudgeContext) => {
-      // Eligible if no activity ≥20 min in last 48h
+      // Eligible if sedentary/no activity
       return !ctx.activityLast48h;
     },
     render: (props: NudgeRenderProps) => React.createElement(MovementNudgeWrapper, props)
@@ -109,8 +103,11 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     maxPer7d: 2,
     window: { startHour: 20, endHour: 23 },
     isEligible: async (ctx: UserNudgeContext) => {
-      // Eligible if bedtime approaching and sleep score below target
-      return ctx.upcomingBedtime && ctx.sleepScoreBelowTarget;
+      // Eligible if no reflection and bedtime approaching
+      const today = ctx.currentTime.toISOString().split('T')[0];
+      const lastLogDate = ctx.lastMoodLog?.toISOString().split('T')[0];
+      const noReflectionToday = lastLogDate !== today;
+      return ctx.upcomingBedtime && noReflectionToday;
     },
     render: (props: NudgeRenderProps) => React.createElement(SleepPrepNudgeWrapper, props)
   }

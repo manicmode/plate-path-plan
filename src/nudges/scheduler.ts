@@ -33,6 +33,59 @@ export type SelectedNudge = {
   reason: string;
 };
 
+export type ScheduleResult = {
+  selected: SelectedNudge[];
+  allowed: NudgeCandidate[];
+  reasons: NudgeCandidate[];
+};
+
+export async function scheduleNudges(options: {
+  userId: string;
+  now?: Date;
+  maxPerRun?: number;
+  qaMode?: boolean;
+  qaMock?: QAMock;
+}): Promise<ScheduleResult> {
+  const { userId, now = new Date(), maxPerRun = 1, qaMode = false, qaMock } = options;
+  
+  const schedulerOptions: SchedulerOptions = {
+    dryRun: qaMode,
+    ignoreFeatureFlags: qaMode,
+    returnReasons: true,
+    qaNow: now,
+  };
+  
+  // Get all candidates with gate reasons
+  const candidates = await selectNudgesForUser(
+    userId,
+    10, // Get all for analysis
+    now,
+    qaMock,
+    schedulerOptions
+  ) as NudgeCandidate[];
+  
+  // Filter allowed candidates and sort by priority
+  const allowedCandidates = candidates.filter(c => c.allowed);
+  allowedCandidates.sort((a, b) => b.definition.priority - a.definition.priority);
+  
+  // Select top N based on maxPerRun
+  const selectedCandidates = allowedCandidates.slice(0, maxPerRun);
+  
+  // Convert to SelectedNudge format
+  const selected: SelectedNudge[] = selectedCandidates.map(candidate => ({
+    id: candidate.id,
+    definition: candidate.definition,
+    runId: `nudge-${candidate.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    reason: `selected_priority_${candidate.definition.priority}`
+  }));
+  
+  return {
+    selected,
+    allowed: allowedCandidates,
+    reasons: candidates // All candidates with reasons
+  };
+}
+
 export async function selectNudgesForUser(
   userId: string, 
   limit = 2,
@@ -129,7 +182,7 @@ export async function selectNudgesForUser(
 
       // Check cooldown (use QA history if available)
       const lastShown = lastShownDates[definition.id];
-      if (lastShown && !options?.ignoreCooldowns) {
+      if (lastShown) {
         const cooldownMs = definition.cooldownDays * 24 * 60 * 60 * 1000;
         const timeSinceLastShown = now.getTime() - lastShown.getTime();
         const cooldownPass = timeSinceLastShown >= cooldownMs;
@@ -148,64 +201,56 @@ export async function selectNudgesForUser(
         reasons.push({ 
           gate: 'cooldown', 
           pass: true, 
-          detail: lastShown ? (options?.ignoreCooldowns ? 'ignored for QA' : 'cooldown passed') : 'never shown' 
+          detail: 'never shown' 
         });
       }
 
       // Check daily cap (use QA history if available)
-      if (!options?.ignoreDailyCaps) {
-        let todayCount = 0;
-        
-        if (qaMock?.qaHistory) {
-          // Use synthetic history
-          todayCount = qaMock.qaHistory.shownToday?.[definition.id] || 0;
-        } else {
-          // Query real database
-          const todayStart = new Date(now);
-          todayStart.setHours(0, 0, 0, 0);
-          
-          const { data: todayShownCount } = await supabase
-            .from('nudge_events')
-            .select('id', { count: 'exact' })
-            .eq('user_id', userId)
-            .eq('nudge_id', definition.id)
-            .eq('event', 'shown')
-            .gte('ts', todayStart.toISOString());
-
-          todayCount = todayShownCount?.length || 0;
-        }
-        
-        const dailyCapPass = todayCount < definition.dailyCap;
-        
-        reasons.push({
-          gate: 'dailyCap',
-          pass: dailyCapPass,
-          detail: `${todayCount}/${definition.dailyCap} today`
-        });
-        
-        if (!dailyCapPass) {
-          allowed = false;
-        }
+      let todayCount = 0;
+      
+      if (qaMock?.qaHistory) {
+        // Use synthetic history
+        todayCount = qaMock.qaHistory.shownToday?.[definition.id] || 0;
       } else {
-        reasons.push({ gate: 'dailyCap', pass: true, detail: 'ignored for QA' });
+        // Query real database
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        
+        const { data: todayShownCount } = await supabase
+          .from('nudge_events')
+          .select('id', { count: 'exact' })
+          .eq('user_id', userId)
+          .eq('nudge_id', definition.id)
+          .eq('event', 'shown')
+          .gte('ts', todayStart.toISOString());
+
+        todayCount = todayShownCount?.length || 0;
+      }
+      
+      const dailyCapPass = todayCount < definition.dailyCap;
+      
+      reasons.push({
+        gate: 'dailyCap',
+        pass: dailyCapPass,
+        detail: `${todayCount}/${definition.dailyCap} today`
+      });
+      
+      if (!dailyCapPass) {
+        allowed = false;
       }
 
       // Check weekly cap (use QA history if available)  
-      if (!options?.ignoreWeeklyCaps) {
-        const weeklyCount = weeklyShownCounts[definition.id] || 0;
-        const weeklyCapPass = weeklyCount < definition.maxPer7d;
-        
-        reasons.push({
-          gate: 'weeklyCap',
-          pass: weeklyCapPass,
-          detail: `${weeklyCount}/${definition.maxPer7d} this week`
-        });
-        
-        if (!weeklyCapPass) {
-          allowed = false;
-        }
-      } else {
-        reasons.push({ gate: 'weeklyCap', pass: true, detail: 'ignored for QA' });
+      const weeklyCount = weeklyShownCounts[definition.id] || 0;
+      const weeklyCapPass = weeklyCount < definition.maxPer7d;
+      
+      reasons.push({
+        gate: 'weeklyCap',
+        pass: weeklyCapPass,
+        detail: `${weeklyCount}/${definition.maxPer7d} this week`
+      });
+      
+      if (!weeklyCapPass) {
+        allowed = false;
       }
 
       // Check business logic eligibility

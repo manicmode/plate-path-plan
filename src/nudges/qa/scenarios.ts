@@ -80,114 +80,105 @@ export const QA_SCENARIOS: QAScenario[] = [
     expect: ["daily_checkin"],
     description: "Morning check-in scenario (09:00 PST)",
     signals: {
-      lastCheckinDays: 999, // never checked in
       timezone: "America/Los_Angeles",
       lastMoodLog: null, // no mood log today
+      waterLogsToday: 4, // adequate hydration
+      activityLast48h: true, // has activity
+      stressTagsLast48h: false, // not stressed
+      upcomingBedtime: false, // not evening
     },
-    history: makeQAHistory({}), // Clean slate
-    flags: {}, // No special flags needed
-    respectCooldowns: false,
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
+    history: makeQAHistory({}),
+    flags: {},
   },
   {
     id: "midday_low_hydration",
-    at: "2025-08-26T12:30:00-07:00",
+    at: "2025-08-26T12:00:00-07:00",
     expect: ["hydration_reminder"],
-    description: "Midday with low hydration (12:30 PST)",
+    description: "Midday with low hydration (12:00 PST)",
     signals: {
-      hydrationMlToday: 250,
-      hydrationTargetMl: 2200,
-      lastHydrationReminderHours: 48,
-      waterLogsToday: 1, // Low hydration
       timezone: "America/Los_Angeles",
+      waterLogsToday: 2, // Low hydration
+      lastMoodLog: new Date("2025-08-26T08:00:00-07:00"), // already checked in
+      activityLast48h: true, // has activity
+      stressTagsLast48h: false, // not stressed
+      upcomingBedtime: false, // not evening
     },
-    history: makeQAHistory({}), // Clean slate
-    flags: { hydration_nudges_enabled: true },
-    respectCooldowns: false,
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
+    history: makeQAHistory({}),
+    flags: {},
   },
   {
     id: "afternoon_sedentary",
-    at: "2025-08-26T15:30:00-07:00",
+    at: "2025-08-26T15:00:00-07:00",
     expect: ["movement_break"],
-    description: "Afternoon after being sedentary (15:30 PST)",
+    description: "Afternoon sedentary (15:00 PST)",
     signals: {
-      stepsToday: 900,
-      minutesSedentaryBlock: 90,
-      lastMovementNudgeHours: 48,
-      activityLast48h: false, // No recent activity
       timezone: "America/Los_Angeles",
+      activityLast48h: false, // No recent activity
+      lastMoodLog: new Date("2025-08-26T08:00:00-07:00"), // already checked in
+      waterLogsToday: 4, // adequate hydration
+      stressTagsLast48h: false, // not stressed
+      upcomingBedtime: false, // not evening
     },
-    history: makeQAHistory({}), // Clean slate
-    flags: { movement_nudges_enabled: true },
-    respectCooldowns: false,
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
+    history: makeQAHistory({}),
+    flags: {},
   },
   {
     id: "evening_no_reflection",
-    at: "2025-08-26T21:30:00-07:00",
+    at: "2025-08-26T21:00:00-07:00",
     expect: ["sleep_prep"],
-    description: "Evening with no reflection done (21:30 PST)",
+    description: "Evening no reflection (21:00 PST)",
     signals: {
-      lastReflectionDays: 7,
-      bedtimeHourLocal: 23,
-      upcomingBedtime: true,
-      sleepScoreBelowTarget: true, // Needs sleep prep
       timezone: "America/Los_Angeles",
+      lastMoodLog: null, // no reflection today
+      upcomingBedtime: true,
+      waterLogsToday: 4, // adequate hydration
+      activityLast48h: true, // has activity
+      stressTagsLast48h: false, // not stressed
     },
-    history: makeQAHistory({}), // Clean slate
-    flags: { sleep_nudges_enabled: true },
-    respectCooldowns: false,
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
+    history: makeQAHistory({}),
+    flags: {},
   },
   {
     id: "breathe_recent_cooldown",
     at: "2025-08-26T14:00:00-07:00",
-    expect: [], // should NOT appear due to cooldown
-    description: "Recent breathing session - should be on cooldown (14:00 PST)",
+    expect: [],
+    description: "Stress with recent breathing - should be on cooldown (14:00 PST)",
     signals: {
-      stressScore: 8,
-      stressTagsLast48h: true,
-      breathingSessionsLast7d: 1,
       timezone: "America/Los_Angeles",
+      stressTagsLast48h: true, // stressed
+      lastBreathingSession: new Date("2025-08-26T05:00:00-07:00"), // 9h ago (within 4d cooldown)
+      lastMoodLog: new Date("2025-08-26T08:00:00-07:00"), // already checked in
+      waterLogsToday: 4, // adequate hydration
+      activityLast48h: true, // has activity
+      upcomingBedtime: false, // not evening
     },
     history: makeQAHistory({
-      // Simulate breathing nudge shown 2h ago (should block due to cooldown)
-      lastShownByNudge: { time_to_breathe: "2025-08-26T12:00:00-07:00" },
-      shownToday: { time_to_breathe: 1 },
+      lastShownByNudge: { time_to_breathe: "2025-08-24T14:00:00-07:00" }, // 2 days ago (within cooldown)
+      shownToday: {},
       shownThisWeek: { time_to_breathe: 1 },
     }),
     flags: { breathing_nudges_enabled: true },
-    respectCooldowns: true, // We want to test cooldown blocking
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
   },
   {
     id: "breathe_old_stress",
     at: "2025-08-26T14:00:00-07:00",
     expect: ["time_to_breathe"],
-    description: "Old breathing session with stress (14:00 PST)",
+    description: "Stress with old breathing - should allow (14:00 PST)",
     signals: {
-      stressScore: 8,
-      stressTagsLast48h: true,
-      breathingSessionsLast7d: 0,
-      lastBreathingSession: null, // Force old session
       timezone: "America/Los_Angeles",
+      stressTagsLast48h: true, // stressed
+      lastBreathingSession: new Date("2025-08-21T14:00:00-07:00"), // 5 days ago (outside cooldown)
+      lastMoodLog: new Date("2025-08-26T08:00:00-07:00"), // already checked in
+      waterLogsToday: 4, // adequate hydration
+      activityLast48h: true, // has activity
+      upcomingBedtime: false, // not evening
     },
     history: makeQAHistory({
-      // Simulate breathing nudge shown > 48h ago (outside cooldown)
-      lastShownByNudge: { time_to_breathe: "2025-08-24T10:00:00-07:00" },
+      lastShownByNudge: { time_to_breathe: "2025-08-21T14:00:00-07:00" }, // 5 days ago (outside cooldown)
       shownToday: {},
-      shownThisWeek: { time_to_breathe: 1 },
+      shownThisWeek: {},
     }),
     flags: { breathing_nudges_enabled: true },
-    respectCooldowns: true, // Test that it allows after cooldown
-    respectDailyCaps: false,
-    respectWeeklyCaps: false,
   },
 ];
 

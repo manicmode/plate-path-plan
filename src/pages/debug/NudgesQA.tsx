@@ -104,7 +104,7 @@ export function NudgesQA() {
       // Convert results to display format
       const newScenarioResults: ScenarioResult[] = matrixResult.results.map(result => ({
         scenarioName: result.scenarioId,
-        candidates: result.candidates,
+        candidates: result.allCandidates, // Use allCandidates instead of candidates
         expectedCount: result.scenario.expect.length,
         expectedNudges: result.scenario.expect,
         passed: result.passed,
@@ -115,7 +115,7 @@ export function NudgesQA() {
       
       // Log results
       for (const result of matrixResult.results) {
-        const allowedNudges = result.candidates.filter(c => c.allowed);
+        const allowedNudges = result.allCandidates.filter(c => c.allowed); // Use allCandidates
         addLog(`${result.scenarioId}: ${result.passed ? '✅' : '❌'} (got ${allowedNudges.length}, expected ${result.scenario.expect.length})`);
         
         if (result.issues.length > 0) {
