@@ -3973,6 +3973,42 @@ export type Database = {
           },
         ]
       }
+      nudge_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          nudge_id: string
+          reason: string | null
+          run_id: string | null
+          ts: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          nudge_id: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          nudge_id?: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
