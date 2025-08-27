@@ -618,26 +618,24 @@ export default function AnalyzerOneClick() {
                               const rawText = result.steps?.find((s: any) => s.meta?.rawText)?.meta?.rawText || 'No raw text';
                               navigator.clipboard.writeText(rawText);
                               toast({ title: "Copied raw OpenAI text to clipboard" });
-                            }}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy Raw
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-        <Card key={testIndex}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                {testResult.overallPass ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-500" />
-                )}
-                <span className={testResult.overallPass ? "text-green-600" : "text-red-600"}>
-                  {testResult.overallPass ? "PASS" : "FAIL"}
-                </span>
+                             }}
+                           >
+                             <Copy className="h-3 w-3 mr-1" />
+                             Copy Raw
+                           </Button>
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
+             )}
+           </CardContent>
+         </Card>
+       )}
+
+       {/* Test Results */}
+       {testResults.map((testResult, testIndex) => (
               </CardTitle>
               <Badge variant="outline">{testResult.imageFile}</Badge>
             </div>
