@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Copy, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,8 +33,13 @@ export default function AnalyzerOneClick() {
   const [applyHotThresholds, setApplyHotThresholds] = useState(true);
   const { toast } = useToast();
 
+  useEffect(() => {
+    console.log('[ANALYZER] page_mount');
+  }, []);
+
   const runAnalyzerAudit = async (file: File) => {
     setIsRunning(true);
+    console.log('[ANALYZER] run_start', { fileName: file.name, applyHotThresholds });
     const results: AnalysisResult[] = [];
 
     try {
@@ -45,7 +51,7 @@ export default function AnalyzerOneClick() {
       
       for (const provider of providers) {
         try {
-          console.log(`Testing provider: ${provider}`);
+          console.log(`[ANALYZER] Testing provider: ${provider}`);
           
           const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
             body: {
@@ -57,11 +63,14 @@ export default function AnalyzerOneClick() {
           });
 
           if (error) {
+            console.log(`[ANALYZER] ${provider}_done error:`, error.message);
+            // Check if it's a missing key error
+            const isMissingKey = error.message?.includes('API key') || error.message?.includes('MISSING_KEY');
             results.push({
               provider,
               ok: false,
-              decision: 'error',
-              notes: `Error: ${error.message}`,
+              decision: isMissingKey ? 'skipped' : 'error',
+              notes: isMissingKey ? 'MISSING_KEY' : `Error: ${error.message}`,
               steps: [],
               response: null
             });
@@ -99,6 +108,8 @@ export default function AnalyzerOneClick() {
             }
           }
 
+          console.log(`[ANALYZER] ${provider}_done decision:`, decision);
+
           results.push({
             provider,
             ok: decision === 'single_product' || decision === 'branded_candidates',
@@ -112,11 +123,13 @@ export default function AnalyzerOneClick() {
           });
 
         } catch (providerError) {
+          console.log(`[ANALYZER] ${provider}_done exception:`, providerError.message);
+          const isMissingKey = providerError.message?.includes('API key') || providerError.message?.includes('MISSING_KEY');
           results.push({
             provider,
             ok: false,
-            decision: 'error',
-            notes: `Exception: ${providerError.message}`,
+            decision: isMissingKey ? 'skipped' : 'error',
+            notes: isMissingKey ? 'MISSING_KEY' : `Exception: ${providerError.message}`,
             steps: [],
             response: null
           });
@@ -152,15 +165,20 @@ export default function AnalyzerOneClick() {
   };
 
   const runSampleTest = async (sampleName: string) => {
+    console.log('[ANALYZER] sample_loaded', { sampleName });
     try {
       const response = await fetch(`/test-assets/${sampleName}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sample: ${response.status}`);
+      }
       const blob = await response.blob();
       const file = new File([blob], sampleName, { type: 'image/jpeg' });
       await runAnalyzerAudit(file);
     } catch (error) {
+      console.error('[ANALYZER] sample_failed', { sampleName, error: error.message });
       toast({
         title: "Sample Test Failed",
-        description: `Could not load sample ${sampleName}`,
+        description: `Could not load sample ${sampleName}: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -181,8 +199,34 @@ export default function AnalyzerOneClick() {
       case 'branded_candidates': return 'secondary';
       case 'none': return 'outline';
       case 'error': return 'destructive';
+      case 'skipped': return 'secondary';
       default: return 'outline';
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Auto-run after file selection
+      await runAnalyzerAudit(file);
+    }
+  };
+
+  const resetResults = () => {
+    setTestResults([]);
+    setSelectedFile(null);
+    console.log('[ANALYZER] reset');
+  };
+
+  const copyStepsToClipboard = (steps: any[]) => {
+    const stepsJson = JSON.stringify(steps, null, 2);
+    navigator.clipboard.writeText(stepsJson).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        description: "Steps data copied as JSON",
+      });
+    });
   };
 
   const formatStepData = (step: any) => {
@@ -197,6 +241,12 @@ export default function AnalyzerOneClick() {
           <h1 className="text-3xl font-bold">Analyzer One-Click Probe</h1>
           <p className="text-muted-foreground">Test image analysis across providers</p>
         </div>
+        {testResults.length > 0 && (
+          <Button variant="outline" onClick={resetResults} className="flex items-center gap-2">
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -206,13 +256,12 @@ export default function AnalyzerOneClick() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="hotThresholds"
               checked={applyHotThresholds}
-              onChange={(e) => setApplyHotThresholds(e.target.checked)}
+              onCheckedChange={(checked) => setApplyHotThresholds(checked === true)}
             />
-            <label htmlFor="hotThresholds" className="text-sm font-medium">
+            <label htmlFor="hotThresholds" className="text-sm font-medium cursor-pointer">
               Apply Hot Thresholds (OpenAI ≥0.35, OCR fuzzy ≥0.45)
             </label>
           </div>
@@ -222,24 +271,16 @@ export default function AnalyzerOneClick() {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
+                disabled={isRunning}
               />
               <label htmlFor="file-upload">
-                <Button variant="outline" className="cursor-pointer">
-                  Choose Image
+                <Button variant="outline" className="cursor-pointer" disabled={isRunning}>
+                  {isRunning ? 'Running...' : 'Choose Image'}
                 </Button>
               </label>
-              {selectedFile && (
-                <Button 
-                  onClick={() => runAnalyzerAudit(selectedFile)} 
-                  disabled={isRunning}
-                  className="ml-2"
-                >
-                  {isRunning ? 'Running...' : 'Run Analyzer Audit'}
-                </Button>
-              )}
             </div>
 
             <Button 
@@ -294,9 +335,20 @@ export default function AnalyzerOneClick() {
                         {result.decision}
                       </Badge>
                       {result.notes && (
-                        <Badge variant="destructive">{result.notes}</Badge>
+                        <Badge variant={result.decision === 'skipped' ? 'secondary' : 'destructive'}>
+                          {result.notes}
+                        </Badge>
                       )}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyStepsToClipboard(result.steps)}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy JSON
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
