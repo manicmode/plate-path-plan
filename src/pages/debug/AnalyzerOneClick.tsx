@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Copy, RotateCcw, Clock, Zap } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Copy, RotateCcw, Clock, Zap, Search, ScanBarcode, RotateCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { optimizedImagePrep, OptimizedPrepResult } from '@/lib/img/optimizedImagePrep';
@@ -445,6 +445,40 @@ export default function AnalyzerOneClick() {
     return `${stage}: ${ok ? '✓' : '✗'} ${JSON.stringify(meta || {}, null, 2)}`;
   };
 
+  const handleSearchByName = (testResult: TestResult) => {
+    // Collect OCR tokens from all providers for prefill
+    const allOcrTokens = testResult.results
+      .flatMap(r => r.ocr_top_tokens || [])
+      .filter(Boolean);
+    
+    // Create a reasonable search query from top tokens
+    const searchQuery = allOcrTokens.slice(0, 3).join(' ');
+    
+    // Navigate to search with prefilled query
+    const searchParams = new URLSearchParams();
+    if (searchQuery.trim()) {
+      searchParams.set('q', searchQuery);
+    }
+    navigate(`/search?${searchParams.toString()}`);
+  };
+
+  const handleScanBarcode = () => {
+    // Navigate to camera with barcode mode
+    navigate('/camera?mode=barcode');
+  };
+
+  const handleTryAgain = (testResult: TestResult) => {
+    if (selectedFile) {
+      runAnalyzerAudit(selectedFile);
+    } else {
+      toast({
+        title: "No image selected",
+        description: "Please select an image to retry analysis.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -789,8 +823,61 @@ export default function AnalyzerOneClick() {
                 </div>
               </div>
             </CardContent>
-          )}
-        </Card>
+           )}
+           
+           {/* Fallback UX for Failed Analysis */}
+           {!testResult.overallPass && (
+             <CardContent className="pt-0">
+               <div className="border-t pt-4">
+                 <h4 className="font-medium mb-3 flex items-center gap-2">
+                   <AlertCircle className="h-4 w-4 text-amber-500" />
+                   What would you like to do next?
+                 </h4>
+                 <div className="space-y-3">
+                   {/* Primary CTAs */}
+                   <div className="flex flex-col sm:flex-row gap-3">
+                     <Button 
+                       onClick={() => handleSearchByName(testResult)}
+                       className="flex items-center gap-2"
+                       size="lg"
+                     >
+                       <Search className="h-4 w-4" />
+                       Search by name
+                       {testResult.results.some(r => r.ocr_top_tokens?.length > 0) && (
+                         <Badge variant="secondary" className="ml-2">
+                           {testResult.results.flatMap(r => r.ocr_top_tokens || []).slice(0, 2).join(' ')}
+                         </Badge>
+                       )}
+                     </Button>
+                     
+                     <Button 
+                       onClick={handleScanBarcode}
+                       variant="secondary"
+                       className="flex items-center gap-2"
+                       size="lg"
+                     >
+                       <ScanBarcode className="h-4 w-4" />
+                       Scan barcode instead
+                     </Button>
+                   </div>
+                   
+                   {/* Secondary CTA */}
+                   <div className="pt-2 border-t">
+                     <Button 
+                       onClick={() => handleTryAgain(testResult)}
+                       variant="outline"
+                       className="flex items-center gap-2"
+                       size="sm"
+                     >
+                       <RotateCw className="h-4 w-4" />
+                       Try again with clearer photo
+                     </Button>
+                   </div>
+                 </div>
+               </div>
+             </CardContent>
+           )}
+         </Card>
       ))}
     </div>
   );
