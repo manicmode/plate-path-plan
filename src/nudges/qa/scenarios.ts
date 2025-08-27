@@ -5,6 +5,11 @@ export interface QAScenario {
   expect: string[]; // Expected nudge IDs
   signals: QASignals; // Mock context inputs
   description: string;
+  history?: QAHistory; // Synthetic nudge history
+  flags?: Record<string, boolean>; // Feature flags for this scenario
+  respectCooldowns?: boolean; // Default: false
+  respectDailyCaps?: boolean; // Default: false
+  respectWeeklyCaps?: boolean; // Default: false
 }
 
 export interface QASignals {
@@ -44,6 +49,30 @@ export interface QASignals {
   lastMoodLog?: Date | null;
 }
 
+export interface QAHistory {
+  lastShownByNudge?: Record<string, string>; // nudgeId -> ISO timestamp
+  shownToday?: Record<string, number>; // nudgeId -> count today
+  shownThisWeek?: Record<string, number>; // nudgeId -> count this week
+  totalShownToday?: number; // Total nudges shown today
+  totalShownThisWeek?: number; // Total nudges shown this week
+}
+
+export function makeQAHistory(opts: {
+  lastShownByNudge?: Record<string, string>;
+  shownToday?: Record<string, number>;
+  shownThisWeek?: Record<string, number>;
+  totalShownToday?: number;
+  totalShownThisWeek?: number;
+}): QAHistory {
+  return {
+    lastShownByNudge: opts.lastShownByNudge || {},
+    shownToday: opts.shownToday || {},
+    shownThisWeek: opts.shownThisWeek || {},
+    totalShownToday: opts.totalShownToday || 0,
+    totalShownThisWeek: opts.totalShownThisWeek || 0,
+  };
+}
+
 export const QA_SCENARIOS: QAScenario[] = [
   {
     id: "morning_checkin",
@@ -55,6 +84,11 @@ export const QA_SCENARIOS: QAScenario[] = [
       timezone: "America/Los_Angeles",
       lastMoodLog: null, // no mood log today
     },
+    history: makeQAHistory({}), // Clean slate
+    flags: {}, // No special flags needed
+    respectCooldowns: false,
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
   {
     id: "midday_low_hydration",
@@ -68,12 +102,17 @@ export const QA_SCENARIOS: QAScenario[] = [
       waterLogsToday: 1, // Low hydration
       timezone: "America/Los_Angeles",
     },
+    history: makeQAHistory({}), // Clean slate
+    flags: { hydration_nudges_enabled: true },
+    respectCooldowns: false,
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
   {
     id: "afternoon_sedentary",
-    at: "2025-08-26T15:00:00-07:00",
+    at: "2025-08-26T15:30:00-07:00",
     expect: ["movement_break"],
-    description: "Afternoon after being sedentary (15:00 PST)",
+    description: "Afternoon after being sedentary (15:30 PST)",
     signals: {
       stepsToday: 900,
       minutesSedentaryBlock: 90,
@@ -81,12 +120,17 @@ export const QA_SCENARIOS: QAScenario[] = [
       activityLast48h: false, // No recent activity
       timezone: "America/Los_Angeles",
     },
+    history: makeQAHistory({}), // Clean slate
+    flags: { movement_nudges_enabled: true },
+    respectCooldowns: false,
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
   {
     id: "evening_no_reflection",
-    at: "2025-08-26T21:15:00-07:00",
+    at: "2025-08-26T21:30:00-07:00",
     expect: ["sleep_prep"],
-    description: "Evening with no reflection done (21:15 PST)",
+    description: "Evening with no reflection done (21:30 PST)",
     signals: {
       lastReflectionDays: 7,
       bedtimeHourLocal: 23,
@@ -94,6 +138,11 @@ export const QA_SCENARIOS: QAScenario[] = [
       sleepScoreBelowTarget: true, // Needs sleep prep
       timezone: "America/Los_Angeles",
     },
+    history: makeQAHistory({}), // Clean slate
+    flags: { sleep_nudges_enabled: true },
+    respectCooldowns: false,
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
   {
     id: "breathe_recent_cooldown",
@@ -102,11 +151,20 @@ export const QA_SCENARIOS: QAScenario[] = [
     description: "Recent breathing session - should be on cooldown (14:00 PST)",
     signals: {
       stressScore: 8,
-      lastBreathHours: 6, // inside cooldown window
       stressTagsLast48h: true,
       breathingSessionsLast7d: 1,
       timezone: "America/Los_Angeles",
     },
+    history: makeQAHistory({
+      // Simulate breathing nudge shown 2h ago (should block due to cooldown)
+      lastShownByNudge: { time_to_breathe: "2025-08-26T12:00:00-07:00" },
+      shownToday: { time_to_breathe: 1 },
+      shownThisWeek: { time_to_breathe: 1 },
+    }),
+    flags: { breathing_nudges_enabled: true },
+    respectCooldowns: true, // We want to test cooldown blocking
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
   {
     id: "breathe_old_stress",
@@ -115,12 +173,21 @@ export const QA_SCENARIOS: QAScenario[] = [
     description: "Old breathing session with stress (14:00 PST)",
     signals: {
       stressScore: 8,
-      lastBreathDays: 7, // outside cooldown
       stressTagsLast48h: true,
       breathingSessionsLast7d: 0,
       lastBreathingSession: null, // Force old session
       timezone: "America/Los_Angeles",
     },
+    history: makeQAHistory({
+      // Simulate breathing nudge shown > 48h ago (outside cooldown)
+      lastShownByNudge: { time_to_breathe: "2025-08-24T10:00:00-07:00" },
+      shownToday: {},
+      shownThisWeek: { time_to_breathe: 1 },
+    }),
+    flags: { breathing_nudges_enabled: true },
+    respectCooldowns: true, // Test that it allows after cooldown
+    respectDailyCaps: false,
+    respectWeeklyCaps: false,
   },
 ];
 

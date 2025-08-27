@@ -10,6 +10,7 @@ export type SchedulerOptions = {
   ignoreWeeklyCaps?: boolean;
   returnReasons?: boolean;
   ignoreFeatureFlags?: boolean;
+  qaNow?: Date; // Fixed time for QA scenarios
 };
 
 export type NudgeGateReason = {
@@ -40,14 +41,32 @@ export async function selectNudgesForUser(
   options?: SchedulerOptions
 ): Promise<SelectedNudge[] | NudgeCandidate[]> {
   try {
-    // Load nudge history for this user
-    const [lastShownDates, weeklyShownCounts] = await Promise.all([
-      getLastShownDates(userId),
-      get7DayCounts(userId)
-    ]);
+    // Use QA time if provided, otherwise use currentTime
+    const now = options?.qaNow || currentTime;
+    
+    // Load nudge history (synthetic for QA, real for production)
+    let lastShownDates: Record<string, Date> = {};
+    let weeklyShownCounts: Record<string, number> = {};
+    
+    if (qaMock?.qaHistory) {
+      // Use synthetic history from QA scenario
+      const history = qaMock.qaHistory;
+      for (const [nudgeId, dateStr] of Object.entries(history.lastShownByNudge || {})) {
+        lastShownDates[nudgeId] = new Date(dateStr);
+      }
+      weeklyShownCounts = history.shownThisWeek || {};
+    } else {
+      // Load real history from database
+      const [realLastShownDates, realWeeklyShownCounts] = await Promise.all([
+        getLastShownDates(userId),
+        get7DayCounts(userId)
+      ]);
+      lastShownDates = realLastShownDates;
+      weeklyShownCounts = realWeeklyShownCounts;
+    }
 
     // Build user context (with QA mocks if provided)
-    let context = await buildUserContext(userId, currentTime);
+    let context = await buildUserContext(userId, now);
     if (qaMock) {
       context = withQAMocks(context, qaMock);
     }
@@ -64,8 +83,8 @@ export async function selectNudgesForUser(
         let flagEnabled = false;
         
         if (options?.ignoreFeatureFlags) {
-          // Force feature flags on in QA mode
-          flagEnabled = true;
+          // In QA mode, use flags from scenario or default to enabled
+          flagEnabled = qaMock?.qaFlags?.[definition.enabledFlag] ?? true;
         } else {
           const { data: flagData } = await supabase
             .from('feature_flags')
@@ -79,7 +98,7 @@ export async function selectNudgesForUser(
         reasons.push({
           gate: 'featureFlag',
           pass: flagEnabled,
-          detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (forced on for QA)' : '')
+          detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (QA mode)' : '')
         });
         
         if (!flagEnabled) {
@@ -89,9 +108,9 @@ export async function selectNudgesForUser(
         reasons.push({ gate: 'featureFlag', pass: true, detail: 'no flag required' });
       }
 
-      // Check time window (bypass for QA mode)
+      // Check time window (use QA time if available)
       if (definition.window) {
-        const currentHour = context.currentTime.getHours();
+        const currentHour = now.getHours();
         const inWindow = currentHour >= definition.window.startHour && currentHour <= definition.window.endHour;
         const windowPass = inWindow || qaMock?.bypassQuietHours;
         
@@ -108,11 +127,11 @@ export async function selectNudgesForUser(
         reasons.push({ gate: 'timeWindow', pass: true, detail: 'no window restriction' });
       }
 
-      // Check cooldown
+      // Check cooldown (use QA history if available)
       const lastShown = lastShownDates[definition.id];
       if (lastShown && !options?.ignoreCooldowns) {
         const cooldownMs = definition.cooldownDays * 24 * 60 * 60 * 1000;
-        const timeSinceLastShown = context.currentTime.getTime() - lastShown.getTime();
+        const timeSinceLastShown = now.getTime() - lastShown.getTime();
         const cooldownPass = timeSinceLastShown >= cooldownMs;
         const hoursSince = Math.round(timeSinceLastShown / (60 * 60 * 1000));
         
@@ -129,24 +148,33 @@ export async function selectNudgesForUser(
         reasons.push({ 
           gate: 'cooldown', 
           pass: true, 
-          detail: lastShown ? 'ignored for QA' : 'never shown' 
+          detail: lastShown ? (options?.ignoreCooldowns ? 'ignored for QA' : 'cooldown passed') : 'never shown' 
         });
       }
 
-      // Check daily cap
+      // Check daily cap (use QA history if available)
       if (!options?.ignoreDailyCaps) {
-        const todayStart = new Date(context.currentTime);
-        todayStart.setHours(0, 0, 0, 0);
+        let todayCount = 0;
         
-        const { data: todayShownCount } = await supabase
-          .from('nudge_events')
-          .select('id', { count: 'exact' })
-          .eq('user_id', userId)
-          .eq('nudge_id', definition.id)
-          .eq('event', 'shown')
-          .gte('ts', todayStart.toISOString());
+        if (qaMock?.qaHistory) {
+          // Use synthetic history
+          todayCount = qaMock.qaHistory.shownToday?.[definition.id] || 0;
+        } else {
+          // Query real database
+          const todayStart = new Date(now);
+          todayStart.setHours(0, 0, 0, 0);
+          
+          const { data: todayShownCount } = await supabase
+            .from('nudge_events')
+            .select('id', { count: 'exact' })
+            .eq('user_id', userId)
+            .eq('nudge_id', definition.id)
+            .eq('event', 'shown')
+            .gte('ts', todayStart.toISOString());
 
-        const todayCount = todayShownCount?.length || 0;
+          todayCount = todayShownCount?.length || 0;
+        }
+        
         const dailyCapPass = todayCount < definition.dailyCap;
         
         reasons.push({
@@ -162,7 +190,7 @@ export async function selectNudgesForUser(
         reasons.push({ gate: 'dailyCap', pass: true, detail: 'ignored for QA' });
       }
 
-      // Check weekly cap  
+      // Check weekly cap (use QA history if available)  
       if (!options?.ignoreWeeklyCaps) {
         const weeklyCount = weeklyShownCounts[definition.id] || 0;
         const weeklyCapPass = weeklyCount < definition.maxPer7d;
@@ -214,7 +242,7 @@ export async function selectNudgesForUser(
       if (allowed) {
         eligibleNudges.push({
           definition,
-          reason: `eligible_at_${currentTime.getHours()}h`
+          reason: `eligible_at_${now.getHours()}h`
         });
       }
     }

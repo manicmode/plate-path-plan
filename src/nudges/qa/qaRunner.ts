@@ -1,5 +1,5 @@
 import { selectNudgesForUser, NudgeCandidate, SchedulerOptions } from '../scheduler';
-import { QAScenario, QASignals, QA_SCENARIOS, QA_TEST_USERS } from './scenarios';
+import { QAScenario, QASignals, QAHistory, QA_SCENARIOS, QA_TEST_USERS } from './scenarios';
 import { logNudgeEvent } from '../logEvent';
 
 export interface QAScenarioResult {
@@ -48,56 +48,35 @@ export async function runQAScenario(
   dryRun = true
 ): Promise<QAScenarioResult> {
   try {
-    const currentTime = new Date(scenario.at);
+    const qaNow = new Date(scenario.at);
     
     // Create QA mock with scenario signals
     const qaMock = {
       frozenNow: scenario.at,
       bypassQuietHours: true,
-      ...convertSignalsToQAMock(scenario.signals, currentTime),
+      qaHistory: scenario.history,
+      qaFlags: scenario.flags,
+      ...convertSignalsToQAMock(scenario.signals, qaNow),
     };
     
-    // Call scheduler with QA options (force flags on, get detailed reasons)
+    // Call scheduler with QA options
     const schedulerOptions: SchedulerOptions = {
-      dryRun,
-      ignoreFeatureFlags: true, // Force feature flags on in QA
-      ignoreCooldowns: false, // We want to test cooldowns
-      ignoreDailyCaps: false, // We want to test daily caps
-      ignoreWeeklyCaps: false, // We want to test weekly caps
+      dryRun: true, // Always dry run in QA
+      ignoreFeatureFlags: true, // Force flags from scenario
+      ignoreCooldowns: !scenario.respectCooldowns,
+      ignoreDailyCaps: !scenario.respectDailyCaps,
+      ignoreWeeklyCaps: !scenario.respectWeeklyCaps,
       returnReasons: true, // Get detailed gate reasons
+      qaNow, // Pass fixed time for deterministic results
     };
     
     const candidates = await selectNudgesForUser(
       userId,
       10, // Get all candidates for analysis
-      currentTime,
+      qaNow,
       qaMock,
       schedulerOptions
     ) as NudgeCandidate[];
-    
-    // Log QA events if not dry run
-    if (!dryRun) {
-      const runId = `qa-${new Date().toISOString().split('T')[0]}-${userId}-${scenario.id}`;
-      const allowedNudges = candidates.filter(c => c.allowed);
-      
-      for (const nudge of allowedNudges) {
-        await logNudgeEvent({
-          nudgeId: nudge.id,
-          event: 'shown',
-          reason: 'qa',
-          runId,
-        });
-        
-        // Simulate interaction (80% dismiss, 20% CTA)
-        const interactionEvent = Math.random() < 0.2 ? 'cta' : 'dismissed';
-        await logNudgeEvent({
-          nudgeId: nudge.id,
-          event: interactionEvent,
-          reason: 'qa',
-          runId,
-        });
-      }
-    }
     
     // Validate expectations
     const issues = validateScenarioExpectations(scenario, candidates);
@@ -121,10 +100,10 @@ export async function runQAScenario(
   }
 }
 
-function convertSignalsToQAMock(signals: QASignals, currentTime: Date): any {
+function convertSignalsToQAMock(signals: QASignals, qaNow: Date): any {
   const mock: any = {
     userId: 'qa-user',
-    currentTime,
+    currentTime: qaNow,
     timezone: signals.timezone || 'America/Los_Angeles',
   };
   
@@ -160,9 +139,9 @@ function convertSignalsToQAMock(signals: QASignals, currentTime: Date): any {
   if (signals.lastBreathingSession !== undefined) {
     mock.lastBreathingSession = signals.lastBreathingSession;
   } else if (signals.lastBreathHours !== undefined) {
-    mock.lastBreathingSession = new Date(currentTime.getTime() - signals.lastBreathHours * 60 * 60 * 1000);
+    mock.lastBreathingSession = new Date(qaNow.getTime() - signals.lastBreathHours * 60 * 60 * 1000);
   } else if (signals.lastBreathDays !== undefined) {
-    mock.lastBreathingSession = new Date(currentTime.getTime() - signals.lastBreathDays * 24 * 60 * 60 * 1000);
+    mock.lastBreathingSession = new Date(qaNow.getTime() - signals.lastBreathDays * 24 * 60 * 60 * 1000);
   }
   
   return mock;

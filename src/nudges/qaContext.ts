@@ -1,9 +1,12 @@
 import { UserNudgeContext } from './registry';
+import { QAHistory } from './qa/scenarios';
 
-export type QAMock = Partial<UserNudgeContext & { 
+export type QAMock = Partial<UserNudgeContext> & { 
   frozenNow?: string;
   bypassQuietHours?: boolean;
-}>;
+  qaHistory?: QAHistory; // Synthetic nudge history for QA
+  qaFlags?: Record<string, boolean>; // Feature flags for QA scenarios
+};
 
 export function withQAMocks(ctx: UserNudgeContext, mock?: QAMock): UserNudgeContext {
   if (!mock) return ctx;
@@ -107,58 +110,5 @@ export const QA_TEST_USERS = [
     id: 'qa_user_low_hydration',
     email: 'qa_user_low_hydration@test.dev', 
     description: 'User with low hydration levels'
-  }
-];
-
-export type QAScenario = {
-  name: string;
-  description: string;
-  mock: QAMock;
-  expectedNudges: string[];
-  expectedCount: number;
-};
-
-export const QA_SCENARIOS: QAScenario[] = [
-  {
-    name: 'morning_checkin',
-    description: 'Morning check-in scenario (09:00)',
-    mock: { frozenNow: '2024-01-15T17:00:00.000Z' }, // 9:00 AM PST
-    expectedNudges: ['daily_checkin'],
-    expectedCount: 1
-  },
-  {
-    name: 'midday_low_hydration', 
-    description: 'Midday with low hydration (12:30)',
-    mock: { frozenNow: '2024-01-15T20:30:00.000Z' }, // 12:30 PM PST
-    expectedNudges: ['hydration_reminder'],
-    expectedCount: 1
-  },
-  {
-    name: 'afternoon_sedentary',
-    description: 'Afternoon after being sedentary (15:30)', 
-    mock: { frozenNow: '2024-01-15T23:30:00.000Z' }, // 3:30 PM PST
-    expectedNudges: ['movement_break'],
-    expectedCount: 1
-  },
-  {
-    name: 'evening_no_reflection',
-    description: 'Evening with no reflection done (21:30)',
-    mock: { frozenNow: '2024-01-16T05:30:00.000Z' }, // 9:30 PM PST
-    expectedNudges: ['sleep_prep'],
-    expectedCount: 1
-  },
-  {
-    name: 'breathe_recent_cooldown',
-    description: 'Recent breathing session - should be on cooldown (14:00)',
-    mock: { frozenNow: '2024-01-15T22:00:00.000Z' }, // 2:00 PM PST
-    expectedNudges: [],
-    expectedCount: 0
-  },
-  {
-    name: 'breathe_old_stress',
-    description: 'Old breathing session with stress (14:00)',
-    mock: { frozenNow: '2024-01-15T22:00:00.000Z' }, // 2:00 PM PST
-    expectedNudges: ['time_to_breathe'],
-    expectedCount: 1
   }
 ];

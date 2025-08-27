@@ -253,7 +253,7 @@ export function NudgesQA() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Execute all test scenarios across {QA_TEST_USERS.length} test users with {QA_SCENARIOS.length} scenarios each
+              Execute {QA_SCENARIOS.length} deterministic scenarios with synthetic history
               {dryRun && ' (read-only simulation)'}
             </p>
             {isAdmin && (
