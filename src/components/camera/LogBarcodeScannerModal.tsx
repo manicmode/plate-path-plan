@@ -3,10 +3,12 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Zap, FlashlightIcon, Lightbulb } from 'lucide-react';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
+import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
+import { useTorch } from '@/lib/camera/useTorch';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -22,6 +24,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onManualEntry
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [isDecoding, setIsDecoding] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +38,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const cooldownUntilRef = useRef(0);
   const hitsRef = useRef<{code:string,t:number}[]>([]);
   const runningRef = useRef(false);
-  
-  const streamRef = useRef<MediaStream | null>(null);
-  const trackRef = useRef<MediaStreamTrack | null>(null);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
@@ -128,80 +130,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     hitsRef.current = [];
   }, []);
 
-  const startCamera = useCallback(async () => {
-    if (!open) return;
-    
-    try {
-      console.log("[LOG_BARCODE] Starting camera...");
-      
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        const video = videoRef.current;
-        video.muted = true;
-        video.playsInline = true;
-        (video as any).webkitPlaysInline = true;
-        video.srcObject = stream;
-        
-        await video.play();
-        
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          trackRef.current = videoTrack;
-          updateStreamRef(stream);
-        }
-      }
-      
-      setError(null);
-    } catch (err) {
-      console.error("[LOG_BARCODE] Camera error:", err);
-      setError('Unable to access camera. Please check permissions and try again.');
-    }
-  }, [open, updateStreamRef]);
-
-  const cleanup = useCallback(async () => {
-    stopAutoscan();
-    
-    try {
-      if (trackRef.current) {
-        const capabilities = trackRef.current.getCapabilities() as any;
-        if (capabilities.torch) {
-          await trackRef.current.applyConstraints({
-            advanced: [{ torch: false } as any]
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to turn off torch:', error);
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    trackRef.current = null;
-    updateStreamRef(null);
-    
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    
-    setIsDecoding(false);
-    setIsFrozen(false);
-    setIsLookingUp(false);
-    setError(null);
-  }, [stopAutoscan, updateStreamRef]);
-
-  // Start camera and autoscan when modal opens
   useEffect(() => {
     if (open) {
       startCamera();
@@ -209,17 +137,75 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       cleanup();
     }
     
-    return () => {
-      cleanup();
-    };
-  }, [open, startCamera, cleanup]);
+    return cleanup;
+  }, [open]);
 
-  // Start autoscan when camera stream is ready
   useEffect(() => {
-    if (streamRef.current && AUTOSCAN_ENABLED) {
+    if (open && stream) {
+      // Start autoscan when camera is ready
       startAutoscan();
+      
+      // Update the stream reference for torch functionality
+      if (videoRef.current) {
+        // Simply update the stream reference directly
+        updateStreamRef(stream);
+      }
     }
-  }, [startAutoscan, AUTOSCAN_ENABLED]);
+    return () => {
+      stopAutoscan();
+    };
+  }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef]);
+
+  const startCamera = async () => {
+    try {
+      console.log("[LOG] Requesting camera stream...");
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        await videoRef.current.play();
+        
+        const track = mediaStream.getVideoTracks()[0];
+        trackRef.current = track;
+        setStream(mediaStream);
+        
+        // Update the stream reference for existing hook compatibility
+        updateStreamRef(mediaStream);
+        
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 100);
+        
+        setError(null);
+      }
+    } catch (err) {
+      console.error("[LOG] Camera access error:", err);
+      setError('Unable to access camera. Please check permissions and try again.');
+    }
+  };
+
+  const cleanup = () => {
+    stopAutoscan();
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    trackRef.current = null;
+    setStream(null);
+    setIsDecoding(false);
+    setIsFrozen(false);
+    setIsLookingUp(false);
+  };
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
     console.log(`[LOG] off_fetch_start`, { code: barcode });
@@ -301,7 +287,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       return;
     }
     
-    if (!videoRef.current || !streamRef.current) return;
+    if (!videoRef.current) return;
     
     // Pause autoscan during manual decode
     const wasRunning = runningRef.current;
@@ -357,23 +343,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      if (trackRef.current) {
-        const capabilities = trackRef.current.getCapabilities() as any;
-        if (capabilities.torch) {
-          const settings = trackRef.current.getSettings() as any;
-          await trackRef.current.applyConstraints({
-            advanced: [{ torch: !settings.torch } as any]
-          });
-        }
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
       }
     } catch (error) {
       console.error("Error toggling torch:", error);
     }
-  };
-
-  const handleClose = async () => {
-    await cleanup();
-    onOpenChange(false);
   };
 
   return (
@@ -388,7 +364,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             autoPlay
             playsInline
             muted
-            className="absolute inset-0 w-full h-full object-cover"
+            className="w-full h-full object-cover"
             style={{
               filter: isFrozen ? 'brightness(0.3)' : 'none',
               transition: 'filter 0.2s ease'
@@ -412,7 +388,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleClose}
+                onClick={() => onOpenChange(false)}
                 className="absolute right-4 text-white hover:bg-white/20"
               >
                 <X className="h-6 w-6" />
@@ -459,7 +435,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               {/* Main Action Button */}
               <Button
                 onClick={handleSnapAndDecode}
-                disabled={isDecoding || isLookingUp || !streamRef.current}
+                disabled={isDecoding || isLookingUp || !stream}
                 className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
               >
                 {isDecoding ? (
@@ -486,14 +462,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 <Button
                   variant="outline"
                   onClick={toggleTorch}
-                  disabled={!(trackRef.current?.getCapabilities() as any)?.torch || !streamRef.current}
-                  title={!(trackRef.current?.getCapabilities() as any)?.torch ? "Flash not available on this camera" : "Toggle flashlight"}
+                  disabled={!supportsTorch}
+                  title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
                   className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
-                    streamRef.current && (trackRef.current?.getCapabilities() as any)?.torch ? 'bg-yellow-500/20 border-yellow-400/50' : 'bg-transparent'
-                  } ${!(trackRef.current?.getCapabilities() as any)?.torch ? 'opacity-50' : ''}`}
+                    torchOn ? 'bg-yellow-500/20 border-yellow-400/50' : 'bg-transparent'
+                  } ${!supportsTorch ? 'opacity-50' : ''}`}
                 >
-                  <Lightbulb className={`h-4 w-4 mr-2 ${streamRef.current ? 'text-yellow-300' : 'text-white'}`} />
-                  Flash
+                  <Lightbulb className={`h-4 w-4 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                  {torchOn ? 'Flash On' : 'Flash Off'}
                 </Button>
                 
                 {/* Manual Entry */}
