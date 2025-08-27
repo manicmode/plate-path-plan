@@ -619,6 +619,48 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           steps: data?.steps 
         });
         
+        // Helper to check for brand signal in steps
+        const hasBrandSignal = (steps?: any[]) =>
+          !!steps?.some(s =>
+            (s.stage === 'logo' && s.ok) ||
+            (s.stage === 'ocr' && Array.isArray(s.meta?.topTokens) &&
+               s.meta.topTokens.some((t: string) => /trader|kellogg|nestle|coca|pepsi|kraft|general|mills|unilever|danone/i.test(t))) ||
+            (s.stage === 'openai' && s.ok && s.meta?.confidence >= 0.4)
+          );
+
+        let finalResult = data;
+
+        // One-time provider retry before showing "no detection"
+        if (data?.kind === 'none') {
+          console.log('[HS] Hybrid returned none, trying single providers...');
+          
+          // Prefer OpenAI first (it nailed Trader Joe's at 0.99 in probe tests)
+          const openaiBody = { ...body, provider: 'openai' };
+          const { data: openaiResult } = await supabase.functions.invoke('enhanced-health-scanner', { body: openaiBody });
+          console.debug('[HS RETRY OPENAI]', { kind: openaiResult?.kind });
+          
+          if (openaiResult?.kind === 'branded_candidates' || openaiResult?.kind === 'single_product') {
+            finalResult = openaiResult;
+          } else {
+            // Last-resort: Google-only
+            const googleBody = { ...body, provider: 'google' };
+            const { data: googleResult } = await supabase.functions.invoke('enhanced-health-scanner', { body: googleBody });
+            console.debug('[HS RETRY GOOGLE]', { kind: googleResult?.kind });
+            
+            finalResult = googleResult ?? data;
+          }
+        }
+
+        // Route to brand candidates when there's any brand signal in steps
+        if (finalResult?.kind === 'none' && hasBrandSignal(finalResult?.steps)) {
+          console.log('[HS] Found brand signal in steps, converting to candidates');
+          finalResult = {
+            ...finalResult,
+            kind: 'branded_candidates',
+            candidates: finalResult?.candidates ?? []
+          };
+        }
+        
         // Create data URL with optimized image for callback
         const optimizedDataUrl = `data:image/jpeg;base64,${prep.base64NoPrefix}`;
         onCapture(optimizedDataUrl);
