@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import DebugImageProbe from './DebugImageProbe';
+import { NudgesAudit } from './debug/NudgesAudit';
 
 export default function DebugRoutes() {
   const navigate = useNavigate();
@@ -9,6 +10,10 @@ export default function DebugRoutes() {
   
   if (currentPath === '/debug/image-probe') {
     return <DebugImageProbe />;
+  }
+  
+  if (currentPath === '/debug/nudges') {
+    return <NudgesAudit />;
   }
   
   // If on /debug, show menu
@@ -23,6 +28,13 @@ export default function DebugRoutes() {
           >
             <h3 className="font-semibold">Image Analysis Probe</h3>
             <p className="text-muted-foreground">Test image analyzer pipeline step-by-step</p>
+          </button>
+          <button 
+            onClick={() => navigate('/debug/nudges')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">Nudge Audit</h3>
+            <p className="text-muted-foreground">Debug nudge scheduler behavior and history</p>
           </button>
         </div>
       </div>

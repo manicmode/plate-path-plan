@@ -41,10 +41,8 @@ import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
-import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
-import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
-import { MoodCheckinBanner } from '@/components/mood/MoodCheckinBanner';
+import { useNudgeScheduler } from '@/hooks/useNudgeScheduler';
 import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { InfluencerHubCTA } from '@/components/InfluencerHubCTA';
 
@@ -132,6 +130,9 @@ const Home = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { playGoalHit, playFoodLogConfirm, playStartupChime, isEnabled } = useSound();
+  
+  // Nudge scheduler integration
+  const { selectedNudges, loading: nudgesLoading, dismissNudge, ctaNudge } = useNudgeScheduler();
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -982,14 +983,19 @@ const Home = () => {
 
   return (
     <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-32">
-      {/* Mood Check-in Banner */}
-      <MoodCheckinBanner />
-      
-      {/* Meditation Nudge Banner */}
-      <MeditationNudgeBanner />
-      
-      {/* Breathing Nudge Banner */}
-      <BreathingNudgeBanner />
+      {/* Scheduled Nudges */}
+      {!nudgesLoading && selectedNudges.map((nudge) => {
+        const Component = nudge.definition.render;
+        return (
+          <div key={nudge.runId}>
+            <Component
+              runId={nudge.runId}
+              onDismiss={() => dismissNudge(nudge)}
+              onCta={() => ctaNudge(nudge)}
+            />
+          </div>
+        );
+      })}
 
       {/* Celebration Popup */}
       <CelebrationPopup 
