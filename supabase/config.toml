@@ -3,5 +3,12 @@ project_id = "uzoiiijqtahohfafqirm"
 [functions.dispatchHabitReminders]
 verify_jwt = false
 
+[functions.nudge-daily-digest]
+verify_jwt = false
+
 [functions.realtime-token]
 verify_jwt = false
+
+# Cron jobs
+[[functions.nudge-daily-digest.http_config.triggers]]
+schedule = "0 17 * * *"  # 9 AM PT (assuming standard time, 17:00 UTC)
