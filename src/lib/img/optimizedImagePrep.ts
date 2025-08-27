@@ -35,8 +35,8 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
     const originalWidth = bitmap.width;
     const originalHeight = bitmap.height;
 
-    // Calculate optimal dimensions (maxDim=1280px)
-    const maxDim = 1280;
+    // Calculate optimal dimensions (maxDim=1024px, keeping aspect ratio)
+    const maxDim = 1024;
     const scale = Math.min(1, maxDim / Math.max(originalWidth, originalHeight));
     const targetWidth = Math.round(originalWidth * scale);
     const targetHeight = Math.round(originalHeight * scale);
@@ -60,8 +60,8 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
     ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
     bitmap.close();
 
-    // Compress to JPEG with quality=0.78
-    let quality = 0.78;
+    // Compress to JPEG with quality=0.8
+    let quality = 0.8;
     let blob: Blob;
     
     // Try to keep under ~1.2MB with iterative compression

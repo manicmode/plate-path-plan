@@ -21,7 +21,7 @@ interface AnalysisResult {
   steps: any[];
   response: any;
   elapsed_ms?: number;
-  status: 'pending' | 'running' | 'completed' | 'error' | 'timeout' | 'skipped';
+  status: 'pending' | 'running' | 'completed' | 'error' | 'timeout' | 'skipped' | 'cancelled';
 }
 
 interface ProgressStep {
@@ -40,6 +40,9 @@ interface RunTelemetry {
   first_hit: 'openai' | 'google' | 'none';
   decision: string;
   total_ms: number;
+  decision_time_ms?: number;
+  background_time_ms?: number;
+  early_exit_provider?: string;
 }
 
 interface TestResult {
@@ -58,6 +61,8 @@ export default function AnalyzerOneClick() {
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
   const [providerResults, setProviderResults] = useState<AnalysisResult[]>([]);
   const [hasEarlyExit, setHasEarlyExit] = useState(false);
+  const [decisionTime, setDecisionTime] = useState<number | null>(null);
+  const [earlyExitProvider, setEarlyExitProvider] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -69,6 +74,8 @@ export default function AnalyzerOneClick() {
     setIsRunning(true);
     setHasEarlyExit(false);
     setProviderResults([]);
+    setDecisionTime(null);
+    setEarlyExitProvider(null);
     
     const runId = crypto.randomUUID().substring(0, 8);
     const runStartTime = performance.now();
@@ -98,11 +105,12 @@ export default function AnalyzerOneClick() {
       ];
       setProviderResults([...results]);
 
-      // Phase 3: Parallel provider execution with timeouts
-      const abortController = new AbortController();
+      // Phase 3: Parallel provider execution with cancellation support
+      const openaiController = new AbortController();
+      const googleController = new AbortController();
       const TIMEOUT_MS = 8000;
 
-      const runProvider = async (provider: string, index: number): Promise<void> => {
+      const runProvider = async (provider: string, index: number, controller: AbortController): Promise<void> => {
         const providerStartTime = performance.now();
         
         // Update status to running
@@ -129,6 +137,23 @@ export default function AnalyzerOneClick() {
           const { data, error } = await Promise.race([analysisPromise, timeoutPromise]) as any;
           const elapsed_ms = Math.round(performance.now() - providerStartTime);
 
+          // Check if aborted
+          if (controller.signal.aborted) {
+            console.log(`[ANALYZER] ${provider}_cancelled_after_early_exit`);
+            results[index] = {
+              ...results[index],
+              status: 'cancelled',
+              ok: false,
+              decision: 'cancelled',
+              notes: 'CANCELLED',
+              elapsed_ms
+            };
+            steps[index + 1] = { name: provider, status: 'error', ms: elapsed_ms };
+            setProviderResults([...results]);
+            setProgressSteps([...steps]);
+            return;
+          }
+
           if (error) {
             console.log(`[ANALYZER] ${provider}_done error:`, error.message);
             const isMissingKey = error.message?.includes('API key') || error.message?.includes('MISSING_KEY');
@@ -142,7 +167,7 @@ export default function AnalyzerOneClick() {
               elapsed_ms
             };
           } else {
-            // Extract analysis data
+            // Extract analysis data with brand normalization
             const analysisSteps = data.steps || [];
             const ocrStep = analysisSteps.find((s: any) => s.stage === 'ocr');
             const logoStep = analysisSteps.find((s: any) => s.stage === 'logo');
@@ -191,10 +216,21 @@ export default function AnalyzerOneClick() {
 
             console.log(`[ANALYZER] ${provider}_done decision:`, decision);
 
-            // Early exit check - if this provider found branded candidates
-            if (isSuccess && decision === 'branded_candidates' && !hasEarlyExit) {
+            // Early exit check - if this provider found decisive results
+            if (isSuccess && !hasEarlyExit) {
+              const currentTime = performance.now();
+              setDecisionTime(Math.round(currentTime - runStartTime));
+              setEarlyExitProvider(provider);
               setHasEarlyExit(true);
+              
               console.log('[ANALYZER] Early exit triggered', { provider, decision });
+              
+              // Cancel the other provider
+              if (provider === 'openai') {
+                googleController.abort();
+              } else {
+                openaiController.abort();
+              }
               
               // Navigate to HealthScan flow with candidates
               if (data.candidates && data.candidates.length > 0) {
@@ -220,7 +256,7 @@ export default function AnalyzerOneClick() {
 
           steps[index + 1] = { 
             name: provider, 
-            status: results[index].status === 'error' ? 'error' : 'completed', 
+            status: results[index].status === 'error' || results[index].status === 'cancelled' ? 'error' : 'completed', 
             ms: elapsed_ms 
           };
           
@@ -228,10 +264,14 @@ export default function AnalyzerOneClick() {
           const elapsed_ms = Math.round(performance.now() - providerStartTime);
           console.log(`[ANALYZER] ${provider}_done exception:`, providerError.message);
           
-          let status: 'error' | 'timeout' | 'skipped' = 'error';
+          let status: 'error' | 'timeout' | 'skipped' | 'cancelled' = 'error';
           let notes = `Exception: ${providerError.message}`;
           
-          if (providerError.message === 'Provider timeout') {
+          if (providerError.name === 'AbortError' || controller.signal.aborted) {
+            status = 'cancelled';
+            notes = 'CANCELLED';
+            console.log(`[ANALYZER] openai_cancelled_after_early_exit`);
+          } else if (providerError.message === 'Provider timeout') {
             status = 'timeout';
             notes = 'TIMEOUT';
           } else if (providerError.message?.includes('API key') || providerError.message?.includes('MISSING_KEY')) {
@@ -257,12 +297,21 @@ export default function AnalyzerOneClick() {
 
       // Run providers in parallel
       await Promise.allSettled([
-        runProvider('openai', 0),
-        runProvider('google', 1)
+        runProvider('openai', 0, openaiController),
+        runProvider('google', 1, googleController)
       ]);
 
       const totalMs = Math.round(performance.now() - runStartTime);
       const overallPass = results.some(r => r.ok);
+      
+      // Calculate background completion time
+      let backgroundTimeMs: number | null = null;
+      if (decisionTime) {
+        const completedProviders = results.filter(r => r.elapsed_ms && r.status === 'completed');
+        if (completedProviders.length > 0) {
+          backgroundTimeMs = Math.max(...completedProviders.map(r => r.elapsed_ms!));
+        }
+      }
       
       // Create telemetry
       const telemetry: RunTelemetry = {
@@ -274,7 +323,10 @@ export default function AnalyzerOneClick() {
         google_ms: results.find(r => r.provider === 'google')?.elapsed_ms,
         first_hit: results.find(r => r.ok && r.decision === 'branded_candidates')?.provider as any || 'none',
         decision: results.find(r => r.ok)?.decision || 'none',
-        total_ms: totalMs
+        total_ms: totalMs,
+        decision_time_ms: decisionTime,
+        background_time_ms: backgroundTimeMs,
+        early_exit_provider: earlyExitProvider
       };
 
       console.log('[ANALYZER] decision', telemetry);
@@ -649,7 +701,7 @@ export default function AnalyzerOneClick() {
                   <Clock className="h-4 w-4" />
                   Performance Telemetry
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                   <div>
                     <div className="font-medium">Image Prep</div>
                     <div className="text-muted-foreground">
@@ -666,6 +718,19 @@ export default function AnalyzerOneClick() {
                       )}
                     </div>
                   </div>
+                  {testResult.telemetry.decision_time_ms && (
+                    <div>
+                      <div className="font-medium">Decision Time</div>
+                      <div className="text-muted-foreground">
+                        {testResult.telemetry.decision_time_ms}ms
+                        {testResult.telemetry.early_exit_provider && (
+                          <Badge variant="default" className="ml-1 text-xs bg-green-500">
+                            Early Exit ({testResult.telemetry.early_exit_provider})
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <div className="font-medium">OpenAI</div>
                     <div className="text-muted-foreground">
@@ -679,11 +744,9 @@ export default function AnalyzerOneClick() {
                     </div>
                   </div>
                   <div>
-                    <div className="font-medium">Total</div>
+                    <div className="font-medium">Background Time</div>
                     <div className="text-muted-foreground">
-                      {testResult.telemetry.total_ms}ms
-                      <br />
-                      <span className="text-xs">First hit: {testResult.telemetry.first_hit}</span>
+                      {testResult.telemetry.background_time_ms ? `${testResult.telemetry.background_time_ms}ms` : 'N/A'}
                     </div>
                   </div>
                 </div>

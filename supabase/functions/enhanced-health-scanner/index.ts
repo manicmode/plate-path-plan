@@ -86,8 +86,29 @@ const HEALTH_RULES = Object.freeze({
   })
 });
 
-// Import enhanced brand lexicon
+// Import enhanced brand lexicon and normalization
 import { ENHANCED_BRAND_LEXICON, extractBrandTokensWithFuzzy } from './brandLexicon.ts';
+
+// Brand normalization utilities
+function normalizeBrand(brand: string): string {
+  if (!brand) return '';
+  
+  const normalized = brand.toLowerCase()
+    .replace(/[^\w\s']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Common aliases
+  const aliases: Record<string, string> = {
+    "trader joe s": "trader joe's",
+    "trader joes": "trader joe's", 
+    "trader joe": "trader joe's",
+    "tj's": "trader joe's",
+    "tjs": "trader joe's"
+  };
+  
+  return aliases[normalized] || normalized;
+}
 
 // Read-only lexicons (immutable)
 const STOP_WORDS = Object.freeze(new Set([
@@ -522,7 +543,7 @@ function sanitizeJsonResponse(content: string): string {
 /**
  * Extract using OpenAI Vision
  */
-async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
+async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSignal?: AbortSignal): Promise<{
   text: string; 
   cleanedTokens: string[]; 
   brandTokens: string[]; 
@@ -540,8 +561,10 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
+      signal: abortSignal,
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
+        detail: 'low',
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -572,7 +595,7 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
             }
           ]
         }],
-        max_tokens: 300
+        max_tokens: 64
       })
     });
 
