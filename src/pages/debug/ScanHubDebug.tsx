@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ScanBarcode, Camera, Keyboard, Mic, Bookmark, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
+import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 export function ScanHubDebug() {
   const navigate = useNavigate();
   
-  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+  const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
@@ -33,7 +33,7 @@ export function ScanHubDebug() {
       id: 'barcode',
       title: 'Scan Barcode',
       icon: ScanBarcode,
-      action: () => setBarcodeModalOpen(true),
+      action: () => setHealthCheckModalOpen(true),
       enabled: true
     },
     {
@@ -184,14 +184,9 @@ export function ScanHubDebug() {
       </div>
 
       {/* Debug Modals */}
-      <LogBarcodeScannerModal
-        open={barcodeModalOpen}
-        onOpenChange={setBarcodeModalOpen}
-        onBarcodeDetected={handleBarcodeDetected}
-        onManualEntry={() => {
-          setBarcodeModalOpen(false);
-          setManualEntryOpen(true);
-        }}
+      <HealthCheckModal
+        isOpen={healthCheckModalOpen}
+        onClose={() => setHealthCheckModalOpen(false)}
       />
 
       <PhotoCaptureModal

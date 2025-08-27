@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 import { ROUTES } from '@/routes/constants';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 const Explore = () => {
   const navigate = useNavigate();
@@ -34,7 +35,12 @@ const Explore = () => {
         navigate('/supplement-hub');
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'health-check') {
-        setIsHealthCheckOpen(true);
+        // Check if Scan Hub is enabled
+        if (isFeatureEnabled('scan_hub_enabled')) {
+          navigate('/scan');
+        } else {
+          setIsHealthCheckOpen(true);
+        }
       } else if (tileId === 'game-challenge') {
         setNavigationInProgress(true);
         navigate('/game-and-challenge');

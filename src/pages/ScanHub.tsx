@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { useScanRecents } from '@/hooks/useScanRecents';
-import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
+import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
@@ -23,7 +23,7 @@ export default function ScanHub() {
   const navigate = useNavigate();
   const { addRecent } = useScanRecents();
   
-  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+  const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);  
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function ScanHub() {
 
   const handleScanBarcode = () => {
     logTileClick('barcode');
-    setBarcodeModalOpen(true);
+    setHealthCheckModalOpen(true);
   };
 
   const handleTakePhoto = () => {
@@ -84,19 +84,8 @@ export default function ScanHub() {
     navigate('/scan/recents');
   };
 
-  // Handle barcode detection from scanner
-  const handleBarcodeDetected = (barcode: string) => {
-    console.log('Barcode detected:', barcode);
-    addRecent({ mode: 'barcode', label: `Barcode: ${barcode}`, id: barcode });
-    // Continue with existing barcode flow - navigate to health report
-    navigate(`/health-report?barcode=${barcode}`);
-  };
-
-  // Handle manual entry fallback from barcode scanner
-  const handleBarcodeManualEntry = () => {
-    setBarcodeModalOpen(false);
-    setManualEntryOpen(true);
-  };
+  // Handle barcode detection from scanner - this will be handled by HealthCheckModal
+  // Just track in recents when modal closes successfully
 
   // Handle photo capture
   const handlePhotoCapture = (imageData: string) => {
@@ -205,11 +194,9 @@ export default function ScanHub() {
       </div>
 
       {/* Modals */}
-      <LogBarcodeScannerModal
-        open={barcodeModalOpen}
-        onOpenChange={setBarcodeModalOpen}
-        onBarcodeDetected={handleBarcodeDetected}
-        onManualEntry={handleBarcodeManualEntry}
+      <HealthCheckModal
+        isOpen={healthCheckModalOpen}
+        onClose={() => setHealthCheckModalOpen(false)}
       />
 
       <PhotoCaptureModal
