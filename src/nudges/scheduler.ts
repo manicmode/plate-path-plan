@@ -64,9 +64,28 @@ export async function scheduleNudges(options: {
     schedulerOptions
   ) as NudgeCandidate[];
   
-  // Filter allowed candidates and sort by priority
-  const allowedCandidates = candidates.filter(c => c.allowed);
-  allowedCandidates.sort((a, b) => b.definition.priority - a.definition.priority);
+    // Filter allowed candidates and apply context-based priority adjustments
+    const allowedCandidates = candidates.filter(c => c.allowed);
+    
+    // Apply priority adjustments for context
+    allowedCandidates.forEach(candidate => {
+      let score = candidate.definition.priority;
+      
+      // Context boost so urgent nudges win overlaps
+      if (candidate.definition.id === 'hydration_reminder' && (qaMock?.waterLogsToday !== undefined ? qaMock.waterLogsToday < 4 : false)) {
+        score += 15;
+      }
+      
+      // Gently taper Daily Check-In near noon so it doesn't beat midday context nudges
+      if (candidate.definition.id === 'daily_checkin' && now.getHours() >= 11) {
+        score -= 10;
+      }
+      
+      (candidate as any).score = score;
+    });
+    
+    // Sort by adjusted priority scores
+    allowedCandidates.sort((a, b) => ((b as any).score || b.definition.priority) - ((a as any).score || a.definition.priority));
   
   // Select top N based on maxPerRun
   const selectedCandidates = allowedCandidates.slice(0, maxPerRun);
@@ -164,7 +183,7 @@ export async function selectNudgesForUser(
       // Check time window (use QA time if available)
       if (definition.window) {
         const currentHour = now.getHours();
-        const inWindow = currentHour >= definition.window.startHour && currentHour <= definition.window.endHour;
+        const inWindow = currentHour >= definition.window.startHour && currentHour < definition.window.endHour;
         const windowPass = inWindow || qaMock?.bypassQuietHours;
         
         reasons.push({

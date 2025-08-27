@@ -76,6 +76,13 @@ export async function runQAScenario(
       expected: scenario.expect
     });
     
+    // Add assertion for midday_low_hydration scenario
+    if (scenario.id === 'midday_low_hydration') {
+      if (result.selected.length > 0 && result.selected[0].id !== 'hydration_reminder') {
+        throw new Error(`Expected hydration_reminder to be selected, got ${result.selected[0]?.id || 'none'}`);
+      }
+    }
+    
     // Validate expectations against selected nudges
     const issues = validateScenarioExpectations(scenario, result.selected, result.allowed);
     

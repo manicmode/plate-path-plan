@@ -46,7 +46,7 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     cooldownDays: 1,
     dailyCap: 1,
     maxPer7d: 7,
-    window: { startHour: 6, endHour: 12 },
+    window: { startHour: 6, endHour: 12 }, // 06:00-11:59 with end-exclusive
     isEligible: async (ctx: UserNudgeContext) => {
       // Check if user hasn't done mood log today
       const today = new Date().toISOString().split('T')[0];
