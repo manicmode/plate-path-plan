@@ -39,7 +39,7 @@ import { HydrationNudgeWrapper } from '@/components/nudges/HydrationNudgeWrapper
 import { MovementNudgeWrapper } from '@/components/nudges/MovementNudgeWrapper';
 import { SleepPrepNudgeWrapper } from '@/components/nudges/SleepPrepNudgeWrapper';
 
-export const REGISTRY: NudgeDefinition[] = [
+export const NUDGE_REGISTRY: NudgeDefinition[] = [
   {
     id: 'daily_checkin',
     priority: 90,
@@ -115,3 +115,6 @@ export const REGISTRY: NudgeDefinition[] = [
     render: (props: NudgeRenderProps) => React.createElement(SleepPrepNudgeWrapper, props)
   }
 ];
+
+// Export alias for backwards compatibility
+export const REGISTRY = NUDGE_REGISTRY;

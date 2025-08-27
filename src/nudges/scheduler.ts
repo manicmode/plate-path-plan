@@ -3,6 +3,27 @@ import { REGISTRY, NudgeDefinition, UserNudgeContext } from './registry';
 import { getLastShownDates, get7DayCounts } from './logEvent';
 import { withQAMocks, QAMock } from './qaContext';
 
+export type SchedulerOptions = {
+  dryRun?: boolean;
+  ignoreCooldowns?: boolean;
+  ignoreDailyCaps?: boolean;
+  ignoreWeeklyCaps?: boolean;
+  returnReasons?: boolean;
+};
+
+export type NudgeGateReason = {
+  gate: string;
+  pass: boolean;
+  detail?: string;
+};
+
+export type NudgeCandidate = {
+  id: string;
+  definition: NudgeDefinition;
+  allowed: boolean;
+  reasons: NudgeGateReason[];
+};
+
 export type SelectedNudge = {
   id: string;
   definition: NudgeDefinition;
@@ -14,8 +35,9 @@ export async function selectNudgesForUser(
   userId: string, 
   limit = 2,
   currentTime = new Date(),
-  qaMock?: QAMock
-): Promise<SelectedNudge[]> {
+  qaMock?: QAMock,
+  options?: SchedulerOptions
+): Promise<SelectedNudge[] | NudgeCandidate[]> {
   try {
     // Load nudge history for this user
     const [lastShownDates, weeklyShownCounts] = await Promise.all([
@@ -31,8 +53,11 @@ export async function selectNudgesForUser(
 
     // Check feature flags and filters
     const eligibleNudges: Array<{ definition: NudgeDefinition; reason: string }> = [];
+    const candidates: NudgeCandidate[] = [];
 
     for (const definition of REGISTRY) {
+      const reasons: NudgeGateReason[] = [];
+      let allowed = true;
       // Check feature flag if specified
       if (definition.enabledFlag) {
         const { data: flagData } = await supabase
@@ -41,64 +66,153 @@ export async function selectNudgesForUser(
           .eq('key', definition.enabledFlag)
           .maybeSingle();
         
-        if (!flagData?.enabled) {
-          continue;
+        const flagEnabled = qaMock ? true : (flagData?.enabled || false);
+        reasons.push({
+          gate: 'featureFlag',
+          pass: flagEnabled,
+          detail: definition.enabledFlag
+        });
+        
+        if (!flagEnabled) {
+          allowed = false;
         }
+      } else {
+        reasons.push({ gate: 'featureFlag', pass: true, detail: 'no flag required' });
       }
 
       // Check time window (bypass for QA mode)
-      if (definition.window && !qaMock?.bypassQuietHours) {
+      if (definition.window) {
         const currentHour = context.currentTime.getHours();
-        if (currentHour < definition.window.startHour || currentHour > definition.window.endHour) {
-          continue;
+        const inWindow = currentHour >= definition.window.startHour && currentHour <= definition.window.endHour;
+        const windowPass = inWindow || qaMock?.bypassQuietHours;
+        
+        reasons.push({
+          gate: 'timeWindow',
+          pass: windowPass,
+          detail: `${definition.window.startHour}h-${definition.window.endHour}h, current: ${currentHour}h`
+        });
+        
+        if (!windowPass) {
+          allowed = false;
         }
+      } else {
+        reasons.push({ gate: 'timeWindow', pass: true, detail: 'no window restriction' });
       }
 
       // Check cooldown
       const lastShown = lastShownDates[definition.id];
-      if (lastShown) {
+      if (lastShown && !options?.ignoreCooldowns) {
         const cooldownMs = definition.cooldownDays * 24 * 60 * 60 * 1000;
         const timeSinceLastShown = context.currentTime.getTime() - lastShown.getTime();
-        if (timeSinceLastShown < cooldownMs) {
-          continue;
+        const cooldownPass = timeSinceLastShown >= cooldownMs;
+        const hoursSince = Math.round(timeSinceLastShown / (60 * 60 * 1000));
+        
+        reasons.push({
+          gate: 'cooldown',
+          pass: cooldownPass,
+          detail: `${definition.cooldownDays}d required, ${hoursSince}h since last`
+        });
+        
+        if (!cooldownPass) {
+          allowed = false;
         }
+      } else {
+        reasons.push({ 
+          gate: 'cooldown', 
+          pass: true, 
+          detail: lastShown ? 'ignored for QA' : 'never shown' 
+        });
       }
 
       // Check daily cap
-      const todayStart = new Date(context.currentTime);
-      todayStart.setHours(0, 0, 0, 0);
-      
-      const { data: todayShownCount } = await supabase
-        .from('nudge_events')
-        .select('id', { count: 'exact' })
-        .eq('user_id', userId)
-        .eq('nudge_id', definition.id)
-        .eq('event', 'shown')
-        .gte('ts', todayStart.toISOString());
+      if (!options?.ignoreDailyCaps) {
+        const todayStart = new Date(context.currentTime);
+        todayStart.setHours(0, 0, 0, 0);
+        
+        const { data: todayShownCount } = await supabase
+          .from('nudge_events')
+          .select('id', { count: 'exact' })
+          .eq('user_id', userId)
+          .eq('nudge_id', definition.id)
+          .eq('event', 'shown')
+          .gte('ts', todayStart.toISOString());
 
-      const todayCount = todayShownCount?.length || 0;
-      if (todayCount >= definition.dailyCap) {
-        continue;
+        const todayCount = todayShownCount?.length || 0;
+        const dailyCapPass = todayCount < definition.dailyCap;
+        
+        reasons.push({
+          gate: 'dailyCap',
+          pass: dailyCapPass,
+          detail: `${todayCount}/${definition.dailyCap} today`
+        });
+        
+        if (!dailyCapPass) {
+          allowed = false;
+        }
+      } else {
+        reasons.push({ gate: 'dailyCap', pass: true, detail: 'ignored for QA' });
       }
 
-      // Check weekly cap
-      const weeklyCount = weeklyShownCounts[definition.id] || 0;
-      if (weeklyCount >= definition.maxPer7d) {
-        continue;
+      // Check weekly cap  
+      if (!options?.ignoreWeeklyCaps) {
+        const weeklyCount = weeklyShownCounts[definition.id] || 0;
+        const weeklyCapPass = weeklyCount < definition.maxPer7d;
+        
+        reasons.push({
+          gate: 'weeklyCap',
+          pass: weeklyCapPass,
+          detail: `${weeklyCount}/${definition.maxPer7d} this week`
+        });
+        
+        if (!weeklyCapPass) {
+          allowed = false;
+        }
+      } else {
+        reasons.push({ gate: 'weeklyCap', pass: true, detail: 'ignored for QA' });
       }
 
       // Check business logic eligibility
       try {
         const isEligible = await definition.isEligible(context);
-        if (isEligible) {
-          eligibleNudges.push({
-            definition,
-            reason: `eligible_at_${currentTime.getHours()}h`
-          });
+        reasons.push({
+          gate: 'contextRules',
+          pass: isEligible,
+          detail: isEligible ? 'context requirements met' : 'context requirements not met'
+        });
+        
+        if (!isEligible) {
+          allowed = false;
         }
       } catch (error) {
         console.error(`Error checking eligibility for nudge ${definition.id}:`, error);
+        reasons.push({
+          gate: 'contextRules',
+          pass: false,
+          detail: `error: ${error}`
+        });
+        allowed = false;
       }
+
+      // Add to candidates list for QA reporting
+      candidates.push({
+        id: definition.id,
+        definition,
+        allowed,
+        reasons
+      });
+
+      // Add to eligible list if all gates passed
+      if (allowed) {
+        eligibleNudges.push({
+          definition,
+          reason: `eligible_at_${currentTime.getHours()}h`
+        });
+      }
+    }
+
+    // Return candidates with reasons if requested
+    if (options?.returnReasons) {
+      return candidates;
     }
 
     // Sort by priority (highest first) and take top N

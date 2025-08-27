@@ -26,17 +26,19 @@ export function useNudgeScheduler() {
         return;
       }
 
-      const nudges = await selectNudgesForUser(user.id, 2);
+      const nudges = await selectNudgesForUser(user.id, 2) as SelectedNudge[];
       setSelectedNudges(nudges);
 
       // Log 'shown' events for selected nudges
       for (const nudge of nudges) {
-        await logNudgeEvent({
-          nudgeId: nudge.id,
-          event: 'shown',
-          reason: nudge.reason,
-          runId: nudge.runId
-        });
+        if ('runId' in nudge && 'reason' in nudge) {
+          await logNudgeEvent({
+            nudgeId: nudge.id,
+            event: 'shown',
+            reason: nudge.reason,
+            runId: nudge.runId
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading nudges:', error);

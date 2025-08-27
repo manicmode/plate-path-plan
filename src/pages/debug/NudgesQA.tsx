@@ -13,14 +13,16 @@ import {
   Users, 
   Target,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  List
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { supabase } from '@/integrations/supabase/client';
-import { selectNudgesForUser } from '@/nudges/scheduler';
+import { selectNudgesForUser, NudgeCandidate, SchedulerOptions } from '@/nudges/scheduler';
 import { logNudgeEvent } from '@/nudges/logEvent';
-import { QA_TEST_USERS, QA_SCENARIOS, QAMock } from '@/nudges/qaContext';
+import { QA_TEST_USERS, QA_SCENARIOS, buildTestContext, withQAMocks } from '@/nudges/qaContext';
+import { NUDGE_REGISTRY } from '@/nudges/registry';
 
 interface QAReport {
   window: { from: string; to: string };
@@ -59,12 +61,20 @@ interface QAReport {
   notes: string[];
 }
 
+interface ScenarioResult {
+  scenarioName: string;
+  candidates: NudgeCandidate[];
+  expectedCount: number;
+  expectedNudges: string[];
+}
+
 export function NudgesQA() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const [running, setRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState<QAReport | null>(null);
+  const [scenarioResults, setScenarioResults] = useState<ScenarioResult[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [dryRun, setDryRun] = useState(!isAdmin);
 
@@ -81,10 +91,12 @@ export function NudgesQA() {
     
     setRunning(true);
     setLogs([]);
+    setScenarioResults([]);
     addLog(`Starting QA Matrix execution${dryRun ? ' (DRY RUN - no DB writes)' : ''}...`);
 
     try {
       const runDate = new Date().toISOString().split('T')[0];
+      const newScenarioResults: ScenarioResult[] = [];
       
       for (const testUser of QA_TEST_USERS) {
         addLog(`Testing user: ${testUser.id}`);
@@ -95,19 +107,46 @@ export function NudgesQA() {
           const runId = `qa-${runDate}-${testUser.id}-${scenario.name}`;
           
           try {
-            // Run scheduler with QA context
-            const selectedNudges = await selectNudgesForUser(
+            // Build deterministic test context
+            const currentTime = new Date(scenario.mock.frozenNow!);
+            const testContext = buildTestContext(scenario.name, testUser.id, currentTime);
+            const contextWithMocks = withQAMocks(testContext, {
+              ...scenario.mock,
+              bypassQuietHours: true
+            });
+            
+            // Run scheduler with QA options to get detailed reasons
+            const schedulerOptions: SchedulerOptions = {
+              dryRun,
+              ignoreCooldowns: true,
+              ignoreDailyCaps: true,
+              ignoreWeeklyCaps: true,
+              returnReasons: true
+            };
+
+            const candidates = await selectNudgesForUser(
               testUser.id,
               2,
-              scenario.mock.frozenNow ? new Date(scenario.mock.frozenNow) : new Date(),
-              { ...scenario.mock, bypassQuietHours: true }
-            );
+              currentTime,
+              { ...scenario.mock, bypassQuietHours: true },
+              schedulerOptions
+            ) as NudgeCandidate[];
 
-            addLog(`    Found ${selectedNudges.length} nudges: ${selectedNudges.map(n => n.id).join(', ')}`);
+            const allowedNudges = candidates.filter(c => c.allowed);
+            
+            addLog(`    Found ${allowedNudges.length} allowed nudges: ${allowedNudges.map(n => n.id).join(', ')}`);
+
+            // Store scenario results for display
+            newScenarioResults.push({
+              scenarioName: scenario.name,
+              candidates,
+              expectedCount: scenario.expectedCount,
+              expectedNudges: scenario.expectedNudges
+            });
 
             // Log 'shown' events for each selected nudge (skip if dry run)
             if (!dryRun) {
-              for (const nudge of selectedNudges) {
+              for (const nudge of allowedNudges) {
                 await logNudgeEvent({
                   nudgeId: nudge.id,
                   event: 'shown',
@@ -129,7 +168,7 @@ export function NudgesQA() {
                 addLog(`    Logged '${interactionEvent}' for ${nudge.id}`);
               }
             } else {
-              for (const nudge of selectedNudges) {
+              for (const nudge of allowedNudges) {
                 addLog(`    Would log 'shown' for ${nudge.id} (dry run)`);
                 const shouldCTA = Math.random() < 0.2;
                 const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
@@ -138,12 +177,12 @@ export function NudgesQA() {
             }
 
             // Validate expectations
-            if (selectedNudges.length !== scenario.expectedCount) {
-              addLog(`    ⚠️  Expected ${scenario.expectedCount} nudges, got ${selectedNudges.length}`);
+            if (allowedNudges.length !== scenario.expectedCount) {
+              addLog(`    ⚠️  Expected ${scenario.expectedCount} nudges, got ${allowedNudges.length}`);
             }
 
             for (const expectedNudge of scenario.expectedNudges) {
-              if (!selectedNudges.find(n => n.id === expectedNudge)) {
+              if (!allowedNudges.find(n => n.id === expectedNudge)) {
                 addLog(`    ⚠️  Expected nudge '${expectedNudge}' not found`);
               }
             }
@@ -154,6 +193,7 @@ export function NudgesQA() {
         }
       }
 
+      setScenarioResults(newScenarioResults);
       addLog('QA Matrix execution completed!');
     } catch (error) {
       addLog(`❌ QA Matrix failed: ${error}`);
@@ -207,6 +247,10 @@ export function NudgesQA() {
     window.URL.revokeObjectURL(url);
   };
 
+  const getGateIcon = (pass: boolean) => {
+    return pass ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-red-500" />;
+  };
+
   // Show UI regardless of admin status, but with appropriate warnings
   if (!user) {
     return (
@@ -239,6 +283,25 @@ export function NudgesQA() {
           {dryRun ? 'Dry Run Mode' : 'Live Mode'}
         </Badge>
       </div>
+
+      {/* Registry Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <List className="h-5 w-5" />
+            Nudge Registry IDs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {NUDGE_REGISTRY.map(nudge => (
+              <Badge key={nudge.id} variant="outline">
+                {nudge.id}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Non-admin warning */}
       {!isAdmin && (
@@ -310,6 +373,67 @@ export function NudgesQA() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Scenario Results */}
+      {scenarioResults.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold">Scenario Results</h2>
+          {scenarioResults.map((result, index) => (
+            <Card key={index}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{result.scenarioName}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      result.candidates.filter(c => c.allowed).length === result.expectedCount ? 'default' : 'destructive'
+                    }>
+                      Expected: {result.expectedCount}, Got: {result.candidates.filter(c => c.allowed).length}
+                    </Badge>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">Nudge ID</th>
+                        <th className="text-left p-2">Status</th>
+                        <th className="text-left p-2">Gate Results</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.candidates.map((candidate, candIndex) => (
+                        <tr key={candIndex} className="border-b">
+                          <td className="p-2 font-medium">{candidate.id}</td>
+                          <td className="p-2">
+                            <Badge variant={candidate.allowed ? 'default' : 'secondary'}>
+                              {candidate.allowed ? 'ALLOWED' : 'BLOCKED'}
+                            </Badge>
+                          </td>
+                          <td className="p-2">
+                            <div className="flex flex-wrap gap-1">
+                              {candidate.reasons.map((reason, reasonIndex) => (
+                                <div key={reasonIndex} className="flex items-center gap-1 text-xs">
+                                  {getGateIcon(reason.pass)}
+                                  <span>{reason.gate}</span>
+                                  {reason.detail && (
+                                    <span className="text-muted-foreground">({reason.detail})</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Report Results */}
       {report && (
