@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Lightbulb } from 'lucide-react';
+import { X, Camera, Lightbulb, Upload } from 'lucide-react';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,6 +160,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          console.log('[PHOTO] Image uploaded, processing...');
+          onCapture(imageBase64);
+          onOpenChange(false);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleExit = () => {
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -194,8 +218,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </div>
             </div>
 
-            {/* Center - Camera Viewfinder - positioned below banner with proper spacing */}
-            <div className="absolute top-36 bottom-48 left-4 right-4 flex items-center justify-center">
+            {/* Center - Camera Viewfinder - positioned below banner with more spacing */}
+            <div className="absolute top-44 bottom-48 left-4 right-4 flex items-center justify-center">
               {/* Camera frame overlay - Extended vertically to use most of the available space */}
               <div className="relative w-full max-w-[400px] h-full pointer-events-none">
                 {/* Corner indicators */}
@@ -219,11 +243,21 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               {/* Instructions */}
               <div className="text-center text-white/90 mb-6">
                 <p className="text-lg font-medium">Position food in the frame</p>
-                <p className="text-sm text-white/70 mt-1">Tap the button below to capture</p>
+                <p className="text-sm text-white/70 mt-1">Capture, upload, or exit</p>
               </div>
               
-              {/* Capture Button */}
-              <div className="flex justify-center">
+              {/* Three Control Buttons */}
+              <div className="flex justify-center items-center gap-8">
+                {/* Exit Button - Red */}
+                <Button
+                  onClick={handleExit}
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 p-0"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+
+                {/* Capture Button - Center, larger */}
                 <Button
                   onClick={capturePhoto}
                   disabled={isCapturing || !stream}
@@ -235,6 +269,15 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                   ) : (
                     <Camera className="h-8 w-8" />
                   )}
+                </Button>
+
+                {/* Upload Button */}
+                <Button
+                  onClick={handleImageUpload}
+                  size="lg"
+                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-16 h-16 p-0"
+                >
+                  <Upload className="h-6 w-6" />
                 </Button>
               </div>
             </footer>
