@@ -89,64 +89,125 @@ const HEALTH_RULES = Object.freeze({
 // Import enhanced brand lexicon and normalization
 import { ENHANCED_BRAND_LEXICON, extractBrandTokensWithFuzzy } from './brandLexicon.ts';
 
-// Brand normalization utilities
-function normalizeBrand(brand: string): string {
-  if (!brand) return '';
+// Brand normalization utilities - comprehensive system
+const BRAND_ALIASES: Record<string, string> = {
+  "traderjoes": "Trader Joe's",
+  "traderjoe": "Trader Joe's", 
+  "tjs": "Trader Joe's",
+  "tj": "Trader Joe's",
+  "cocacola": "Coca-Cola",
+  "coke": "Coca-Cola",
+  "pepsi": "Pepsi",
+  "pepsicola": "Pepsi",
+  "mcdonalds": "McDonald's",
+  "kelloggs": "Kellogg's",
+  "kellogg": "Kellogg's",
+  "generalmills": "General Mills",
+  "kraft": "Kraft",
+  "kraftheinz": "Kraft Heinz",
+  "nestle": "Nestlé",
+  "nabisco": "Nabisco",
+  "oreo": "Oreo",
+  "cheerios": "Cheerios",
+  "lays": "Lay's",
+  "doritos": "Doritos",
+  "cheetos": "Cheetos",
+  "planters": "Planters",
+  "skippy": "Skippy",
+  "jif": "Jif",
+  "ritz": "Ritz",
+  "goldfish": "Goldfish",
+  "benjerrys": "Ben & Jerry's",
+  "benjerry": "Ben & Jerry's"
+};
+
+function toSlug(s: string): string {
+  if (!s) return '';
   
-  const normalized = brand.toLowerCase()
-    .replace(/[^\w\s']/g, ' ')
-    .replace(/\s+/g, ' ')
+  return s.toLowerCase()
+    .replace(/'/g, '') // Remove apostrophes
+    .replace(/[^\w\s]/g, '') // Remove punctuation except word chars and spaces
+    .replace(/\s+/g, '') // Remove all spaces
     .trim();
-  
-  // Common aliases
-  const aliases: Record<string, string> = {
-    "trader joe s": "trader joe's",
-    "trader joes": "trader joe's", 
-    "trader joe": "trader joe's",
-    "tj's": "trader joe's",
-    "tjs": "trader joe's"
-  };
-  
-  return aliases[normalized] || normalized;
 }
 
-// OCR token joining for multi-word brands
-function joinBrandTokens(tokens: string[]): string[] {
-  if (!tokens || tokens.length < 2) return tokens;
+function joinTokens(tokens: string[]): string[] {
+  if (!tokens || tokens.length === 0) return [];
   
-  const result: string[] = [];
-  let i = 0;
+  const candidates = new Set<string>();
   
-  while (i < tokens.length) {
-    let bestMatch = tokens[i];
-    let bestLength = 1;
+  // Single tokens
+  tokens.forEach(token => {
+    const cleaned = toSlug(token);
+    if (cleaned.length > 1) {
+      candidates.add(cleaned);
+    }
+  });
+  
+  // Bi-grams and tri-grams
+  for (let i = 0; i < tokens.length - 1; i++) {
+    // Bi-gram
+    const bigram = toSlug(tokens[i] + tokens[i + 1]);
+    if (bigram.length > 2) {
+      candidates.add(bigram);
+    }
     
-    // Try to match multi-token brands (up to 4 tokens)
-    for (let len = Math.min(4, tokens.length - i); len >= 2; len--) {
-      const candidate = tokens.slice(i, i + len).join(' ');
-      const normalized = normalizeBrand(candidate);
-      
-      // Check if this forms a known brand
-      if (isKnownBrand(normalized)) {
-        bestMatch = normalized;
-        bestLength = len;
-        break;
+    // Tri-gram (if available)
+    if (i < tokens.length - 2) {
+      const trigram = toSlug(tokens[i] + tokens[i + 1] + tokens[i + 2]);
+      if (trigram.length > 3) {
+        candidates.add(trigram);
+      }
+    }
+  }
+  
+  return Array.from(candidates);
+}
+
+function normalizeBrandComprehensive(input: {
+  ocrTokens?: string[];
+  logoBrands?: string[];
+  llmGuess?: string;
+}): { brandGuess?: string; confidence: number } {
+  // Priority 1: Logo brands (highest confidence)
+  if (input.logoBrands && input.logoBrands.length > 0) {
+    for (const logo of input.logoBrands) {
+      const slug = toSlug(logo);
+      const canonical = BRAND_ALIASES[slug];
+      if (canonical) {
+        return { brandGuess: canonical, confidence: 0.95 };
       }
     }
     
-    result.push(bestMatch);
-    i += bestLength;
+    // Return first logo brand even if not in aliases
+    return { brandGuess: input.logoBrands[0], confidence: 0.85 };
   }
   
-  return result;
-}
-
-function isKnownBrand(normalized: string): boolean {
-  const knownBrands = [
-    "trader joe's", "coca-cola", "pepsi", "mcdonald's", "kellogg's",
-    "general mills", "kraft", "nestle", "nabisco", "oreo", "cheerios"
-  ];
-  return knownBrands.includes(normalized);
+  // Priority 2: OCR tokens (medium confidence)
+  if (input.ocrTokens && input.ocrTokens.length > 0) {
+    const candidates = joinTokens(input.ocrTokens);
+    
+    for (const candidate of candidates) {
+      const canonical = BRAND_ALIASES[candidate];
+      if (canonical) {
+        return { brandGuess: canonical, confidence: 0.8 };
+      }
+    }
+  }
+  
+  // Priority 3: LLM guess (lower confidence, needs validation)
+  if (input.llmGuess) {
+    const slug = toSlug(input.llmGuess);
+    const canonical = BRAND_ALIASES[slug];
+    if (canonical) {
+      return { brandGuess: canonical, confidence: 0.7 };
+    }
+    
+    // Return LLM guess even if not in aliases (low confidence)
+    return { brandGuess: input.llmGuess, confidence: 0.5 };
+  }
+  
+  return { confidence: 0 };
 }
 
 // Read-only lexicons (immutable)
@@ -492,9 +553,14 @@ async function processVisionProviders(
           return aggregated;
         }
         
-        // Check if parsing succeeded and join brand tokens
+        // Check if parsing succeeded and join brand tokens using comprehensive system
         const google_ok = result.text.length > 0 && result.ocrConfidence > 0;
-        const joinedTokens = joinBrandTokens(result.cleanedTokens);
+        
+        // Apply comprehensive brand normalization to Google results
+        const brandNormResult = normalizeBrandComprehensive({
+          ocrTokens: result.cleanedTokens,
+          logoBrands: result.logoBrands || []
+        });
         
         steps.push({ 
           stage: 'ocr', 
@@ -502,7 +568,8 @@ async function processVisionProviders(
           meta: { 
             chars: result.text.length, 
             topTokens: result.cleanedTokens.slice(0, 10),
-            joinedTokens: joinedTokens.length
+            brandGuess: brandNormResult.brandGuess,
+            brandConfidence: brandNormResult.confidence
           }
         });
         
@@ -522,12 +589,14 @@ async function processVisionProviders(
         if (google_ok) {
           aggregated = {
             text: result.text,
-            cleanedTokens: joinedTokens,
+            cleanedTokens: result.cleanedTokens,
             brandTokens: result.brandTokens,
             hasCandy: result.hasCandy,
             fuzzyBrands: result.fuzzyBrands,
             ocrConfidence: result.ocrConfidence,
-            logoBrands: result.logoBrands || []
+            logoBrands: result.logoBrands || [],
+            brandGuess: brandNormResult.brandGuess,
+            brandConfidence: brandNormResult.confidence
           };
           return aggregated;
         }
@@ -560,6 +629,13 @@ async function processVisionProviders(
           return aggregated;
         }
         
+        // Apply comprehensive brand normalization to OpenAI results
+        const brandNormResult = normalizeBrandComprehensive({
+          ocrTokens: [],  // OpenAI doesn't provide OCR tokens
+          logoBrands: result.logoBrands || [],
+          llmGuess: result.brandTokens?.[0] || '' // Use first brand token as LLM guess
+        });
+        
         // Check if parsing succeeded
         const openai_ok = result.text.length > 0 && result.ocrConfidence > 0;
         
@@ -568,8 +644,9 @@ async function processVisionProviders(
           ok: openai_ok, 
           meta: { 
             model: 'gpt-4o-mini', 
-            brand: result.brandTokens[0] || '', 
-            confidence: result.ocrConfidence 
+            brand: brandNormResult.brandGuess || result.brandTokens[0] || '', 
+            confidence: result.ocrConfidence,
+            brandConfidence: brandNormResult.confidence
           }
         });
         
@@ -584,21 +661,31 @@ async function processVisionProviders(
           steps.push({
             stage: 'openai_parse', 
             ok: true, 
-            meta: { confidence: result.ocrConfidence }
+            meta: { 
+              confidence: result.ocrConfidence,
+              brandGuess: brandNormResult.brandGuess,
+              brandConfidence: brandNormResult.confidence
+            }
           });
         }
         
-        console.log('[VISION] end: openai', { ok: openai_ok, model: 'gpt-4o-mini' });
+        console.log('[VISION] end: openai', { 
+          ok: openai_ok, 
+          model: 'gpt-4o-mini',
+          brandGuess: brandNormResult.brandGuess
+        });
         
         if (openai_ok) {
           aggregated = {
             text: result.text,
             cleanedTokens: result.cleanedTokens,
-            brandTokens: result.brandTokens,
+            brandTokens: brandNormResult.brandGuess ? [brandNormResult.brandGuess] : result.brandTokens,
             hasCandy: result.hasCandy,
             fuzzyBrands: result.fuzzyBrands,
             ocrConfidence: result.ocrConfidence,
-            logoBrands: []
+            logoBrands: result.logoBrands || [],
+            brandGuess: brandNormResult.brandGuess,
+            brandConfidence: brandNormResult.confidence
           };
           return aggregated;
         }
@@ -653,6 +740,9 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
   hasCandy: boolean;
   fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>;
   ocrConfidence: number;
+  logoBrands?: string[];
+  brandGuess?: string;
+  brandConfidence?: number;
 }> {
   try {
     // CRITICAL HOTFIX: Ensure we send a data URL with prefix
@@ -713,18 +803,26 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
     if (content) {
       try {
         const parsed = JSON.parse(content);
-        const rawBrand = parsed.brand || '';
-        const brand = normalizeBrand(rawBrand); // Apply brand normalization
+        const rawBrand = (parsed.brand || '').toLowerCase().trim();
+        
+        // Apply comprehensive brand normalization
+        const brandNormResult = normalizeBrandComprehensive({
+          ocrTokens: [],
+          logoBrands: [],
+          llmGuess: rawBrand
+        });
+        
+        const normalizedBrand = brandNormResult.brandGuess || rawBrand;
         const product = parsed.product || '';
         const confidence = parsed.confidence || 0;
         
         // Combine brand and product as full text
-        const text = `${brand} ${product}`.trim();
+        const text = `${normalizedBrand} ${product}`.trim();
         
         // Process like Google OCR
         const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
         const tokens = normalized.split(/\s+/).filter(token => token.length > 2 && !STOP_WORDS.has(token));
-        const brandTokens = brand ? [brand.toLowerCase()] : [];
+        const brandTokens = normalizedBrand ? [normalizedBrand] : [];
         
         return {
           text,
@@ -732,7 +830,9 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
           brandTokens,
           hasCandy: tokens.some(token => CANDY_KEYWORDS.has(token)),
           fuzzyBrands: [],
-          ocrConfidence: confidence
+          ocrConfidence: confidence,
+          brandGuess: brandNormResult.brandGuess,
+          brandConfidence: brandNormResult.confidence
         };
       } catch (parseError) {
         console.error('❌ OpenAI JSON parsing failed:', parseError);
@@ -744,7 +844,9 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
           brandTokens: words.slice(0, 2), // Take first 2 words as potential brands
           hasCandy: words.some(word => CANDY_KEYWORDS.has(word)),
           fuzzyBrands: [],
-          ocrConfidence: 0
+          ocrConfidence: 0,
+          brandGuess: undefined,
+          brandConfidence: 0
         };
       }
     }
@@ -752,7 +854,16 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
     throw new Error('No content from OpenAI');
   } catch (error) {
     console.error('❌ OpenAI Vision extraction failed:', error);
-    return { text: '', cleanedTokens: [], brandTokens: [], hasCandy: false, fuzzyBrands: [], ocrConfidence: 0 };
+    return { 
+      text: '', 
+      cleanedTokens: [], 
+      brandTokens: [], 
+      hasCandy: false, 
+      fuzzyBrands: [], 
+      ocrConfidence: 0,
+      brandGuess: undefined,
+      brandConfidence: 0
+    };
   }
 }
 

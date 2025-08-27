@@ -204,7 +204,7 @@ export default function AnalyzerOneClick() {
               ...results[index],
               status: 'completed',
               ok: isSuccess,
-              brand_guess: openaiStep?.meta?.brand || '',
+              brand_guess: openaiStep?.meta?.brandGuess || logoStep?.meta?.brandGuess || ocrStep?.meta?.brandGuess || openaiStep?.meta?.brand || '',
               logo_brands: logoStep?.meta?.logoBrands || [],
               ocr_top_tokens: ocrStep?.meta?.topTokens?.slice(0, 5) || [],
               decision,
