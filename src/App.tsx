@@ -497,13 +497,11 @@ function AppContent() {
                             </ProtectedRoute>
                           } />
                         {/* Debug routes for developers */}
-                        <Route path="/debug/*" element={
-                          <ProtectedRoute>
-                            <AdminRoute>
-                              <DebugRoutes />
-                            </AdminRoute>
-                          </ProtectedRoute>
-                        } />
+                         <Route path="/debug/*" element={
+                           <ProtectedRoute>
+                             <DebugRoutes />
+                           </ProtectedRoute>
+                         } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>

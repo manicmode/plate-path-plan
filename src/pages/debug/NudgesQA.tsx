@@ -66,6 +66,7 @@ export function NudgesQA() {
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState<QAReport | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [dryRun, setDryRun] = useState(!isAdmin);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -73,11 +74,14 @@ export function NudgesQA() {
   };
 
   const runQAMatrix = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      addLog('❌ User not authenticated');
+      return;
+    }
     
     setRunning(true);
     setLogs([]);
-    addLog('Starting QA Matrix execution...');
+    addLog(`Starting QA Matrix execution${dryRun ? ' (DRY RUN - no DB writes)' : ''}...`);
 
     try {
       const runDate = new Date().toISOString().split('T')[0];
@@ -101,27 +105,36 @@ export function NudgesQA() {
 
             addLog(`    Found ${selectedNudges.length} nudges: ${selectedNudges.map(n => n.id).join(', ')}`);
 
-            // Log 'shown' events for each selected nudge
-            for (const nudge of selectedNudges) {
-              await logNudgeEvent({
-                nudgeId: nudge.id,
-                event: 'shown',
-                reason: 'qa',
-                runId: runId
-              });
-              addLog(`    Logged 'shown' for ${nudge.id}`);
+            // Log 'shown' events for each selected nudge (skip if dry run)
+            if (!dryRun) {
+              for (const nudge of selectedNudges) {
+                await logNudgeEvent({
+                  nudgeId: nudge.id,
+                  event: 'shown',
+                  reason: 'qa',
+                  runId: runId
+                });
+                addLog(`    Logged 'shown' for ${nudge.id}`);
 
-              // Simulate user interaction (80% dismiss, 20% CTA)
-              const shouldCTA = Math.random() < 0.2;
-              const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
-              
-              await logNudgeEvent({
-                nudgeId: nudge.id,
-                event: interactionEvent,
-                reason: 'qa',
-                runId: runId
-              });
-              addLog(`    Logged '${interactionEvent}' for ${nudge.id}`);
+                // Simulate user interaction (80% dismiss, 20% CTA)
+                const shouldCTA = Math.random() < 0.2;
+                const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
+                
+                await logNudgeEvent({
+                  nudgeId: nudge.id,
+                  event: interactionEvent,
+                  reason: 'qa',
+                  runId: runId
+                });
+                addLog(`    Logged '${interactionEvent}' for ${nudge.id}`);
+              }
+            } else {
+              for (const nudge of selectedNudges) {
+                addLog(`    Would log 'shown' for ${nudge.id} (dry run)`);
+                const shouldCTA = Math.random() < 0.2;
+                const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
+                addLog(`    Would log '${interactionEvent}' for ${nudge.id} (dry run)`);
+              }
             }
 
             // Validate expectations
@@ -194,15 +207,18 @@ export function NudgesQA() {
     window.URL.revokeObjectURL(url);
   };
 
-  if (!isAdmin) {
+  // Show UI regardless of admin status, but with appropriate warnings
+  if (!user) {
     return (
       <div className="container mx-auto p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Admin access required to use QA tools.
-          </AlertDescription>
-        </Alert>
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-64"></div>
+          <div className="h-4 bg-muted rounded w-96"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-48 bg-muted rounded"></div>
+            <div className="h-48 bg-muted rounded"></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -220,9 +236,19 @@ export function NudgesQA() {
           <p className="text-muted-foreground">Automated testing and reporting for nudge scheduler</p>
         </div>
         <Badge variant="outline" className="text-orange-600">
-          Staging Only
+          {dryRun ? 'Dry Run Mode' : 'Live Mode'}
         </Badge>
       </div>
+
+      {/* Non-admin warning */}
+      {!isAdmin && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Read-only mode:</strong> You can run QA scenarios but no data will be written to the database.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* QA Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,7 +262,20 @@ export function NudgesQA() {
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Execute all test scenarios across {QA_TEST_USERS.length} test users with {QA_SCENARIOS.length} scenarios each
+              {dryRun && ' (read-only simulation)'}
             </p>
+            {isAdmin && (
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  id="dryRun"
+                  checked={dryRun}
+                  onChange={(e) => setDryRun(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="dryRun" className="text-sm">Dry run (no DB writes)</label>
+              </div>
+            )}
             <Button 
               onClick={runQAMatrix} 
               disabled={running}
