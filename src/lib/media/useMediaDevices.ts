@@ -52,13 +52,22 @@ interface MicrophoneOptions {
 const activeStreams = new Set<MediaStream>();
 
 // Configuration flags
-const CAMERA_MANAGER_ENABLED = process.env.CAMERA_MANAGER_ENABLED !== 'false';
+const CAMERA_MANAGER_ENABLED = process.env.VITE_CAMERA_MANAGER_ENABLED !== 'false';
 const IDLE_SHUTOFF_MS = 0; // Disabled for now
 
 /**
  * Hook for camera access with torch control
+ * 
+ * If CAMERA_MANAGER_ENABLED is false, this hook provides a legacy mode
+ * that bypasses the managed camera system and uses direct getUserMedia
  */
 export function useCamera(options: CameraOptions = {}): CameraHookResult {
+  // Legacy fallback mode
+  if (!CAMERA_MANAGER_ENABLED) {
+    console.warn('🎥 [MEDIA] Using legacy camera mode (CAMERA_MANAGER_ENABLED=false)');
+    return useLegacyCamera(options);
+  }
+
   const streamRef = useRef<MediaStream | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const [isActive, setIsActive] = useState(false);
@@ -113,9 +122,9 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
       // Forgiving constraints with fallbacks for iOS Safari
       const baseConstraints: MediaStreamConstraints = {
         video: {
-          facingMode: options.facingMode 
-            ? { ideal: options.facingMode }
-            : { ideal: 'environment' },
+          facingMode: options.facingMode === 'user' 
+            ? { ideal: 'user' }
+            : { ideal: 'environment' }, // Always use ideal, never exact
         },
         audio: false
       };
@@ -187,7 +196,7 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
     }
   }, [options, stop, markActivity]);
 
-  // Video attachment helper
+  // Video attachment helper with proper loading
   const attach = useCallback(async (video: HTMLVideoElement) => {
     if (!streamRef.current || !video) return;
     
@@ -196,6 +205,18 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
       video.playsInline = true;
       (video as any).webkitPlaysInline = true;
       video.srcObject = streamRef.current;
+      
+      // Wait for loadedmetadata to ensure video is ready
+      if (!video.videoWidth || !video.videoHeight) {
+        await new Promise<void>((resolve) => {
+          const onLoadedMetadata = () => {
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            resolve();
+          };
+          video.addEventListener('loadedmetadata', onLoadedMetadata);
+        });
+      }
+      
       await video.play();
       console.log('🎥 [MEDIA] Video attached and playing');
     } catch (error) {
@@ -213,6 +234,9 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
         return;
       }
       
+      // Add small delay before torch control to ensure stability
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       try {
         const capabilities = videoTrackRef.current.getCapabilities?.() as ExtendedMediaTrackCapabilities;
         if (capabilities?.torch) {
@@ -224,7 +248,7 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
         }
       } catch (error) {
         console.warn('🔦 [MEDIA] Failed to turn torch ON:', error);
-        // Don't stop the track on torch errors
+        // Swallow errors, never stop track
       }
     },
 
@@ -240,7 +264,7 @@ export function useCamera(options: CameraOptions = {}): CameraHookResult {
           console.log('🔦 [MEDIA] Torch turned OFF');
         }
       } catch (error) {
-        // Swallow errors during cleanup
+        // Swallow errors during cleanup - never throw
         console.warn('🔦 [MEDIA] Failed to turn torch OFF:', error);
       }
     }
@@ -419,6 +443,70 @@ export function useMicrophone(options: MicrophoneOptions = {}): MicrophoneHookRe
     start,
     stop,
     isActive
+  };
+}
+
+/**
+ * Legacy camera hook fallback (for CAMERA_MANAGER_ENABLED=false)
+ */
+function useLegacyCamera(options: CameraOptions = {}): CameraHookResult {
+  const streamRef = useRef<MediaStream | null>(null);
+  const [isActive, setIsActive] = useState(false);
+
+  const start = useCallback(async () => {
+    try {
+      console.log('🎥 [LEGACY] Starting camera with getUserMedia');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: options.facingMode || 'environment' },
+        audio: false
+      });
+      
+      streamRef.current = stream;
+      setIsActive(true);
+      
+    } catch (error) {
+      console.error('🎥 [LEGACY] Camera failed:', error);
+      throw error;
+    }
+  }, [options.facingMode]);
+
+  const stop = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      setIsActive(false);
+    }
+  }, []);
+
+  const attach = useCallback(async (video: HTMLVideoElement) => {
+    if (streamRef.current && video) {
+      video.srcObject = streamRef.current;
+      video.muted = true;
+      video.playsInline = true;
+      await video.play();
+    }
+  }, []);
+
+  // Basic torch controls for legacy mode
+  const torch: CameraTorchControls = {
+    supported: false,
+    on: async () => console.warn('🔦 [LEGACY] Torch not supported in legacy mode'),
+    off: async () => console.warn('🔦 [LEGACY] Torch not supported in legacy mode')
+  };
+
+  useEffect(() => {
+    return () => {
+      stop();
+    };
+  }, [stop]);
+
+  return {
+    stream: streamRef.current,
+    start,
+    stop,
+    attach,
+    isActive,
+    torch
   };
 }
 
