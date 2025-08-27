@@ -137,7 +137,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           console.log('[HS BARCODE] Legacy after adapter:', legacy);
           
           // Set name once and mirror to all possible header keys
-          const itemName = legacy.productName || legacy.barcode || 'Unknown item';
+          const itemName = legacy.productName || 'Unknown item';
           console.log('[HS BARCODE] Final itemName:', itemName);
           
           // Guardrail log for verification
@@ -332,7 +332,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const legacy = toLegacyFromEdge(data);
       
       // Set name once and mirror to all possible header keys
-      const itemName = legacy.productName || legacy.barcode || 'Unknown item';
+      const itemName = legacy.productName || 'Unknown item';
       
       // Guardrail log for verification
       if (!legacy.productName && legacy.ingredientsText) {
