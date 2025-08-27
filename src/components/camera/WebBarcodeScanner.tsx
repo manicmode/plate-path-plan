@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Camera, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
+import { X, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
-import { supabase } from '@/integrations/supabase/client';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
+import { useCamera } from '@/lib/media/useMediaDevices';
 
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
@@ -18,11 +18,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const scanningIntervalRef = useRef<NodeJS.Timeout>();
-  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
+  
+  // Use camera hook instead of manual stream management
+  const camera = useCamera({
+    facingMode: 'environment',
+    width: 1280,
+    height: 720
+  });
+  
+  const { snapAndDecode } = useSnapAndDecode();
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -74,13 +81,13 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const handleAnalyzeNow = async () => {
     if (!videoRef.current) {
-      console.error('[LOG] Video ref not available');
+      console.error('[WEB] Video ref not available');
       return;
     }
 
-    console.time('[LOG] analyze_total');
-      setIsScanning(true);
-      setIsFrozen(true);
+    console.time('[WEB] analyze_total');
+    setIsScanning(true);
+    setIsFrozen(true);
     
     try {
       const video = videoRef.current;
@@ -97,16 +104,16 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       }
       
       // Apply zoom constraint before capture (NO auto-torch!)
-      if (stream) {
-        const track = stream.getVideoTracks()[0];
+      if (camera.stream) {
+        const track = camera.stream.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({ 
               advanced: [{ zoom: ZOOM } as any] 
             });
-            console.log('[LOG] zoom applied:', ZOOM);
+            console.log('[WEB] zoom applied:', ZOOM);
           } catch (zoomError) {
-            console.log('[LOG] zoom not supported:', zoomError);
+            console.log('[WEB] zoom not supported:', zoomError);
           }
         }
       }
@@ -116,67 +123,68 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         videoEl: video,
         budgetMs: QUICK_BUDGET_MS,
         roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-        logPrefix: '[LOG]'
+        logPrefix: '[WEB]'
       });
 
       // Return early on any 8/12/13/14-digit hit
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
-        console.log('[LOG] off_fetch_start', { code: result.raw });
-        
-        // Optional: Add toast for PWA testing
-        if (window.location.search.includes('debug=toast')) {
-          const { toast } = await import('sonner');
-          toast.info(`[LOG] off_fetch_start: ${result.raw}`);
-        }
+        console.log('[WEB] barcode_found', { code: result.raw });
         onBarcodeDetected(result.raw);
         cleanup();
         onClose();
-        console.timeEnd('[LOG] analyze_total');
+        console.timeEnd('[WEB] analyze_total');
         return; 
       }
 
       // 2) Burst fallback (parallel capture and race)
-      console.log('[LOG] burst_start');
+      console.log('[WEB] burst_start');
       const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
         await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
         return await snapAndDecode({
           videoEl: video,
           budgetMs: QUICK_BUDGET_MS,
           roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-          logPrefix: '[LOG]'
+          logPrefix: '[WEB]'
         });
       });
 
       const winner = await Promise.race(burstPromises);
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
-        console.log('[LOG] off_fetch_start', { code: winner.raw });
+        console.log('[WEB] burst_winner', { code: winner.raw });
         onBarcodeDetected(winner.raw);
         cleanup();
         onClose();
-        console.timeEnd('[LOG] analyze_total');
+        console.timeEnd('[WEB] analyze_total');
         return; 
       }
 
       // 3) No barcode found
-      console.log('[LOG] no_barcode_found');
+      console.log('[WEB] no_barcode_found');
       setError('No barcode detected. Please try again with better lighting.');
       
     } catch (error) {
-      console.error('[LOG] Scan error:', error);
+      console.error('[WEB] Scan error:', error);
       setError('Failed to scan barcode. Please try again.');
     } finally {
-      // CRITICAL: Always cleanup to prevent hangs
       setIsScanning(false);
       setIsFrozen(false);
-      console.timeEnd('[LOG] analyze_total');
+      console.timeEnd('[WEB] analyze_total');
     }
   };
 
   const handleFlashlightToggle = async () => {
-    if (!stream) return;
-    
-    const newTorchState = !torchEnabled;
-    await setTorch(newTorchState);
+    try {
+      if (camera.torch.supported && camera.isActive) {
+        // Simple toggle - try turning off first, then on
+        try {
+          await camera.torch.off();
+        } catch {
+          await camera.torch.on();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle flashlight:', error);
+    }
   };
 
   // Warm-up the decoder on modal open  
@@ -201,6 +209,54 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
   };
 
+  const startCamera = async () => {
+    try {
+      console.log("[WEB] Starting camera with useCamera hook...");
+      await camera.start();
+      setIsScanning(false); // Ready to scan
+      setError(null);
+    } catch (err) {
+      console.error("[WEB] Failed to start camera:", err);
+      setError('Unable to access camera. Please check permissions and try again.');
+    }
+  };
+
+  // Update video element when camera stream changes
+  useEffect(() => {
+    if (camera.stream && videoRef.current) {
+      videoRef.current.srcObject = camera.stream;
+      videoRef.current.play().catch(console.warn);
+    } else if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, [camera.stream]);
+
+  const cleanup = async () => {
+    if (scanningIntervalRef.current) {
+      clearInterval(scanningIntervalRef.current);
+      scanningIntervalRef.current = undefined;
+    }
+    
+    // Turn off torch before stopping
+    try {
+      await camera.torch.off();
+    } catch (error) {
+      console.warn('Failed to turn off torch:', error);
+    }
+    
+    // Stop camera
+    camera.stop();
+    
+    // Clear video element
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsScanning(false);
+    setError(null);
+    setIsFrozen(false);
+  };
+
   useEffect(() => {
     startCamera();
     warmUpDecoder();
@@ -208,64 +264,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       cleanup();
     };
   }, []);
-
-  const startCamera = async () => {
-    try {
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
-      if (!videoRef.current) {
-        console.error("[VIDEO] videoRef is null — video element not mounted");
-        return;
-      }
-
-      if (location.protocol !== 'https:') {
-        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
-      }
-
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
-          console.log("[PERMISSION] Camera permission state:", res.state);
-        }).catch((err) => {
-          console.log("[PERMISSION] Could not query camera permission:", err);
-        });
-      }
-
-      console.log("[CAMERA] Requesting camera stream...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-
-      console.log("[CAMERA] Stream received:", mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.style.border = "2px solid red";
-        console.log("[CAMERA] srcObject set, playing video");
-        setStream(mediaStream);
-        setIsScanning(true);
-      } else {
-        console.error("[CAMERA] videoRef.current is null");
-      }
-    } catch (err) {
-      console.error("[CAMERA FAIL] getUserMedia error:", err);
-      console.error('Camera access error:', err);
-      setError('Unable to access camera. Please check permissions and try again.');
-    }
-  };
-
-  const cleanup = () => {
-    if (scanningIntervalRef.current) {
-      clearInterval(scanningIntervalRef.current);
-    }
-    
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    
-    setIsScanning(false);
-  };
 
   const handleClose = () => {
     cleanup();
@@ -327,7 +325,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           <div className="flex gap-2 mb-3">
             <button
               onClick={handleAnalyzeNow}
-              disabled={isScanning}
+              disabled={isScanning || !camera.isActive}
               className="flex-1 h-12 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Zap className={`w-5 h-5 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
@@ -335,18 +333,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             </button>
             
             {/* Flashlight Toggle */}
-            {stream && torchSupported && (
+            {camera.torch.supported && (
               <button
                 onClick={handleFlashlightToggle}
-                disabled={isScanning}
+                disabled={isScanning || !camera.isActive}
                 className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-[.99] disabled:opacity-50 transition-colors ${
-                  torchEnabled 
+                  camera.isActive 
                     ? 'bg-yellow-500 text-white' 
                     : 'bg-zinc-800 text-zinc-100'
                 }`}
                 title="Flashlight"
               >
-                <FlashlightIcon className={`w-5 h-5 ${torchEnabled ? 'text-white' : 'text-zinc-300'}`} />
+                <FlashlightIcon className={`w-5 h-5 ${camera.isActive ? 'text-white' : 'text-zinc-300'}`} />
               </button>
             )}
           </div>

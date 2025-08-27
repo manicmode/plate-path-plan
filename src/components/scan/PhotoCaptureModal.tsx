@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Lightbulb, Upload } from 'lucide-react';
-import { useTorch } from '@/lib/camera/useTorch';
+import { X, Camera, Upload } from 'lucide-react';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
+import { useCamera } from '@/lib/media/useMediaDevices';
 
 interface PhotoCaptureModalProps {
   open: boolean;
@@ -22,13 +22,47 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onManualFallback
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const trackRef = useRef<MediaStreamTrack | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  // Use camera hook instead of manual stream management
+  const camera = useCamera({
+    facingMode: 'environment',
+    width: 1280,
+    height: 720
+  });
 
+  const startCamera = useCallback(async () => {
+    if (!open) return;
+    
+    try {
+      console.log("[PHOTO] Starting camera with useCamera hook...");
+      await camera.start();
+      setError(null);
+    } catch (err) {
+      console.error("[PHOTO] Camera access error:", err);
+      setError('Unable to access camera. Please check permissions and try again.');
+    }
+  }, [open, camera]);
+
+  const cleanup = useCallback(async () => {
+    try {
+      await camera.torch.off();
+    } catch (error) {
+      console.warn('Failed to turn off torch:', error);
+    }
+    
+    camera.stop();
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsCapturing(false);
+    setError(null);
+  }, [camera]);
+
+  // Start camera when modal opens
   useEffect(() => {
     if (open) {
       startCamera();
@@ -36,64 +70,20 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       cleanup();
     }
     
-    return cleanup;
-  }, [open]);
+    return () => {
+      cleanup();
+    };
+  }, [open, startCamera, cleanup]);
 
-  const startCamera = async () => {
-    try {
-      console.log("[PHOTO] Requesting camera stream...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
-        
-        const track = mediaStream.getVideoTracks()[0];
-        trackRef.current = track;
-        setStream(mediaStream);
-        
-        // Ensure torch state after track is ready
-        setTimeout(() => {
-          ensureTorchState();
-        }, 100);
-        
-        setError(null);
-      }
-    } catch (err) {
-      console.error("[PHOTO] Camera access error:", err);
-      setError('Unable to access camera. Please check permissions and try again.');
-    }
-  };
-
-  const cleanup = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    if (videoRef.current) {
+  // Update video element when camera stream changes
+  useEffect(() => {
+    if (camera.stream && videoRef.current) {
+      videoRef.current.srcObject = camera.stream;
+      videoRef.current.play().catch(console.warn);
+    } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    trackRef.current = null;
-    setStream(null);
-    setIsCapturing(false);
-  };
-
-  const toggleTorch = async () => {
-    try {
-      const result = await setTorch(!torchOn);
-      if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason);
-      }
-    } catch (error) {
-      console.error("Error toggling torch:", error);
-    }
-  };
+  }, [camera.stream]);
 
   const playCameraClickSound = () => {
     try {
@@ -118,7 +108,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const capturePhoto = async () => {
-    if (!videoRef.current || !stream) return;
+    if (!videoRef.current || !camera.stream) return;
 
     setIsCapturing(true);
     playCameraClickSound();
@@ -180,7 +170,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     input.click();
   };
 
-  const handleExit = () => {
+  const handleExit = async () => {
+    await cleanup();
     onOpenChange(false);
   };
 
@@ -260,7 +251,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 {/* Capture Button - Center, larger */}
                 <Button
                   onClick={capturePhoto}
-                  disabled={isCapturing || !stream}
+                  disabled={isCapturing || !camera.isActive}
                   size="lg"
                   className="bg-white text-black hover:bg-gray-200 rounded-full w-20 h-20 p-0 disabled:opacity-50"
                 >
