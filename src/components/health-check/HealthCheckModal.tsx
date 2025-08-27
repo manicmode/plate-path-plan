@@ -7,6 +7,7 @@ import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
+import { ImprovedManualEntry } from './ImprovedManualEntry';
 import { BrandedCandidatesList } from './BrandedCandidatesList';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { ResultCard } from './ResultCard';
@@ -1000,8 +1001,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           )}
 
           {currentState === 'fallback' && (
-            <ManualEntryFallback
-              onManualEntry={handleManualEntry}
+            <ImprovedManualEntry
+              onProductSelected={(product) => {
+                const legacy = toLegacyFromEdge({ product });
+                processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
+              }}
               onBack={() => setCurrentState('scanner')}
             />
           )}

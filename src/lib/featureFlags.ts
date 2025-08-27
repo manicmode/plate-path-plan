@@ -7,6 +7,9 @@ export const FEATURE_FLAGS = {
   photo_meal_ui_v1: false, // Enable branded candidates list in health check modal (gradual rollout)
   image_analyzer_v1: false, // Enable enhanced image analysis pipeline (DISABLED for production until proven stable)
   photo_encoder_v1: true, // Enable optimized photo encoding for analysis (safe to enable)
+  fallback_text_enabled: true, // Enable manual text search fallback
+  fallback_voice_enabled: true, // Enable voice-to-text search fallback
+  voice_stt_server_enabled: false, // Enable server-side STT (vs browser WebKit)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
