@@ -43,6 +43,8 @@ interface RunTelemetry {
   decision_time_ms?: number;
   background_time_ms?: number;
   early_exit_provider?: string;
+  imageVariant?: 'jpeg' | 'png';
+  imageMime?: string;
 }
 
 interface TestResult {
@@ -492,18 +494,18 @@ export default function AnalyzerOneClick() {
 
             <Button 
               variant="secondary" 
-              onClick={() => runSampleTest('cereal-front-a.jpg')} 
+              onClick={() => runSampleTest('trader-joes-granola.jpg')} 
               disabled={isRunning}
             >
-              Run with Sample A
+              Run Trader Joe's Granola Test
             </Button>
 
             <Button 
               variant="secondary" 
-              onClick={() => runSampleTest('beverage-front-a.jpg')} 
+              onClick={() => runSampleTest('cereal-front-a.jpg')} 
               disabled={isRunning}
             >
-              Run with Sample B
+              Run with Sample A
             </Button>
           </div>
         </CardContent>
@@ -733,19 +735,21 @@ export default function AnalyzerOneClick() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                   <div>
                     <div className="font-medium">Image Prep</div>
-                    <div className="text-muted-foreground">
-                      {testResult.imagePrep ? (
-                        <>
-                          {testResult.telemetry.resize_ms}ms
-                          <br />
-                          <span className="text-xs">
-                            {(testResult.imagePrep.bytesBefore / 1024 / 1024).toFixed(1)}MB → {(testResult.imagePrep.bytesAfter / 1024 / 1024).toFixed(1)}MB
-                          </span>
-                        </>
-                      ) : (
-                        `${testResult.telemetry.resize_ms}ms`
-                      )}
-                    </div>
+                     <div className="text-muted-foreground">
+                       {testResult.imagePrep ? (
+                         <>
+                           {testResult.telemetry.resize_ms}ms
+                           <br />
+                           <span className="text-xs">
+                             {(testResult.imagePrep.bytesBefore / 1024 / 1024).toFixed(1)}MB → {(testResult.imagePrep.bytesAfter / 1024 / 1024).toFixed(1)}MB
+                             <br />
+                             Variant: {testResult.imagePrep.variant?.toUpperCase()} ({testResult.imagePrep.mime})
+                           </span>
+                         </>
+                       ) : (
+                         `${testResult.telemetry.resize_ms}ms`
+                       )}
+                     </div>
                   </div>
                   {testResult.telemetry.decision_time_ms && (
                     <div>

@@ -542,8 +542,8 @@ async function processVisionProviders(
     const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!googleApiKey) {
       steps.push({ stage: 'google', ok: false, meta: { code: 'MISSING_KEY' }});
-      // PHASE 2: Google OCR + Logo (primary path, 12s timeout)
-      const withTimeout = <T>(promise: Promise<T>, timeoutMs = 12000): Promise<T> => {
+      // PHASE 2: Google OCR + Logo (6s timeout for quick first hit)
+      const withTimeout = <T>(promise: Promise<T>, timeoutMs = 6000): Promise<T> => {
         return new Promise((resolve, reject) => {
           const timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
           promise.then(resolve).catch(reject).finally(() => clearTimeout(timer));
@@ -568,6 +568,44 @@ async function processVisionProviders(
           ocrTokens: result.cleanedTokens,
           logoBrands: result.logoBrands || []
         });
+        
+        // Check for decisive brand match (early-exit trigger)
+        const isDecisive = brandNormResult.confidence >= 0.7 && brandNormResult.brandGuess;
+        if (isDecisive) {
+          console.log(`🚀 Early exit triggered [${reqId}]: ${brandNormResult.brandGuess} (${brandNormResult.confidence})`);
+          
+          // Cancel OpenAI via abort signal if it was started
+          if (abortSignal && !abortSignal.aborted) {
+            (abortSignal as any).abort?.();
+          }
+          
+          // Return immediate branded_candidates decision
+          return {
+            kind: 'branded_candidates',
+            productName: 'Product detected with high confidence',
+            healthScore: null,
+            healthFlags: [],
+            nutritionSummary: null,
+            ingredients: [],
+            recommendations: [`Search for "${brandNormResult.brandGuess}" products.`],
+            generalSummary: `Detected ${brandNormResult.brandGuess} product with high confidence.`,
+            candidates: [],
+            suggest: { brand: brandNormResult.brandGuess, phrase: result.cleanedTokens.slice(0, 8).join(' ') },
+            fallback: false,
+            provider_used: 'google',
+            early_exit: true,
+            steps: [...steps, { 
+              stage: 'early_exit', 
+              ok: true, 
+              meta: { 
+                provider: 'google',
+                brand: brandNormResult.brandGuess,
+                confidence: brandNormResult.confidence,
+                reason: brandNormResult.reason || 'ocr_match'
+              }
+            }]
+          };
+        }
         
         steps.push({ 
           stage: 'ocr', 
@@ -612,7 +650,7 @@ async function processVisionProviders(
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
-          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: 8000 }});
+          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: 6000 }});
         } else {
           steps.push({ stage: 'google', ok: false, meta: { error: error.message }});
         }
@@ -906,8 +944,8 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
 }
 
 /**
- * Extract and clean OCR text (Google Vision) with Logo Detection and language hints
- * Updated with 12s timeout and proper request format
+ * Extract and clean OCR text (Google Vision) with Logo Detection and DOCUMENT_TEXT_DETECTION
+ * Updated with 6s timeout and better parsing
  */
 async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal): Promise<{ 
   text: string; 
@@ -917,6 +955,7 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
   fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>;
   ocrConfidence: number;
   logoBrands: string[];
+  ocrField?: string;
 }> {
   try {
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
@@ -929,7 +968,7 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
       throw new Error('Request aborted');
     }
 
-    // Optimized single annotate call with proper request structure
+    // Use DOCUMENT_TEXT_DETECTION for better OCR + Logo detection
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -938,7 +977,7 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
         requests: [{
           image: { content: imageBase64 }, // Raw base64 without data: prefix
           features: [
-            { type: 'TEXT_DETECTION', maxResults: 5 },
+            { type: 'DOCUMENT_TEXT_DETECTION' }, // No maxResults - it can suppress results
             { type: 'LOGO_DETECTION', maxResults: 5 }
           ],
           imageContext: { 
@@ -953,7 +992,19 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
     }
 
     const result = await response.json();
-    const rawText = result.responses?.[0]?.textAnnotations?.[0]?.description || '';
+    
+    // Parse fullTextAnnotation.text first, fallback to textAnnotations[0].description
+    let rawText = '';
+    let ocrField = 'none';
+    
+    if (result.responses?.[0]?.fullTextAnnotation?.text) {
+      rawText = result.responses[0].fullTextAnnotation.text;
+      ocrField = 'fullTextAnnotation';
+    } else if (result.responses?.[0]?.textAnnotations?.[0]?.description) {
+      rawText = result.responses[0].textAnnotations[0].description;
+      ocrField = 'textAnnotations';
+    }
+    
     const logos = result.responses?.[0]?.logoAnnotations || [];
     
     // Extract logo brands
@@ -1019,7 +1070,8 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
       hasCandy,
       fuzzyBrands,
       ocrConfidence,
-      logoBrands
+      logoBrands,
+      ocrField
     };
   } catch (error) {
     console.error('❌ OCR+Logo extraction failed:', error);
@@ -1030,7 +1082,8 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
       hasCandy: false,
       fuzzyBrands: [],
       ocrConfidence: 0,
-      logoBrands: []
+      logoBrands: [],
+      ocrField: 'none'
     };
   }
 }

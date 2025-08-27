@@ -102,32 +102,60 @@ export function joinTokens(tokens: string[], maxGram = 3): string[] {
 }
 
 /**
+ * Check for Trader Joe's decisive window match
+ * Rule: if tokens contain "trader" and "joe/joes/joe's" within a window of ≤3 tokens
+ */
+function checkTraderJoesWindow(tokens: string[]): { match: boolean; confidence: number } {
+  const lowerTokens = tokens.map(t => t.toLowerCase());
+  
+  for (let i = 0; i < lowerTokens.length; i++) {
+    const token = lowerTokens[i];
+    if (token === 'trader' || token === 'traderjoes' || token === 'traderjoe') {
+      // Look for joe/joes/joe's within 3 positions
+      for (let j = Math.max(0, i - 3); j <= Math.min(lowerTokens.length - 1, i + 3); j++) {
+        const nearby = lowerTokens[j];
+        if (nearby === 'joe' || nearby === 'joes' || nearby.includes('joe')) {
+          return { match: true, confidence: 0.9 };
+        }
+      }
+    }
+  }
+  
+  return { match: false, confidence: 0 };
+}
+
+/**
  * Comprehensive brand normalization from multiple sources
  */
-export function normalizeBrandComprehensive(input: BrandNormalizationInput): BrandNormalizationResult {
+export function normalizeBrandComprehensive(input: BrandNormalizationInput): BrandNormalizationResult & { reason?: string } {
   // Priority 1: Logo brands (highest confidence)
   if (input.logoBrands && input.logoBrands.length > 0) {
     for (const logo of input.logoBrands) {
       const slug = toSlug(logo);
       const canonical = BRAND_ALIASES[slug];
       if (canonical) {
-        return { brandGuess: canonical, confidence: 0.95 };
+        return { brandGuess: canonical, confidence: 0.95, reason: 'logo_hit' };
       }
     }
     
     // Return first logo brand even if not in aliases
-    return { brandGuess: input.logoBrands[0], confidence: 0.85 };
+    return { brandGuess: input.logoBrands[0], confidence: 0.85, reason: 'logo_hit' };
   }
   
-  // Priority 2: OCR tokens with comprehensive n-gram matching
+  // Priority 2: OCR tokens with decisive window matching for Trader Joe's
   if (input.ocrTokens && input.ocrTokens.length > 0) {
+    const traderJoesCheck = checkTraderJoesWindow(input.ocrTokens);
+    if (traderJoesCheck.match) {
+      return { brandGuess: "Trader Joe's", confidence: traderJoesCheck.confidence, reason: 'ocr_window_match' };
+    }
+    
     const candidates = joinTokens(input.ocrTokens, 3);
     
     // Try exact matches first
     for (const candidate of candidates) {
       const canonical = BRAND_ALIASES[candidate];
       if (canonical) {
-        return { brandGuess: canonical, confidence: 0.8 };
+        return { brandGuess: canonical, confidence: 0.8, reason: 'ocr_exact_match' };
       }
     }
     
@@ -136,7 +164,7 @@ export function normalizeBrandComprehensive(input: BrandNormalizationInput): Bra
       for (const [slug, brand] of Object.entries(BRAND_ALIASES)) {
         if (slug.includes(candidate) || candidate.includes(slug)) {
           if (candidate.length >= 3 && slug.length >= 3) {
-            return { brandGuess: brand, confidence: 0.7 };
+            return { brandGuess: brand, confidence: 0.7, reason: 'ocr_partial_match' };
           }
         }
       }
@@ -148,23 +176,23 @@ export function normalizeBrandComprehensive(input: BrandNormalizationInput): Bra
     const slug = toSlug(input.llmGuess);
     const canonical = BRAND_ALIASES[slug];
     if (canonical) {
-      return { brandGuess: canonical, confidence: 0.7 };
+      return { brandGuess: canonical, confidence: 0.7, reason: 'llm_guess' };
     }
     
     // Try partial matching for LLM guess
     for (const [aliasSlug, brand] of Object.entries(BRAND_ALIASES)) {
       if (aliasSlug.includes(slug) || slug.includes(aliasSlug)) {
         if (slug.length >= 3 && aliasSlug.length >= 3) {
-          return { brandGuess: brand, confidence: 0.6 };
+          return { brandGuess: brand, confidence: 0.6, reason: 'llm_guess' };
         }
       }
     }
     
     // Return LLM guess even if not in aliases (low confidence)
-    return { brandGuess: input.llmGuess, confidence: 0.5 };
+    return { brandGuess: input.llmGuess, confidence: 0.5, reason: 'llm_guess' };
   }
   
-  return { confidence: 0 };
+  return { confidence: 0, reason: 'none' };
 }
 
 /**

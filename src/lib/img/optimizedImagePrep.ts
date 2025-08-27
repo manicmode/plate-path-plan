@@ -10,11 +10,13 @@ export interface OptimizedPrepResult {
   ms: number;
   width: number;
   height: number;
+  mime: string;
+  variant: 'jpeg' | 'png';
 }
 
 /**
- * Off-thread image resize and compression for instant analyzer feel
- * Target: maxDim=1280px, quality=0.78, strip EXIF, output JPEG, keep under ~1.2MB
+ * Off-thread image resize and compression for robust OCR analysis
+ * Target: maxDim=1600px, quality=0.92, with PNG fallback for small files
  */
 export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResult> {
   const startTime = performance.now();
@@ -35,8 +37,8 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
     const originalWidth = bitmap.width;
     const originalHeight = bitmap.height;
 
-    // Calculate optimal dimensions (maxDim=1024px, keeping aspect ratio)
-    const maxDim = 1024;
+    // Calculate optimal dimensions (maxDim=1600px, keeping aspect ratio)
+    const maxDim = 1600;
     const scale = Math.min(1, maxDim / Math.max(originalWidth, originalHeight));
     const targetWidth = Math.round(originalWidth * scale);
     const targetHeight = Math.round(originalHeight * scale);
@@ -60,32 +62,51 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
     ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
     bitmap.close();
 
-    // Compress to JPEG with quality=0.8
-    let quality = 0.8;
-    let blob: Blob;
+    // First try JPEG with quality=0.92
+    let jpegBlob: Blob;
+    let variant: 'jpeg' | 'png' = 'jpeg';
+    let mime = 'image/jpeg';
     
-    // Try to keep under ~1.2MB with iterative compression
-    const targetMaxBytes = 1.2 * 1024 * 1024;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (canvas instanceof OffscreenCanvas) {
-        blob = await canvas.convertToBlob({ 
-          type: 'image/jpeg', 
-          quality 
-        });
-      } else {
-        blob = await new Promise<Blob>((resolve) => {
-          (canvas as HTMLCanvasElement).toBlob(resolve!, 'image/jpeg', quality);
-        });
-      }
-
-      if (blob!.size <= targetMaxBytes || quality <= 0.5) break;
-      quality -= 0.15;
+    if (canvas instanceof OffscreenCanvas) {
+      jpegBlob = await canvas.convertToBlob({ 
+        type: 'image/jpeg', 
+        quality: 0.92 
+      });
+    } else {
+      jpegBlob = await new Promise<Blob>((resolve) => {
+        (canvas as HTMLCanvasElement).toBlob(resolve!, 'image/jpeg', 0.92);
+      });
     }
 
-    const bytesAfter = blob!.size;
+    let finalBlob = jpegBlob;
+
+    // If JPEG is < 180KB, try PNG for better OCR quality
+    if (jpegBlob.size < 180000) {
+      try {
+        let pngBlob: Blob;
+        if (canvas instanceof OffscreenCanvas) {
+          pngBlob = await canvas.convertToBlob({ type: 'image/png' });
+        } else {
+          pngBlob = await new Promise<Blob>((resolve) => {
+            (canvas as HTMLCanvasElement).toBlob(resolve!, 'image/png');
+          });
+        }
+        
+        // Use PNG if it's reasonable size (< 2MB)
+        if (pngBlob.size < 2 * 1024 * 1024) {
+          finalBlob = pngBlob;
+          variant = 'png';
+          mime = 'image/png';
+        }
+      } catch (error) {
+        console.warn('[IMG PREP] PNG fallback failed, using JPEG', error);
+      }
+    }
+
+    const bytesAfter = finalBlob.size;
     
     // Convert to data URL
-    const dataUrl = await blobToDataUrl(blob!);
+    const dataUrl = await blobToDataUrl(finalBlob);
     
     const ms = Math.round(performance.now() - startTime);
 
@@ -96,7 +117,8 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
       targetHeight, 
       bytesBefore, 
       bytesAfter, 
-      quality, 
+      variant,
+      mime,
       ms 
     });
 
@@ -106,7 +128,9 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
       bytesAfter,
       ms,
       width: targetWidth,
-      height: targetHeight
+      height: targetHeight,
+      mime,
+      variant
     };
 
   } catch (error) {
@@ -122,7 +146,9 @@ export async function optimizedImagePrep(file: File): Promise<OptimizedPrepResul
       bytesAfter: bytesBefore, // No compression in fallback
       ms,
       width: 0,
-      height: 0
+      height: 0,
+      mime: 'image/jpeg',
+      variant: 'jpeg'
     };
   }
 }
