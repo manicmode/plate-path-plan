@@ -187,7 +187,27 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               >
                 <X className="h-6 w-6" />
               </Button>
-              
+            </div>
+
+            {/* Header Banner */}
+            <div className="absolute top-4 left-4 right-4 z-20 pt-8 mt-[env(safe-area-inset-top)]">
+              <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xl">📸</span>
+                  </div>
+                  <h2 className="text-white text-xl font-bold text-center">
+                    Photo Health Analyzer
+                  </h2>
+                </div>
+                <p className="text-green-300 text-sm animate-pulse text-center">
+                  Take a photo of brand product or a meal for health report!
+                </p>
+              </div>
+            </div>
+
+            {/* Flashlight Control */}
+            <div className="absolute top-32 right-4 z-30 mt-[env(safe-area-inset-top)]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -202,25 +222,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </Button>
             </div>
 
-            {/* Header Banner */}
-            <div className="absolute top-24 left-4 right-4 z-20">
-              <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xl">📸</span>
-                  </div>
-                  <h2 className="text-white text-xl font-bold">
-                    📸 Photo Health Analyzer
-                  </h2>
-                </div>
-                <p className="text-green-300 text-sm animate-pulse">
-                  Take a photo of brand product or a meal for health report!
-                </p>
-              </div>
-            </div>
-
             {/* Center - Camera Viewfinder */}
-            <div className="absolute top-48 bottom-48 left-4 right-4 flex items-center justify-center">
+            <div className="absolute top-56 bottom-48 left-4 right-4 flex items-center justify-center">
               {/* Camera frame overlay - Extended vertically to use most of the available space */}
               <div className="relative w-full max-w-[400px] h-full pointer-events-none">
                 {/* Corner indicators */}
