@@ -542,7 +542,14 @@ async function processVisionProviders(
     const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!googleApiKey) {
       steps.push({ stage: 'google', ok: false, meta: { code: 'MISSING_KEY' }});
-    } else {
+      // PHASE 2: Google OCR + Logo (primary path, 12s timeout)
+      const withTimeout = <T>(promise: Promise<T>, timeoutMs = 12000): Promise<T> => {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
+          promise.then(resolve).catch(reject).finally(() => clearTimeout(timer));
+        });
+      };
+
       try {
         console.log('[VISION] start: google');
         const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal));
@@ -731,7 +738,28 @@ function sanitizeJsonResponse(content: string): string {
 }
 
 /**
- * Extract using OpenAI Vision
+ * Fallback text extraction when JSON parsing fails
+ */
+function fallbackExtract(rawText: string): { brandGuess?: string; confidence: number; reason: string } {
+  const words = rawText.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
+  const joinedText = words.join(' ');
+  
+  // Apply comprehensive brand normalization to extracted text
+  const brandNormResult = normalizeBrandComprehensive({
+    ocrTokens: words,
+    logoBrands: [],
+    llmGuess: joinedText
+  });
+  
+  return {
+    brandGuess: brandNormResult.brandGuess,
+    confidence: brandNormResult.brandGuess ? 0.34 : 0,
+    reason: "fallback_parse"
+  };
+}
+
+/**
+ * Extract using OpenAI Vision with strict JSON and robust error handling
  */
 async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSignal?: AbortSignal): Promise<{
   text: string; 
@@ -743,9 +771,13 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
   logoBrands?: string[];
   brandGuess?: string;
   brandConfidence?: number;
+  rawText?: string;
+  parseError?: boolean;
 }> {
+  let rawText = '';
+  
   try {
-    // CRITICAL HOTFIX: Ensure we send a data URL with prefix
+    // CRITICAL: Use data URL with prefix for image
     const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -757,22 +789,23 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
       signal: abortSignal,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        detail: 'low',
+        temperature: 0,
+        max_tokens: 160, // Increased from 64
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "product_analysis",
+            name: "brand_extract",
+            strict: true,
             schema: {
               type: "object",
+              additionalProperties: false,
               properties: {
-                brand: { type: "string", description: "Brand name detected" },
-                product: { type: "string", description: "Product name detected" },
-                confidence: { type: "number", minimum: 0, maximum: 1, description: "Confidence in detection" }
+                brand: { type: "string" },
+                confidence: { type: "number" },
+                tokens: { type: "array", items: { type: "string" } }
               },
-              required: ["brand", "product", "confidence"],
-              additionalProperties: false
-            },
-            strict: true
+              required: ["brand", "confidence", "tokens"]
+            }
           }
         },
         messages: [{
@@ -780,15 +813,17 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
           content: [
             {
               type: 'text',
-              text: 'Analyze this food product image and identify the brand and product name. Return JSON with brand, product, and confidence (0-1).'
+              text: 'Analyze this food product image. Extract the brand name, your confidence (0-1), and key text tokens. Return strict JSON format only.'
             },
             {
               type: 'image_url', 
-              image_url: { url: imageUrl }
+              image_url: { 
+                url: imageUrl,
+                detail: "low"
+              }
             }
           ]
-        }],
-        max_tokens: 64
+        }]
       })
     });
 
@@ -797,62 +832,64 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    rawText = data.choices?.[0]?.message?.content || '';
     
-    // Extract and normalize brand from response
-    if (content) {
-      try {
-        const parsed = JSON.parse(content);
-        const rawBrand = (parsed.brand || '').toLowerCase().trim();
-        
-        // Apply comprehensive brand normalization
-        const brandNormResult = normalizeBrandComprehensive({
-          ocrTokens: [],
-          logoBrands: [],
-          llmGuess: rawBrand
-        });
-        
-        const normalizedBrand = brandNormResult.brandGuess || rawBrand;
-        const product = parsed.product || '';
-        const confidence = parsed.confidence || 0;
-        
-        // Combine brand and product as full text
-        const text = `${normalizedBrand} ${product}`.trim();
-        
-        // Process like Google OCR
-        const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-        const tokens = normalized.split(/\s+/).filter(token => token.length > 2 && !STOP_WORDS.has(token));
-        const brandTokens = normalizedBrand ? [normalizedBrand] : [];
-        
-        return {
-          text,
-          cleanedTokens: tokens,
-          brandTokens,
-          hasCandy: tokens.some(token => CANDY_KEYWORDS.has(token)),
-          fuzzyBrands: [],
-          ocrConfidence: confidence,
-          brandGuess: brandNormResult.brandGuess,
-          brandConfidence: brandNormResult.confidence
-        };
-      } catch (parseError) {
-        console.error('❌ OpenAI JSON parsing failed:', parseError);
-        // If JSON parse fails, extract any text from the raw response as brand candidates
-        const words = content.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
-        return {
-          text: content,
-          cleanedTokens: words,
-          brandTokens: words.slice(0, 2), // Take first 2 words as potential brands
-          hasCandy: words.some(word => CANDY_KEYWORDS.has(word)),
-          fuzzyBrands: [],
-          ocrConfidence: 0,
-          brandGuess: undefined,
-          brandConfidence: 0
-        };
-      }
+    console.log('[OPENAI RAW]', { rawText: rawText.substring(0, 200) });
+    
+    // Try JSON parsing first
+    try {
+      const parsed = JSON.parse(rawText);
+      const brand = (parsed.brand || '').toLowerCase().trim();
+      const confidence = parsed.confidence || 0;
+      const tokens = parsed.tokens || [];
+      
+      // Apply comprehensive brand normalization
+      const brandNormResult = normalizeBrandComprehensive({
+        ocrTokens: tokens,
+        logoBrands: [],
+        llmGuess: brand
+      });
+      
+      const text = `${brand} ${tokens.join(' ')}`.trim();
+      const cleanedTokens = tokens.filter((token: string) => token.length > 2 && !STOP_WORDS.has(token.toLowerCase()));
+      
+      return {
+        text,
+        cleanedTokens,
+        brandTokens: brand ? [brand] : [],
+        hasCandy: cleanedTokens.some((token: string) => CANDY_KEYWORDS.has(token.toLowerCase())),
+        fuzzyBrands: [],
+        ocrConfidence: confidence,
+        brandGuess: brandNormResult.brandGuess,
+        brandConfidence: brandNormResult.confidence,
+        rawText
+      };
+    } catch (parseError) {
+      console.error('❌ OpenAI JSON parsing failed, using fallback:', parseError);
+      
+      // Fallback extraction
+      const fallback = fallbackExtract(rawText);
+      const words = rawText.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
+      
+      return {
+        text: rawText,
+        cleanedTokens: words.filter(w => w.length > 2 && !STOP_WORDS.has(w)),
+        brandTokens: fallback.brandGuess ? [fallback.brandGuess] : [],
+        hasCandy: words.some(word => CANDY_KEYWORDS.has(word)),
+        fuzzyBrands: [],
+        ocrConfidence: fallback.confidence,
+        brandGuess: fallback.brandGuess,
+        brandConfidence: fallback.confidence,
+        rawText,
+        parseError: true
+      };
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('[OPENAI] Request cancelled');
+      throw error;
     }
     
-    throw new Error('No content from OpenAI');
-  } catch (error) {
     console.error('❌ OpenAI Vision extraction failed:', error);
     return { 
       text: '', 
@@ -862,13 +899,15 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
       fuzzyBrands: [], 
       ocrConfidence: 0,
       brandGuess: undefined,
-      brandConfidence: 0
+      brandConfidence: 0,
+      rawText
     };
   }
 }
 
 /**
  * Extract and clean OCR text (Google Vision) with Logo Detection and language hints
+ * Updated with 12s timeout and proper request format
  */
 async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal): Promise<{ 
   text: string; 
@@ -890,24 +929,28 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
       throw new Error('Request aborted');
     }
 
-    // CRITICAL HOTFIX: Single annotate call with TEXT_DETECTION + LOGO_DETECTION + language hints
+    // Optimized single annotate call with proper request structure
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: abortSignal,
       body: JSON.stringify({
         requests: [{
-          image: { content: imageBase64 }, // Pass raw base64, no double encoding
+          image: { content: imageBase64 }, // Raw base64 without data: prefix
           features: [
-            { type: 'TEXT_DETECTION', maxResults: 1 },
+            { type: 'TEXT_DETECTION', maxResults: 5 },
             { type: 'LOGO_DETECTION', maxResults: 5 }
           ],
-          imageContext: {
-            languageHints: ['en', 'en-US'] // Add language hints for better OCR
+          imageContext: { 
+            languageHints: ['en', 'en-US'] 
           }
         }]
       })
     });
+
+    if (!response.ok) {
+      throw new Error(`Google Vision API ${response.status}: ${await response.text()}`);
+    }
 
     const result = await response.json();
     const rawText = result.responses?.[0]?.textAnnotations?.[0]?.description || '';

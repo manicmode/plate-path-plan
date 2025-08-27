@@ -108,7 +108,7 @@ export default function AnalyzerOneClick() {
       // Phase 3: Parallel provider execution with cancellation support
       const openaiController = new AbortController();
       const googleController = new AbortController();
-      const TIMEOUT_MS = 8000;
+      const TIMEOUT_MS = 12000; // Increased from 8000ms
 
       const runProvider = async (provider: string, index: number, controller: AbortController): Promise<void> => {
         const providerStartTime = performance.now();
@@ -557,9 +557,14 @@ export default function AnalyzerOneClick() {
                             {result.decision}
                           </Badge>
                         )}
-                        {result.notes && (
-                          <Badge variant={result.decision === 'skipped' ? 'secondary' : 'destructive'}>
-                            {result.notes}
+                         {result.status === 'cancelled' && (
+                          <Badge variant="outline" className="bg-gray-100 text-gray-600">
+                            Cancelled
+                          </Badge>
+                        )}
+                        {result.steps?.some((s: any) => s.meta?.parseError) && (
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                            Parse Error
                           </Badge>
                         )}
                         {result.elapsed_ms && (
@@ -584,34 +589,43 @@ export default function AnalyzerOneClick() {
                     {result.status === 'completed' && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                         <div>
-                          <strong>Brand:</strong>
+                          <strong>Brand (Normalized):</strong>
                           <div className="text-muted-foreground">
                             {result.brand_guess || 'None'}
                           </div>
                         </div>
                         <div>
-                          <strong>Logos:</strong>
+                          <strong>Logo Candidates:</strong>
                           <div className="text-muted-foreground">
-                            {result.logo_brands?.length > 0 ? result.logo_brands.join(', ') : 'None'}
+                            {result.logo_brands?.length > 0 ? result.logo_brands.slice(0, 3).join(', ') : 'None'}
                           </div>
                         </div>
                         <div>
-                          <strong>OCR:</strong>
+                          <strong>OCR Top Tokens:</strong>
                           <div className="text-muted-foreground">
-                            {result.ocr_top_tokens?.length > 0 ? result.ocr_top_tokens.join(', ') : 'None'}
+                            {result.ocr_top_tokens?.length > 0 ? result.ocr_top_tokens.slice(0, 8).join(', ') : 'None'}
                           </div>
                         </div>
                       </div>
+                    {result.steps?.some((s: any) => s.meta?.parseError) && (
+                      <div className="mt-3 p-2 bg-yellow-50 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="text-yellow-800 text-sm font-medium">Raw OpenAI Response Available</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const rawText = result.steps?.find((s: any) => s.meta?.rawText)?.meta?.rawText || 'No raw text';
+                              navigator.clipboard.writeText(rawText);
+                              toast({ title: "Copied raw OpenAI text to clipboard" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy Raw
+                          </Button>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {testResults.map((testResult, testIndex) => (
         <Card key={testIndex}>
           <CardHeader>
             <div className="flex items-center justify-between">
