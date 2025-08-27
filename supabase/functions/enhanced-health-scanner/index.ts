@@ -426,16 +426,30 @@ async function processVisionProviders(
       try {
         console.log('[VISION] start: openai', { model: 'gpt-4o' });
         const result = await extractWithOpenAI(imageBase64, openaiApiKey);
+        
+        // Check if parsing failed by looking at confidence and text
+        const openai_ok = result.text.length > 0 && result.ocrConfidence > 0;
+        
         steps.push({ 
           stage: 'openai', 
-          ok: result.text.length > 0, 
+          ok: openai_ok, 
           meta: { 
             model: 'gpt-4o', 
             brand: result.brandTokens[0] || '', 
             confidence: result.ocrConfidence 
           }
         });
-        console.log('[VISION] end: openai', { ok: result.text.length > 0, model: 'gpt-4o' });
+        
+        // Add openai_parse step if parsing failed
+        if (!openai_ok && result.text === '' && result.ocrConfidence === 0) {
+          steps.push({
+            stage: 'openai_parse', 
+            ok: false, 
+            meta: { reason: 'invalid_json' }
+          });
+        }
+        
+        console.log('[VISION] end: openai', { ok: openai_ok, model: 'gpt-4o' });
         
         if (result.text) return { text: result.text };
       } catch (error) {
@@ -445,6 +459,31 @@ async function processVisionProviders(
   }
   
   return { text: '' };
+}
+
+/**
+ * Sanitize JSON response from OpenAI by removing code fences and extracting valid JSON
+ */
+function sanitizeJsonResponse(content: string): string {
+  // Remove code fences and backticks
+  let sanitized = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').replace(/`/g, '');
+  
+  // Extract the first valid JSON object {...}
+  const jsonMatch = sanitized.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+  
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  // If no JSON block found, try to find a JSON array [...]
+  const arrayMatch = sanitized.match(/\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]/);
+  
+  if (arrayMatch) {
+    return arrayMatch[0];
+  }
+  
+  // Return original if no patterns match
+  return sanitized.trim();
 }
 
 /**
@@ -467,12 +506,13 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
       },
       body: JSON.stringify({
         model: 'gpt-4o',
+        response_format: { type: "json_object" },
         messages: [{
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Extract all text and identify the main brand from this product image. Return JSON: {"brand": "BrandName", "all_text": "all visible text", "confidence": 0.85}'
+              text: 'Return only JSON with fields: { "brand": string, "product_line": string, "confidence": number }. Extract the main brand name, product line/name, and your confidence (0-1) from this product image.'
             },
             {
               type: 'image_url', 
@@ -492,11 +532,17 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
     const content = data.choices?.[0]?.message?.content;
     
     if (content) {
+      // Sanitize JSON response
+      const sanitizedJson = sanitizeJsonResponse(content);
+      
       try {
-        const parsed = JSON.parse(content);
-        const text = parsed.all_text || '';
+        const parsed = JSON.parse(sanitizedJson);
         const brand = parsed.brand || '';
+        const productLine = parsed.product_line || '';
         const confidence = parsed.confidence || 0;
+        
+        // Combine brand and product line as full text
+        const text = `${brand} ${productLine}`.trim();
         
         // Process like Google OCR
         const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -511,8 +557,18 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
           fuzzyBrands: [],
           ocrConfidence: confidence
         };
-      } catch {
-        throw new Error('Invalid JSON response from OpenAI');
+      } catch (parseError) {
+        console.error('❌ OpenAI JSON parsing failed:', parseError);
+        // JSON parsing failed but don't throw - let the function continue with empty results
+        // The caller will handle the empty results and use safety net logic
+        return {
+          text: '',
+          cleanedTokens: [],
+          brandTokens: [],
+          hasCandy: false,
+          fuzzyBrands: [],
+          ocrConfidence: 0
+        };
       }
     }
     
