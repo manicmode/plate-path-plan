@@ -26,6 +26,50 @@ export function NudgeCard({
   onDismiss,
   className,
 }: NudgeCardProps) {
+  // Color schemes for different nudge types
+  const getToneColors = () => {
+    switch (tone) {
+      case 'calm': // Breathing/meditation - cyan to blue
+        return {
+          iconGradient: 'from-cyan-500 to-blue-500',
+          ctaGradient: 'from-cyan-500 to-blue-500',
+          shadowColor: 'rgba(6,182,212,0.55)',
+          ctaShadowColor: 'rgba(6,182,212,0.65)',
+          glowColor: 'rgba(34,211,238,0.35)', // dark mode
+          glowColorLight: 'rgba(34,211,238,0.16)' // light mode
+        };
+      case 'success': // Hydration - blue to emerald
+        return {
+          iconGradient: 'from-blue-500 to-emerald-500',
+          ctaGradient: 'from-blue-500 to-emerald-500', 
+          shadowColor: 'rgba(16,185,129,0.55)',
+          ctaShadowColor: 'rgba(16,185,129,0.65)',
+          glowColor: 'rgba(52,211,153,0.35)',
+          glowColorLight: 'rgba(52,211,153,0.16)'
+        };
+      case 'warn': // Movement - orange to pink
+        return {
+          iconGradient: 'from-orange-500 to-pink-500',
+          ctaGradient: 'from-orange-500 to-pink-500',
+          shadowColor: 'rgba(249,115,22,0.55)',
+          ctaShadowColor: 'rgba(249,115,22,0.65)',
+          glowColor: 'rgba(251,146,60,0.35)',
+          glowColorLight: 'rgba(251,146,60,0.16)'
+        };
+      default: // Primary/sleep - indigo to violet
+        return {
+          iconGradient: 'from-indigo-500 to-violet-500',
+          ctaGradient: 'from-indigo-500 to-violet-500',
+          shadowColor: 'rgba(99,102,241,0.55)',
+          ctaShadowColor: 'rgba(99,102,241,0.65)',
+          glowColor: 'rgba(129,140,248,0.35)',
+          glowColorLight: 'rgba(99,102,241,0.16)'
+        };
+    }
+  };
+
+  const colors = getToneColors();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -43,26 +87,44 @@ export function NudgeCard({
         "dark:border dark:border-white/10",
         "dark:shadow-[0_16px_40px_-10px_rgba(0,0,0,0.55)]",
         "dark:ring-1 dark:ring-white/10",
-        // Accent glow
+        // Accent glow placeholder
         "before:content-[''] before:absolute before:-top-6 before:-left-6 before:h-24 before:w-24",
         "before:rounded-full before:blur-2xl before:pointer-events-none",
-        "before:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.16),transparent_60%)]",
-        "dark:before:bg-[radial-gradient(circle_at_center,rgba(129,140,248,0.35),transparent_60%)]",
         className
       )}
+      style={{
+        ['--glow-light' as any]: `radial-gradient(circle_at_center,${colors.glowColorLight},transparent_60%)`,
+        ['--glow-dark' as any]: `radial-gradient(circle_at_center,${colors.glowColor},transparent_60%)`
+      }}
       role="region"
       aria-label={`${title} nudge card`}
     >
+      {/* Dynamic glow effect */}
+      <div 
+        className="absolute -top-6 -left-6 h-24 w-24 rounded-full blur-2xl pointer-events-none"
+        style={{
+          background: `radial-gradient(circle_at_center,${colors.glowColorLight},transparent_60%)`
+        }}
+      />
+      <div 
+        className="absolute -top-6 -left-6 h-24 w-24 rounded-full blur-2xl pointer-events-none dark:block hidden"
+        style={{
+          background: `radial-gradient(circle_at_center,${colors.glowColor},transparent_60%)`
+        }}
+      />
+      
       <div className="relative z-10">
         {/* Header row: icon chip + title + dismiss */}
         <div className="flex items-start gap-3 mb-3">
           {icon && (
             <div 
               className={cn(
-                "h-9 w-9 shrink-0 rounded-xl flex items-center justify-center",
-                "bg-gradient-to-tr from-indigo-500 to-fuchsia-500 text-white",
-                "shadow-[0_8px_18px_-6px_rgba(99,102,241,0.55)]"
+                "h-9 w-9 shrink-0 rounded-xl flex items-center justify-center text-white",
+                `bg-gradient-to-tr ${colors.iconGradient}`
               )}
+              style={{
+                boxShadow: `0 8px 18px -6px ${colors.shadowColor}`
+              }}
               aria-label="Nudge type icon"
             >
               {icon}
@@ -110,10 +172,13 @@ export function NudgeCard({
               onClick={cta.onClick}
               className={cn(
                 "flex items-center gap-2 rounded-xl px-4 py-2 min-h-[44px]",
-                "bg-gradient-to-tr from-indigo-500 to-violet-500",
-                "text-white font-medium shadow-[0_10px_24px_-10px_rgba(99,102,241,0.65)]",
+                `bg-gradient-to-tr ${colors.ctaGradient}`,
+                "text-white font-medium",
                 "hover:opacity-95 active:scale-[0.99] transition-all duration-150"
               )}
+              style={{
+                boxShadow: `0 10px 24px -10px ${colors.ctaShadowColor}`
+              }}
               aria-label={`${cta.label} action`}
             >
               {cta.icon}
