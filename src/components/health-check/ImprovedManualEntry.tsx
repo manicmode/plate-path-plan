@@ -220,6 +220,11 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     const chips = [];
     const tokens = query.toLowerCase().split(' ').filter(t => t.length > 1);
     
+    // Cheeseburger suggestion for "cheese burger" pattern
+    if (tokens.includes('cheese') && tokens.includes('burger') && !query.toLowerCase().includes('cheeseburger')) {
+      chips.push({ label: 'Try "cheeseburger"', action: 'cheeseburger' });
+    }
+    
     if (tokens.length >= 2) {
       // Brand guesses
       const brands = ['trader joe\'s', 'organic', 'whole foods', 'kirkland'];

@@ -72,17 +72,40 @@ serve(async (req) => {
   }
 });
 
+const BURGER_CATS = new Set([
+  'en:burgers','en:hamburgers','en:cheeseburgers',
+  'burgers','hamburgers','cheeseburgers'
+]);
+
 /**
- * Search OpenFoodFacts by text query
+ * Search OpenFoodFacts by text query with intelligent ranking
  */
 async function searchOpenFoodFacts(query: string, limit: number): Promise<CanonicalSearchResult[]> {
+  const startTime = Date.now();
+  
+  // Normalize query and detect patterns
+  const normalizedQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
+  const tokens = normalizedQuery.split(' ').filter(t => t.length > 1);
+  
+  // Detect cheeseburger intent (within 3-token window)
+  const intent = {
+    cheeseburgerVariant: false,
+    normalizedPhrase: normalizedQuery
+  };
+  
+  if (tokens.includes('cheese') && tokens.includes('burger') && tokens.length <= 3) {
+    intent.cheeseburgerVariant = true;
+    intent.normalizedPhrase = 'cheeseburger';
+    console.info(`🍔 [FoodSearch] Detected cheeseburger intent for: "${query}"`);
+  }
+  
   const searchParams = new URLSearchParams({
     search_terms: query,
     search_simple: '1',
     action: 'process',
     json: '1',
-    page_size: Math.min(limit * 2, 24).toString(), // Get more to filter
-    fields: 'code,product_name,brands,image_url,nutriments,serving_size'
+    page_size: '50', // Get more results for better ranking
+    fields: 'code,product_name,brands,image_url,nutriments,serving_size,categories_tags,categories_tags_en,countries_tags,quantity'
   });
   
   const url = `https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`;
@@ -105,7 +128,7 @@ async function searchOpenFoodFacts(query: string, limit: number): Promise<Canoni
     return [];
   }
   
-  return data.products
+  let products = data.products
     .filter((product: any) => {
       // Filter out incomplete products
       return product.product_name && 
@@ -125,8 +148,176 @@ async function searchOpenFoodFacts(query: string, limit: number): Promise<Canoni
       
       // Create serving hint
       let servingHint;
-      if (product.serving_size) {
-        servingHint = `per ${product.serving_size}`;
+      if (product.serving_size || product.quantity) {
+        servingHint = `per ${product.serving_size || product.quantity}`;
+      } else if (caloriesPer100g) {
+        servingHint = 'per 100g';
+      }
+      
+      // Smart scoring for burger intent
+      let score = calculateSmartScore(product, normalizedQuery, intent);
+      
+      return {
+        source: 'off',
+        id: product.code || crypto.randomUUID(),
+        name,
+        brand,
+        imageUrl: product.image_url || undefined,
+        servingHint,
+        caloriesPer100g,
+        confidence: Math.min(1.0, score / 100)
+      };
+    });
+  
+  // Apply intelligent ranking
+  products = products.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+  
+  // Check if we need a burger category fallback
+  const burgerIntentCount = products.slice(0, 10).filter(p => 
+    p.name.toLowerCase().includes('burger') || 
+    p.name.toLowerCase().includes('cheeseburger')
+  ).length;
+  
+  let didCategoryFallback = false;
+  
+  // If we have burger intent but few burger results, try category search
+  if (intent.cheeseburgerVariant && burgerIntentCount < 3) {
+    try {
+      console.info(`🔄 [FoodSearch] Performing burger category fallback`);
+      const categoryResults = await searchByCategory('burgers', 15);
+      if (categoryResults.length > 0) {
+        // Merge and dedupe by code
+        const existingCodes = new Set(products.map(p => p.id));
+        const newResults = categoryResults.filter(p => !existingCodes.has(p.id));
+        products = [...products, ...newResults];
+        didCategoryFallback = true;
+      }
+    } catch (error) {
+      console.error('⚠️ [FoodSearch] Category fallback failed:', error);
+    }
+  }
+  
+  const ms = Date.now() - startTime;
+  console.info(`📊 [FoodSearch] Query: "${query}", normalized: "${intent.normalizedPhrase}", firstPass: ${data.products?.length || 0}, burgerIntent: ${burgerIntentCount}, didCategoryFallback: ${didCategoryFallback}, final: ${products.length}, ms: ${ms}`);
+  
+  return products.slice(0, limit);
+}
+
+/**
+ * Calculate smart score for a product based on query intent
+ */
+function calculateSmartScore(product: any, query: string, intent: any): number {
+  const name = (product.product_name || '').toLowerCase();
+  const brand = (product.brands || '').toLowerCase();
+  const categories = [...(product.categories_tags || []), ...(product.categories_tags_en || [])];
+  const queryTokens = query.split(' ').filter(t => t.length > 1);
+  
+  let score = 0;
+  
+  // Category matching for burger intent
+  const hasBurgerCategory = categories.some(cat => BURGER_CATS.has(cat.toLowerCase()));
+  if (hasBurgerCategory) {
+    score += 30; // Strong boost for burger category
+  }
+  
+  // Name pattern matching
+  if (intent.cheeseburgerVariant) {
+    if (name.includes('cheeseburger')) {
+      score += 25; // Perfect match for cheeseburger
+    } else if (name.includes('cheese') && name.includes('burger')) {
+      score += 20; // Good match for "cheese burger"
+    } else if (name.includes('burger')) {
+      score += 15; // General burger match
+    }
+  }
+  
+  // Token matching
+  let tokenMatches = 0;
+  queryTokens.forEach(token => {
+    if (name.includes(token)) {
+      score += 10;
+      tokenMatches++;
+    }
+    if (brand.includes(token)) {
+      score += 8;
+    }
+  });
+  
+  // Penalty for irrelevant results when we want burgers
+  if (query.includes('burger') && !name.includes('burger') && !hasBurgerCategory) {
+    score -= 20;
+  }
+  
+  // Exact name match boost
+  if (name === query) {
+    score += 40;
+  } else if (name.startsWith(query)) {
+    score += 25;
+  } else if (name.includes(query)) {
+    score += 15;
+  }
+  
+  // Quality indicators
+  if (product.brands) score += 2;
+  if (product.quantity || product.serving_size) score += 1;
+  if (product.nutriments && (product.nutriments['energy-kcal_100g'] || product.nutriments['energy_100g'])) score += 3;
+  
+  // Prefer shorter, more specific names
+  if (name.length <= 30) score += 5;
+  
+  return Math.max(0, score);
+}
+
+/**
+ * Search by category fallback
+ */
+async function searchByCategory(category: string, limit: number): Promise<CanonicalSearchResult[]> {
+  const searchParams = new URLSearchParams({
+    tagtype_0: 'categories',
+    tag_contains_0: 'contains',
+    tag_0: category,
+    json: '1',
+    page_size: limit.toString(),
+    fields: 'code,product_name,brands,image_url,nutriments,serving_size,categories_tags,categories_tags_en,quantity'
+  });
+  
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'PlatePathPlan/1.0 (https://lovable.app) - Health tracking app'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`OpenFoodFacts category API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  if (!data.products || !Array.isArray(data.products)) {
+    return [];
+  }
+  
+  return data.products
+    .filter((product: any) => {
+      return product.product_name && 
+             product.product_name.trim().length > 0 &&
+             !product.product_name.toLowerCase().includes('unknown');
+    })
+    .map((product: any): CanonicalSearchResult => {
+      const name = product.product_name || 'Unknown Product';
+      const brand = product.brands ? product.brands.split(',')[0].trim() : undefined;
+      
+      const nutriments = product.nutriments || {};
+      const caloriesPer100g = nutriments['energy-kcal_100g'] || 
+                             nutriments['energy_100g'] ? 
+                             Math.round(nutriments['energy_100g'] / 4.184) : 
+                             undefined;
+      
+      let servingHint;
+      if (product.serving_size || product.quantity) {
+        servingHint = `per ${product.serving_size || product.quantity}`;
       } else if (caloriesPer100g) {
         servingHint = 'per 100g';
       }
@@ -139,73 +330,14 @@ async function searchOpenFoodFacts(query: string, limit: number): Promise<Canoni
         imageUrl: product.image_url || undefined,
         servingHint,
         caloriesPer100g,
-        confidence: 0.5 // Base confidence
+        confidence: 0.6 // Category matches get decent confidence
       };
-    })
-    .slice(0, limit);
+    });
 }
 
 /**
- * Rank search results by relevance
+ * Rank search results by relevance (simplified since scoring now happens earlier)
  */
 function rankResults(results: CanonicalSearchResult[], query: string): CanonicalSearchResult[] {
-  const queryLower = query.toLowerCase();
-  const queryTokens = queryLower.split(/\s+/).filter(token => token.length > 1);
-  
-  return results.map(result => {
-    const nameLower = result.name.toLowerCase();
-    const brandLower = result.brand?.toLowerCase() || '';
-    
-    let score = 0;
-    
-    // Exact name match (highest score)
-    if (nameLower === queryLower) {
-      score += 50;
-    }
-    
-    // Name starts with query
-    if (nameLower.startsWith(queryLower)) {
-      score += 30;
-    }
-    
-    // Name contains query
-    if (nameLower.includes(queryLower)) {
-      score += 20;
-    }
-    
-    // Token overlap scoring
-    queryTokens.forEach(token => {
-      if (nameLower.includes(token)) {
-        score += 10;
-      }
-      if (brandLower.includes(token)) {
-        score += 8;
-      }
-    });
-    
-    // Brand exact match boost
-    if (brandLower && queryLower.includes(brandLower)) {
-      score += 15;
-    }
-    
-    // Shorter names are often more specific
-    if (result.name.length <= 30) {
-      score += 5;
-    }
-    
-    // Has nutrition data
-    if (result.caloriesPer100g) {
-      score += 3;
-    }
-    
-    // Has brand info
-    if (result.brand) {
-      score += 2;
-    }
-    
-    return {
-      ...result,
-      confidence: Math.min(1.0, score / 100)
-    };
-  }).sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+  return results.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 }
