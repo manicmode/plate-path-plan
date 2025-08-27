@@ -203,7 +203,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             </div>
 
             {/* Header Banner */}
-            <div className="absolute top-16 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
+            <div className="absolute top-20 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
               <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
@@ -220,9 +220,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             </div>
 
             {/* Center - Camera Viewfinder */}
-            <div className="flex-1 flex items-start justify-center px-4 pt-44">
-              {/* Camera frame overlay - Extended vertically */}
-              <div className="relative w-[85vw] max-w-[400px] h-[60vh] min-h-[500px] pointer-events-none">
+            <div className="absolute top-44 bottom-44 left-4 right-4 flex items-center justify-center">
+              {/* Camera frame overlay - Extended vertically to use most of the available space */}
+              <div className="relative w-full max-w-[400px] h-full pointer-events-none">
                 {/* Corner indicators */}
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
