@@ -252,9 +252,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 <Button
                   onClick={handleExit}
                   size="lg"
-                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 p-0"
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-14 h-14 p-0"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </Button>
 
                 {/* Capture Button - Center, larger */}
@@ -275,9 +275,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 <Button
                   onClick={handleImageUpload}
                   size="lg"
-                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-16 h-16 p-0"
+                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 p-0"
                 >
-                  <Upload className="h-6 w-6" />
+                  <Upload className="h-5 w-5" />
                 </Button>
               </div>
             </footer>
