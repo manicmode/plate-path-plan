@@ -114,14 +114,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         // Remove the barcode part from the image data
         const cleanImageData = imageData.replace(/&barcode=\d+$/, '');
         
-        // Use the dedicated barcode processor
+        // Use unified barcode pipeline (same as Log flow)
         try {
           console.log('🔄 Processing barcode:', detectedBarcode);
-          console.log('[HS PIPELINE]', 'health-check-processor (likely)', { barcode: detectedBarcode });
-          const result = await handleBarcodeInput(detectedBarcode, user?.id);
+          console.log('[HS PIPELINE]', 'enhanced-health-scanner (unified)', { mode: 'barcode', barcode: detectedBarcode });
           
-          if (!result) {
-            console.log('⚠️ No results from barcode lookup, falling back to image analysis');
+          const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+            body: { mode: 'barcode', barcode: detectedBarcode, source: 'health-scan' }
+          });
+          
+          if (error || !result?.ok) {
+            console.log('⚠️ No results from unified barcode pipeline, falling back to image analysis');
             // If barcode lookup fails, continue with regular image analysis
             return handleImageCapture(cleanImageData);
           }
@@ -129,7 +132,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           // Use the tolerant adapter to normalize the data (same as Log flow)
           const legacy = toLegacyFromEdge(result);
           
-          // RCA telemetry for barcode-photo path
+          // RCA telemetry for barcode-photo path (now unified with Log flow)
           console.groupCollapsed('[HS] RCA (barcode-photo)');
           console.log('edge/result.product.name', result?.product?.name);
           console.log('edge/result.product.health.score', result?.product?.health?.score);
@@ -145,11 +148,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           console.groupEnd();
 
           // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
-          const scorePct =
-            extractScore(legacy.healthScore) ??
-            extractScore(result?.product?.health?.score) ??
-            extractScore(result?.health?.score) ??
-            extractScore((result as any)?.healthScore);
+          // Add scale guard: if already 0-10, don't divide again
+          const rawScore = legacy.healthScore ?? result?.product?.health?.score ?? result?.health?.score ?? (result as any)?.healthScore;
+          const scorePct = extractScore(rawScore);
           const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
           
           // Score normalization telemetry
@@ -336,13 +337,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         return;
       }
 
-      // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
-      const scorePct =
-        extractScore(legacy.healthScore) ??
-        extractScore(data?.product?.health?.score) ??
-        extractScore(data?.health?.score) ??
-        extractScore((data as any)?.healthScore);
-      const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
+          // Score (0–100) from multiple likely sources, then convert to 0–10 for UI
+          // Add scale guard: if already 0-10, don't divide again
+          const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
+          const scorePct = extractScore(rawScore);
+          const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
       
       // Score normalization telemetry
       logScoreNorm('score_norm:image.edge', data?.product?.health?.score ?? data?.health?.score, null);
@@ -599,26 +598,4 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   );
 };
 
-// Helper function to handle barcode input specifically
-export const handleBarcodeInput = async (barcode: string, userId?: string) => {
-  console.log('📊 Processing barcode input:', barcode);
-  
-  const { data, error } = await supabase.functions.invoke('health-check-processor', {
-    body: {
-      inputType: 'barcode',
-      data: barcode,
-      userId: userId,
-      detectedBarcode: barcode
-    }
-  });
-
-  if (error) {
-    throw new Error(error.message || 'Failed to analyze barcode');
-  }
-
-  console.log('✅ Barcode processor response:', data);
-  console.log('🏥 Health Score:', data.healthScore);
-  console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
-  
-  return data;
-};
+// Note: handleBarcodeInput removed - barcode-in-photo path now uses unified enhanced-health-scanner pipeline
