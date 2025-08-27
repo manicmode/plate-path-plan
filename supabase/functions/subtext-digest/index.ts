@@ -126,6 +126,11 @@ Deno.serve(async (req) => {
     const webhookUrl = Deno.env.get('SUBTEXT_ALERT_WEBHOOK');
     if (webhookUrl) {
       console.log('[subtext-digest] Sending to webhook');
+    } else {
+      console.log('[subtext-digest] No webhook configured (SUBTEXT_ALERT_WEBHOOK not set)');
+    }
+    
+    if (webhookUrl) {
       
       const webhookPayload = {
         text: `📊 Hero Subtext Daily Digest - ${yesterdayStr}`,

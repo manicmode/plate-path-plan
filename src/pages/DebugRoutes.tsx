@@ -65,6 +65,13 @@ export default function DebugRoutes() {
             <h3 className="font-semibold">Hero Subtext QA</h3>
             <p className="text-muted-foreground">Test hero subtext content engine with deterministic scenarios</p>
           </button>
+          <button 
+            onClick={() => navigate('/debug/hero-subtext-metrics')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">Hero Subtext Metrics</h3>
+            <p className="text-muted-foreground">View telemetry metrics and analytics for hero subtext</p>
+          </button>
         </div>
       </div>
     );

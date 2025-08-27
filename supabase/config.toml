@@ -17,4 +17,4 @@ verify_jwt = false
 schedule = "0 17 * * *"  # 9 AM PT (assuming standard time, 17:00 UTC)
 
 [[functions.subtext-digest.http_config.triggers]]
-schedule = "0 9 * * *"  # 9 AM UTC daily digest
+schedule = "0 16 * * *"  # 9 AM PT summer (16:00 UTC)
