@@ -102,8 +102,8 @@ export async function prepareImageForAnalysis(
   const buf = await blob!.arrayBuffer();
   const bytes = buf.byteLength;
   
-  // Convert to base64 without data URL prefix
-  const base64NoPrefix = btoa(String.fromCharCode(...new Uint8Array(buf)));
+  // Convert to base64 without data URL prefix - safe method to avoid stack overflow
+  const base64NoPrefix = await blobToBase64NoPrefix(blob!);
   
   // Emergency downscale if still too large (nice-to-have feature)
   if (bytes > 1.2 * 1024 * 1024) {
@@ -137,7 +137,7 @@ export async function prepareImageForAnalysis(
     
     const emergencyBuf = await blob!.arrayBuffer();
     const emergencyBytes = emergencyBuf.byteLength;
-    const emergencyBase64 = btoa(String.fromCharCode(...new Uint8Array(emergencyBuf)));
+    const emergencyBase64 = await blobToBase64NoPrefix(blob!);
     
     console.debug('[IMG PREP] Emergency downscale', { 
       inW, inH, outW: newW, outH: newH, q: 0.6, bytes: emergencyBytes 
@@ -154,6 +154,22 @@ export async function prepareImageForAnalysis(
   console.debug('[IMG PREP]', { inW, inH, outW, outH, q, bytes });
 
   return { base64NoPrefix, width: outW, height: outH, bytes };
+}
+
+/**
+ * Safe base64 conversion to avoid stack overflow with large files
+ */
+async function blobToBase64NoPrefix(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(fr.error);
+    fr.onload = () => {
+      const url = String(fr.result || "");
+      // data:image/jpeg;base64,<...>
+      resolve(url.substring(url.indexOf(",") + 1));
+    };
+    fr.readAsDataURL(blob);
+  });
 }
 
 /**
@@ -209,7 +225,7 @@ export async function prepareImageForAnalysisLegacy(
       
       const buf = await blob!.arrayBuffer();
       const bytes = buf.byteLength;
-      const base64NoPrefix = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const base64NoPrefix = await blobToBase64NoPrefix(blob!);
       
       console.debug('[IMG PREP] Legacy', { inW, inH, outW, outH, q, bytes });
       

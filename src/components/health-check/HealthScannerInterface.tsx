@@ -522,34 +522,37 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const runExistingFullDecodePipeline = async (canvas: HTMLCanvasElement) => {
-    let detectedBarcode: string | null = null;
-    let barcodeResult: any = null;
+  const runQuickBarcodeScan = async (canvas: HTMLCanvasElement): Promise<string | null> => {
+    const QUICK_SCAN_MS = 1000;
+    const QUICK_PASSES = 4;
     
-    // Multi-pass barcode scanning if BARCODE_V2 enabled
-    if (BARCODE_V2) {
-      const scanner = new MultiPassBarcodeScanner();
-      barcodeResult = await scanner.scan(canvas);
-      
-      if (barcodeResult) {
-        detectedBarcode = barcodeResult.text;
-        console.log("🔍 barcodeScan:", {
-          attempts: barcodeResult.scale ? 'multi-scale' : 'multi-pass',
-          hit: true,
-          pass: barcodeResult.passName,
-          rotation: barcodeResult.rotation,
-          scale: barcodeResult.scale,
-          format: barcodeResult.format,
-          checkDigit: barcodeResult.checkDigitValid,
-          value: detectedBarcode
-        });
-      } else {
-        console.log("🔍 barcodeScan:", {
-          attempts: 'multi-pass',
-          hit: false
-        });
-      }
+    if (!BARCODE_V2) return null;
+    
+    console.log(`[HS] Quick barcode scan - budget: ${QUICK_SCAN_MS}ms, max passes: ${QUICK_PASSES}`);
+    
+    const scanner = warmScanner || new MultiPassBarcodeScanner();
+    const barcodeResult = await scanner.scanQuick(canvas);
+    
+    if (barcodeResult) {
+      console.log("🔍 Quick barcode hit:", {
+        pass: barcodeResult.passName,
+        rotation: barcodeResult.rotation,
+        scale: barcodeResult.scale,
+        format: barcodeResult.format,
+        checkDigit: barcodeResult.checkDigitValid,
+        value: barcodeResult.text,
+        timeMs: barcodeResult.decodeTimeMs
+      });
+      return barcodeResult.text;
     }
+    
+    console.log("🔍 Quick barcode scan: no detection");
+    return null;
+  };
+
+  const runExistingFullDecodePipeline = async (canvas: HTMLCanvasElement) => {
+    // Run capped quick check only - no more 76 passes!
+    const detectedBarcode = await runQuickBarcodeScan(canvas);
     
     // Convert to base64 using CSP-safe method
     const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -563,8 +566,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       fr.readAsDataURL(fullBlob);
     });
     
-    // If barcode detected with valid check digit, short-circuit to OFF lookup
-    if (detectedBarcode && (!barcodeResult.checkDigitValid || barcodeResult.checkDigitValid)) {
+    if (detectedBarcode) {
       console.log("🎯 Barcode path - short-circuiting to OFF lookup");
       
       // Call health processor with barcode
@@ -596,9 +598,28 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           quality: 0.7, 
           targetMaxBytes: 900_000 
         });
-        console.debug('[ANALYZE IMG]', { w: prep.width, h: prep.height, bytes: prep.bytes });
+        console.debug('[IMG PREP]', { w: prep.width, h: prep.height, bytes: prep.bytes });
         
-        // Create data URL with optimized image
+        // Always pass provider and log steps for analyzer
+        const body = {
+          mode: 'scan',
+          imageBase64: prep.base64NoPrefix,
+          detectedBarcode: null,
+          provider: 'hybrid',
+          debug: true
+        };
+        
+        console.log('[HS] Calling enhanced-health-scanner with provider:', body.provider);
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', { body });
+        
+        console.debug('[HS RESULT]', { 
+          kind: data?.kind, 
+          provider: data?.provider_used, 
+          steps: data?.steps 
+        });
+        
+        // Create data URL with optimized image for callback
         const optimizedDataUrl = `data:image/jpeg;base64,${prep.base64NoPrefix}`;
         onCapture(optimizedDataUrl);
       } catch (error) {
