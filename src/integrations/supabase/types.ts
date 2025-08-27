@@ -8263,6 +8263,30 @@ export type Database = {
         }
         Relationships: []
       }
+      v_nudge_daily_metrics: {
+        Row: {
+          cta: number | null
+          ctr_pct: number | null
+          day: string | null
+          dismiss_pct: number | null
+          dismissed: number | null
+          nudge_id: string | null
+          shown: number | null
+          users: number | null
+        }
+        Relationships: []
+      }
+      v_nudge_weekly_overview: {
+        Row: {
+          cta: number | null
+          ctr_pct: number | null
+          nudge_id: string | null
+          shown: number | null
+          users: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
       v_platform_metrics: {
         Row: {
           as_of: string | null
