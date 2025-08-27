@@ -130,15 +130,20 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           }
           
           // Use the tolerant adapter to normalize the data (same as Log flow)
+          console.log('[HS BARCODE] Raw result before adapter:', result);
           const legacy = toLegacyFromEdge(result);
+          console.log('[HS BARCODE] Legacy after adapter:', legacy);
           
           // Do NOT overwrite a good name with OCR tokens or empty fallback
           const itemName = legacy.productName ?? 'Unknown item';
+          console.log('[HS BARCODE] Final itemName:', itemName);
           
           // Guardrail log for verification
           if (!legacy.productName && legacy.ingredientsText) {
             console.warn('[HS] BUG: name missing while ingredients exist', {
               edgeKeysPresent: Object.keys(result?.product || {}),
+              resultKeys: Object.keys(result || {}),
+              rawResult: result,
             });
           }
           
