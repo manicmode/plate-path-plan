@@ -4,6 +4,7 @@ import { NudgesAudit } from './debug/NudgesAudit';
 import { NudgesQA } from './debug/NudgesQA';
 import HeroSubtextQA from './debug/HeroSubtextQA';
 import HeroSubtextMetrics from './debug/HeroSubtextMetrics';
+import AnalyzerOneClick from './debug/AnalyzerOneClick';
 
 export default function DebugRoutes() {
   const navigate = useNavigate();
@@ -29,6 +30,10 @@ export default function DebugRoutes() {
 
   if (currentPath === '/debug/hero-subtext-metrics') {
     return <HeroSubtextMetrics />;
+  }
+
+  if (currentPath === '/debug/analyzer-oneclick') {
+    return <AnalyzerOneClick />;
   }
   
   // If on /debug, show menu
@@ -71,6 +76,13 @@ export default function DebugRoutes() {
           >
             <h3 className="font-semibold">Hero Subtext Metrics</h3>
             <p className="text-muted-foreground">View telemetry metrics and analytics for hero subtext</p>
+          </button>
+          <button 
+            onClick={() => navigate('/debug/analyzer-oneclick')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">Image Analyzer Probe</h3>
+            <p className="text-muted-foreground">One-click diagnostic testing for health scan image analysis</p>
           </button>
         </div>
       </div>
