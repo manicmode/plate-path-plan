@@ -23,6 +23,7 @@ import { HapticsProvider } from '@/contexts/HapticsContext';
 import Layout from '@/components/Layout';
 import { SmartLoadingScreen } from '@/components/SmartLoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AdminRoute } from '@/components/auth/AdminRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
 import { MysteryBox } from '@/components/analytics/MysteryBox';
@@ -116,6 +117,7 @@ const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
+const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -494,7 +496,14 @@ function AppContent() {
                               <FeatureFlagsPage />
                             </ProtectedRoute>
                           } />
-                        {/* Temporarily disabled arena debug route */}
+                        {/* Debug routes for developers */}
+                        <Route path="/debug/*" element={
+                          <ProtectedRoute>
+                            <AdminRoute>
+                              <DebugRoutes />
+                            </AdminRoute>
+                          </ProtectedRoute>
+                        } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>

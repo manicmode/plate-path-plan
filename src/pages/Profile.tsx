@@ -38,6 +38,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 import { withStabilizedViewport } from '@/utils/scrollStabilizer';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { Settings, Bug } from 'lucide-react';
 const saveUserPreferences = (preferences: any) => {
   try {
     localStorage.setItem('user_preferences', JSON.stringify(preferences));
@@ -59,6 +61,7 @@ const ProfileContent = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAdmin } = useAdminRole();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -357,6 +360,34 @@ const ProfileContent = () => {
 
       {/* Reminder Management */}
       <ReminderManagement />
+
+      {/* Developer Tools - Admin Only */}
+      {isAdmin && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                  <Bug className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Developer Tools</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Debug and test application features</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/debug')}
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Open Tools
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <ProfileActions 
