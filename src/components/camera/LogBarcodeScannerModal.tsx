@@ -1,13 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Zap, FlashlightIcon, Edit3 } from 'lucide-react';
+import { X, Zap, FlashlightIcon, Lightbulb } from 'lucide-react';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
+import { useTorch } from '@/lib/camera/useTorch';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -23,6 +24,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onManualEntry
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isDecoding, setIsDecoding] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
@@ -37,7 +39,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const hitsRef = useRef<{code:string,t:number}[]>([]);
   const runningRef = useRef(false);
 
-  const { snapAndDecode, setTorch, isTorchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
+  const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
@@ -159,8 +162,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       });
@@ -168,9 +171,19 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
+        
+        const track = mediaStream.getVideoTracks()[0];
+        trackRef.current = track;
         setStream(mediaStream);
-        // Update the stream reference for torch functionality
+        
+        // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
+        
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 100);
+        
         setError(null);
       }
     } catch (err) {
@@ -187,6 +200,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    trackRef.current = null;
     setStream(null);
     setIsDecoding(false);
     setIsFrozen(false);
@@ -329,7 +343,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      await setTorch(!torchEnabled);
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
+      }
     } catch (error) {
       console.error("Error toggling torch:", error);
     }
@@ -441,16 +458,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
               {/* Secondary Actions */}
               <div className="flex gap-3">
-                {/* Torch Toggle - Always show */}
+                {/* Torch Toggle */}
                 <Button
                   variant="outline"
                   onClick={toggleTorch}
-                  disabled={!isTorchSupported}
+                  disabled={!supportsTorch}
+                  title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
                   className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
-                    torchEnabled ? 'bg-white/20' : 'bg-transparent'
-                  } ${!isTorchSupported ? 'opacity-50' : ''}`}
+                    torchOn ? 'bg-yellow-500/20 border-yellow-400/50' : 'bg-transparent'
+                  } ${!supportsTorch ? 'opacity-50' : ''}`}
                 >
-                  {torchEnabled ? '💡 Flash On' : '💡 Flash Off'}
+                  <Lightbulb className={`h-4 w-4 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                  {torchOn ? 'Flash On' : 'Flash Off'}
                 </Button>
                 
                 {/* Manual Entry */}

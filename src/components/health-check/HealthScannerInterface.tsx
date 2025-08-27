@@ -10,8 +10,9 @@ import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { BARCODE_V2 } from '@/lib/featureFlags';
-import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode } from '@/lib/scan/freezeDecode';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
+import { useTorch } from '@/lib/camera/useTorch';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string | { imageBase64: string; detectedBarcode: string | null }) => void;
@@ -29,6 +30,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [currentView, setCurrentView] = useState<'scanner' | 'manual' | 'notRecognized'>('scanner');
@@ -39,7 +41,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
-  const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled, updateStreamRef } = useSnapAndDecode();
+  const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
@@ -57,6 +60,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      trackRef.current = null;
       updateStreamRef(null);
     };
   }, [currentView]);
@@ -98,37 +102,45 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
 
       // High-res back camera request with optimized constraints
-      console.log("[CAMERA] Requesting high-res back camera...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       });
 
+      console.log("[VIDEO] Stream received:", mediaStream);
+
       const videoTrack = mediaStream.getVideoTracks()[0];
       const settings = videoTrack.getSettings();
-      console.log("[CAMERA] Stream received:", {
+      
+      console.log('[HS] Stream settings:', {
         width: settings.width,
         height: settings.height,
-        frameRate: settings.frameRate,
-        facingMode: settings.facingMode
+        facingMode: settings.facingMode,
+        deviceId: settings.deviceId
       });
 
+      trackRef.current = videoTrack;
       setStream(mediaStream);
       updateStreamRef(mediaStream);
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        console.log("[CAMERA] srcObject set, playing video");
+        await videoRef.current.play();
+        
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 200);
       }
       
       // Log torch capabilities
-      const track = mediaStream.getVideoTracks()[0];
-      console.log('[TORCH] caps', track?.getCapabilities?.());
-      console.log('[TORCH] supported', isTorchSupported(track));
+      const caps = videoTrack?.getCapabilities?.();
+      console.log('[TORCH] caps', caps);
+      console.log('[TORCH] supported', !!(caps && 'torch' in caps));
     } catch (error) {
       console.error("[CAMERA FAIL] getUserMedia error:", error);  
       // Fallback to basic camera
@@ -136,16 +148,20 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         const fallbackStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' }
         });
+        
+        const fallbackTrack = fallbackStream.getVideoTracks()[0];
+        trackRef.current = fallbackTrack;
         setStream(fallbackStream);
         updateStreamRef(fallbackStream);
+        
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
         }
         
         // Log torch capabilities for fallback stream
-        const track = fallbackStream.getVideoTracks()[0];
-        console.log('[TORCH] fallback caps', track?.getCapabilities?.());
-        console.log('[TORCH] fallback supported', isTorchSupported(track));
+        const caps = fallbackTrack?.getCapabilities?.();
+        console.log('[TORCH] fallback caps', caps);
+        console.log('[TORCH] fallback supported', !!(caps && 'torch' in caps));
       } catch (fallbackError) {
         console.error('Camera access completely failed:', fallbackError);
       }
@@ -617,10 +633,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const handleFlashlightToggle = async () => {
-    if (!stream) return;
-    
-    const newTorchState = !torchEnabled;
-    await setTorch(newTorchState);
+    try {
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
+      }
+    } catch (error) {
+      console.error("Error toggling torch:", error);
+    }
   };
 
   const handleManualEntry = () => {
@@ -799,8 +819,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
-            torchEnabled={torchEnabled}
-            torchSupported={torchSupported}
+            torchEnabled={torchOn}
+            torchSupported={supportsTorch}
           />
         </footer>
       </div>

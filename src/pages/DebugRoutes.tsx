@@ -31,6 +31,15 @@ export default function DebugRoutes() {
   if (currentPath === '/debug/nudges-qa') {
     return <NudgesQA />;
   }
+
+  if (currentPath === '/debug/camera') {
+    const CameraDebug = lazy(() => import('./debug/CameraDebug'));
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+        <CameraDebug />
+      </Suspense>
+    );
+  }
   
   // If on /debug, show menu
   if (currentPath === '/debug') {
@@ -58,6 +67,13 @@ export default function DebugRoutes() {
           >
             <h3 className="font-semibold">Health Scan Fallbacks</h3>
             <p className="text-muted-foreground">Test and debug manual text & voice search flows</p>
+          </button>
+          <button 
+            onClick={() => navigate('/debug/camera')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">Camera & Torch Debug</h3>
+            <p className="text-muted-foreground">Test camera capabilities and flashlight functionality</p>
           </button>
         </div>
       </div>
