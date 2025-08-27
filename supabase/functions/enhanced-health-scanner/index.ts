@@ -506,23 +506,32 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        response_format: { 
-          type: "json_schema", 
-          json_schema: { 
-            name: "brand_schema", 
-            schema: { 
-              type: "object", 
-              properties: { 
-                brand: { type: "string" }, 
-                product_line: { type: "string" }, 
-                confidence: { type: "number" } 
-              }, 
-              required: ["brand", "confidence"], 
-              additionalProperties: false 
-            }, 
-            strict: true 
-          } 
-        },
+        response_format: (() => {
+          const properties = {
+            brand: { type: "string" },
+            product: { type: "string" },
+            confidence: { type: "number", minimum: 0, maximum: 1 }
+          };
+          
+          // Check if strict mode is disabled
+          if (Deno.env.get('OPENAI_JSON_STRICT') === '0') {
+            return { type: "json_object" };
+          }
+          
+          return {
+            type: "json_schema",
+            json_schema: {
+              name: "brand_schema",
+              schema: {
+                type: "object",
+                properties,
+                required: Object.keys(properties),
+                additionalProperties: false
+              },
+              strict: true
+            }
+          };
+        })(),
         messages: [{
           role: 'user',
           content: [
