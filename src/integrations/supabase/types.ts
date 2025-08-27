@@ -5497,6 +5497,45 @@ export type Database = {
           },
         ]
       }
+      subtext_events: {
+        Row: {
+          category: string
+          created_at: string
+          event: string
+          id: string
+          picked_id: string
+          reason: string | null
+          run_id: string | null
+          ts: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          event: string
+          id?: string
+          picked_id: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event?: string
+          id?: string
+          picked_id?: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       supplement_logs: {
         Row: {
           created_at: string
@@ -8296,6 +8335,18 @@ export type Database = {
           paid_orders_all: number | null
           refunds_count: number | null
           total_users: number | null
+        }
+        Relationships: []
+      }
+      v_subtext_daily_metrics: {
+        Row: {
+          category: string | null
+          cta: number | null
+          ctr_pct: number | null
+          day: string | null
+          picked_id: string | null
+          shown: number | null
+          users: number | null
         }
         Relationships: []
       }
