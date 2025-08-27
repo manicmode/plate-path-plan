@@ -445,6 +445,13 @@ export function runQAScenario(scenario: QAScenario): QAResult {
     forceFlags: { hero_subtext_dynamic: true }
   });
 
+  // Console breadcrumb for verification
+  console.debug(`[HeroSubtext] picked`, { 
+    id: result.id, 
+    reason: result.reason, 
+    ms: result.performanceMs.toFixed(2)
+  });
+
   // Validation checks
   const emojiCount = countEmojis(result.text);
   const lengthValid = result.text.length <= 72;

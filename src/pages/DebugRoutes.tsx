@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import DebugImageProbe from './DebugImageProbe';
 import { NudgesAudit } from './debug/NudgesAudit';
 import { NudgesQA } from './debug/NudgesQA';
+import HeroSubtextQA from './debug/HeroSubtextQA';
 
 export default function DebugRoutes() {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ export default function DebugRoutes() {
 
   if (currentPath === '/debug/nudges-qa') {
     return <NudgesQA />;
+  }
+
+  if (currentPath === '/debug/hero-subtext') {
+    return <HeroSubtextQA />;
   }
   
   // If on /debug, show menu
@@ -47,6 +52,13 @@ export default function DebugRoutes() {
           >
             <h3 className="font-semibold">Nudge QA System</h3>
             <p className="text-muted-foreground">Automated testing and reporting for nudge scheduler</p>
+          </button>
+          <button 
+            onClick={() => navigate('/debug/hero-subtext')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">Hero Subtext QA</h3>
+            <p className="text-muted-foreground">Test hero subtext content engine with deterministic scenarios</p>
           </button>
         </div>
       </div>

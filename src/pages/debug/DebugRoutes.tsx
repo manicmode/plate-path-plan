@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { NudgesQA } from './NudgesQA';
-import { HeroSubtextQA } from './HeroSubtextQA';
+import HeroSubtextQA from './HeroSubtextQA';
 
 export default function DebugRoutes() {
   return (

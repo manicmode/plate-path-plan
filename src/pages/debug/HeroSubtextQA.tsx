@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,26 @@ import {
 } from '@/debug/heroSubtextQA';
 import { Download, Play, Trash2, RefreshCw } from 'lucide-react';
 
-export function HeroSubtextQA() {
+export default function HeroSubtextQA() {
   const [report, setReport] = useState<QAReport | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  // Auto-run on mount
+  useEffect(() => {
+    const runInitialTest = async () => {
+      try {
+        const result = runAllQAScenarios();
+        setReport(result);
+      } catch (error) {
+        console.error('[HeroSubtextQA] Initial test run failed:', error);
+      } finally {
+        setIsReady(true);
+      }
+    };
+    
+    runInitialTest();
+  }, []);
 
   const handleRunAll = async () => {
     setIsRunning(true);
@@ -57,6 +74,17 @@ export function HeroSubtextQA() {
     const result = runQAScenario(scenario);
     console.log(`[HeroSubtextQA] Result:`, result);
   };
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading Hero Subtext QA...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
