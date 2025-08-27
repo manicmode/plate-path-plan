@@ -698,59 +698,174 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{
 }
 
 /**
- * Brand-gated name search with relaxed requirements
+ * A) Trust the right evidence - improved evidence fusion
  */
-async function searchByBrandAndName(
-  brandTokens: string[], 
-  hasCandy: boolean, 
-  fuzzyBrands?: Array<{ token: string; brand: string; confidence: number }>
-): Promise<any | null> {
-  // B) Relax brand gating - allow search with fuzzy matches
-  const hasBrandEvidence = brandTokens.length > 0 || 
-                          (fuzzyBrands && fuzzyBrands.some(m => m.confidence >= 0.6));
-                          
-  if (!hasBrandEvidence) {
-    console.log('❌ No brand evidence (exact or fuzzy) - skipping name search');
-    return null;
+function evaluateLogoEvidence(
+  logoBrand: string, 
+  ocrLines: string[], 
+  brandLexicon: Set<string>
+): boolean {
+  if (!logoBrand) return false;
+  
+  const normalizedLogo = logoBrand.toLowerCase().trim();
+  const ocrText = ocrLines.join(' ').toLowerCase();
+  
+  // Only trust logo if it's in our brand lexicon OR appears in OCR text
+  return brandLexicon.has(normalizedLogo) || ocrText.includes(normalizedLogo);
+}
+
+/**
+ * B) Extract the right product phrase from OCR (line-based)
+ */
+function bestFrontLine(lines: string[]): string {
+  const STOPWORDS = /^(organic|natural|non[- ]?gmo|raw|protein|gluten[- ]?free|usda|net|wt|oz|lb|grams?)$/i;
+  
+  function scoreLine(line: string): number {
+    const len = line.length;
+    if (len < 10 || len > 40) return 0;
+    
+    const words = line.toLowerCase().split(/\s+/);
+    const capitalRatio = (line.match(/[A-Z]/g) || []).length / len;
+    const stopwordRatio = words.filter(w => STOPWORDS.test(w)).length / words.length;
+    
+    return (capitalRatio * 0.4) + ((40 - Math.abs(25 - len)) / 40 * 0.4) + (1 - stopwordRatio) * 0.2;
   }
   
-  try {
-    const searchQuery = brandTokens.join(' ');
-    console.log(`🔍 Brand-gated search: ${searchQuery}`);
-    
-    const searchParams = new URLSearchParams({
-      search_terms: searchQuery,
-      search_simple: '1',
-      action: 'process',
-      json: '1',
-      page_size: '3'
-    });
-    
-    if (hasCandy) {
-      searchParams.set('categories', 'candy,gummies,sweets');
-    }
-    
-    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
-    const data = await response.json();
-    
-    if (data.products && data.products.length > 0) {
-      const filteredProducts = hasCandy ? 
-        data.products.filter((product: any) => {
-          const categories = (product.categories || '').toLowerCase();
-          return !categories.includes('beverage') && !categories.includes('drink');
-        }) : data.products;
-        
-      if (filteredProducts.length > 0) {
-        console.log('✅ Brand search hit:', filteredProducts[0].product_name);
-        return filteredProducts[0];
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('❌ Brand search failed:', error);
-    return null;
+  return lines
+    .map((line) => ({ line, score: scoreLine(line) }))
+    .sort((a, b) => b.score - a.score)[0]?.line || '';
+}
+
+function normalizeForSearch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s']/g, ' ')  // Keep apostrophes for "joe's"
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * C) Build N-grams from phrase for search queries
+ */
+function buildNGrams(phrase: string, options: { min: number; max: number; dropStopwords: boolean }): string[] {
+  const words = phrase.split(/\s+/).filter(w => w.length > 0);
+  if (options.dropStopwords) {
+    const filtered = words.filter(w => !STOP_WORDS.has(w));
+    if (filtered.length > 0) words.splice(0, words.length, ...filtered);
   }
+  
+  const ngrams: string[] = [];
+  for (let n = options.min; n <= Math.min(options.max, words.length); n++) {
+    for (let i = 0; i <= words.length - n; i++) {
+      ngrams.push(words.slice(i, i + n).join(' '));
+    }
+  }
+  
+  return ngrams.sort((a, b) => b.length - a.length); // Prefer longer phrases
+}
+
+/**
+ * D) Fuzzy string matching for ranking
+ */
+function fuzzyScore(str1: string, str2: string): number {
+  if (!str1 || !str2) return 0;
+  
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+  
+  // Exact match
+  if (s1 === s2) return 1.0;
+  
+  // Substring match
+  if (s1.includes(s2) || s2.includes(s1)) {
+    return Math.max(s1.length, s2.length) / (s1.length + s2.length);
+  }
+  
+  // Word overlap
+  const words1 = new Set(s1.split(/\s+/));
+  const words2 = new Set(s2.split(/\s+/));
+  const intersection = [...words1].filter(w => words2.has(w)).length;
+  const union = new Set([...words1, ...words2]).size;
+  
+  return intersection / union;
+}
+
+/**
+ * C) Query cascade for OpenFoodFacts with comprehensive search
+ */
+async function searchWithQueryCascade(
+  brand: string,
+  phrase: string,
+  hasCandy: boolean,
+  steps: Array<{stage: string; ok: boolean; meta?: any}>
+): Promise<{ results: any[]; queries: Array<{q: string; hits: number}> }> {
+  
+  // Build N-grams from phrase
+  const ngrams = buildNGrams(phrase, { min: 2, max: 4, dropStopwords: true });
+  
+  // Build query cascade (ordered by priority)
+  const queries = [
+    brand && ngrams[0] ? `${brand} ${ngrams[0]}` : '',
+    brand && ngrams[1] ? `${brand} ${ngrams[1]}` : '',
+    brand,
+    ngrams[0],
+    ngrams[1]
+  ].filter(q => q && q.trim().length > 0);
+  
+  // Deduplicate queries
+  const uniqueQueries = [...new Set(queries)];
+  
+  const queryResults: Array<{q: string; hits: number; products?: any[]}> = [];
+  const allResults: any[] = [];
+  
+  for (const query of uniqueQueries) {
+    try {
+      console.log(`🔍 Cascade query: "${query}"`);
+      
+      const searchParams = new URLSearchParams({
+        search_terms: query,
+        search_simple: '1',
+        action: 'process',
+        json: '1',
+        page_size: '20',
+        fields: 'code,product_name,brands,nutriments,ingredients_text,image_front_small_url,image_url'
+      });
+      
+      if (hasCandy) {
+        searchParams.set('categories', 'candy,gummies,sweets');
+      }
+      
+      const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
+      const data = await response.json();
+      
+      const products = data.products || [];
+      queryResults.push({ q: query, hits: products.length, products });
+      
+      if (products.length > 0) {
+        allResults.push(...products);
+        // Stop if we have sufficient results
+        if (allResults.length >= 5) break;
+      }
+      
+    } catch (error) {
+      console.error(`❌ Query "${query}" failed:`, error);
+      queryResults.push({ q: query, hits: 0 });
+    }
+  }
+  
+  // Log attempted queries for debugging
+  steps.push({ 
+    stage: 'queries', 
+    ok: true, 
+    meta: { 
+      tried: queryResults.map(r => ({ q: r.q, hits: r.hits }))
+    }
+  });
+  
+  return { 
+    results: allResults, 
+    queries: queryResults.map(r => ({ q: r.q, hits: r.hits }))
+  };
 }
 
 /**
@@ -774,55 +889,9 @@ function extractBarcodeFromOCR(text: string): string | null {
   return null;
 }
 
-/**
- * Search for multiple branded product candidates
- */
-async function searchMultipleCandidates(brandTokens: string[], hasCandy: boolean): Promise<any[]> {
-  if (brandTokens.length === 0) return [];
-  
-  try {
-    const searchQuery = brandTokens.join(' ');
-    console.log(`🔍 Multi-candidate search: ${searchQuery}`);
-    
-    const searchParams = new URLSearchParams({
-      search_terms: searchQuery,
-      search_simple: '1',
-      action: 'process',
-      json: '1',
-      page_size: '8'  // Get more for filtering
-    });
-    
-    if (hasCandy) {
-      searchParams.set('categories', 'candy,gummies,sweets');
-    }
-    
-    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
-    const data = await response.json();
-    
-    if (data.products && data.products.length > 0) {
-      // Filter and limit to 5 candidates
-      let candidates = data.products.slice(0, 5);
-      
-      if (hasCandy) {
-        candidates = candidates.filter((product: any) => {
-          const categories = (product.categories || '').toLowerCase();
-          return !categories.includes('beverage') && !categories.includes('drink');
-        });
-      }
-      
-      console.log(`✅ Found ${candidates.length} candidates`);
-      return candidates.slice(0, 5);
-    }
-    
-    return [];
-  } catch (error) {
-    console.error('❌ Multi-candidate search failed:', error);
-    return [];
-  }
-}
 
 /**
- * Enhanced health scan with candidate support
+ * Enhanced health scan with Fix Pack 2 improvements
  */
 async function processHealthScanWithCandidates(
   imageBase64: string, 
@@ -840,14 +909,34 @@ async function processHealthScanWithCandidates(
     plateConf: 0
   };
 
-  // Extract OCR and analyze
+  // A) Enhanced evidence fusion 
+  const visionResult = await processVisionProviders(imageBase64, provider, steps);
   const ocrResult = await extractAndCleanOCR(imageBase64);
+  
+  // Extract OCR lines for better phrase detection
+  const ocrLines = ocrResult.text.split('\n').filter(line => line.trim().length > 0);
+  
+  // B) Extract the right product phrase from OCR (line-based)
+  const keyLine = bestFrontLine(ocrLines);
+  const phrase = normalizeForSearch(keyLine);
+  
   ctx.ocrText = ocrResult.text;
   ctx.tokens = ocrResult.cleanedTokens;
   ctx.brandTokens = ocrResult.brandTokens;
   ctx.hasCandy = ocrResult.hasCandy;
   
-  // B) Add [ANALYZER DEBUG] logs in DEV
+  // A) Evaluate logo evidence (trust the right evidence)
+  const logoBrand = ''; // Would come from logo detection if available
+  const logoOk = evaluateLogoEvidence(logoBrand, ocrLines, BRAND_LEXICON);
+  
+  // Enhanced brand selection
+  const bestBrand = pickBestBrand(
+    ctx.brandTokens[0] || '', 
+    logoOk ? logoBrand : '', 
+    ocrResult.fuzzyBrands
+  );
+  
+  // Debug logging
   const isDev = Deno.env.get('DENO_ENV') !== 'production';
   if (isDev) {
     console.log(`[ANALYZER DEBUG] [${reqId}]:`, {
@@ -856,7 +945,10 @@ async function processHealthScanWithCandidates(
       fuzzyBrands: ocrResult.fuzzyBrands,
       ocrConfidence: ocrResult.ocrConfidence,
       hasCandy: ctx.hasCandy,
-      textLength: ocrResult.text.length
+      textLength: ocrResult.text.length,
+      keyLine: keyLine,
+      bestBrand: bestBrand,
+      logoOk: logoOk
     });
   }
   
@@ -864,70 +956,101 @@ async function processHealthScanWithCandidates(
     tokens: ctx.tokens.length, 
     brandTokens: ctx.brandTokens.length, 
     fuzzyBrands: ocrResult.fuzzyBrands?.length || 0,
-    hasCandy: ctx.hasCandy 
+    hasCandy: ctx.hasCandy,
+    keyLine: keyLine.substring(0, 50) + (keyLine.length > 50 ? '...' : '')
   });
 
-  // Try single product search first with enhanced brand matching
-  const singleProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy, ocrResult.fuzzyBrands);
-  
-  if (singleProduct) {
-    console.log(`✅ Single product found [${reqId}]: ${singleProduct.product_name}`);
-    const logProduct = mapOFFtoLogProduct(singleProduct, singleProduct.code || '');
+  // C) Query cascade for comprehensive search
+  if (bestBrand || phrase) {
+    const { results, queries } = await searchWithQueryCascade(bestBrand, phrase, ctx.hasCandy, steps);
     
-    if (isDev) {
-      console.log(`[ANALYZER DEBUG] Decision: single_product`, {
-        productName: logProduct.productName,
-        confidence: 'high'
-      });
+    // D) Rank candidates robustly
+    if (results.length > 0) {
+      const ranked = results
+        .map((product: any) => ({
+          ...product,
+          score: 0.6 * fuzzyScore(product.brands || '', bestBrand) +
+                 0.4 * fuzzyScore(product.product_name || '', phrase)
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+      
+      // If top candidate has high confidence, return single product
+      if (ranked[0]?.score >= 0.8) {
+        console.log(`✅ Single product found [${reqId}]: ${ranked[0].product_name}`);
+        const logProduct = mapOFFtoLogProduct(ranked[0], ranked[0].code || '');
+        
+        if (isDev) {
+          console.log(`[ANALYZER DEBUG] Decision: single_product`, {
+            productName: logProduct.productName,
+            confidence: 'high',
+            score: ranked[0].score
+          });
+        }
+        
+        return {
+          kind: 'single_product',
+          product: logProduct,
+          productName: logProduct.productName,
+          healthScore: logProduct.health?.score || null,
+          nutritionSummary: logProduct.nutrition,
+          fallback: false
+        };
+      }
+      
+      // Return branded candidates
+      console.log(`✅ Branded candidates found [${reqId}]: ${ranked.length}`);
+      
+      if (isDev) {
+        console.log(`[ANALYZER DEBUG] Decision: branded_candidates`, {
+          candidatesCount: ranked.length,
+          topScore: ranked[0]?.score || 0
+        });
+      }
+      
+      const candidateList = ranked.map((product: any) => ({
+        id: product.code || crypto.randomUUID(),
+        name: `${product.brands || ''} ${product.product_name || ''}`.trim() || 'Unknown Product',
+        brand: product.brands || '',
+        image: product.image_front_small_url || product.image_url || '',
+        confidence: Math.min(0.95, Math.max(0.5, product.score))
+      }));
+
+      return {
+        kind: 'branded_candidates',
+        productName: 'Multiple products detected',
+        healthScore: null,
+        healthFlags: [],
+        nutritionSummary: null,
+        ingredients: [],
+        recommendations: ['Please select the correct product from the list below.'],
+        generalSummary: `Found ${candidateList.length} possible matches.`,
+        candidates: candidateList,
+        fallback: false
+      };
     }
-    
-    return {
-      kind: 'single_product',
-      product: logProduct,
-      productName: logProduct.productName,
-      healthScore: logProduct.health?.score || null,
-      nutritionSummary: logProduct.nutrition,
-      fallback: false
-    };
   }
 
-  // Try multiple candidates if single search fails
-  const candidates = await searchMultipleCandidates(ctx.brandTokens, ctx.hasCandy);
-  
-  // B) Return candidates instead of none when we have some evidence
-  const hasWeakEvidence = ctx.brandTokens.length > 0 || 
-                         ocrResult.fuzzyBrands.some(m => m.confidence >= 0.35) ||
-                         ctx.tokens.length > 3; // Some OCR text detected
-
-  if (candidates.length > 0 && hasWeakEvidence) {
-    console.log(`✅ Branded candidates found [${reqId}]: ${candidates.length}`);
-    
+  // E) Last-ditch UI fallback (never a dead end)
+  if (bestBrand || phrase) {
     if (isDev) {
-      console.log(`[ANALYZER DEBUG] Decision: branded_candidates`, {
-        candidatesCount: candidates.length,
-        evidence: 'weak_but_present'
+      console.log(`[ANALYZER DEBUG] Decision: branded_candidates (fallback)`, {
+        candidatesCount: 0,
+        suggest: { brand: bestBrand, phrase: phrase }
       });
     }
     
-    // Map candidates to simplified format for UI
-    const candidateList = candidates.slice(0, 5).map((product: any) => ({
-      id: product.code || crypto.randomUUID(),
-      name: `${product.brands || ''} ${product.product_name || ''}`.trim() || 'Unknown Product',
-      brand: product.brands || '',
-      image: product.image_front_small_url || product.image_url || '',
-      confidence: Math.max(0.5, Math.random() * 0.4 + 0.6) // Mock confidence 0.6-1.0
-    }));
-
     return {
       kind: 'branded_candidates',
-      productName: 'Multiple products detected',
+      productName: 'Product detected but needs confirmation',
       healthScore: null,
       healthFlags: [],
       nutritionSummary: null,
       ingredients: [],
-      recommendations: ['Please select the correct product from the list below.'],
-      generalSummary: `Found ${candidateList.length} possible matches.`,
-      candidates: candidateList,
+      recommendations: ['Please search manually with the suggested terms below.'],
+      generalSummary: 'We detected some product information but need your help to identify it.',
+      candidates: [],
+      suggest: { brand: bestBrand, phrase: phrase },
       fallback: false
     };
   }
@@ -979,6 +1102,28 @@ async function processHealthScanWithCandidates(
     generalSummary: 'We could not confidently identify this item from the photo.',
     fallback: true
   };
+}
+
+/**
+ * Helper function to pick the best brand from available evidence
+ */
+function pickBestBrand(
+  exactBrand: string,
+  logoBrand: string, 
+  fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>
+): string {
+  // Prefer exact brand match
+  if (exactBrand) return exactBrand;
+  
+  // Then logo brand if validated
+  if (logoBrand) return logoBrand;
+  
+  // Finally, best fuzzy match with high confidence
+  const bestFuzzy = fuzzyBrands
+    ?.filter(f => f.confidence >= 0.7)
+    .sort((a, b) => b.confidence - a.confidence)[0];
+    
+  return bestFuzzy?.brand || '';
 }
 
 /**
