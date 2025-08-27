@@ -526,76 +526,184 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   };
 
+  // Helper function to detect if input is a barcode
+  const isBarcode = (input: string): boolean => {
+    const cleaned = input.trim().replace(/\s+/g, '');
+    // Check if it's all digits and has a reasonable barcode length (8-14 digits)
+    return /^\d{8,14}$/.test(cleaned);
+  };
+
   const handleManualEntry = async (query: string, type: 'text' | 'voice') => {
     try {
       setCurrentState('loading');
       setAnalysisType('manual');
-      setLoadingMessage(type === 'voice' ? 'Processing voice input...' : 'Searching food database...');
       
-      console.log(`📝 Processing ${type} input:`, query);
+      const trimmedQuery = query.trim();
+      console.log(`📝 Processing ${type} input:`, trimmedQuery);
       
-      const { data, error } = await supabase.functions.invoke('health-check-processor', {
-        body: {
-          inputType: type,
-          data: query,
-          userId: user?.id,
-          detectedBarcode: null
+      // Intelligent routing based on input content
+      if (isBarcode(trimmedQuery)) {
+        console.log('🏷️ Input detected as barcode, routing to enhanced-health-scanner');
+        setLoadingMessage('Processing barcode...');
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body: { 
+            mode: 'barcode', 
+            barcode: trimmedQuery.replace(/\s+/g, ''), 
+            source: 'health-scan-manual' 
+          }
+        });
+
+        if (error || !data?.ok) {
+          console.log('⚠️ Barcode lookup failed:', error);
+          setCurrentState('not_found');
+          return;
         }
-      });
 
-      if (error) {
-        throw new Error(error.message || `Failed to process ${type} input`);
+        // Use the same adapter logic as successful barcode pipeline
+        const legacy = toLegacyFromEdge(data);
+        console.log('[HS MANUAL BARCODE] Legacy result:', legacy);
+        
+        // Handle different statuses
+        if (legacy.status === 'no_detection') {
+          console.log('[HS] Manual barcode: no detection');
+          setCurrentState('no_detection');
+          return;
+        }
+        
+        if (legacy.status === 'not_found') {
+          console.log('[HS] Manual barcode: not found');
+          setCurrentState('not_found'); 
+          return;
+        }
+        
+        // Process successful barcode result (same logic as barcode capture)
+        const itemName = legacy.productName || 'Unknown item';
+        const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score;
+        const scorePct = extractScore(rawScore);
+        const score10 = scorePct == null ? null : scorePct / 10;
+        
+        const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
+        const ingredientFlags = rawFlags.map((f: any) => ({
+          ingredient: f.title || f.label || f.key || 'Ingredient',
+          flag: f.description || f.label || '',
+          severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+        }));
+
+        const analysisResult: HealthAnalysisResult = {
+          itemName,
+          productName: itemName,
+          title: itemName,
+          healthScore: score10 ?? 0,
+          ingredientsText: legacy.ingredientsText,
+          ingredientFlags,
+          nutritionData: legacy.nutrition || {},
+          healthProfile: {
+            isOrganic: legacy.ingredientsText?.includes('organic') || false,
+            isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
+            allergens: legacy.ingredientsText ? 
+              ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+                legacy.ingredientsText!.toLowerCase().includes(allergen)
+              ) : [],
+            preservatives: [],
+            additives: []
+          },
+          personalizedWarnings: [],
+          suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+          overallRating: score10 == null ? 'avoid' : 
+                        score10 >= 8 ? 'excellent' : 
+                        score10 >= 6 ? 'good' : 
+                        score10 >= 4 ? 'fair' : 
+                        score10 >= 2 ? 'poor' : 'avoid'
+        };
+
+        setAnalysisResult(analysisResult);
+        setCurrentState('report');
+        
+      } else {
+        console.log('📝 Input detected as text/description, routing to GPT analyzer');
+        setLoadingMessage(type === 'voice' ? 'Processing voice input...' : 'Analyzing food description...');
+        
+        const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
+          body: {
+            text: trimmedQuery,
+            taskType: 'food_analysis',
+            complexity: 'auto'
+          }
+        });
+
+        if (error) {
+          throw new Error(error.message || `Failed to analyze ${type} input`);
+        }
+
+        console.log('✅ GPT analyzer response:', data);
+        
+        if (!data.foods || data.foods.length === 0 || data.total_confidence < 0.3) {
+          console.log('⚠️ GPT analysis returned low confidence or no foods');
+          setCurrentState('no_detection');
+          return;
+        }
+
+        // Transform GPT response to Health Analysis format
+        const primaryFood = data.foods[0]; // Use the first/primary food item
+        const itemName = primaryFood.name || trimmedQuery;
+        
+        // Convert nutrition to health score (simple heuristic)
+        const calories = primaryFood.calories || 0;
+        const protein = primaryFood.protein || 0;
+        const fiber = primaryFood.fiber || 0;
+        const sugar = primaryFood.sugar || 0;
+        const sodium = primaryFood.sodium || 0;
+        
+        // Basic health scoring based on nutrition
+        let healthScore = 5; // Start neutral
+        if (fiber > 3) healthScore += 1;
+        if (protein > 10) healthScore += 1;
+        if (sugar > 15) healthScore -= 1;
+        if (sodium > 400) healthScore -= 1;
+        if (calories > 300) healthScore -= 0.5;
+        healthScore = Math.max(1, Math.min(10, healthScore));
+
+        const analysisResult: HealthAnalysisResult = {
+          itemName,
+          productName: itemName,
+          title: itemName,
+          healthScore,
+          ingredientsText: undefined, // GPT analyzer doesn't provide ingredients
+          ingredientFlags: [],
+          nutritionData: {
+            calories: primaryFood.calories,
+            protein: primaryFood.protein,
+            carbs: primaryFood.carbs,
+            fat: primaryFood.fat,
+            fiber: primaryFood.fiber,
+            sugar: primaryFood.sugar,
+            sodium: primaryFood.sodium,
+          },
+          healthProfile: {
+            isOrganic: false,
+            isGMO: false,
+            allergens: [],
+            preservatives: [],
+            additives: []
+          },
+          personalizedWarnings: [],
+          suggestions: data.processing_notes ? [data.processing_notes] : [],
+          overallRating: healthScore >= 8 ? 'excellent' : 
+                        healthScore >= 6 ? 'good' : 
+                        healthScore >= 4 ? 'fair' : 
+                        healthScore >= 2 ? 'poor' : 'avoid'
+        };
+
+        setAnalysisResult(analysisResult);
+        setCurrentState('report');
       }
-
-      console.log('✅ Manual entry processor response:', data);
-      console.log('🏥 Health Score:', data.healthScore);
-      console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
-      
-      // Transform the backend response to match frontend interface
-      const result: HealthAnalysisResult = {
-        itemName: data.productName || query,
-        healthScore: data.healthScore || 0,
-        ingredientFlags: (data.healthFlags || []).map((flag: any) => ({
-          ingredient: flag.title,
-          flag: flag.description,
-          severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
-        })),
-        nutritionData: data.nutritionSummary || {},
-        healthProfile: {
-          isOrganic: data.ingredients?.includes('organic') || false,
-          isGMO: data.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
-          allergens: data.ingredients?.filter((ing: string) => 
-            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
-              ing.toLowerCase().includes(allergen)
-            )
-          ) || [],
-          preservatives: data.ingredients?.filter((ing: string) => 
-            ing.toLowerCase().includes('preservative') || 
-            ing.toLowerCase().includes('sodium benzoate') ||
-            ing.toLowerCase().includes('potassium sorbate')
-          ) || [],
-          additives: data.ingredients?.filter((ing: string) => 
-            ing.toLowerCase().includes('artificial') || 
-            ing.toLowerCase().includes('flavor') ||
-            ing.toLowerCase().includes('color')
-          ) || []
-        },
-        personalizedWarnings: Array.isArray(data.recommendations) ? 
-          data.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
-        suggestions: Array.isArray(data.recommendations) ? data.recommendations : [data.generalSummary || 'No specific recommendations available.'],
-        overallRating: data.healthScore >= 80 ? 'excellent' : 
-                      data.healthScore >= 60 ? 'good' : 
-                      data.healthScore >= 40 ? 'fair' : 
-                      data.healthScore >= 20 ? 'poor' : 'avoid'
-      };
-
-      setAnalysisResult(result);
-      setCurrentState('report');
       
       // Trigger daily score calculation after health scan completion
       if (user?.id) {
         triggerDailyScoreCalculation(user.id);
       }
+      
     } catch (error) {
       console.error(`❌ ${type} analysis failed:`, error);
       toast({
