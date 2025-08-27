@@ -6,49 +6,29 @@
 const pick = (...vals: Array<unknown>) =>
   vals.find(v => typeof v === 'string' && v.trim().length >= 3) as string | undefined;
 
+const pickName = (...vals: Array<unknown>) =>
+  vals.find(v => typeof v === 'string' && v.trim().length >= 3)?.toString().trim();
+
 function extractName(edge: any): string | undefined {
   const p = edge?.product ?? edge;
 
-  console.log('[NAME DEBUG] extractName input:', { 
-    edge: edge, 
-    p: p,
-    edgeKeys: Object.keys(edge || {}),
-    pKeys: Object.keys(p || {}),
-    productKeys: Object.keys(edge?.product || {}),
-  });
-
-  // Test all possible name fields
-  const candidates = [
+  // Try all common OFF + normalized fields
+  const name = pickName(
     p?.displayName,
     p?.name,
     p?.product_name_en,
     p?.product_name,
     p?.generic_name_en,
     p?.generic_name,
-    edge?.productName,
+    edge?.productName, // some functions return this top-level
     edge?.name
-  ];
-
-  console.log('[NAME DEBUG] name candidates:', candidates);
-
-  // common OFF/normalized name fields
-  const name =
-    pick(
-      p?.displayName,
-      p?.name,
-      p?.product_name_en,
-      p?.product_name,
-      p?.generic_name_en,
-      p?.generic_name,
-      edge?.productName,
-      edge?.name
-    ) ||
+  ) ?? (
     // brand + product_name fallback
-    (p?.brands && p?.product_name
+    p?.brands && p?.product_name
       ? `${String(p.brands).split(',')[0].trim()} ${String(p.product_name).trim()}`
-      : undefined);
+      : undefined
+  );
 
-  console.log('[NAME DEBUG] final extracted name:', name);
   return name?.replace(/\s+/g, ' ').trim();
 }
 

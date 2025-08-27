@@ -42,6 +42,8 @@ interface HealthCheckModalProps {
 
 export interface HealthAnalysisResult {
   itemName: string;
+  productName?: string; // alias for components reading productName
+  title?: string;       // alias for components reading title
   healthScore: number;
   ingredientsText?: string; // Full ingredient list from product data
   ingredientFlags: Array<{
@@ -134,8 +136,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           const legacy = toLegacyFromEdge(result);
           console.log('[HS BARCODE] Legacy after adapter:', legacy);
           
-          // Do NOT overwrite a good name with OCR tokens or empty fallback
-          const itemName = legacy.productName ?? 'Unknown item';
+          // Set name once and mirror to all possible header keys
+          const itemName = legacy.productName || legacy.barcode || 'Unknown item';
           console.log('[HS BARCODE] Final itemName:', itemName);
           
           // Guardrail log for verification
@@ -225,9 +227,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             console.warn('[HS] BUG: flags lost in mapping', { rawFlags });
           }
 
-          // Transform to match frontend interface
+          // Transform to match frontend interface - set all name aliases
           const analysisResult: HealthAnalysisResult = {
             itemName,
+            productName: itemName,  // alias for components reading productName
+            title: itemName,        // alias for components reading title
             healthScore: score10 ?? 0,              // 0–10 scale for UI
             ingredientsText,
             ingredientFlags,
@@ -260,6 +264,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                           score10 >= 4 ? 'fair' : 
                           score10 >= 2 ? 'poor' : 'avoid'
           };
+
+          console.groupCollapsed('[NAME GUARD] Barcode path');
+          console.log({ legacyName: legacy.productName, finalItemName: itemName });
+          console.groupEnd();
           
           setAnalysisResult(analysisResult);
           setCurrentState('report');
@@ -323,8 +331,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
       
-      // Do NOT overwrite a good name with OCR tokens or empty fallback
-      const itemName = legacy.productName ?? 'Unknown item';
+      // Set name once and mirror to all possible header keys
+      const itemName = legacy.productName || legacy.barcode || 'Unknown item';
       
       // Guardrail log for verification
       if (!legacy.productName && legacy.ingredientsText) {
@@ -431,9 +439,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         console.warn('[HS] BUG: flags lost in mapping', { rawFlags });
       }
 
-      // Transform to match frontend interface
+      // Transform to match frontend interface - set all name aliases
       const analysisResult: HealthAnalysisResult = {
         itemName,
+        productName: itemName,  // alias for components reading productName
+        title: itemName,        // alias for components reading title
         healthScore: score10 ?? 0,              // 0–10 scale for UI
         ingredientsText,
         ingredientFlags,
@@ -466,6 +476,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                       score10 >= 4 ? 'fair' : 
                       score10 >= 2 ? 'poor' : 'avoid'
       };
+
+      console.groupCollapsed('[NAME GUARD] Image path');
+      console.log({ legacyName: legacy.productName, finalItemName: itemName });
+      console.groupEnd();
 
       setAnalysisResult(analysisResult);
       setCurrentState('report');
