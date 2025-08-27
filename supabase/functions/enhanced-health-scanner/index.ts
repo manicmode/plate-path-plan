@@ -905,7 +905,6 @@ async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal
           imageContext: {
             languageHints: ['en', 'en-US'] // Add language hints for better OCR
           }
-          ]
         }]
       })
     });
