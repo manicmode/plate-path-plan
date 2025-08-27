@@ -3,6 +3,7 @@ import DebugImageProbe from './DebugImageProbe';
 import { NudgesAudit } from './debug/NudgesAudit';
 import { NudgesQA } from './debug/NudgesQA';
 import HeroSubtextQA from './debug/HeroSubtextQA';
+import HeroSubtextMetrics from './debug/HeroSubtextMetrics';
 
 export default function DebugRoutes() {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ export default function DebugRoutes() {
 
   if (currentPath === '/debug/hero-subtext') {
     return <HeroSubtextQA />;
+  }
+
+  if (currentPath === '/debug/hero-subtext-metrics') {
+    return <HeroSubtextMetrics />;
   }
   
   // If on /debug, show menu

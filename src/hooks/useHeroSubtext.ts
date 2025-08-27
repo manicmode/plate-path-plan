@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { flag } from '@/lib/flags';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { isUserInHeroSubtextRollout } from '@/lib/flags';
+import { logSubtextEvent, generateRunId } from '@/lib/telemetry/heroSubtext';
 
 interface HeroMessage {
   id: string;
@@ -139,6 +142,10 @@ export const useHeroSubtext = () => {
   const { user } = useAuth();
   const { getTodaysProgress, currentDay } = useNutrition();
   const [heroMessage, setHeroMessage] = useState(DEFAULT_MESSAGE);
+  const [currentRunId, setCurrentRunId] = useState<string>(() => generateRunId());
+  
+  // Feature flags
+  const { enabled: telemetryEnabled } = useFeatureFlag('subtext_telemetry_enabled');
 
   const buildContext = (): MessageContext => {
     const now = new Date();
@@ -283,10 +290,25 @@ export const useHeroSubtext = () => {
     return text;
   };
 
-  const generateHeroMessage = (): string => {
+  const generateHeroMessage = async (): Promise<{ text: string; id: string; category: string; reason: string }> => {
     // Check feature flag
     if (!flag('hero_subtext_dynamic')) {
-      return DEFAULT_MESSAGE;
+      return {
+        text: DEFAULT_MESSAGE,
+        id: 'default',
+        category: 'default',
+        reason: 'Feature flag disabled'
+      };
+    }
+
+    // Check rollout eligibility
+    if (user?.id && !isUserInHeroSubtextRollout(user.id)) {
+      return {
+        text: DEFAULT_MESSAGE,
+        id: 'default',
+        category: 'default',
+        reason: 'User not in rollout'
+      };
     }
 
     const context = buildContext();
@@ -314,17 +336,70 @@ export const useHeroSubtext = () => {
       if (finalText.length <= 72) {
         markMessageUsed(matchedMessage.id);
         console.log(`[HeroSubtext] id=${matchedMessage.id}`);
-        return finalText;
+        
+        return {
+          text: finalText,
+          id: matchedMessage.id,
+          category: matchedMessage.priority,
+          reason: `Matched ${matchedMessage.priority} priority`
+        };
       }
     }
 
-    return DEFAULT_MESSAGE;
+    return {
+      text: DEFAULT_MESSAGE,
+      id: 'default',
+      category: 'default',
+      reason: 'No matching messages or length exceeded'
+    };
   };
 
   useEffect(() => {
-    const message = generateHeroMessage();
-    setHeroMessage(message);
-  }, [user, currentDay]);
+    let active = true;
+    
+    const updateMessage = async () => {
+      // Generate new run ID for each render cycle
+      const runId = generateRunId();
+      setCurrentRunId(runId);
+      
+      const result = await generateHeroMessage();
+      
+      if (!active) return;
+      
+      setHeroMessage(result.text);
+      
+      // Log telemetry if enabled and user is authenticated
+      if (telemetryEnabled && user?.id && result.id !== 'default') {
+        await logSubtextEvent({
+          pickedId: result.id,
+          category: result.category,
+          event: 'shown',
+          reason: result.reason,
+          runId,
+          userId: user.id
+        });
+      }
+    };
+    
+    updateMessage();
+    
+    return () => {
+      active = false;
+    };
+  }, [user, currentDay, telemetryEnabled]);
 
-  return heroMessage;
+  // Function to log CTA clicks (can be used by components that implement CTAs)
+  const logCtaClick = async (pickedId: string, category: string) => {
+    if (telemetryEnabled && user?.id) {
+      await logSubtextEvent({
+        pickedId,
+        category,
+        event: 'cta',
+        runId: currentRunId,
+        userId: user.id
+      });
+    }
+  };
+
+  return { heroMessage, logCtaClick };
 };

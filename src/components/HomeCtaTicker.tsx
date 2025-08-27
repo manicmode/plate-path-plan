@@ -259,7 +259,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta, lastCoachCtaEnqueueId } = useNutrition();
   const isMobile = useIsMobile();
   const { playReminderChime, playAIThought } = useSound();
-  const heroMessage = useHeroSubtext();
+  const { heroMessage } = useHeroSubtext();
   const progress = getTodaysProgress();
 
   const lastEnqueueIdRef = useRef<number>(0);

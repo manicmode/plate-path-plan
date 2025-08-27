@@ -10,7 +10,7 @@ import { flag } from '@/lib/flags';
 export default function DebugHeroSubtext() {
   const { user } = useAuth();
   const { currentDay } = useNutrition();
-  const heroMessage = useHeroSubtext();
+  const { heroMessage } = useHeroSubtext();
   const [last7Messages, setLast7Messages] = useState<string[]>([]);
   const [currentContext, setCurrentContext] = useState<any>(null);
 
