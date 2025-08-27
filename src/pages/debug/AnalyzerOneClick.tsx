@@ -386,6 +386,7 @@ export default function AnalyzerOneClick() {
       case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'running': return <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />;
       case 'error': case 'timeout': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'cancelled': return <XCircle className="h-4 w-4 text-gray-500" />;
       case 'skipped': return <AlertCircle className="h-4 w-4 text-yellow-500" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
@@ -397,6 +398,7 @@ export default function AnalyzerOneClick() {
       case 'branded_candidates': return 'secondary';
       case 'none': return 'outline';
       case 'error': return 'destructive';
+      case 'cancelled': return 'secondary';
       case 'skipped': return 'secondary';
       default: return 'outline';
     }
@@ -418,6 +420,8 @@ export default function AnalyzerOneClick() {
     setProviderResults([]);
     setHasEarlyExit(false);
     console.log('[ANALYZER] reset');
+    setDecisionTime(null);
+    setEarlyExitProvider(null);
   };
 
   const copyStepsToClipboard = (steps: any[]) => {

@@ -110,6 +110,45 @@ function normalizeBrand(brand: string): string {
   return aliases[normalized] || normalized;
 }
 
+// OCR token joining for multi-word brands
+function joinBrandTokens(tokens: string[]): string[] {
+  if (!tokens || tokens.length < 2) return tokens;
+  
+  const result: string[] = [];
+  let i = 0;
+  
+  while (i < tokens.length) {
+    let bestMatch = tokens[i];
+    let bestLength = 1;
+    
+    // Try to match multi-token brands (up to 4 tokens)
+    for (let len = Math.min(4, tokens.length - i); len >= 2; len--) {
+      const candidate = tokens.slice(i, i + len).join(' ');
+      const normalized = normalizeBrand(candidate);
+      
+      // Check if this forms a known brand
+      if (isKnownBrand(normalized)) {
+        bestMatch = normalized;
+        bestLength = len;
+        break;
+      }
+    }
+    
+    result.push(bestMatch);
+    i += bestLength;
+  }
+  
+  return result;
+}
+
+function isKnownBrand(normalized: string): boolean {
+  const knownBrands = [
+    "trader joe's", "coca-cola", "pepsi", "mcdonald's", "kellogg's",
+    "general mills", "kraft", "nestle", "nabisco", "oreo", "cheerios"
+  ];
+  return knownBrands.includes(normalized);
+}
+
 // Read-only lexicons (immutable)
 const STOP_WORDS = Object.freeze(new Set([
   'original', 'natural', 'flavored', 'sweet', 'crunchy', 'family', 'size', 
@@ -402,13 +441,22 @@ function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
 }
 
 /**
- * Process vision providers with timeout and logging
+ * Process vision providers with timeout, abort signal support, and logging
  */
 async function processVisionProviders(
   imageBase64: string, 
   provider: string, 
-  steps: Array<{stage: string; ok: boolean; meta?: any}>
-): Promise<{text: string}> {
+  steps: Array<{stage: string; ok: boolean; meta?: any}>,
+  abortSignal?: AbortSignal
+): Promise<{
+  text: string; 
+  cleanedTokens: string[]; 
+  brandTokens: string[]; 
+  hasCandy: boolean;
+  fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>;
+  ocrConfidence: number;
+  logoBrands?: string[];
+}> {
   
   const withTimeout = <T>(promise: Promise<T>, ms = 8000): Promise<T> =>
     Promise.race([
@@ -418,6 +466,16 @@ async function processVisionProviders(
       )
     ]);
   
+  let aggregated = {
+    text: '',
+    cleanedTokens: [] as string[],
+    brandTokens: [] as string[], 
+    hasCandy: false,
+    fuzzyBrands: [] as Array<{ token: string; brand: string; confidence: number }>,
+    ocrConfidence: 0,
+    logoBrands: [] as string[]
+  };
+  
   // Google Vision branch
   if (provider === 'google' || provider === 'hybrid') {
     const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
@@ -426,14 +484,25 @@ async function processVisionProviders(
     } else {
       try {
         console.log('[VISION] start: google');
-        const result = await withTimeout(extractAndCleanOCR(imageBase64));
+        const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal));
+        
+        // Check if cancelled
+        if (abortSignal?.aborted) {
+          steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
+          return aggregated;
+        }
+        
+        // Check if parsing succeeded and join brand tokens
+        const google_ok = result.text.length > 0 && result.ocrConfidence > 0;
+        const joinedTokens = joinBrandTokens(result.cleanedTokens);
         
         steps.push({ 
           stage: 'ocr', 
           ok: result.text.length > 0, 
           meta: { 
             chars: result.text.length, 
-            topTokens: result.cleanedTokens.slice(0, 10) 
+            topTokens: result.cleanedTokens.slice(0, 10),
+            joinedTokens: joinedTokens.length
           }
         });
         
@@ -447,12 +516,26 @@ async function processVisionProviders(
         });
         
         console.log('[VISION] end: google', { 
-          ok: result.text.length > 0 || result.brandTokens.length > 0 
+          ok: google_ok 
         });
         
-        if (result.text) return { text: result.text };
-      } catch (error) {
-        if (error.message === 'TIMEOUT') {
+        if (google_ok) {
+          aggregated = {
+            text: result.text,
+            cleanedTokens: joinedTokens,
+            brandTokens: result.brandTokens,
+            hasCandy: result.hasCandy,
+            fuzzyBrands: result.fuzzyBrands,
+            ocrConfidence: result.ocrConfidence,
+            logoBrands: result.logoBrands || []
+          };
+          return aggregated;
+        }
+        
+      } catch (error: any) {
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
+        } else if (error.message === 'TIMEOUT') {
           steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: 8000 }});
         } else {
           steps.push({ stage: 'google', ok: false, meta: { error: error.message }});
@@ -468,8 +551,14 @@ async function processVisionProviders(
       steps.push({ stage: 'openai', ok: false, meta: { code: 'MISSING_KEY' }});
     } else {
       try {
-        console.log('[VISION] start: openai', { model: 'gpt-4o' });
-        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey));
+        console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
+        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal));
+        
+        // Check if cancelled
+        if (abortSignal?.aborted) {
+          steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
+          return aggregated;
+        }
         
         // Check if parsing succeeded
         const openai_ok = result.text.length > 0 && result.ocrConfidence > 0;
@@ -478,7 +567,7 @@ async function processVisionProviders(
           stage: 'openai', 
           ok: openai_ok, 
           meta: { 
-            model: 'gpt-4o', 
+            model: 'gpt-4o-mini', 
             brand: result.brandTokens[0] || '', 
             confidence: result.ocrConfidence 
           }
@@ -499,16 +588,34 @@ async function processVisionProviders(
           });
         }
         
-        console.log('[VISION] end: openai', { ok: openai_ok, model: 'gpt-4o' });
+        console.log('[VISION] end: openai', { ok: openai_ok, model: 'gpt-4o-mini' });
         
-        if (result.text) return { text: result.text };
-      } catch (error) {
-        if (error.message === 'TIMEOUT') {
+        if (openai_ok) {
+          aggregated = {
+            text: result.text,
+            cleanedTokens: result.cleanedTokens,
+            brandTokens: result.brandTokens,
+            hasCandy: result.hasCandy,
+            fuzzyBrands: result.fuzzyBrands,
+            ocrConfidence: result.ocrConfidence,
+            logoBrands: []
+          };
+          return aggregated;
+        }
+        
+      } catch (error: any) {
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
+        } else if (error.message === 'TIMEOUT') {
           steps.push({ stage: 'timeout', ok: false, meta: { provider: 'openai', ms: 8000 }});
         } else {
           steps.push({ stage: 'openai', ok: false, meta: { error: error.message }});
         }
       }
+    }
+  }
+  
+  return aggregated;
     }
   }
   
@@ -606,10 +713,12 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
+    // Extract and normalize brand from response
     if (content) {
       try {
         const parsed = JSON.parse(content);
-        const brand = parsed.brand || '';
+        const rawBrand = parsed.brand || '';
+        const brand = normalizeBrand(rawBrand); // Apply brand normalization
         const product = parsed.product || '';
         const confidence = parsed.confidence || 0;
         
@@ -652,9 +761,9 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string, abortSigna
 }
 
 /**
- * Extract and clean OCR text (Google Vision) with Logo Detection
+ * Extract and clean OCR text (Google Vision) with Logo Detection and language hints
  */
-async function extractAndCleanOCR(imageBase64: string): Promise<{ 
+async function extractAndCleanOCR(imageBase64: string, abortSignal?: AbortSignal): Promise<{ 
   text: string; 
   cleanedTokens: string[]; 
   brandTokens: string[]; 
@@ -669,16 +778,26 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{
       throw new Error('Google Vision API key not configured');
     }
 
-    // CRITICAL HOTFIX: Single annotate call with TEXT_DETECTION + LOGO_DETECTION
+    // Check if aborted
+    if (abortSignal?.aborted) {
+      throw new Error('Request aborted');
+    }
+
+    // CRITICAL HOTFIX: Single annotate call with TEXT_DETECTION + LOGO_DETECTION + language hints
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: abortSignal,
       body: JSON.stringify({
         requests: [{
           image: { content: imageBase64 }, // Pass raw base64, no double encoding
           features: [
             { type: 'TEXT_DETECTION', maxResults: 1 },
             { type: 'LOGO_DETECTION', maxResults: 5 }
+          ],
+          imageContext: {
+            languageHints: ['en', 'en-US'] // Add language hints for better OCR
+          }
           ]
         }]
       })
@@ -981,7 +1100,7 @@ async function processHealthScanWithCandidates(
 
   // A) Enhanced evidence fusion 
   const visionResult = await processVisionProviders(imageBase64, provider, steps);
-  const ocrResult = await extractAndCleanOCR(imageBase64);
+  const ocrResult = visionResult; // processVisionProviders now returns full OCR result
   
   // Extract OCR lines for better phrase detection
   const ocrLines = ocrResult.text.split('\n').filter(line => line.trim().length > 0);
