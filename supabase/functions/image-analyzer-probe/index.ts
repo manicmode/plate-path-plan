@@ -210,12 +210,30 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: 'gpt-4o',
+          response_format: { 
+            type: "json_schema", 
+            json_schema: { 
+              name: "brand_schema", 
+              schema: { 
+                type: "object", 
+                properties: { 
+                  brand: { type: "string" }, 
+                  product: { type: "string" }, 
+                  confidence: { type: "number" },
+                  words: { type: "array", items: { type: "string" } }
+                }, 
+                required: ["brand", "confidence"], 
+                additionalProperties: false 
+              }, 
+              strict: true 
+            } 
+          },
           messages: [{
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'What brand and product is this? Return JSON: {"brand": "BrandName", "product": "ProductName", "confidence": 0.85, "words": ["word1", "word2"]}'
+                text: 'Return only JSON.'
               },
               {
                 type: 'image_url',

@@ -506,13 +506,29 @@ async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        response_format: { type: "json_object" },
+        response_format: { 
+          type: "json_schema", 
+          json_schema: { 
+            name: "brand_schema", 
+            schema: { 
+              type: "object", 
+              properties: { 
+                brand: { type: "string" }, 
+                product_line: { type: "string" }, 
+                confidence: { type: "number" } 
+              }, 
+              required: ["brand", "confidence"], 
+              additionalProperties: false 
+            }, 
+            strict: true 
+          } 
+        },
         messages: [{
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Return only JSON with fields: { "brand": string, "product_line": string, "confidence": number }. Extract the main brand name, product line/name, and your confidence (0-1) from this product image.'
+              text: 'Return only JSON.'
             },
             {
               type: 'image_url', 
