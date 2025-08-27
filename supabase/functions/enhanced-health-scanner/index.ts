@@ -1,10 +1,57 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Initialize Supabase client for tracing (service role)
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+// Tracing interface
+interface AnalyzerTrace {
+  run_id: string;
+  provider: string;
+  phase: 'request' | 'response' | 'timeout' | 'abort';
+  status: 'started' | 'completed' | 'error' | 'timeout' | 'aborted';
+  status_text?: string;
+  error_code?: string;
+  body_excerpt?: string;
+  duration_ms?: number;
+  request_id?: string;
+}
+
+// Tracing logger function
+async function logAnalyzerTrace(trace: AnalyzerTrace, enableTracing: boolean) {
+  if (!enableTracing) return;
+  
+  try {
+    const { error } = await supabaseAdmin
+      .from('analyzer_failures')
+      .insert({
+        run_id: trace.run_id,
+        provider: trace.provider,
+        phase: trace.phase,
+        status: trace.status,
+        status_text: trace.status_text,
+        error_code: trace.error_code,
+        body_excerpt: trace.body_excerpt ? trace.body_excerpt.substring(0, 600) : null,
+        duration_ms: trace.duration_ms,
+        request_id: trace.request_id
+      });
+    
+    if (error) {
+      console.error('Failed to log analyzer trace:', error.message);
+    }
+  } catch (err) {
+    console.error('Trace logging error:', err.message);
+  }
+}
 
 // Legacy response format that UI expects (keep UI unchanged)
 interface BackendResponse {
@@ -551,7 +598,35 @@ async function processVisionProviders(
     if (googleApiKey) {
       try {
         console.log('[VISION] start: google');
+        
+        // Log trace for Google request start
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: 'request',
+          status: 'started',
+          request_id: runId
+        }, enableTracing);
+        
+        const requestStartTime = Date.now();
         const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal), GOOGLE_TIMEOUT);
+        const duration = Date.now() - requestStartTime;
+        
+        // Log trace for Google request completion
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: 'response',
+          status: 'completed',
+          status_text: '200',
+          body_excerpt: JSON.stringify({
+            textLength: result.text?.length || 0,
+            tokenCount: result.cleanedTokens?.length || 0,
+            brandGuess: result.brandTokens?.[0] || 'none'
+          }),
+          duration_ms: duration,
+          request_id: runId
+        }, enableTracing);
         
         if (abortSignal?.aborted) {
           steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
@@ -620,6 +695,28 @@ async function processVisionProviders(
           };
         }
       } catch (error: any) {
+        const duration = Date.now() - (Date.now() - GOOGLE_TIMEOUT); // Approximate duration
+        
+        // Log trace for Google error/timeout
+        let traceStatus: 'timeout' | 'aborted' | 'error' = 'error';
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          traceStatus = 'aborted';
+        } else if (error.message === 'TIMEOUT') {
+          traceStatus = 'timeout';
+        }
+        
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: traceStatus as any,
+          status: traceStatus,
+          status_text: error.message,
+          error_code: error.name || 'unknown',
+          body_excerpt: error.message,
+          duration_ms: traceStatus === 'timeout' ? GOOGLE_TIMEOUT : duration,
+          request_id: runId
+        }, enableTracing);
+        
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
@@ -637,7 +734,36 @@ async function processVisionProviders(
     if (openaiApiKey) {
       try {
         console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
+        
+        // Log trace for OpenAI request start
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: 'request',
+          status: 'started',
+          request_id: runId
+        }, enableTracing);
+        
+        const requestStartTime = Date.now();
         const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), OPENAI_TIMEOUT);
+        const duration = Date.now() - requestStartTime;
+        
+        // Log trace for OpenAI request completion  
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: 'response',
+          status: 'completed',
+          status_text: '200',
+          body_excerpt: JSON.stringify({
+            textLength: result.text?.length || 0,
+            confidence: result.ocrConfidence || 0,
+            brandGuess: result.brandTokens?.[0] || 'none',
+            parseError: result.parseError || false
+          }),
+          duration_ms: duration,
+          request_id: runId
+        }, enableTracing);
         
         if (abortSignal?.aborted) {
           steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
@@ -669,6 +795,28 @@ async function processVisionProviders(
           };
         }
       } catch (error: any) {
+        const duration = Date.now() - (Date.now() - OPENAI_TIMEOUT); // Approximate duration
+        
+        // Log trace for OpenAI error/timeout
+        let traceStatus: 'timeout' | 'aborted' | 'error' = 'error';
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          traceStatus = 'aborted';
+        } else if (error.message === 'TIMEOUT') {
+          traceStatus = 'timeout';
+        }
+        
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: traceStatus as any,
+          status: traceStatus,
+          status_text: error.message,
+          error_code: error.name || 'unknown',
+          body_excerpt: error.message,
+          duration_ms: traceStatus === 'timeout' ? OPENAI_TIMEOUT : duration,
+          request_id: runId
+        }, enableTracing);
+        
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
@@ -695,7 +843,35 @@ async function processVisionProviders(
     } else {
       try {
         console.log('[VISION] start: google');
+        
+        // Log trace for Google request start
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: 'request',
+          status: 'started',
+          request_id: runId
+        }, enableTracing);
+        
+        const requestStartTime = Date.now();
         const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal), GOOGLE_TIMEOUT);
+        const duration = Date.now() - requestStartTime;
+        
+        // Log trace for Google request completion
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: 'response',
+          status: 'completed',
+          status_text: '200',
+          body_excerpt: JSON.stringify({
+            textLength: result.text?.length || 0,
+            tokenCount: result.cleanedTokens?.length || 0,
+            brandGuess: result.brandTokens?.[0] || 'none'
+          }),
+          duration_ms: duration,
+          request_id: runId
+        }, enableTracing);
         
         // Check if cancelled
         if (abortSignal?.aborted) {
@@ -801,6 +977,28 @@ async function processVisionProviders(
         }
         
       } catch (error: any) {
+        const duration = Date.now() - (Date.now() - GOOGLE_TIMEOUT); // Approximate duration
+        
+        // Log trace for Google error/timeout
+        let traceStatus: 'timeout' | 'aborted' | 'error' = 'error';
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          traceStatus = 'aborted';
+        } else if (error.message === 'TIMEOUT') {
+          traceStatus = 'timeout';
+        }
+        
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'google',
+          phase: traceStatus as any,
+          status: traceStatus,
+          status_text: error.message,
+          error_code: error.name || 'unknown',
+          body_excerpt: error.message,
+          duration_ms: traceStatus === 'timeout' ? GOOGLE_TIMEOUT : duration,
+          request_id: runId
+        }, enableTracing);
+        
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
@@ -820,7 +1018,36 @@ async function processVisionProviders(
     } else {
       try {
         console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
+        
+        // Log trace for OpenAI request start
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: 'request',
+          status: 'started',
+          request_id: runId
+        }, enableTracing);
+        
+        const requestStartTime = Date.now();
         const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), OPENAI_TIMEOUT);
+        const duration = Date.now() - requestStartTime;
+        
+        // Log trace for OpenAI request completion  
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: 'response',
+          status: 'completed',
+          status_text: '200',
+          body_excerpt: JSON.stringify({
+            textLength: result.text?.length || 0,
+            confidence: result.ocrConfidence || 0,
+            brandGuess: result.brandTokens?.[0] || 'none',
+            parseError: result.parseError || false
+          }),
+          duration_ms: duration,
+          request_id: runId
+        }, enableTracing);
         
         // Check if cancelled
         if (abortSignal?.aborted) {
@@ -896,6 +1123,28 @@ async function processVisionProviders(
         }
         
       } catch (error: any) {
+        const duration = Date.now() - (Date.now() - OPENAI_TIMEOUT); // Approximate duration
+        
+        // Log trace for OpenAI error/timeout
+        let traceStatus: 'timeout' | 'aborted' | 'error' = 'error';
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          traceStatus = 'aborted';
+        } else if (error.message === 'TIMEOUT') {
+          traceStatus = 'timeout';
+        }
+        
+        await logAnalyzerTrace({
+          run_id: runId,
+          provider: 'openai',
+          phase: traceStatus as any,
+          status: traceStatus,
+          status_text: error.message,
+          error_code: error.name || 'unknown',
+          body_excerpt: error.message,
+          duration_ms: traceStatus === 'timeout' ? OPENAI_TIMEOUT : duration,
+          request_id: runId
+        }, enableTracing);
+        
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
@@ -1523,7 +1772,7 @@ async function processHealthScanWithCandidates(
 
   // A) Enhanced evidence fusion 
   const isDebugMode = body.debug === true;
-  const visionResult = await processVisionProviders(imageBase64, provider, steps, undefined, isDebugMode);
+  const visionResult = await processVisionProviders(imageBase64, provider, steps, undefined, isDebugMode, enableTracing, runId);
   const ocrResult = visionResult; // processVisionProviders now returns full OCR result
   
   // Extract OCR lines for better phrase detection
@@ -2034,6 +2283,14 @@ serve(async (req) => {
   const t0 = Date.now();
   const steps: Array<{stage: string, ok: boolean, meta?: any}> = [];
   
+  // Check for tracing flag
+  const url = new URL(req.url);
+  const enableTracing = url.searchParams.get('trace') === '1';
+  
+  if (enableTracing) {
+    console.log(`🔍 Tracing enabled for request [${reqId}]`);
+  }
+  
   // Timeout helper
   const withTimeout = <T>(promise: Promise<T>, ms = 8000): Promise<T> =>
     Promise.race([
@@ -2193,7 +2450,7 @@ serve(async (req) => {
     // Step 2: Check if image has barcode first (provider-controlled OCR)
     const isDebugMode = body.debug === true;
     console.debug('[ANALYZE IMG]', { bytes: (body.imageBase64 || '').length, mode: isDebugMode ? 'DEBUG' : 'PROD' });
-    const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps, undefined, isDebugMode);
+    const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps, undefined, isDebugMode, enableTracing, reqId);
     const barcodeInImage = extractBarcodeFromOCR(ocrText);
     
     if (barcodeInImage) {
@@ -2224,7 +2481,7 @@ serve(async (req) => {
     }
 
     // Step 3: Process image for candidates or single product with provider control
-    const result = await processHealthScanWithCandidates(body.imageBase64, reqId, provider, steps, isDebugMode);
+    const result = await processHealthScanWithCandidates(body.imageBase64, reqId, provider, steps, isDebugMode, enableTracing, reqId);
     
     // Maintain compatibility while preserving new kind system
     const enhancedResult = {

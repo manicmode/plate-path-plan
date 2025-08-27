@@ -65,6 +65,8 @@ export default function AnalyzerOneClick() {
   const [hasEarlyExit, setHasEarlyExit] = useState(false);
   const [decisionTime, setDecisionTime] = useState<number | null>(null);
   const [earlyExitProvider, setEarlyExitProvider] = useState<string | null>(null);
+  const [traceEnabled, setTraceEnabled] = useState(false);
+  const [lastRunId, setLastRunId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -81,8 +83,9 @@ export default function AnalyzerOneClick() {
     
     const runId = crypto.randomUUID().substring(0, 8);
     const runStartTime = performance.now();
+    setLastRunId(runId);
     
-    console.log('[ANALYZER] run_start', { fileName: file.name, applyHotThresholds, runId });
+    console.log('[ANALYZER] run_start', { fileName: file.name, applyHotThresholds, runId, traceEnabled });
 
     // Initialize progress steps
     const steps: ProgressStep[] = [
@@ -462,6 +465,55 @@ export default function AnalyzerOneClick() {
     navigate(`/search?${searchParams.toString()}`);
   };
 
+  const copyTraceToClipboard = async () => {
+    if (!lastRunId) {
+      toast({
+        title: "No trace data",
+        description: "Run an analysis first to generate trace data",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('analyzer_failures')
+        .select('*')
+        .eq('run_id', lastRunId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const traceData = {
+        run_id: lastRunId,
+        trace_count: data?.length || 0,
+        traces: (data || []).map(trace => ({
+          provider: trace.provider,
+          phase: trace.phase,
+          status: trace.status,
+          duration_ms: trace.duration_ms,
+          status_text: trace.status_text,
+          error_code: trace.error_code,
+          body_excerpt: trace.body_excerpt?.substring(0, 100), // Redact to first 100 chars
+          created_at: trace.created_at
+        }))
+      };
+
+      await navigator.clipboard.writeText(JSON.stringify(traceData, null, 2));
+      
+      toast({
+        title: "Trace copied!",
+        description: `Copied ${traceData.trace_count} trace events to clipboard`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to copy trace",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleScanBarcode = () => {
     // Navigate to camera with barcode mode
     navigate('/camera?mode=barcode');
@@ -500,16 +552,37 @@ export default function AnalyzerOneClick() {
           <CardDescription>Upload an image or run with sample data</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="hotThresholds"
-              checked={applyHotThresholds}
-              onCheckedChange={(checked) => setApplyHotThresholds(checked === true)}
-            />
-            <label htmlFor="hotThresholds" className="text-sm font-medium cursor-pointer">
-              Apply Hot Thresholds (OpenAI ≥0.35, OCR fuzzy ≥0.45)
-            </label>
-          </div>
+            <div className="space-y-3">
+              <label className="flex items-center space-x-2">
+                <Checkbox 
+                  checked={applyHotThresholds} 
+                  onCheckedChange={setApplyHotThresholds}
+                />
+                <span>Apply Hot Thresholds (brand confidence boost)</span>
+              </label>
+              
+              <label className="flex items-center space-x-2">
+                <Checkbox 
+                  checked={traceEnabled} 
+                  onCheckedChange={setTraceEnabled}
+                />
+                <span>Trace this run (debug-only server logging)</span>
+              </label>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={resetResults} variant="outline" size="sm">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
+              
+              {lastRunId && (
+                <Button onClick={copyTraceToClipboard} variant="outline" size="sm">
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Trace
+                </Button>
+              )}
+            </div>
 
           <div className="flex flex-wrap gap-3">
             <div>

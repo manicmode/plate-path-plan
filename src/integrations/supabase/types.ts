@@ -890,6 +890,48 @@ export type Database = {
           },
         ]
       }
+      analyzer_failures: {
+        Row: {
+          body_excerpt: string | null
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          id: string
+          phase: string
+          provider: string
+          request_id: string | null
+          run_id: string
+          status: string
+          status_text: string | null
+        }
+        Insert: {
+          body_excerpt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          phase: string
+          provider: string
+          request_id?: string | null
+          run_id: string
+          status: string
+          status_text?: string | null
+        }
+        Update: {
+          body_excerpt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          phase?: string
+          provider?: string
+          request_id?: string | null
+          run_id?: string
+          status?: string
+          status_text?: string | null
+        }
+        Relationships: []
+      }
       app_notifications: {
         Row: {
           body: string | null

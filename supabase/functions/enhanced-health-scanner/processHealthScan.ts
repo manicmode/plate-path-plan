@@ -15,7 +15,7 @@ async function processHealthScanWithCandidates(
   };
 
   // Extract OCR and analyze with provider control
-  const ocrResult = await processVisionProviders(imageBase64, provider, steps);
+  const ocrResult = await processVisionProviders(imageBase64, provider, steps, undefined, false, false, '');
   ctx.ocrText = ocrResult.text;
   ctx.tokens = ocrResult.cleanedTokens;
   ctx.brandTokens = ocrResult.brandTokens;
