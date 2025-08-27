@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSound } from '@/hooks/useSound';
+import { useHeroSubtext } from '@/hooks/useHeroSubtext';
 import { supabase } from '@/integrations/supabase/client';
 import { SoundGate } from '@/lib/soundGate';
 
@@ -258,6 +259,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta, lastCoachCtaEnqueueId } = useNutrition();
   const isMobile = useIsMobile();
   const { playReminderChime, playAIThought } = useSound();
+  const heroMessage = useHeroSubtext();
   const progress = getTodaysProgress();
 
   const lastEnqueueIdRef = useRef<number>(0);
@@ -644,8 +646,6 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     }
   }, []);
 
-  const defaultMessage = "Your intelligent wellness companion is ready";
-
   if (showCta && currentCtaMessage) {
     return (
       <div className={`overflow-hidden whitespace-nowrap ${className}`}>
@@ -659,7 +659,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
 
   return (
     <p className={`text-gray-600 dark:text-gray-300 font-medium ${className}`}>
-      {defaultMessage}
+      {heroMessage}
     </p>
   );
 };

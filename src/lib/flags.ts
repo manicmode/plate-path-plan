@@ -71,3 +71,6 @@ export function isUserInRollout(userId: string): boolean {
   const userHash = simpleHash(userId);
   return (userHash % 100) < NUDGE_ROLLOUT_PERCENT;
 }
+
+// Hero subtext content engine flag
+export const HERO_SUBTEXT_DYNAMIC: boolean = flag('hero_subtext_dynamic');
