@@ -1,6 +1,5 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
 import { X, Brain, Calendar, Sparkles } from 'lucide-react'
 import { useMeditationNudgeDisplay } from '@/hooks/useMeditationNudgeDisplay'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -41,13 +40,13 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const getNudgeIcon = () => {
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return <Brain className="h-6 w-6 text-white/90" />
+        return <Brain className="h-5 w-5" />
       case 'smart_nudge':
-        return <Sparkles className="h-6 w-6 text-white/90" />
+        return <Sparkles className="h-5 w-5" />
       case 'daily_reminder':
-        return <Calendar className="h-6 w-6 text-white/90" />
+        return <Calendar className="h-5 w-5" />
       default:
-        return <Brain className="h-6 w-6 text-white/90" />
+        return <Brain className="h-5 w-5" />
     }
   }
 
@@ -68,30 +67,26 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
     <div className={`fixed top-4 left-4 right-4 z-50 animate-slide-down ${isMobile ? 'max-w-full' : 'max-w-lg mx-auto'}`}>
       <NudgeCard
         title={getTitle()}
-        subtitle={activeNudge.nudge_message}
-        accent="breath"
         icon={getNudgeIcon()}
-        ctaLabel="🌙 Embrace Stillness"
-        onCta={handleAccept}
-        footer={
-          <Button
+        tone="calm"
+        cta={{
+          label: "🌙 Embrace Stillness",
+          onClick: handleAccept
+        }}
+        onDismiss={handleDismiss}
+      >
+        <p>{activeNudge.nudge_message}</p>
+        
+        {/* Secondary action */}
+        <div className="mt-3">
+          <button
             onClick={handleDismiss}
-            variant="outline"
-            size="sm"
-            className="px-4 text-white/70 hover:bg-white/10 border border-white/20"
+            className="rounded-xl px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-900/10 dark:hover:bg-white/10 transition-colors"
           >
             Peacefully defer
-          </Button>
-        }
-      />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleDismiss}
-        className="absolute top-2 right-2 h-6 w-6 text-white/60 hover:text-white/90 hover:bg-white/10"
-      >
-        <X className="h-4 w-4" />
-      </Button>
+          </button>
+        </div>
+      </NudgeCard>
     </div>
   )
 }

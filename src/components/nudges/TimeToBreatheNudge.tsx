@@ -1,66 +1,38 @@
-import { Button } from "@/components/ui/button"
-import { Heart, Brain, Calendar, Wind } from "lucide-react"
+import { Wind, Heart } from "lucide-react"
 import { useBreathingNudgeDisplay } from "@/hooks/useBreathingNudgeDisplay"
 import { useNavigate } from "react-router-dom"
 import { useNudgeTracking } from "@/hooks/useNudgeTracking"
 import { NudgeCard } from "@/components/nudges/NudgeCard"
 
-interface BreathingNudgeBannerProps {
+interface TimeToBreatheNudgeProps {
   onAccept?: () => void
   onDismiss?: () => void
 }
 
-export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBannerProps) => {
+export const TimeToBreatheNudge = ({ onAccept, onDismiss }: TimeToBreatheNudgeProps) => {
   const { activeNudge, acceptNudge, dismissNudge } = useBreathingNudgeDisplay()
   const navigate = useNavigate()
-  // 🎮 Coach Gamification System
   const { trackNudgeAction } = useNudgeTracking()
 
   if (!activeNudge) return null
 
   const handleAccept = async () => {
     await acceptNudge(activeNudge.id)
-    // 🎮 Coach Gamification System - Track nudge acceptance
     await trackNudgeAction(activeNudge.nudge_type, 'accept')
     onAccept?.()
-    // Navigate to breathing tab
     navigate('/recovery/breathing')
   }
 
   const handleDismiss = async () => {
     await dismissNudge(activeNudge.id)
-    // 🎮 Coach Gamification System - Track nudge dismissal  
     await trackNudgeAction(activeNudge.nudge_type, 'dismiss')
     onDismiss?.()
-    // Don't navigate anywhere - just dismiss the nudge
-  }
-
-  const getNudgeIcon = () => {
-    switch (activeNudge.nudge_type) {
-      case 'ai_coach':
-        return <Brain className="h-5 w-5" />
-      case 'daily_reminder':
-        return <Calendar className="h-5 w-5" />
-      default:
-        return <Wind className="h-5 w-5" />
-    }
-  }
-
-  const getTitle = () => {
-    switch (activeNudge.nudge_type) {
-      case 'ai_coach':
-        return "AI Coach Suggestion"
-      case 'daily_reminder':
-        return "Daily Breathing Reminder"
-      default:
-        return "Time to Breathe"
-    }
   }
 
   return (
     <NudgeCard
-      title={getTitle()}
-      icon={getNudgeIcon()}
+      title="Time to Breathe"
+      icon={<Wind className="h-5 w-5" />}
       tone="calm"
       cta={{
         label: "Sacred Breath",

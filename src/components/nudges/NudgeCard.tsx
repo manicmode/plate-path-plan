@@ -1,66 +1,68 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Heart } from 'lucide-react';
+import { X } from 'lucide-react';
 
 type NudgeCardProps = {
   title: string;
-  subtitle?: string;
-  ctaLabel?: string;
-  onCta?: () => void;
   icon?: ReactNode;
-  accent?: 'breath' | 'hydrate' | 'move' | 'sleep' | 'generic';
-  variant?: 'glass' | 'solid';
+  children?: ReactNode;
+  cta?: { 
+    label: string; 
+    onClick: () => void; 
+    icon?: ReactNode;
+  };
+  tone?: 'primary' | 'success' | 'calm' | 'warn';
+  onDismiss?: () => void;
   className?: string;
-  footer?: ReactNode;
 };
-
-const accentVars = {
-  breath: { '--nudge-a-from': '#22d3ee80', '--nudge-a-to': '#a78bfa80' }, // cyan → violet
-  hydrate: { '--nudge-a-from': '#60a5fa80', '--nudge-a-to': '#34d39980' }, // blue → emerald
-  move: { '--nudge-a-from': '#f472b680', '--nudge-a-to': '#fb923c80' }, // pink → orange
-  sleep: { '--nudge-a-from': '#818cf880', '--nudge-a-to': '#06b6d480' }, // indigo → cyan
-  generic: { '--nudge-a-from': '#94a3b880', '--nudge-a-to': '#a7f3d080' },
-} as const;
 
 export function NudgeCard({
   title,
-  subtitle,
-  ctaLabel,
-  onCta,
   icon,
-  accent = 'generic',
-  variant = 'glass',
+  children,
+  cta,
+  tone = 'primary',
+  onDismiss,
   className,
-  footer,
 }: NudgeCardProps) {
-  const isGlass = variant === 'glass';
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
       className={cn(
-        "relative rounded-3xl p-4 md:p-5",
-        isGlass 
-          ? "backdrop-blur-xl bg-white/8 dark:bg-white/6 ring-1 ring-white/15 shadow-xl shadow-black/20"
-          : "bg-gradient-to-br from-primary to-primary-foreground shadow-lg",
-        "before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-white/15 before:to-transparent before:pointer-events-none",
-        "after:absolute after:-inset-px after:rounded-3xl after:bg-gradient-to-r after:from-[var(--nudge-a-from)] after:to-[var(--nudge-a-to)] after:opacity-30 after:blur-xl after:-z-10",
-        "hover:scale-[1.01] transition-transform duration-200",
+        // Container - Light mode
+        "relative rounded-2xl p-4 sm:p-5",
+        "bg-white/85 backdrop-blur-xl",
+        "border border-slate-200/80",
+        "shadow-[0_12px_30px_-12px_rgba(2,6,23,0.18)]",
+        "ring-1 ring-slate-900/5",
+        // Container - Dark mode  
+        "dark:bg-slate-900/70 dark:backdrop-blur-xl",
+        "dark:border dark:border-white/10",
+        "dark:shadow-[0_16px_40px_-10px_rgba(0,0,0,0.55)]",
+        "dark:ring-1 dark:ring-white/10",
+        // Accent glow
+        "before:content-[''] before:absolute before:-top-6 before:-left-6 before:h-24 before:w-24",
+        "before:rounded-full before:blur-2xl before:pointer-events-none",
+        "before:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.16),transparent_60%)]",
+        "dark:before:bg-[radial-gradient(circle_at_center,rgba(129,140,248,0.35),transparent_60%)]",
         className
       )}
-      style={accentVars[accent] as React.CSSProperties}
       role="region"
       aria-label={`${title} nudge card`}
     >
       <div className="relative z-10">
-        {/* Header with icon and title */}
-        <div className="flex items-start gap-4 mb-3">
+        {/* Header row: icon chip + title + dismiss */}
+        <div className="flex items-start gap-3 mb-3">
           {icon && (
             <div 
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15 flex-shrink-0"
+              className={cn(
+                "h-9 w-9 shrink-0 rounded-xl flex items-center justify-center",
+                "bg-gradient-to-tr from-indigo-500 to-fuchsia-500 text-white",
+                "shadow-[0_8px_18px_-6px_rgba(99,102,241,0.55)]"
+              )}
               aria-label="Nudge type icon"
             >
               {icon}
@@ -69,45 +71,54 @@ export function NudgeCard({
           
           <div className="flex-1 min-w-0">
             <h3 
-              className="font-semibold text-lg text-white/90 leading-tight"
+              className="font-semibold tracking-tight text-slate-900 dark:text-slate-50 text-lg leading-tight"
               role="heading"
               aria-level={3}
             >
               {title}
             </h3>
-            {subtitle && (
-              <p className="text-white/70 text-sm mt-1 leading-relaxed">
-                {subtitle}
-              </p>
-            )}
           </div>
+
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              className={cn(
+                "h-8 w-8 shrink-0 rounded-lg flex items-center justify-center",
+                "bg-slate-900/5 dark:bg-white/5",
+                "text-slate-600 dark:text-slate-300",
+                "hover:bg-slate-900/10 dark:hover:bg-white/10",
+                "transition-colors"
+              )}
+              aria-label="Dismiss nudge"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
+        {/* Body content */}
+        {children && (
+          <div className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
+            {children}
+          </div>
+        )}
+
         {/* Action buttons */}
-        {(ctaLabel || footer) && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {ctaLabel && onCta && (
-              <button
-                onClick={onCta}
-                className={cn(
-                  "mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
-                  "bg-white/15 hover:bg-white/20 ring-1 ring-white/20 shadow-lg shadow-black/10",
-                  "transition-all duration-200 text-white/90",
-                  "[text-shadow:0_1px_0_rgba(0,0,0,.15)]",
-                  "hover:shadow-2xl hover:shadow-current/25"
-                )}
-                aria-label={`${ctaLabel} action`}
-              >
-                {accent === 'breath' && <Heart className="h-4 w-4" />}
-                {ctaLabel}
-              </button>
-            )}
-            
-            {footer && (
-              <div className="flex-1 sm:flex-none">
-                {footer}
-              </div>
-            )}
+        {cta && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={cta.onClick}
+              className={cn(
+                "flex items-center gap-2 rounded-xl px-4 py-2 min-h-[44px]",
+                "bg-gradient-to-tr from-indigo-500 to-violet-500",
+                "text-white font-medium shadow-[0_10px_24px_-10px_rgba(99,102,241,0.65)]",
+                "hover:opacity-95 active:scale-[0.99] transition-all duration-150"
+              )}
+              aria-label={`${cta.label} action`}
+            >
+              {cta.icon}
+              {cta.label}
+            </button>
           </div>
         )}
       </div>

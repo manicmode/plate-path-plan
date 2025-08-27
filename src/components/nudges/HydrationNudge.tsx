@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button"
 import { Droplets } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { NudgeCard } from "@/components/nudges/NudgeCard"
@@ -20,7 +19,6 @@ export const HydrationNudge = ({
 
   const handleAccept = () => {
     onAccept?.()
-    // Navigate to hydration tracking
     navigate('/?tab=hydration')
   }
 
@@ -31,22 +29,26 @@ export const HydrationNudge = ({
   return (
     <NudgeCard
       title={title}
-      subtitle={message}
-      accent="hydrate"
-      icon={<Droplets className="h-6 w-6 text-white/90" />}
-      ctaLabel="💧 Hydrate Now"
-      onCta={handleAccept}
+      icon={<Droplets className="h-5 w-5" />}
+      tone="success"
+      cta={{
+        label: "💧 Hydrate Now",
+        onClick: handleAccept
+      }}
+      onDismiss={handleDismiss}
       className="mb-6"
-      footer={
-        <Button
+    >
+      <p>{message}</p>
+      
+      {/* Secondary action */}
+      <div className="mt-3">
+        <button
           onClick={handleDismiss}
-          size="sm"
-          variant="ghost"
-          className="flex-1 sm:flex-none text-xs sm:text-sm px-3 text-white/70 hover:bg-white/10 border border-white/20"
+          className="rounded-xl px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-900/10 dark:hover:bg-white/10 transition-colors"
         >
           Later
-        </Button>
-      }
-    />
+        </button>
+      </div>
+    </NudgeCard>
   )
 }
