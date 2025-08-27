@@ -502,13 +502,14 @@ function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
 }
 
 /**
- * Process vision providers with timeout, abort signal support, and logging
+ * Process vision providers with production-optimized sequential execution
  */
 async function processVisionProviders(
   imageBase64: string, 
   provider: string, 
   steps: Array<{stage: string; ok: boolean; meta?: any}>,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  isDebugMode = false
 ): Promise<{
   text: string; 
   cleanedTokens: string[]; 
@@ -519,7 +520,11 @@ async function processVisionProviders(
   logoBrands?: string[];
 }> {
   
-  const withTimeout = <T>(promise: Promise<T>, ms = 8000): Promise<T> =>
+  // Production vs Debug timeout configuration
+  const GOOGLE_TIMEOUT = isDebugMode ? 8000 : 6000;
+  const OPENAI_TIMEOUT = isDebugMode ? 8000 : 4000;
+  
+  const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
     Promise.race([
       promise,
       new Promise<never>((_, reject) => 
@@ -536,6 +541,151 @@ async function processVisionProviders(
     ocrConfidence: 0,
     logoBrands: [] as string[]
   };
+
+  // Production Mode: Sequential execution (Google first, OpenAI only if needed)
+  if (!isDebugMode && provider === 'hybrid') {
+    console.log('[PROD MODE] Sequential execution - Google first');
+    
+    // Step 1: Try Google Vision first
+    const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+    if (googleApiKey) {
+      try {
+        console.log('[VISION] start: google');
+        const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal), GOOGLE_TIMEOUT);
+        
+        if (abortSignal?.aborted) {
+          steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
+          return aggregated;
+        }
+        
+        // Apply brand normalization
+        const brandNormResult = normalizeBrandComprehensive({
+          ocrTokens: result.cleanedTokens,
+          logoBrands: result.logoBrands || []
+        });
+        
+        // Check for early-exit conditions or success
+        const hasEarlyExit = result.hasTraderJoes || 
+                            (brandNormResult.confidence >= 0.9 && brandNormResult.brandGuess);
+        const googleHasResult = result.text.length > 0 && result.ocrConfidence > 0.3;
+        
+        // Log Google results
+        steps.push({ 
+          stage: 'ocr', 
+          ok: googleHasResult, 
+          meta: { 
+            chars: result.text.length, 
+            topTokens: result.cleanedTokens.slice(0, 10),
+            brandGuess: brandNormResult.brandGuess,
+            brandConfidence: brandNormResult.confidence,
+            hasTraderJoes: result.hasTraderJoes,
+            earlyExit: hasEarlyExit
+          }
+        });
+        
+        // If Google succeeded or we have early-exit conditions, skip OpenAI
+        if (googleHasResult || hasEarlyExit) {
+          console.log('[PROD MODE] Google succeeded or early-exit detected - skipping OpenAI');
+          steps.push({ 
+            stage: 'openai', 
+            ok: false, 
+            meta: { 
+              skipped: true, 
+              reason: hasEarlyExit ? 'early_exit_heuristic' : 'google_success' 
+            }
+          });
+          
+          if (hasEarlyExit) {
+            const finalBrand = result.hasTraderJoes ? "Trader Joe's" : brandNormResult.brandGuess;
+            steps.push({ 
+              stage: 'early_exit', 
+              ok: true, 
+              meta: { 
+                provider: 'google',
+                brand: finalBrand,
+                confidence: result.hasTraderJoes ? 0.9 : brandNormResult.confidence,
+                reason: result.hasTraderJoes ? 'ocr_window_match' : brandNormResult.reason
+              }
+            });
+          }
+          
+          return {
+            text: result.text,
+            cleanedTokens: result.cleanedTokens,
+            brandTokens: hasEarlyExit ? [result.hasTraderJoes ? "Trader Joe's" : brandNormResult.brandGuess] : result.brandTokens,
+            hasCandy: result.hasCandy,
+            fuzzyBrands: result.fuzzyBrands,
+            ocrConfidence: result.ocrConfidence,
+            logoBrands: result.logoBrands || []
+          };
+        }
+      } catch (error: any) {
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
+        } else if (error.message === 'TIMEOUT') {
+          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: GOOGLE_TIMEOUT }});
+        } else {
+          steps.push({ stage: 'google', ok: false, meta: { error: error.message }});
+        }
+        console.log('[PROD MODE] Google failed, will try OpenAI');
+      }
+    }
+    
+    // Step 2: Only call OpenAI if Google failed/returned none and no early-exit
+    console.log('[PROD MODE] Google returned none - calling OpenAI as fallback');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (openaiApiKey) {
+      try {
+        console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
+        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), OPENAI_TIMEOUT);
+        
+        if (abortSignal?.aborted) {
+          steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
+          return aggregated;
+        }
+        
+        const openai_ok = result.text.length > 0 && result.ocrConfidence > 0;
+        
+        steps.push({ 
+          stage: 'openai', 
+          ok: openai_ok, 
+          meta: { 
+            brand: result.brandTokens?.[0] || 'None',
+            confidence: result.ocrConfidence,
+            parseError: result.parseError || false,
+            rawText: result.parseError ? result.rawText : undefined
+          }
+        });
+        
+        if (openai_ok) {
+          return {
+            text: result.text,
+            cleanedTokens: result.cleanedTokens || [],
+            brandTokens: result.brandTokens || [],
+            hasCandy: result.hasCandy || false,
+            fuzzyBrands: [],
+            ocrConfidence: result.ocrConfidence,
+            logoBrands: result.logoBrands || []
+          };
+        }
+      } catch (error: any) {
+        if (abortSignal?.aborted || error.name === 'AbortError') {
+          steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
+        } else if (error.message === 'TIMEOUT') {
+          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'openai', ms: OPENAI_TIMEOUT }});
+        } else {
+          steps.push({ stage: 'openai', ok: false, meta: { error: error.message }});
+        }
+      }
+    } else {
+      steps.push({ stage: 'openai', ok: false, meta: { code: 'MISSING_KEY' }});
+    }
+    
+    return aggregated;
+  }
+
+  // Debug Mode or Single Provider: Use existing concurrent/individual logic
+  console.log('[DEBUG MODE] Concurrent execution with detailed timing');
   
   // Google Vision branch
   if (provider === 'google' || provider === 'hybrid') {
@@ -543,17 +693,9 @@ async function processVisionProviders(
     if (!googleApiKey) {
       steps.push({ stage: 'google', ok: false, meta: { code: 'MISSING_KEY' }});
     } else {
-      // PHASE 2: Google OCR + Logo (6s timeout for quick first hit)
-      const withTimeout = <T>(promise: Promise<T>, timeoutMs = 6000): Promise<T> => {
-        return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
-          promise.then(resolve).catch(reject).finally(() => clearTimeout(timer));
-        });
-      };
-
       try {
         console.log('[VISION] start: google');
-        const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal));
+        const result = await withTimeout(extractAndCleanOCR(imageBase64, abortSignal), GOOGLE_TIMEOUT);
         
         // Check if cancelled
         if (abortSignal?.aborted) {
@@ -662,7 +804,7 @@ async function processVisionProviders(
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'google', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
-          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: 6000 }});
+          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'google', ms: GOOGLE_TIMEOUT }});
         } else {
           steps.push({ stage: 'google', ok: false, meta: { error: error.message }});
         }
@@ -678,7 +820,7 @@ async function processVisionProviders(
     } else {
       try {
         console.log('[VISION] start: openai', { model: 'gpt-4o-mini' });
-        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), 6000); // 6s timeout
+        const result = await withTimeout(extractWithOpenAI(imageBase64, openaiApiKey, abortSignal), OPENAI_TIMEOUT);
         
         // Check if cancelled
         if (abortSignal?.aborted) {
@@ -701,18 +843,24 @@ async function processVisionProviders(
           ok: openai_ok, 
           meta: { 
             model: 'gpt-4o-mini', 
-            brand: brandNormResult.brandGuess || result.brandTokens[0] || '', 
+            brand: brandNormResult.brandGuess || result.brandTokens?.[0] || '', 
             confidence: result.ocrConfidence,
-            brandConfidence: brandNormResult.confidence
+            brandConfidence: brandNormResult.confidence,
+            parseError: result.parseError || false,
+            rawText: result.parseError ? result.rawText : undefined
           }
         });
         
         // Add openai_parse step tracking
-        if (result.ocrConfidence === 0 && result.brandTokens.length === 0) {
+        if (result.parseError) {
           steps.push({
             stage: 'openai_parse', 
             ok: false, 
-            meta: { error: 'json_parse_failed' }
+            meta: { 
+              parseError: true,
+              rawText: result.rawText,
+              error: 'json_parse_failed' 
+            }
           });
         } else {
           steps.push({
@@ -735,10 +883,10 @@ async function processVisionProviders(
         if (openai_ok) {
           aggregated = {
             text: result.text,
-            cleanedTokens: result.cleanedTokens,
-            brandTokens: brandNormResult.brandGuess ? [brandNormResult.brandGuess] : result.brandTokens,
-            hasCandy: result.hasCandy,
-            fuzzyBrands: result.fuzzyBrands,
+            cleanedTokens: result.cleanedTokens || [],
+            brandTokens: brandNormResult.brandGuess ? [brandNormResult.brandGuess] : (result.brandTokens || []),
+            hasCandy: result.hasCandy || false,
+            fuzzyBrands: result.fuzzyBrands || [],
             ocrConfidence: result.ocrConfidence,
             logoBrands: result.logoBrands || [],
             brandGuess: brandNormResult.brandGuess,
@@ -751,15 +899,16 @@ async function processVisionProviders(
         if (abortSignal?.aborted || error.name === 'AbortError') {
           steps.push({ stage: 'openai', ok: false, meta: { code: 'CANCELLED' }});
         } else if (error.message === 'TIMEOUT') {
-          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'openai', ms: 8000 }});
+          steps.push({ stage: 'timeout', ok: false, meta: { provider: 'openai', ms: OPENAI_TIMEOUT }});
         } else {
-          steps.push({ stage: 'openai', ok: false, meta: { error: error.message }});
+          steps.push({ stage: 'openai_parse', ok: false, meta: { parseError: true, rawText: error.message }});
         }
       }
     }
   }
   
   return aggregated;
+}
 }
 
 /**
@@ -1360,7 +1509,8 @@ async function processHealthScanWithCandidates(
   imageBase64: string, 
   reqId: string, 
   provider: string = 'hybrid', 
-  steps: Array<{stage: string; ok: boolean; meta?: any}> = []
+  steps: Array<{stage: string; ok: boolean; meta?: any}> = [],
+  isDebugMode = false
 ): Promise<any> {
   const ctx: RequestContext = {
     reqId,
@@ -1373,7 +1523,8 @@ async function processHealthScanWithCandidates(
   };
 
   // A) Enhanced evidence fusion 
-  const visionResult = await processVisionProviders(imageBase64, provider, steps);
+  const isDebugMode = body.debug === true;
+  const visionResult = await processVisionProviders(imageBase64, provider, steps, undefined, isDebugMode);
   const ocrResult = visionResult; // processVisionProviders now returns full OCR result
   
   // Extract OCR lines for better phrase detection
@@ -2041,8 +2192,9 @@ serve(async (req) => {
     }
 
     // Step 2: Check if image has barcode first (provider-controlled OCR)
-    console.debug('[ANALYZE IMG]', { bytes: (body.imageBase64 || '').length });
-    const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps);
+    const isDebugMode = body.debug === true;
+    console.debug('[ANALYZE IMG]', { bytes: (body.imageBase64 || '').length, mode: isDebugMode ? 'DEBUG' : 'PROD' });
+    const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps, undefined, isDebugMode);
     const barcodeInImage = extractBarcodeFromOCR(ocrText);
     
     if (barcodeInImage) {
@@ -2073,7 +2225,7 @@ serve(async (req) => {
     }
 
     // Step 3: Process image for candidates or single product with provider control
-    const result = await processHealthScanWithCandidates(body.imageBase64, reqId, provider, steps);
+    const result = await processHealthScanWithCandidates(body.imageBase64, reqId, provider, steps, isDebugMode);
     
     // Maintain compatibility while preserving new kind system
     const enhancedResult = {
