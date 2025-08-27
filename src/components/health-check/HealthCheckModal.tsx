@@ -190,6 +190,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       console.log(`🖼️ About to call enhanced-health-scanner function [${currentCaptureId}]...`);
       
+      // Check if enhanced image analyzer is enabled
+      if (!isFeatureEnabled('image_analyzer_v1')) {
+        console.log('🚫 Enhanced image analyzer disabled, showing fallback for manual entry');
+        setCurrentState('fallback');
+        return;
+      }
+      
       // Clean image data if it contains a barcode parameter
       const cleanImageData = detectedBarcode ? 
         imageData.replace(/&barcode=\d+$/, '') : 

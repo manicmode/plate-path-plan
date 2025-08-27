@@ -2,14 +2,28 @@
  * Feature flags for controlling experimental features
  */
 
+// Base feature flags (production defaults)
 export const FEATURE_FLAGS = {
   photo_meal_ui_v1: false, // Enable branded candidates list in health check modal (gradual rollout)
-  image_analyzer_v1: false, // Enable enhanced image analysis pipeline (DISABLED for safety until probe is green)
+  image_analyzer_v1: false, // Enable enhanced image analysis pipeline (DISABLED for production until proven stable)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 
+// Environment detection
+function isStaging(): boolean {
+  // Check if we're in staging environment
+  return window.location.hostname.includes('staging') || 
+         window.location.hostname.includes('lovable.app') ||
+         process.env.NODE_ENV === 'development';
+}
+
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
+  // Environment-specific overrides
+  if (flag === 'image_analyzer_v1') {
+    return isStaging() ? ROLLOUT_CONFIG.image_analyzer_staging : ROLLOUT_CONFIG.image_analyzer_production;
+  }
+  
   return FEATURE_FLAGS[flag];
 }
 
@@ -19,8 +33,8 @@ export const ROLLOUT_CONFIG = {
   phase1_ready: true,
   
   // Phase 2-3: Image analysis improvements (enable on staging first)
-  image_analyzer_staging: false,
-  image_analyzer_production: false,
+  image_analyzer_staging: true, // ✅ ENABLED for staging
+  image_analyzer_production: false, // ❌ DISABLED for production (until proven stable)
   
   // Phase 4: Candidate selection UI (gradual rollout percentage)
   candidate_ui_rollout_percentage: 0, // Start at 0%, gradually increase
