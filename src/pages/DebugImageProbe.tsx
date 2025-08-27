@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ProbeResult {
   ok: boolean;
+  provider_used?: string;
   echo: {
     w: number;
     h: number;
@@ -23,6 +24,7 @@ interface ProbeResult {
   };
   openai: {
     ok: boolean;
+    model?: string;
     brand_guess: string;
     confidence: number;
     raw_words: string[];
@@ -45,6 +47,7 @@ export default function DebugImageProbe() {
   const [analyzerResult, setAnalyzerResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [currentImage, setCurrentImage] = useState<string>('');
+  const [selectedProvider, setSelectedProvider] = useState<string>('hybrid');
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -85,7 +88,7 @@ export default function DebugImageProbe() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('image-analyzer-probe', {
-        body: { imageBase64, dry_run: true }
+        body: { imageBase64, dry_run: true, provider: selectedProvider }
       });
 
       if (error) throw error;
@@ -94,10 +97,11 @@ export default function DebugImageProbe() {
       console.error('Probe error:', error);
       setProbeResult({
         ok: false,
+        provider_used: selectedProvider,
         errors: [error.message],
         echo: { w: 0, h: 0, sha256: '', bytes: 0 },
         google: { ocr_ok: false, ocr_chars: 0, ocr_top_tokens: [], logo_ok: false, logo_brands: [], errors: [] },
-        openai: { ok: false, brand_guess: '', confidence: 0, raw_words: [], errors: [] },
+        openai: { ok: false, model: 'gpt-4o', brand_guess: '', confidence: 0, raw_words: [], errors: [] },
         resolver: { off_ok: false, off_hits: 0, usda_hits: 0, picked: '', errors: [] },
         decision: 'error',
         elapsed_ms: 0
@@ -113,7 +117,7 @@ export default function DebugImageProbe() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-        body: { imageBase64: currentImage, mode: 'scan' }
+        body: { imageBase64: currentImage, mode: 'scan', provider: selectedProvider }
       });
 
       if (error) throw error;
@@ -134,8 +138,22 @@ export default function DebugImageProbe() {
         <CardHeader>
           <CardTitle>Upload Test Image</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Input type="file" accept="image/*" onChange={handleFileSelect} />
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Provider</label>
+            <select 
+              value={selectedProvider} 
+              onChange={(e) => setSelectedProvider(e.target.value)}
+              className="w-full p-2 border rounded-md"
+            >
+              <option value="hybrid">Hybrid (Google + OpenAI)</option>
+              <option value="google">Google Vision Only</option>
+              <option value="openai">OpenAI Vision Only</option>
+            </select>
+          </div>
+          
           {loading && <p className="mt-2 text-muted-foreground">Processing...</p>}
         </CardContent>
       </Card>
@@ -150,6 +168,11 @@ export default function DebugImageProbe() {
                 <Badge variant={probeResult.ok ? "default" : "destructive"}>
                   {probeResult.ok ? "OK" : "ERROR"}
                 </Badge>
+                {probeResult.provider_used && (
+                  <Badge variant="outline">
+                    {probeResult.provider_used.toUpperCase()}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

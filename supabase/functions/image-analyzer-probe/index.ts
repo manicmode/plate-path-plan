@@ -9,6 +9,7 @@ const corsHeaders = {
 
 interface ProbeResult {
   ok: boolean;
+  provider_used: string;
   echo: {
     w: number;
     h: number;
@@ -25,6 +26,7 @@ interface ProbeResult {
   };
   openai: {
     ok: boolean;
+    model: string;
     brand_guess: string;
     confidence: number;
     raw_words: string[];
@@ -49,7 +51,10 @@ serve(async (req) => {
   const startTime = Date.now();
   
   try {
-    const { imageBase64, dry_run } = await req.json();
+    const { imageBase64, dry_run, provider: requestProvider } = await req.json();
+    
+    // Provider toggle
+    const provider = requestProvider ?? Deno.env.get('ANALYZER_PROVIDER') ?? 'hybrid';
     
     if (!imageBase64) {
       return new Response(JSON.stringify({ 
@@ -93,6 +98,7 @@ serve(async (req) => {
 
     const probeResult: ProbeResult = {
       ok: true,
+      provider_used: provider,
       echo: {
         w: Math.round(estimatedDim * 0.6), // aspect ratio guess
         h: Math.round(estimatedDim * 1.4),
@@ -109,6 +115,7 @@ serve(async (req) => {
       },
       openai: {
         ok: false,
+        model: 'gpt-4o',
         brand_guess: '',
         confidence: 0,
         raw_words: [],
@@ -125,9 +132,10 @@ serve(async (req) => {
       elapsed_ms: 0
     };
 
-    // Test Google Vision OCR
-    try {
-      console.log('PROBE:ocr:start');
+    // Test Google Vision OCR (only if provider includes google)
+    if (provider === 'google' || provider === 'hybrid') {
+      try {
+        console.log('PROBE:ocr:start');
       const visionResponse = await fetch(
         `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
         {
@@ -184,14 +192,16 @@ serve(async (req) => {
         console.log('PROBE:logo:empty');
       }
 
-    } catch (error) {
-      probeResult.google.errors.push(error.message);
-      console.log(`PROBE:ocr:err ${error.message}`);
+      } catch (error) {
+        probeResult.google.errors.push(error.message);
+        console.log(`PROBE:ocr:err ${error.message}`);
+      }
     }
 
-    // Test OpenAI Vision
-    try {
-      console.log('PROBE:openai:start');
+    // Test OpenAI Vision (only if provider includes openai)
+    if (provider === 'openai' || provider === 'hybrid') {
+      try {
+        console.log('PROBE:openai:start');
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -237,9 +247,10 @@ serve(async (req) => {
         }
       }
 
-    } catch (error) {
-      probeResult.openai.errors.push(error.message);
-      console.log(`PROBE:openai:err ${error.message}`);
+      } catch (error) {
+        probeResult.openai.errors.push(error.message);
+        console.log(`PROBE:openai:err ${error.message}`);
+      }
     }
 
     // Test OFF resolver (mock)

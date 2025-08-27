@@ -381,7 +381,150 @@ function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
 }
 
 /**
- * Extract and clean OCR text
+ * Process vision providers based on toggle - returns simple text for legacy compatibility
+ */
+async function processVisionProviders(
+  imageBase64: string, 
+  provider: string, 
+  steps: Array<{stage: string; ok: boolean; meta?: any}>
+): Promise<{text: string}> {
+  
+  // Google Vision branch
+  if (provider === 'google' || provider === 'hybrid') {
+    const googleApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+    if (!googleApiKey) {
+      steps.push({ stage: 'google', ok: false, meta: { code: 'MISSING_KEY' }});
+    } else {
+      try {
+        console.log('[VISION] start: google');
+        const result = await extractAndCleanOCR(imageBase64);
+        steps.push({ 
+          stage: 'ocr', 
+          ok: result.text.length > 0, 
+          meta: { chars: result.text.length, topTokens: result.cleanedTokens.slice(0, 10) }
+        });
+        steps.push({ 
+          stage: 'logo', 
+          ok: result.brandTokens.length > 0, 
+          meta: { count: result.brandTokens.length }
+        });
+        console.log('[VISION] end: google', { ok: result.text.length > 0 || result.brandTokens.length > 0 });
+        
+        if (result.text) return { text: result.text };
+      } catch (error) {
+        steps.push({ stage: 'google', ok: false, meta: { error: error.message }});
+      }
+    }
+  }
+  
+  // OpenAI Vision branch (fallback or only)
+  if (provider === 'openai' || provider === 'hybrid') {
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      steps.push({ stage: 'openai', ok: false, meta: { code: 'MISSING_KEY' }});
+    } else {
+      try {
+        console.log('[VISION] start: openai', { model: 'gpt-4o' });
+        const result = await extractWithOpenAI(imageBase64, openaiApiKey);
+        steps.push({ 
+          stage: 'openai', 
+          ok: result.text.length > 0, 
+          meta: { 
+            model: 'gpt-4o', 
+            brand: result.brandTokens[0] || '', 
+            confidence: result.ocrConfidence 
+          }
+        });
+        console.log('[VISION] end: openai', { ok: result.text.length > 0, model: 'gpt-4o' });
+        
+        if (result.text) return { text: result.text };
+      } catch (error) {
+        steps.push({ stage: 'openai', ok: false, meta: { error: error.message }});
+      }
+    }
+  }
+  
+  return { text: '' };
+}
+
+/**
+ * Extract using OpenAI Vision
+ */
+async function extractWithOpenAI(imageBase64: string, apiKey: string): Promise<{
+  text: string; 
+  cleanedTokens: string[]; 
+  brandTokens: string[]; 
+  hasCandy: boolean;
+  fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>;
+  ocrConfidence: number;
+}> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Extract all text and identify the main brand from this product image. Return JSON: {"brand": "BrandName", "all_text": "all visible text", "confidence": 0.85}'
+            },
+            {
+              type: 'image_url', 
+              image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+            }
+          ]
+        }],
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API ${response.status}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (content) {
+      try {
+        const parsed = JSON.parse(content);
+        const text = parsed.all_text || '';
+        const brand = parsed.brand || '';
+        const confidence = parsed.confidence || 0;
+        
+        // Process like Google OCR
+        const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        const tokens = normalized.split(/\s+/).filter(token => token.length > 2 && !STOP_WORDS.has(token));
+        const brandTokens = brand ? [brand.toLowerCase()] : [];
+        
+        return {
+          text,
+          cleanedTokens: tokens,
+          brandTokens,
+          hasCandy: tokens.some(token => CANDY_KEYWORDS.has(token)),
+          fuzzyBrands: [],
+          ocrConfidence: confidence
+        };
+      } catch {
+        throw new Error('Invalid JSON response from OpenAI');
+      }
+    }
+    
+    throw new Error('No content from OpenAI');
+  } catch (error) {
+    console.error('❌ OpenAI Vision extraction failed:', error);
+    return { text: '', cleanedTokens: [], brandTokens: [], hasCandy: false, fuzzyBrands: [], ocrConfidence: 0 };
+  }
+}
+
+/**
+ * Extract and clean OCR text (Google Vision)
  */
 async function extractAndCleanOCR(imageBase64: string): Promise<{ 
   text: string; 
@@ -600,7 +743,12 @@ async function searchMultipleCandidates(brandTokens: string[], hasCandy: boolean
 /**
  * Enhanced health scan with candidate support
  */
-async function processHealthScanWithCandidates(imageBase64: string, reqId: string): Promise<any> {
+async function processHealthScanWithCandidates(
+  imageBase64: string, 
+  reqId: string, 
+  provider: string = 'hybrid', 
+  steps: Array<{stage: string; ok: boolean; meta?: any}> = []
+): Promise<any> {
   const ctx: RequestContext = {
     reqId,
     now: new Date(),
@@ -1029,14 +1177,35 @@ serve(async (req) => {
   const reqId = crypto.randomUUID().substring(0, 8);
   const t0 = Date.now();
   const steps: Array<{stage: string, ok: boolean, meta?: any}> = [];
+  
+  // Timeout helper
+  const withTimeout = <T>(promise: Promise<T>, ms = 8000): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), ms)
+      )
+    ]);
 
   try {
     const body = await req.json();
-    const reqId = crypto.randomUUID().substring(0, 8);
-    const t0 = Date.now();
+    const { provider: requestProvider } = body;
     
-    steps.push({stage: 'camera_echo', ok: true, meta: {reqId, mode: body.mode}});
-    console.log(`🚀 Processing health scan [${reqId}]`);
+    // Provider toggle 
+    const provider = requestProvider ?? Deno.env.get('ANALYZER_PROVIDER') ?? 'hybrid';
+    console.log(`🚀 Processing health scan [${reqId}] with provider: ${provider}`);
+    
+    // Camera echo step with provider info
+    steps.push({
+      stage: 'camera_echo', 
+      ok: true, 
+      meta: {
+        reqId, 
+        mode: body.mode,
+        provider,
+        dataLen: (body.imageBase64 || '').length
+      }
+    });
 
     // Handle barcode mode for Log scanner
     if (body.mode === 'barcode' && body.barcode) {
@@ -1090,10 +1259,10 @@ serve(async (req) => {
       const logProduct = mapOFFtoLogProduct(offResult.product, norm.raw);
       steps.push({stage: 'resolver_off', ok: true, meta: {productName: logProduct.productName}});
       console.log('✅ OFF hit [' + reqId + ']: ' + logProduct.productName);
-      return new Response(
-        JSON.stringify({ ok: true, product: logProduct, steps }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        return new Response(
+          JSON.stringify({ ok: true, product: logProduct, provider_used: provider, steps }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
     }
     
     // Step 1: Original barcode-first logic for Health Scan
@@ -1165,8 +1334,9 @@ serve(async (req) => {
       throw new Error('No image data provided');
     }
 
-    // Step 2: Check if image has barcode first (local detection)
-    const { text: ocrText } = await extractAndCleanOCR(body.imageBase64);
+    // Step 2: Check if image has barcode first (provider-controlled OCR)
+    console.debug('[ANALYZE IMG]', { bytes: (body.imageBase64 || '').length });
+    const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps);
     const barcodeInImage = extractBarcodeFromOCR(ocrText);
     
     if (barcodeInImage) {
@@ -1196,8 +1366,8 @@ serve(async (req) => {
       }
     }
 
-    // Step 3: Process image for candidates or single product
-    const result = await processHealthScanWithCandidates(body.imageBase64, reqId);
+    // Step 3: Process image for candidates or single product with provider control
+    const result = await processHealthScanWithCandidates(body.imageBase64, reqId, provider, steps);
     
     // Maintain compatibility while preserving new kind system
     const enhancedResult = {
@@ -1207,6 +1377,7 @@ serve(async (req) => {
         result.candidates && result.candidates.length > 1 ? 'branded_candidates' : 
         result.product ? 'single_product' : 'none'
       ),
+      provider_used: provider,
       steps
     };
     
@@ -1226,7 +1397,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 Enhanced-health-scanner error:', error);
-    steps.push({stage: 'fatal_error', ok: false, meta: {code: 'unknown_error', msg: error.message}});
+    
+    // Handle timeout specifically
+    if (error.message === 'TIMEOUT') {
+      steps.push({stage: 'timeout', ok: false, meta: {ms: 8000, provider}});
+    } else {
+      steps.push({stage: 'fatal_error', ok: false, meta: {code: 'unknown_error', msg: error.message}});
+    }
     
     const errorResponse: BackendResponse = {
       productName: "Error",
@@ -1244,7 +1421,7 @@ serve(async (req) => {
       fallback: true
     };
     
-    return new Response(JSON.stringify({...errorResponse, steps}), {
+    return new Response(JSON.stringify({...errorResponse, provider_used: provider || 'hybrid', steps}), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
