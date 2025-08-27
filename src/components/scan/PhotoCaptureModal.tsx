@@ -177,8 +177,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
-            {/* Header Controls */}
-            <div className="absolute top-4 left-0 right-0 flex items-center justify-between p-4 pt-8 z-30 mt-[env(safe-area-inset-top)]">
+            {/* Top Corner Controls - Outside Banner */}
+            <div className="absolute top-4 left-4 z-40 pt-8 mt-[env(safe-area-inset-top)]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -189,8 +189,23 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </Button>
             </div>
 
+            <div className="absolute top-4 right-4 z-40 pt-8 mt-[env(safe-area-inset-top)]">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTorch}
+                disabled={!supportsTorch}
+                title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
+                className={`text-white hover:bg-white/20 ${
+                  torchOn ? 'bg-yellow-500/20' : ''
+                } ${!supportsTorch ? 'opacity-50' : ''}`}
+              >
+                <Lightbulb className={`h-6 w-6 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+              </Button>
+            </div>
+
             {/* Header Banner */}
-            <div className="absolute top-4 left-4 right-4 z-20 pt-8 mt-[env(safe-area-inset-top)]">
+            <div className="absolute top-20 left-4 right-4 z-20 mt-[env(safe-area-inset-top)]">
               <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
@@ -204,22 +219,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                   Take a photo of brand product or a meal for health report!
                 </p>
               </div>
-            </div>
-
-            {/* Flashlight Control */}
-            <div className="absolute top-32 right-4 z-30 mt-[env(safe-area-inset-top)]">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleTorch}
-                disabled={!supportsTorch}
-                title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
-                className={`text-white hover:bg-white/20 ${
-                  torchOn ? 'bg-yellow-500/20' : ''
-                } ${!supportsTorch ? 'opacity-50' : ''}`}
-              >
-                <Lightbulb className={`h-6 w-6 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-              </Button>
             </div>
 
             {/* Center - Camera Viewfinder */}
