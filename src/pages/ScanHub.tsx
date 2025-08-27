@@ -1,73 +1,135 @@
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanBarcode, Camera, Keyboard, Mic, Bookmark, History } from 'lucide-react';
+import { 
+  ScanBarcode, 
+  Camera, 
+  Keyboard, 
+  Mic, 
+  Bookmark, 
+  History,
+  ArrowLeft
+} from 'lucide-react';
 import { ScanTile } from '@/components/scan/ScanTile';
+import { Button } from '@/components/ui/button';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { useScanRecents } from '@/hooks/useScanRecents';
+import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
+import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
+import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
+import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 
 export default function ScanHub() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { addRecent } = useScanRecents();
+  
+  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);  
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
 
   // Feature flag checks
-  const analyzerEnabled = isFeatureEnabled('image_analyzer_v1');
+  const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
   const voiceEnabled = isFeatureEnabled('fallback_voice_enabled');
   const textEnabled = isFeatureEnabled('fallback_text_enabled');
 
-  // Telemetry
-  const logTileClick = (tile: string, dest: string) => {
-    console.log('scan_hub_tile_click', { tile, dest, timestamp: Date.now() });
-  };
-
-  const handleScanBarcode = () => {
-    logTileClick('barcode', '/health-check');
-    navigate('/health-check');
-  };
-
-  const handleTakePhoto = () => {
-    if (!analyzerEnabled) {
-      toast({
-        title: "Photo analysis is in beta",
-        description: "Try manual entry or voice instead.",
-        variant: "default"
-      });
-      logTileClick('photo', '/health-check?fallback=manual');
-      navigate('/health-check');
-      return;
-    }
-    logTileClick('photo', '/health-check');
-    navigate('/health-check');
-  };
-
-  const handleEnterManually = () => {
-    logTileClick('manual', '/health-check?fallback=manual');
-    navigate('/health-check');
-  };
-
-  const handleSpeakToAnalyze = () => {
-    if (!voiceEnabled) {
-      toast({
-        title: "Voice analysis not available",
-        description: "Voice features are disabled.",
-        variant: "destructive"
-      });
-      return;
-    }
-    logTileClick('voice', '/health-check?fallback=voice');
-    navigate('/health-check');
-  };
-
-  const handleSaves = () => {
-    logTileClick('saves', '/saved-reports');
-    // Navigate to existing saved reports (placeholder)
-    toast({
-      title: "Saved Reports",
-      description: "This will navigate to your saved reports.",
+  const logTileClick = (tile: string) => {
+    console.log('scan_tile_click', { 
+      tile, 
+      timestamp: Date.now() 
     });
   };
 
+  const handleScanBarcode = () => {
+    logTileClick('barcode');
+    setBarcodeModalOpen(true);
+  };
+
+  const handleTakePhoto = () => {
+    logTileClick('photo');
+    if (!imageAnalyzerEnabled) {
+      toast('Photo analysis is in beta; try manual or voice for now.');
+      setManualEntryOpen(true);
+    } else {
+      setPhotoModalOpen(true);
+    }
+  };
+
+  const handleEnterManually = () => {
+    logTileClick('manual');
+    if (!textEnabled) {
+      toast('Manual entry is currently disabled');
+      return;
+    }
+    setManualEntryOpen(true);
+  };
+
+  const handleSpeakToAnalyze = () => {
+    logTileClick('voice');
+    if (!voiceEnabled) {
+      toast('Voice analysis is currently disabled');
+      return;
+    }
+    setVoiceModalOpen(true);
+  };
+
+  const handleSaves = () => {
+    logTileClick('saves');
+    // Navigate to existing saved reports
+    navigate('/saved-reports'); // Adjust route to actual saved reports page
+  };
+
   const handleRecents = () => {
-    logTileClick('recents', '/scan/recents');
+    logTileClick('recents');
     navigate('/scan/recents');
+  };
+
+  // Handle barcode detection from scanner
+  const handleBarcodeDetected = (barcode: string) => {
+    console.log('Barcode detected:', barcode);
+    addRecent({ mode: 'barcode', label: `Barcode: ${barcode}`, id: barcode });
+    // Continue with existing barcode flow - navigate to health report
+    navigate(`/health-report?barcode=${barcode}`);
+  };
+
+  // Handle manual entry fallback from barcode scanner
+  const handleBarcodeManualEntry = () => {
+    setBarcodeModalOpen(false);
+    setManualEntryOpen(true);
+  };
+
+  // Handle photo capture
+  const handlePhotoCapture = (imageData: string) => {
+    console.log('Photo captured, processing...');
+    addRecent({ mode: 'photo', label: 'Photo scan' });
+    
+    // Continue with existing photo analysis flow
+    // This should integrate with the existing HealthScannerInterface logic
+    navigate('/health-report', { state: { imageData } });
+  };
+
+  // Handle photo fallback to manual
+  const handlePhotoManualFallback = () => {
+    setPhotoModalOpen(false);
+    setManualEntryOpen(true);
+  };
+
+  // Handle manual entry product selection
+  const handleManualProductSelected = (product: any) => {
+    console.log('Manual product selected:', product);
+    addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
+    
+    // Navigate to health report with product data
+    navigate('/health-report', { state: { product } });
+  };
+
+  // Handle voice product selection
+  const handleVoiceProductSelected = (product: any) => {
+    console.log('Voice product selected:', product);
+    addRecent({ mode: 'voice', label: product.productName || 'Voice entry' });
+    
+    // Navigate to health report with product data
+    navigate('/health-report', { state: { product } });
   };
 
   // Log page open
@@ -100,7 +162,7 @@ export default function ScanHub() {
             title="Take a Photo"
             subtitle="AI-powered ingredient analysis"
             onClick={handleTakePhoto}
-            disabled={!analyzerEnabled}
+            disabled={!imageAnalyzerEnabled}
           />
 
           <ScanTile
@@ -134,15 +196,41 @@ export default function ScanHub() {
           />
         </div>
 
-        {/* Voice availability note */}
-        {voiceEnabled && (
-          <div className="text-center mt-8">
-            <p className="text-rose-200/60 text-sm">
-              Voice features depend on browser support
-            </p>
-          </div>
+        {/* Voice Note */}
+        {!voiceEnabled && (
+          <p className="text-center text-white/60 text-sm mt-4">
+            Voice feature is coming soon
+          </p>
         )}
       </div>
+
+      {/* Modals */}
+      <LogBarcodeScannerModal
+        open={barcodeModalOpen}
+        onOpenChange={setBarcodeModalOpen}
+        onBarcodeDetected={handleBarcodeDetected}
+        onManualEntry={handleBarcodeManualEntry}
+      />
+
+      <PhotoCaptureModal
+        open={photoModalOpen}
+        onOpenChange={setPhotoModalOpen}
+        onCapture={handlePhotoCapture}
+        onManualFallback={handlePhotoManualFallback}
+      />
+
+      {manualEntryOpen && (
+        <ImprovedManualEntry
+          onProductSelected={handleManualProductSelected}
+          onBack={() => setManualEntryOpen(false)}
+        />
+      )}
+
+      <VoiceSearchModal
+        open={voiceModalOpen}
+        onOpenChange={setVoiceModalOpen}
+        onProductSelected={handleVoiceProductSelected}
+      />
     </div>
   );
 }
