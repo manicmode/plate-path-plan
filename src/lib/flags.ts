@@ -71,21 +71,3 @@ export function isUserInRollout(userId: string): boolean {
   const userHash = simpleHash(userId);
   return (userHash % 100) < NUDGE_ROLLOUT_PERCENT;
 }
-
-// Hero subtext content engine flag
-export const HERO_SUBTEXT_DYNAMIC: boolean = flag('hero_subtext_dynamic');
-
-// Hero subtext rollout percentage (0-100)
-export const HERO_SUBTEXT_ROLLOUT_PCT: number = 
-  parseInt(getEnv('HERO_SUBTEXT_ROLLOUT_PCT') ?? '10', 10);
-
-// Check if user is in hero subtext rollout
-export function isUserInHeroSubtextRollout(userId: string): boolean {
-  // Ashkan (admin) is always included
-  if (userId === 'ashkan' || userId.includes('admin')) {
-    return true;
-  }
-  
-  const userHash = simpleHash(userId);
-  return (userHash % 100) < HERO_SUBTEXT_ROLLOUT_PCT;
-}

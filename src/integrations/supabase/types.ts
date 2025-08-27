@@ -890,48 +890,6 @@ export type Database = {
           },
         ]
       }
-      analyzer_failures: {
-        Row: {
-          body_excerpt: string | null
-          created_at: string
-          duration_ms: number | null
-          error_code: string | null
-          id: string
-          phase: string
-          provider: string
-          request_id: string | null
-          run_id: string
-          status: string
-          status_text: string | null
-        }
-        Insert: {
-          body_excerpt?: string | null
-          created_at?: string
-          duration_ms?: number | null
-          error_code?: string | null
-          id?: string
-          phase: string
-          provider: string
-          request_id?: string | null
-          run_id: string
-          status: string
-          status_text?: string | null
-        }
-        Update: {
-          body_excerpt?: string | null
-          created_at?: string
-          duration_ms?: number | null
-          error_code?: string | null
-          id?: string
-          phase?: string
-          provider?: string
-          request_id?: string | null
-          run_id?: string
-          status?: string
-          status_text?: string | null
-        }
-        Relationships: []
-      }
       app_notifications: {
         Row: {
           body: string | null
@@ -5539,45 +5497,6 @@ export type Database = {
           },
         ]
       }
-      subtext_events: {
-        Row: {
-          category: string
-          created_at: string
-          event: string
-          id: string
-          picked_id: string
-          reason: string | null
-          run_id: string | null
-          ts: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          event: string
-          id?: string
-          picked_id: string
-          reason?: string | null
-          run_id?: string | null
-          ts?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          event?: string
-          id?: string
-          picked_id?: string
-          reason?: string | null
-          run_id?: string | null
-          ts?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       supplement_logs: {
         Row: {
           created_at: string
@@ -8377,18 +8296,6 @@ export type Database = {
           paid_orders_all: number | null
           refunds_count: number | null
           total_users: number | null
-        }
-        Relationships: []
-      }
-      v_subtext_daily_metrics: {
-        Row: {
-          category: string | null
-          cta: number | null
-          ctr_pct: number | null
-          day: string | null
-          picked_id: string | null
-          shown: number | null
-          users: number | null
         }
         Relationships: []
       }

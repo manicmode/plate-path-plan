@@ -118,7 +118,6 @@ const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
-const BarcodeSmokeTest = lazy(() => import('@/pages/debug/BarcodeSmokeTest'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -497,17 +496,12 @@ function AppContent() {
                               <FeatureFlagsPage />
                             </ProtectedRoute>
                           } />
-                         {/* Debug routes for developers */}
-                          <Route path="/debug/*" element={
-                            <AdminRoute>
-                              <DebugRoutes />
-                            </AdminRoute>
-                          } />
-                          <Route path="/debug/barcode-smoke" element={
-                            <AdminRoute>
-                              <BarcodeSmokeTest />
-                            </AdminRoute>
-                          } />
+                        {/* Debug routes for developers */}
+                         <Route path="/debug/*" element={
+                           <ProtectedRoute>
+                             <DebugRoutes />
+                           </ProtectedRoute>
+                         } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>
