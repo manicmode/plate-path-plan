@@ -21,8 +21,9 @@ import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { selectNudgesForUser, NudgeCandidate, SchedulerOptions } from '@/nudges/scheduler';
 import { logNudgeEvent } from '@/nudges/logEvent';
-import { QA_TEST_USERS, QA_SCENARIOS, buildTestContext, withQAMocks } from '@/nudges/qaContext';
 import { NUDGE_REGISTRY } from '@/nudges/registry';
+import { runQAMatrix as runQAMatrixFn, QAScenarioResult } from '@/nudges/qa/qaRunner';
+import { QA_SCENARIOS, QA_TEST_USERS } from '@/nudges/qa/scenarios';
 
 interface QAReport {
   window: { from: string; to: string };
@@ -66,6 +67,8 @@ interface ScenarioResult {
   candidates: NudgeCandidate[];
   expectedCount: number;
   expectedNudges: string[];
+  passed?: boolean;
+  issues?: string[];
 }
 
 export function NudgesQA() {
@@ -95,106 +98,32 @@ export function NudgesQA() {
     addLog(`Starting QA Matrix execution${dryRun ? ' (DRY RUN - no DB writes)' : ''}...`);
 
     try {
-      const runDate = new Date().toISOString().split('T')[0];
-      const newScenarioResults: ScenarioResult[] = [];
+      // Use the new QA runner for deterministic testing
+      const matrixResult = await runQAMatrixFn(user.id, dryRun);
       
-      for (const testUser of QA_TEST_USERS) {
-        addLog(`Testing user: ${testUser.id}`);
+      // Convert results to display format
+      const newScenarioResults: ScenarioResult[] = matrixResult.results.map(result => ({
+        scenarioName: result.scenarioId,
+        candidates: result.candidates,
+        expectedCount: result.scenario.expect.length,
+        expectedNudges: result.scenario.expect,
+        passed: result.passed,
+        issues: result.issues,
+      }));
+      
+      setScenarioResults(newScenarioResults);
+      
+      // Log results
+      for (const result of matrixResult.results) {
+        const allowedNudges = result.candidates.filter(c => c.allowed);
+        addLog(`${result.scenarioId}: ${result.passed ? '✅' : '❌'} (got ${allowedNudges.length}, expected ${result.scenario.expect.length})`);
         
-        for (const scenario of QA_SCENARIOS) {
-          addLog(`  Running scenario: ${scenario.name}`);
-          
-          const runId = `qa-${runDate}-${testUser.id}-${scenario.name}`;
-          
-          try {
-            // Build deterministic test context
-            const currentTime = new Date(scenario.mock.frozenNow!);
-            const testContext = buildTestContext(scenario.name, testUser.id, currentTime);
-            const contextWithMocks = withQAMocks(testContext, {
-              ...scenario.mock,
-              bypassQuietHours: true
-            });
-            
-            // Run scheduler with QA options to get detailed reasons
-            const schedulerOptions: SchedulerOptions = {
-              dryRun,
-              ignoreCooldowns: true,
-              ignoreDailyCaps: true,
-              ignoreWeeklyCaps: true,
-              returnReasons: true
-            };
-
-            const candidates = await selectNudgesForUser(
-              testUser.id,
-              2,
-              currentTime,
-              { ...scenario.mock, bypassQuietHours: true },
-              schedulerOptions
-            ) as NudgeCandidate[];
-
-            const allowedNudges = candidates.filter(c => c.allowed);
-            
-            addLog(`    Found ${allowedNudges.length} allowed nudges: ${allowedNudges.map(n => n.id).join(', ')}`);
-
-            // Store scenario results for display
-            newScenarioResults.push({
-              scenarioName: scenario.name,
-              candidates,
-              expectedCount: scenario.expectedCount,
-              expectedNudges: scenario.expectedNudges
-            });
-
-            // Log 'shown' events for each selected nudge (skip if dry run)
-            if (!dryRun) {
-              for (const nudge of allowedNudges) {
-                await logNudgeEvent({
-                  nudgeId: nudge.id,
-                  event: 'shown',
-                  reason: 'qa',
-                  runId: runId
-                });
-                addLog(`    Logged 'shown' for ${nudge.id}`);
-
-                // Simulate user interaction (80% dismiss, 20% CTA)
-                const shouldCTA = Math.random() < 0.2;
-                const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
-                
-                await logNudgeEvent({
-                  nudgeId: nudge.id,
-                  event: interactionEvent,
-                  reason: 'qa',
-                  runId: runId
-                });
-                addLog(`    Logged '${interactionEvent}' for ${nudge.id}`);
-              }
-            } else {
-              for (const nudge of allowedNudges) {
-                addLog(`    Would log 'shown' for ${nudge.id} (dry run)`);
-                const shouldCTA = Math.random() < 0.2;
-                const interactionEvent = shouldCTA ? 'cta' : 'dismissed';
-                addLog(`    Would log '${interactionEvent}' for ${nudge.id} (dry run)`);
-              }
-            }
-
-            // Validate expectations
-            if (allowedNudges.length !== scenario.expectedCount) {
-              addLog(`    ⚠️  Expected ${scenario.expectedCount} nudges, got ${allowedNudges.length}`);
-            }
-
-            for (const expectedNudge of scenario.expectedNudges) {
-              if (!allowedNudges.find(n => n.id === expectedNudge)) {
-                addLog(`    ⚠️  Expected nudge '${expectedNudge}' not found`);
-              }
-            }
-
-          } catch (error) {
-            addLog(`    ❌ Error in scenario: ${error}`);
-          }
+        if (result.issues.length > 0) {
+          result.issues.forEach(issue => addLog(`  ⚠️ ${issue}`));
         }
       }
-
-      setScenarioResults(newScenarioResults);
-      addLog('QA Matrix execution completed!');
+      
+      addLog(`QA Matrix completed: ${matrixResult.summary.passedScenarios}/${matrixResult.summary.totalScenarios} scenarios passed`);
     } catch (error) {
       addLog(`❌ QA Matrix failed: ${error}`);
     } finally {
@@ -384,15 +313,26 @@ export function NudgesQA() {
                 <CardTitle className="flex items-center justify-between">
                   <span>{result.scenarioName}</span>
                   <div className="flex items-center gap-2">
-                    <Badge variant={
-                      result.candidates.filter(c => c.allowed).length === result.expectedCount ? 'default' : 'destructive'
-                    }>
+                    <Badge variant={result.passed === false ? 'destructive' : 'default'}>
                       Expected: {result.expectedCount}, Got: {result.candidates.filter(c => c.allowed).length}
                     </Badge>
+                    {result.passed !== undefined && (
+                      <Badge variant={result.passed ? 'default' : 'destructive'}>
+                        {result.passed ? '✅ PASS' : '❌ FAIL'}
+                      </Badge>
+                    )}
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {result.issues && result.issues.length > 0 && (
+                  <div className="mb-4 space-y-1">
+                    <h4 className="font-medium text-red-600">Issues:</h4>
+                    {result.issues.map((issue, issueIndex) => (
+                      <div key={issueIndex} className="text-sm text-red-600">• {issue}</div>
+                    ))}
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -404,21 +344,21 @@ export function NudgesQA() {
                     </thead>
                     <tbody>
                       {result.candidates.map((candidate, candIndex) => (
-                        <tr key={candIndex} className="border-b">
+                        <tr key={candIndex} className={`border-b ${candidate.allowed ? 'bg-green-50' : 'bg-gray-50'}`}>
                           <td className="p-2 font-medium">{candidate.id}</td>
                           <td className="p-2">
                             <Badge variant={candidate.allowed ? 'default' : 'secondary'}>
-                              {candidate.allowed ? 'ALLOWED' : 'BLOCKED'}
+                              {candidate.allowed ? '✅ ALLOWED' : '❌ BLOCKED'}
                             </Badge>
                           </td>
                           <td className="p-2">
-                            <div className="flex flex-wrap gap-1">
+                            <div className="space-y-1">
                               {candidate.reasons.map((reason, reasonIndex) => (
-                                <div key={reasonIndex} className="flex items-center gap-1 text-xs">
+                                <div key={reasonIndex} className="flex items-center gap-2 text-xs">
                                   {getGateIcon(reason.pass)}
-                                  <span>{reason.gate}</span>
+                                  <span className="font-medium">{reason.gate}:</span>
                                   {reason.detail && (
-                                    <span className="text-muted-foreground">({reason.detail})</span>
+                                    <span className="text-muted-foreground">{reason.detail}</span>
                                   )}
                                 </div>
                               ))}

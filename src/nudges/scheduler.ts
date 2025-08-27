@@ -9,6 +9,7 @@ export type SchedulerOptions = {
   ignoreDailyCaps?: boolean;
   ignoreWeeklyCaps?: boolean;
   returnReasons?: boolean;
+  ignoreFeatureFlags?: boolean;
 };
 
 export type NudgeGateReason = {
@@ -60,17 +61,25 @@ export async function selectNudgesForUser(
       let allowed = true;
       // Check feature flag if specified
       if (definition.enabledFlag) {
-        const { data: flagData } = await supabase
-          .from('feature_flags')
-          .select('enabled')
-          .eq('key', definition.enabledFlag)
-          .maybeSingle();
+        let flagEnabled = false;
         
-        const flagEnabled = qaMock ? true : (flagData?.enabled || false);
+        if (options?.ignoreFeatureFlags) {
+          // Force feature flags on in QA mode
+          flagEnabled = true;
+        } else {
+          const { data: flagData } = await supabase
+            .from('feature_flags')
+            .select('enabled')
+            .eq('key', definition.enabledFlag)
+            .maybeSingle();
+          
+          flagEnabled = qaMock ? true : (flagData?.enabled || false);
+        }
+        
         reasons.push({
           gate: 'featureFlag',
           pass: flagEnabled,
-          detail: definition.enabledFlag
+          detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (forced on for QA)' : '')
         });
         
         if (!flagEnabled) {
