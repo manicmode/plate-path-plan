@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { X, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
-import { useCamera } from '@/lib/media/useMediaDevices';
 
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
@@ -21,15 +20,10 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const scanningIntervalRef = useRef<NodeJS.Timeout>();
+  const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   
-  // Use camera hook instead of manual stream management
-  const camera = useCamera({
-    facingMode: 'environment',
-    width: 1280,
-    height: 720
-  });
-  
-  const { snapAndDecode } = useSnapAndDecode();
+  const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -104,8 +98,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       }
       
       // Apply zoom constraint before capture (NO auto-torch!)
-      if (camera.stream) {
-        const track = camera.stream.getVideoTracks()[0];
+      if (streamRef.current) {
+        const track = streamRef.current.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({ 
@@ -174,12 +168,13 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const handleFlashlightToggle = async () => {
     try {
-      if (camera.torch.supported && camera.isActive) {
-        // Simple toggle - try turning off first, then on
-        try {
-          await camera.torch.off();
-        } catch {
-          await camera.torch.on();
+      if (trackRef.current) {
+        const capabilities = trackRef.current.getCapabilities() as any;
+        if (capabilities.torch) {
+          const settings = trackRef.current.getSettings() as any;
+          await trackRef.current.applyConstraints({
+            advanced: [{ torch: !settings.torch } as any]
+          });
         }
       }
     } catch (error) {
@@ -211,11 +206,35 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const startCamera = async () => {
     try {
-      console.log("[WEB] Starting camera with useCamera hook...");
-      await camera.start();
+      console.log("[WEB] Starting camera with getUserMedia...");
+      
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      
       if (videoRef.current) {
-        await camera.attach(videoRef.current);
+        const video = videoRef.current;
+        video.muted = true;
+        video.playsInline = true;
+        (video as any).webkitPlaysInline = true;
+        video.srcObject = stream;
+        
+        await video.play();
+        
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          trackRef.current = videoTrack;
+          updateStreamRef(stream);
+        }
       }
+      
       setIsScanning(false); // Ready to scan
       setError(null);
     } catch (err) {
@@ -223,15 +242,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       setError('Unable to access camera. Please check permissions and try again.');
     }
   };
-
-  // Update video element when camera stream changes
-  useEffect(() => {
-    if (camera.stream && videoRef.current) {
-      camera.attach(videoRef.current);
-    } else if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  }, [camera.stream, camera.attach]);
 
   const cleanup = async () => {
     if (scanningIntervalRef.current) {
@@ -241,13 +251,25 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     
     // Turn off torch before stopping
     try {
-      await camera.torch.off();
+      if (trackRef.current) {
+        const capabilities = trackRef.current.getCapabilities() as any;
+        if (capabilities.torch) {
+          await trackRef.current.applyConstraints({
+            advanced: [{ torch: false } as any]
+          });
+        }
+      }
     } catch (error) {
       console.warn('Failed to turn off torch:', error);
     }
     
     // Stop camera
-    camera.stop();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    trackRef.current = null;
+    updateStreamRef(null);
     
     // Clear video element
     if (videoRef.current) {
@@ -327,7 +349,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           <div className="flex gap-2 mb-3">
             <button
               onClick={handleAnalyzeNow}
-              disabled={isScanning || !camera.isActive}
+              disabled={isScanning || !streamRef.current}
               className="flex-1 h-12 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Zap className={`w-5 h-5 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
@@ -335,18 +357,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             </button>
             
             {/* Flashlight Toggle */}
-            {camera.torch.supported && (
+            {(trackRef.current?.getCapabilities() as any)?.torch && (
               <button
                 onClick={handleFlashlightToggle}
-                disabled={isScanning || !camera.isActive}
+                disabled={isScanning || !streamRef.current}
                 className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-[.99] disabled:opacity-50 transition-colors ${
-                  camera.isActive 
+                  streamRef.current 
                     ? 'bg-yellow-500 text-white' 
                     : 'bg-zinc-800 text-zinc-100'
                 }`}
                 title="Flashlight"
               >
-                <FlashlightIcon className={`w-5 h-5 ${camera.isActive ? 'text-white' : 'text-zinc-300'}`} />
+                <FlashlightIcon className={`w-5 h-5 ${streamRef.current ? 'text-white' : 'text-zinc-300'}`} />
               </button>
             )}
           </div>

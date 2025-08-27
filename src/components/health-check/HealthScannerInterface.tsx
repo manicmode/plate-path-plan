@@ -12,7 +12,6 @@ import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { BARCODE_V2 } from '@/lib/featureFlags';
 import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode } from '@/lib/scan/freezeDecode';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
-import { useCamera } from '@/lib/media/useMediaDevices';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string | { imageBase64: string; detectedBarcode: string | null }) => void;
@@ -30,14 +29,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
-  
-  // Use the new camera hook instead of manual stream management
-  const camera = useCamera({
-    facingMode: 'environment',
-    width: 1280,
-    height: 720
-  });
   
   const [isScanning, setIsScanning] = useState(false);
   const [currentView, setCurrentView] = useState<'scanner' | 'manual' | 'notRecognized'>('scanner');
@@ -65,36 +58,46 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
 
     try {
-      console.log("[CAMERA] Starting camera with new hook...");
-      await camera.start();
+      console.log("[CAMERA] Starting camera with getUserMedia...");
       
-      if (videoRef.current) {
-        await camera.attach(videoRef.current);
-        
-        // Update track ref for compatibility with existing code
-        if (camera.stream) {
-          const videoTrack = camera.stream.getVideoTracks()[0];
-          if (videoTrack) {
-            trackRef.current = videoTrack;
-            updateStreamRef(camera.stream);
-            
-            const settings = videoTrack.getSettings();
-            console.log('[HS] Stream settings:', {
-              width: settings.width,
-              height: settings.height,
-              facingMode: settings.facingMode,
-              deviceId: settings.deviceId
-            });
-          }
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      
+      const video = videoRef.current;
+      video.muted = true;
+      video.playsInline = true;
+      (video as any).webkitPlaysInline = true;
+      video.srcObject = stream;
+      
+      await video.play();
+      
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        trackRef.current = videoTrack;
+        updateStreamRef(stream);
         
-        console.log('[CAMERA] Camera started successfully via hook');
+        const settings = videoTrack.getSettings();
+        console.log('[HS] Stream settings:', {
+          width: settings.width,
+          height: settings.height,
+          facingMode: settings.facingMode,
+          deviceId: settings.deviceId
+        });
       }
+      
+      console.log('[CAMERA] Camera started successfully');
     } catch (error) {
       console.error('[CAMERA] Failed to start camera:', error);
-      // The useCamera hook already handles user-friendly error messages
     }
-  }, [camera, updateStreamRef]);
+  }, [updateStreamRef]);
 
   // Main effect for camera lifecycle
   useEffect(() => {
@@ -105,7 +108,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     
     // Cleanup function
     return () => {
-      camera.stop();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
       trackRef.current = null;
       updateStreamRef(null);
       if (videoRef.current) {
@@ -113,22 +119,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
     };
   }, [currentView, startCameraFlow]);
-
-  // Update video element when camera stream changes
-  useEffect(() => {
-    if (camera.stream && videoRef.current) {
-      camera.attach(videoRef.current);
-      
-      // Update compatibility refs
-      const videoTrack = camera.stream.getVideoTracks()[0];
-      if (videoTrack) {
-        trackRef.current = videoTrack;
-        updateStreamRef(camera.stream);
-      }
-    } else if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  }, [camera.stream, camera.attach, updateStreamRef]);
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
@@ -341,9 +331,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     console.log(`📹 Video dimensions: ${videoWidth}×${videoHeight}`);
     
     // Try ImageCapture API for highest quality
-    if (camera.stream && 'ImageCapture' in window) {
+    if (streamRef.current && 'ImageCapture' in window) {
       try {
-        const track = camera.stream.getVideoTracks()[0];
+        const track = streamRef.current.getVideoTracks()[0];
         const imageCapture = new (window as any).ImageCapture(track);
         
         // Get highest quality photo
@@ -401,8 +391,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       await video.play(); // ensure >0 dimensions on iOS
       
       // Apply zoom constraint before capture (NO auto-torch!)
-      if (camera.stream) {
-        const track = camera.stream.getVideoTracks()[0];
+      if (streamRef.current) {
+        const track = streamRef.current.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({ 
@@ -624,12 +614,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const handleFlashlightToggle = async () => {
     try {
-      if (camera.torch.supported && camera.isActive) {
-        // Simple toggle - try turning off first, then on if that fails
-        try {
-          await camera.torch.off();
-        } catch {
-          await camera.torch.on();
+      if (trackRef.current) {
+        const capabilities = trackRef.current.getCapabilities() as any;
+        if (capabilities.torch) {
+          const settings = trackRef.current.getSettings() as any;
+          await trackRef.current.applyConstraints({
+            advanced: [{ torch: !settings.torch } as any]
+          });
         }
       }
     } catch (error) {
@@ -813,8 +804,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
-            torchEnabled={camera.isActive}
-            torchSupported={camera.torch.supported}
+            torchEnabled={!!(trackRef.current?.getSettings() as any)?.torch}
+            torchSupported={!!(trackRef.current?.getCapabilities() as any)?.torch}
           />
         </footer>
       </div>

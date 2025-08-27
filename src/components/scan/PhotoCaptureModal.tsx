@@ -6,7 +6,6 @@ import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
-import { useCamera } from '@/lib/media/useMediaDevices';
 
 interface PhotoCaptureModalProps {
   open: boolean;
@@ -24,38 +23,47 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Use camera hook instead of manual stream management
-  const camera = useCamera({
-    facingMode: 'environment',
-    width: 1280,
-    height: 720
-  });
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = useCallback(async () => {
     if (!open) return;
     
     try {
-      console.log("[PHOTO] Starting camera with useCamera hook...");
-      await camera.start();
+      console.log("[PHOTO] Starting camera with getUserMedia...");
+      
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      
       if (videoRef.current) {
-        await camera.attach(videoRef.current);
+        const video = videoRef.current;
+        video.muted = true;
+        video.playsInline = true;
+        (video as any).webkitPlaysInline = true;
+        video.srcObject = stream;
+        
+        await video.play();
       }
+      
       setError(null);
     } catch (err) {
       console.error("[PHOTO] Camera access error:", err);
       setError('Unable to access camera. Please check permissions and try again.');
     }
-  }, [open, camera]);
+  }, [open]);
 
   const cleanup = useCallback(async () => {
-    try {
-      await camera.torch.off();
-    } catch (error) {
-      console.warn('Failed to turn off torch:', error);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
-    
-    camera.stop();
     
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -63,7 +71,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     
     setIsCapturing(false);
     setError(null);
-  }, [camera]);
+  }, []);
 
   // Start camera when modal opens
   useEffect(() => {
@@ -78,14 +86,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     };
   }, [open, startCamera, cleanup]);
 
-  // Update video element when camera stream changes
-  useEffect(() => {
-    if (camera.stream && videoRef.current) {
-      camera.attach(videoRef.current);
-    } else if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  }, [camera.stream, camera.attach]);
 
   const playCameraClickSound = () => {
     try {
@@ -110,7 +110,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const capturePhoto = async () => {
-    if (!videoRef.current || !camera.stream) return;
+    if (!videoRef.current || !streamRef.current) return;
 
     setIsCapturing(true);
     playCameraClickSound();
@@ -253,7 +253,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 {/* Capture Button - Center, larger */}
                 <Button
                   onClick={capturePhoto}
-                  disabled={isCapturing || !camera.isActive}
+                  disabled={isCapturing || !streamRef.current}
                   size="lg"
                   className="bg-white text-black hover:bg-gray-200 rounded-full w-20 h-20 p-0 disabled:opacity-50"
                 >
