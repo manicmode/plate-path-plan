@@ -794,7 +794,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
                 🔬 Health Inspector Scanner
               </h2>
               <p className="text-green-300 text-sm animate-pulse">
-                Scan a food barcode or aim your camera at a meal to inspect its health profile!
+                Scan a food barcode to inspect its health profile!
               </p>
             </div>
           </div>
