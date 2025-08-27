@@ -1,6 +1,34 @@
 /* Maps the enhanced-health-scanner response into the legacy shape
  * the existing Health/Confirm modals already consume.
  */
+
+// Helper to pick first non-empty string with min length
+const pick = (...vals: Array<unknown>) =>
+  vals.find(v => typeof v === 'string' && v.trim().length >= 3) as string | undefined;
+
+function extractName(edge: any): string | undefined {
+  const p = edge?.product ?? edge;
+
+  // common OFF/normalized name fields
+  const name =
+    pick(
+      p?.displayName,
+      p?.name,
+      p?.product_name_en,
+      p?.product_name,
+      p?.generic_name_en,
+      p?.generic_name,
+      edge?.productName,
+      edge?.name
+    ) ||
+    // brand + product_name fallback
+    (p?.brands && p?.product_name
+      ? `${String(p.brands).split(',')[0].trim()} ${String(p.product_name).trim()}`
+      : undefined);
+
+  return name?.replace(/\s+/g, ' ').trim();
+}
+
 export type LegacyHealthFlag = {
   key: string;
   label: string;
@@ -41,8 +69,7 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
   const envelope = edge?.data ?? edge;
   const p = envelope?.product ?? envelope ?? {};
 
-  const name =
-    p?.name ?? envelope?.productName ?? envelope?.name ?? null;
+  const productName = extractName(edge);
 
   const barcode =
     p?.barcode ?? p?.code ?? envelope?.barcode ?? null;
@@ -62,7 +89,7 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
     p?.nutrition ?? envelope?.nutrition ?? null;
 
   return {
-    productName: typeof name === "string" ? name.trim() : null,
+    productName,
     barcode: typeof barcode === "string" ? barcode : null,
     ingredientsText,
     healthScore:

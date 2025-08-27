@@ -132,6 +132,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           // Use the tolerant adapter to normalize the data (same as Log flow)
           const legacy = toLegacyFromEdge(result);
           
+          // Do NOT overwrite a good name with OCR tokens or empty fallback
+          const itemName = legacy.productName ?? 'Unknown item';
+          
+          // Guardrail log for verification
+          if (!legacy.productName && legacy.ingredientsText) {
+            console.warn('[HS] BUG: name missing while ingredients exist', {
+              edgeKeysPresent: Object.keys(result?.product || {}),
+            });
+          }
+          
           // RCA telemetry for barcode-photo path (now unified with Log flow)
           console.groupCollapsed('[HS] RCA (barcode-photo)');
           console.log('edge/result.product.name', result?.product?.name);
@@ -212,7 +222,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
           // Transform to match frontend interface
           const analysisResult: HealthAnalysisResult = {
-            itemName: legacy?.productName || 'Unknown Item',
+            itemName,
             healthScore: score10 ?? 0,              // 0–10 scale for UI
             ingredientsText,
             ingredientFlags,
@@ -307,7 +317,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
-
+      
+      // Do NOT overwrite a good name with OCR tokens or empty fallback
+      const itemName = legacy.productName ?? 'Unknown item';
+      
+      // Guardrail log for verification
+      if (!legacy.productName && legacy.ingredientsText) {
+        console.warn('[HS] BUG: name missing while ingredients exist', {
+          edgeKeysPresent: Object.keys(data?.product || {}),
+        });
+      }
+      
       // RCA telemetry for image-only path
       console.groupCollapsed('[HS] RCA (image)');
       console.log('edge.product.name', data?.product?.name);
@@ -408,7 +428,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       // Transform to match frontend interface
       const analysisResult: HealthAnalysisResult = {
-        itemName: legacy?.productName ?? 'Unknown Item',
+        itemName,
         healthScore: score10 ?? 0,              // 0–10 scale for UI
         ingredientsText,
         ingredientFlags,
