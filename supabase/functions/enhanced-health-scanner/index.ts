@@ -909,7 +909,6 @@ async function processVisionProviders(
   
   return aggregated;
 }
-}
 
 /**
  * Sanitize JSON response from OpenAI by removing code fences and extracting valid JSON

@@ -1,5 +1,8 @@
 project_id = "uzoiiijqtahohfafqirm"
 
+[functions.enhanced-health-scanner]
+verify_jwt = false
+
 [functions.dispatchHabitReminders]
 verify_jwt = false
 
