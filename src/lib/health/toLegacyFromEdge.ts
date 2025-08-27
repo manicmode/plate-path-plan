@@ -114,7 +114,13 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
   let finalHealthFlags = healthFlags;
   let recommendation: string | null = null;
 
-  if (!hasAnySignal) {
+  // Handle explicit fallback flag first
+  if (envelope?.fallback === true) {
+    status = 'no_detection';
+    finalHealthScore = null;
+    finalHealthFlags = [];
+    recommendation = null;
+  } else if (!hasAnySignal) {
     status = 'no_detection';
     finalHealthScore = null;
     finalHealthFlags = [];

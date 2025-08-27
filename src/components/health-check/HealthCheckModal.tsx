@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -349,8 +349,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
       
-      // Check for candidates first (if feature enabled)
-      if (isFeatureEnabled('photo_meal_ui_v1') && data.candidates && data.candidates.length > 1) {
+      // Check for candidates first (if feature enabled and user is in rollout)
+      if (isInRollout('photo_meal_ui_v1', user?.id) && data.candidates && data.candidates.length > 1) {
         console.log(`[HS] Found ${data.candidates.length} candidates, showing selection UI`);
         setCandidates(data.candidates);
         setCurrentState('candidates');
@@ -872,7 +872,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             />
           )}
 
-          {currentState === 'candidates' && isFeatureEnabled('photo_meal_ui_v1') && (
+          {currentState === 'candidates' && isInRollout('photo_meal_ui_v1', user?.id) && (
             <BrandedCandidatesList
               candidates={candidates}
               onSelectCandidate={handleCandidateSelect}
