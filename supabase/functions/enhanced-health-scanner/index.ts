@@ -486,6 +486,159 @@ async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): P
 }
 
 /**
+ * Extract barcode from OCR text using regex patterns
+ */
+function extractBarcodeFromOCR(text: string): string | null {
+  // Look for 8, 12, 13, or 14 digit sequences
+  const barcodePattern = /\b(\d{8}|\d{12}|\d{13}|\d{14})\b/g;
+  const matches = text.match(barcodePattern);
+  
+  if (matches) {
+    // Return first valid barcode found
+    for (const match of matches) {
+      const norm = normalizeBarcode(match);
+      if (norm && norm.checksumOk) {
+        return match;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Search for multiple branded product candidates
+ */
+async function searchMultipleCandidates(brandTokens: string[], hasCandy: boolean): Promise<any[]> {
+  if (brandTokens.length === 0) return [];
+  
+  try {
+    const searchQuery = brandTokens.join(' ');
+    console.log(`🔍 Multi-candidate search: ${searchQuery}`);
+    
+    const searchParams = new URLSearchParams({
+      search_terms: searchQuery,
+      search_simple: '1',
+      action: 'process',
+      json: '1',
+      page_size: '8'  // Get more for filtering
+    });
+    
+    if (hasCandy) {
+      searchParams.set('categories', 'candy,gummies,sweets');
+    }
+    
+    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`);
+    const data = await response.json();
+    
+    if (data.products && data.products.length > 0) {
+      // Filter and limit to 5 candidates
+      let candidates = data.products.slice(0, 5);
+      
+      if (hasCandy) {
+        candidates = candidates.filter((product: any) => {
+          const categories = (product.categories || '').toLowerCase();
+          return !categories.includes('beverage') && !categories.includes('drink');
+        });
+      }
+      
+      console.log(`✅ Found ${candidates.length} candidates`);
+      return candidates.slice(0, 5);
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('❌ Multi-candidate search failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Enhanced health scan with candidate support
+ */
+async function processHealthScanWithCandidates(imageBase64: string, reqId: string): Promise<any> {
+  const ctx: RequestContext = {
+    reqId,
+    now: new Date(),
+    ocrText: '',
+    tokens: [],
+    brandTokens: [],
+    hasCandy: false,
+    plateConf: 0
+  };
+
+  // Extract OCR and analyze
+  const ocrResult = await extractAndCleanOCR(imageBase64);
+  ctx.ocrText = ocrResult.text;
+  ctx.tokens = ocrResult.cleanedTokens;
+  ctx.brandTokens = ocrResult.brandTokens;
+  ctx.hasCandy = ocrResult.hasCandy;
+  
+  console.log(`📝 OCR analysis [${reqId}]:`, { 
+    tokens: ctx.tokens.length, 
+    brandTokens: ctx.brandTokens.length, 
+    hasCandy: ctx.hasCandy 
+  });
+
+  // Try single product search first
+  const singleProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
+  
+  if (singleProduct) {
+    console.log(`✅ Single product found [${reqId}]: ${singleProduct.product_name}`);
+    const response = mapOFFtoBackendResponse(singleProduct);
+    return {
+      ...response,
+      product: mapOFFtoLogProduct(singleProduct, singleProduct.code || '')
+    };
+  }
+
+  // Try multiple candidates if single search fails
+  const candidates = await searchMultipleCandidates(ctx.brandTokens, ctx.hasCandy);
+  
+  if (candidates.length > 1) {
+    console.log(`✅ Multiple candidates found [${reqId}]: ${candidates.length}`);
+    
+    // Map candidates to simplified format for UI
+    const candidateList = candidates.map((product: any) => ({
+      id: product.code || crypto.randomUUID(),
+      name: `${product.brands || ''} ${product.product_name || ''}`.trim() || 'Unknown Product',
+      brand: product.brands || '',
+      image: product.image_front_small_url || product.image_url || '',
+      confidence: 0.8 // Mock confidence for now
+    }));
+
+    return {
+      productName: 'Multiple products detected',
+      healthScore: null,
+      healthFlags: [],
+      nutritionSummary: null,
+      ingredients: [],
+      recommendations: ['Please select the correct product from the list below.'],
+      generalSummary: `Found ${candidates.length} possible matches.`,
+      candidates: candidateList
+    };
+  }
+
+  // Fallback to original logic
+  const flags = generateHealthFlags([], ctx.hasCandy);
+  const healthScore = calculateHealthScore(flags, ctx.hasCandy, false);
+  
+  return {
+    productName: 'Unknown product',
+    healthScore: null,
+    healthFlags: [],
+    nutritionSummary: {},
+    ingredients: [],
+    recommendations: [
+      'Try scanning the barcode on the back of the package.',
+      'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
+    ],
+    generalSummary: 'We could not confidently identify this item from the photo.',
+    fallback: true
+  };
+}
+
+/**
  * Calculate plate confidence (mock implementation)
  */
 function calculatePlateConfidence(tokens: string[]): number {
@@ -886,59 +1039,52 @@ serve(async (req) => {
       throw new Error('No image data provided');
     }
 
-    const result = await processHealthScan(body.imageBase64, body.detectedBarcode);
+    // Step 2: Check if image has barcode first (local detection)
+    const { text: ocrText } = await extractAndCleanOCR(body.imageBase64);
+    const barcodeInImage = extractBarcodeFromOCR(ocrText);
     
-    // Enhanced evidence gating
-    const hasRealEvidence = 
-      Boolean(result.barcode) ||
-      (result.productName !== 'Unknown product' && result.productName !== 'Detected Food') ||
-      ((result.healthScore !== null) && (result.healthScore > 0));
-    
-    if (!hasRealEvidence) {
-      console.log(JSON.stringify({
-        reqId, 
-        phase: 'done', 
-        barcodeFound: false, 
-        offHit: false, 
-        brand: 'none',
-        plateConf: 0, 
-        scored: false, 
-        productName: 'unknown',
-        latencyMs: Date.now() - t0
-      }));
-      
-      return new Response(
-        JSON.stringify({
-          productName: 'Unknown product',
-          healthScore: null,
-          healthFlags: [],
-          nutritionSummary: {},
-          ingredients: [],
-          recommendations: [
-            'Try scanning the barcode on the back of the package.',
-            'Or type the exact brand & product name (e.g., "Trader Joe\'s Vanilla Almond Granola").'
-          ],
-          generalSummary: 'We could not confidently identify this item from the photo.',
-          fallback: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (barcodeInImage) {
+      const norm = normalizeBarcode(barcodeInImage);
+      if (norm) {
+        console.log(`🔍 Found barcode in image [${reqId}]: ${norm.raw}`);
+        
+        const offResult = await fetchOFF(norm.raw);
+        if (offResult?.product_found) {
+          console.log(`✅ Barcode-on-still hit [${reqId}]: ${offResult.product.product_name}`);
+          
+          const response = {
+            ...mapOFFtoBackendResponse(offResult.product),
+            kind: 'single_product',
+            product: mapOFFtoLogProduct(offResult.product, norm.raw)
+          };
+          
+          return new Response(JSON.stringify(response), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
     }
+
+    // Step 3: Process image for candidates or single product
+    const result = await processHealthScanWithCandidates(body.imageBase64, reqId);
+    
+    // Add kind field and maintain compatibility
+    const enhancedResult = {
+      ...result,
+      kind: result.candidates ? 'multiple_candidates' : 'single_product'
+    };
     
     console.log(JSON.stringify({
       reqId, 
       phase: 'done', 
-      barcodeFound: Boolean(result.barcode), 
-      offHit: Boolean(result.barcode), 
-      brand: 'image-detected',
-      plateConf: null, 
-      scored: result.healthScore !== null, 
+      kind: enhancedResult.kind,
+      candidatesCount: result.candidates?.length || 0,
       productName: result.productName || 'unknown',
       latencyMs: Date.now() - t0
     }));
     
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify(enhancedResult),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

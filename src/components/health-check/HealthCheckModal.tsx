@@ -7,6 +7,7 @@ import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
+import { BrandedCandidatesList } from './BrandedCandidatesList';
 import { ResultCard } from './ResultCard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ import { useAuth } from '@/contexts/auth';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -74,7 +76,7 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found';
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
@@ -82,6 +84,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 }) => {
   const [currentState, setCurrentState] = useState<ModalState>('scanner');
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
+  const [candidates, setCandidates] = useState<any[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
   const { toast } = useToast();
@@ -92,6 +95,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     if (isOpen) {
       setCurrentState('scanner');
       setAnalysisResult(null);
+      setCandidates([]);
       setLoadingMessage('');
     }
   }, [isOpen]);
@@ -344,6 +348,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
+      
+      // Check for candidates first (if feature enabled)
+      if (isFeatureEnabled('photo_meal_ui_v1') && data.candidates && data.candidates.length > 1) {
+        console.log(`[HS] Found ${data.candidates.length} candidates, showing selection UI`);
+        setCandidates(data.candidates);
+        setCurrentState('candidates');
+        return;
+      }
       
       // Handle different statuses
       if (legacy.status === 'no_detection') {
@@ -715,6 +727,106 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   };
 
+  const handleCandidateSelect = async (candidateId: string) => {
+    console.log(`🔍 Fetching details for candidate: ${candidateId}`);
+    
+    try {
+      setCurrentState('loading');
+      setLoadingMessage('Fetching product details...');
+      
+      // Fetch detailed product information using barcode mode
+      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: { mode: 'barcode', barcode: candidateId, source: 'candidate-selection' }
+      });
+      
+      if (error || !data?.ok) {
+        throw new Error('Failed to fetch candidate details');
+      }
+      
+      // Use the same processing logic as the main flow
+      const legacy = toLegacyFromEdge(data);
+      
+      if (legacy.status === 'no_detection' || legacy.status === 'not_found') {
+        setCurrentState('fallback');
+        return;
+      }
+      
+      // Process the result same as barcode flow
+      const itemName = legacy.productName || 'Unknown item';
+      const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? null;
+      const scorePct = extractScore(rawScore);
+      const score10 = scorePct == null ? null : scorePct / 10;
+      
+      const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
+      const ingredientFlags = rawFlags.map((f: any) => ({
+        ingredient: f.title || f.label || f.key || 'Ingredient',
+        flag: f.description || f.label || '',
+        severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+      }));
+      
+      const ingredientsText = legacy.ingredientsText;
+      const nutritionData = legacy.nutrition || {};
+      
+      const analysisResult: HealthAnalysisResult = {
+        itemName,
+        productName: itemName,
+        title: itemName,
+        healthScore: score10 ?? 0,
+        ingredientsText,
+        ingredientFlags,
+        nutritionData: nutritionData || {},
+        healthProfile: {
+          isOrganic: ingredientsText?.includes('organic') || false,
+          isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
+          allergens: ingredientsText ? 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+              ingredientsText!.toLowerCase().includes(allergen)
+            ) : [],
+          preservatives: ingredientsText ? 
+            ingredientsText.split(',').filter(ing => 
+              ing.toLowerCase().includes('preservative') || 
+              ing.toLowerCase().includes('sodium benzoate') ||
+              ing.toLowerCase().includes('potassium sorbate')
+            ) : [],
+          additives: ingredientsText ? 
+            ingredientsText.split(',').filter(ing => 
+              ing.toLowerCase().includes('artificial') || 
+              ing.toLowerCase().includes('flavor') ||
+              ing.toLowerCase().includes('color')
+            ) : []
+        },
+        personalizedWarnings: [],
+        suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+        overallRating: score10 == null ? 'avoid' : 
+                      score10 >= 8 ? 'excellent' : 
+                      score10 >= 6 ? 'good' : 
+                      score10 >= 4 ? 'fair' : 
+                      score10 >= 2 ? 'poor' : 'avoid'
+      };
+      
+      setAnalysisResult(analysisResult);
+      setCurrentState('report');
+      
+      // Trigger daily score calculation
+      if (user?.id) {
+        triggerDailyScoreCalculation(user.id);
+      }
+      
+    } catch (candidateError) {
+      console.error('❌ Candidate selection failed:', candidateError);
+      toast({
+        title: "Error",
+        description: "Failed to fetch product details. Please try again.",
+        variant: "destructive",
+      });
+      setCurrentState('fallback');
+    }
+  };
+
+  const handleCandidateManualEntry = () => {
+    setCurrentState('fallback');
+  };
+
   const handleScanAnother = () => {
     setCurrentState('scanner');
     setAnalysisResult(null);
@@ -757,6 +869,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               result={analysisResult}
               onScanAnother={handleScanAnother}
               onClose={handleClose}
+            />
+          )}
+
+          {currentState === 'candidates' && isFeatureEnabled('photo_meal_ui_v1') && (
+            <BrandedCandidatesList
+              candidates={candidates}
+              onSelectCandidate={handleCandidateSelect}
+              onManualEntry={handleCandidateManualEntry}
             />
           )}
 

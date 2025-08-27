@@ -1,14 +1,17 @@
-export const ARENA_ENABLED = true;
-export const ARENA_SAFE_FALLBACK = true; // DEV-ONLY. Set false or remove later.
-export const ARENA_DEBUG_CONTROLS = false; // Show debug buttons when true
+/**
+ * Feature flags for controlling experimental features
+ */
 
-// Barcode V2 feature flag - rock-solid recognition
-export const BARCODE_V2 = true;
+export const FEATURE_FLAGS = {
+  photo_meal_ui_v1: true, // Enable branded candidates list in health check modal
+} as const;
 
-// Legacy fallback flag - should remain false in production
-export const ARENA_LEGACY_FALLBACK = false; // Warns if enabled
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 
-// Log warning if legacy fallback is enabled
-if (ARENA_LEGACY_FALLBACK && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.warn('⚠️ ARENA_LEGACY_FALLBACK is enabled. This should remain false in production.');
+export function isFeatureEnabled(flag: FeatureFlag): boolean {
+  return FEATURE_FLAGS[flag] === true;
 }
+
+// Legacy exports for compatibility
+export const ARENA_DEBUG_CONTROLS = true;
+export const BARCODE_V2 = true;
