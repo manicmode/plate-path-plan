@@ -202,6 +202,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         detectedBarcode: detectedBarcode || null
       };
       
+      // A) Prove analyzer gets full-frame image (DEV-only logs)
+      const estimatedBytes = Math.floor(payload.imageBase64.length * 0.75); // base64 overhead
+      console.debug(`[ANALYZE IMG] {bytes: ${payload.imageBase64.length}, estimatedImageBytes: ${estimatedBytes}}`);
+      
       console.log(`📦 Enhanced scanner payload [${currentCaptureId}]:`, {
         mode: payload.mode,
         dataLength: payload.imageBase64?.length || 0,

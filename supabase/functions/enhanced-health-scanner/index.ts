@@ -86,19 +86,22 @@ const HEALTH_RULES = Object.freeze({
   })
 });
 
+// Import enhanced brand lexicon
+import { ENHANCED_BRAND_LEXICON, extractBrandTokensWithFuzzy } from './brandLexicon.ts';
+
 // Read-only lexicons (immutable)
 const STOP_WORDS = Object.freeze(new Set([
   'original', 'natural', 'flavored', 'sweet', 'crunchy', 'family', 'size', 
-  'net', 'wt', 'gluten', 'free', 'non', 'gmo', 'keto', 'certified', 'made', 'with'
+  'net', 'wt', 'gluten', 'free', 'non', 'gmo', 'keto', 'certified', 'made', 'with',
+  'oz', 'lb', 'gram', 'serving', 'per', 'container', 'package', 'box', 'bag'
 ]));
 
-const BRAND_LEXICON = Object.freeze(new Set([
-  'skittles', 'mars', 'trader', "joe's", "trader joe's", 'nutrail', 
-  'nature\'s path', 'cascadian farm', 'haribo', 'trolli', 'kirkland'
-]));
+// Legacy brand lexicon for backward compatibility
+const BRAND_LEXICON = ENHANCED_BRAND_LEXICON;
 
 const CANDY_KEYWORDS = Object.freeze(new Set([
-  'candy', 'gummy', 'gummies', 'taffy', 'lollipop', 'chewy candy'
+  'candy', 'gummy', 'gummies', 'taffy', 'lollipop', 'chewy candy', 'chocolate',
+  'sweet', 'treats', 'confection', 'bonbon'
 ]));
 
 const GENERAL_TIPS = Object.freeze([
@@ -380,7 +383,14 @@ function mapOFFtoLogProduct(product: any, barcode: string): LogProduct {
 /**
  * Extract and clean OCR text
  */
-async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; cleanedTokens: string[]; brandTokens: string[]; hasCandy: boolean }> {
+async function extractAndCleanOCR(imageBase64: string): Promise<{ 
+  text: string; 
+  cleanedTokens: string[]; 
+  brandTokens: string[]; 
+  hasCandy: boolean;
+  fuzzyBrands: Array<{ token: string; brand: string; confidence: number }>;
+  ocrConfidence: number;
+}> {
   try {
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!apiKey) {
@@ -401,6 +411,9 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; 
     const result = await response.json();
     const rawText = result.responses?.[0]?.textAnnotations?.[0]?.description || '';
     
+    // Calculate OCR confidence from response
+    const ocrConfidence = result.responses?.[0]?.textAnnotations?.[0]?.confidence || 0.5;
+    
     // Normalize: lowercase, strip punctuation, collapse whitespace
     const normalized = rawText
       .toLowerCase()
@@ -410,39 +423,70 @@ async function extractAndCleanOCR(imageBase64: string): Promise<{ text: string; 
     
     // Remove stop-words and packaging tokens
     const tokens = normalized.split(/\s+/)
-      .filter(token => token.length > 0 && !STOP_WORDS.has(token));
+      .filter(token => token.length > 2 && !STOP_WORDS.has(token)); // Increased min length
     
-    // Extract brand evidence
-    const brandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
+    // Extract exact brand matches (legacy)
+    const exactBrandTokens = tokens.filter(token => BRAND_LEXICON.has(token));
     
-    // Candy detection (only from current OCR tokens)
-    const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token));
+    // Extract fuzzy brand matches (C) Add fuzzy rescue
+    const fuzzyBrands = extractBrandTokensWithFuzzy(tokens);
+    
+    // Combine exact and fuzzy matches for brandTokens
+    const allBrandTokens = [...exactBrandTokens];
+    fuzzyBrands.forEach(match => {
+      if (match.confidence >= 0.6 && !allBrandTokens.includes(match.token)) {
+        allBrandTokens.push(match.token);
+      }
+    });
+    
+    // Enhanced candy detection
+    const hasCandy = tokens.some(token => CANDY_KEYWORDS.has(token)) ||
+                    fuzzyBrands.some(match => match.brand.includes('candy') || match.brand.includes('chocolate'));
     
     console.log('📝 OCR processed:', { 
       rawLength: rawText.length, 
       tokens: tokens.length, 
-      brandTokens, 
-      hasCandy 
+      brandTokens: allBrandTokens, 
+      fuzzyMatches: fuzzyBrands.length,
+      hasCandy,
+      ocrConfidence
     });
     
     return { 
       text: rawText,
       cleanedTokens: tokens, 
-      brandTokens, 
-      hasCandy 
+      brandTokens: allBrandTokens, 
+      hasCandy,
+      fuzzyBrands,
+      ocrConfidence
     };
   } catch (error) {
     console.error('❌ OCR extraction failed:', error);
-    return { text: '', cleanedTokens: [], brandTokens: [], hasCandy: false };
+    return { 
+      text: '', 
+      cleanedTokens: [], 
+      brandTokens: [], 
+      hasCandy: false,
+      fuzzyBrands: [],
+      ocrConfidence: 0
+    };
   }
 }
 
 /**
- * Brand-gated name search (only with strong brand evidence)
+ * Brand-gated name search with relaxed requirements
  */
-async function searchByBrandAndName(brandTokens: string[], hasCandy: boolean): Promise<any | null> {
-  if (brandTokens.length === 0) {
-    console.log('❌ No brand evidence - skipping name search');
+async function searchByBrandAndName(
+  brandTokens: string[], 
+  hasCandy: boolean, 
+  fuzzyBrands?: Array<{ token: string; brand: string; confidence: number }>
+): Promise<any | null> {
+  // B) Relax brand gating - allow search with fuzzy matches
+  const hasBrandEvidence = brandTokens.length > 0 || 
+                          (fuzzyBrands && fuzzyBrands.some(m => m.confidence >= 0.6));
+                          
+  if (!hasBrandEvidence) {
+    console.log('❌ No brand evidence (exact or fuzzy) - skipping name search');
     return null;
   }
   
@@ -574,18 +618,40 @@ async function processHealthScanWithCandidates(imageBase64: string, reqId: strin
   ctx.brandTokens = ocrResult.brandTokens;
   ctx.hasCandy = ocrResult.hasCandy;
   
+  // B) Add [ANALYZER DEBUG] logs in DEV
+  const isDev = Deno.env.get('DENO_ENV') !== 'production';
+  if (isDev) {
+    console.log(`[ANALYZER DEBUG] [${reqId}]:`, {
+      ocrTopTokens: ctx.tokens.slice(0, 10),
+      exactBrands: ctx.brandTokens,
+      fuzzyBrands: ocrResult.fuzzyBrands,
+      ocrConfidence: ocrResult.ocrConfidence,
+      hasCandy: ctx.hasCandy,
+      textLength: ocrResult.text.length
+    });
+  }
+  
   console.log(`📝 OCR analysis [${reqId}]:`, { 
     tokens: ctx.tokens.length, 
     brandTokens: ctx.brandTokens.length, 
+    fuzzyBrands: ocrResult.fuzzyBrands?.length || 0,
     hasCandy: ctx.hasCandy 
   });
 
-  // Try single product search first
-  const singleProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
+  // Try single product search first with enhanced brand matching
+  const singleProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy, ocrResult.fuzzyBrands);
   
   if (singleProduct) {
     console.log(`✅ Single product found [${reqId}]: ${singleProduct.product_name}`);
     const logProduct = mapOFFtoLogProduct(singleProduct, singleProduct.code || '');
+    
+    if (isDev) {
+      console.log(`[ANALYZER DEBUG] Decision: single_product`, {
+        productName: logProduct.productName,
+        confidence: 'high'
+      });
+    }
+    
     return {
       kind: 'single_product',
       product: logProduct,
@@ -599,35 +665,79 @@ async function processHealthScanWithCandidates(imageBase64: string, reqId: strin
   // Try multiple candidates if single search fails
   const candidates = await searchMultipleCandidates(ctx.brandTokens, ctx.hasCandy);
   
-  if (candidates.length > 1) {
-    console.log(`✅ Multiple candidates found [${reqId}]: ${candidates.length}`);
+  // B) Return candidates instead of none when we have some evidence
+  const hasWeakEvidence = ctx.brandTokens.length > 0 || 
+                         ocrResult.fuzzyBrands.some(m => m.confidence >= 0.35) ||
+                         ctx.tokens.length > 3; // Some OCR text detected
+
+  if (candidates.length > 0 && hasWeakEvidence) {
+    console.log(`✅ Branded candidates found [${reqId}]: ${candidates.length}`);
+    
+    if (isDev) {
+      console.log(`[ANALYZER DEBUG] Decision: branded_candidates`, {
+        candidatesCount: candidates.length,
+        evidence: 'weak_but_present'
+      });
+    }
     
     // Map candidates to simplified format for UI
-    const candidateList = candidates.map((product: any) => ({
+    const candidateList = candidates.slice(0, 5).map((product: any) => ({
       id: product.code || crypto.randomUUID(),
       name: `${product.brands || ''} ${product.product_name || ''}`.trim() || 'Unknown Product',
       brand: product.brands || '',
       image: product.image_front_small_url || product.image_url || '',
-      confidence: 0.8 // Mock confidence for now
+      confidence: Math.max(0.5, Math.random() * 0.4 + 0.6) // Mock confidence 0.6-1.0
     }));
 
     return {
+      kind: 'branded_candidates',
       productName: 'Multiple products detected',
       healthScore: null,
       healthFlags: [],
       nutritionSummary: null,
       ingredients: [],
       recommendations: ['Please select the correct product from the list below.'],
-      generalSummary: `Found ${candidates.length} possible matches.`,
-      candidates: candidateList
+      generalSummary: `Found ${candidateList.length} possible matches.`,
+      candidates: candidateList,
+      fallback: false
     };
   }
 
-  // Fallback to original logic
-  const flags = generateHealthFlags([], ctx.hasCandy);
-  const healthScore = calculateHealthScore(flags, ctx.hasCandy, false);
+  // Check if this looks like a meal/plate
+  ctx.plateConf = calculatePlateConfidence(ctx.tokens);
+  
+  if (ctx.plateConf >= 0.3) {
+    if (isDev) {
+      console.log(`[ANALYZER DEBUG] Decision: meal`, {
+        plateConfidence: ctx.plateConf,
+        evidence: 'food_keywords'
+      });
+    }
+    
+    return {
+      kind: 'meal',
+      productName: 'Meal detected',
+      healthScore: null,
+      healthFlags: [],
+      nutritionSummary: null,
+      ingredients: [],
+      recommendations: ['This looks like a meal. Use the meal analysis feature.'],
+      generalSummary: 'Detected what appears to be a prepared meal or multiple food items.',
+      fallback: false
+    };
+  }
+
+  // Only return 'none' for truly empty images
+  if (isDev) {
+    console.log(`[ANALYZER DEBUG] Decision: none`, {
+      ocrLength: ctx.ocrText.length,
+      tokens: ctx.tokens.length,
+      evidence: 'insufficient'
+    });
+  }
   
   return {
+    kind: 'none',
     productName: 'Unknown product',
     healthScore: null,
     healthFlags: [],
@@ -841,8 +951,8 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
   ctx.hasCandy = ocrResult.hasCandy;
   
   // Step 3: Brand-gated name search (only with brand evidence)
-  if (ctx.brandTokens.length > 0) {
-    offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy);
+  if (ctx.brandTokens.length > 0 || ocrResult.fuzzyBrands?.some(m => m.confidence >= 0.6)) {
+    offProduct = await searchByBrandAndName(ctx.brandTokens, ctx.hasCandy, ocrResult.fuzzyBrands);
     if (offProduct) {
       nameHit = true;
       ctx.offHit = true;
@@ -1076,11 +1186,14 @@ serve(async (req) => {
     // Step 3: Process image for candidates or single product
     const result = await processHealthScanWithCandidates(body.imageBase64, reqId);
     
-    // Add kind field and maintain compatibility
+    // Maintain compatibility while preserving new kind system
     const enhancedResult = {
       ...result,
-      kind: result.candidates && result.candidates.length > 1 ? 'multiple_candidates' : 
-            result.product ? 'single_product' : 'none'
+      // Use the kind from the processor, fallback to legacy logic
+      kind: result.kind || (
+        result.candidates && result.candidates.length > 1 ? 'branded_candidates' : 
+        result.product ? 'single_product' : 'none'
+      )
     };
     
     console.log(JSON.stringify({
