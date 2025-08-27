@@ -30,29 +30,30 @@ export const TimeToBreatheNudge = ({ onAccept, onDismiss }: TimeToBreatheNudgePr
   }
 
   return (
-    <NudgeCard
-      title="Time to Breathe"
-      icon={<Wind className="h-5 w-5" />}
-      tone="calm"
-      cta={{
-        label: "Sacred Breath",
-        onClick: handleAccept,
-        icon: <Heart className="h-4 w-4" />
-      }}
-      onDismiss={handleDismiss}
-      className="mb-6"
-    >
-      <p>{activeNudge.nudge_message}</p>
-      
-      {/* Secondary action */}
-      <div className="mt-3">
-        <button
-          onClick={handleDismiss}
-          className="rounded-xl px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-900/10 dark:hover:bg-white/10 transition-colors"
-        >
-          In gentle time
-        </button>
-      </div>
-    </NudgeCard>
+    <div className="mb-6">
+      <NudgeCard
+        title="Time to Breathe"
+        icon={<Wind className="h-5 w-5" />}
+        tone="calm"
+        cta={{
+          label: "Sacred Breath",
+          onClick: handleAccept,
+          icon: <Heart className="h-4 w-4" />
+        }}
+        onDismiss={handleDismiss}
+      >
+        <p>{activeNudge.nudge_message}</p>
+        
+        {/* Secondary action */}
+        <div className="mt-3">
+          <button
+            onClick={handleDismiss}
+            className="rounded-xl px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-900/10 dark:hover:bg-white/10 transition-colors"
+          >
+            In gentle time
+          </button>
+        </div>
+      </NudgeCard>
+    </div>
   )
 }

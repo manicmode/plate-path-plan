@@ -30,7 +30,7 @@ export const SleepNudge = ({
     <NudgeCard
       title={title}
       icon={<Moon className="h-5 w-5" />}
-      tone="calm"
+      tone="primary"
       cta={{
         label: "🌙 Wind Down",
         onClick: handleAccept

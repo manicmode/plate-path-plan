@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Brain, Calendar, Sparkles } from 'lucide-react'
+import { Brain, Calendar, Sparkles } from 'lucide-react'
 import { useMeditationNudgeDisplay } from '@/hooks/useMeditationNudgeDisplay'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useNudgeTracking } from '@/hooks/useNudgeTracking'
@@ -18,17 +18,14 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const { activeNudge, acceptNudge, dismissNudge } = useMeditationNudgeDisplay()
-  // 🎮 Coach Gamification System
   const { trackNudgeAction } = useNudgeTracking()
 
   if (!activeNudge) return null
 
   const handleAccept = async () => {
     await acceptNudge(activeNudge.id)
-    // 🎮 Coach Gamification System - Track nudge acceptance
     await trackNudgeAction(activeNudge.nudge_type, 'accept')
     onAccept?.()
-    // Navigate to guided meditation
     navigate('/guided-meditation')
   }
 
