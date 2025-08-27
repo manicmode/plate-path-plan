@@ -137,11 +137,21 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
                   </div>
                 )}
                 
-                <div className="flex space-x-3">
+                <div className={`flex ${transcribedText ? 'flex-col space-y-3' : 'space-x-3'}`}>
+                  {transcribedText && (
+                    <Button
+                      onClick={handleVoiceSubmit}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg"
+                    >
+                      <Search className="w-5 h-5 mr-2" />
+                      Analyze
+                    </Button>
+                  )}
+                  
                   <Button
                     onClick={isRecording ? stopRecording : startRecording}
                     variant={isRecording ? "destructive" : "default"}
-                    className={`${transcribedText ? 'flex-1' : 'w-full'} py-3 text-lg ${
+                    className={`w-full py-3 text-lg ${
                       isRecording 
                         ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
                         : 'bg-green-600 hover:bg-green-700'
@@ -150,16 +160,6 @@ export const ManualEntryFallback: React.FC<ManualEntryFallbackProps> = ({
                     <Mic className={`w-5 h-5 mr-2 ${isRecording ? 'animate-bounce' : ''}`} />
                     {isRecording ? 'Stop Recording' : '🎤 Speak to Identify'}
                   </Button>
-                  
-                  {transcribedText && (
-                    <Button
-                      onClick={handleVoiceSubmit}
-                      className="bg-green-600 hover:bg-green-700 text-white py-3 flex-shrink-0"
-                    >
-                      <Search className="w-5 h-5 mr-2" />
-                      Analyze
-                    </Button>
-                  )}
                 </div>
                 
                 <p className="text-gray-400 text-sm text-center">
