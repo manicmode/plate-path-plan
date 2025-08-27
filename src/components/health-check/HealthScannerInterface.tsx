@@ -421,7 +421,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         // Optional: Add toast for PWA testing  
         if (window.location.search.includes('debug=toast')) {
-          const { toast } = await import('sonner');
+          const { toast } = await import('@/components/ui/sonner');
           toast.info(`[HS] off_fetch_start: ${result.raw}`);
         }
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -431,7 +431,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         // Optional: Add toast for PWA testing
         if (window.location.search.includes('debug=toast')) {
-          const { toast } = await import('sonner');
+          const { toast } = await import('@/components/ui/sonner');
           toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
         }
         if (data && !error) { 

@@ -79,7 +79,7 @@ export function useSnapAndDecode() {
       
       // Optional: Add toast for PWA testing when console isn't available
       if (window.location.search.includes('debug=toast')) {
-        const { toast } = await import('sonner');
+        const { toast } = await import('@/components/ui/sonner');
         toast.info(`${logPrefix} analyze_start`);
       }
       
@@ -127,7 +127,7 @@ export function useSnapAndDecode() {
         
         // Optional: Add toast for PWA testing
         if (window.location.search.includes('debug=toast')) {
-          const { toast } = await import('sonner');
+          const { toast } = await import('@/components/ui/sonner');
           toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
         }
 
