@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

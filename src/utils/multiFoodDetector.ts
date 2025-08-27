@@ -4,6 +4,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { routeGPTModel } from "./GPTRouter";
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 
 // Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
@@ -145,10 +147,40 @@ async function callGPT4Vision(imageBase64: string): Promise<Array<{ name: string
     console.log('🚀 [GPT-5 Vision] Starting food detection with GPT-5...');
     const startTime = Date.now();
     
+    let finalImageBase64 = imageBase64;
+    
+    // Apply photo encoder if enabled (for gallery/camera images)
+    if (isFeatureEnabled('photo_encoder_v1')) {
+      try {
+        // Convert base64 back to blob for processing
+        const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'image/jpeg' });
+        
+        const prep = await prepareImageForAnalysis(blob, {
+          maxEdge: 1280,
+          quality: 0.7, 
+          targetMaxBytes: 900_000
+        });
+        
+        console.log('🖼️ [GPT-5 Vision] Image optimized:', { 
+          w: prep.width, h: prep.height, bytes: prep.bytes 
+        });
+        finalImageBase64 = prep.base64NoPrefix;
+      } catch (encoderError) {
+        console.warn('⚠️ [GPT-5 Vision] Photo encoder failed, using original:', encoderError);
+        // Continue with original image
+      }
+    }
+    
     // Call our Supabase edge function that handles OpenAI API (client-side timeout handled at app level)
     const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
       body: { 
-        imageBase64: imageBase64,
+        imageBase64: finalImageBase64,
         prompt: "You are a food recognition assistant. Look at this image and return only a list of food items that are clearly visible in the photo. Respond only with the food names as a plain JSON array."
       }
     });

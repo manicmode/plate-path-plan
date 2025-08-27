@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon } from 'lucide-react';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { prepareImageForAnalysis, prepareImageForAnalysisLegacy } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
@@ -586,7 +588,28 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
     
     // No barcode or barcode lookup failed - proceed with image analysis
-    onCapture(fullBase64);
+    if (isFeatureEnabled('photo_encoder_v1')) {
+      try {
+        console.log("🖼️ Using optimized photo encoder for analysis");
+        const prep = await prepareImageForAnalysis(fullBlob, { 
+          maxEdge: 1280, 
+          quality: 0.7, 
+          targetMaxBytes: 900_000 
+        });
+        console.debug('[ANALYZE IMG]', { w: prep.width, h: prep.height, bytes: prep.bytes });
+        
+        // Create data URL with optimized image
+        const optimizedDataUrl = `data:image/jpeg;base64,${prep.base64NoPrefix}`;
+        onCapture(optimizedDataUrl);
+      } catch (error) {
+        console.warn("⚠️ Photo encoder failed, falling back to original:", error);
+        // Fallback to original image
+        onCapture(fullBase64);
+      }
+    } else {
+      // Original behavior when feature flag is disabled
+      onCapture(fullBase64);
+    }
   };
 
   const handleFlashlightToggle = async () => {
