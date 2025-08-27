@@ -5,6 +5,7 @@ import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { HealthScannerInterface } from './HealthScannerInterface';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
+import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
 import { ResultCard } from './ResultCard';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +74,7 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type ModalState = 'scanner' | 'loading' | 'report' | 'fallback';
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
@@ -136,6 +137,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           const legacy = toLegacyFromEdge(result);
           console.log('[HS BARCODE] Legacy after adapter:', legacy);
           
+          // Handle different statuses
+          if (legacy.status === 'no_detection') {
+            console.log('[HS] No detection from barcode, showing no detection UI');
+            setCurrentState('no_detection');
+            return;
+          }
+          
+          if (legacy.status === 'not_found') {
+            console.log('[HS] Barcode not found, showing not found UI');
+            setCurrentState('not_found'); 
+            return;
+          }
+          
           // Set name once and mirror to all possible header keys
           const itemName = legacy.productName || 'Unknown item';
           console.log('[HS BARCODE] Final itemName:', itemName);
@@ -168,7 +182,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           // Add scale guard: if already 0-10, don't divide again
           const rawScore = legacy.healthScore ?? result?.product?.health?.score ?? result?.health?.score ?? (result as any)?.healthScore;
           const scorePct = extractScore(rawScore);
-          const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
+          const score10 = scorePct == null ? null : scorePct / 10; // Keep as null instead of 0
           
           // Score normalization telemetry
           logScoreNorm('score_norm:barcode-photo.edge', result?.product?.health?.score ?? result?.health?.score, null);
@@ -232,7 +246,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             itemName,
             productName: itemName,  // alias for components reading productName
             title: itemName,        // alias for components reading title
-            healthScore: score10 ?? 0,              // 0–10 scale for UI
+            healthScore: score10 ?? 0,              // 0–10 scale for UI, but prefer null for unknown
             ingredientsText,
             ingredientFlags,
             nutritionData: nutritionData || {},
@@ -331,6 +345,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // Use the tolerant adapter to map edge response to legacy fields
       const legacy = toLegacyFromEdge(data);
       
+      // Handle different statuses
+      if (legacy.status === 'no_detection') {
+        console.log('[HS] No detection from image, showing no detection UI');
+        setCurrentState('no_detection');
+        return;
+      }
+      
+      if (legacy.status === 'not_found') {
+        console.log('[HS] Product not found from image, showing not found UI');
+        setCurrentState('not_found');
+        return;
+      }
+      
       // Set name once and mirror to all possible header keys
       const itemName = legacy.productName || 'Unknown item';
       
@@ -374,7 +401,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           // Add scale guard: if already 0-10, don't divide again
           const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
           const scorePct = extractScore(rawScore);
-          const score10 = scorePct == null ? undefined : scorePct / 10; // DO NOT default to 0
+          const score10 = scorePct == null ? null : scorePct / 10; // Keep as null instead of 0
       
       // Score normalization telemetry
       logScoreNorm('score_norm:image.edge', data?.product?.health?.score ?? data?.health?.score, null);
@@ -622,6 +649,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               result={analysisResult}
               onScanAnother={handleScanAnother}
               onClose={handleClose}
+            />
+          )}
+
+          {(currentState === 'no_detection' || currentState === 'not_found') && (
+            <NoDetectionFallback
+              status={currentState}
+              onRetryCamera={() => setCurrentState('scanner')}
+              onRetryPhoto={() => setCurrentState('scanner')}
+              onManualEntry={() => setCurrentState('fallback')}
+              onVoiceEntry={() => setCurrentState('fallback')}
+              onBack={handleClose}
             />
           )}
 

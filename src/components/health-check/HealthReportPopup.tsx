@@ -175,20 +175,21 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           </CardContent>
         </Card>
 
-        {/* 🚩 2. FLAGGED INGREDIENTS SECTION */}
-        <Card className="bg-card border-border backdrop-blur-sm">
-          <CardHeader className="pb-4">
-            <h3 className="text-xl font-bold text-foreground flex items-center">
-              <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mr-3" />
-              Flagged Ingredients
-              {result.ingredientFlags.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {result.ingredientFlags.length} warning{result.ingredientFlags.length > 1 ? 's' : ''}
-                </Badge>
-              )}
-            </h3>
-          </CardHeader>
-          <CardContent>
+        {/* 🚩 2. FLAGGED INGREDIENTS SECTION - Only show for successful scans */}
+        {result.healthScore !== null && result.healthScore > 0 && (
+          <Card className="bg-card border-border backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <h3 className="text-xl font-bold text-foreground flex items-center">
+                <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mr-3" />
+                Flagged Ingredients
+                {result.ingredientFlags.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {result.ingredientFlags.length} warning{result.ingredientFlags.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </h3>
+            </CardHeader>
+            <CardContent>
             {result.ingredientFlags.length > 0 ? (
               <div className="space-y-4">
                 {/* Warning Summary */}
@@ -263,6 +264,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* 📊 3. NUTRITION FACTS */}
         <Card className="bg-card border-border backdrop-blur-sm">

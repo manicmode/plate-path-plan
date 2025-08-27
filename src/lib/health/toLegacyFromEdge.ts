@@ -48,6 +48,8 @@ export type LegacyRecognized = {
   healthScore: number | null;
   healthFlags: LegacyHealthFlag[];
   nutrition?: any | null; // pass-through; existing UI already knows how to read it
+  status?: 'ok' | 'no_detection' | 'not_found';
+  recommendation?: string | null;
 };
 
 function coerceFlags(raw: any): LegacyHealthFlag[] {
@@ -93,17 +95,43 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
   const nutrition =
     p?.nutrition ?? envelope?.nutrition ?? null;
 
+  // Detect any meaningful signal
+  const hasAnySignal = !!(
+    barcode ||
+    (productName && productName !== 'Unknown item' && productName !== 'Unknown product') ||
+    nutrition ||
+    (ingredientsText && ingredientsText.trim().length > 5) ||
+    (Array.isArray(envelope?.detections) && envelope.detections.length > 0)
+  );
+
+  // Determine status and set defaults for no detection
+  let status: 'ok' | 'no_detection' | 'not_found' = 'ok';
+  let finalHealthScore = typeof healthScore === "number"
+    ? healthScore
+    : healthScore == null
+    ? null
+    : Number(healthScore) || null;
+  let finalHealthFlags = healthFlags;
+  let recommendation: string | null = null;
+
+  if (!hasAnySignal) {
+    status = 'no_detection';
+    finalHealthScore = null;
+    finalHealthFlags = [];
+    recommendation = null;
+  } else if (barcode && !productName) {
+    // Has barcode but no product found
+    status = 'not_found';
+  }
+
   return {
     productName,
     barcode: typeof barcode === "string" ? barcode : null,
     ingredientsText,
-    healthScore:
-      typeof healthScore === "number"
-        ? healthScore
-        : healthScore == null
-        ? null
-        : Number(healthScore) || null,
-    healthFlags,
+    healthScore: finalHealthScore,
+    healthFlags: finalHealthFlags,
     nutrition,
+    status,
+    recommendation,
   };
 }
