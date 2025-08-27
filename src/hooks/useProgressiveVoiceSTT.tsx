@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { useMicrophone, stopAllMedia } from '@/lib/media/useMediaDevices';
 
 interface UseProgressiveVoiceSTTReturn {
   isRecording: boolean;
@@ -24,6 +25,13 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Use the new microphone hook for server STT
+  const microphone = useMicrophone({
+    sampleRate: 16000,
+    echoCancellation: true,
+    noiseSuppression: true
+  });
 
   const debugLog = (step: string, data?: any) => {
     console.log(`🎤 [ProgressiveSTT] ${step}:`, data);
@@ -98,119 +106,132 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
   }, []);
 
   const startServerSTT = useCallback(async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('MediaRecorder not supported');
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        sampleRate: 44100,
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
+    debugLog('Starting server STT with MediaRecorder');
     
-    const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'audio/webm;codecs=opus'
-    });
-    mediaRecorderRef.current = mediaRecorder;
     audioChunksRef.current = [];
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
-    };
-
-    mediaRecorder.start(100);
-    setIsRecording(true);
-    setSttMethod('server');
-    debugLog('Server STT recording started');
-  }, []);
-
-  const stopServerSTT = useCallback(async () => {
-    return new Promise<void>((resolve) => {
-      if (!mediaRecorderRef.current) {
-        resolve();
-        return;
+    try {
+      // Use the new microphone hook
+      await microphone.start();
+      
+      if (!microphone.stream) {
+        throw new Error('Failed to get microphone stream');
       }
 
-      mediaRecorderRef.current.onstop = async () => {
-        setIsRecording(false);
-        setIsProcessing(true);
-        
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const reader = new FileReader();
-          
-          reader.onloadend = async () => {
-            try {
-              const base64Audio = (reader.result as string).split(',')[1];
-              
-              debugLog('Sending audio to server STT...');
-              const startTime = Date.now();
-              
-              const { data, error } = await supabase.functions.invoke('voice-to-text', {
-                body: { audio: base64Audio }
-              });
-              
-              const duration = Date.now() - startTime;
-              
-              if (error) {
-                throw new Error(error.message || 'Server STT failed');
-              }
+      // Check MediaRecorder support
+      if (!window.MediaRecorder || !MediaRecorder.isTypeSupported('audio/webm')) {
+        throw new Error('MediaRecorder not supported');
+      }
 
-              const transcription = data?.text || '';
-              setTranscript(transcription);
-              setIsProcessing(false);
-              
-              debugLog('Server STT completed', { 
-                text: transcription, 
-                duration: `${duration}ms`,
-                provider: data?.provider || 'unknown'
-              });
-              
-              // Telemetry
-              console.log('[TELEMETRY] fallback_voice_succeeded', {
-                method: 'server',
-                duration_ms: duration,
-                provider: data?.provider,
-                textLength: transcription.length
-              });
-              
-              resolve();
-            } catch (error) {
-              debugLog('Server STT error', error);
-              setIsProcessing(false);
-              
-              console.log('[TELEMETRY] fallback_voice_failed', {
-                method: 'server',
-                error: error instanceof Error ? error.message : 'Unknown error'
-              });
-              
-              toast.error('Failed to transcribe audio. Please try again.');
-              resolve();
-            }
-          };
-          
-          reader.readAsDataURL(audioBlob);
-        } catch (error) {
-          debugLog('Audio processing error', error);
-          setIsProcessing(false);
-          resolve();
+      const mediaRecorder = new MediaRecorder(microphone.stream, {
+        mimeType: 'audio/webm'
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+          debugLog('Audio chunk recorded', { size: event.data.size });
         }
       };
 
-      mediaRecorderRef.current.stop();
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setSttMethod('server');
       
-      // Stop all tracks
-      if (mediaRecorderRef.current.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      debugLog('Server STT MediaRecorder started');
+
+    } catch (error) {
+      debugLog('Server STT failed to start', error);
+      microphone.stop(); // Clean up microphone
+      throw error;
+    }
+  }, [microphone]);
+
+  const stopRecording = useCallback(async (): Promise<void> => {
+    debugLog('Stopping recording', { method: sttMethod });
+
+    if (sttMethod === 'browser' && recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      setIsRecording(false);
+      setSttMethod('none');
+      return;
+    }
+
+    if (sttMethod === 'server' && mediaRecorderRef.current) {
+      setIsProcessing(true);
+
+      try {
+        // Stop MediaRecorder first
+        if (mediaRecorderRef.current.state === 'recording') {
+          debugLog('Stopping MediaRecorder...');
+          mediaRecorderRef.current.stop();
+        }
+
+        // Clean up microphone stream
+        microphone.stop();
+
+        // Process audio for transcription
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.onstop = async () => {
+            debugLog('MediaRecorder stopped, processing audio...');
+            
+            if (audioChunksRef.current.length === 0) {
+              debugLog('No audio chunks to process');
+              setIsProcessing(false);
+              return;
+            }
+
+            try {
+              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+              debugLog('Audio blob created', { size: audioBlob.size });
+
+              if (audioBlob.size < 1000) {
+                debugLog('Audio too short, skipping transcription');
+                setIsProcessing(false);
+                return;
+              }
+
+              // Call server STT
+              const formData = new FormData();
+              formData.append('audio', audioBlob, 'recording.webm');
+
+              const { data, error } = await supabase.functions.invoke('voice-stt', {
+                body: formData,
+              });
+
+              if (error) {
+                debugLog('STT API error', error);
+                toast.error(`Transcription failed: ${error.message}`);
+              } else if (data?.transcript) {
+                debugLog('STT success', { transcript: data.transcript });
+                setTranscript(data.transcript);
+              } else {
+                debugLog('No transcript returned', data);
+                toast.error('No speech detected. Please try again.');
+              }
+
+            } catch (error) {
+              debugLog('Transcription processing error', error);
+              toast.error('Failed to process audio recording');
+            } finally {
+              setIsProcessing(false);
+              audioChunksRef.current = [];
+            }
+          };
+        }
+      } catch (error) {
+        debugLog('Stop recording error', error);
+        microphone.stop(); // Ensure cleanup
+        setIsProcessing(false);
+      } finally {
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        setSttMethod('none');
       }
-    });
-  }, []);
+    }
+  }, [sttMethod, microphone]);
 
   const startRecording = useCallback(async () => {
     if (!isFeatureEnabled('fallback_voice_enabled')) {
@@ -257,16 +278,23 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
     }
   }, [isBrowserSTTSupported, isServerSTTAvailable, startBrowserSTT, startServerSTT, sttMethod]);
 
-  const stopRecording = useCallback(async () => {
-    if (sttMethod === 'browser' && recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    } else if (sttMethod === 'server') {
-      await stopServerSTT();
-    }
-    
-    setSttMethod('none');
-  }, [sttMethod, stopServerSTT]);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current = null;
+      }
+      microphone.stop();
+      setSttMethod('none');
+      setIsRecording(false);
+      setIsProcessing(false);
+    };
+  }, [microphone]);
 
   return {
     isRecording,
