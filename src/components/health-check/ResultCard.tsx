@@ -136,7 +136,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ result, onAction }) => {
           </h3>
           
           {result.insights.map((insight, index) => (
-            <Card key={index} className="p-4">
+            <Card key={index} className={`p-4 ${insight.type === 'positive' ? 'animate-pulse' : ''}`}>
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-1">
                   {getInsightIcon(insight)}
