@@ -29,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, maxResults = 10, sources = ['off'] } = await req.json() as SearchRequest;
+    const { query, maxResults = 10, sources = ['off', 'fdc'] } = await req.json() as SearchRequest;
     
     if (!query || query.trim().length < 2) {
       return new Response(
@@ -40,23 +40,38 @@ serve(async (req) => {
 
     console.log(`🔍 [FoodSearch] Searching for: "${query}" (sources: ${sources.join(', ')})`);
     
-    const results: CanonicalSearchResult[] = [];
+    const normalizedQuery = normalizeQuery(query);
+    console.log(`📝 [FoodSearch] Normalized: "${normalizedQuery}"`);
     
-    // OpenFoodFacts search
+    const searchPromises: Promise<CanonicalSearchResult[]>[] = [];
+    
+    // Parallel searches
     if (sources.includes('off')) {
-      try {
-        const offResults = await searchOpenFoodFacts(query, maxResults);
-        results.push(...offResults);
-        console.log(`📦 [OpenFoodFacts] Found ${offResults.length} results`);
-      } catch (error) {
-        console.error('❌ [OpenFoodFacts] Search failed:', error);
-      }
+      searchPromises.push(
+        searchOpenFoodFacts(normalizedQuery, Math.ceil(maxResults * 0.7)).catch(error => {
+          console.error('❌ [OpenFoodFacts] Search failed:', error);
+          return [];
+        })
+      );
     }
     
-    // Apply ranking and limit results
-    const rankedResults = rankResults(results, query).slice(0, maxResults);
+    if (sources.includes('fdc')) {
+      searchPromises.push(
+        searchUSDAFDC(normalizedQuery, Math.ceil(maxResults * 0.5)).catch(error => {
+          console.error('❌ [USDA FDC] Search failed:', error);
+          return [];
+        })
+      );
+    }
     
-    console.log(`✅ [FoodSearch] Returning ${rankedResults.length} ranked results`);
+    const allResults = await Promise.all(searchPromises);
+    const combinedResults = allResults.flat();
+    
+    // Dedupe by name similarity and rank
+    const deduped = deduplicateResults(combinedResults);
+    const rankedResults = rankResults(deduped, normalizedQuery).slice(0, maxResults);
+    
+    console.log(`✅ [FoodSearch] Combined ${combinedResults.length} → deduped ${deduped.length} → final ${rankedResults.length} results`);
     
     return new Response(
       JSON.stringify({ results: rankedResults }),
@@ -72,10 +87,68 @@ serve(async (req) => {
   }
 });
 
+// Query normalization and synonyms
+const SYNONYMS = new Map([
+  ['yogurt', 'yoghurt'],
+  ['yoghurt', 'yogurt'],
+  ['soda', 'soft drink'],
+  ['pop', 'soda'],
+  ['cheese burger', 'cheeseburger'],
+  ['greek yogurt', 'greek yoghurt'],
+  ['oat milk', 'oats milk'],
+  ['almond milk', 'almonds milk'],
+]);
+
 const BURGER_CATS = new Set([
   'en:burgers','en:hamburgers','en:cheeseburgers',
   'burgers','hamburgers','cheeseburgers'
 ]);
+
+/**
+ * Normalize query for better matching
+ */
+function normalizeQuery(query: string): string {
+  let normalized = query
+    .toLowerCase()
+    .trim()
+    // Remove diacritics
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Standardize separators
+    .replace(/[-_]/g, ' ')
+    // Collapse whitespace
+    .replace(/\s+/g, ' ');
+  
+  // Apply synonyms
+  for (const [from, to] of SYNONYMS.entries()) {
+    if (normalized.includes(from)) {
+      normalized = normalized.replace(new RegExp(from, 'g'), to);
+    }
+  }
+  
+  // Handle plurals (simple approach)
+  normalized = normalized.replace(/\b(\w+)ies\b/g, '$1y').replace(/\b(\w+)s\b/g, '$1');
+  
+  return normalized;
+}
+
+/**
+ * Deduplicate results by name similarity
+ */
+function deduplicateResults(results: CanonicalSearchResult[]): CanonicalSearchResult[] {
+  const seen = new Set<string>();
+  const deduped: CanonicalSearchResult[] = [];
+  
+  for (const result of results) {
+    const key = `${result.name.toLowerCase().replace(/\s+/g, '')}-${result.brand?.toLowerCase() || ''}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(result);
+    }
+  }
+  
+  return deduped;
+}
 
 /**
  * Search OpenFoodFacts by text query with intelligent ranking
@@ -336,8 +409,154 @@ async function searchByCategory(category: string, limit: number): Promise<Canoni
 }
 
 /**
- * Rank search results by relevance (simplified since scoring now happens earlier)
+ * Search USDA FDC API
+ */
+async function searchUSDAFDC(query: string, limit: number): Promise<CanonicalSearchResult[]> {
+  const searchParams = new URLSearchParams({
+    query: query,
+    dataType: 'Foundation,SR Legacy,Survey',
+    pageSize: limit.toString(),
+    requireAllWords: 'false'
+  });
+  
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?${searchParams}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'PlatePathPlan/1.0 (https://lovable.app) - Health tracking app'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`USDA FDC API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  if (!data.foods || !Array.isArray(data.foods)) {
+    return [];
+  }
+  
+  return data.foods
+    .filter((food: any) => food.description && food.description.trim().length > 0)
+    .map((food: any): CanonicalSearchResult => {
+      const name = food.description || 'Unknown Food';
+      const brand = food.brandName || food.brandOwner || undefined;
+      
+      // Extract calories per 100g
+      let caloriesPer100g;
+      if (food.foodNutrients) {
+        const energyNutrient = food.foodNutrients.find((n: any) => 
+          n.nutrientId === 1008 || // Energy (kcal)
+          n.nutrientName?.toLowerCase().includes('energy')
+        );
+        if (energyNutrient?.value) {
+          caloriesPer100g = Math.round(energyNutrient.value);
+        }
+      }
+      
+      // Calculate confidence based on query match
+      const confidence = calculateFDCConfidence(food, query);
+      
+      return {
+        source: 'fdc',
+        id: `fdc-${food.fdcId}`,
+        name,
+        brand,
+        imageUrl: undefined, // FDC doesn't provide images
+        servingHint: caloriesPer100g ? 'per 100g' : undefined,
+        caloriesPer100g,
+        confidence
+      };
+    });
+}
+
+/**
+ * Calculate confidence score for FDC results
+ */
+function calculateFDCConfidence(food: any, query: string): number {
+  const name = (food.description || '').toLowerCase();
+  const brand = (food.brandName || food.brandOwner || '').toLowerCase();
+  const queryTokens = query.toLowerCase().split(' ').filter(t => t.length > 1);
+  
+  let score = 0;
+  
+  // Exact matches
+  if (name === query.toLowerCase()) {
+    score += 0.9;
+  } else if (name.includes(query.toLowerCase())) {
+    score += 0.7;
+  }
+  
+  // Token matching with co-occurrence bonus
+  let tokenMatches = 0;
+  queryTokens.forEach(token => {
+    if (name.includes(token)) {
+      score += 0.1;
+      tokenMatches++;
+    }
+    if (brand.includes(token)) {
+      score += 0.05;
+    }
+  });
+  
+  // Co-occurrence bonus (multiple tokens close together)
+  if (tokenMatches > 1) {
+    score += tokenMatches * 0.05;
+  }
+  
+  // Quality indicators
+  if (food.brandName || food.brandOwner) score += 0.1;
+  if (food.foodNutrients && food.foodNutrients.length > 3) score += 0.1;
+  
+  // Data source preference (Foundation > SR Legacy > Survey)
+  if (food.dataType === 'Foundation') score += 0.1;
+  else if (food.dataType === 'SR Legacy') score += 0.05;
+  
+  return Math.min(1.0, Math.max(0.1, score));
+}
+
+/**
+ * Enhanced ranking with token co-occurrence and confidence normalization
  */
 function rankResults(results: CanonicalSearchResult[], query: string): CanonicalSearchResult[] {
-  return results.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+  const queryTokens = query.toLowerCase().split(' ').filter(t => t.length > 1);
+  
+  return results
+    .map(result => {
+      // Recalculate confidence with co-occurrence bonus
+      const name = result.name.toLowerCase();
+      const brand = (result.brand || '').toLowerCase();
+      
+      let coOccurrenceBonus = 0;
+      let matchedTokens = 0;
+      
+      queryTokens.forEach(token => {
+        if (name.includes(token) || brand.includes(token)) {
+          matchedTokens++;
+        }
+      });
+      
+      // Bonus for multiple token matches (indicates better semantic relevance)
+      if (matchedTokens > 1) {
+        coOccurrenceBonus = matchedTokens * 0.1;
+      }
+      
+      // Boost high-quality results
+      let qualityBonus = 0;
+      if (result.caloriesPer100g) qualityBonus += 0.05;
+      if (result.brand) qualityBonus += 0.05;
+      if (result.imageUrl) qualityBonus += 0.03;
+      
+      const finalConfidence = Math.min(1.0, 
+        (result.confidence || 0.5) + coOccurrenceBonus + qualityBonus
+      );
+      
+      return {
+        ...result,
+        confidence: finalConfidence
+      };
+    })
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 }
