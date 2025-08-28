@@ -12,6 +12,25 @@ import { verifyHubRoutes } from '@/utils/hubRouteCheck';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
+// MicJanitor - Kill stray audio tracks on scanner routes
+function MicJanitor() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(pathname);
+    if (!isScanner) return;
+
+    // Stop any accidental mic tracks attached to elements
+    const els = Array.from(document.querySelectorAll('video,audio')) as (HTMLVideoElement|HTMLAudioElement)[];
+    for (const el of els) {
+      const s = (el as any).srcObject as MediaStream | null;
+      const ats = s?.getAudioTracks?.() || [];
+      ats.forEach(t => { try { t.stop(); } catch {} try { s?.removeTrack(t); } catch {} });
+    }
+    console.warn('[MIC-JANITOR] Stopped stray audio tracks on', pathname);
+  }, [pathname]);
+  return null;
+}
+
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -199,6 +218,7 @@ function AppContent() {
         <>
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
+          <MicJanitor />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <OnboardingGate>
               <Routes>

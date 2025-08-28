@@ -15,6 +15,26 @@ import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 // Apply security headers on app initialization
 applySecurityHeaders();
 
+// --- GLOBAL MIC GUARD ON SCANNER ROUTES (TEMP) ---
+(function guardGetUserMedia() {
+  const md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia) return;
+  const orig = md.getUserMedia.bind(md);
+  (navigator.mediaDevices as any).getUserMedia = (constraints: any) => {
+    try {
+      const path = location.pathname;
+      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
+      if (isScanner) {
+        constraints = constraints || {};
+        // Force-disable audio on scanner routes even if callers forget
+        if (constraints.audio !== false) constraints.audio = false;
+        console.warn('[GUARD][GUM] audio forced false on', path);
+      }
+    } catch {}
+    return orig(constraints);
+  };
+})();
+
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
