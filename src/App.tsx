@@ -12,39 +12,6 @@ import { verifyHubRoutes } from '@/utils/hubRouteCheck';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
-// MicJanitor - Kill stray audio tracks on scanner routes
-function MicJanitor() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(pathname);
-    if (!isScanner) return;
-
-    // Stop any accidental mic tracks attached to elements
-    const els = Array.from(document.querySelectorAll('video,audio')) as (HTMLVideoElement|HTMLAudioElement)[];
-    for (const el of els) {
-      const s = (el as any).srcObject as MediaStream | null;
-      const ats = s?.getAudioTracks?.() || [];
-      ats.forEach(t => { try { t.stop(); } catch {} try { s?.removeTrack(t); } catch {} });
-    }
-    console.warn('[MIC-JANITOR] Stopped stray audio tracks on', pathname);
-  }, [pathname]);
-  return null;
-}
-
-// AudioJanitor - Suspend AudioContexts on scanner routes
-function AudioJanitor() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    if (!/^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(pathname)) return;
-    // Suspend any active AudioContexts to avoid OS thinking mic/record path is warm
-    const anyWin = window as any;
-    const contexts: (AudioContext|any)[] = anyWin.__activeAudioContexts || [];
-    contexts.forEach((ctx:any)=>{ try { ctx.suspend?.(); } catch {} });
-    console.warn('[AUDIO-JANITOR] Suspended', contexts.length, 'AudioContexts on', pathname);
-  }, [pathname]);
-  return null;
-}
-
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -152,8 +119,6 @@ const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
 const CamPure = lazy(() => import('@/pages/debug/CamPure'));
 const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
-const DebugCamPure = lazy(() => import('@/pages/debug/DebugCamPure'));
-const DebugCamPhoto = lazy(() => import('@/pages/debug/DebugCamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
@@ -236,8 +201,6 @@ function AppContent() {
         <>
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
-          <MicJanitor />
-          <AudioJanitor />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <OnboardingGate>
               <Routes>
@@ -548,18 +511,14 @@ function AppContent() {
                               <ProtectedRoute>
                                 <ScanRecents />
                               </ProtectedRoute>
+                             } />
+                             
+                           {/* Other debug routes for developers */}
+                            <Route path="/debug/*" element={
+                              <ProtectedRoute>
+                                <DebugRoutes />
+                              </ProtectedRoute>
                             } />
-                            
-                          {/* Debug routes - PUBLIC ACCESS (no auth required) */}
-                          <Route path="/debug/cam-pure" element={<DebugCamPure />} />
-                          <Route path="/debug/cam-photo" element={<DebugCamPhoto />} />
-                            
-                          {/* Other debug routes for developers */}
-                           <Route path="/debug/*" element={
-                             <ProtectedRoute>
-                               <DebugRoutes />
-                             </ProtectedRoute>
-                           } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>

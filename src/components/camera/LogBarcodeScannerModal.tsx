@@ -13,32 +13,6 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 
-// DEV: media lifecycle logging (scoped to this component; remove after audit)
-const DEV_MEDIA_AUDIT = true;
-function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
-  if (!DEV_MEDIA_AUDIT) return;
-  const v = videoEl || null;
-  const s = (v?.srcObject as MediaStream) || null;
-  const tracks = s ? s.getVideoTracks() : [];
-  const readyStates = tracks.map(t => t.readyState);
-  const videosWithSrc = Array.from(document.querySelectorAll('video'))
-    .filter(el => (el as HTMLVideoElement).srcObject).length;
-  const audioTracks = s ? s.getAudioTracks().length : 0;
-  const activeEls = Array.from(document.querySelectorAll('video,audio')).map(e=>{
-    const s = (e as any).srcObject as MediaStream | null;
-    return { tag: e.tagName, hasAudio: !!s?.getAudioTracks?.().length, hasVideo: !!s?.getVideoTracks?.().length };
-  });
-  // eslint-disable-next-line no-console
-  console.log(tag, {
-    route: location.pathname + location.search,
-    tracks: tracks.length,
-    audioTracks,
-    readyStates,
-    videosWithSrc,
-    activeEls,
-  });
-}
-
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
 }
@@ -55,17 +29,6 @@ interface LogBarcodeScannerModalProps {
   onOpenChange: (open: boolean) => void;
   onBarcodeDetected: (barcode: string) => void;
   onManualEntry: () => void;
-}
-
-// PHASE 3: Stream/track forensics helper
-function tapStream(s: MediaStream, component: string) {
-  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
-  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
-  for (const t of s.getTracks()) {
-    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
-    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
-    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
-  }
 }
 
 export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
@@ -235,7 +198,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       // Defensive strip: remove any audio tracks that slipped in
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-      console.warn('[MEDIA][camera-only] removed audio tracks:', s.getAudioTracks?.().length);
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -247,11 +209,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
-        
-        // PHASE 3: Add stream forensics
-        tapStream(mediaStream, 'LogBarcodeScannerModal');
-        
-        mediaLog('[MEDIA][LogBarcodeScanner][mount]', videoRef.current);
         
         // Ensure torch state after track is ready
         setTimeout(() => {
@@ -276,18 +233,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const cleanup = () => {
-    mediaLog('[MEDIA][LogBarcodeScanner][pre_cleanup]', videoRef.current);
-
     const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
     torchOff(track);
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     if (s) {
-      console.warn('[CLEANUP][tracks]', { 
-        videoTracks: s.getVideoTracks().length, 
-        audioTracks: s.getAudioTracks().length,
-        component: 'LogBarcodeScannerModal' 
-      });
       for (const t of s.getTracks()) {
         try { t.stop(); } catch {}
         try { s.removeTrack(t); } catch {}
@@ -305,8 +255,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     setIsDecoding(false);
     setIsFrozen(false);
     setIsLookingUp(false);
-
-    mediaLog('[MEDIA][LogBarcodeScanner][post_cleanup]', videoRef.current);
   };
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {

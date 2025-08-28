@@ -1,19 +1,6 @@
-// ---- feature flags (must run before any other imports) ----
-;(window as any).__featureFlags = {
-  MEDIA_INTERCEPTORS_ENABLED: true,           // master switch for all interceptors
-  MEDIA_BLOCK_SRCOBJECT_ON_IOS: false,        // MUST be false for now (no throws)
-  MEDIA_STRICT_LOCKDOWN: false,               // prevents non-configurable property locks
-  // NEW: allow live video ONLY on the debug route
-  IOS_LIVE_DEBUG: location.pathname.startsWith('/debug/cam-pure') || /[?&]live=1\b/.test(location.search),
-  ...(window as any).__featureFlags,
-};
-
 // capture runtime errors so we can see why a blank page ever happens
 window.onerror = (m, s, l, c, e) => console.error('[BOOT][onerror]', m, s, l, c, e);
 window.onunhandledrejection = (e) => console.error('[BOOT][unhandledrejection]', e?.reason || e);
-
-/* MUST LOAD FIRST */ 
-import '@/lib/captureInterceptors';
 
 import { StrictMode } from "react";
 import * as React from "react";
@@ -34,91 +21,6 @@ applySecurityHeaders();
 
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};
-// To temporarily re-enable live video on iOS for dev: window.__featureFlags.IOS_LIVE_SCANNER_CAM = true
-
-// --- GLOBAL VIDEO getUserMedia HARD BLOCK FOR iOS (TEMP) ---
-(function guardVideoGUM() {
-  const isIOSWebKit =
-    /AppleWebKit/.test(navigator.userAgent) &&
-    (/iP(hone|ad|od)/.test(navigator.userAgent) || ('ontouchend' in document));
-
-  const md = navigator.mediaDevices;
-  if (!md || !md.getUserMedia) return;
-
-  const orig = md.getUserMedia.bind(md);
-  (navigator.mediaDevices as any).getUserMedia = (constraints: any = {}) => {
-    try {
-      const hasVideo = !!(constraints && constraints.video);
-      const ff = (window as any).__featureFlags || {};
-      const allowVideo = ff.IOS_LIVE_SCANNER_CAM || ff.IOS_LIVE_DEBUG;
-      
-      if (isIOSWebKit && hasVideo && !allowVideo) {
-        console.warn('[HARD-BLOCK][GUM] Blocking video getUserMedia on iOS');
-        const err = new DOMException('Video getUserMedia disabled on iOS', 'NotAllowedError');
-        return Promise.reject(err);
-      }
-      
-      // If we get here on /debug/cam-pure, ALLOW and log loudly:
-      if (isIOSWebKit && hasVideo && ff.IOS_LIVE_DEBUG) {
-        console.warn('[TEST-ALLOW][GUM] Allowing video getUserMedia on /debug/cam-pure');
-      }
-    } catch {}
-    return orig(constraints);
-  };
-})();
-
-// --- GLOBAL DISPLAY CAPTURE GUARD (TEMP) ---
-(function guardDisplayCapture() {
-  const md = navigator.mediaDevices as any;
-  if (md?.getDisplayMedia) {
-    const origGDM = md.getDisplayMedia.bind(md);
-    md.getDisplayMedia = (constraints: any) => {
-      const path = location.pathname;
-      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
-      console.warn('[GUARD][GDM] called on', path, constraints);
-      if (isScanner) {
-        console.error('[GUARD][GDM] BLOCKED on scanner route', path);
-        return Promise.reject(new DOMException('display capture blocked on scanner route','NotAllowedError'));
-      }
-      return origGDM(constraints);
-    };
-  }
-
-  // Block element.captureStream (video/canvas) starting a recording pipeline
-  const elProto = (HTMLMediaElement as any)?.prototype;
-  if (elProto?.captureStream) {
-    const origCS = elProto.captureStream;
-    elProto.captureStream = function(...args: any[]) {
-      const path = location.pathname;
-      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
-      console.warn('[GUARD][captureStream] on', path, this.tagName, args);
-      if (isScanner) {
-        console.error('[GUARD][captureStream] BLOCKED on scanner route', path);
-        throw new DOMException('captureStream blocked on scanner route','NotAllowedError');
-      }
-      return origCS.apply(this, args);
-    };
-  }
-})();
-
-// --- AUDIOCONTEXT TRACKING (TEMP) ---
-(function tapAudioContext(){
-  const anyWin = window as any;
-  anyWin.__activeAudioContexts = [];
-  const AC = (window as any).AudioContext;
-  const WAC = (window as any).webkitAudioContext;
-  function wrap(Ctor:any){
-    if (!Ctor) return;
-    const Orig = Ctor;
-    (window as any)[Orig.name] = function(...args:any[]){
-      const inst = new Orig(...args);
-      try { anyWin.__activeAudioContexts.push(inst); } catch {}
-      return inst;
-    } as any;
-    (window as any)[Orig.name].prototype = Orig.prototype;
-  }
-  wrap(AC); wrap(WAC);
-})();
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
