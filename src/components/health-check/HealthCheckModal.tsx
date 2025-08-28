@@ -120,6 +120,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
+      console.log('[HC][STEP]', initialState, { source: analysisData?.source });
       setCurrentState(initialState);
       setAnalysisResult(null);
       setCandidates([]);
@@ -129,7 +130,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setLoadingMessage('');
       setCurrentAnalysisData({ source: 'photo' });
     }
-  }, [isOpen, initialState]);
+  }, [isOpen, initialState, analysisData]);
 
   // Handle analysis data from URL params (e.g., from manual entry)
   useEffect(() => {
@@ -164,6 +165,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const runId = crypto.randomUUID();
       currentRunId.current = runId;
       
+      console.log('[HC][STEP]', 'loading', { source: 'manual_product_analysis' });
       setCurrentState('loading');
       setLoadingMessage(`Analyzing "${analysisData.productName || name}"...`);
       setAnalysisType('manual');
@@ -229,6 +231,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const runId = crypto.randomUUID();
       currentRunId.current = runId;
       
+      console.log('[HC][STEP]', 'loading', { source: 'voice_lookup' });
       setCurrentState('loading');
       setLoadingMessage(`Looking up "${name}"...`);
       setAnalysisType('manual');
@@ -317,6 +320,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const processAnalysisData = async () => {
         try {
           setIsProcessing(true);
+          console.log('[HC][STEP]', 'loading', { source: 'barcode_analysis' });
           setCurrentState('loading');
           setLoadingMessage('Processing product...');
           setAnalysisType('barcode');
@@ -474,6 +478,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setIsProcessing(true);
     
     try {
+      console.log('[HC][STEP]', 'loading', { source: 'photo_analysis_v2' });
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
@@ -567,6 +572,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setIsProcessing(true);
     
     try {
+      console.log('[HC][STEP]', 'loading', { source: 'photo_analysis_v1' });
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
@@ -763,6 +769,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const trimmedQuery = query.trim();
       console.log(`📝 Processing ${type} input:`, trimmedQuery);
       
+      console.log('[HC][STEP]', 'loading', { source: 'manual_entry' });
       setCurrentState('loading');
       setAnalysisType('manual');
       setCurrentAnalysisData({ 
@@ -949,6 +956,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.error(`❌ ${type} analysis failed:`, error);
       
       // Reset loading state immediately
+      console.log('[HC][STEP]', 'scanner', { source: 'error_fallback' });
       setCurrentState('scanner');
       
       toast({
@@ -1248,6 +1256,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
     
     try {
+      console.log('[HC][STEP]', 'loading', { source: 'meal_save' });
       setCurrentState('loading');
       setLoadingMessage('Saving meal...');
       
@@ -1298,6 +1307,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     console.log(`🔍 Fetching details for candidate: ${candidateId}`);
     
     try {
+      console.log('[HC][STEP]', 'loading', { source: 'candidate_select' });
       setCurrentState('loading');
       setLoadingMessage('Fetching product details...');
       
@@ -1401,12 +1411,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   const handleScanAnother = () => {
+    console.log('[HC][STEP]', 'scanner', { source: 'scan_another' });
     setCurrentState('scanner');
     setAnalysisResult(null);
   };
 
   const handleClose = () => {
     console.log('[HEALTH_MODAL] Close called - navigating back to original entry');
+    console.log('[HC][STEP]', 'scanner', { source: 'modal_close' });
     setCurrentState('scanner');
     setAnalysisResult(null);
     onClose();
@@ -1484,8 +1496,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           {(currentState === 'no_detection' || currentState === 'not_found') && (
             <NoDetectionFallback
               status={currentState}
-              onRetryCamera={() => setCurrentState('scanner')}
-              onRetryPhoto={() => setCurrentState('scanner')}
+              onRetryCamera={() => {
+                console.log('[HC][STEP]', 'scanner', { source: 'retry_camera' });
+                setCurrentState('scanner');
+              }}
+              onRetryPhoto={() => {
+                console.log('[HC][STEP]', 'scanner', { source: 'retry_photo' });
+                setCurrentState('scanner');
+              }}
               onManualEntry={() => setCurrentState('fallback')}
               onVoiceEntry={() => setCurrentState('fallback')}
               onBack={handleClose}
@@ -1498,7 +1516,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                 const legacy = toLegacyFromEdge({ product });
                 processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
               }}
-              onBack={() => setCurrentState('scanner')}
+              onBack={() => {
+                console.log('[HC][STEP]', 'scanner', { source: 'manual_entry_back' });
+                setCurrentState('scanner');
+              }}
               setAnalysisData={setAnalysisResult}
               setStep={(step) => setCurrentState(step as ModalState)}
             />

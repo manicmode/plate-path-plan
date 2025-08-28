@@ -118,6 +118,8 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   
   // Convert product to text format for analysis (unified approach)
   const text = productToText(stripped);
+  console.log('[ANALYZER][TEXT]', text);
+  console.log('[SELECTION][PRODUCT_KEYS]', Object.keys(product||{}));
   const body = { text, taskType: 'food_analysis', complexity: 'auto' };
 
   // PARITY logging: before invoke
@@ -129,7 +131,7 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   });
   
   // PROBE: Log raw analyzer response
-  console.log('[ANALYZER][RAW]', JSON.stringify({ keys: Object.keys(data||{}), data }, null, 2));
+  console.log('[ANALYZER][RAW]', { keys: Object.keys(data||{}), sample: { itemName: data?.itemName, productName: data?.productName, quality: data?.quality, nutrition: data?.nutrition, report: data?.report ? Object.keys(data.report) : null }});
   
   // PARITY logging: after invoke
   console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
@@ -216,6 +218,7 @@ export async function handleSearchPick({
       itemName: mappedAnalysis.itemName, 
       healthScore10: mappedAnalysis.healthScore 
     });
+    console.log('[REPORT][FEED]', { itemName: mappedAnalysis?.itemName, healthScore: mappedAnalysis?.healthScore, hasNutrition: !!product.nutriments, hasIngredients: !!product.ingredients });
 
     // Transform analysis to Health Analysis result format
     const analysisResult = {

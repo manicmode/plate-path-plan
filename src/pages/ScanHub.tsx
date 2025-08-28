@@ -120,6 +120,7 @@ export default function ScanHub() {
     if (forceHealth || handledRef.current) return;
     
     logTileClick('barcode');
+    console.log('[HC][OPEN]', { from: 'barcode', initial: 'scanner' });
     setHealthCheckModalOpen(true);
   };
 
@@ -189,6 +190,7 @@ export default function ScanHub() {
   // Handle manual entry product selection - use unified in-modal pipeline
   const handleManualProductSelected = (product: any) => {
     console.log('Manual product selected:', product);
+    console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
     // Close manual entry and stay in health modal for analysis
@@ -404,6 +406,7 @@ export default function ScanHub() {
             setCurrentState('hub'); // Return to hub
             
             // Open HealthCheckModal with normalized data
+            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
             setHealthCheckModalOpen(true);
             setHealthModalStep('loading');
             const analysisData = {
@@ -438,6 +441,7 @@ export default function ScanHub() {
             setManualEntryOpen(false);
             
             // Open HealthCheckModal with normalized data
+            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
             setHealthCheckModalOpen(true);
             setHealthModalStep('loading');
             const analysisData = {
