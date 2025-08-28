@@ -133,6 +133,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     const { source, barcode, name } = analysisData;
     
+    // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
+    const isSearchFlow = source === 'voice' || source === 'manual';
+    if (isSearchFlow) {
+      console.log(`🚫 Blocking enhanced-health-scanner for search flow: ${source}`);
+      return;
+    }
+    
     // Handle voice-specific routing first
     if (source === 'voice' && name) {
       if (import.meta.env.DEV) console.log('[VOICE→HEALTH] start', { name });

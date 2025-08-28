@@ -85,23 +85,20 @@ const stripForAnalyze = (p: any) => ({
  */
 const productToText = (p: any) => {
   const n = p.nutriments ?? {};
-  const parts = [
-    `Product: ${p.name}${p.brand ? ` by ${p.brand}` : ''}.`,
+  return [
+    `Analyze this product: ${p.name}${p.brand ? ` by ${p.brand}` : ''}.`,
     p.serving ? `Serving: ${p.serving}.` : '',
-    `Nutrition (approx):` +
-    [
-      n.energy_kcal != null ? ` ${n.energy_kcal} kcal` : '',
-      n.proteins != null ? `, ${n.proteins} g protein` : '',
-      n.carbohydrates != null ? `, ${n.carbohydrates} g carbs` : '',
-      n.fat != null ? `, ${n.fat} g fat` : '',
-      n.fiber != null ? `, ${n.fiber} g fiber` : '',
-      n.sugars != null ? `, ${n.sugars} g sugars` : '',
-      n.sodium != null ? `, ${n.sodium} mg sodium` : '',
-      n.saturated_fat != null ? `, ${n.saturated_fat} g saturated fat` : '',
-    ].join('').replace(/^, /,''),
-    p.ingredients ? ` Ingredients: ${String(p.ingredients).slice(0,400)}.` : '',
-  ].filter(Boolean).join(' ');
-  return parts;
+    'Nutrition:',
+    n.energy_kcal != null ? `${n.energy_kcal} kcal` : '',
+    n.proteins != null ? `, ${n.proteins} g protein` : '',
+    n.carbohydrates != null ? `, ${n.carbohydrates} g carbs` : '',
+    n.fat != null ? `, ${n.fat} g fat` : '',
+    n.fiber != null ? `, ${n.fiber} g fiber` : '',
+    n.sugars != null ? `, ${n.sugars} g sugars` : '',
+    n.sodium != null ? `, ${n.sodium} mg sodium` : '',
+    n.saturated_fat != null ? `, ${n.saturated_fat} g saturated fat` : '',
+    p.ingredients ? `. Ingredients: ${String(p.ingredients).slice(0,400)}.` : ''
+  ].join('').replace('Nutrition:,', 'Nutrition:').trim();
 };
 
 /**
@@ -112,23 +109,15 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   
   const source = options.source || 'manual';
   const stripped = stripForAnalyze(product);
-  let body: any;
-
-  // VOICE_ANALYZE_V2: Convert voice selections to text format
-  if (source === 'voice' && isFeatureEnabled('voice_analyze_v2')) {
-    if (!stripped.name || !stripped.nutriments) {
-      throw new Error('Could not analyze selection: missing product details');
-    }
-    const text = productToText(stripped);
-    body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
-  } else {
-    // Keep existing body for manual paths (unchanged)
-    body = {
-      mode: 'product',
-      product: product,
-      source: options.source || 'manual'
-    };
+  
+  // Guard: require product name and nutrition data
+  if (!stripped.name || !stripped.nutriments) {
+    throw new Error('Could not analyze selection: missing product details');
   }
+  
+  // Convert product to text format for analysis (both manual and voice selections)
+  const text = productToText(stripped);
+  const body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
 
   // DEV diagnostics: log request before invoke
   const bytes = new Blob([JSON.stringify(body)]).size;
