@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import '@/lib/clearMockData'; // Force clear any mock data
 
 interface NutritionLog {
   id: string;
@@ -47,6 +48,12 @@ export default function SavedReports() {
         const { data: sess } = await supabase.auth.getSession();
         console.log('[SAVED-REPORTS][SESSION]', { hasSession: !!sess?.session, user: sess?.session?.user?.id });
       }
+
+      // EMERGENCY: Force empty state until DB is working properly
+      console.log('[EMERGENCY] Forcing empty state - no mock data allowed');
+      setSavedReports([]);
+      setLoading(false);
+      return;
 
       const { data, error } = await supabase
         .from('nutrition_logs')
