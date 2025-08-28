@@ -184,9 +184,19 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       
       console.log('[PHOTO] Photo captured, processing...');
       
-      // Process with existing analyzer flow
-      onCapture(imageBase64);
-      onOpenChange(false);
+      // Check for v2 flag to prevent scanner re-opening
+      const PHOTO_V2 = (import.meta.env.VITE_PHOTO_PIPELINE_V2 ?? '').toString().toLowerCase() === 'true';
+      
+      if (PHOTO_V2) {
+        console.log('[PHOTO][V2] Using v2 pipeline - no scanner remount');
+        // v2: Process directly without reopening scanner
+        onCapture(imageBase64);
+        onOpenChange(false);
+      } else {
+        // Legacy: Process with existing analyzer flow
+        onCapture(imageBase64);
+        onOpenChange(false);
+      }
       
     } catch (error) {
       console.error('[PHOTO] Capture failed:', error);

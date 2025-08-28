@@ -149,8 +149,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return; // Don't fall through to any "health/analysis" effects
     }
     
+    // PARITY: Bypass URL effects for manual/off sources (unified pipeline handles them)
+    if (source === 'manual' || source === 'off') {
+      console.log('[PARITY][URL-BYPASS]', { source });
+      return; // manual is handled in-place, do not navigate / do not open scanner
+    }
+    
     // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
-    const isSearchFlow = source === 'voice' || source === 'manual';
+    const isSearchFlow = source === 'voice';
     if (isSearchFlow) {
       console.log(`🚫 Blocking enhanced-health-scanner for search flow: ${source}`);
       return;

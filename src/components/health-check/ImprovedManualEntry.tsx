@@ -208,7 +208,6 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     // Determine source based on context - voice if we have initialQuery, manual otherwise
     const source = initialQuery ? 'voice' : 'manual';
     console.log('[PARITY][TAP]', { source, itemName: result?.name });
-    console.log('[PARITY][HANDLER]', { source, usingHandler: true });
     
     // Log telemetry
     logFallbackEvents.resultSelected(
@@ -219,6 +218,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     
      // Use unified analysis pipeline if available, otherwise fall back to legacy
      if (setAnalysisData && setStep) {
+       console.log('[PARITY][HANDLER]', { source, usingHandler: true });
        await handleSearchPick({
          item: result,
          source,
@@ -227,7 +227,8 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
          onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
        });
     } else {
-      // Legacy fallback for existing components
+      // Legacy fallback - don't navigate, stay in modal
+      console.log('[PARITY][LEGACY]', { source, usingLegacy: true });
       const legacyProduct = searchResultToLegacyProduct(result);
       onProductSelected(legacyProduct);
     }
