@@ -102,6 +102,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const [captureId, setCaptureId] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
+  const [currentAnalysisData, setCurrentAnalysisData] = useState<{
+    source: string;
+    barcode?: string;
+    imageUrl?: string;
+  }>({ source: 'photo' });
   const { toast } = useToast();
   const { user } = useAuth();
   const currentRunId = useRef<string | null>(null);
@@ -116,6 +121,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setIsProcessing(false);
       setCaptureId(null);
       setLoadingMessage('');
+      setCurrentAnalysisData({ source: 'photo' });
     }
   }, [isOpen, initialState]);
 
@@ -131,9 +137,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const processAnalysisData = async () => {
         try {
           setIsProcessing(true);
-          setCurrentState('loading');
-          setLoadingMessage('Processing product...');
-          setAnalysisType('barcode');
+        setCurrentState('loading');
+        setLoadingMessage('Processing product...');
+        setAnalysisType('barcode');
+        setCurrentAnalysisData({ 
+          source: 'barcode', 
+          barcode: analysisData.barcode 
+        });
           
           // Use the enhanced health scanner with the provided barcode
           const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -211,6 +221,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const detectedBarcode = typeof payload === 'string' ? 
         payload.match(/&barcode=(\d+)$/)?.[1] || null : 
         payload.detectedBarcode;
+      
+      setCurrentAnalysisData({ 
+        source: detectedBarcode ? 'barcode' : 'photo', 
+        barcode: detectedBarcode || undefined,
+        imageUrl: typeof payload === 'string' ? payload : payload.imageBase64
+      });
       
       if (detectedBarcode) {
         console.log(`📊 Barcode detected in image [${currentCaptureId}]:`, detectedBarcode);
@@ -390,11 +406,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   const handleManualEntry = async (query: string, type: 'text' | 'voice') => {
     try {
-      setCurrentState('loading');
-      setAnalysisType('manual');
-      
       const trimmedQuery = query.trim();
       console.log(`📝 Processing ${type} input:`, trimmedQuery);
+      
+      setCurrentState('loading');
+      setAnalysisType('manual');
+      setCurrentAnalysisData({ 
+        source: isBarcode(trimmedQuery) ? 'barcode' : 'manual',
+        barcode: isBarcode(trimmedQuery) ? trimmedQuery.replace(/\s+/g, '') : undefined
+      });
       
       // Intelligent routing based on input content
       if (isBarcode(trimmedQuery)) {
@@ -1033,6 +1053,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               result={analysisResult}
               onScanAnother={handleScanAnother}
               onClose={handleClose}
+              analysisData={currentAnalysisData}
             />
           )}
 

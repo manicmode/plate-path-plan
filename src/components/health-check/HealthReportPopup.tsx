@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,13 @@ import {
   Star,
   ShieldCheck,
   Zap,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { HealthAnalysisResult } from './HealthCheckModal';
+import { saveHealthScanToNutritionLogs } from '@/lib/nutritionLogAdapter';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth';
 
 // Circular Progress Component with Animation
 const CircularProgress: React.FC<{ 
@@ -81,13 +85,71 @@ interface HealthReportPopupProps {
   result: HealthAnalysisResult;
   onScanAnother: () => void;
   onClose: () => void;
+  analysisData?: {
+    source?: string;
+    barcode?: string;
+    imageUrl?: string;
+  };
 }
 
 export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   result,
   onScanAnother,
-  onClose
+  onClose,
+  analysisData
 }) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  const handleSaveToLog = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save health scan results.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isSaving || isSaved) return;
+
+    try {
+      setIsSaving(true);
+      console.log('[SAVE] Saving health scan to nutrition logs:', {
+        itemName: result.itemName,
+        source: analysisData?.source,
+        barcode: analysisData?.barcode
+      });
+
+      const saveResult = await saveHealthScanToNutritionLogs(
+        result,
+        analysisData?.source || 'photo',
+        analysisData?.imageUrl,
+        analysisData?.barcode
+      );
+
+      if (saveResult.success) {
+        setIsSaved(true);
+        toast({
+          title: "Saved Successfully! 💾",
+          description: `${result.itemName} has been saved to your nutrition logs.`,
+        });
+      } else {
+        throw new Error(saveResult.error || 'Failed to save health scan');
+      }
+    } catch (error) {
+      console.error('❌ Save failed:', error);
+      toast({
+        title: "Save Failed",
+        description: error instanceof Error ? error.message : 'Unable to save health scan result. Please try again.',
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
@@ -420,11 +482,26 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
           <Button
-            onClick={() => {/* Handle save to log */}}
+            onClick={handleSaveToLog}
+            disabled={isSaving || isSaved || !user}
             className="bg-primary hover:bg-primary/90 text-primary-foreground py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="text-xl mr-2">💾</span>
-            Save
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : isSaved ? (
+              <>
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Saved ✓
+              </>
+            ) : (
+              <>
+                <span className="text-xl mr-2">💾</span>
+                Save
+              </>
+            )}
           </Button>
           
           <Button
