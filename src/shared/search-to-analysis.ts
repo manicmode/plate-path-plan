@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 export type SearchSource = 'manual' | 'voice';
 
@@ -58,18 +59,87 @@ export function normalizeSearchItem(item: any): NormalizedProduct {
 }
 
 /**
+ * DEV-only diagnostics logger
+ */
+const logDev = (tag: string, obj: any) => { 
+  if (import.meta.env.DEV) console.log(tag, obj); 
+};
+
+/**
+ * Strip product to essential fields for analysis
+ */
+const stripForAnalyze = (p: any) => ({
+  id: p.id ?? null,
+  barcode: p.barcode ?? null,
+  name: p.name ?? '',
+  brand: p.brand ?? null,
+  imageUrl: p.imageUrl ?? null,
+  nutriments: p.nutriments ?? null,
+  ingredients: p.ingredients ?? null,
+  novaGroup: p.novaGroup ?? null,
+  serving: p.serving ?? null,
+});
+
+/**
+ * Convert product object to text description for voice analysis
+ */
+const productToText = (p: any) => {
+  const n = p.nutriments ?? {};
+  const parts = [
+    `Product: ${p.name}${p.brand ? ` by ${p.brand}` : ''}.`,
+    p.serving ? `Serving: ${p.serving}.` : '',
+    `Nutrition (approx):` +
+    [
+      n.energy_kcal != null ? ` ${n.energy_kcal} kcal` : '',
+      n.proteins != null ? `, ${n.proteins} g protein` : '',
+      n.carbohydrates != null ? `, ${n.carbohydrates} g carbs` : '',
+      n.fat != null ? `, ${n.fat} g fat` : '',
+      n.fiber != null ? `, ${n.fiber} g fiber` : '',
+      n.sugars != null ? `, ${n.sugars} g sugars` : '',
+      n.sodium != null ? `, ${n.sodium} mg sodium` : '',
+      n.saturated_fat != null ? `, ${n.saturated_fat} g saturated fat` : '',
+    ].join('').replace(/^, /,''),
+    p.ingredients ? ` Ingredients: ${String(p.ingredients).slice(0,400)}.` : '',
+  ].filter(Boolean).join(' ');
+  return parts;
+};
+
+/**
  * Call the same health analysis pipeline that manual entry uses
  */
 export async function analyzeFromProduct(product: NormalizedProduct, options: { source?: SearchSource } = {}) {
   console.log('[ANALYZE] source=%s normalized=', options.source || 'manual', product);
   
-  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
-    body: {
+  const source = options.source || 'manual';
+  const stripped = stripForAnalyze(product);
+  let body: any;
+
+  // VOICE_ANALYZE_V2: Convert voice selections to text format
+  if (source === 'voice' && isFeatureEnabled('voice_analyze_v2')) {
+    if (!stripped.name || !stripped.nutriments) {
+      throw new Error('Could not analyze selection: missing product details');
+    }
+    const text = productToText(stripped);
+    body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
+  } else {
+    // Keep existing body for manual paths (unchanged)
+    body = {
       mode: 'product',
       product: product,
       source: options.source || 'manual'
-    }
+    };
+  }
+
+  // DEV diagnostics: log request before invoke
+  const bytes = new Blob([JSON.stringify(body)]).size;
+  logDev('[ANALYZE][REQ]', { source, bytes, body });
+  
+  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
+    body
   });
+  
+  // DEV diagnostics: log response after invoke
+  logDev('[ANALYZE][RES]', { source, status: error?.context?.status ?? 200, ok: !error });
   
   if (error) {
     throw new Error(error.message || 'Failed to analyze product');

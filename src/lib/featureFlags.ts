@@ -11,6 +11,7 @@ export const FEATURE_FLAGS = {
   fallback_voice_enabled: true, // Enable voice-to-text search fallback
   voice_stt_server_enabled: false, // Enable server-side STT (vs browser WebKit)
   scan_hub_enabled: true, // Enable by default for this demo // Enable the new Scan Hub entry page (default OFF)
+  voice_analyze_v2: false, // Enable enhanced voice analysis pipeline (DEFAULT OFF)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

@@ -16,7 +16,15 @@ serve(async (req) => {
   }
 
   try {
-    const { text, imageBase64, taskType = 'food_analysis', complexity = 'auto' } = await req.json();
+    const { text, imageBase64, taskType = 'food_analysis', complexity = 'auto' } = await req.json().catch(() => ({}));
+    
+    // Early validation
+    if (!text && !imageBase64) {
+      return new Response(JSON.stringify({ error: 'Either text or imageBase64 is required' }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -140,7 +148,15 @@ Always respond with valid JSON in this format:
       parsedResponse = JSON.parse(aiResponse);
     } catch (parseError) {
       console.error('🚨 [Smart Analyzer] Failed to parse AI response as JSON:', aiResponse);
-      throw new Error('Invalid JSON response from AI');
+      return new Response(JSON.stringify({ 
+        error: 'Invalid response format from AI',
+        foods: [],
+        total_confidence: 0,
+        processing_notes: 'AI returned malformed response'
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Check if we should fallback to a more powerful model
