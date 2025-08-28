@@ -205,7 +205,7 @@ export default function ScanHub() {
   console.log('scan_hub_open', { timestamp: Date.now() });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700">
+    <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700 pb-32">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="relative text-center mb-8">
@@ -226,7 +226,7 @@ export default function ScanHub() {
         </div>
 
         {/* Grid of tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
           <ScanTile
             icon={ScanBarcode}
             title="Scan Barcode"

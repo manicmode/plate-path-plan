@@ -20,6 +20,7 @@ import { logScoreNorm } from '@/lib/health/extractScore';
 import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
+import { useScanRecents } from '@/hooks/useScanRecents';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -109,6 +110,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   }>({ source: 'photo' });
   const { toast } = useToast();
   const { user } = useAuth();
+  const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
 
   // Reset state when modal opens/closes
@@ -581,6 +583,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                         score10 >= 2 ? 'poor' : 'avoid'
         };
 
+        // Add to recent scans
+        addRecent({
+          mode: 'barcode',
+          label: itemName
+        });
+
         setAnalysisResult(analysisResult);
         setCurrentState('report');
         
@@ -658,6 +666,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                         healthScore >= 4 ? 'fair' : 
                         healthScore >= 2 ? 'poor' : 'avoid'
         };
+
+        // Add to recent scans
+        addRecent({
+          mode: type === 'voice' ? 'voice' : 'manual',
+          label: itemName
+        });
 
         setAnalysisResult(analysisResult);
         setCurrentState('report');
@@ -761,18 +775,25 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     switch (kind) {
       case 'single_product':
         case 'branded': // Support both naming conventions
-        // Use direct product mapping when product is available, bypass toLegacyFromEdge
-        if (data.product && !fallback) {
-          console.log(`[HS] Single product with direct product data [${captureId}]`);
-          const directLegacy = legacyFromProduct(data.product, { source: 'image' });
-          setAnalysisResult(directLegacy);
-          setCurrentState('report');
-          
-          // Trigger daily score calculation
-          if (user?.id) {
-            triggerDailyScoreCalculation(user.id);
-          }
-        } else {
+          // Use direct product mapping when product is available, bypass toLegacyFromEdge
+          if (data.product && !fallback) {
+            console.log(`[HS] Single product with direct product data [${captureId}]`);
+            const directLegacy = legacyFromProduct(data.product, { source: 'image' });
+            
+            // Add to recent scans
+            addRecent({
+              mode: 'photo',
+              label: directLegacy.itemName
+            });
+            
+            setAnalysisResult(directLegacy);
+            setCurrentState('report');
+            
+            // Trigger daily score calculation
+            if (user?.id) {
+              triggerDailyScoreCalculation(user.id);
+            }
+          } else {
           // Fallback to existing toLegacyFromEdge flow
           console.log(`[HS] Single product using legacy adapter [${captureId}]`);
           await processAndShowResult(legacy, data, captureId, 'image');
@@ -876,6 +897,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     // Set name once and mirror to all possible header keys
     const itemName = legacy.productName || 'Unknown item';
     console.log(`[HS ${type.toUpperCase()}] Final itemName [${captureId}]:`, itemName);
+    
+    // Add to recent scans based on type
+    const scanMode = type === 'barcode' ? 'barcode' : 
+                    type === 'image' ? 'photo' : 
+                    type === 'manual' ? 'manual' : 'photo';
+    
+    addRecent({
+      mode: scanMode,
+      label: itemName
+    });
     
     // Process score, flags, and nutrition same as before
     const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
@@ -1040,45 +1071,51 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const ingredientsText = legacy.ingredientsText;
       const nutritionData = legacy.nutrition || {};
       
-      const analysisResult: HealthAnalysisResult = {
-        itemName,
-        productName: itemName,
-        title: itemName,
-        healthScore: score10 ?? 0,
-        ingredientsText,
-        ingredientFlags,
-        nutritionData: nutritionData || {},
-        healthProfile: {
-          isOrganic: ingredientsText?.includes('organic') || false,
-          isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
-          allergens: ingredientsText ? 
-            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
-              ingredientsText!.toLowerCase().includes(allergen)
-            ) : [],
-          preservatives: ingredientsText ? 
-            ingredientsText.split(',').filter(ing => 
-              ing.toLowerCase().includes('preservative') || 
-              ing.toLowerCase().includes('sodium benzoate') ||
-              ing.toLowerCase().includes('potassium sorbate')
-            ) : [],
-          additives: ingredientsText ? 
-            ingredientsText.split(',').filter(ing => 
-              ing.toLowerCase().includes('artificial') || 
-              ing.toLowerCase().includes('flavor') ||
-              ing.toLowerCase().includes('color')
-            ) : []
-        },
-        personalizedWarnings: [],
-        suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
-        overallRating: score10 == null ? 'avoid' : 
-                      score10 >= 8 ? 'excellent' : 
-                      score10 >= 6 ? 'good' : 
-                      score10 >= 4 ? 'fair' : 
-                      score10 >= 2 ? 'poor' : 'avoid'
-      };
-      
-      setAnalysisResult(analysisResult);
-      setCurrentState('report');
+        const analysisResult: HealthAnalysisResult = {
+          itemName,
+          productName: itemName,
+          title: itemName,
+          healthScore: score10 ?? 0,
+          ingredientsText,
+          ingredientFlags,
+          nutritionData: nutritionData || {},
+          healthProfile: {
+            isOrganic: ingredientsText?.includes('organic') || false,
+            isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
+            allergens: ingredientsText ? 
+              ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+                ingredientsText!.toLowerCase().includes(allergen)
+              ) : [],
+            preservatives: ingredientsText ? 
+              ingredientsText.split(',').filter(ing => 
+                ing.toLowerCase().includes('preservative') || 
+                ing.toLowerCase().includes('sodium benzoate') ||
+                ing.toLowerCase().includes('potassium sorbate')
+              ) : [],
+            additives: ingredientsText ? 
+              ingredientsText.split(',').filter(ing => 
+                ing.toLowerCase().includes('artificial') || 
+                ing.toLowerCase().includes('flavor') ||
+                ing.toLowerCase().includes('color')
+              ) : []
+          },
+          personalizedWarnings: [],
+          suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+          overallRating: score10 == null ? 'avoid' : 
+                        score10 >= 8 ? 'excellent' : 
+                        score10 >= 6 ? 'good' : 
+                        score10 >= 4 ? 'fair' : 
+                        score10 >= 2 ? 'poor' : 'avoid'
+        };
+        
+        // Add to recent scans 
+        addRecent({
+          mode: 'barcode',
+          label: itemName
+        });
+        
+        setAnalysisResult(analysisResult);
+        setCurrentState('report');
       
       // Trigger daily score calculation
       if (user?.id) {
