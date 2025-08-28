@@ -132,24 +132,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Phase 1 - Forensic logging (DEV only)
   if (import.meta.env.DEV) {
-    console.log('[SCANNER][route]', { source, isBarcodeSource, isPhotoSource, allowScanner, currentState });
+    console.log('[SCANNER][route]', { 
+      source, 
+      isBarcodeSource, 
+      isPhotoSource, 
+      allowScanner, 
+      currentState,
+      initialState,
+      isOpen
+    });
   }
-
-  // Voice route initialization - runs once per mount
-  useEffect(() => {
-    if (!isVoice || !isOpen) return;
-    if (didInitVoice.current) return; // prevent re-entry loop
-    didInitVoice.current = true;
-    setCurrentState('search'); // force search view
-    setInitialQuery(voiceName || ''); // prefill with transcript
-    if (import.meta.env.DEV) console.log('[VOICE→SEARCH] init', { voiceName });
-  }, [isVoice, isOpen, voiceName]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       // Don't reset state for voice flow - let voice init handle it
       if (!isVoice) {
+        console.log('[SCANNER][reset]', { currentState: 'before reset', initialState });
         setCurrentState(initialState);
         setAnalysisResult(null);
         setCandidates([]);
@@ -158,6 +157,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         setCaptureId(null);
         setLoadingMessage('');
         setCurrentAnalysisData({ source: 'photo' });
+        console.log('[SCANNER][reset]', { currentState: 'after reset', initialState });
       }
     } else {
       // Reset voice init flag when modal closes
@@ -1161,6 +1161,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         <div className="relative w-full h-full">
           {/* Main Content */}
           
+          {/* Conditional Rendering with Debug Info */}
+          {import.meta.env.DEV && (
+            <div className="fixed top-0 left-0 z-[9999] bg-red-500 text-white text-xs p-2">
+              DEBUG: state={currentState}, allowScanner={String(allowScanner)}, source={source}
+            </div>
+          )}
+
           {currentState === 'search' && (
             <ImprovedManualEntry
               initialQuery={initialQuery}
@@ -1180,6 +1187,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onCancel={safeClose}
               onScannerError={handleScannerError}
             />
+          )}
+
+          {currentState === 'scanner' && !allowScanner && import.meta.env.DEV && (
+            <div className="w-full h-full bg-red-500 flex items-center justify-center text-white">
+              <div className="text-center">
+                <h2 className="text-2xl mb-2">DEBUG: Scanner Blocked</h2>
+                <p>currentState: {currentState}</p>
+                <p>allowScanner: {String(allowScanner)}</p>
+                <p>source: {source}</p>
+                <p>isBarcodeSource: {String(isBarcodeSource)}</p>
+                <p>isPhotoSource: {String(isPhotoSource)}</p>
+              </div>
+            </div>
           )}
 
           {currentState === 'loading' && (
