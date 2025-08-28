@@ -25,6 +25,7 @@ interface VisionExtract {
 }
 
 export const useHealthCheckV2 = () => {
+  console.log('[HC][MOUNT] v2');
   const { user } = useAuth();
   const currentRunId = useRef<string | null>(null);
 

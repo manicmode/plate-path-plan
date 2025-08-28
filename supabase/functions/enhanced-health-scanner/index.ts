@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://plate-path-plan.lovable.app, http://localhost:5173, http://localhost:5174',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -1435,9 +1435,65 @@ serve(async (req) => {
       }
     });
 
-    // Handle extract mode for Photo Pipeline v2
-    if (body.mode === 'extract' && body.imageBase64) {
+    // Handle extract mode for Photo Pipeline v2 
+    if (body.mode === 'extract') {
       console.log(`🔍 Extract mode [${reqId}] - vision only, no health analysis`);
+      
+      // Handle barcode-only extract mode
+      if (body.barcode && !body.imageBase64) {
+        const norm = normalizeBarcode(body.barcode);
+        if (norm) {
+          const offResult = await fetchOFF(norm.raw);
+          if (offResult?.product_found) {
+            const product = offResult.product;
+            const nutrients = product.nutriments || {};
+            
+            const extractResult = {
+              kind: 'branded',
+              productName: product.product_name || 'Unknown Product',
+              brand: product.brands || '',
+              barcode: norm.raw,
+              ingredientsText: product.ingredients_text_en || product.ingredients_text || '',
+              nutrition: {
+                calories: Math.round(nutrients['energy-kcal_100g'] || nutrients['energy-kcal'] || 0),
+                protein_g: Math.round((nutrients.protein_100g || 0) * 10) / 10,
+                carbs_g: Math.round((nutrients.carbohydrates_100g || 0) * 10) / 10,
+                fat_g: Math.round((nutrients.fat_100g || 0) * 10) / 10,
+                sugar_g: Math.round((nutrients.sugars_100g || 0) * 10) / 10,
+                sodium_mg: Math.round(nutrients.sodium_100g || (nutrients.salt_100g ? nutrients.salt_100g / 2.5 : 0)),
+                fiber_g: Math.round((nutrients.fiber_100g || 0) * 10) / 10,
+                satfat_g: Math.round((nutrients['saturated-fat_100g'] || 0) * 10) / 10,
+              },
+              confidence: 0.9,
+              notes: ['Found via barcode lookup']
+            };
+            
+            return new Response(JSON.stringify(extractResult), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+        
+        // Barcode lookup failed
+        return new Response(JSON.stringify({
+          kind: 'unknown',
+          confidence: 0,
+          notes: ['Barcode lookup failed']
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Handle image-based extract mode
+      if (!body.imageBase64) {
+        return new Response(JSON.stringify({
+          kind: 'unknown',
+          confidence: 0,
+          notes: ['No image or barcode provided']
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       
       try {
         const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps);

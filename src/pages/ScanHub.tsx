@@ -190,19 +190,20 @@ export default function ScanHub() {
   // Handle manual entry product selection - use unified in-modal pipeline
   const handleManualProductSelected = (product: any) => {
     console.log('Manual product selected:', product);
-    console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
-    // Close manual entry and stay in health modal for analysis
+    // Close manual entry and set analysis data BEFORE opening modal
     setManualEntryOpen(false);
-    setHealthCheckModalOpen(true);
-    setHealthModalStep('loading');
-    setAnalysisData({
+    const analysisData = {
       source: 'manual',
       productName: product.productName || product.name,
       barcode: product.barcode,
       product: product
-    });
+    };
+    setAnalysisData(analysisData);
+    setHealthModalStep('loading');
+    console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
+    setHealthCheckModalOpen(true);
   };
 
   // Handle voice product selection - navigate directly to health analysis (No scanner for voice!)
@@ -418,18 +419,18 @@ export default function ScanHub() {
             addRecent({ mode: searchState.source, label: result.productName || result.name || 'Search entry' });
             setCurrentState('hub'); // Return to hub
             
-            // Open HealthCheckModal with normalized data
-            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
-            setHealthCheckModalOpen(true);
-            setHealthModalStep('loading');
+            // Set analysis data BEFORE opening modal
             const analysisData = {
               source: 'manual',
               name: result?.name ?? null,
               barcode: result?.barcode ?? null,
               product: result ?? null
             };
-            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
             setAnalysisData(analysisData);
+            setHealthModalStep('loading');
+            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
+            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
+            setHealthCheckModalOpen(true);
           }}
           onBack={() => setCurrentState('hub')}
           initialQuery={searchState.initialQuery}
@@ -453,18 +454,18 @@ export default function ScanHub() {
             addRecent({ mode: 'manual', label: result.productName || result.name || 'Manual entry' });
             setManualEntryOpen(false);
             
-            // Open HealthCheckModal with normalized data
-            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
-            setHealthCheckModalOpen(true);
-            setHealthModalStep('loading');
+            // Set analysis data BEFORE opening modal
             const analysisData = {
               source: 'manual',
               name: result?.name ?? null,
               barcode: result?.barcode ?? null,
               product: result ?? null
             };
-            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
             setAnalysisData(analysisData);
+            setHealthModalStep('loading');
+            console.log('[HC][OPEN]', { from: 'manual', initial: 'loading' });
+            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
+            setHealthCheckModalOpen(true);
           }}
           onBack={() => setManualEntryOpen(false)}
         />

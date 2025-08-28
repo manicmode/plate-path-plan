@@ -1,4 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+
+// Mount probe
+useEffect(() => console.log('[HC][MOUNT] v1'), []);
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
