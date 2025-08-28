@@ -788,17 +788,28 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="relative flex flex-col min-h-dvh bg-black">
-         {/* Header with back button */}
-         <header className="absolute top-0 left-0 right-0 z-[100] p-4">
-           <div className="flex items-center justify-between">
+         {/* Header with back button - FORCE TO FRONT */}
+         <header className="absolute top-0 left-0 right-0 z-[999] p-4 pointer-events-auto">
+           <div className="flex items-center justify-between pointer-events-auto">
              <Button
                variant="ghost"
                size="sm"
-               onClick={() => {
+               onPointerDown={(e) => {
+                 console.log('[SCANNER] Pointer down on back button!');
+                 e.stopPropagation();
+               }}
+               onClick={(e) => {
                  console.log('[SCANNER] Header back button clicked - FIXED!');
+                 e.stopPropagation();
+                 e.preventDefault();
                  onCancel?.();
                }}
-               className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto relative z-[110]"
+               className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto relative bg-red-500/20 border border-red-500 min-w-[80px] h-[44px]"
+               style={{ 
+                 touchAction: 'manipulation',
+                 zIndex: 9999,
+                 position: 'relative'
+               }}
              >
                <ArrowLeft className="h-5 w-5" />
                Back
