@@ -4172,10 +4172,13 @@ export type Database = {
           quality_reasons: string[] | null
           quality_score: number | null
           quality_verdict: string | null
+          report_snapshot: Json | null
           saturated_fat: number | null
           serving_size: string | null
+          snapshot_version: string | null
           sodium: number | null
           source: string | null
+          source_meta: Json | null
           sugar: number | null
           trigger_tags: string[] | null
           updated_at: string | null
@@ -4201,10 +4204,13 @@ export type Database = {
           quality_reasons?: string[] | null
           quality_score?: number | null
           quality_verdict?: string | null
+          report_snapshot?: Json | null
           saturated_fat?: number | null
           serving_size?: string | null
+          snapshot_version?: string | null
           sodium?: number | null
           source?: string | null
+          source_meta?: Json | null
           sugar?: number | null
           trigger_tags?: string[] | null
           updated_at?: string | null
@@ -4230,10 +4236,13 @@ export type Database = {
           quality_reasons?: string[] | null
           quality_score?: number | null
           quality_verdict?: string | null
+          report_snapshot?: Json | null
           saturated_fat?: number | null
           serving_size?: string | null
+          snapshot_version?: string | null
           sodium?: number | null
           source?: string | null
+          source_meta?: Json | null
           sugar?: number | null
           trigger_tags?: string[] | null
           updated_at?: string | null

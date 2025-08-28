@@ -19,6 +19,8 @@ import { HealthAnalysisResult } from './HealthCheckModal';
 import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
+import { toNutritionLogRow } from '@/adapters/nutritionLogs';
+import { supabase } from '@/integrations/supabase/client';
 
 // Circular Progress Component with Animation
 const CircularProgress: React.FC<{ 
@@ -90,18 +92,22 @@ interface HealthReportPopupProps {
     barcode?: string;
     imageUrl?: string;
   };
+  initialIsSaved?: boolean;
+  hideCloseButton?: boolean;
 }
 
 export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   result,
   onScanAnother,
   onClose,
-  analysisData
+  analysisData,
+  initialIsSaved = false,
+  hideCloseButton = false
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(initialIsSaved);
 
   const handleSaveToLog = async () => {
     if (!user?.id) {
@@ -133,7 +139,18 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
       const source = analysisData?.source === 'barcode' ? 'barcode' : 
                      analysisData?.source === 'manual' ? 'manual' : 'photo';
 
-      await saveScanToNutritionLogs(scanData, source);
+      const payload = toNutritionLogRow(scanData, source) as any;
+      payload.report_snapshot = result;            // full HealthAnalysisResult
+      payload.snapshot_version = 'v1';
+      payload.source_meta = { source, barcode: analysisData?.barcode, imageUrl: analysisData?.imageUrl, brand: null };
+      
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .insert(payload as any)
+        .select('*')
+        .single();
+
+      if (error) throw error;
       
       setIsSaved(true);
       toast({
@@ -191,12 +208,14 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             Health Report
           </h1>
           {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-foreground hover:text-primary" />
-          </button>
+          {!hideCloseButton && (
+            <button
+              onClick={onClose}
+              className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-foreground hover:text-primary" />
+            </button>
+          )}
         </div>
         
         {/* 🔬 1. TOP SECTION — Summary Card */}

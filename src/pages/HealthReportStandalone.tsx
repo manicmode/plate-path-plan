@@ -31,6 +31,9 @@ interface NutritionLogData {
   barcode?: string;
   brand?: string;
   created_at: string;
+  report_snapshot?: any;
+  snapshot_version?: string;
+  source_meta?: any;
 }
 
 export default function HealthReportStandalone() {
@@ -38,7 +41,7 @@ export default function HealthReportStandalone() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState<HealthAnalysisResult | null>(null);
+  const [reportData, setReportData] = useState<NutritionLogData | null>(null);
   const [originalData, setOriginalData] = useState<any>(null);
 
   useEffect(() => {
@@ -80,9 +83,7 @@ export default function HealthReportStandalone() {
       }
 
       // Convert nutrition log data to HealthAnalysisResult format
-      const healthAnalysisResult = convertToHealthAnalysisResult(data);
-      setReportData(healthAnalysisResult);
-      setOriginalData(data);
+      setReportData(data);
     } catch (error) {
       console.error('Error fetching report:', error);
       toast({
@@ -97,9 +98,12 @@ export default function HealthReportStandalone() {
   };
 
   const convertToHealthAnalysisResult = (data: NutritionLogData): HealthAnalysisResult => {
-    // Extract and normalize quality score to 0-100 scale, then convert to 0-10 for HealthAnalysisResult
-    const normalizedScore = extractScore(data.quality_score) ?? 0;
-    const healthScore = normalizedScore / 10;
+    // Fixed score math for existing rows
+    const raw = Number(data.quality_score);
+    const score10 =
+      Number.isFinite(raw) ? (raw <= 10 ? raw : raw / 10)
+      : (() => { const n = extractScore(data.quality_score); return n == null ? 0 : (n <= 10 ? n : n / 10); })();
+    const healthScore = score10;
     
     // Convert quality reasons to ingredient flags format
     const ingredientFlags = (data.quality_reasons || []).map((reason, index) => ({
@@ -203,16 +207,46 @@ export default function HealthReportStandalone() {
 
   if (!reportData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-green-950 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <p className="text-white">Report not found</p>
-          <Button onClick={() => navigate('/saved-reports')} variant="outline">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Report Not Found</h2>
+          <p className="text-foreground/60 mb-4">The requested health report could not be found.</p>
+          <Button onClick={() => navigate('/saved-reports')}>
             Back to Saved Reports
           </Button>
         </div>
       </div>
     );
   }
+
+  // Check for saved snapshot first
+  if (reportData.report_snapshot) {
+    const snapshot = reportData.report_snapshot as HealthAnalysisResult;
+    return (
+      <div className="w-full">
+        <div className="mb-4">
+          <Button
+            variant="outline" 
+            onClick={() => navigate('/saved-reports')}
+            className="flex items-center"
+          >
+            ← Back to Saved Reports
+          </Button>
+        </div>
+        
+        <HealthReportPopup
+          result={snapshot}
+          onScanAnother={handleScanAnother}
+          onClose={handleClose}
+          initialIsSaved={true}
+          hideCloseButton={true}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to converter for legacy data
+  const convertedResult = convertToHealthAnalysisResult(reportData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-green-950">
@@ -230,13 +264,15 @@ export default function HealthReportStandalone() {
 
       {/* Health Report Popup */}
       <HealthReportPopup
-        result={reportData}
+        result={convertedResult}
         onScanAnother={handleScanAnother}
         onClose={handleClose}
+        initialIsSaved={true}
+        hideCloseButton={true}
         analysisData={{
-          source: originalData?.source,
-          barcode: originalData?.barcode,
-          imageUrl: originalData?.image_url
+          source: reportData?.source,
+          barcode: reportData?.barcode,
+          imageUrl: reportData?.image_url
         }}
       />
     </div>
