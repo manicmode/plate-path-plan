@@ -102,38 +102,41 @@ const productToText = (p: any) => {
 };
 
 /**
- * Call the same health analysis pipeline that manual entry uses
+ * Call gpt-smart-food-analyzer with text format for both manual and voice selections
  */
 export async function analyzeFromProduct(product: NormalizedProduct, options: { source?: SearchSource } = {}) {
-  console.log('[ANALYZE] source=%s normalized=', options.source || 'manual', product);
-  
   const source = options.source || 'manual';
   const stripped = stripForAnalyze(product);
   
   // Guard: require product name and nutrition data
   if (!stripped.name || !stripped.nutriments) {
-    throw new Error('Could not analyze selection: missing product details');
+    throw new Error('Missing product details for analysis');
   }
   
-  // Convert product to text format for analysis (both manual and voice selections)
+  // Convert product to text format for analysis
   const text = productToText(stripped);
   const body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
 
-  // DEV diagnostics: log request before invoke
-  const bytes = new Blob([JSON.stringify(body)]).size;
-  logDev('[ANALYZE][REQ]', { source, bytes, body });
+  // DEV diagnostics: log request
+  if (import.meta.env.DEV) console.log('[ANALYZE][REQ]', { source, body });
   
-  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
-    body
-  });
-  
-  // DEV diagnostics: log response after invoke
-  logDev('[ANALYZE][RES]', { source, status: error?.context?.status ?? 200, ok: !error });
+  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', { body });
   
   if (error) {
-    throw new Error(error.message || 'Failed to analyze product');
+    if (import.meta.env.DEV) console.error('[ANALYZE][RES]', { source, status: error.context?.status, error });
+    
+    // Fallback: retry once with minimal text (name only) if 400
+    if (error.context?.status === 400) {
+      const minimal = { text: `Analyze this product: ${stripped.name}.`, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
+      if (import.meta.env.DEV) console.log('[ANALYZE][RETRY]', minimal);
+      const retryResult = await supabase.functions.invoke('gpt-smart-food-analyzer', { body: minimal });
+      if (retryResult.error) throw new Error(`Analyze failed (${retryResult.error.context?.status ?? '400'})`);
+      return retryResult.data;
+    }
+    throw new Error(`Analyze failed (${error.context?.status ?? '???'})`);
   }
   
+  if (import.meta.env.DEV) console.log('[ANALYZE][RES]', { source, status: 200 });
   return data;
 }
 

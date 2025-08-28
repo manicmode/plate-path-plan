@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -1120,6 +1120,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         }`}
         showCloseButton={false}
       >
+        <DialogTitle className="sr-only">Health Analysis</DialogTitle>
+        <DialogDescription className="sr-only">Analyze food items for health insights and nutritional information.</DialogDescription>
         <div className="relative w-full h-full">
           {/* Main Content */}
           

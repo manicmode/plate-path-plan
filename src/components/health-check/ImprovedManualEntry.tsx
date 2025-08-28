@@ -212,23 +212,26 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       !!result.caloriesPer100g
     );
     
-    // Use onSelect prop if provided (for voice/manual flows)
+    // Always use unified analysis pipeline when available (for both voice and manual)
+    if (setAnalysisData && setStep) {
+      await handleSearchPick({
+        item: result,
+        source: 'manual',
+        setAnalysisData,
+        setStep: (step: string) => setStep(step as ModalState),
+        onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
+      });
+      return;
+    }
+
+    // Use onSelect prop for other flows
     if (onSelect) {
       onSelect(result);
       return;
     }
     
-     // Use unified analysis pipeline if available, otherwise fall back to legacy
-     if (setAnalysisData && setStep) {
-       await handleSearchPick({
-         item: result,
-         source: 'manual',
-         setAnalysisData,
-         setStep: (step: string) => setStep(step as ModalState),
-         onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
-       });
-    } else if (onProductSelected) {
-      // Legacy fallback for existing components
+    // Legacy fallback for existing components
+    if (onProductSelected) {
       const legacyProduct = searchResultToLegacyProduct(result);
       onProductSelected(legacyProduct);
     }
