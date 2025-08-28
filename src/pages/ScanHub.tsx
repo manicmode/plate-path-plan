@@ -57,9 +57,26 @@ export default function ScanHub() {
         if (storedEntry && !storedEntry.includes('/scan')) {
           originalEntryRef.current = storedEntry;
         } else {
-          // Default to home page if no clear non-scan entry point
-          originalEntryRef.current = '/';
-          sessionStorage.setItem('scan-original-entry', '/');
+          // Check document referrer to determine if came from explore vs home
+          const referrer = document.referrer;
+          let defaultEntry = '/';
+          
+          if (referrer) {
+            const referrerUrl = new URL(referrer);
+            const referrerPath = referrerUrl.pathname;
+            
+            // If came from explore page, default back to explore
+            if (referrerPath.includes('/explore') || referrerPath === '/explore') {
+              defaultEntry = '/explore';
+            }
+            // If came from home or any specific page, use that path
+            else if (referrerPath !== '/scan' && !referrerPath.includes('/scan')) {
+              defaultEntry = referrerPath;
+            }
+          }
+          
+          originalEntryRef.current = defaultEntry;
+          sessionStorage.setItem('scan-original-entry', defaultEntry);
         }
       }
       
@@ -213,7 +230,19 @@ export default function ScanHub() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              // Use the same logic as health modal close to navigate to original entry point
+              const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
+              if (originalEntry && originalEntry !== '/scan') {
+                console.log('[SCAN] Back button - navigating to original entry:', originalEntry);
+                sessionStorage.removeItem('scan-original-entry'); // Clear after use
+                navigate(originalEntry, { replace: true });
+              } else {
+                // Fallback to home if no clear entry point
+                console.log('[SCAN] Back button - fallback to home');
+                navigate('/', { replace: true });
+              }
+            }}
             className="absolute left-0 top-0 text-white hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" />
