@@ -3,6 +3,7 @@ import * as React from 'react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2, CheckCircle, Sparkles } from 'lucide-react';
+import { Compass, CheckSquare, Bell, BarChart3, ShieldAlert, Plus, Play, Pause, Settings, Clock, Target, Check, Filter, RefreshCw, AlertTriangle, Search, MoreHorizontal, Trash2, CheckCircle, Sparkles, ArrowLeft } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { useToast } from '@/hooks/use-toast';
@@ -128,6 +129,8 @@ export default function HabitCentralV2() {
   const { user, ready } = useSupabaseAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Tab and data state
   const [activeTab, setActiveTab] = useState('browse');
@@ -163,6 +166,25 @@ export default function HabitCentralV2() {
   const [habitToDelete, setHabitToDelete] = useState<string | null>(null);
   const [purgeLogsOnDelete, setPurgeLogsOnDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Back navigation logic - track entry point and provide proper back navigation
+  const getEntryPoint = useCallback(() => {
+    // Check session storage first (highest priority)
+    const sessionEntry = sessionStorage.getItem('habitCentralEntryPoint');
+    if (sessionEntry) return sessionEntry;
+    
+    // Check navigation state
+    const stateEntry = location.state?.from;
+    if (stateEntry) return stateEntry;
+    
+    // Default fallback
+    return '/explore';
+  }, [location.state]);
+
+  const handleBackNavigation = useCallback(() => {
+    const entryPoint = getEntryPoint();
+    navigate(entryPoint, { replace: true });
+  }, [navigate, getEntryPoint]);
 
   // Daily lock state for logged habits
   const [loggedToday, setLoggedToday] = useState<Set<string>>(new Set());
@@ -953,24 +975,38 @@ export default function HabitCentralV2() {
         <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="mx-auto w-full max-w-screen-lg px-4 sm:px-6 md:px-8">
             <div className="py-6 space-y-4">
-              {/* Centered Title */}
-              <div className="text-center">
-                <motion.h1 
-                  className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+              {/* Header with back button and centered title */}
+              <div className="relative flex items-center justify-center">
+                {/* Back button - positioned absolutely to not affect center alignment */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackNavigation}
+                  className="absolute left-0 h-10 w-10 p-0 hover:bg-muted/80"
                 >
-                  Habit Central
-                </motion.h1>
-                <motion.p 
-                  className="text-muted-foreground mt-2"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  Science-backed habits for better health
-                </motion.p>
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="sr-only">Back</span>
+                </Button>
+                
+                {/* Centered Title */}
+                <div className="text-center">
+                  <motion.h1 
+                    className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    Habit Central
+                  </motion.h1>
+                  <motion.p 
+                    className="text-muted-foreground mt-2"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    Science-backed habits for better health
+                  </motion.p>
+                </div>
               </div>
               
               {/* Tabs in sticky header */}

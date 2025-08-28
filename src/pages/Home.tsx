@@ -1866,7 +1866,9 @@ const Home = () => {
                 } else if (tileId === 'exercise-hub') {
                   navigate('/exercise-hub');
                 } else if (tileId === 'habit-central') {
-                  navigate('/habit');
+                  // Store entry point for back navigation
+                  sessionStorage.setItem('habitCentralEntryPoint', '/home');
+                  navigate('/habit', { state: { from: '/home' } });
                 }
               };
 

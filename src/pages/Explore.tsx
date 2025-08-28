@@ -57,7 +57,9 @@ const Explore = () => {
         navigate(ROUTES.INFLUENCER_HUB);
       } else if (tileId === 'habit-central') {
         setNavigationInProgress(true);
-        navigate('/habit');
+        // Store entry point for back navigation
+        sessionStorage.setItem('habitCentralEntryPoint', '/explore');
+        navigate('/habit', { state: { from: '/explore' } });
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'my-reports') {
         setNavigationInProgress(true);
