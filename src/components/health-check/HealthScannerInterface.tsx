@@ -622,27 +622,54 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       fr.readAsDataURL(fullBlob);
     });
     
+    // Feature flag check for Photo Pipeline v2
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+
     if (detectedBarcode) {
-      console.log("🎯 Barcode path - short-circuiting to OFF lookup");
-      
-      // Call health processor with barcode
-      const body = {
-        detectedBarcode,
-        imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
-        mode: 'scan'
-      };
-      
-      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-        body
+      console.log('[PHOTO][BARCODE][HIT]', { 
+        value: detectedBarcode, 
+        format: 'auto', // Could be enhanced with format detection
+        ms: Date.now() % 10000 // Simple timing indicator
       });
       
-      if (!error && data && !data.fallback) {
-        console.log("✅ Barcode path success:", data);
-        onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+      if (usePhotoPipelineV2) {
+        // Photo Pipeline v2: No server call, just pass data to modal
+        console.log("🎯 Photo Pipeline v2: Barcode detected, passing to modal");
+        onCapture({
+          imageBase64: fullBase64.split(',')[1],
+          detectedBarcode
+        });
         return;
       } else {
-        console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
+        // Legacy behavior: Call server directly
+        console.log("🎯 Legacy: Barcode path - short-circuiting to OFF lookup");
+        
+        // Call health processor with barcode
+        const body = {
+          detectedBarcode,
+          imageBase64: fullBase64.split(',')[1], // Remove data URL prefix
+          mode: 'scan'
+        };
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+          body
+        });
+        
+        if (!error && data && !data.fallback) {
+          console.log("✅ Barcode path success:", data);
+          onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
+          return;
+        } else {
+          console.log("⚠️ Barcode lookup failed or returned fallback, proceeding with image analysis");
+        }
       }
+    } else {
+      console.log('[PHOTO][BARCODE][MISS]', { 
+        value: null, 
+        format: null, 
+        ms: Date.now() % 10000
+      });
     }
     
     // No barcode or barcode lookup failed - proceed with image analysis
@@ -656,6 +683,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
         console.debug('[IMG PREP]', { w: prep.width, h: prep.height, bytes: prep.bytes });
         
+        // Log capture details
+        console.log('[PHOTO][CAPTURE]', { 
+          w: prep.width, 
+          h: prep.height, 
+          bytes: prep.bytes 
+        });
+
         // Pass prepared image data to HealthCheckModal for analysis
         onCapture({
           imageBase64: prep.base64NoPrefix,

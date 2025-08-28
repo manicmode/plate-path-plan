@@ -1435,6 +1435,99 @@ serve(async (req) => {
       }
     });
 
+    // Handle extract mode for Photo Pipeline v2
+    if (body.mode === 'extract' && body.imageBase64) {
+      console.log(`🔍 Extract mode [${reqId}] - vision only, no health analysis`);
+      
+      try {
+        const { text: ocrText } = await processVisionProviders(body.imageBase64, provider, steps);
+        const barcodeInImage = extractBarcodeFromOCR(ocrText);
+        
+        // Try barcode lookup if found in image
+        let extractResult: any = {
+          kind: 'unknown',
+          confidence: 0.3,
+          notes: []
+        };
+        
+        if (barcodeInImage) {
+          const norm = normalizeBarcode(barcodeInImage);
+          if (norm) {
+            const offResult = await fetchOFF(norm.raw);
+            if (offResult?.product_found) {
+              const product = offResult.product;
+              const nutrients = product.nutriments || {};
+              
+              extractResult = {
+                kind: 'branded',
+                productName: product.product_name || 'Unknown Product',
+                brand: product.brands || '',
+                barcode: norm.raw,
+                ingredientsText: product.ingredients_text_en || product.ingredients_text || '',
+                nutrition: {
+                  calories: Math.round(nutrients['energy-kcal_100g'] || nutrients['energy-kcal'] || 0),
+                  protein_g: Math.round((nutrients.protein_100g || 0) * 10) / 10,
+                  carbs_g: Math.round((nutrients.carbohydrates_100g || 0) * 10) / 10,
+                  fat_g: Math.round((nutrients.fat_100g || 0) * 10) / 10,
+                  sugar_g: Math.round((nutrients.sugars_100g || 0) * 10) / 10,
+                  sodium_mg: Math.round(nutrients.sodium_100g || (nutrients.salt_100g ? nutrients.salt_100g / 2.5 : 0)),
+                  fiber_g: Math.round((nutrients.fiber_100g || 0) * 10) / 10,
+                  satfat_g: Math.round((nutrients['saturated-fat_100g'] || 0) * 10) / 10,
+                },
+                confidence: 0.9,
+                notes: ['Found via barcode in image']
+              };
+              
+              console.log(`✅ Extract mode barcode hit [${reqId}]: ${extractResult.productName}`);
+              
+              return new Response(JSON.stringify(extractResult), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+          }
+        }
+        
+        // Fallback to OCR-based extraction
+        const tokens = ocrText.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+        const hasGoodOcr = tokens.length > 3;
+        
+        if (hasGoodOcr) {
+          // Simple extraction from OCR text
+          extractResult = {
+            kind: tokens.some(t => ['meal', 'salad', 'soup', 'sandwich'].includes(t)) ? 'meal' : 'branded',
+            productName: tokens.slice(0, 3).join(' ') || 'Unknown Product',
+            brand: '',
+            ingredientsText: '',
+            nutrition: {},
+            confidence: Math.min(0.8, tokens.length / 10),
+            notes: ['Extracted from OCR text']
+          };
+        }
+        
+        console.log(`📤 Extract mode result [${reqId}]:`, {
+          kind: extractResult.kind,
+          confidence: extractResult.confidence,
+          hasNutrition: !!extractResult.nutrition && Object.keys(extractResult.nutrition).length > 0
+        });
+        
+        return new Response(JSON.stringify(extractResult), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error(`❌ Extract mode failed [${reqId}]:`, error);
+        
+        return new Response(JSON.stringify({
+          kind: 'unknown',
+          confidence: 0,
+          notes: [`Extract failed: ${error.message}`]
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Handle barcode mode for Log scanner
     if (body.mode === 'barcode' && body.barcode) {
       const norm = normalizeBarcode(body.barcode);

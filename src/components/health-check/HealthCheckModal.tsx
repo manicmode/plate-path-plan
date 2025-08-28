@@ -21,6 +21,7 @@ import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
+import { useHealthCheckV2 } from './HealthCheckModalV2';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -112,6 +113,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { user } = useAuth();
   const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
+  const { onAnalyzeImage } = useHealthCheckV2();
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -237,7 +239,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       handleVoiceAnalysis();
       return;
     }
-    
+
     // Handle barcode analysis from URL params
     if (barcode && initialState === 'loading') {
       console.log('🔍 Processing analysis data from URL params:', analysisData);
@@ -249,13 +251,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const processAnalysisData = async () => {
         try {
           setIsProcessing(true);
-        setCurrentState('loading');
-        setLoadingMessage('Processing product...');
-        setAnalysisType('barcode');
-        setCurrentAnalysisData({ 
-          source: 'barcode', 
-          barcode: analysisData.barcode 
-        });
+          setCurrentState('loading');
+          setLoadingMessage('Processing product...');
+          setAnalysisType('barcode');
+          setCurrentAnalysisData({ 
+            source: 'barcode', 
+            barcode: analysisData.barcode 
+          });
           
           // Use the enhanced health scanner with the provided barcode
           const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -304,6 +306,84 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   }, [isOpen, analysisData, initialState]);
 
+  // Photo Pipeline v2 handler
+  const handleImageCaptureV2 = async (payload: any) => {
+    console.log("🚀 Photo Pipeline v2 - handleImageCapture");
+    
+    // Generate unique run ID to prevent stale results
+    const runId = crypto.randomUUID();
+    currentRunId.current = runId;
+    
+    // Generate unique capture ID for correlation
+    const currentCaptureId = crypto.randomUUID().substring(0, 8);
+    setCaptureId(currentCaptureId);
+    setIsProcessing(true);
+    
+    try {
+      setCurrentState('loading');
+      setLoadingMessage('Analyzing image...');
+      
+      // Extract data from payload
+      const imageBase64 = typeof payload === 'string' ? payload : payload.imageBase64;
+      const detectedBarcode = typeof payload === 'string' ? 
+        payload.match(/&barcode=(\d+)$/)?.[1] || null : 
+        payload.detectedBarcode;
+      
+      setCurrentAnalysisData({ 
+        source: detectedBarcode ? 'barcode' : 'photo', 
+        barcode: detectedBarcode || undefined,
+        imageUrl: imageBase64
+      });
+      
+      // Create Blob URL instead of storing base64 in state (Phase 3)
+      const imageBlob = await fetch(`data:image/jpeg;base64,${imageBase64}`).then(r => r.blob());
+      const imageObjectUrl = URL.createObjectURL(imageBlob);
+      
+      // Cleanup function
+      const cleanup = () => {
+        URL.revokeObjectURL(imageObjectUrl);
+      };
+      
+      await onAnalyzeImage(
+        imageBase64,
+        detectedBarcode || undefined,
+        async (result, sourceMeta) => {
+          if (currentRunId.current !== runId) {
+            cleanup();
+            return; // stale
+          }
+          
+          // Process successful result
+          await processAndShowResult(result, result, currentCaptureId, sourceMeta.source === 'photo' ? 'image' : 'barcode');
+          cleanup();
+        },
+        (error) => {
+          if (currentRunId.current !== runId) {
+            cleanup();
+            return; // stale
+          }
+          
+          console.error('❌ Photo Pipeline v2 analysis failed:', error);
+          toast({
+            title: "Analysis Failed",
+            description: error,
+            variant: "destructive"
+          });
+          setCurrentState('fallback');
+          cleanup();
+        }
+      );
+      
+    } catch (error) {
+      if (currentRunId.current !== runId) return; // stale
+      
+      console.error('❌ Photo Pipeline v2 processing failed:', error);
+      setCurrentState('fallback');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleImageCapture = async (payload: any) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
     console.log("📥 Payload received:", payload);
@@ -313,6 +393,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     if (isProcessing) {
       console.log("⚠️ Analysis already in progress, ignoring request");
       return;
+    }
+
+    // Check for Photo Pipeline v2 feature flag
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+
+    if (usePhotoPipelineV2) {
+      return handleImageCaptureV2(payload);
     }
     
     // Generate unique run ID to ignore stale results
@@ -1266,5 +1354,3 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     </Dialog>
   );
 };
-
-// Note: handleBarcodeInput removed - barcode-in-photo path now uses unified enhanced-health-scanner pipeline
