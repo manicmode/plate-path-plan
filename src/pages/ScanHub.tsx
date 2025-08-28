@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ScanBarcode, 
@@ -24,6 +24,16 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
   
+  // Parse URL params for forced health modal
+  const qs = new URLSearchParams(location.search);
+  const modalParam = qs.get('modal');                // 'health' | 'barcode' | null
+  const source = (qs.get('source') ?? '') as 'off'|'manual'|'barcode'|'photo'|'';
+  const barcode = qs.get('barcode') ?? undefined;
+  const name = qs.get('name') ?? undefined;
+
+  const forceHealth = modalParam === 'health';
+  const handledRef = useRef(false);
+  
   const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);  
@@ -42,6 +52,9 @@ export default function ScanHub() {
   };
 
   const handleScanBarcode = () => {
+    // Guard against auto-opening barcode when we want health modal
+    if (forceHealth || handledRef.current) return;
+    
     logTileClick('barcode');
     setHealthCheckModalOpen(true);
   };
@@ -128,22 +141,20 @@ export default function ScanHub() {
     setHealthCheckModalOpen(true); // Open health check with product data
   };
 
-  // Handle URL params to auto-open health modal
+  // Handle URL params to force health modal (with guards)
   useEffect(() => {
-    const qs = new URLSearchParams(location.search);
-    const modal = qs.get('modal');               // 'health' | 'barcode' | ...
-    const source = qs.get('source') as any;      // 'off' | 'manual' | ...
-    const barcode = qs.get('barcode') || undefined;
-    const name = qs.get('name') || undefined;
+    console.warn('[NAV][scan]', { modalParam, source, barcode, name, forceHealth, handled: handledRef.current });
+    
+    if (!forceHealth || handledRef.current) return;
+    handledRef.current = true;
 
-    if (modal === 'health') {
-      console.warn('[NAV][open-health]', { modal, source, barcode, name });
-      // Open the same analyzer used by barcode/photo
-      setHealthCheckModalOpen(true);
-      // Clear the param after open to avoid re-open on back/forward
-      navigate('/scan', { replace: true });
-    }
-  }, [location.search, navigate]);
+    // Open the health analysis modal immediately
+    console.warn('[NAV][open-health]', { modalParam, source, barcode, name });
+    setHealthCheckModalOpen(true);
+    
+    // Clear the param after open to avoid re-open on back/forward
+    navigate('/scan', { replace: true });
+  }, [forceHealth, source, barcode, name, modalParam, navigate]);
 
   // Log page open
   console.log('scan_hub_open', { timestamp: Date.now() });
@@ -229,6 +240,8 @@ export default function ScanHub() {
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
         onClose={() => setHealthCheckModalOpen(false)}
+        initialState={forceHealth ? 'loading' : 'scanner'}
+        analysisData={forceHealth ? { source, barcode, name } : undefined}
       />
 
       <PhotoCaptureModal

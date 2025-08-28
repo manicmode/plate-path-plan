@@ -45,6 +45,12 @@ function extractScore(raw: unknown): number | undefined {
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialState?: ModalState;
+  analysisData?: {
+    source?: string;
+    barcode?: string;
+    name?: string;
+  };
 }
 
 export interface HealthAnalysisResult {
@@ -84,9 +90,11 @@ type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection'
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  initialState = 'scanner',
+  analysisData
 }) => {
-  const [currentState, setCurrentState] = useState<ModalState>('scanner');
+  const [currentState, setCurrentState] = useState<ModalState>(initialState);
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [mealFoods, setMealFoods] = useState<any[]>([]);
@@ -101,7 +109,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setCurrentState('scanner');
+      setCurrentState(initialState);
       setAnalysisResult(null);
       setCandidates([]);
       setMealFoods([]);
@@ -109,7 +117,70 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCaptureId(null);
       setLoadingMessage('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialState]);
+
+  // Handle analysis data from URL params (e.g., from manual entry)
+  useEffect(() => {
+    if (isOpen && analysisData && analysisData.barcode && initialState === 'loading') {
+      console.log('🔍 Processing analysis data from URL params:', analysisData);
+      
+      // Create a run ID to prevent stale results
+      const runId = crypto.randomUUID();
+      currentRunId.current = runId;
+      
+      const processAnalysisData = async () => {
+        try {
+          setIsProcessing(true);
+          setCurrentState('loading');
+          setLoadingMessage('Processing product...');
+          setAnalysisType('barcode');
+          
+          // Use the enhanced health scanner with the provided barcode
+          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+            body: { 
+              mode: 'barcode', 
+              barcode: analysisData.barcode, 
+              source: 'health-scan-url' 
+            }
+          });
+
+          // Check if result is stale
+          if (currentRunId.current !== runId) return;
+
+          if (error || !data?.ok) {
+            console.log('⚠️ Analysis data barcode lookup failed:', error);
+            setCurrentState('not_found');
+            return;
+          }
+
+          // Use the same processing logic as successful barcode flow
+          const legacy = toLegacyFromEdge(data);
+          console.log('[HS URL BARCODE] Legacy result:', legacy);
+          
+          if (legacy.status === 'no_detection') {
+            setCurrentState('no_detection');
+            return;
+          }
+          
+          if (legacy.status === 'not_found') {
+            setCurrentState('not_found'); 
+            return;
+          }
+          
+          // Process successful result
+          await processAndShowResult(legacy, data, 'url-analysis', 'barcode');
+          
+        } catch (error) {
+          console.error('❌ Analysis data processing failed:', error);
+          setCurrentState('fallback');
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+      
+      processAnalysisData();
+    }
+  }, [isOpen, analysisData, initialState]);
 
   const handleImageCapture = async (payload: any) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
