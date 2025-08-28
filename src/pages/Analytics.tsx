@@ -30,6 +30,7 @@ import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
 import { Activity, Apple, Heart } from 'lucide-react';
+import { StickyHeader } from '@/components/ui/sticky-header';
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('nutrition');
@@ -45,14 +46,14 @@ export default function Analytics() {
   useMilestoneTracker();
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen md:pb-[120px]">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <StickyHeader className="z-40">
+        <div className="p-4 pb-0 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
+        </div>
+        
+        <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto mb-4">
           <TabsTrigger value="nutrition" className="text-sm font-medium">
             🍎 Nutrition
           </TabsTrigger>
@@ -63,7 +64,9 @@ export default function Analytics() {
             🧘 Recovery
           </TabsTrigger>
         </TabsList>
+      </StickyHeader>
 
+      <div className="p-4 space-y-6 md:pb-[120px]">
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           {/* Section 1: Today's Breakdown */}
           <div className="mb-12">
@@ -187,7 +190,7 @@ export default function Analytics() {
           <RecoveryAnalyticsSection weeklyAverage={weeklyAverage} />
         </TabsContent>
 
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   );
 }
