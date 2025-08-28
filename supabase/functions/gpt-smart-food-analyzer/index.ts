@@ -9,6 +9,30 @@ const corsHeaders = {
 };
 
 /**
+ * Robust JSON parser that handles code fences and malformed responses
+ */
+function parseAIResponse(aiResponse: string): any {
+  let cleanedResponse = aiResponse.trim();
+  
+  // Strip code fences if present
+  const codeBlockMatch = cleanedResponse.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+  if (codeBlockMatch) {
+    cleanedResponse = codeBlockMatch[1].trim();
+    console.log('🧠 [PARSE][RECOVERED] Extracted JSON from code fences');
+  }
+  
+  // Try to parse the cleaned response
+  const parsed = JSON.parse(cleanedResponse);
+  
+  // Validate the structure
+  if (!parsed.foods || !Array.isArray(parsed.foods)) {
+    throw new Error('Invalid response structure: missing foods array');
+  }
+  
+  return parsed;
+}
+
+/**
  * 🧠 Smart GPT Food Analyzer with intelligent model routing
  */
 serve(async (req) => {
@@ -114,7 +138,9 @@ Always respond with valid JSON in this format:
       throw new Error('Either text or imageBase64 must be provided');
     }
 
-    // Make OpenAI API call
+    console.log(`🧠 [ANALYZE][REQ] Making request to ${selectedModel}`);
+
+    // Make OpenAI API call with forced JSON output
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -126,6 +152,7 @@ Always respond with valid JSON in this format:
         messages,
         max_tokens: maxTokens,
         temperature,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -142,21 +169,23 @@ Always respond with valid JSON in this format:
       throw new Error('No response from OpenAI');
     }
 
-    console.log(`✅ [Smart Analyzer] ${selectedModel} response received`);
+    console.log(`✅ [ANALYZE][RES] ${selectedModel} response received`);
 
-    // Parse JSON response
+    // Robust JSON parsing with code fence stripping
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(aiResponse);
+      parsedResponse = parseAIResponse(aiResponse);
     } catch (parseError) {
-      console.error('🚨 [Smart Analyzer] Failed to parse AI response as JSON:', aiResponse);
+      console.error('🚨 [PARSE][FALLBACK_JSON] Using fallback JSON after parse failure:', aiResponse);
+      // Return valid JSON structure with 200 status instead of 400 to prevent UI errors
       return new Response(JSON.stringify({ 
-        error: 'Invalid response format from AI',
         foods: [],
         total_confidence: 0,
-        processing_notes: 'AI returned malformed response'
+        processing_notes: 'AI returned unparseable response, please try again',
+        model_used: selectedModel,
+        fallback_used: false
       }), { 
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -181,6 +210,7 @@ Always respond with valid JSON in this format:
           messages,
           max_tokens: 800,
           temperature: 0.4,
+          response_format: { type: 'json_object' },
         }),
       });
 
@@ -189,7 +219,7 @@ Always respond with valid JSON in this format:
         const fallbackAI = fallbackData.choices[0]?.message?.content?.trim();
         
         try {
-          const fallbackParsed = JSON.parse(fallbackAI);
+          const fallbackParsed = parseAIResponse(fallbackAI);
           console.log('✅ [Smart Analyzer] GPT-4o fallback successful');
           return new Response(JSON.stringify({
             ...fallbackParsed,
