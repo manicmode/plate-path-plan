@@ -5,22 +5,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 
-// PHASE 8: External influence snapshot  
-async function checkPermissionsAndContext() {
-  try {
-    const cam = await navigator.permissions.query({ name: 'camera' as any });
-    const mic = await navigator.permissions.query({ name: 'microphone' as any });
-    console.warn('[PERMS]', { 
-      cam: cam?.state, 
-      mic: mic?.state, 
-      standalone: (navigator as any).standalone, 
-      ua: navigator.userAgent.slice(0, 100) + '...',
-      tethered: navigator.platform.includes('Mac') && /WebKit/.test(navigator.userAgent)
-    });
-  } catch (e) {
-    console.warn('[PERMS][ERROR]', e);
-  }
-}
+// Use global permissions checker from interceptors
+const checkPermissionsAndContext = (window as any).checkPermissionsAndContext;
 
 export default function CamPhoto() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);

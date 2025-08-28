@@ -1,5 +1,5 @@
-/* LOAD FIRST: capture interceptors */
-import './lib/captureInterceptors';
+/* MUST LOAD FIRST */ 
+import '@/lib/captureInterceptors';
 
 import { StrictMode } from "react";
 import * as React from "react";

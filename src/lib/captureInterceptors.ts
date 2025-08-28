@@ -52,23 +52,17 @@ if (md?.getUserMedia) {
   };
 }
 
-// Legacy getUserMedia (prefixed)
+// Legacy getUserMedia (all prefixed variants)
 const anyNav: any = navigator;
-if (anyNav.getUserMedia) { 
-  const g = anyNav.getUserMedia.bind(anyNav); 
-  anyNav.getUserMedia = (...args: any[]) => { 
-    tag('[INTCPT][GUM-LEGACY][CALL]', { args }); 
-    return g(...args);
-  };
-}
-
-if (anyNav.webkitGetUserMedia) { 
-  const g = anyNav.webkitGetUserMedia.bind(anyNav); 
-  anyNav.webkitGetUserMedia = (...args: any[]) => { 
-    tag('[INTCPT][GUM-WEBKIT][CALL]', { args }); 
-    return g(...args);
-  };
-}
+['getUserMedia', 'webkitGetUserMedia', 'mozGetUserMedia'].forEach(m => {
+  if (anyNav[m]) {
+    const o = anyNav[m].bind(anyNav);
+    anyNav[m] = function(...args: any[]) {
+      tag(`[INTCPT][${m}][CALL]`, { path: location.pathname, args });
+      return o(...args);
+    };
+  }
+});
 
 // ========= getDisplayMedia INTERCEPTORS =========
 const mdd: any = navigator.mediaDevices;
@@ -223,6 +217,68 @@ if (MediaStreamTrackProto?.applyConstraints) {
   };
 }
 
+// ========= AUDIOCONTEXT TRACKING =========
+(function tapAudioContext(){
+  const anyWin = window as any;
+  anyWin.__activeAudioContexts = [];
+  const AC = (window as any).AudioContext;
+  const WAC = (window as any).webkitAudioContext;
+  function wrap(Ctor:any){
+    if (!Ctor) return;
+    const Orig = Ctor;
+    (window as any)[Orig.name] = function(...args:any[]){
+      const inst = new Orig(...args);
+      try { anyWin.__activeAudioContexts.push(inst); } catch {}
+      tag('[INTCPT][AudioContext][NEW]');
+      return inst;
+    } as any;
+    (window as any)[Orig.name].prototype = Orig.prototype;
+  }
+  wrap(AC); wrap(WAC);
+})();
+
+// ========= AUDIO STREAM SOURCE TRACKING =========
+const AC: any = (window as any).AudioContext?.prototype || (window as any).webkitAudioContext?.prototype;
+if (AC?.createMediaStreamSource) {
+  const orig = AC.createMediaStreamSource;
+  AC.createMediaStreamSource = function(stream: any) {
+    tag('[INTCPT][createMediaStreamSource][CALL]', {
+      streamId: stream?.id,
+      tracks: stream?.getTracks?.().length || 0
+    });
+    return orig.call(this, stream);
+  };
+}
+
+// ========= PREVENT CACHED REFERENCES =========
+// Make getUserMedia non-replaceable to prevent cached refs from bypassing
+try {
+  Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { 
+    configurable: false, 
+    writable: false, 
+    value: navigator.mediaDevices.getUserMedia 
+  });
+} catch (e) {
+  tag('[INTCPT][LOCK][ERR]', { message: 'Could not lock getUserMedia' });
+}
+
+// ========= PERMISSIONS SNAPSHOT HELPER =========
+(window as any).checkPermissionsAndContext = async function() {
+  try {
+    const cam = await navigator.permissions.query({ name: 'camera' as any });
+    const mic = await navigator.permissions.query({ name: 'microphone' as any });
+    console.warn('[PERMS]', { 
+      cam: cam?.state, 
+      mic: mic?.state, 
+      standalone: (navigator as any).standalone, 
+      ua: navigator.userAgent.slice(0, 100) + '...',
+      tethered: navigator.platform.includes('Mac') && /WebKit/.test(navigator.userAgent)
+    });
+  } catch (e) {
+    console.warn('[PERMS][ERROR]', e);
+  }
+};
+
 console.warn('[CAPTURE-GUARD][boot-complete]', { 
   interceptorsInstalled: {
     getUserMedia: !!md?.getUserMedia,
@@ -231,6 +287,9 @@ console.warn('[CAPTURE-GUARD][boot-complete]', {
     mediaRecorder: !!MR,
     imageCapture: !!IC,
     srcObjectSetter: !!desc?.set,
-    applyConstraints: !!MediaStreamTrackProto?.applyConstraints
+    applyConstraints: !!MediaStreamTrackProto?.applyConstraints,
+    audioContext: !!(window as any).AudioContext,
+    createMediaStreamSource: !!AC?.createMediaStreamSource,
+    getUserMediaLocked: !Object.getOwnPropertyDescriptor(navigator.mediaDevices, 'getUserMedia')?.configurable
   }
 });
