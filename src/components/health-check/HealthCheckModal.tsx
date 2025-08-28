@@ -1164,6 +1164,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         }`}
         showCloseButton={false}
       >
+        {/* EMERGENCY TEST BUTTON - TEMPORARY */}
+        <div className="absolute top-2 right-2 z-[200]">
+          <Button 
+            onClick={() => {
+              console.log('[EMERGENCY] Emergency back button clicked!');
+              handleClose();
+            }}
+            className="bg-red-500 text-white p-2 text-xs"
+          >
+            EMERGENCY BACK
+          </Button>
+        </div>
+        
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && !analysisData?.source?.includes('voice') && (

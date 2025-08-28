@@ -794,11 +794,20 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                console.log('[SCANNER] Header back button clicked');
+              onClick={(e) => {
+                console.log('[SCANNER] Header back button clicked - event details:', {
+                  type: e.type,
+                  bubbles: e.bubbles,
+                  cancelable: e.cancelable,
+                  defaultPrevented: e.defaultPrevented
+                });
+                e.stopPropagation();
                 onCancel?.();
               }}
-              className="text-white hover:bg-white/20 flex items-center gap-2"
+              onMouseDown={() => console.log('[SCANNER] Back button mouse down')}
+              onMouseUp={() => console.log('[SCANNER] Back button mouse up')}
+              className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto relative z-[100]"
+              style={{ touchAction: 'manipulation' }}
             >
               <ArrowLeft className="h-5 w-5" />
               Back
