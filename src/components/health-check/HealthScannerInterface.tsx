@@ -788,6 +788,32 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="relative flex flex-col min-h-dvh bg-black">
+        {/* Header with back button */}
+        <header className="absolute top-0 left-0 right-0 z-50 p-4">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                console.log('[SCANNER] Header back button clicked');
+                onCancel?.();
+              }}
+              className="text-white hover:bg-white/20 flex items-center gap-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Back
+            </Button>
+            
+            {/* Title */}
+            <div className="text-white text-lg font-semibold">
+              Health Scan
+            </div>
+            
+            {/* Spacer for centering */}
+            <div className="w-16"></div>
+          </div>
+        </header>
+
         {/* camera/video area */}
         <main className="flex-1 relative overflow-hidden">
           <video
@@ -833,7 +859,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           </div>
 
           {/* Header Text */}
-          <div className="absolute top-8 left-4 right-4 text-center">
+          <div className="absolute top-24 left-4 right-4 text-center">
             <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
               <h2 className="text-white text-lg font-bold mb-2">
                 🔬 Health Inspector Scanner
@@ -1138,7 +1164,10 @@ function ScannerActions({
       {/* Red cancel LAST */}
       {onCancel && (
         <button
-          onClick={onCancel}
+          onClick={() => {
+            console.log('[SCANNER] Cancel button clicked');
+            onCancel();
+          }}
           className="h-12 rounded-xl bg-red-600/90 text-white flex items-center justify-center gap-2"
         >
           <X className="w-5 h-5" />

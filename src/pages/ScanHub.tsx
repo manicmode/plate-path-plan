@@ -233,6 +233,8 @@ export default function ScanHub() {
             onClick={() => {
               // Use the same logic as health modal close to navigate to original entry point
               const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
+              console.log('[SCAN] Main back button clicked, original entry:', originalEntry);
+              
               if (originalEntry && originalEntry !== '/scan') {
                 console.log('[SCAN] Back button - navigating to original entry:', originalEntry);
                 sessionStorage.removeItem('scan-original-entry'); // Clear after use
@@ -327,13 +329,19 @@ export default function ScanHub() {
           console.log('[SCAN] Health modal closed');
           setHealthCheckModalOpen(false);
           handledRef.current = false;
+          
+          // Debug logging
+          const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
+          console.log('[SCAN] Original entry for navigation:', originalEntry);
+          
           // Navigate back to original entry point to avoid saved/recent scans loop
-          if (originalEntryRef.current) {
-            console.log('[SCAN] Navigating to original entry:', originalEntryRef.current);
+          if (originalEntry && originalEntry !== '/scan') {
+            console.log('[SCAN] Navigating to original entry:', originalEntry);
             sessionStorage.removeItem('scan-original-entry'); // Clear after use
-            navigate(originalEntryRef.current, { replace: true });
+            navigate(originalEntry, { replace: true });
           } else {
-            navigate(-1);
+            console.log('[SCAN] Fallback navigation to home');
+            navigate('/', { replace: true });
           }
         }}
         initialState={forceHealth ? 'loading' : 'scanner'}

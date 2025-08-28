@@ -1150,6 +1150,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   const handleClose = () => {
+    console.log('[HEALTH_MODAL] Close called - navigating back to original entry');
     setCurrentState('scanner');
     setAnalysisResult(null);
     onClose();
