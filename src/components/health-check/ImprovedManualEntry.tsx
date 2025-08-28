@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, Mic, Search, AlertTriangle, Info, Plus, Tag, Hash } from 'lucide-react';
+import { ArrowLeft, Edit3, Search, AlertTriangle, Info, Plus, Tag, Hash } from 'lucide-react';
 import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
 import { logFallbackEvents } from '@/lib/healthScanTelemetry';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
@@ -359,7 +359,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                     } w-12 h-12 rounded-xl`}
                     disabled={isProcessing}
                   >
-                    <Mic className={`w-5 h-5 ${isRecording ? 'animate-bounce' : ''}`} />
+                    <Edit3 className={`w-5 h-5 ${isRecording ? 'animate-bounce' : ''}`} />
                   </Button>
                 )}
               </div>
