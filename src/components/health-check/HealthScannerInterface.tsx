@@ -25,13 +25,18 @@ function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
   const videosWithSrc = Array.from(document.querySelectorAll('video'))
     .filter(el => (el as HTMLVideoElement).srcObject).length;
   const audioTracks = s ? s.getAudioTracks().length : 0;
+  const activeEls = Array.from(document.querySelectorAll('video,audio')).map(e=>{
+    const s = (e as any).srcObject as MediaStream | null;
+    return { tag: e.tagName, hasAudio: !!s?.getAudioTracks?.().length, hasVideo: !!s?.getVideoTracks?.().length };
+  });
   // eslint-disable-next-line no-console
   console.log(tag, {
     route: location.pathname + location.search,
     tracks: tracks.length,
-    readyStates,
     audioTracks,
+    readyStates,
     videosWithSrc,
+    activeEls,
   });
 }
 

@@ -31,6 +31,20 @@ function MicJanitor() {
   return null;
 }
 
+// AudioJanitor - Suspend AudioContexts on scanner routes
+function AudioJanitor() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!/^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(pathname)) return;
+    // Suspend any active AudioContexts to avoid OS thinking mic/record path is warm
+    const anyWin = window as any;
+    const contexts: (AudioContext|any)[] = anyWin.__activeAudioContexts || [];
+    contexts.forEach((ctx:any)=>{ try { ctx.suspend?.(); } catch {} });
+    console.warn('[AUDIO-JANITOR] Suspended', contexts.length, 'AudioContexts on', pathname);
+  }, [pathname]);
+  return null;
+}
+
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -219,6 +233,7 @@ function AppContent() {
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
           <MicJanitor />
+          <AudioJanitor />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <OnboardingGate>
               <Routes>

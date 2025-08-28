@@ -35,6 +35,59 @@ applySecurityHeaders();
   };
 })();
 
+// --- GLOBAL DISPLAY CAPTURE GUARD (TEMP) ---
+(function guardDisplayCapture() {
+  const md = navigator.mediaDevices as any;
+  if (md?.getDisplayMedia) {
+    const origGDM = md.getDisplayMedia.bind(md);
+    md.getDisplayMedia = (constraints: any) => {
+      const path = location.pathname;
+      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
+      console.warn('[GUARD][GDM] called on', path, constraints);
+      if (isScanner) {
+        console.error('[GUARD][GDM] BLOCKED on scanner route', path);
+        return Promise.reject(new DOMException('display capture blocked on scanner route','NotAllowedError'));
+      }
+      return origGDM(constraints);
+    };
+  }
+
+  // Block element.captureStream (video/canvas) starting a recording pipeline
+  const elProto = (HTMLMediaElement as any)?.prototype;
+  if (elProto?.captureStream) {
+    const origCS = elProto.captureStream;
+    elProto.captureStream = function(...args: any[]) {
+      const path = location.pathname;
+      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
+      console.warn('[GUARD][captureStream] on', path, this.tagName, args);
+      if (isScanner) {
+        console.error('[GUARD][captureStream] BLOCKED on scanner route', path);
+        throw new DOMException('captureStream blocked on scanner route','NotAllowedError');
+      }
+      return origCS.apply(this, args);
+    };
+  }
+})();
+
+// --- AUDIOCONTEXT TRACKING (TEMP) ---
+(function tapAudioContext(){
+  const anyWin = window as any;
+  anyWin.__activeAudioContexts = [];
+  const AC = (window as any).AudioContext;
+  const WAC = (window as any).webkitAudioContext;
+  function wrap(Ctor:any){
+    if (!Ctor) return;
+    const Orig = Ctor;
+    (window as any)[Orig.name] = function(...args:any[]){
+      const inst = new Orig(...args);
+      try { anyWin.__activeAudioContexts.push(inst); } catch {}
+      return inst;
+    } as any;
+    (window as any)[Orig.name].prototype = Orig.prototype;
+  }
+  wrap(AC); wrap(WAC);
+})();
+
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
