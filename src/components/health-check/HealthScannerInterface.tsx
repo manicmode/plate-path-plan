@@ -33,6 +33,7 @@ interface HealthScannerInterfaceProps {
   onManualEntry: () => void;
   onManualSearch?: (query: string, type: 'text' | 'voice') => void;
   onCancel?: () => void;
+  onScannerError?: (error: any) => void;
 }
 
 
@@ -40,7 +41,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onCapture,
   onManualEntry,
   onManualSearch,
-  onCancel
+  onCancel,
+  onScannerError
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,6 +70,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   useEffect(() => {
     if (currentView === 'scanner') {
+      console.log('[SCANNER] mount start');
       startCamera();
       warmUpDecoder();
     }
@@ -88,6 +91,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // 3) Detach video & clear refs
       hardDetachVideo(videoRef.current);
       try { updateStreamRef?.(null); } catch {}
+      console.log('[SCANNER] stream stopped');
     };
   }, [currentView]);
 
@@ -137,12 +141,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
 
     try {
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
-      if (!videoRef.current) {
-        console.error("[VIDEO] videoRef is null — video element not mounted");
-        return;
-      }
-
       // High-res back camera request with optimized constraints
       const constraints = {
         video: {
@@ -152,6 +150,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         },
         audio: false
       };
+      
+      console.log('[SCANNER] requesting camera', constraints);
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('getUserMedia not supported');
+      }
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       
       // Defensive strip: remove any audio tracks that slipped in
@@ -185,11 +189,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           }, 200);
         }
       
-      // Log torch capabilities
-      const caps = videoTrack?.getCapabilities?.();
-      console.log('[TORCH] caps', caps);
-      console.log('[TORCH] supported', !!(caps && 'torch' in caps));
+      console.log('[SCANNER] stream started', {
+        tracks: mediaStream.getVideoTracks().map(t => t.label)
+      });
     } catch (error: any) {
+      console.error('[SCANNER] init error', error);
+      onScannerError?.(error);
+      
+      // Fallback to photo capture
       console.warn('[PHOTO] Live video denied, using native capture', error?.name || error);
       try {
         const file = await openPhotoCapture('image/*','environment');

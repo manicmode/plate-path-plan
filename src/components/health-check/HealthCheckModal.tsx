@@ -125,7 +125,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const source = params.get('source'); // 'voice' | 'manual' | 'barcode' | 'photo'
   const voiceName = params.get('name') ?? '';
   const isVoice = source === 'voice';
-  const allowScanner = source === 'barcode' || source === 'photo';
+  const isManual = source === 'manual';
+  const isBarcodeSource = source === 'barcode';
+  const isPhotoSource = source === 'photo';
+  const allowScanner = isBarcodeSource || isPhotoSource;
+
+  // Phase 1 - Forensic logging (DEV only)
+  if (import.meta.env.DEV) {
+    console.log('[SCANNER][route]', { source, isBarcodeSource, isPhotoSource, allowScanner, currentState });
+  }
 
   // Voice route initialization - runs once per mount
   useEffect(() => {
@@ -241,6 +249,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const safeClose = () => {
     if (canGoBack()) navigate(-1);
     else navigate('/scan', { replace: true }); // guaranteed landing
+  };
+
+  // Scanner error handler - prevents blank screen on camera failure
+  const handleScannerError = (err: any) => {
+    console.error('[SCANNER] escalated', err);
+    toast({ 
+      title: "Camera Failed", 
+      description: err?.message ?? 'Camera access failed. Please try manual entry.', 
+      variant: "destructive" 
+    });
+    setCurrentState('search'); // fallback to search modal instead of blank
   };
 
   // Shared handler for search result selection (manual and voice)
@@ -461,7 +480,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   // Helper function to detect if input is a barcode
-  const isBarcode = (input: string): boolean => {
+  const isBarcodeInput = (input: string): boolean => {
     const cleaned = input.trim().replace(/\s+/g, '');
     // Check if it's all digits and has a reasonable barcode length (8-14 digits)
     return /^\d{8,14}$/.test(cleaned);
@@ -475,12 +494,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCurrentState('loading');
       setAnalysisType('manual');
       setCurrentAnalysisData({ 
-        source: isBarcode(trimmedQuery) ? 'barcode' : 'manual',
-        barcode: isBarcode(trimmedQuery) ? trimmedQuery.replace(/\s+/g, '') : undefined
+        source: isBarcodeInput(trimmedQuery) ? 'barcode' : 'manual',
+        barcode: isBarcodeInput(trimmedQuery) ? trimmedQuery.replace(/\s+/g, '') : undefined
       });
       
       // Intelligent routing based on input content
-      if (isBarcode(trimmedQuery)) {
+      if (isBarcodeInput(trimmedQuery)) {
         console.log('🏷️ Input detected as barcode, routing to enhanced-health-scanner');
         setLoadingMessage('Processing barcode...');
         
@@ -1133,8 +1152,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         }`}
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Health Analysis</DialogTitle>
-        <DialogDescription className="sr-only">Analyze food items for health insights and nutritional information.</DialogDescription>
+        <DialogTitle className="sr-only">
+          {allowScanner ? 'Scan Barcode' : 'Search Foods'}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {allowScanner ? 'Point camera at the barcode.' : 'Select a result to analyze.'}
+        </DialogDescription>
         <div className="relative w-full h-full">
           {/* Main Content */}
           
@@ -1154,7 +1177,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
-              onCancel={handleClose}
+              onCancel={safeClose}
+              onScannerError={handleScannerError}
             />
           )}
 
