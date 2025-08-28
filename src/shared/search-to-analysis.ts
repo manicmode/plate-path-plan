@@ -128,6 +128,9 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
     body
   });
   
+  // PROBE: Log raw analyzer response
+  console.log('[ANALYZER][RAW]', JSON.stringify({ keys: Object.keys(data||{}), data }, null, 2));
+  
   // PARITY logging: after invoke
   console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
   
@@ -136,6 +139,45 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   }
   
   return data;
+}
+
+/**
+ * Coerce score to 0-10 range (divide by 10 if >10, clamp 0-10)
+ */
+function coerceScoreTo10(rawScore: any): number {
+  const n = Number(rawScore);
+  if (!Number.isFinite(n)) return 0;
+  const s = n > 10 ? n / 10 : n;     // handle 0–100 inputs
+  return Math.max(0, Math.min(10, s)); // clamp
+}
+
+/**
+ * Map raw analyzer data to core fields with robust extraction
+ */
+function mapAnalyzerToCore(data: any, fallbackName?: string) {
+  const itemName = 
+    data?.itemName ||
+    data?.productName ||
+    data?.title ||
+    data?.name ||
+    data?.report?.itemName ||
+    data?.report?.product?.name ||
+    fallbackName ||
+    'Unknown Product';
+
+  const rawScore = 
+    data?.healthScore ||
+    data?.quality?.score ||
+    data?.score ||
+    data?.report?.quality?.score;
+
+  const healthScore = coerceScoreTo10(rawScore);
+
+  return {
+    ...data,
+    itemName,
+    healthScore
+  };
 }
 
 /**
@@ -166,6 +208,15 @@ export async function handleSearchPick({
     // Use unified analysis - always text-based, no mode: 'product'
     const analysis = await analyzeFromProduct(product, { source });
 
+    // Apply robust mapping to normalize analyzer response
+    const mappedAnalysis = mapAnalyzerToCore(analysis, product.name);
+    
+    // PROOF: Log mapped result
+    console.log('[MAPPED][REPORT]', { 
+      itemName: mappedAnalysis.itemName, 
+      healthScore10: mappedAnalysis.healthScore 
+    });
+
     // Transform analysis to Health Analysis result format
     const analysisResult = {
       product: {
@@ -184,7 +235,7 @@ export async function handleSearchPick({
           saturated_fat: product.nutriments?.saturated_fat || 0,
         }
       },
-      analysis: analysis,
+      analysis: mappedAnalysis,
       source: source,
       confidence: item.confidence || 0.8
     };
