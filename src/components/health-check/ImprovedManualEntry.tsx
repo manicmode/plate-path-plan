@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, Mic, Search, AlertTriangle, Info, ExternalLink, Plus, Tag, Hash } from 'lucide-react';
+import { ArrowLeft, Mic, Search, AlertTriangle, Info, Plus, Tag, Hash } from 'lucide-react';
 import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
 import { logFallbackEvents } from '@/lib/healthScanTelemetry';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
@@ -521,22 +521,6 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
             )}
           </div>
 
-          {/* Footer */}
-          <footer className="p-4 border-t border-white/10 bg-gradient-to-t from-black/20 flex-shrink-0"
-            style={{ paddingBottom: `max(1rem, env(safe-area-inset-bottom))` }}>
-            <p className="text-center text-gray-400 text-xs flex items-center justify-center">
-              Powered by 
-              <a 
-                href="https://world.openfoodfacts.org" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 ml-1 flex items-center"
-              >
-                OpenFoodFacts
-                <ExternalLink className="w-3 h-3 ml-1" />
-              </a>
-            </p>
-          </footer>
         </div>
       </div>
     </div>
