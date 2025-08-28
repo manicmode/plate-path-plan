@@ -9,11 +9,7 @@ export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number
   const before = cursor ?? new Date().toISOString();
   const q = supabase
     .from('nutrition_logs')
-    .select(`
-      id, created_at, food_name, image_url, source,
-      calories, protein, carbs, fat,
-      quality_score, quality_verdict
-    `)
+    .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
     .lt('created_at', before)
     .order('created_at', { ascending: false })
     .limit(limit);

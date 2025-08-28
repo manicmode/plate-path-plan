@@ -50,11 +50,7 @@ export default function SavedReports() {
       // Phase 1: DB-only query with RLS (no manual user filtering)
       const { data, error } = await supabase
         .from('nutrition_logs')
-        .select(`
-          id, created_at, food_name, image_url, source,
-          calories, protein, carbs, fat,
-          quality_score, quality_verdict
-        `)
+        .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
         .order('created_at', { ascending: false })
         .limit(25);
 
