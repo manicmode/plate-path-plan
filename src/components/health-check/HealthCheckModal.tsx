@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -125,64 +125,37 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const source = params.get('source'); // 'voice' | 'manual' | 'barcode' | 'photo'
   const voiceName = params.get('name') ?? '';
   const isVoice = source === 'voice';
-  const isManual = source === 'manual';
-  const isBarcodeSource = source === 'barcode';
-  const isPhotoSource = source === 'photo';
-  const allowScanner = isBarcodeSource || isPhotoSource;
+  const allowScanner = source === 'barcode' || source === 'photo';
 
-  // Phase 1 - Forensic logging (DEV only)
-  if (import.meta.env.DEV) {
-    console.log('[SCANNER][route]', { 
-      source, 
-      isBarcodeSource, 
-      isPhotoSource, 
-      allowScanner, 
-      currentState,
-      initialState,
-      isOpen
-    });
-  }
+  // Voice route initialization - runs once per mount
+  useEffect(() => {
+    if (!isVoice || !isOpen) return;
+    if (didInitVoice.current) return; // prevent re-entry loop
+    didInitVoice.current = true;
+    setCurrentState('search'); // force search view
+    setInitialQuery(voiceName || ''); // prefill with transcript
+    if (import.meta.env.DEV) console.log('[VOICE→SEARCH] init', { voiceName });
+  }, [isVoice, isOpen, voiceName]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      if (import.meta.env.DEV) {
-        console.log('[MODAL][INIT]', { 
-          source, 
-          isVoice, 
-          isManual, 
-          isBarcodeSource, 
-          isPhotoSource,
-          allowScanner,
-          initialState 
-        });
+      // Don't reset state for voice flow - let voice init handle it
+      if (!isVoice) {
+        setCurrentState(initialState);
+        setAnalysisResult(null);
+        setCandidates([]);
+        setMealFoods([]);
+        setIsProcessing(false);
+        setCaptureId(null);
+        setLoadingMessage('');
+        setCurrentAnalysisData({ source: 'photo' });
       }
-      
-      // Set initial state based on source
-      if (isVoice || isManual) {
-        // Voice and manual go to search
-        setCurrentState('search');
-        if (isVoice && voiceName) {
-          setInitialQuery(voiceName);
-        }
-      } else {
-        // Barcode and photo go to scanner
-        setCurrentState('scanner');
-      }
-      
-      // Reset other states
-      setAnalysisResult(null);
-      setCandidates([]);
-      setMealFoods([]);
-      setIsProcessing(false);
-      setCaptureId(null);
-      setLoadingMessage('');
-      setCurrentAnalysisData({ source: 'photo' });
     } else {
       // Reset voice init flag when modal closes
       didInitVoice.current = false;
     }
-  }, [isOpen, source, isVoice, isManual, isBarcodeSource, isPhotoSource, voiceName]);
+  }, [isOpen, initialState, isVoice]);
 
   // Handle analysis data from URL params (e.g., from barcode scans)
   useEffect(() => {
@@ -263,27 +236,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   }, [isOpen, analysisData, initialState]);
 
-  // Safe navigation - prevent black screens
-  const canGoBack = () => window.history.length > 1;
-  const safeClose = () => {
-    if (canGoBack()) navigate(-1);
-    else navigate('/scan', { replace: true }); // guaranteed landing
-  };
-
-  // Scanner error handler - prevents blank screen on camera failure
-  const handleScannerError = (err: any) => {
-    console.error('[SCANNER] escalated', err);
-    toast({ 
-      title: "Camera Failed", 
-      description: err?.message ?? 'Camera access failed. Please try manual entry.', 
-      variant: "destructive" 
-    });
-    setCurrentState('search'); // fallback to search modal instead of blank
-  };
-
   // Shared handler for search result selection (manual and voice)
   const onSelectSearchItem = async (result: any) => {
-    // handleSearchPick is now fully error-safe and never throws
     await handleSearchPick({
       item: result,
       source: isVoice ? 'voice' : 'manual',
@@ -499,7 +453,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   // Helper function to detect if input is a barcode
-  const isBarcodeInput = (input: string): boolean => {
+  const isBarcode = (input: string): boolean => {
     const cleaned = input.trim().replace(/\s+/g, '');
     // Check if it's all digits and has a reasonable barcode length (8-14 digits)
     return /^\d{8,14}$/.test(cleaned);
@@ -513,12 +467,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCurrentState('loading');
       setAnalysisType('manual');
       setCurrentAnalysisData({ 
-        source: isBarcodeInput(trimmedQuery) ? 'barcode' : 'manual',
-        barcode: isBarcodeInput(trimmedQuery) ? trimmedQuery.replace(/\s+/g, '') : undefined
+        source: isBarcode(trimmedQuery) ? 'barcode' : 'manual',
+        barcode: isBarcode(trimmedQuery) ? trimmedQuery.replace(/\s+/g, '') : undefined
       });
       
       // Intelligent routing based on input content
-      if (isBarcodeInput(trimmedQuery)) {
+      if (isBarcode(trimmedQuery)) {
         console.log('🏷️ Input detected as barcode, routing to enhanced-health-scanner');
         setLoadingMessage('Processing barcode...');
         
@@ -1159,34 +1113,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={(open) => { 
-        if (!open) safeClose(); 
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
           currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">
-          {allowScanner ? 'Scan Barcode' : 'Search Foods'}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          {allowScanner ? 'Point camera at the barcode.' : 'Select a result to analyze.'}
-        </DialogDescription>
         <div className="relative w-full h-full">
           {/* Main Content */}
           
-          {/* Conditional Rendering with Debug Info */}
-          {import.meta.env.DEV && (
-            <div className="fixed top-0 left-0 z-[9999] bg-red-500 text-white text-xs p-2">
-              DEBUG: state={currentState}, allowScanner={String(allowScanner)}, source={source}
-            </div>
-          )}
-
           {currentState === 'search' && (
             <ImprovedManualEntry
               initialQuery={initialQuery}
@@ -1203,22 +1139,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
-              onCancel={safeClose}
-              onScannerError={handleScannerError}
+              onCancel={handleClose}
             />
-          )}
-
-          {currentState === 'scanner' && !allowScanner && import.meta.env.DEV && (
-            <div className="w-full h-full bg-red-500 flex items-center justify-center text-white">
-              <div className="text-center">
-                <h2 className="text-2xl mb-2">DEBUG: Scanner Blocked</h2>
-                <p>currentState: {currentState}</p>
-                <p>allowScanner: {String(allowScanner)}</p>
-                <p>source: {source}</p>
-                <p>isBarcodeSource: {String(isBarcodeSource)}</p>
-                <p>isPhotoSource: {String(isPhotoSource)}</p>
-              </div>
-            </div>
           )}
 
           {currentState === 'loading' && (

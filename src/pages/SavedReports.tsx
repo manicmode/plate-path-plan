@@ -4,9 +4,8 @@ import { ArrowLeft, BookOpen, Eye, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchSavedReports, countSavedReports } from '@/services/savedReports';
+import { useToast } from '@/hooks/use-toast';
 
 interface NutritionLog {
   id: string;
@@ -26,7 +25,6 @@ export default function SavedReports() {
   const { toast } = useToast();
   const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     loadSavedReports();
@@ -35,48 +33,36 @@ export default function SavedReports() {
   const loadSavedReports = async () => {
     setLoading(true);
     try {
-      // PHASE 1 - SESSION FORENSICS
-      const { data: sess } = await supabase.auth.getSession();
-      console.log('[SAVED-REPORTS][SESSION]', { 
-        hasSession: !!sess?.session, 
-        user: sess?.session?.user?.id,
-        email: sess?.session?.user?.email 
-      });
-
-      if (!sess?.session?.user) {
-        console.log('[SAVED-REPORTS][NO-USER] Showing empty state');
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user - showing empty state');
         setSavedReports([]);
-        setTotalCount(0);
         setLoading(false);
         return;
       }
 
-      // Use canonical data access - DB ONLY, NO MOCKS
-      const [reportsResult, count] = await Promise.all([
-        fetchSavedReports({ limit: 50 }),
-        countSavedReports()
-      ]);
-      
-      // PHASE 2 - DATA SOURCE VERIFICATION
-      console.log('[SAVED-REPORTS][DATASOURCE]', { 
-        source: 'db', // MUST BE DB ONLY
-        count: reportsResult.items.length,
-        totalCount: count,
-        firstItem: reportsResult.items[0]?.food_name || 'N/A',
-        userConfirmed: sess.session.user.id
-      });
-      
-      setSavedReports(reportsResult.items as NutritionLog[]);
-      setTotalCount(count);
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading saved reports:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load saved reports",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
+      setSavedReports(data || []);
     } catch (error) {
       console.error('Error loading saved reports:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load saved reports",
-        variant: "destructive"
-      });
-      setSavedReports([]);
-      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -138,7 +124,7 @@ export default function SavedReports() {
         <div className="flex items-center space-x-2 mb-6">
           <BookOpen className="h-5 w-5 text-white" />
           <Badge variant="secondary" className="bg-white/20 text-white">
-            {totalCount}
+            {savedReports.length}
           </Badge>
         </div>
 

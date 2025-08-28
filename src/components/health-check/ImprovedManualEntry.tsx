@@ -212,27 +212,23 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       !!result.caloriesPer100g
     );
     
-    // Always use unified analysis pipeline when available (for both voice and manual)
-    if (setAnalysisData && setStep) {
-      // handleSearchPick is now fully error-safe and never throws
-      await handleSearchPick({
-        item: result,
-        source: 'manual',
-        setAnalysisData,
-        setStep: (step: string) => setStep(step as ModalState),
-        onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
-      });
-      return;
-    }
-
-    // Use onSelect prop for other flows
+    // Use onSelect prop if provided (for voice/manual flows)
     if (onSelect) {
       onSelect(result);
       return;
     }
     
-    // Legacy fallback for existing components
-    if (onProductSelected) {
+     // Use unified analysis pipeline if available, otherwise fall back to legacy
+     if (setAnalysisData && setStep) {
+       await handleSearchPick({
+         item: result,
+         source: 'manual',
+         setAnalysisData,
+         setStep: (step: string) => setStep(step as ModalState),
+         onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
+       });
+    } else if (onProductSelected) {
+      // Legacy fallback for existing components
       const legacyProduct = searchResultToLegacyProduct(result);
       onProductSelected(legacyProduct);
     }
@@ -324,16 +320,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
           <header className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0 safe-top"
             style={{ paddingTop: `max(1rem, env(safe-area-inset-top))` }}>
             <Button
-              onClick={() => {
-                // Safe back navigation
-                if (window.history.length > 1) {
-                  if (onBack) onBack();
-                  else if (onClose) onClose();
-                } else {
-                  // Fallback to scan page if no history
-                  window.location.href = '/scan';
-                }
-              }}
+              onClick={onBack || onClose}
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"

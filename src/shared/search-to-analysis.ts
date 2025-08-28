@@ -102,48 +102,44 @@ const productToText = (p: any) => {
 };
 
 /**
- * Call gpt-smart-food-analyzer with text format for both manual and voice selections
+ * Call the same health analysis pipeline that manual entry uses
  */
 export async function analyzeFromProduct(product: NormalizedProduct, options: { source?: SearchSource } = {}) {
+  console.log('[ANALYZE] source=%s normalized=', options.source || 'manual', product);
+  
   const source = options.source || 'manual';
   const stripped = stripForAnalyze(product);
   
   // Guard: require product name and nutrition data
   if (!stripped.name || !stripped.nutriments) {
-    throw new Error('Missing product details for analysis');
+    throw new Error('Could not analyze selection: missing product details');
   }
   
-  // Convert product to text format for analysis
+  // Convert product to text format for analysis (both manual and voice selections)
   const text = productToText(stripped);
   const body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
 
-  // DEV diagnostics: log request
-  if (import.meta.env.DEV) console.log('[ANALYZE][REQ]', { source, body });
+  // DEV diagnostics: log request before invoke
+  const bytes = new Blob([JSON.stringify(body)]).size;
+  logDev('[ANALYZE][REQ]', { source, bytes, body });
   
-  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', { body });
+  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
+    body
+  });
+  
+  // DEV diagnostics: log response after invoke
+  logDev('[ANALYZE][RES]', { source, status: error?.context?.status ?? 200, ok: !error });
   
   if (error) {
-    if (import.meta.env.DEV) console.error('[ANALYZE][RES]', { source, status: error.context?.status, error });
-    
-    // Fallback: retry once with minimal text (name only) if 400
-    if (error.context?.status === 400) {
-      const minimal = { text: `Analyze this product: ${stripped.name}.`, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
-      if (import.meta.env.DEV) console.log('[ANALYZE][RETRY]', minimal);
-      const retryResult = await supabase.functions.invoke('gpt-smart-food-analyzer', { body: minimal });
-      if (retryResult.error) throw new Error(`Analyze failed (${retryResult.error.context?.status ?? '400'})`);
-      return retryResult.data;
-    }
-    throw new Error(`Analyze failed (${error.context?.status ?? '???'})`);
+    throw new Error(error.message || 'Failed to analyze product');
   }
   
-  if (import.meta.env.DEV) console.log('[ANALYZE][RES]', { source, status: 200 });
   return data;
 }
 
 /**
  * Unified handler for search result selection
  * Both manual and voice search should call this with identical parameters
- * NEVER throws - all errors are handled gracefully
  */
 export async function handleSearchPick({
   item,
@@ -159,11 +155,8 @@ export async function handleSearchPick({
   onError?: (error: any) => void;
 }) {
   try {
-    // DEV diagnostics: log selection start
-    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] start', { source, name: item?.name });
-    
-    setStep('analyzing'); // show spinner
     const product = normalizeSearchItem(item);
+    console.log(`[SEARCH→ANALYSIS] ${source} selection:`, product.name);
 
     // IMPORTANT: Call the SAME analyzer used by manual entry
     const analysis = await analyzeFromProduct(product, { source });
@@ -191,24 +184,11 @@ export async function handleSearchPick({
       confidence: item.confidence || 0.8
     };
 
-    // DEV diagnostics: log success
-    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] ok', { source });
-    
+    console.log(`[SEARCH→ANALYSIS] ${source} analysis complete:`, analysisResult);
     setAnalysisData(analysisResult);
     setStep('report');
-  } catch (error: any) {
-    // DEV diagnostics: log failure
-    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] fail', { source, msg: error?.message });
-    
+  } catch (error) {
     console.error(`[SEARCH→ANALYSIS] ${source} error:`, error);
-    
-    // Show user-friendly error and stay in search view
-    const friendlyMessage = error?.message ?? 'Could not analyze item';
-    onError?.(new Error(friendlyMessage));
-    
-    setStep('search'); // stay in list, don't crash
-    
-    // NEVER throw - this prevents app crashes
-    return;
+    onError?.(error);
   }
 }
