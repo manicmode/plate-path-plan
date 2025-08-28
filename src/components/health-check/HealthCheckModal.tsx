@@ -1159,24 +1159,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
-        className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
+        className={`max-w-full max-h-full w-full h-full p-0 border-0 pointer-events-auto ${
           currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
       >
-        {/* EMERGENCY TEST BUTTON - TEMPORARY */}
-        <div className="absolute top-2 right-2 z-[200]">
-          <Button 
-            onClick={() => {
-              console.log('[EMERGENCY] Emergency back button clicked!');
-              handleClose();
-            }}
-            className="bg-red-500 text-white p-2 text-xs"
-          >
-            EMERGENCY BACK
-          </Button>
-        </div>
-        
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && !analysisData?.source?.includes('voice') && (
