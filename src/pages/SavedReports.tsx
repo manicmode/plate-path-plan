@@ -50,10 +50,8 @@ export default function SavedReports() {
       // Main list (DB only, RLS, no local merges)
       // @ts-ignore - New columns not in generated types yet
       const query = supabase
-        .from('nutrition_logs')
+        .from('nutrition_logs_clean')
         .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
-        .eq('is_mock', false)
-        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(25);
 

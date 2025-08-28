@@ -226,26 +226,19 @@ export default function ScanHub() {
     <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700 pb-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="relative text-center mb-8">
+        <div className="relative isolate z-[70] text-center mb-8">
           <Button
+            data-test="scan-back"
             variant="ghost"
             size="sm"
             onClick={() => {
-              // Use the same logic as health modal close to navigate to original entry point
-              const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
-              console.log('[SCAN] Main back button clicked, original entry:', originalEntry);
-              
-              if (originalEntry && originalEntry !== '/scan') {
-                console.log('[SCAN] Back button - navigating to original entry:', originalEntry);
-                sessionStorage.removeItem('scan-original-entry'); // Clear after use
-                navigate(originalEntry, { replace: true });
-              } else {
-                // Fallback to home if no clear entry point
-                console.log('[SCAN] Back button - fallback to home');
-                navigate('/', { replace: true });
-              }
+              console.log('[HUB][BACK] invoked');
+              if (window?.history?.length > 1) return navigate(-1);
+              const orig = sessionStorage.getItem('scan-original-entry');
+              if (orig && orig !== '/scan') return navigate(orig, { replace: true });
+              return navigate('/explore', { replace: true });
             }}
-            className="absolute left-0 top-0 text-white hover:bg-white/10"
+            className="absolute left-0 top-0 text-white hover:bg-white/10 relative z-[80] pointer-events-auto"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -259,7 +252,7 @@ export default function ScanHub() {
               drop-shadow-[0_0_20px_rgba(34,197,94,0.8)] 
               drop-shadow-[0_0_40px_rgba(34,197,94,0.4)]
               filter brightness-110
-              left-[calc(50%+120px)]" />
+              left-[calc(50%+120px)] pointer-events-none select-none" />
           </div>
           <p className="text-rose-100/80 text-lg">
             Choose how you want to analyze food
