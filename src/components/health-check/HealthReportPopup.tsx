@@ -16,7 +16,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { HealthAnalysisResult } from './HealthCheckModal';
-import { saveHealthScanToNutritionLogs } from '@/lib/nutritionLogAdapter';
+import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 
@@ -123,27 +123,28 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         barcode: analysisData?.barcode
       });
 
-      const saveResult = await saveHealthScanToNutritionLogs(
-        result,
-        analysisData?.source || 'photo',
-        analysisData?.imageUrl,
-        analysisData?.barcode
-      );
+      // Map analysis data to scan format for adapter
+      const scanData = {
+        ...result,
+        imageUrl: analysisData?.imageUrl,
+        barcode: analysisData?.barcode,
+      };
 
-      if (saveResult.success) {
-        setIsSaved(true);
-        toast({
-          title: "Saved Successfully! 💾",
-          description: `${result.itemName} has been saved to your nutrition logs.`,
-        });
-      } else {
-        throw new Error(saveResult.error || 'Failed to save health scan');
-      }
-    } catch (error) {
+      const source = analysisData?.source === 'barcode' ? 'barcode' : 
+                     analysisData?.source === 'manual' ? 'manual' : 'photo';
+
+      await saveScanToNutritionLogs(scanData, source);
+      
+      setIsSaved(true);
+      toast({
+        title: "Saved Successfully! 💾",
+        description: `${result.itemName} has been saved to your nutrition logs.`,
+      });
+    } catch (error: any) {
       console.error('❌ Save failed:', error);
       toast({
         title: "Save Failed",
-        description: error instanceof Error ? error.message : 'Unable to save health scan result. Please try again.',
+        description: error?.message ?? 'Unable to save health scan result. Please try again.',
         variant: "destructive"
       });
     } finally {
