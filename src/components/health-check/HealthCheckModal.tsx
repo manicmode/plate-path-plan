@@ -149,6 +149,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return; // Don't fall through to any "health/analysis" effects
     }
     
+    // URL-param effect: ignore manual/off in v2 - they use in-modal pipeline
+    if (source === 'manual' || source === 'off') {
+      console.log('[PARITY][URL-BYPASS]', { source });
+      return; // manual is handled in-place, do not navigate / do not open scanner
+    }
+
     // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
     const isSearchFlow = source === 'voice' || source === 'manual';
     if (isSearchFlow) {
@@ -1357,6 +1363,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           {currentState === 'fallback' && (
             <ImprovedManualEntry
               onProductSelected={(product) => {
+                console.log('[PARITY][HANDLER]', { source: 'manual', usingHandler: true });
                 const legacy = toLegacyFromEdge({ product });
                 processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
               }}
