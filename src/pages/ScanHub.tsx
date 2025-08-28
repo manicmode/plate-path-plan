@@ -91,13 +91,13 @@ export default function ScanHub() {
 
   const handleSaves = () => {
     logTileClick('saves');
-    // Navigate to scan recents which has the saved reports tab
-    navigate('/scan/recents');
+    // Navigate to saved reports page
+    navigate('/scan/saved-reports');
   };
 
   const handleRecents = () => {
     logTileClick('recents');
-    navigate('/scan/recents');
+    navigate('/scan/recent-scans');
   };
 
   // Handle barcode detection from scanner - this will be handled by HealthCheckModal

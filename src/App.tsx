@@ -122,6 +122,8 @@ const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
+const RecentScans = lazy(() => import('@/pages/RecentScans'));
+const SavedReports = lazy(() => import('@/pages/SavedReports'));
 const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
@@ -502,22 +504,32 @@ function AppContent() {
                              </ProtectedRoute>
                            } />
                            
-                            {/* Scan Hub Routes */}
-                            <Route path="/scan" element={
-                              <ProtectedRoute>
-                                <ScanHub />
-                              </ProtectedRoute>
-                            } />
+                             {/* Scan Hub Routes */}
+                             <Route path="/scan" element={
+                               <ProtectedRoute>
+                                 <ScanHub />
+                               </ProtectedRoute>
+                             } />
                              <Route path="/scan/recents" element={
                                <ProtectedRoute>
                                  <ScanRecents />
                                </ProtectedRoute>
-                              } />
-                              <Route path="/nutrition-report/:reportId" element={
-                                <ProtectedRoute>
-                                  <NutritionReport />
-                                </ProtectedRoute>
-                              } />
+                             } />
+                             <Route path="/scan/recent-scans" element={
+                               <ProtectedRoute>
+                                 <RecentScans />
+                               </ProtectedRoute>
+                             } />
+                             <Route path="/scan/saved-reports" element={
+                               <ProtectedRoute>
+                                 <SavedReports />
+                               </ProtectedRoute>
+                             } />
+                             <Route path="/nutrition-report/:reportId" element={
+                               <ProtectedRoute>
+                                 <NutritionReport />
+                               </ProtectedRoute>
+                             } />
                              
                              {/* Legacy health-report redirect to scan hub */}
                              <Route path="/health-report" element={<Navigate to="/scan" replace />} />
