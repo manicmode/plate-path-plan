@@ -127,7 +127,96 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Handle analysis data from URL params (e.g., from manual entry)
   useEffect(() => {
-    if (isOpen && analysisData && analysisData.barcode && initialState === 'loading') {
+    if (!isOpen || !analysisData) return;
+    
+    const { source, barcode, name } = analysisData;
+    
+    // Handle voice-specific routing first
+    if (source === 'voice' && name) {
+      if (import.meta.env.DEV) console.log('[VOICE→HEALTH] start', { name });
+      
+      const runId = crypto.randomUUID();
+      currentRunId.current = runId;
+      
+      setCurrentState('loading');
+      setLoadingMessage(`Looking up "${name}"...`);
+      setAnalysisType('manual');
+      setCurrentAnalysisData({ source: 'voice' });
+      
+      const handleVoiceAnalysis = async () => {
+        try {
+          // Hard timeout for safety
+          const watchdog = setTimeout(() => {
+            if (currentRunId.current === runId) {
+              console.log('[VOICE→HEALTH] timeout, fallback to manual');
+              toManualAdd(name);
+            }
+          }, 8000);
+          
+          // Quick name lookup with network guard
+          const controller = new AbortController();
+          const abortTimer = setTimeout(() => controller.abort(), 6000);
+          
+          try {
+            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+              body: { 
+                mode: 'search',
+                query: name,
+                source: 'voice-health-scan'
+              }
+            });
+            
+            clearTimeout(abortTimer);
+            
+            if (currentRunId.current !== runId) return; // stale
+            
+            if (error || !data?.ok) {
+              if (import.meta.env.DEV) console.log('[VOICE→HEALTH] lookup failed, fallback to manual', { error });
+              toManualAdd(name);
+              return;
+            }
+            
+            // Process successful result
+            const legacy = toLegacyFromEdge(data);
+            if (import.meta.env.DEV) console.log('[VOICE→HEALTH] lookup hit', legacy);
+            
+            if (legacy.status === 'no_detection' || legacy.status === 'not_found') {
+              toManualAdd(name);
+              return;
+            }
+            
+            await processAndShowResult(legacy, data, 'voice-lookup', 'manual');
+            
+          } catch (networkError) {
+            if (currentRunId.current !== runId) return; // stale
+            if (import.meta.env.DEV) console.log('[VOICE→HEALTH] network error, fallback to manual', networkError);
+            toManualAdd(name);
+          } finally {
+            clearTimeout(watchdog);
+          }
+          
+        } catch (error) {
+          if (currentRunId.current !== runId) return; // stale
+          console.error('[VOICE→HEALTH] analysis failed:', error);
+          toManualAdd(name);
+        }
+      };
+      
+      const toManualAdd = (productName: string) => {
+        if (currentRunId.current !== runId) return; // stale
+        if (import.meta.env.DEV) console.log('[VOICE→HEALTH] fallback→manual', productName);
+        
+        // Navigate to manual entry with prefilled name
+        window.history.replaceState(null, '', `/scan?manual=${encodeURIComponent(productName)}`);
+        setCurrentState('fallback');
+      };
+      
+      handleVoiceAnalysis();
+      return;
+    }
+    
+    // Handle barcode analysis from URL params
+    if (barcode && initialState === 'loading') {
       console.log('🔍 Processing analysis data from URL params:', analysisData);
       
       // Create a run ID to prevent stale results
@@ -1032,7 +1121,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       >
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {currentState === 'scanner' && (
+          {currentState === 'scanner' && !analysisData?.source?.includes('voice') && (
             <HealthScannerInterface 
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
@@ -1043,7 +1132,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
           {currentState === 'loading' && (
             <HealthAnalysisLoading 
-              message={loadingMessage}
+              message={loadingMessage || (analysisData?.source === 'voice' ? `Looking up "${analysisData.name}"...` : 'Analyzing...')}
               analysisType={analysisType}
             />
           )}

@@ -45,6 +45,19 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   
   const debouncedQuery = useDebounce(textQuery, 300);
   
+  // Check for URL parameter prefill on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const manualParam = urlParams.get('manual');
+    if (manualParam && !textQuery) {
+      setTextQuery(decodeURIComponent(manualParam));
+      // Clear the parameter from URL
+      urlParams.delete('manual');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, []);
+  
   const placeholders = [
     "cheese burger",
     "greek yogurt", 
