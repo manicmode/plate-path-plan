@@ -335,7 +335,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                   <Info className="w-5 h-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 bg-zinc-800 border-zinc-700">
+              <PopoverContent className="w-64 bg-zinc-800 border-zinc-700 z-[100]" align="end">
                 <div className="text-sm text-zinc-300">
                   <p className="font-medium text-white mb-2">Search Tips</p>
                   <p>Add a brand name for better results, e.g., "Trader Joe's almond granola"</p>
