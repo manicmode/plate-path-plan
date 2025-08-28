@@ -93,7 +93,6 @@ export default function ScanHub() {
   const [manualEntryOpen, setManualEntryOpen] = useState(false);  
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [currentState, setCurrentState] = useState<'hub' | 'search'>('hub');
-  const [currentAnalysisData, setCurrentAnalysisData] = useState<any>(null);
   const [searchState, setSearchState] = useState({
     source: 'voice' as 'voice' | 'manual',
     initialQuery: '',
@@ -183,14 +182,19 @@ export default function ScanHub() {
     setManualEntryOpen(true);
   };
 
-  // Handle manual entry product selection - use unified pipeline
+  // Handle manual entry product selection
   const handleManualProductSelected = (product: any) => {
-    console.log('[PARITY][MANUAL] Product selected - staying in modal:', product);
+    console.log('Manual product selected:', product);
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
-    // Close manual entry and open health modal directly (no navigation)
-    setManualEntryOpen(false);
-    setHealthCheckModalOpen(true);
+    // Use the URL-based navigation to health analyzer
+    import('@/lib/nav').then(({ goToHealthAnalysis }) => {
+      goToHealthAnalysis(navigate, {
+        source: 'off',
+        barcode: product?.barcode || undefined,
+        name: product?.productName || ''
+      });
+    });
   };
 
   // Handle voice product selection - navigate directly to health analysis (No scanner for voice!)
@@ -395,8 +399,6 @@ export default function ScanHub() {
         <ImprovedManualEntry
           onProductSelected={handleManualProductSelected}
           onBack={() => setManualEntryOpen(false)}
-          setAnalysisData={(data) => setCurrentAnalysisData(data)}
-          setStep={(step) => setCurrentState(step as any)}
         />
       )}
 
