@@ -7,9 +7,9 @@ import {
   Mic, 
   Bookmark, 
   History,
-  ArrowLeft
+  ArrowLeft,
+  Heart
 } from 'lucide-react';
-import greenCross from '@/assets/green-cross.png';
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
 import { isFeatureEnabled } from '@/lib/featureFlags';
@@ -222,11 +222,7 @@ export default function ScanHub() {
             <h1 className="text-4xl font-bold text-white mb-3">
               Health Scan
             </h1>
-            <img 
-              src={greenCross} 
-              alt="Health cross" 
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8"
-            />
+            <Heart className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 text-green-400 fill-green-400" />
           </div>
           <p className="text-rose-100/80 text-lg">
             Choose how you want to analyze food
