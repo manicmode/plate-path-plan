@@ -440,6 +440,99 @@ export type Database = {
         }
         Relationships: []
       }
+      _nutrition_logs_quarantine: {
+        Row: {
+          barcode: string | null
+          brand: string | null
+          calories: number | null
+          carbs: number | null
+          confidence: number | null
+          created_at: string
+          deleted_at: string | null
+          fat: number | null
+          fiber: number | null
+          food_name: string
+          id: string
+          image_url: string | null
+          ingredient_analysis: Json | null
+          is_mock: boolean
+          processing_level: string | null
+          protein: number | null
+          quality_reasons: string[] | null
+          quality_score: number | null
+          quality_verdict: string | null
+          quarantined_at: string
+          saturated_fat: number | null
+          serving_size: string | null
+          sodium: number | null
+          source: string | null
+          sugar: number | null
+          trigger_tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand?: string | null
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          deleted_at?: string | null
+          fat?: number | null
+          fiber?: number | null
+          food_name: string
+          id?: string
+          image_url?: string | null
+          ingredient_analysis?: Json | null
+          is_mock?: boolean
+          processing_level?: string | null
+          protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
+          quarantined_at?: string
+          saturated_fat?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          trigger_tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          barcode?: string | null
+          brand?: string | null
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          deleted_at?: string | null
+          fat?: number | null
+          fiber?: number | null
+          food_name?: string
+          id?: string
+          image_url?: string | null
+          ingredient_analysis?: Json | null
+          is_mock?: boolean
+          processing_level?: string | null
+          protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
+          quarantined_at?: string
+          saturated_fat?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          trigger_tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       activity_steps: {
         Row: {
           created_at: string
@@ -3378,6 +3471,13 @@ export type Database = {
             referencedRelation: "nutrition_logs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "meal_scores_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_logs_clean"
+            referencedColumns: ["id"]
+          },
         ]
       }
       meal_suggestions: {
@@ -4059,12 +4159,14 @@ export type Database = {
           carbs: number | null
           confidence: number | null
           created_at: string
+          deleted_at: string | null
           fat: number | null
           fiber: number | null
           food_name: string
           id: string
           image_url: string | null
           ingredient_analysis: Json | null
+          is_mock: boolean
           processing_level: string | null
           protein: number | null
           quality_reasons: string[] | null
@@ -4086,12 +4188,14 @@ export type Database = {
           carbs?: number | null
           confidence?: number | null
           created_at?: string
+          deleted_at?: string | null
           fat?: number | null
           fiber?: number | null
           food_name: string
           id?: string
           image_url?: string | null
           ingredient_analysis?: Json | null
+          is_mock?: boolean
           processing_level?: string | null
           protein?: number | null
           quality_reasons?: string[] | null
@@ -4113,12 +4217,14 @@ export type Database = {
           carbs?: number | null
           confidence?: number | null
           created_at?: string
+          deleted_at?: string | null
           fat?: number | null
           fiber?: number | null
           food_name?: string
           id?: string
           image_url?: string | null
           ingredient_analysis?: Json | null
+          is_mock?: boolean
           processing_level?: string | null
           protein?: number | null
           quality_reasons?: string[] | null
@@ -5807,6 +5913,13 @@ export type Database = {
             columns: ["nutrition_log_id"]
             isOneToOne: false
             referencedRelation: "nutrition_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toxin_detections_nutrition_log_id_fkey"
+            columns: ["nutrition_log_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_logs_clean"
             referencedColumns: ["id"]
           },
         ]
@@ -8150,6 +8263,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nutrition_logs_clean: {
+        Row: {
+          barcode: string | null
+          brand: string | null
+          calories: number | null
+          carbs: number | null
+          confidence: number | null
+          created_at: string | null
+          deleted_at: string | null
+          fat: number | null
+          fiber: number | null
+          food_name: string | null
+          id: string | null
+          image_url: string | null
+          ingredient_analysis: Json | null
+          is_mock: boolean | null
+          processing_level: string | null
+          protein: number | null
+          quality_reasons: string[] | null
+          quality_score: number | null
+          quality_verdict: string | null
+          saturated_fat: number | null
+          serving_size: string | null
+          sodium: number | null
+          source: string | null
+          sugar: number | null
+          trigger_tags: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          barcode?: string | null
+          brand?: string | null
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          fat?: number | null
+          fiber?: number | null
+          food_name?: string | null
+          id?: string | null
+          image_url?: string | null
+          ingredient_analysis?: Json | null
+          is_mock?: boolean | null
+          processing_level?: string | null
+          protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
+          saturated_fat?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          trigger_tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          barcode?: string | null
+          brand?: string | null
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          fat?: number | null
+          fiber?: number | null
+          food_name?: string | null
+          id?: string | null
+          image_url?: string | null
+          ingredient_analysis?: Json | null
+          is_mock?: boolean | null
+          processing_level?: string | null
+          protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
+          saturated_fat?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          trigger_tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       routine_performance_analytics: {
         Row: {
