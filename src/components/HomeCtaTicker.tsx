@@ -465,22 +465,16 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
            date.getDate() === profileDate.getDate();
   };
 
-  // Check if we should show a CTA
+  // Check if we should show a CTA (relaxed restrictions for testing)
   const shouldShowCta = (): boolean => {
     const now = Date.now();
-    const sixHours = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-    const sessionKey = `cta_shown_${new Date().toDateString()}`;
+    const thirtyMinutes = 30 * 60 * 1000; // Reduced to 30 minutes for testing
     
-    // Check if CTA already shown in this session
-    if (sessionStorage.getItem(sessionKey)) {
-      return false;
-    }
-    
-    // Check if 6 hours have passed since last CTA
+    // Allow CTAs to show more frequently for debugging
     const storedLastCta = localStorage.getItem('last_cta_time');
     const lastTime = storedLastCta ? parseInt(storedLastCta) : 0;
     
-    return (now - lastTime) >= sixHours;
+    return (now - lastTime) >= thirtyMinutes;
   };
 
   // Build trigger context

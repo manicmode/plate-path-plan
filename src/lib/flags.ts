@@ -42,7 +42,7 @@ export const PARTNER_ACME: boolean =
 
 // Nudge scheduler flags
 export const NUDGE_SCHEDULER_ENABLED: boolean = 
-  (getEnv('NUDGE_SCHEDULER_ENABLED') ?? '0') === '1';
+  (getEnv('NUDGE_SCHEDULER_ENABLED') ?? '1') === '1'; // Changed default to '1' (enabled)
 
 export const NUDGE_QA_MODE: boolean =
   (getEnv('NUDGE_QA_MODE') ?? '0') === '1';
@@ -52,7 +52,7 @@ export const NUDGE_MAX_PER_DAY: number =
 
 // Rollout percentage (0-100)
 export const NUDGE_ROLLOUT_PERCENT: number = 
-  parseInt(getEnv('NUDGE_ROLLOUT_PERCENT') ?? '10', 10);
+  parseInt(getEnv('NUDGE_ROLLOUT_PERCENT') ?? '100', 10); // Changed default to 100% rollout
 
 // Simple hash function for user rollout determination
 function simpleHash(str: string): number {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { selectNudgesForUser, SelectedNudge } from '@/nudges/scheduler';
 import { logNudgeEvent } from '@/nudges/logEvent';
+import { NUDGE_SCHEDULER_ENABLED, isUserInRollout } from '@/lib/flags';
 
 export function useNudgeScheduler() {
   const { user } = useAuth();
@@ -18,8 +19,8 @@ export function useNudgeScheduler() {
     try {
       setLoading(true);
       
-      // Check feature flag
-      const isEnabled = true; // Could fetch from feature flags table
+      // Check feature flag and rollout
+      const isEnabled = NUDGE_SCHEDULER_ENABLED && isUserInRollout(user.id);
       
       if (!isEnabled) {
         setSelectedNudges([]);
