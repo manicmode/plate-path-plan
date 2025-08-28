@@ -128,7 +128,15 @@ export default function ScanHub() {
     <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="relative text-center mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="absolute left-0 top-0 text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <h1 className="text-4xl font-bold text-white mb-3">
             Health Scan
           </h1>
