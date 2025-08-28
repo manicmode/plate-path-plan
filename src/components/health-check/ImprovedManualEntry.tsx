@@ -22,15 +22,18 @@ interface ImprovedManualEntryProps {
   // Optional props for unified analysis pipeline
   setAnalysisData?: (data: any) => void;
   setStep?: (step: string | ModalState) => void;
+  // Optional initial query (e.g., from voice)
+  initialQuery?: string;
 }
 
 export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   onProductSelected,
   onBack,
   setAnalysisData,
-  setStep
+  setStep,
+  initialQuery
 }) => {
-  const [textQuery, setTextQuery] = useState('');
+  const [textQuery, setTextQuery] = useState(initialQuery || '');
   const [searchResults, setSearchResults] = useState<CanonicalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [netError, setNetError] = useState<{ message: string; code?: string } | null>(null);
@@ -111,6 +114,13 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       setNoResults(false);
     }
   }, [debouncedQuery]);
+
+  // Auto-search for initial query (e.g., from voice)
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim().length >= 2) {
+      handleSearch(initialQuery);
+    }
+  }, []); // Only run on mount
 
   // Handle voice transcription result
   useEffect(() => {
@@ -195,7 +205,10 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   }, []);
 
   const handleResultSelect = async (result: CanonicalSearchResult) => {
-    console.warn('[NAV][manual-select]', { name: result?.name, barcode: result?.barcode });
+    // Determine source based on context - voice if we have initialQuery, manual otherwise
+    const source = initialQuery ? 'voice' : 'manual';
+    console.log('[PARITY][TAP]', { source, itemName: result?.name });
+    console.log('[PARITY][HANDLER]', { source, usingHandler: true });
     
     // Log telemetry
     logFallbackEvents.resultSelected(
@@ -208,7 +221,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
      if (setAnalysisData && setStep) {
        await handleSearchPick({
          item: result,
-         source: 'manual',
+         source,
          setAnalysisData,
          setStep: (step: string) => setStep(step as ModalState),
          onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),

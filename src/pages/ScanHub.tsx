@@ -92,6 +92,12 @@ export default function ScanHub() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);  
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [currentState, setCurrentState] = useState<'hub' | 'search'>('hub');
+  const [searchState, setSearchState] = useState({
+    source: 'voice' as 'voice' | 'manual',
+    initialQuery: '',
+    didInitVoice: false
+  });
 
   // Feature flag checks
   const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
@@ -218,6 +224,26 @@ export default function ScanHub() {
       setHealthCheckModalOpen(true);
     }
   }, [forceHealth, forceVoice, source, barcode, name, modalParam, navigate]);
+
+  // Handle voice-to-search custom event
+  useEffect(() => {
+    function onOpenSearch(e: any) {
+      const { source, initialQuery } = (e?.detail ?? {}) as { source?: string; initialQuery?: string };
+      console.log('[SCAN][OPEN-SEARCH]', { source, q: initialQuery ?? '' });
+
+      // Put the hub into the search state and seed the query
+      setCurrentState('search');
+      setSearchState((s) => ({
+        ...s,
+        source: (source ?? 'voice') as 'voice' | 'manual',
+        initialQuery: initialQuery ?? '',
+        didInitVoice: true,
+      }));
+    }
+
+    window.addEventListener('scan:open-search', onOpenSearch);
+    return () => window.removeEventListener('scan:open-search', onOpenSearch);
+  }, []);
 
   // Log page open
   console.log('scan_hub_open', { timestamp: Date.now() });
@@ -350,7 +376,26 @@ export default function ScanHub() {
         onManualFallback={handlePhotoManualFallback}
       />
 
-      {manualEntryOpen && (
+      {currentState === 'search' ? (
+        <ImprovedManualEntry
+          onProductSelected={(product) => {
+            console.log('Search modal product selected:', product);
+            addRecent({ mode: searchState.source, label: product.productName || 'Search entry' });
+            setCurrentState('hub'); // Return to hub
+            
+            // Use the URL-based navigation to health analyzer
+            import('@/lib/nav').then(({ goToHealthAnalysis }) => {
+              goToHealthAnalysis(navigate, {
+                source: 'off',
+                barcode: product?.barcode || undefined,
+                name: product?.productName || ''
+              });
+            });
+          }}
+          onBack={() => setCurrentState('hub')}
+          initialQuery={searchState.initialQuery}
+        />
+      ) : manualEntryOpen && (
         <ImprovedManualEntry
           onProductSelected={handleManualProductSelected}
           onBack={() => setManualEntryOpen(false)}

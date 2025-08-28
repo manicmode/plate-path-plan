@@ -2,16 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Mic, RotateCcw } from 'lucide-react';
-import { goToHealthAnalysis } from '@/lib/nav';
-import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { StickyHeader } from '@/components/ui/sticky-header';
 import { toast } from 'sonner';
-
-// Navigation helper for routing to Search Modal
-function goToSearchModal(navigate: any, { source, name }: { source: 'voice'; name: string }) {
-  navigate(`/scan?modal=search&source=${source}&name=${encodeURIComponent(name)}&ts=${Date.now()}`, { replace: true });
-}
 
 interface VoiceSearchModalProps {
   open: boolean;
@@ -26,7 +19,6 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   onOpenChange,
   onProductSelected
 }) => {
-  const navigate = useNavigate();
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -82,13 +74,14 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     }
   }, []);
 
-  // Handle suggestion chip clicks - route to Search Modal instead of Health Analysis
+  // Handle suggestion chip clicks - dispatch custom event for search
   const handleSuggestionClick = useCallback((text: string) => {
     console.log(`[VOICE] Suggestion clicked: ${text}`);
-    goToSearchModal(navigate, { source: 'voice', name: text });
-    console.log('[NAV][goToSearch]', { source: 'voice', name: text });
+    console.log('[VOICE] Routing to Search Modal');
+    const detail = { source: 'voice', initialQuery: text };
+    window.dispatchEvent(new CustomEvent('scan:open-search', { detail }));
     onOpenChange(false);
-  }, [navigate, onOpenChange]);
+  }, [onOpenChange]);
 
   // Handle transcript result - route to Search Modal for user selection
   const handleTranscriptAccepted = useCallback((text: string, confidence?: number) => {
@@ -110,14 +103,14 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
       
       clearTimers();
       
-      // Route to Search Modal regardless of confidence
+      // Dispatch custom event to open search modal
       console.log('[VOICE] Routing to Search Modal');
-      goToSearchModal(navigate, { source: 'voice', name: text });
-      console.log('[NAV][goToSearch]', { source: 'voice', name: text });
+      const detail = { source: 'voice', initialQuery: text };
+      window.dispatchEvent(new CustomEvent('scan:open-search', { detail }));
       safeSetStatus('done');
       onOpenChange(false);
     }, 500);
-  }, [navigate, onOpenChange, safeSetStatus, clearTimers, status]);
+  }, [onOpenChange, safeSetStatus, clearTimers, status]);
 
   // Start listening with Speech Recognition API
   const startListening = useCallback(() => {
@@ -339,16 +332,15 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                      <Mic className="h-16 w-16 mx-auto mb-6 opacity-50" />
                      <p className="text-xl font-medium mb-2">Speech recognition unsupported</p>
                      <p className="text-sm mb-4">Try manual entry instead</p>
-                     <Button
-                       onClick={() => {
-                         navigate('/scan?modal=manual');
-                         onOpenChange(false);
-                       }}
-                       className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                       variant="outline"
-                     >
-                       Manual Entry
-                     </Button>
+                      <Button
+                        onClick={() => {
+                          onOpenChange(false);
+                        }}
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        variant="outline"
+                      >
+                        Manual Entry
+                      </Button>
                    </div>
                  ) : status === 'permission' ? (
                    /* Permission State */
@@ -424,18 +416,18 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                    </>
                  )}
                </div>
-            </div>
-          </div>
+           </div>
+         </div>
 
-            {/* Footer */}
-            <div className="p-6 pt-3 bg-gradient-to-t from-black/40 to-transparent">
-              <p className="text-center text-gray-500 text-xs">
-                Powered by browser speech recognition
-              </p>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+           {/* Footer */}
+           <div className="p-6 pt-3 bg-gradient-to-t from-black/40 to-transparent">
+             <p className="text-center text-gray-500 text-xs">
+               Powered by browser speech recognition
+             </p>
+           </div>
+         </div>
+       </div>
+     </DialogContent>
+   </Dialog>
+ );
 };
