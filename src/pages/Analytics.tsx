@@ -50,7 +50,7 @@ export default function Analytics() {
       <StickyHeader className="z-[60]">
         <div className="p-4 pb-0 text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2 mb-6">Track your progress and patterns</p>
         </div>
         
         <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto mb-4">
