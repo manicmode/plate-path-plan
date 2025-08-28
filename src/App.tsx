@@ -501,17 +501,20 @@ function AppContent() {
                              </ProtectedRoute>
                            } />
                            
-                           {/* Scan Hub Routes */}
-                           <Route path="/scan" element={
-                             <ProtectedRoute>
-                               <ScanHub />
-                             </ProtectedRoute>
-                           } />
-                            <Route path="/scan/recents" element={
+                            {/* Scan Hub Routes */}
+                            <Route path="/scan" element={
                               <ProtectedRoute>
-                                <ScanRecents />
+                                <ScanHub />
                               </ProtectedRoute>
-                             } />
+                            } />
+                             <Route path="/scan/recents" element={
+                               <ProtectedRoute>
+                                 <ScanRecents />
+                               </ProtectedRoute>
+                              } />
+                             
+                             {/* Legacy health-report redirect to scan hub */}
+                             <Route path="/health-report" element={<Navigate to="/scan" replace />} />
                              
                            {/* Other debug routes for developers */}
                             <Route path="/debug/*" element={

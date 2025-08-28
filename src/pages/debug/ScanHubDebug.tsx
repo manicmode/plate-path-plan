@@ -83,19 +83,22 @@ export function ScanHubDebug() {
   const handleBarcodeDetected = (barcode: string) => {
     console.log('[DEBUG] Barcode detected:', barcode);
     toast.success(`Barcode detected: ${barcode}`);
-    navigate(`/health-report?barcode=${barcode}`);
+    // Use modal system instead of broken route
+    setHealthCheckModalOpen(true);
   };
 
   const handlePhotoCapture = (imageData: string) => {
     console.log('[DEBUG] Photo captured');
     toast.success('Photo captured successfully');
-    navigate('/health-report', { state: { imageData } });
+    // Use modal system instead of broken route
+    setHealthCheckModalOpen(true);
   };
 
   const handleProductSelected = (product: any) => {
     console.log('[DEBUG] Product selected:', product);
     toast.success(`Product selected: ${product.productName}`);
-    navigate('/health-report', { state: { product } });
+    // Use modal system instead of broken route
+    setHealthCheckModalOpen(true);
   };
 
   return (

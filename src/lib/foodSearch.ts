@@ -14,10 +14,26 @@ export interface CanonicalSearchResult {
   servingHint?: string;    // e.g., "per 55g"
   caloriesPer100g?: number;
   confidence?: number;     // 0-1 ranking score
+  barcode?: string | null; // OFF barcode when available
 }
 
 export function normalizeFoodQuery(s: string) {
   return s.toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^\p{L}\p{N}\s]/gu,'');
+}
+
+// Enhanced mapper for OFF results - preserves barcode
+export function mapOFFItem(item: any): CanonicalSearchResult {
+  return {
+    source: 'off' as const,
+    id: item?.code ?? item?.id ?? null,
+    name: item?.product_name ?? item?.generic_name ?? item?.brands ?? item?.code ?? 'Unknown Product',
+    brand: item?.brands ?? null,
+    imageUrl: item?.image_url ?? item?.image_front_url ?? null,
+    servingHint: item?.serving_size ?? '100g',
+    caloriesPer100g: item?.nutriments?.['energy-kcal_100g'] ?? null,
+    confidence: 0.7, // Base confidence for OFF
+    barcode: item?.code ?? item?.barcode ?? null // Preserve barcode!
+  };
 }
 
 /**
@@ -29,9 +45,6 @@ export async function searchFoodByName(
 ): Promise<CanonicalSearchResult[]> {
   const { timeout = 6000, maxResults = 10 } = options;
   
-  console.warn('[FOOD-SEARCH][submit]', { raw: query });
-  console.log('🔍 [FoodSearch] Starting search for:', query);
-  
   if (!isFeatureEnabled('fallback_text_enabled')) {
     console.log('🚫 [FoodSearch] Text fallback disabled');
     return [];
@@ -39,7 +52,6 @@ export async function searchFoodByName(
   
   const trimmedQuery = query.trim();
   const normalized = normalizeFoodQuery(trimmedQuery);
-  console.warn('[FOOD-SEARCH][normalize]', { raw: query, normalized });
   
   if (normalized.length < 2) {
     console.log('🚫 [FoodSearch] Query too short');
@@ -47,7 +59,6 @@ export async function searchFoodByName(
   }
   
   try {
-    console.warn('[FOOD-SEARCH][request]', { endpoint: 'supabase:food-search', payload: { query: normalized, maxResults, sources: ['off'] } });
     console.log('📡 [FoodSearch] Calling food-search edge function...');
     const t0 = performance.now();
     
@@ -67,7 +78,6 @@ export async function searchFoodByName(
     clearTimeout(timeoutId);
     
     if (error) {
-      console.warn('[FOOD-SEARCH][error]', { name: error?.name, code: error?.code, message: error?.message });
       console.error('❌ [FoodSearch] Edge function error:', error);
       
       // Create custom error with HTTP status code for better UX
@@ -86,13 +96,11 @@ export async function searchFoodByName(
     }
     
     if (!data?.results) {
-      console.warn('[FOOD-SEARCH][response]', { status: 'no_results', count: 0, ms: dt });
       console.log('⚠️ [FoodSearch] No results returned');
       return [];
     }
     
     const results = data.results as CanonicalSearchResult[];
-    console.warn('[FOOD-SEARCH][response]', { status: 200, count: results.length, ms: dt });
     console.log(`✅ [FoodSearch] Found ${results.length} results`);
     
     // Apply client-side ranking boosts
@@ -105,7 +113,6 @@ export async function searchFoodByName(
       .slice(0, maxResults);
       
   } catch (error) {
-    console.warn('[FOOD-SEARCH][error]', { name: error?.name, code: error?.code, message: error?.message });
     if (error instanceof Error && error.name === 'AbortError') {
       console.log('⏰ [FoodSearch] Search timeout');
       throw new Error('Search timed out - please try a shorter query');
@@ -157,24 +164,14 @@ function calculateConfidence(result: CanonicalSearchResult, query: string): numb
 export function searchResultToLegacyProduct(result: CanonicalSearchResult): any {
   return {
     productName: result.name,
-    barcode: result.id.startsWith('barcode:') ? result.id.replace('barcode:', '') : null,
-    brand: result.brand || null,
-    imageUrl: result.imageUrl || null,
-    ingredientsText: null, // Will be fetched separately if needed
-    healthScore: null, // Will be calculated separately
-    healthFlags: [],
-    nutrition: result.caloriesPer100g ? {
-      calories: result.caloriesPer100g,
-      protein: null,
-      carbs: null,
-      fat: null,
-      fiber: null,
-      sugar: null,
-      sodium: null
-    } : null,
-    status: 'ok' as const,
-    recommendation: null,
-    servingHint: result.servingHint,
-    source: result.source
+    barcode: result.barcode ?? result.id, // Use barcode field first, fallback to id
+    brand: result.brand,
+    imageUrl: result.imageUrl,
+    nutrition: {
+      calories: result.caloriesPer100g || 0,
+      // Add other nutrition fields as needed
+    },
+    source: result.source,
+    confidence: result.confidence
   };
 }

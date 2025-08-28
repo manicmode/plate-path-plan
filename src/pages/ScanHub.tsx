@@ -92,9 +92,9 @@ export default function ScanHub() {
     console.log('Photo captured, processing...');
     addRecent({ mode: 'photo', label: 'Photo scan' });
     
-    // Continue with existing photo analysis flow
-    // This should integrate with the existing HealthScannerInterface logic
-    navigate('/health-report', { state: { imageData } });
+    // Use the modal system instead of broken /health-report route
+    setPhotoModalOpen(false); // Close photo modal
+    setHealthCheckModalOpen(true); // Open health check with image data
   };
 
   // Handle photo fallback to manual
@@ -108,8 +108,9 @@ export default function ScanHub() {
     console.log('Manual product selected:', product);
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
-    // Navigate to health report with product data
-    navigate('/health-report', { state: { product } });
+    // Use the modal system instead of broken /health-report route
+    setHealthCheckModalOpen(false); // Close manual entry modal
+    setHealthCheckModalOpen(true); // Reopen with product data
   };
 
   // Handle voice product selection
@@ -117,8 +118,8 @@ export default function ScanHub() {
     console.log('Voice product selected:', product);
     addRecent({ mode: 'voice', label: product.productName || 'Voice entry' });
     
-    // Navigate to health report with product data
-    navigate('/health-report', { state: { product } });
+    // Use the modal system instead of broken /health-report route  
+    setHealthCheckModalOpen(true); // Open health check with product data
   };
 
   // Log page open
