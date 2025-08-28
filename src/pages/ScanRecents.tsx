@@ -54,12 +54,19 @@ export default function ScanRecents() {
         console.log('[SAVED-REPORTS][SESSION]', { hasSession: !!sess?.session, user: sess?.session?.user?.id });
       }
 
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .select('*')
+      // SAVED TAB — use canonical clean view (hides mocks & soft-deletes by design)
+      const PROJECTION =
+        'id,created_at,food_name,image_url,source,calories,protein,carbs,fat,quality_score,quality_verdict,user_id';
+      const { data, error } = await (supabase as any)
+        .from('nutrition_logs_clean')
+        .select(PROJECTION)
+        // keeping the user filter is fine; RLS will also enforce
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
+
+      // DEV breadcrumb (remove later): prove we're hitting the view
+      console.log('[RECENTS:SAVED][QUERY] table=nutrition_logs_clean rows=', data?.length);
 
       if (error) {
         console.error('Error loading saved reports:', error);
