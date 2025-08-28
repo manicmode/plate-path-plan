@@ -139,10 +139,22 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
       const source = analysisData?.source === 'barcode' ? 'barcode' : 
                      analysisData?.source === 'manual' ? 'manual' : 'photo';
 
-      const payload = toNutritionLogRow(scanData, source) as any;
-      payload.report_snapshot = result;            // full HealthAnalysisResult
-      payload.snapshot_version = 'v1';
-      payload.source_meta = { source, barcode: analysisData?.barcode, imageUrl: analysisData?.imageUrl, brand: null };
+      // Save the full snapshot exactly as rendered
+      const snapshot: HealthAnalysisResult = result;
+
+      const source_meta = {
+        source,
+        barcode: analysisData?.barcode ?? null,
+        imageUrl: analysisData?.imageUrl ?? null,
+        productName: result.itemName ?? result.productName ?? null,
+      };
+
+      const payload = {
+        ...toNutritionLogRow(scanData, source),
+        report_snapshot: snapshot,
+        snapshot_version: 'v1',
+        source_meta,
+      };
       
       const { data, error } = await supabase
         .from('nutrition_logs')
@@ -151,6 +163,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         .single();
 
       if (error) throw error;
+
+      console.log('[SNAPSHOT][SAVED]', { id: data?.id, ok: !error });
       
       setIsSaved(true);
       toast({

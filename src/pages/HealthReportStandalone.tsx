@@ -186,6 +186,15 @@ export default function HealthReportStandalone() {
     return '';
   };
 
+  const joinIngredientsFromAnalysis = (ia: any): string | null => {
+    if (!ia) return null;
+    if (Array.isArray(ia.list) && ia.list.length) return ia.list.join(', ');
+    const parts: string[] = [];
+    if (Array.isArray(ia.additives) && ia.additives.length) parts.push(...ia.additives);
+    if (Array.isArray(ia.allergens) && ia.allergens.length) parts.push(...ia.allergens);
+    return parts.length ? parts.join(', ') : null;
+  };
+
   const handleScanAnother = () => {
     navigate('/scan');
   };
@@ -219,9 +228,13 @@ export default function HealthReportStandalone() {
     );
   }
 
-  // Check for saved snapshot first
+  // Check for saved snapshot first - SNAPSHOT-FIRST LOGIC
+  let analysis: HealthAnalysisResult | null = null;
+
   if (reportData.report_snapshot) {
-    const snapshot = reportData.report_snapshot as HealthAnalysisResult;
+    analysis = reportData.report_snapshot as HealthAnalysisResult;
+    console.log('[SNAPSHOT][LOADED]', { id: reportData.id, hasSnapshot: true });
+    
     return (
       <div className="w-full">
         <div className="mb-4">
@@ -235,7 +248,7 @@ export default function HealthReportStandalone() {
         </div>
         
         <HealthReportPopup
-          result={snapshot}
+          result={analysis}
           onScanAnother={handleScanAnother}
           onClose={handleClose}
           initialIsSaved={true}
@@ -243,10 +256,37 @@ export default function HealthReportStandalone() {
         />
       </div>
     );
+  } else {
+    // Fallback to converter for legacy data
+    analysis = convertToHealthAnalysisResult(reportData);
+    console.log('[SNAPSHOT][FALLBACK]', { id: reportData.id });
+
+    // Guardrails for legacy rows so full sections render correctly:
+    if (!analysis?.nutritionData) {
+      analysis = {
+        ...analysis,
+        nutritionData: {
+          calories: reportData.calories ?? 0,
+          carbs: reportData.carbs ?? null,
+          sugar: reportData.sugar ?? null,
+          sodium: reportData.sodium ?? null,
+          protein: reportData.protein ?? null,
+          fat: reportData.fat ?? null,
+        },
+      };
+    }
+
+    if (!analysis?.ingredientsText) {
+      const ia = reportData.ingredient_analysis ?? null;
+      const text = joinIngredientsFromAnalysis(ia);
+      analysis = {
+        ...analysis,
+        ingredientsText: text ?? '',
+      };
+    }
   }
 
-  // Fallback to converter for legacy data
-  const convertedResult = convertToHealthAnalysisResult(reportData);
+  const convertedResult = analysis;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-green-950">
@@ -263,18 +303,18 @@ export default function HealthReportStandalone() {
       </div>
 
       {/* Health Report Popup */}
-      <HealthReportPopup
-        result={convertedResult}
-        onScanAnother={handleScanAnother}
-        onClose={handleClose}
-        initialIsSaved={true}
-        hideCloseButton={true}
-        analysisData={{
-          source: reportData?.source,
-          barcode: reportData?.barcode,
-          imageUrl: reportData?.image_url
-        }}
-      />
+        <HealthReportPopup
+          result={convertedResult}
+          onScanAnother={handleScanAnother}
+          onClose={handleClose}
+          initialIsSaved={true}
+          hideCloseButton={true}
+          analysisData={{
+            source: reportData?.source,
+            barcode: reportData?.barcode,
+            imageUrl: reportData?.image_url
+          }}
+        />
     </div>
   );
 }

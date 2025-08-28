@@ -12,6 +12,7 @@ export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number
     .from('nutrition_logs_clean')
     .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
     .in('source', ['photo','barcode','vision_api','manual'])
+    .not('report_snapshot', 'is', null)  // Show only snapshot-backed rows
     .lt('created_at', before)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -29,6 +30,7 @@ export async function countSavedReports() {
   const { count, error: countErr } = await (supabase as any)
     .from('nutrition_logs_clean')
     .in('source', ['photo','barcode','vision_api','manual'])
+    .not('report_snapshot', 'is', null)  // Count only snapshot-backed rows
     .select('*', { count: 'exact', head: true });
   
   if (countErr) {

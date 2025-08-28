@@ -53,6 +53,7 @@ export default function SavedReports() {
         .from('nutrition_logs_clean')
         .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
         .in('source', ['photo','barcode','vision_api','manual'])
+        .not('report_snapshot', 'is', null)  // Show only snapshot-backed rows
         .order('created_at', { ascending: false })
         .limit(25);
 
