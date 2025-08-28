@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Trash2, Eye, BookOpen, Utensils } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, Eye, BookOpen, Utensils, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -198,56 +198,73 @@ export default function ScanRecents() {
 
             {/* Recents list */}
             <div className="space-y-4">
-              {recents.length === 0 ? (
-                <Card className="bg-white/10 border-white/20">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Clock className="h-12 w-12 text-white/50 mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">
-                      No recent scans
-                    </h3>
-                    <p className="text-rose-100/70 text-center">
-                      Start scanning foods to see your history here
-                    </p>
-                    <Button
-                      onClick={() => navigate('/scan')}
-                      className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
-                    >
-                      Start Scanning
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                recents.map((item) => (
-                  <Card key={item.ts} className="bg-white/10 border-white/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-2xl">{getModeIcon(item.mode)}</span>
-                          <div>
-                            <h3 className="font-semibold text-white">
-                              {item.label}
-                            </h3>
-                            <p className="text-sm text-rose-100/70">
-                              {item.mode} • {formatTime(item.ts)}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveItem(item.ts)}
-                            className="text-white hover:bg-white/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+            {recents.length === 0 ? (
+              <Card className="bg-white/10 border-white/20">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="h-12 w-12 text-white/50 mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    No recent scans
+                  </h3>
+                  <p className="text-rose-100/70 text-center">
+                    Start scanning foods to see your history here
+                  </p>
+                  <Button
+                    onClick={() => navigate('/scan')}
+                    className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                  >
+                    Start Scanning
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              recents.map((item) => (
+                <Card key={item.ts} className="bg-white/10 border-white/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{getModeIcon(item.mode)}</span>
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {item.label}
+                          </h3>
+                          <p className="text-sm text-rose-100/70">
+                            {item.mode} • {formatTime(item.ts)}
+                          </p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Rescan - navigate to health analysis with the same item
+                            if (item.mode === 'voice') {
+                              navigate(`/scan?modal=health&source=voice&name=${encodeURIComponent(item.label)}`);
+                            } else if (item.mode === 'barcode' && item.id) {
+                              navigate(`/scan?modal=health&source=barcode&barcode=${encodeURIComponent(item.id)}`);
+                            } else {
+                              navigate(`/scan?modal=manual&query=${encodeURIComponent(item.label)}`);
+                            }
+                          }}
+                          className="text-white hover:bg-white/10"
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveItem(item.ts)}
+                          className="text-white hover:bg-white/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
             </div>
           </TabsContent>
 

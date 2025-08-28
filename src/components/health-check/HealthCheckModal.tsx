@@ -1235,6 +1235,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                 processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
               }}
               onBack={() => setCurrentState('scanner')}
+              setAnalysisData={setAnalysisResult}
+              setStep={(step) => setCurrentState(step as ModalState)}
             />
           )}
         </div>

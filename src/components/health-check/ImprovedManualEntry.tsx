@@ -12,15 +12,23 @@ import { SearchResultsList } from './SearchResultsList';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { handleSearchPick } from '@/shared/search-to-analysis';
+
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm';
 
 interface ImprovedManualEntryProps {
   onProductSelected: (product: any) => void;
   onBack: () => void;
+  // Optional props for unified analysis pipeline
+  setAnalysisData?: (data: any) => void;
+  setStep?: (step: string | ModalState) => void;
 }
 
 export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   onProductSelected,
-  onBack
+  onBack,
+  setAnalysisData,
+  setStep
 }) => {
   const [textQuery, setTextQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CanonicalSearchResult[]>([]);
@@ -189,9 +197,6 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   const handleResultSelect = async (result: CanonicalSearchResult) => {
     console.warn('[NAV][manual-select]', { name: result?.name, barcode: result?.barcode });
     
-    // Transform to legacy product format
-    const legacyProduct = searchResultToLegacyProduct(result);
-    
     // Log telemetry
     logFallbackEvents.resultSelected(
       result.source,
@@ -199,7 +204,20 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       !!result.caloriesPer100g
     );
     
-    onProductSelected(legacyProduct);
+     // Use unified analysis pipeline if available, otherwise fall back to legacy
+     if (setAnalysisData && setStep) {
+       await handleSearchPick({
+         item: result,
+         source: 'manual',
+         setAnalysisData,
+         setStep: (step: string) => setStep(step as ModalState),
+         onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
+       });
+    } else {
+      // Legacy fallback for existing components
+      const legacyProduct = searchResultToLegacyProduct(result);
+      onProductSelected(legacyProduct);
+    }
   };
 
   const handleVoiceRecording = async () => {
