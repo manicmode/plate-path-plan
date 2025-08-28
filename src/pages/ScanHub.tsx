@@ -218,11 +218,13 @@ export default function ScanHub() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="relative w-full">
-            <h1 className="text-4xl font-bold text-white mb-3 text-center">
-              Health Scan
-            </h1>
-            <Activity className="absolute top-0 right-1/4 w-8 h-8 text-green-400 mb-3 animate-pulse drop-shadow-[0_0_20px_rgba(34,197,94,0.8)] filter brightness-110" />
+          <div className="relative flex items-center justify-center">
+            <div className="flex items-center gap-3 ml-6">
+              <h1 className="text-4xl font-bold text-white mb-3">
+                Health Scan
+              </h1>
+              <Activity className="w-8 h-8 text-green-400 mb-3 animate-pulse drop-shadow-[0_0_10px_rgba(34,197,94,0.6)]" />
+            </div>
           </div>
           <p className="text-rose-100/80 text-lg">
             Choose how you want to analyze food
