@@ -809,6 +809,25 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
+
+          {/* Flashlight Button - Positioned in lower right */}
+          {supportsTorch && (
+            <div className="absolute bottom-32 right-6 pb-[env(safe-area-inset-bottom)]">
+              <Button
+                onClick={handleFlashlightToggle}
+                size="lg"
+                disabled={isScanning}
+                className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-0 ${
+                  torchOn 
+                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 shadow-lg shadow-yellow-500/20' 
+                    : 'bg-white/10 hover:bg-white/20 text-white/70 backdrop-blur-sm'
+                }`}
+                title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
+              >
+                <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-400' : 'text-white/70'}`} />
+              </Button>
+            </div>
+          )}
         </main>
 
         {/* Sticky footer (always visible) */}
@@ -1043,33 +1062,15 @@ function ScannerActions({
 }) {
   return (
     <div className="grid grid-cols-1 gap-3">
-      {/* GREEN CTA and Flashlight Toggle Row */}
-      <div className="flex gap-2">
-        <button
-          onClick={onAnalyze}
-          disabled={isScanning}
-          className="flex-1 h-14 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          <Zap className={`w-6 h-6 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
-          {isScanning ? '🔍 SCANNING...' : '🧪 ANALYZE NOW'}
-        </button>
-        
-        {/* Flashlight Toggle */}
-        {torchSupported && onFlashlight && (
-          <button
-            onClick={onFlashlight}
-            disabled={isScanning}
-            className={`h-14 w-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-[.99] disabled:opacity-50 transition-colors ${
-              torchEnabled 
-                ? 'bg-yellow-500 text-white' 
-                : 'bg-zinc-800 text-zinc-100'
-            }`}
-            title="Flashlight"
-          >
-            <FlashlightIcon className={`w-6 h-6 ${torchEnabled ? 'text-white' : 'text-zinc-300'}`} />
-          </button>
-        )}
-      </div>
+      {/* GREEN CTA Button - Full Width */}
+      <button
+        onClick={onAnalyze}
+        disabled={isScanning}
+        className="w-full h-14 rounded-2xl text-lg font-semibold bg-emerald-600 text-white shadow-lg active:scale-[.99] disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        <Zap className={`w-6 h-6 ${isScanning ? 'animate-spin' : 'animate-pulse'}`} />
+        {isScanning ? '🔍 SCANNING...' : '🧪 ANALYZE NOW'}
+      </button>
 
       {/* Middle: Enter Barcode Manually (unchanged) */}
       <button
