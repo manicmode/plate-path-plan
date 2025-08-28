@@ -15,6 +15,9 @@ import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 // Apply security headers on app initialization
 applySecurityHeaders();
 
+// Initialize feature flags
+(window as any).__featureFlags = (window as any).__featureFlags || {};
+
 // --- GLOBAL MIC GUARD ON SCANNER ROUTES (TEMP) ---
 (function guardGetUserMedia() {
   const md = navigator.mediaDevices;

@@ -9,6 +9,9 @@ import { toast } from 'sonner';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { useTorch } from '@/lib/camera/useTorch';
+import { scannerLiveCamEnabled } from '@/lib/platform';
+import { openPhotoCapture } from '@/components/camera/photoCapture';
+import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 
 // DEV: media lifecycle logging (scoped to this component; remove after audit)
 const DEV_MEDIA_AUDIT = true;
@@ -194,6 +197,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef]);
 
   const startCamera = async () => {
+    // iOS fallback: use photo capture for barcode
+    if (!scannerLiveCamEnabled()) {
+      console.warn('[SCANNER] iOS fallback: photo capture for barcode');
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        const val = await decodeBarcodeFromFile(file);
+        if (val) onBarcodeDetected(val);
+      } catch {}
+      onOpenChange(false); // close the scanner UI since we're one-shot
+      return null; // prevent live pipeline from starting  
+    }
+
     try {
       console.log("[LOG] Requesting camera stream...");
       const constraints = {

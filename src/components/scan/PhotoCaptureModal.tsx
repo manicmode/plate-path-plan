@@ -7,6 +7,8 @@ import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
+import { scannerLiveCamEnabled } from '@/lib/platform';
+import { openPhotoCapture } from '@/components/camera/photoCapture';
 
 // DEV: media lifecycle logging (scoped to this component; remove after audit)
 const DEV_MEDIA_AUDIT = true;
@@ -77,6 +79,23 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   }, [open]);
 
   const startCamera = async () => {
+    // iOS fallback: use photo capture for photo analysis
+    if (!scannerLiveCamEnabled()) {
+      console.warn('[PHOTO] iOS fallback: photo capture (no live stream)');
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        // Process the file with existing photo analysis flow
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          onCapture(imageBase64);
+        };
+        reader.readAsDataURL(file);
+      } catch {}
+      onOpenChange(false);
+      return null;
+    }
+
     try {
       console.log("[PHOTO] Requesting camera stream...");
       const constraints = {

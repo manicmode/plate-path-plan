@@ -13,6 +13,8 @@ import { BARCODE_V2 } from '@/lib/featureFlags';
 import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode } from '@/lib/scan/freezeDecode';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { useTorch } from '@/lib/camera/useTorch';
+import { scannerLiveCamEnabled } from '@/lib/platform';
+import { openPhotoCapture } from '@/components/camera/photoCapture';
 
 // DEV: media lifecycle logging (scoped to this component; remove after audit)
 const DEV_MEDIA_AUDIT = true;
@@ -146,6 +148,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [currentView]);
 
   const startCamera = async () => {
+    // iOS fallback: use photo capture for photo analysis
+    if (!scannerLiveCamEnabled()) {
+      console.warn('[PHOTO] iOS fallback: photo capture (no live stream)');
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        // Process the file with existing photo analysis flow
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          onCapture(imageBase64);
+        };
+        reader.readAsDataURL(file);
+      } catch {}
+      return null;
+    }
+
     try {
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {

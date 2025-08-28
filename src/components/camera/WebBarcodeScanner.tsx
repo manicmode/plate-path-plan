@@ -4,6 +4,9 @@ import { X, Camera, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { supabase } from '@/integrations/supabase/client';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
+import { scannerLiveCamEnabled } from '@/lib/platform';
+import { openPhotoCapture } from '@/components/camera/photoCapture';
+import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 
 // DEV: media lifecycle logging (scoped to this component; remove after audit)
 const DEV_MEDIA_AUDIT = true;
@@ -247,6 +250,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   }, []);
 
   const startCamera = async () => {
+    // iOS fallback: use photo capture for barcode
+    if (!scannerLiveCamEnabled()) {
+      console.warn('[SCANNER] iOS fallback: photo capture for barcode');
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        const val = await decodeBarcodeFromFile(file);
+        if (val) onBarcodeDetected(val);
+      } catch {}
+      onClose(); // close the scanner UI since we're one-shot
+      return null; // prevent live pipeline from starting
+    }
+
     try {
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
