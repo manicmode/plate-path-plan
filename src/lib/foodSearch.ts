@@ -103,14 +103,13 @@ export async function searchFoodByName(
     const results = data.results as CanonicalSearchResult[];
     console.log(`✅ [FoodSearch] Found ${results.length} results`);
     
-    // Apply client-side ranking boosts
-    return results
-      .map(result => ({
-        ...result,
-        confidence: calculateConfidence(result, normalized)  // Use normalized query
-      }))
-      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
-      .slice(0, maxResults);
+    // Apply enhanced ranking with word matching and category boosts
+    const ranked = reorderForQuery(results, trimmedQuery);
+    
+    // Temporary proof logs (remove after verification)
+    console.warn('[FOOD-SEARCH][rankedTop3]', ranked.slice(0,3).map(x => ({name:x.name, barcode:x.barcode, cats:x.categories_tags})));
+    
+    return ranked.slice(0, maxResults);
       
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
@@ -121,6 +120,46 @@ export async function searchFoodByName(
     console.error('💥 [FoodSearch] Search failed:', error);
     throw error;
   }
+}
+
+function escapeRe(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// lightweight synonym helper (handles plural)
+function variants(q: string) {
+  const t = q.toLowerCase().trim();
+  const set = new Set([t]);
+  if (!t.endsWith('s')) set.add(`${t}s`);
+  if (t.endsWith('s')) set.add(t.slice(0, -1)); // eggs -> egg
+  return Array.from(set);
+}
+
+function rankScore(item: any, raw: string) {
+  const name = (item?.name ?? item?.product_name ?? '').toLowerCase();
+  const cats = JSON.stringify(item?.categories_tags ?? item?.categories ?? '').toLowerCase();
+  const v = variants(raw);
+
+  // exact word match bonus (word boundary)
+  const exact = v.some(w => new RegExp(`(?:^|\\b)${escapeRe(w)}(?:\\b|$)`).test(name)) ? 100 : 0;
+
+  // starts-with & contains
+  const starts = v.some(w => name.startsWith(w)) ? 30 : 0;
+  const contains = v.some(w => name.includes(w)) ? 10 : 0;
+
+  // category boost for eggs
+  const eggCat = /(^|[^a-z])eggs?([^a-z]|$)/.test(cats) || cats.includes('en:eggs') ? 40 : 0;
+
+  // penalize obvious distractors when searching for eggs
+  const noodlePenalty = /noodle|pasta/.test(name) ? 50 : 0;
+
+  return exact + starts + contains + eggCat - noodlePenalty;
+}
+
+// Apply after data arrives, before rendering
+export function reorderForQuery(items: any[], q: string) {
+  if (!Array.isArray(items) || !q) return items;
+  return [...items].sort((a, b) => rankScore(b, q) - rankScore(a, q));
 }
 
 /**
