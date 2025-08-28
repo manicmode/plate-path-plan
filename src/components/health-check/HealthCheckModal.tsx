@@ -380,43 +380,70 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
 
     try {
-      // Normalize the result to match HealthAnalysisResult format
-      const normalizedResult: HealthAnalysisResult = {
-        itemName: result.itemName || result.productName || 'Unknown Product',
-        productName: result.productName || result.itemName,
-        title: result.title || result.productName || result.itemName,
-        healthScore: extractScore(result.score || result.healthScore) || 50,
-        ingredientsText: result.ingredientsText || result.ingredients || '',
-        ingredientFlags: result.ingredientFlags || [],
-        nutritionData: result.nutritionData || {
-          calories: result.calories || result.caloriesPer100g,
-          protein: result.protein || result.proteinPer100g,
-          carbs: result.carbs || result.carbsPer100g,
-          fat: result.fat || result.fatPer100g,
-          fiber: result.fiber || result.fiberPer100g,
-          sugar: result.sugar || result.sugarPer100g,
-          sodium: result.sodium || result.sodiumPer100mg
+      // --- begin robust mapping ---
+      const raw = (result?.analysis ?? result) as any;
+
+      function coerceScoreTo10(v: any) {
+        const n = Number(
+          v ?? raw?.health?.score ?? raw?.quality?.score ?? raw?.summary?.score
+        );
+        if (!Number.isFinite(n)) return null;
+        const s = n > 10 ? n / 10 : n;     // handle 0–100 inputs
+        return Math.max(0, Math.min(10, s)); // clamp
+      }
+
+      const itemName =
+        raw?.itemName ??
+        raw?.productName ??
+        raw?.title ??
+        raw?.name ??
+        raw?.product?.name ??
+        null;
+
+      const score10 = coerceScoreTo10(raw?.healthScore);
+
+      const normalized = {
+        itemName: itemName ?? 'Unknown Product',
+        productName: itemName ?? raw?.productName ?? 'Unknown Product',
+        title: itemName ?? raw?.title ?? 'Unknown Product',
+        healthScore: score10 ?? 0, // keep 0–10
+        ingredientsText: raw?.ingredientsText || raw?.ingredients || '',
+        ingredientFlags: raw?.ingredientFlags || [],
+        nutritionData: raw?.nutritionData || {
+          calories: raw?.calories || raw?.caloriesPer100g,
+          protein: raw?.protein || raw?.proteinPer100g,
+          carbs: raw?.carbs || raw?.carbsPer100g,
+          fat: raw?.fat || raw?.fatPer100g,
+          fiber: raw?.fiber || raw?.fiberPer100g,
+          sugar: raw?.sugar || raw?.sugarPer100g,
+          sodium: raw?.sodium || raw?.sodiumPer100mg
         },
-        healthProfile: result.healthProfile || {
-          isOrganic: result.isOrganic,
-          isGMO: result.isGMO,
-          allergens: result.allergens || [],
-          preservatives: result.preservatives || [],
-          additives: result.additives || []
+        healthProfile: raw?.healthProfile || {
+          isOrganic: raw?.isOrganic,
+          isGMO: raw?.isGMO,
+          allergens: raw?.allergens || [],
+          preservatives: raw?.preservatives || [],
+          additives: raw?.additives || []
         },
-        personalizedWarnings: result.personalizedWarnings || result.warnings || [],
-        suggestions: result.suggestions || [],
-        overallRating: result.overallRating || result.rating || 'fair'
+        personalizedWarnings: raw?.personalizedWarnings || raw?.warnings || [],
+        suggestions: raw?.suggestions || [],
+        overallRating: raw?.overallRating || raw?.rating || 'fair'
       };
 
-      setAnalysisResult(normalizedResult);
+      console.log('[MAPPED][REPORT]', {
+        itemName: normalized.itemName,
+        healthScore10: normalized.healthScore
+      });
+
+      setAnalysisResult(normalized);
       setCurrentState('report');
+      // --- end robust mapping ---
       
       // Add to recents
       if (user?.id) {
         addRecent({ 
           mode: 'manual', 
-          label: normalizedResult.itemName
+          label: normalized.itemName
         });
       }
       
