@@ -102,10 +102,28 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         streamId: stream.id 
       });
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      mediaRecorderRef.current = mediaRecorder;
+    // AUDIT: Guard against MediaRecorder on iOS WebKit for camera features
+    const isIOSWebKit = /iP(hone|ad|od)/.test(navigator.userAgent) && /WebKit/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+    if (isIOSWebKit) {
+      debugLog('Skipping MediaRecorder on iOS WebKit to avoid recording indicator');
+      throw new Error('MediaRecorder disabled on iOS WebKit to prevent recording indicator');
+    }
+
+    // AUDIT: Instrumentation for MediaRecorder creation
+    console.warn('[AUDIT][MR][create]', {
+      file: 'useVoiceRecording.tsx',
+      hasVideo: !!stream.getVideoTracks().length,
+      hasAudio: !!stream.getAudioTracks().length
+    });
+
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'audio/webm;codecs=opus'
+    });
+    (mediaRecorder as any).__voyageTag = 'useVoiceRecording.tsx';
+    mediaRecorder.addEventListener('start', () => console.warn('[AUDIT][MR][start]', (mediaRecorder as any).__voyageTag));
+    mediaRecorder.addEventListener('stop',  () => console.warn('[AUDIT][MR][stop]',  (mediaRecorder as any).__voyageTag));
+    
+    mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -224,7 +242,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       };
 
       console.log('[Voice Recording] Stopping MediaRecorder...');
-      mediaRecorderRef.current.stop();
+      // AUDIT: Ensure MediaRecorder is properly stopped before tracks
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        debugLog('Error stopping MediaRecorder', e);
+      }
       
       // Stop all tracks
       if (mediaRecorderRef.current.stream) {

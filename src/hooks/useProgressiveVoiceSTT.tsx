@@ -102,6 +102,13 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
       throw new Error('MediaRecorder not supported');
     }
 
+    // AUDIT: Guard against MediaRecorder on iOS WebKit for camera features
+    const isIOSWebKit = /iP(hone|ad|od)/.test(navigator.userAgent) && /WebKit/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+    if (isIOSWebKit) {
+      debugLog('Skipping MediaRecorder on iOS WebKit to avoid recording indicator');
+      throw new Error('MediaRecorder disabled on iOS WebKit to prevent recording indicator');
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({ 
       audio: {
         sampleRate: 44100,
@@ -111,10 +118,21 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
         autoGainControl: true
       }
     });
+
+    // AUDIT: Instrumentation for MediaRecorder creation
+    console.warn('[AUDIT][MR][create]', {
+      file: 'useProgressiveVoiceSTT.tsx',
+      hasVideo: !!stream.getVideoTracks().length,
+      hasAudio: !!stream.getAudioTracks().length
+    });
     
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: 'audio/webm;codecs=opus'
     });
+    (mediaRecorder as any).__voyageTag = 'useProgressiveVoiceSTT.tsx';
+    mediaRecorder.addEventListener('start', () => console.warn('[AUDIT][MR][start]', (mediaRecorder as any).__voyageTag));
+    mediaRecorder.addEventListener('stop',  () => console.warn('[AUDIT][MR][stop]',  (mediaRecorder as any).__voyageTag));
+    
     mediaRecorderRef.current = mediaRecorder;
     audioChunksRef.current = [];
 
@@ -203,7 +221,12 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
         }
       };
 
-      mediaRecorderRef.current.stop();
+      // AUDIT: Ensure MediaRecorder is properly stopped before tracks
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        debugLog('Error stopping MediaRecorder', e);
+      }
       
       // Stop all tracks
       if (mediaRecorderRef.current.stream) {
