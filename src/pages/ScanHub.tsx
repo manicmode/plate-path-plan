@@ -223,7 +223,7 @@ export default function ScanHub() {
               <h1 className="text-4xl font-bold text-white mb-3">
                 Health Scan
               </h1>
-              <Activity className="w-8 h-8 text-green-400 mb-3 animate-pulse drop-shadow-[0_0_10px_rgba(34,197,94,0.6)]" />
+              <Activity className="w-12 h-12 text-green-400 mb-3 animate-pulse drop-shadow-[0_0_20px_rgba(34,197,94,0.8)] filter brightness-110" />
             </div>
           </div>
           <p className="text-rose-100/80 text-lg">
