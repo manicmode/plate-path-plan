@@ -33,9 +33,19 @@ export default function SavedReports() {
   const loadSavedReports = async () => {
     setLoading(true);
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user - showing empty state');
+        setSavedReports([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('nutrition_logs')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -49,6 +59,7 @@ export default function SavedReports() {
         return;
       }
 
+      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
       setSavedReports(data || []);
     } catch (error) {
       console.error('Error loading saved reports:', error);
