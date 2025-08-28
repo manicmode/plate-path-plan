@@ -303,17 +303,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             </div>
 
             {/* Bottom gradient */}
-            <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
             
             {/* Flashlight Button - Positioned above upload button */}
             {supportsTorch && (
-              <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)]">
+              <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)] z-50 pointer-events-auto">
                 <Button
                   onClick={toggleTorch}
                   size="lg"
-                  className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 ${
+                  className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 shadow-lg ${
                     torchOn 
-                      ? 'bg-white/20 hover:bg-white/30 text-yellow-400 border-yellow-400 shadow-lg shadow-yellow-400/30' 
+                      ? 'bg-white/20 hover:bg-white/30 text-yellow-400 border-yellow-400 shadow-yellow-400/30' 
                       : 'bg-white/10 hover:bg-white/20 text-white border-white/40'
                   }`}
                   title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
@@ -324,7 +324,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             )}
             
             {/* Bottom Controls */}
-            <footer className="absolute bottom-8 inset-x-0 pb-[env(safe-area-inset-bottom)] px-8">
+            <footer className="absolute bottom-8 inset-x-0 pb-[env(safe-area-inset-bottom)] px-8 z-20">
               {/* Instructions */}
               <div className="text-center text-white/90 mb-6">
                 <p className="text-lg font-medium">Position food in the frame</p>
