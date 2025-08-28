@@ -379,14 +379,18 @@ export default function ScanHub() {
       {currentState === 'search' ? (
         <ImprovedManualEntry
           onProductSelected={(product) => {
-            console.log('[PARITY][TAP]', { source: 'manual', itemName: product?.productName });
+            console.log('Search modal product selected:', product);
             addRecent({ mode: searchState.source, label: product.productName || 'Search entry' });
             setCurrentState('hub'); // Return to hub
             
-            // SURGICAL FIX: stop navigating to /scan for manual entry
-            console.log('[PARITY][BYPASS] ScanHub manual - no navigation');
-            // Instead of goToHealthAnalysis, we could open health modal here
-            // But for now, just return to hub as requested
+            // Use the URL-based navigation to health analyzer
+            import('@/lib/nav').then(({ goToHealthAnalysis }) => {
+              goToHealthAnalysis(navigate, {
+                source: 'off',
+                barcode: product?.barcode || undefined,
+                name: product?.productName || ''
+              });
+            });
           }}
           onBack={() => setCurrentState('hub')}
           initialQuery={searchState.initialQuery}

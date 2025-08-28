@@ -635,13 +635,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       if (usePhotoPipelineV2) {
         // Photo Pipeline v2: No server call, just pass data to modal
-        console.log('[PHOTO][INTENT]', { v2: true, hasBarcode: !!detectedBarcode });
         console.log("🎯 Photo Pipeline v2: Barcode detected, passing to modal");
         onCapture({
           imageBase64: fullBase64.split(',')[1],
           detectedBarcode
         });
-        return; // <- no navigate, no setStep
+        return;
       } else {
         // Legacy behavior: Call server directly
         console.log("🎯 Legacy: Barcode path - short-circuiting to OFF lookup");
@@ -692,9 +691,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
 
         // Pass prepared image data to HealthCheckModal for analysis
-        if (usePhotoPipelineV2) {
-          console.log('[PHOTO][INTENT]', { v2: true, hasBarcode: !!detectedBarcode });
-        }
         onCapture({
           imageBase64: prep.base64NoPrefix,
           detectedBarcode: detectedBarcode ?? null,

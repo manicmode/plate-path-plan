@@ -149,12 +149,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return; // Don't fall through to any "health/analysis" effects
     }
     
-    // URL-param effect: ignore manual/off in v2 - they use in-modal pipeline
-    if (source === 'manual' || source === 'off') {
-      console.log('[PARITY][URL-BYPASS]', { source });
-      return; // manual is handled in-place, do not navigate / do not open scanner
-    }
-
     // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
     const isSearchFlow = source === 'voice' || source === 'manual';
     if (isSearchFlow) {
@@ -325,24 +319,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setCaptureId(currentCaptureId);
     setIsProcessing(true);
     
-    // V2 Analysis Type Computation and Guard
-    const isV2 = import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
-    const hasBarcode = !!(typeof payload === 'string' ? 
-      payload.match(/&barcode=(\d+)$/)?.[1] : 
-      payload.detectedBarcode);
-    const analysisType = hasBarcode ? 'barcode' : 'image'; // Map to valid types
-    const logAnalysisType = isV2 ? (hasBarcode ? 'photo+barcode' : 'photo') : (hasBarcode ? 'barcode' : 'photo');
-    setAnalysisType(analysisType);
-    console.log('[PHOTO][INTENT:modal]', { isV2, hasBarcode, analysisType: logAnalysisType });
-
-    if (isV2) {
-      // IMPORTANT: no scanner UI in v2 ever
-      // do NOT call openBarcodeScanner() or setStep('scanner')
-      setCurrentState('loading');
-      // proceed to nutrition lookup/vision-extract → analyzer
-    }
-    
     try {
+      setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       
       // Extract data from payload
@@ -1363,7 +1341,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           {currentState === 'fallback' && (
             <ImprovedManualEntry
               onProductSelected={(product) => {
-                console.log('[PARITY][HANDLER]', { source: 'manual', usingHandler: true });
                 const legacy = toLegacyFromEdge({ product });
                 processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
               }}
