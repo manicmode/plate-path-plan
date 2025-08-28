@@ -14,6 +14,36 @@ import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode } from '@/lib/scan/f
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { useTorch } from '@/lib/camera/useTorch';
 
+// DEV: media lifecycle logging (scoped to this component; remove after audit)
+const DEV_MEDIA_AUDIT = true;
+function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
+  if (!DEV_MEDIA_AUDIT) return;
+  const v = videoEl || null;
+  const s = (v?.srcObject as MediaStream) || null;
+  const tracks = s ? s.getVideoTracks() : [];
+  const readyStates = tracks.map(t => t.readyState);
+  const videosWithSrc = Array.from(document.querySelectorAll('video'))
+    .filter(el => (el as HTMLVideoElement).srcObject).length;
+  // eslint-disable-next-line no-console
+  console.log(tag, {
+    route: location.pathname + location.search,
+    tracks: tracks.length,
+    readyStates,
+    videosWithSrc,
+  });
+}
+
+function torchOff(track?: MediaStreamTrack) {
+  try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
+}
+
+function hardDetachVideo(video?: HTMLVideoElement | null) {
+  if (!video) return;
+  try { video.pause(); } catch {}
+  try { (video as any).srcObject = null; } catch {}
+  try { video.removeAttribute('src'); video.load?.(); } catch {}
+}
+
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string | { imageBase64: string; detectedBarcode: string | null }) => void;
   onManualEntry: () => void;
@@ -57,11 +87,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       warmUpDecoder();
     }
     return () => {
+      mediaLog('[MEDIA][HealthScannerInterface][pre_cleanup]', videoRef.current);
+
+      // 1) Torch off first
+      const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+      torchOff(track);
+
+      // 2) Stop all tracks
+      const stream = (videoRef.current?.srcObject as MediaStream) || undefined;
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        for (const t of stream.getTracks()) {
+          try { t.stop(); } catch {}
+          try { stream.removeTrack(t); } catch {}
+        }
       }
-      trackRef.current = null;
-      updateStreamRef(null);
+
+      // 3) Detach video & clear refs
+      hardDetachVideo(videoRef.current);
+      try { updateStreamRef?.(null); } catch {}
+
+      mediaLog('[MEDIA][HealthScannerInterface][post_cleanup]', videoRef.current);
     };
   }, [currentView]);
 
@@ -130,6 +175,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
+        
+        mediaLog('[MEDIA][HealthScannerInterface][mount]', videoRef.current);
         
         // Ensure torch state after track is ready
         setTimeout(() => {

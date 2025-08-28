@@ -5,6 +5,36 @@ import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { supabase } from '@/integrations/supabase/client';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
+// DEV: media lifecycle logging (scoped to this component; remove after audit)
+const DEV_MEDIA_AUDIT = true;
+function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
+  if (!DEV_MEDIA_AUDIT) return;
+  const v = videoEl || null;
+  const s = (v?.srcObject as MediaStream) || null;
+  const tracks = s ? s.getVideoTracks() : [];
+  const readyStates = tracks.map(t => t.readyState);
+  const videosWithSrc = Array.from(document.querySelectorAll('video'))
+    .filter(el => (el as HTMLVideoElement).srcObject).length;
+  // eslint-disable-next-line no-console
+  console.log(tag, {
+    route: location.pathname + location.search,
+    tracks: tracks.length,
+    readyStates,
+    videosWithSrc,
+  });
+}
+
+function torchOff(track?: MediaStreamTrack) {
+  try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
+}
+
+function hardDetachVideo(video?: HTMLVideoElement | null) {
+  if (!video) return;
+  try { video.pause(); } catch {}
+  try { (video as any).srcObject = null; } catch {}
+  try { video.removeAttribute('src'); video.load?.(); } catch {}
+}
+
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
   onClose: () => void;
@@ -245,6 +275,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         console.log("[CAMERA] srcObject set, playing video");
         setStream(mediaStream);
         setIsScanning(true);
+        
+        mediaLog('[MEDIA][WebBarcodeScanner][mount]', videoRef.current);
       } else {
         console.error("[CAMERA] videoRef.current is null");
       }
@@ -256,18 +288,33 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   };
 
   const cleanup = () => {
+    mediaLog('[MEDIA][WebBarcodeScanner][pre_cleanup]', videoRef.current);
+
+    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+    torchOff(track);
+
+    const s = (videoRef.current?.srcObject as MediaStream) || undefined;
+    if (s) {
+      for (const t of s.getTracks()) {
+        try { t.stop(); } catch {}
+        try { s.removeTrack(t); } catch {}
+      }
+    }
+
+    // one-line minimal fix: ensure srcObject cleared
+    hardDetachVideo(videoRef.current);
+
     if (scanningIntervalRef.current) {
       clearInterval(scanningIntervalRef.current);
     }
     
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    
     setIsScanning(false);
+
+    mediaLog('[MEDIA][WebBarcodeScanner][post_cleanup]', videoRef.current);
   };
 
   const handleClose = () => {
+    mediaLog('[MEDIA][WebBarcodeScanner][close_invoked]', videoRef.current);
     cleanup();
     onClose();
   };

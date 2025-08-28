@@ -8,6 +8,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 
+// DEV: media lifecycle logging (scoped to this component; remove after audit)
+const DEV_MEDIA_AUDIT = true;
+function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
+  if (!DEV_MEDIA_AUDIT) return;
+  const v = videoEl || null;
+  const s = (v?.srcObject as MediaStream) || null;
+  const tracks = s ? s.getVideoTracks() : [];
+  const readyStates = tracks.map(t => t.readyState);
+  const videosWithSrc = Array.from(document.querySelectorAll('video'))
+    .filter(el => (el as HTMLVideoElement).srcObject).length;
+  // eslint-disable-next-line no-console
+  console.log(tag, {
+    route: location.pathname + location.search,
+    tracks: tracks.length,
+    readyStates,
+    videosWithSrc,
+  });
+}
+
+function torchOff(track?: MediaStreamTrack) {
+  try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
+}
+
+function hardDetachVideo(video?: HTMLVideoElement | null) {
+  if (!video) return;
+  try { video.pause(); } catch {}
+  try { (video as any).srcObject = null; } catch {}
+  try { video.removeAttribute('src'); video.load?.(); } catch {}
+}
+
 interface PhotoCaptureModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,6 +89,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         trackRef.current = track;
         setStream(mediaStream);
         
+        mediaLog('[MEDIA][PhotoCapture][mount]', videoRef.current);
+        
         // Ensure torch state after track is ready
         setTimeout(() => {
           ensureTorchState();
@@ -73,15 +105,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const cleanup = () => {
+    mediaLog('[MEDIA][PhotoCapture][pre_cleanup]', videoRef.current);
+
+    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+    torchOff(track);
+
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    
+    hardDetachVideo(videoRef.current);
+    
     trackRef.current = null;
     setStream(null);
     setIsCapturing(false);
+
+    mediaLog('[MEDIA][PhotoCapture][post_cleanup]', videoRef.current);
   };
 
   const toggleTorch = async () => {

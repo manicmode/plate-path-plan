@@ -10,6 +10,36 @@ import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { useTorch } from '@/lib/camera/useTorch';
 
+// DEV: media lifecycle logging (scoped to this component; remove after audit)
+const DEV_MEDIA_AUDIT = true;
+function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
+  if (!DEV_MEDIA_AUDIT) return;
+  const v = videoEl || null;
+  const s = (v?.srcObject as MediaStream) || null;
+  const tracks = s ? s.getVideoTracks() : [];
+  const readyStates = tracks.map(t => t.readyState);
+  const videosWithSrc = Array.from(document.querySelectorAll('video'))
+    .filter(el => (el as HTMLVideoElement).srcObject).length;
+  // eslint-disable-next-line no-console
+  console.log(tag, {
+    route: location.pathname + location.search,
+    tracks: tracks.length,
+    readyStates,
+    videosWithSrc,
+  });
+}
+
+function torchOff(track?: MediaStreamTrack) {
+  try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
+}
+
+function hardDetachVideo(video?: HTMLVideoElement | null) {
+  if (!video) return;
+  try { video.pause(); } catch {}
+  try { (video as any).srcObject = null; } catch {}
+  try { video.removeAttribute('src'); video.load?.(); } catch {}
+}
+
 interface LogBarcodeScannerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -179,6 +209,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
         
+        mediaLog('[MEDIA][LogBarcodeScanner][mount]', videoRef.current);
+        
         // Ensure torch state after track is ready
         setTimeout(() => {
           ensureTorchState();
@@ -193,18 +225,32 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const cleanup = () => {
+    mediaLog('[MEDIA][LogBarcodeScanner][pre_cleanup]', videoRef.current);
+
+    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+    torchOff(track);
+
+    const s = (videoRef.current?.srcObject as MediaStream) || undefined;
+    if (s) {
+      for (const t of s.getTracks()) {
+        try { t.stop(); } catch {}
+        try { s.removeTrack(t); } catch {}
+      }
+    }
+
+    hardDetachVideo(videoRef.current);
+
+    // tiniest fix because the hook already supports it:
+    try { updateStreamRef?.(null); } catch {}
+
     stopAutoscan();
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
     trackRef.current = null;
     setStream(null);
     setIsDecoding(false);
     setIsFrozen(false);
     setIsLookingUp(false);
+
+    mediaLog('[MEDIA][LogBarcodeScanner][post_cleanup]', videoRef.current);
   };
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
