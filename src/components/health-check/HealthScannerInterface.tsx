@@ -788,21 +788,21 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="relative flex flex-col min-h-dvh bg-black">
-        {/* Header with back button */}
-        <header className="absolute top-0 left-0 right-0 z-50 p-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                console.log('[SCANNER] Header back button clicked - FIXED!');
-                onCancel?.();
-              }}
-              className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Back
-            </Button>
+         {/* Header with back button */}
+         <header className="absolute top-0 left-0 right-0 z-[100] p-4">
+           <div className="flex items-center justify-between">
+             <Button
+               variant="ghost"
+               size="sm"
+               onClick={() => {
+                 console.log('[SCANNER] Header back button clicked - FIXED!');
+                 onCancel?.();
+               }}
+               className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto relative z-[110]"
+             >
+               <ArrowLeft className="h-5 w-5" />
+               Back
+             </Button>
             
             {/* Title */}
             <div className="text-white text-lg font-semibold">
@@ -830,9 +830,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           )}
           <canvas ref={canvasRef} className="hidden" />
           
-          {/* Scanning Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
+           {/* Scanning Overlay */}
+           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+             <div className="relative pointer-events-none">
               <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
                 isScanning ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'shadow-[0_0_30px_rgba(34,197,94,0.4)]'
               }`}>
