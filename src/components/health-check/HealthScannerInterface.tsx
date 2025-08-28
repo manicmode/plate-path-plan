@@ -822,32 +822,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="relative flex flex-col min-h-dvh bg-black">
-         {/* Simple X Cancel Button - TOP PRIORITY */}
-         <div className="absolute top-4 left-4 z-[9999]" style={{ zIndex: 9999 }}>
-           <button
-             onClick={(e) => {
-               console.log('[CANCEL] X button clicked - WORKING!');
-               e.stopPropagation();
-               e.preventDefault();
-               onCancel?.();
-             }}
-             className="w-12 h-12 bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/90 transition-colors border border-white/20"
-             style={{ 
-               position: 'relative',
-               zIndex: 9999,
-               touchAction: 'manipulation'
-             }}
-           >
-             <X className="h-6 w-6" />
-           </button>
-         </div>
-
-         {/* Title - moved to center */}
-         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
-           <div className="text-white text-lg font-semibold bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full">
-             Health Scan
-           </div>
-         </div>
 
         {/* camera/video area */}
         <main className="flex-1 relative overflow-hidden">
@@ -893,8 +867,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             </div>
           </div>
 
-          {/* Header Text */}
-          <div className="absolute top-24 left-4 right-4 text-center">
+          {/* Header Text - moved back up */}
+          <div className="absolute top-8 left-4 right-4 text-center">
             <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
               <h2 className="text-white text-lg font-bold mb-2">
                 🔬 Health Inspector Scanner
