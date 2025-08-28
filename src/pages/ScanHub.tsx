@@ -8,7 +8,7 @@ import {
   Bookmark, 
   History,
   ArrowLeft,
-  Heart
+  Activity
 } from 'lucide-react';
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
@@ -218,11 +218,11 @@ export default function ScanHub() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="relative flex items-center justify-center">
+          <div className="relative inline-flex items-center gap-3">
             <h1 className="text-4xl font-bold text-white mb-3">
               Health Scan
             </h1>
-            <Heart className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 text-green-400 fill-green-400" />
+            <Activity className="w-8 h-8 text-green-400 mb-3" />
           </div>
           <p className="text-rose-100/80 text-lg">
             Choose how you want to analyze food
