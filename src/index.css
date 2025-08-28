@@ -9,6 +9,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global overflow safety net */
+html, body, #root { max-width: 100vw; overflow-x: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
+
 /* VOYAGE Enhanced Futuristic Design System */
 
 @layer base {

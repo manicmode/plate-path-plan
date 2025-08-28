@@ -254,17 +254,23 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     return chips.slice(0, 4);
   };
 
+  // Add temporary layout instrumentation
+  useEffect(() => {
+    console.warn('[LAYOUT][manual-entry] scrollWidth vs innerWidth', 
+      document.scrollingElement?.scrollWidth, window.innerWidth);
+  }, []);
+
   const queryChips = textQuery.trim().length >= 4 ? generateQueryChips(textQuery) : [];
 
   return (
     <div 
-      className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-xl"
+      className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-xl w-full max-w-full overflow-x-hidden"
       style={{ 
         height: "100dvh"
       }}
     >
-      <div className="absolute inset-0 flex flex-col bg-gradient-to-b from-rose-600/15 via-zinc-900/60 to-zinc-900/80">
-        <div className="flex-1 flex flex-col min-h-0">
+      <div className="absolute inset-0 flex flex-col bg-gradient-to-b from-rose-600/15 via-zinc-900/60 to-zinc-900/80 w-full max-w-full overflow-x-hidden">
+        <div className="flex-1 flex flex-col min-h-0 w-full max-w-full overflow-x-hidden">
           {/* Header */}
           <header className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0 safe-top"
             style={{ paddingTop: `max(1rem, env(safe-area-inset-top))` }}>
@@ -295,7 +301,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
           </header>
 
           {/* Content */}
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto min-h-0"
+          <div className="flex-1 p-4 space-y-4 overflow-y-auto min-h-0 w-full max-w-full overflow-x-hidden"
             style={{ 
               WebkitOverflowScrolling: "touch",
               overscrollBehavior: "contain"
@@ -428,12 +434,14 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
 
             {/* Search Results or Loading */}
             {textQuery.trim().length >= 2 && (
-              <SearchResultsList
-                results={searchResults}
-                onSelect={handleResultSelect}
-                isLoading={isSearching}
-                query={textQuery}
-              />
+              <div className="w-full max-w-full overflow-x-hidden">
+                <SearchResultsList
+                  results={searchResults}
+                  onSelect={handleResultSelect}
+                  isLoading={isSearching}
+                  query={textQuery}
+                />
+              </div>
             )}
 
             {/* No Results State */}
