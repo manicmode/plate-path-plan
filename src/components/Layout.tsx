@@ -139,7 +139,15 @@ const Layout = ({ children }: LayoutProps) => {
     <TooltipProvider>
       <div className="min-h-screen gradient-main transition-all duration-300">
         {/* Enhanced Header with better spacing */}
-        <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl" style={{ position: 'sticky' }}>
+        <header 
+          className="sticky top-0 z-50 border-0 backdrop-blur-xl" 
+          style={{
+            background: 'var(--glass-white)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 200, 150, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)'
+          }}
+        >
           <div ref={headerRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
