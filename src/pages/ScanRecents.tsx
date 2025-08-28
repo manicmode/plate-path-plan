@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { getScanRecents, clearScanRecents, removeScanRecent } from '@/lib/scanRecents';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchSavedReports, countSavedReports } from '@/services/savedReports';
 
 interface NutritionLog {
   id: string;
@@ -29,6 +30,7 @@ export default function ScanRecents() {
   const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('recent');
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     setRecents(getScanRecents());
@@ -38,36 +40,52 @@ export default function ScanRecents() {
   const loadSavedReports = async () => {
     setLoading(true);
     try {
-      // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user - showing empty state');
+      // PHASE 1 - SESSION FORENSICS
+      const { data: sess } = await supabase.auth.getSession();
+      console.log('[SAVED-REPORTS][SESSION]', { 
+        hasSession: !!sess?.session, 
+        user: sess?.session?.user?.id,
+        email: sess?.session?.user?.email 
+      });
+
+      if (!sess?.session?.user) {
+        console.log('[SAVED-REPORTS][NO-USER] Showing empty state');
         setSavedReports([]);
+        setTotalCount(0);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Error loading saved reports:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load saved reports",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
-      setSavedReports(data || []);
+      // Use canonical data access - DB ONLY, NO MOCKS
+      const [reportsResult, count] = await Promise.all([
+        fetchSavedReports({ limit: 50 }),
+        countSavedReports()
+      ]);
+      
+      // PHASE 2 - DATA SOURCE VERIFICATION
+      console.log('[SAVED-REPORTS][DATASOURCE]', { 
+        source: 'db', // MUST BE DB ONLY
+        count: reportsResult.items.length,
+        totalCount: count,
+        items: reportsResult.items.map(item => ({ 
+          name: item.food_name, 
+          id: item.id, 
+          created: item.created_at 
+        })),
+        userConfirmed: sess.session.user.id
+      });
+      
+      setSavedReports(reportsResult.items as NutritionLog[]);
+      setTotalCount(count);
     } catch (error) {
       console.error('Error loading saved reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load saved reports",
+        variant: "destructive"
+      });
+      setSavedReports([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -174,7 +192,7 @@ export default function ScanRecents() {
               <BookOpen className="h-4 w-4 mr-2" />
               Saved Reports
               <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
-                {savedReports.length}
+                {totalCount}
               </Badge>
             </TabsTrigger>
           </TabsList>
