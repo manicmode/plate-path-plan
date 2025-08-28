@@ -4,7 +4,7 @@ export const isIOSWebKit =
 
 export function scannerLiveCamEnabled() {
   const ff = (window as any).__featureFlags || {};
-  // Default OFF on iOS; can be flipped at runtime for testing
-  if (isIOSWebKit) return !!ff.IOS_LIVE_SCANNER_CAM;
+  // Default ON for all platforms; can be disabled at runtime for testing
+  if (isIOSWebKit) return ff.IOS_LIVE_SCANNER_CAM !== false;
   return true;
 }
