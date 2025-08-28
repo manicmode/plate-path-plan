@@ -84,7 +84,8 @@ export default function SavedReports() {
   };
 
   const handleViewReport = (reportId: string) => {
-    navigate(`/nutrition-report/${reportId}`);
+    // Navigate to the health report instead of nutrition report
+    navigate(`/health-report/${reportId}`);
   };
 
   const getQualityColor = (verdict: string) => {

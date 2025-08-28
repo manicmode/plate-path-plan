@@ -112,8 +112,8 @@ export default function ScanRecents() {
   };
 
   const handleViewReport = (reportId: string) => {
-    // Navigate to a detailed view of the nutrition report
-    navigate(`/nutrition-report/${reportId}`);
+    // Navigate to the health report instead of nutrition report
+    navigate(`/health-report/${reportId}`);
   };
 
   const getModeIcon = (mode: string) => {

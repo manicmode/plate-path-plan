@@ -125,6 +125,7 @@ const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 const RecentScans = lazy(() => import('@/pages/RecentScans'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
 const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
+const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -525,11 +526,16 @@ function AppContent() {
                                  <SavedReports />
                                </ProtectedRoute>
                              } />
-                             <Route path="/nutrition-report/:reportId" element={
-                               <ProtectedRoute>
-                                 <NutritionReport />
-                               </ProtectedRoute>
-                             } />
+                              <Route path="/nutrition-report/:reportId" element={
+                                <ProtectedRoute>
+                                  <NutritionReport />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/health-report/:reportId" element={
+                                <ProtectedRoute>
+                                  <HealthReportStandalone />
+                                </ProtectedRoute>
+                              } />
                              
                              {/* Legacy health-report redirect to scan hub */}
                              <Route path="/health-report" element={<Navigate to="/scan" replace />} />
