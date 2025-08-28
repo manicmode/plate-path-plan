@@ -1460,7 +1460,7 @@ const SupplementHub = () => {
   return (
     <div className="space-y-12 sm:space-y-16">
       {/* Header */}
-      <div className="sticky top-0 z-[40]">
+      <div className="sticky top-0 z-[60]">
         <div className="relative left-1/2 -ml-[50vw] w-[100vw]">
           <div className="h-[var(--app-header-height,64px)] min-h-[var(--app-header-height,64px)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center px-4">
             <div className="flex items-center gap-3 max-w-md mx-auto w-full">
