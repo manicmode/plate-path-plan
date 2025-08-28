@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import '@/lib/clearMockData'; // Force clear any mock data
+// No mock data imports - pure DB only
 
 interface NutritionLog {
   id: string;
@@ -43,18 +43,20 @@ export default function SavedReports() {
         return;
       }
 
-      // DEV-only forensic logging
-      if (import.meta.env.DEV) {
-        const { data: sess } = await supabase.auth.getSession();
-        console.log('[SAVED-REPORTS][SESSION]', { hasSession: !!sess?.session, user: sess?.session?.user?.id });
-      }
+      // Session & auth audit logging
+      const { data: sess } = await supabase.auth.getSession();
+      console.log('[SAVED][SESSION]', { user: sess?.session?.user?.id, hasAuth: !!sess?.session });
 
+      // Phase 1: DB-only query with RLS (no manual user filtering)
       const { data, error } = await supabase
         .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
+        .select(`
+          id, created_at, food_name, image_url, source,
+          calories, protein, carbs, fat,
+          quality_score, quality_verdict
+        `)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(25);
 
       if (error) {
         console.error('Error loading saved reports:', error);
@@ -66,12 +68,9 @@ export default function SavedReports() {
         return;
       }
 
-      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
-      
-      // DEV-only forensic logging
-      if (import.meta.env.DEV) {
-        console.log('[SAVED-REPORTS][DATASOURCE]', { source: 'db', count: data?.length || 0 });
-      }
+      // Data source proof logging
+      console.log('[SAVED][DATASOURCE]', { source: 'db-only', count: data?.length || 0 });
+      console.log('[SAVED][DATA-SAMPLE]', data?.slice(0, 3)?.map(r => ({ food: r.food_name, source: r.source, created: r.created_at })));
       
       setSavedReports(data || []);
     } catch (error) {
