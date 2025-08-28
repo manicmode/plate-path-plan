@@ -47,7 +47,7 @@ export default function Analytics() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <StickyHeader className="z-40">
+      <StickyHeader className="z-[60]">
         <div className="p-4 pb-0 text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
