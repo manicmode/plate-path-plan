@@ -32,3 +32,25 @@ export function goToHealthReport(navigate: NavigateFunction, params: HealthAnaly
     } 
   });
 }
+
+/**
+ * Centralized navigation to Health Analysis using URL params
+ */
+export function goToHealthAnalysis(
+  navigate: (to: string, opts?: any) => void,
+  payload: { source: 'off' | 'manual' | 'barcode' | 'photo'; barcode?: string; name?: string }
+) {
+  const params = new URLSearchParams({
+    modal: 'health',                 // Force the health analyzer, not scanner
+    source: String(payload.source),
+    barcode: payload.barcode ?? '',
+    name: payload.name ?? '',
+  });
+  
+  console.warn('[NAV][goToHealthAnalysis]', { 
+    path: `/scan?${params.toString()}`,
+    payload 
+  });
+  
+  navigate(`/scan?${params.toString()}`);
+}

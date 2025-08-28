@@ -174,7 +174,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   }, []);
 
   const handleResultSelect = async (result: CanonicalSearchResult) => {
-    console.log('✅ [ImprovedManualEntry] User selected:', result);
+    console.warn('[NAV][manual-select]', { name: result?.name, barcode: result?.barcode });
     
     // Transform to legacy product format
     const legacyProduct = searchResultToLegacyProduct(result);

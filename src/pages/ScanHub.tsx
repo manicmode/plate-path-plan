@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ScanBarcode, 
   Camera, 
@@ -21,6 +21,7 @@ import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 
 export default function ScanHub() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addRecent } = useScanRecents();
   
   const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
@@ -108,9 +109,14 @@ export default function ScanHub() {
     console.log('Manual product selected:', product);
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
-    // Use the modal system instead of broken /health-report route
-    setHealthCheckModalOpen(false); // Close manual entry modal
-    setHealthCheckModalOpen(true); // Reopen with product data
+    // Use the URL-based navigation to health analyzer
+    import('@/lib/nav').then(({ goToHealthAnalysis }) => {
+      goToHealthAnalysis(navigate, {
+        source: 'off',
+        barcode: product?.barcode || undefined,
+        name: product?.productName || ''
+      });
+    });
   };
 
   // Handle voice product selection
@@ -121,6 +127,23 @@ export default function ScanHub() {
     // Use the modal system instead of broken /health-report route  
     setHealthCheckModalOpen(true); // Open health check with product data
   };
+
+  // Handle URL params to auto-open health modal
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search);
+    const modal = qs.get('modal');               // 'health' | 'barcode' | ...
+    const source = qs.get('source') as any;      // 'off' | 'manual' | ...
+    const barcode = qs.get('barcode') || undefined;
+    const name = qs.get('name') || undefined;
+
+    if (modal === 'health') {
+      console.warn('[NAV][open-health]', { modal, source, barcode, name });
+      // Open the same analyzer used by barcode/photo
+      setHealthCheckModalOpen(true);
+      // Clear the param after open to avoid re-open on back/forward
+      navigate('/scan', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // Log page open
   console.log('scan_hub_open', { timestamp: Date.now() });
