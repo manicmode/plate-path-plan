@@ -788,42 +788,32 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   if (currentView === 'scanner') {
     return (
       <div className="relative flex flex-col min-h-dvh bg-black">
-         {/* Header with back button - FORCE TO FRONT */}
-         <header className="absolute top-0 left-0 right-0 z-[999] p-4 pointer-events-auto">
-           <div className="flex items-center justify-between pointer-events-auto">
-             <Button
-               variant="ghost"
-               size="sm"
-               onPointerDown={(e) => {
-                 console.log('[SCANNER] Pointer down on back button!');
-                 e.stopPropagation();
-               }}
-               onClick={(e) => {
-                 console.log('[SCANNER] Header back button clicked - FIXED!');
-                 e.stopPropagation();
-                 e.preventDefault();
-                 onCancel?.();
-               }}
-               className="text-white hover:bg-white/20 flex items-center gap-2 pointer-events-auto relative bg-red-500/20 border border-red-500 min-w-[80px] h-[44px]"
-               style={{ 
-                 touchAction: 'manipulation',
-                 zIndex: 9999,
-                 position: 'relative'
-               }}
-             >
-               <ArrowLeft className="h-5 w-5" />
-               Back
-             </Button>
-            
-            {/* Title */}
-            <div className="text-white text-lg font-semibold">
-              Health Scan
-            </div>
-            
-            {/* Spacer for centering */}
-            <div className="w-16"></div>
-          </div>
-        </header>
+         {/* Simple X Cancel Button - TOP PRIORITY */}
+         <div className="absolute top-4 left-4 z-[9999]" style={{ zIndex: 9999 }}>
+           <button
+             onClick={(e) => {
+               console.log('[CANCEL] X button clicked - WORKING!');
+               e.stopPropagation();
+               e.preventDefault();
+               onCancel?.();
+             }}
+             className="w-12 h-12 bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/90 transition-colors border border-white/20"
+             style={{ 
+               position: 'relative',
+               zIndex: 9999,
+               touchAction: 'manipulation'
+             }}
+           >
+             <X className="h-6 w-6" />
+           </button>
+         </div>
+
+         {/* Title - moved to center */}
+         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
+           <div className="text-white text-lg font-semibold bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full">
+             Health Scan
+           </div>
+         </div>
 
         {/* camera/video area */}
         <main className="flex-1 relative overflow-hidden">
