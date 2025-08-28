@@ -890,6 +890,48 @@ export type Database = {
           },
         ]
       }
+      analyzer_failures: {
+        Row: {
+          body_excerpt: string | null
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          id: string
+          phase: string
+          provider: string
+          request_id: string | null
+          run_id: string
+          status: string
+          status_text: string | null
+        }
+        Insert: {
+          body_excerpt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          phase: string
+          provider: string
+          request_id?: string | null
+          run_id: string
+          status: string
+          status_text?: string | null
+        }
+        Update: {
+          body_excerpt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          phase?: string
+          provider?: string
+          request_id?: string | null
+          run_id?: string
+          status?: string
+          status_text?: string | null
+        }
+        Relationships: []
+      }
       app_notifications: {
         Row: {
           body: string | null
@@ -4011,6 +4053,8 @@ export type Database = {
       }
       nutrition_logs: {
         Row: {
+          barcode: string | null
+          brand: string | null
           calories: number | null
           carbs: number | null
           confidence: number | null
@@ -4032,9 +4076,12 @@ export type Database = {
           source: string | null
           sugar: number | null
           trigger_tags: string[] | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
+          barcode?: string | null
+          brand?: string | null
           calories?: number | null
           carbs?: number | null
           confidence?: number | null
@@ -4056,9 +4103,12 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           trigger_tags?: string[] | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          barcode?: string | null
+          brand?: string | null
           calories?: number | null
           carbs?: number | null
           confidence?: number | null
@@ -4080,6 +4130,7 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           trigger_tags?: string[] | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -5496,6 +5547,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subtext_events: {
+        Row: {
+          category: string
+          created_at: string
+          event: string
+          id: string
+          picked_id: string
+          reason: string | null
+          run_id: string | null
+          ts: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          event: string
+          id?: string
+          picked_id: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event?: string
+          id?: string
+          picked_id?: string
+          reason?: string | null
+          run_id?: string | null
+          ts?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       supplement_logs: {
         Row: {
@@ -8299,6 +8389,18 @@ export type Database = {
         }
         Relationships: []
       }
+      v_subtext_daily_metrics: {
+        Row: {
+          category: string | null
+          cta: number | null
+          ctr_pct: number | null
+          day: string | null
+          picked_id: string | null
+          shown: number | null
+          users: number | null
+        }
+        Relationships: []
+      }
       vw_habit_progress_month: {
         Row: {
           completions: number | null
@@ -9289,8 +9391,10 @@ export type Database = {
               _limit?: number
             }
         Returns: {
+          avatar_url: string
           body: string
           created_at: string
+          display_name: string
           id: string
           user_id: string
         }[]
@@ -9340,6 +9444,7 @@ export type Database = {
           avatar_url: string
           display_name: string
           points: number
+          rank: number
           streak: number
           user_id: string
         }[]
