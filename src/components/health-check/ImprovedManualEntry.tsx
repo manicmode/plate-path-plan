@@ -17,12 +17,8 @@ import { handleSearchPick } from '@/shared/search-to-analysis';
 type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm';
 
 interface ImprovedManualEntryProps {
-  onProductSelected?: (product: any) => void;
-  onBack?: () => void;
-  onClose?: () => void;
-  onSelect?: (result: CanonicalSearchResult) => void;
-  initialQuery?: string;
-  autoFocus?: boolean;
+  onProductSelected: (product: any) => void;
+  onBack: () => void;
   // Optional props for unified analysis pipeline
   setAnalysisData?: (data: any) => void;
   setStep?: (step: string | ModalState) => void;
@@ -31,14 +27,10 @@ interface ImprovedManualEntryProps {
 export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
   onProductSelected,
   onBack,
-  onClose,
-  onSelect,
-  initialQuery = '',
-  autoFocus = false,
   setAnalysisData,
   setStep
 }) => {
-  const [textQuery, setTextQuery] = useState(initialQuery);
+  const [textQuery, setTextQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CanonicalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [netError, setNetError] = useState<{ message: string; code?: string } | null>(null);
@@ -212,12 +204,6 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       !!result.caloriesPer100g
     );
     
-    // Use onSelect prop if provided (for voice/manual flows)
-    if (onSelect) {
-      onSelect(result);
-      return;
-    }
-    
      // Use unified analysis pipeline if available, otherwise fall back to legacy
      if (setAnalysisData && setStep) {
        await handleSearchPick({
@@ -227,7 +213,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
          setStep: (step: string) => setStep(step as ModalState),
          onError: (error) => toast.error(error?.message ?? 'Could not analyze item'),
        });
-    } else if (onProductSelected) {
+    } else {
       // Legacy fallback for existing components
       const legacyProduct = searchResultToLegacyProduct(result);
       onProductSelected(legacyProduct);
@@ -320,7 +306,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
           <header className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0 safe-top"
             style={{ paddingTop: `max(1rem, env(safe-area-inset-top))` }}>
             <Button
-              onClick={onBack || onClose}
+              onClick={onBack}
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
@@ -336,7 +322,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                   <Info className="w-5 h-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 bg-zinc-800 border-zinc-700 z-[70]" side="bottom" align="end">
+              <PopoverContent className="w-64 bg-zinc-800 border-zinc-700">
                 <div className="text-sm text-zinc-300">
                   <p className="font-medium text-white mb-2">Search Tips</p>
                   <p>Add a brand name for better results, e.g., "Trader Joe's almond granola"</p>
