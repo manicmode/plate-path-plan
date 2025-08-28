@@ -7,7 +7,7 @@ import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
-import { scannerLiveCamEnabled } from '@/lib/platform';
+import { scannerLiveCamEnabled, isIOSWebKit } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 
 
@@ -57,25 +57,124 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const startCamera = async () => {
     try {
       console.log("[PHOTO] Requesting camera stream...");
-      const constraints = {
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // iOS-specific camera constraints to ensure torch support
+      let constraints;
+      if (isIOSWebKit) {
+        // On iOS, avoid fixed dimensions that might select ultra-wide camera
+        constraints = {
+          video: {
+            facingMode: { ideal: 'environment' }
+            // No width/height constraints for iOS to get main camera with torch
+          },
+          audio: false
+        };
+        console.log('[PHOTO][iOS] Using relaxed constraints for torch compatibility');
+      } else {
+        // High-res back camera request for non-iOS
+        constraints = {
+          video: { 
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+      }
+      
+      let mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       
       // Defensive strip: remove any audio tracks that slipped in
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
 
+      let track = mediaStream.getVideoTracks()[0];
+      let settings = track.getSettings();
+      
+      console.log('[PHOTO] Initial stream settings:', {
+        width: settings.width,
+        height: settings.height,
+        facingMode: settings.facingMode,
+        deviceId: settings.deviceId
+      });
+
+      // Check torch capabilities
+      let caps = track?.getCapabilities?.();
+      const hasTorch = !!(caps && 'torch' in caps);
+      console.log('[TORCH] Initial capabilities:', caps);
+      console.log('[TORCH] Initial torch support:', hasTorch);
+      
+      // iOS retry logic: if no torch, try to find alternate back camera
+      if (isIOSWebKit && !hasTorch) {
+        console.log('[PHOTO][iOS] No torch on initial camera, attempting retry with alternate device');
+        try {
+          // Stop current stream
+          mediaStream.getTracks().forEach(track => track.stop());
+          
+          // Get available video input devices
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          console.log('[PHOTO][iOS] Available video devices:', videoDevices.map(d => ({ 
+            label: d.label, 
+            deviceId: d.deviceId.substring(0, 8) + '...' 
+          })));
+          
+          // Try each back-facing camera until we find one with torch
+          for (const device of videoDevices) {
+            if (device.label.toLowerCase().includes('back') || 
+                device.label.toLowerCase().includes('rear') ||
+                device.label.toLowerCase().includes('environment')) {
+              try {
+                console.log(`[PHOTO][iOS] Trying device: ${device.label}`);
+                const retryConstraints = {
+                  video: {
+                    deviceId: { exact: device.deviceId },
+                    facingMode: { ideal: 'environment' }
+                  },
+                  audio: false
+                };
+                
+                const retryStream = await navigator.mediaDevices.getUserMedia(retryConstraints);
+                const retryTrack = retryStream.getVideoTracks()[0];
+                const retryCaps = retryTrack?.getCapabilities?.();
+                const retryHasTorch = !!(retryCaps && 'torch' in retryCaps);
+                
+                console.log(`[PHOTO][iOS] Device ${device.label} torch support:`, retryHasTorch);
+                
+                if (retryHasTorch) {
+                  console.log(`[PHOTO][iOS] Found torch-capable camera: ${device.label}`);
+                  mediaStream = retryStream;
+                  track = retryTrack;
+                  settings = retryTrack.getSettings();
+                  caps = retryCaps;
+                  break;
+                } else {
+                  // Stop this stream and try next
+                  retryStream.getTracks().forEach(track => track.stop());
+                }
+              } catch (deviceError) {
+                console.warn(`[PHOTO][iOS] Failed to access device ${device.label}:`, deviceError);
+              }
+            }
+          }
+        } catch (enumerateError) {
+          console.warn('[PHOTO][iOS] Device enumeration failed:', enumerateError);
+        }
+      }
+      
+      console.log('[PHOTO] Final stream settings:', {
+        width: settings.width,
+        height: settings.height,
+        facingMode: settings.facingMode,
+        deviceId: settings.deviceId
+      });
+      console.log('[TORCH] Final capabilities:', caps);
+      console.log('[TORCH] Final torch support:', !!(caps && 'torch' in caps));
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
         
-        const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
         setStream(mediaStream);
         
