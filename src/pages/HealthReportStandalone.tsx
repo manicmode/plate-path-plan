@@ -68,7 +68,7 @@ export default function HealthReportStandalone() {
           description: "Failed to load health report",
           variant: "destructive"
         });
-        navigate('/saved-reports');
+        navigate('/scan/saved-reports');
         return;
       }
 
@@ -78,7 +78,7 @@ export default function HealthReportStandalone() {
           description: "Health report not found",
           variant: "destructive"
         });
-        navigate('/saved-reports');
+        navigate('/scan/saved-reports');
         return;
       }
 
@@ -91,7 +91,7 @@ export default function HealthReportStandalone() {
         description: "Failed to load health report",
         variant: "destructive"
       });
-      navigate('/saved-reports');
+      navigate('/scan/saved-reports');
     } finally {
       setLoading(false);
     }
@@ -200,7 +200,7 @@ export default function HealthReportStandalone() {
   };
 
   const handleClose = () => {
-    navigate('/saved-reports');
+    navigate('/scan/saved-reports');
   };
 
   if (loading) {
@@ -220,7 +220,7 @@ export default function HealthReportStandalone() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-foreground mb-2">Report Not Found</h2>
           <p className="text-foreground/60 mb-4">The requested health report could not be found.</p>
-          <Button onClick={() => navigate('/saved-reports')}>
+          <Button onClick={() => navigate('/scan/saved-reports')}>
             Back to Saved Reports
           </Button>
         </div>
@@ -240,7 +240,7 @@ export default function HealthReportStandalone() {
         <div className="mb-4">
           <Button
             variant="outline" 
-            onClick={() => navigate('/saved-reports')}
+            onClick={() => navigate('/scan/saved-reports')}
             className="flex items-center"
           >
             ← Back to Saved Reports
