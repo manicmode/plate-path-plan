@@ -3,6 +3,8 @@
   MEDIA_INTERCEPTORS_ENABLED: true,           // master switch for all interceptors
   MEDIA_BLOCK_SRCOBJECT_ON_IOS: false,        // MUST be false for now (no throws)
   MEDIA_STRICT_LOCKDOWN: false,               // prevents non-configurable property locks
+  // NEW: allow live video ONLY on the debug route
+  IOS_LIVE_DEBUG: location.pathname.startsWith('/debug/cam-pure') || /[?&]live=1\b/.test(location.search),
   ...(window as any).__featureFlags,
 };
 
@@ -47,12 +49,18 @@ applySecurityHeaders();
   (navigator.mediaDevices as any).getUserMedia = (constraints: any = {}) => {
     try {
       const hasVideo = !!(constraints && constraints.video);
-      const allowVideo =
-        !!((window as any).__featureFlags && (window as any).__featureFlags.IOS_LIVE_SCANNER_CAM);
+      const ff = (window as any).__featureFlags || {};
+      const allowVideo = ff.IOS_LIVE_SCANNER_CAM || ff.IOS_LIVE_DEBUG;
+      
       if (isIOSWebKit && hasVideo && !allowVideo) {
-        console.error('[HARD-BLOCK][GUM] Blocking video getUserMedia on iOS');
+        console.warn('[HARD-BLOCK][GUM] Blocking video getUserMedia on iOS');
         const err = new DOMException('Video getUserMedia disabled on iOS', 'NotAllowedError');
         return Promise.reject(err);
+      }
+      
+      // If we get here on /debug/cam-pure, ALLOW and log loudly:
+      if (isIOSWebKit && hasVideo && ff.IOS_LIVE_DEBUG) {
+        console.warn('[TEST-ALLOW][GUM] Allowing video getUserMedia on /debug/cam-pure');
       }
     } catch {}
     return orig(constraints);
