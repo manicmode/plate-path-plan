@@ -40,17 +40,19 @@ export function goToHealthAnalysis(
   navigate: (to: string, opts?: any) => void,
   payload: { source: 'off' | 'manual' | 'barcode' | 'photo' | 'voice'; barcode?: string; name?: string }
 ) {
-  const params = new URLSearchParams({
-    modal: 'health',                 // Force the health analyzer, not scanner
-    source: String(payload.source),
-    barcode: payload.barcode ?? '',
-    name: payload.name ?? '',
-  });
+  const source = payload.source || 'voice';
+  const name = payload.name || '';
+  const barcode = payload.barcode || '';
+  
+  let url = `/scan?modal=health&source=${encodeURIComponent(source)}&name=${encodeURIComponent(name)}`;
+  if (barcode) {
+    url += `&barcode=${encodeURIComponent(barcode)}`;
+  }
   
   console.warn('[NAV][goToHealthAnalysis]', { 
-    path: `/scan?${params.toString()}`,
+    url,
     payload 
   });
   
-  navigate(`/scan?${params.toString()}`);
+  navigate(url);
 }

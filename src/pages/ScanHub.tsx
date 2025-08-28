@@ -153,9 +153,11 @@ export default function ScanHub() {
 
     if (forceVoice) {
       // Handle voice modal - skip scanner entirely
+      console.log('[SCAN][guard] Voice modal requested - skipping scanner');
       setVoiceModalOpen(true);
     } else if (forceHealth) {
       // Open the health analysis modal immediately
+      console.log('[SCAN][guard] Health modal requested - skipping scanner');
       setHealthCheckModalOpen(true);
     }
   }, [forceHealth, forceVoice, source, barcode, name, modalParam, navigate]);
@@ -244,6 +246,7 @@ export default function ScanHub() {
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
         onClose={() => {
+          console.log('[SCAN] Health modal closed');
           setHealthCheckModalOpen(false);
           handledRef.current = false;
           // Clear params after modal closes
