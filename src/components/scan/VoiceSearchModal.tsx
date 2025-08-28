@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, Mic, Search, Edit3 } from 'lucide-react';
+import { X, Mic, Search, Edit3, Loader2 } from 'lucide-react';
 import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
 import { SearchResultsList } from '../health-check/SearchResultsList';
@@ -24,6 +24,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   const [searchResults, setSearchResults] = useState<CanonicalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'processing' | 'error'>('idle');
 
   const { 
     isRecording, 
@@ -33,14 +34,34 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     stopRecording, 
     isBrowserSTTSupported,
     isServerSTTAvailable
-  } = useProgressiveVoiceSTT();
+  } = useProgressiveVoiceSTT({ allowOnScannerRoutes: true });
 
-  // Update editable transcript when new transcript comes in
+  // Suggestion chips for quick searches
+  const suggestionChips = ['Greek yogurt', 'Chicken breast', 'Kind bar'];
+
+  // Update editable transcript and auto-search when new transcript comes in
   useEffect(() => {
     if (transcript) {
       setEditableTranscript(transcript);
+      
+      // Auto-search if we have a confident transcript
+      if (transcript.trim().length > 2) {
+        const searchQuery = transcript.trim();
+        performSearch(searchQuery);
+      }
     }
   }, [transcript]);
+
+  // Update voice state based on recording/processing
+  useEffect(() => {
+    if (isRecording) {
+      setVoiceState('listening');
+    } else if (isProcessing) {
+      setVoiceState('processing');
+    } else {
+      setVoiceState('idle');
+    }
+  }, [isRecording, isProcessing]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -55,12 +76,20 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     if (isRecording) {
       await stopRecording();
     } else {
-      await startRecording();
+      try {
+        await startRecording();
+      } catch (error) {
+        setVoiceState('error');
+      }
     }
   };
 
-  const handleSearch = async () => {
-    const query = editableTranscript.trim();
+  const handleSuggestionClick = async (suggestion: string) => {
+    setEditableTranscript(suggestion);
+    await performSearch(suggestion);
+  };
+
+  const performSearch = async (query: string) => {
     if (!query) return;
 
     setIsSearching(true);
@@ -77,6 +106,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
       
       setSearchResults(results);
       setShowResults(true);
+      setVoiceState('idle');
       
       // Log telemetry
       logFallbackEvents.resultsReceived(
@@ -88,9 +118,15 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
       
     } catch (error) {
       console.error('❌ [VoiceSearch] Search failed:', error);
+      setVoiceState('error');
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleSearch = async () => {
+    const query = editableTranscript.trim();
+    await performSearch(query);
   };
 
   const handleResultSelect = async (result: CanonicalSearchResult) => {
@@ -111,6 +147,43 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   };
 
   const canRecord = isBrowserSTTSupported() || isServerSTTAvailable();
+
+  // MicButton component with animations
+  const MicButton = ({ state, onTap }: { state: 'idle' | 'listening' | 'processing', onTap: () => void }) => {
+    const getButtonClass = () => {
+      switch (state) {
+        case 'listening':
+          return 'bg-red-600 hover:bg-red-700 animate-pulse';
+        case 'processing':
+          return 'bg-blue-600 hover:bg-blue-700';
+        default:
+          return 'bg-green-600 hover:bg-green-700';
+      }
+    };
+
+    const getContent = () => {
+      if (state === 'processing') {
+        return <Loader2 className="h-8 w-8 animate-spin" />;
+      }
+      return <Mic className={`h-8 w-8 ${state === 'listening' ? 'animate-bounce' : ''}`} />;
+    };
+
+    return (
+      <div className="relative">
+        <Button
+          onClick={onTap}
+          disabled={state === 'processing'}
+          size="lg"
+          className={`rounded-full w-24 h-24 mb-4 transition-all duration-300 ${getButtonClass()}`}
+        >
+          {getContent()}
+        </Button>
+        {state === 'listening' && (
+          <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-ping opacity-20"></div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,35 +217,60 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                     {!canRecord ? (
                       <div className="text-white/70">
                         <Mic className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg mb-2">Voice not supported</p>
-                        <p className="text-sm">This device doesn't support voice input</p>
+                        <p className="text-lg mb-2">Voice search isn't supported</p>
+                        <p className="text-sm mb-4">Try the native app or type instead</p>
+                        <Button
+                          onClick={() => setShowResults(false)}
+                          variant="outline"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          Use keyboard instead
+                        </Button>
+                      </div>
+                    ) : voiceState === 'error' ? (
+                      <div className="text-white/70">
+                        <Mic className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg mb-2">Microphone access needed</p>
+                        <p className="text-sm mb-4">Enable microphone in Settings → Safari → Microphone</p>
+                        <Button
+                          onClick={() => setVoiceState('idle')}
+                          variant="outline"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          Try again
+                        </Button>
                       </div>
                     ) : (
                       <>
-                        <Button
-                          onClick={handleVoiceToggle}
-                          disabled={isProcessing}
-                          size="lg"
-                          className={`rounded-full w-24 h-24 mb-4 ${
-                            isRecording 
-                              ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
-                              : 'bg-green-600 hover:bg-green-700'
-                          }`}
-                        >
-                          <Mic className={`h-8 w-8 ${isRecording ? 'animate-bounce' : ''}`} />
-                        </Button>
+                        <MicButton state={voiceState} onTap={handleVoiceToggle} />
                         
                         <p className="text-white text-lg mb-2">
-                          {isRecording ? 'Listening...' : 'Tap to speak'}
+                          {voiceState === 'listening' ? 'Listening...' : 
+                           voiceState === 'processing' ? 'Analyzing...' : 'Tap to speak'}
                         </p>
                         
-                        {isProcessing && (
-                          <p className="text-blue-300 text-sm">Processing audio...</p>
+                        {voiceState === 'idle' && (
+                          <p className="text-white/70 text-sm mb-4">
+                            Or try these suggestions:
+                          </p>
                         )}
-                        
-                        <p className="text-white/70 text-sm">
-                          Say something like "Greek yogurt" or "Chicken breast"
-                        </p>
+
+                        {/* Suggestion chips */}
+                        {voiceState === 'idle' && (
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {suggestionChips.map((suggestion) => (
+                              <Button
+                                key={suggestion}
+                                onClick={() => handleSuggestionClick(suggestion)}
+                                variant="outline"
+                                size="sm"
+                                className="text-white border-white/30 hover:bg-white/10 text-xs"
+                              >
+                                {suggestion}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </>
                     )}
                   </CardContent>
@@ -183,8 +281,10 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                   <Card className="bg-green-900/20 border-green-400/30 backdrop-blur-sm">
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-2 mb-3">
-                        <Edit3 className="h-4 w-4 text-green-400" />
-                        <h3 className="text-green-300 font-medium">Edit transcript if needed:</h3>
+                        <div className="flex items-center space-x-2 text-green-300">
+                          You said: <span className="font-medium">"{editableTranscript}"</span>
+                          <Edit3 className="h-3 w-3 cursor-pointer" />
+                        </div>
                       </div>
                       
                       <Input
@@ -201,7 +301,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                       >
                         {isSearching ? (
                           <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Searching...
                           </>
                         ) : (
@@ -243,7 +343,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
           {/* Footer */}
           <div className="p-6 pt-3 bg-gradient-to-t from-black/40 to-transparent">
-            <p className="text-center text-gray-400 text-sm">
+            <p className="text-center text-gray-500 text-xs">
               Powered by {isBrowserSTTSupported() ? 'browser' : 'server'} speech recognition
             </p>
           </div>

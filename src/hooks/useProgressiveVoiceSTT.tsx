@@ -15,7 +15,11 @@ interface UseProgressiveVoiceSTTReturn {
   sttMethod: 'none' | 'browser' | 'server';
 }
 
-export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
+interface UseProgressiveVoiceSTTOptions {
+  allowOnScannerRoutes?: boolean;
+}
+
+export const useProgressiveVoiceSTT = (options: UseProgressiveVoiceSTTOptions = {}): UseProgressiveVoiceSTTReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -102,9 +106,13 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
       throw new Error('MediaRecorder not supported');
     }
 
-    // Hard block voice on scanner routes
+    // Allow voice on scanner routes when specifically in voice modal context
+    const params = new URLSearchParams(location.search);
+    const forceVoice = params.get('modal') === 'voice';
     const isScannerRoute = /^\/(scan|health-scan|barcode|photo)/i.test(location.pathname);
-    if (isScannerRoute) {
+    const allowVoiceHere = forceVoice || !isScannerRoute || options.allowOnScannerRoutes;
+    
+    if (!allowVoiceHere) {
       debugLog('Voice blocked on scanner route');
       throw new Error('Voice recording disabled on scanner routes');
     }
@@ -155,7 +163,7 @@ export const useProgressiveVoiceSTT = (): UseProgressiveVoiceSTTReturn => {
     setIsRecording(true);
     setSttMethod('server');
     debugLog('Server STT recording started');
-  }, []);
+  }, [options.allowOnScannerRoutes]);
 
   const stopServerSTT = useCallback(async () => {
     return new Promise<void>((resolve) => {
