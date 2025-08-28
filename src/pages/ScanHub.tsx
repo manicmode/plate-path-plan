@@ -151,9 +151,6 @@ export default function ScanHub() {
     // Open the health analysis modal immediately
     console.warn('[NAV][open-health]', { modalParam, source, barcode, name });
     setHealthCheckModalOpen(true);
-    
-    // Clear the param after open to avoid re-open on back/forward
-    navigate('/scan', { replace: true });
   }, [forceHealth, source, barcode, name, modalParam, navigate]);
 
   // Log page open
@@ -239,7 +236,12 @@ export default function ScanHub() {
       {/* Modals */}
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
-        onClose={() => setHealthCheckModalOpen(false)}
+        onClose={() => {
+          setHealthCheckModalOpen(false);
+          handledRef.current = false;
+          // Clear params after modal closes
+          if (modalParam === 'health') navigate('/scan', { replace: true });
+        }}
         initialState={forceHealth ? 'loading' : 'scanner'}
         analysisData={forceHealth ? { source, barcode, name } : undefined}
       />

@@ -138,22 +138,33 @@ function variants(q: string) {
 function rankScore(item: any, raw: string) {
   const name = (item?.name ?? item?.product_name ?? '').toLowerCase();
   const cats = JSON.stringify(item?.categories_tags ?? item?.categories ?? '').toLowerCase();
+  const q = raw.toLowerCase().trim();
+  const qTokens = new Set(q.split(/\s+/));
   const v = variants(raw);
 
-  // exact word match bonus (word boundary)
-  const exact = v.some(w => new RegExp(`(?:^|\\b)${escapeRe(w)}(?:\\b|$)`).test(name)) ? 100 : 0;
-
-  // starts-with & contains
-  const starts = v.some(w => name.startsWith(w)) ? 30 : 0;
+  let s = 0;
+  
+  // Exact name match (highest priority)
+  if (name === q) s += 100;
+  
+  // Starts with query
+  if (name.startsWith(q)) s += 40;
+  
+  // Category boost for eggs when searching "egg"
+  if (cats.includes('egg')) s += 25;
+  
+  // Penalize noodles when searching for "egg"
+  if (name.includes('noodle')) s -= 30;
+  
+  // Token overlap bonus
+  const tokens = new Set(name.split(/\W+/));
+  qTokens.forEach(t => { if (tokens.has(t)) s += 5; });
+  
+  // Legacy exact word match bonus
+  const exact = v.some(w => new RegExp(`(?:^|\\b)${escapeRe(w)}(?:\\b|$)`).test(name)) ? 50 : 0;
   const contains = v.some(w => name.includes(w)) ? 10 : 0;
 
-  // category boost for eggs
-  const eggCat = /(^|[^a-z])eggs?([^a-z]|$)/.test(cats) || cats.includes('en:eggs') ? 40 : 0;
-
-  // penalize obvious distractors when searching for eggs
-  const noodlePenalty = /noodle|pasta/.test(name) ? 50 : 0;
-
-  return exact + starts + contains + eggCat - noodlePenalty;
+  return s + exact + contains;
 }
 
 // Apply after data arrives, before rendering
