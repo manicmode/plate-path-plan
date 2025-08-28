@@ -693,7 +693,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       // If we have the onManualSearch prop, use it (preferred)
       if (onManualSearch) {
-        onManualSearch(barcodeInput.trim(), 'text');
+        try {
+          await onManualSearch(barcodeInput.trim(), 'text');
+        } catch (error) {
+          console.error('❌ Manual search failed:', error);
+          throw error; // Re-throw to be caught by voice handler
+        }
         return;
       }
       
@@ -936,10 +941,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               <span className="font-medium">Voice Recognition</span>
             </div>
             <VoiceRecordingButton 
-              onVoiceResult={(text) => {
+              onVoiceResult={async (text) => {
                 console.log('🎤 Voice result received in HealthScanner:', text);
                 setBarcodeInput(text);
-                handleSearchDatabase();
+                
+                // Add error handling for voice processing
+                try {
+                  await handleSearchDatabase();
+                } catch (error) {
+                  console.error('❌ Voice search failed:', error);
+                  // Reset any loading states and show error
+                  setShowSuggestions(true);
+                  await generateSmartSuggestions(text);
+                }
               }}
             />
           </div>

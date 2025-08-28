@@ -561,12 +561,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
     } catch (error) {
       console.error(`❌ ${type} analysis failed:`, error);
+      
+      // Reset loading state immediately
+      setCurrentState('scanner');
+      
       toast({
         title: "Analysis Failed",
         description: `Unable to process ${type} input. Please try again.`,
         variant: "destructive",
       });
-      setCurrentState('fallback');
+      
+      // If it's a voice input, show fallback options
+      if (type === 'voice') {
+        setTimeout(() => {
+          setCurrentState('fallback');
+        }, 1000);
+      }
     }
   };
 
