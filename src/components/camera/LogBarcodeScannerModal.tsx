@@ -20,11 +20,13 @@ function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
   const readyStates = tracks.map(t => t.readyState);
   const videosWithSrc = Array.from(document.querySelectorAll('video'))
     .filter(el => (el as HTMLVideoElement).srcObject).length;
+  const audioTracks = s ? s.getAudioTracks().length : 0;
   // eslint-disable-next-line no-console
   console.log(tag, {
     route: location.pathname + location.search,
     tracks: tracks.length,
     readyStates,
+    audioTracks,
     videosWithSrc,
   });
 }
@@ -189,14 +191,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const startCamera = async () => {
     try {
       console.log("[LOG] Requesting camera stream...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: { 
           facingMode: { ideal: 'environment' },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
         audio: false
-      });
+      };
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Defensive strip: remove any audio tracks that slipped in
+      const s = mediaStream;
+      s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
+      console.warn('[MEDIA][camera-only] removed audio tracks:', s.getAudioTracks?.().length);
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;

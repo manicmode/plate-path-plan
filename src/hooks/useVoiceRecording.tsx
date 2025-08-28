@@ -102,8 +102,17 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         streamId: stream.id 
       });
       
-    // AUDIT: Guard against MediaRecorder on iOS WebKit for camera features
-    const isIOSWebKit = /iP(hone|ad|od)/.test(navigator.userAgent) && /WebKit/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+    // Hard block voice on scanner routes
+    const isScannerRoute = /^\/(scan|health-scan|barcode|photo)/i.test(location.pathname);
+    if (isScannerRoute) {
+      debugLog('Voice blocked on scanner route');
+      throw new Error('Voice recording disabled on scanner routes');
+    }
+
+    // AUDIT: Guard against MediaRecorder on iOS WebKit
+    const isIOSWebKit =
+      /AppleWebKit/.test(navigator.userAgent) &&
+      (/iP(hone|ad|od)/.test(navigator.userAgent) || ('ontouchend' in document));
     if (isIOSWebKit) {
       debugLog('Skipping MediaRecorder on iOS WebKit to avoid recording indicator');
       throw new Error('MediaRecorder disabled on iOS WebKit to prevent recording indicator');
