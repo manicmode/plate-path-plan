@@ -143,6 +143,7 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
 /**
  * Unified handler for search result selection
  * Both manual and voice search should call this with identical parameters
+ * NEVER throws - all errors are handled gracefully
  */
 export async function handleSearchPick({
   item,
@@ -158,8 +159,11 @@ export async function handleSearchPick({
   onError?: (error: any) => void;
 }) {
   try {
+    // DEV diagnostics: log selection start
+    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] start', { source, name: item?.name });
+    
+    setStep('analyzing'); // show spinner
     const product = normalizeSearchItem(item);
-    console.log(`[SEARCH→ANALYSIS] ${source} selection:`, product.name);
 
     // IMPORTANT: Call the SAME analyzer used by manual entry
     const analysis = await analyzeFromProduct(product, { source });
@@ -187,11 +191,24 @@ export async function handleSearchPick({
       confidence: item.confidence || 0.8
     };
 
-    console.log(`[SEARCH→ANALYSIS] ${source} analysis complete:`, analysisResult);
+    // DEV diagnostics: log success
+    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] ok', { source });
+    
     setAnalysisData(analysisResult);
     setStep('report');
-  } catch (error) {
+  } catch (error: any) {
+    // DEV diagnostics: log failure
+    if (import.meta.env.DEV) console.log('[SEARCH→ANALYSIS] fail', { source, msg: error?.message });
+    
     console.error(`[SEARCH→ANALYSIS] ${source} error:`, error);
-    onError?.(error);
+    
+    // Show user-friendly error and stay in search view
+    const friendlyMessage = error?.message ?? 'Could not analyze item';
+    onError?.(new Error(friendlyMessage));
+    
+    setStep('search'); // stay in list, don't crash
+    
+    // NEVER throw - this prevents app crashes
+    return;
   }
 }

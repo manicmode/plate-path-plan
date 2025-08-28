@@ -236,8 +236,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   }, [isOpen, analysisData, initialState]);
 
+  // Safe navigation - prevent black screens
+  const canGoBack = () => window.history.length > 1;
+  const safeClose = () => {
+    if (canGoBack()) navigate(-1);
+    else navigate('/scan', { replace: true }); // guaranteed landing
+  };
+
   // Shared handler for search result selection (manual and voice)
   const onSelectSearchItem = async (result: any) => {
+    // handleSearchPick is now fully error-safe and never throws
     await handleSearchPick({
       item: result,
       source: isVoice ? 'voice' : 'manual',
@@ -1113,7 +1121,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => { 
+        if (!open) safeClose(); 
+      }}
+    >
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
           currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'

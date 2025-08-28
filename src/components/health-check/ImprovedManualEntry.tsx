@@ -214,6 +214,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     
     // Always use unified analysis pipeline when available (for both voice and manual)
     if (setAnalysisData && setStep) {
+      // handleSearchPick is now fully error-safe and never throws
       await handleSearchPick({
         item: result,
         source: 'manual',
@@ -323,7 +324,16 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
           <header className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0 safe-top"
             style={{ paddingTop: `max(1rem, env(safe-area-inset-top))` }}>
             <Button
-              onClick={onBack || onClose}
+              onClick={() => {
+                // Safe back navigation
+                if (window.history.length > 1) {
+                  if (onBack) onBack();
+                  else if (onClose) onClose();
+                } else {
+                  // Fallback to scan page if no history
+                  window.location.href = '/scan';
+                }
+              }}
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
