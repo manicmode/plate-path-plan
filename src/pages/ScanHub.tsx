@@ -18,6 +18,7 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
+import { goToHealthAnalysis } from '@/lib/nav';
 
 export default function ScanHub() {
   const navigate = useNavigate();
@@ -26,8 +27,8 @@ export default function ScanHub() {
   
   // Parse URL params for forced health modal
   const qs = new URLSearchParams(location.search);
-  const modalParam = qs.get('modal');                // 'health' | 'barcode' | null
-  const source = (qs.get('source') ?? '') as 'off'|'manual'|'barcode'|'photo'|'';
+  const modalParam = qs.get('modal');                // 'health' | 'barcode' | 'voice' | null
+  const source = (qs.get('source') ?? '') as 'off'|'manual'|'barcode'|'photo'|'voice'|'';
   const barcode = qs.get('barcode') ?? undefined;
   const name = qs.get('name') ?? undefined;
 
@@ -133,26 +134,29 @@ export default function ScanHub() {
     });
   };
 
-  // Handle voice product selection
+  // Handle voice product selection - navigate directly to health analysis (No scanner for voice!)
   const handleVoiceProductSelected = (product: any) => {
     console.log('Voice product selected:', product);
     addRecent({ mode: 'voice', label: product.productName || 'Voice entry' });
     
-    // Use the modal system instead of broken /health-report route  
-    setHealthCheckModalOpen(true); // Open health check with product data
+    // Never open scanner from voice - go directly to health analysis
+    goToHealthAnalysis(navigate, { 
+      source: 'voice',
+      name: product.productName || product.name || ''
+    });
   };
 
-  // Handle URL params to force health modal (with guards)
+  // Handle URL params to force modals (with guards)
   useEffect(() => {
     if ((!forceHealth && !forceVoice) || handledRef.current) return;
     handledRef.current = true;
 
-    if (forceHealth) {
+    if (forceVoice) {
+      // Handle voice modal - skip scanner entirely
+      setVoiceModalOpen(true);
+    } else if (forceHealth) {
       // Open the health analysis modal immediately
       setHealthCheckModalOpen(true);
-    } else if (forceVoice) {
-      // Open the voice search modal immediately  
-      setVoiceModalOpen(true);
     }
   }, [forceHealth, forceVoice, source, barcode, name, modalParam, navigate]);
 

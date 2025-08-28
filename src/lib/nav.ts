@@ -38,7 +38,7 @@ export function goToHealthReport(navigate: NavigateFunction, params: HealthAnaly
  */
 export function goToHealthAnalysis(
   navigate: (to: string, opts?: any) => void,
-  payload: { source: 'off' | 'manual' | 'barcode' | 'photo'; barcode?: string; name?: string }
+  payload: { source: 'off' | 'manual' | 'barcode' | 'photo' | 'voice'; barcode?: string; name?: string }
 ) {
   const params = new URLSearchParams({
     modal: 'health',                 // Force the health analyzer, not scanner

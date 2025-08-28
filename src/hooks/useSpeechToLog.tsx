@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useVoiceRecording } from './useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import { toast } from 'sonner';
+import { USE_SERVER_STT } from '@/lib/flags';
 
 interface UseSpeechToLogProps {
   onFoodDetected: (food: any) => void;
@@ -34,6 +35,15 @@ export const useSpeechToLog = ({ onFoodDetected, onError }: UseSpeechToLogProps)
 
   const handleVoiceRecording = async () => {
     debugLog('Voice recording triggered', { isRecording, isProcessing });
+    
+    // Guard server STT calls behind feature flag
+    if (!USE_SERVER_STT) {
+      const errorMsg = 'Server STT is disabled. Use web speech recognition instead.';
+      debugLog('Server STT disabled');
+      toast.error(errorMsg);
+      onError?.(errorMsg);
+      return;
+    }
     
     if (!isVoiceRecordingSupported()) {
       const errorMsg = 'Voice recording is not supported on this device or browser';

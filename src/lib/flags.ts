@@ -54,6 +54,10 @@ export const NUDGE_MAX_PER_DAY: number =
 export const NUDGE_ROLLOUT_PERCENT: number = 
   parseInt(getEnv('NUDGE_ROLLOUT_PERCENT') ?? '100', 10); // Changed default to 100% rollout
 
+// Voice feature flag - web stays false for webkitSpeechRecognition only
+export const USE_SERVER_STT: boolean = 
+  (getEnv('USE_SERVER_STT') ?? '0') === '1';
+
 // Simple hash function for user rollout determination
 function simpleHash(str: string): number {
   let hash = 0;

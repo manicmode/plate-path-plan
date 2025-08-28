@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { USE_SERVER_STT } from '@/lib/flags';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -76,6 +77,13 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
   const startRecording = useCallback(async () => {
     debugLog('Starting recording process...');
+    
+    // Guard server STT calls behind feature flag
+    if (!USE_SERVER_STT) {
+      debugLog('Server STT disabled - use webkitSpeechRecognition instead');
+      toast.error('Server STT is disabled. Use web speech recognition instead.');
+      return;
+    }
     
     // Check browser compatibility first
     if (!isVoiceRecordingSupported()) {
@@ -203,6 +211,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
               debugLog('FileReader completed', { resultLength: (reader.result as string).length });
               const base64Audio = (reader.result as string).split(',')[1];
               debugLog('Base64 audio extracted', { length: base64Audio.length });
+              
+              // Guard server STT calls behind feature flag
+              if (!USE_SERVER_STT) {
+                debugLog('Server STT disabled');
+                throw new Error('Server STT is disabled');
+              }
               
               // Call the voice-to-text edge function with enhanced error logging
               debugLog('Sending audio to voice-to-text function...');
