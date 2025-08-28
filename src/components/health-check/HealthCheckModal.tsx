@@ -1,7 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { handleSearchPick } from '@/shared/search-to-analysis';
 import { HealthScannerInterface } from './HealthScannerInterface';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
@@ -87,7 +90,7 @@ export interface HealthAnalysisResult {
   overallRating: 'excellent' | 'good' | 'fair' | 'poor' | 'avoid';
 }
 
-type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm';
+type ModalState = 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm' | 'search';
 
 export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
@@ -95,6 +98,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   initialState = 'scanner',
   analysisData
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [currentState, setCurrentState] = useState<ModalState>(initialState);
   const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -112,22 +117,47 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { user } = useAuth();
   const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
+  const didInitVoice = useRef(false);
+  const [initialQuery, setInitialQuery] = useState<string>('');
+
+  // Parse URL params
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const source = params.get('source'); // 'voice' | 'manual' | 'barcode' | 'photo'
+  const voiceName = params.get('name') ?? '';
+  const isVoice = source === 'voice';
+  const allowScanner = source === 'barcode' || source === 'photo';
+
+  // Voice route initialization - runs once per mount
+  useEffect(() => {
+    if (!isVoice || !isOpen) return;
+    if (didInitVoice.current) return; // prevent re-entry loop
+    didInitVoice.current = true;
+    setCurrentState('search'); // force search view
+    setInitialQuery(voiceName || ''); // prefill with transcript
+    if (import.meta.env.DEV) console.log('[VOICE→SEARCH] init', { voiceName });
+  }, [isVoice, isOpen, voiceName]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setCurrentState(initialState);
-      setAnalysisResult(null);
-      setCandidates([]);
-      setMealFoods([]);
-      setIsProcessing(false);
-      setCaptureId(null);
-      setLoadingMessage('');
-      setCurrentAnalysisData({ source: 'photo' });
+      // Don't reset state for voice flow - let voice init handle it
+      if (!isVoice) {
+        setCurrentState(initialState);
+        setAnalysisResult(null);
+        setCandidates([]);
+        setMealFoods([]);
+        setIsProcessing(false);
+        setCaptureId(null);
+        setLoadingMessage('');
+        setCurrentAnalysisData({ source: 'photo' });
+      }
+    } else {
+      // Reset voice init flag when modal closes
+      didInitVoice.current = false;
     }
-  }, [isOpen, initialState]);
+  }, [isOpen, initialState, isVoice]);
 
-  // Handle analysis data from URL params (e.g., from manual entry)
+  // Handle analysis data from URL params (e.g., from barcode scans)
   useEffect(() => {
     if (!isOpen || !analysisData) return;
     
@@ -137,90 +167,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     const isSearchFlow = source === 'voice' || source === 'manual';
     if (isSearchFlow) {
       console.log(`🚫 Blocking enhanced-health-scanner for search flow: ${source}`);
-      return;
-    }
-    
-    // Handle voice-specific routing first
-    if (source === 'voice' && name) {
-      if (import.meta.env.DEV) console.log('[VOICE→HEALTH] start', { name });
-      
-      const runId = crypto.randomUUID();
-      currentRunId.current = runId;
-      
-      setCurrentState('loading');
-      setLoadingMessage(`Looking up "${name}"...`);
-      setAnalysisType('manual');
-      setCurrentAnalysisData({ source: 'voice' });
-      
-      const handleVoiceAnalysis = async () => {
-        try {
-          // Hard timeout for safety
-          const watchdog = setTimeout(() => {
-            if (currentRunId.current === runId) {
-              console.log('[VOICE→HEALTH] timeout, fallback to manual');
-              toManualAdd(name);
-            }
-          }, 8000);
-          
-          // Quick name lookup with network guard
-          const controller = new AbortController();
-          const abortTimer = setTimeout(() => controller.abort(), 6000);
-          
-          try {
-            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-              body: { 
-                mode: 'search',
-                query: name,
-                source: 'voice-health-scan'
-              }
-            });
-            
-            clearTimeout(abortTimer);
-            
-            if (currentRunId.current !== runId) return; // stale
-            
-            if (error || !data?.ok) {
-              if (import.meta.env.DEV) console.log('[VOICE→HEALTH] lookup failed, fallback to manual', { error });
-              toManualAdd(name);
-              return;
-            }
-            
-            // Process successful result
-            const legacy = toLegacyFromEdge(data);
-            if (import.meta.env.DEV) console.log('[VOICE→HEALTH] lookup hit', legacy);
-            
-            if (legacy.status === 'no_detection' || legacy.status === 'not_found') {
-              toManualAdd(name);
-              return;
-            }
-            
-            await processAndShowResult(legacy, data, 'voice-lookup', 'manual');
-            
-          } catch (networkError) {
-            if (currentRunId.current !== runId) return; // stale
-            if (import.meta.env.DEV) console.log('[VOICE→HEALTH] network error, fallback to manual', networkError);
-            toManualAdd(name);
-          } finally {
-            clearTimeout(watchdog);
-          }
-          
-        } catch (error) {
-          if (currentRunId.current !== runId) return; // stale
-          console.error('[VOICE→HEALTH] analysis failed:', error);
-          toManualAdd(name);
-        }
-      };
-      
-      const toManualAdd = (productName: string) => {
-        if (currentRunId.current !== runId) return; // stale
-        if (import.meta.env.DEV) console.log('[VOICE→HEALTH] fallback→manual', productName);
-        
-        // Navigate to manual entry with prefilled name
-        window.history.replaceState(null, '', `/scan?manual=${encodeURIComponent(productName)}`);
-        setCurrentState('fallback');
-      };
-      
-      handleVoiceAnalysis();
       return;
     }
     
@@ -289,6 +235,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       processAnalysisData();
     }
   }, [isOpen, analysisData, initialState]);
+
+  // Shared handler for search result selection (manual and voice)
+  const onSelectSearchItem = async (result: any) => {
+    await handleSearchPick({
+      item: result,
+      source: isVoice ? 'voice' : 'manual',
+      setAnalysisData: setAnalysisResult,
+      setStep: (step: string) => setCurrentState(step as ModalState),
+      onError: (error) => toast({ title: "Error", description: error?.message ?? 'Could not analyze item', variant: "destructive" }),
+    });
+  };
 
   const handleImageCapture = async (payload: any) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
@@ -1165,7 +1122,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       >
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {currentState === 'scanner' && !analysisData?.source?.includes('voice') && (
+          
+          {currentState === 'search' && (
+            <ImprovedManualEntry
+              initialQuery={initialQuery}
+              onSelect={onSelectSearchItem}
+              onClose={() => navigate(-1)}
+              autoFocus={true}
+              setAnalysisData={setAnalysisResult}
+              setStep={(step) => setCurrentState(step as ModalState)}
+            />
+          )}
+
+          {currentState === 'scanner' && allowScanner && (
             <HealthScannerInterface 
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
