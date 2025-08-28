@@ -48,8 +48,8 @@ export function ScanTile({
         </div>
       </div>
       
-      {/* Subtle hover effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-cyan-500/0 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+      {/* Subtle hover effect - symmetrical radial gradient */}
+      <div className="absolute inset-0 bg-gradient-radial from-cyan-500/0 via-cyan-500/2 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
 }
