@@ -219,7 +219,7 @@ export default function ScanHub() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="relative flex items-center justify-center">
-            <div className="flex items-center gap-3 ml-8">
+            <div className="flex items-center gap-3 ml-12">
               <h1 className="text-4xl font-bold text-white mb-3">
                 Health Scan
               </h1>
