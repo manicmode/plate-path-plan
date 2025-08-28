@@ -68,6 +68,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
+  // Add debug logging for torch state changes
+  useEffect(() => {
+    console.log('[TORCH_DEBUG] Torch state changed:', { supportsTorch, torchOn });
+  }, [supportsTorch, torchOn]);
+
   useEffect(() => {
     if (open) {
       startCamera();
@@ -118,13 +123,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         await videoRef.current.play();
         
         const track = mediaStream.getVideoTracks()[0];
+        console.log('[TORCH_DEBUG] Setting track:', { 
+          trackId: track?.id, 
+          readyState: track?.readyState,
+          capabilities: track?.getCapabilities?.() 
+        });
         trackRef.current = track;
         setStream(mediaStream);
         
         mediaLog('[MEDIA][PhotoCapture][mount]', videoRef.current);
         
+        // Check torch support immediately
+        if (track) {
+          const caps = track.getCapabilities?.();
+          const hasTorch = !!(caps && 'torch' in caps);
+          console.log('[TORCH_DEBUG] Track capabilities:', { 
+            caps, 
+            hasTorch,
+            allCaps: Object.keys(caps || {})
+          });
+        }
+        
         // Ensure torch state after track is ready
         setTimeout(() => {
+          console.log('[TORCH_DEBUG] Ensuring torch state after timeout');
           ensureTorchState();
         }, 100);
         
@@ -156,10 +178,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const toggleTorch = async () => {
+    console.log('[TORCH_DEBUG] toggleTorch called', { 
+      supportsTorch, 
+      torchOn, 
+      hasTrack: !!trackRef.current,
+      trackId: trackRef.current?.id,
+      trackReadyState: trackRef.current?.readyState 
+    });
+    
+    if (!supportsTorch) {
+      console.error('[TORCH_DEBUG] Torch not supported');
+      return;
+    }
+    
+    if (!trackRef.current) {
+      console.error('[TORCH_DEBUG] No track available');
+      return;
+    }
+    
     try {
+      console.log('[TORCH_DEBUG] Calling setTorch with:', !torchOn);
       const result = await setTorch(!torchOn);
+      console.log('[TORCH_DEBUG] setTorch result:', result);
       if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason);
+        console.warn("Torch toggle failed:", result.reason, result.error);
       }
     } catch (error) {
       console.error("Error toggling torch:", error);
@@ -313,7 +355,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             {supportsTorch && (
               <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)]">
                 <Button
-                  onClick={toggleTorch}
+                  onClick={() => {
+                    console.log('[TORCH_DEBUG] Button clicked');
+                    toggleTorch();
+                  }}
                   size="lg"
                   className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 ${
                     torchOn 
