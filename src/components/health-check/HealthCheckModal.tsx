@@ -319,8 +319,24 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setCaptureId(currentCaptureId);
     setIsProcessing(true);
     
-    try {
+    // V2 Analysis Type Computation and Guard
+    const isV2 = import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+    const hasBarcode = !!(typeof payload === 'string' ? 
+      payload.match(/&barcode=(\d+)$/)?.[1] : 
+      payload.detectedBarcode);
+    const analysisType = hasBarcode ? 'barcode' : 'image'; // Map to valid types
+    const logAnalysisType = isV2 ? (hasBarcode ? 'photo+barcode' : 'photo') : (hasBarcode ? 'barcode' : 'photo');
+    setAnalysisType(analysisType);
+    console.log('[PHOTO][INTENT:modal]', { isV2, hasBarcode, analysisType: logAnalysisType });
+
+    if (isV2) {
+      // IMPORTANT: no scanner UI in v2 ever
+      // do NOT call openBarcodeScanner() or setStep('scanner')
       setCurrentState('loading');
+      // proceed to nutrition lookup/vision-extract → analyzer
+    }
+    
+    try {
       setLoadingMessage('Analyzing image...');
       
       // Extract data from payload
