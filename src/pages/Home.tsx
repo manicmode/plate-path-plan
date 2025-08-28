@@ -1927,7 +1927,11 @@ const Home = () => {
       {/* Health Check Modal */}
       <HealthCheckModal 
         isOpen={isHealthCheckOpen} 
-        onClose={() => setIsHealthCheckOpen(false)} 
+        onClose={() => {
+          setIsHealthCheckOpen(false);
+          // Navigate back to previous page
+          navigate(-1);
+        }} 
       />
       
       

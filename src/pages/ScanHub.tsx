@@ -249,8 +249,8 @@ export default function ScanHub() {
           console.log('[SCAN] Health modal closed');
           setHealthCheckModalOpen(false);
           handledRef.current = false;
-          // Clear params after modal closes
-          if (modalParam === 'health') navigate('/scan', { replace: true });
+          // Navigate back to previous page instead of hardcoded routes
+          navigate(-1);
         }}
         initialState={forceHealth ? 'loading' : 'scanner'}
         analysisData={forceHealth ? { source, barcode, name } : undefined}
