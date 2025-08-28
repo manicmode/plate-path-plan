@@ -49,12 +49,6 @@ export default function SavedReports() {
         console.log('[SAVED-REPORTS][SESSION]', { hasSession: !!sess?.session, user: sess?.session?.user?.id });
       }
 
-      // EMERGENCY: Force empty state until DB is working properly
-      console.log('[EMERGENCY] Forcing empty state - no mock data allowed');
-      setSavedReports([]);
-      setLoading(false);
-      return;
-
       const { data, error } = await supabase
         .from('nutrition_logs')
         .select('*')
