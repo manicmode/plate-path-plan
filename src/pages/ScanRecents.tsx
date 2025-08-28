@@ -6,70 +6,49 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { getScanRecents, clearScanRecents, removeScanRecent } from '@/lib/scanRecents';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface NutritionLog {
-  id: string;
-  food_name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  quality_score: number;
-  quality_verdict: string;
-  created_at: string;
-  source: string;
-}
+import { fetchSavedReports, countSavedReports, SavedReportItem } from '@/services/savedReports';
 
 export default function ScanRecents() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [recents, setRecents] = useState(getScanRecents());
-  const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
+  const [savedReports, setSavedReports] = useState<SavedReportItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('recent');
+  const [badgeCount, setBadgeCount] = useState(0);
 
   useEffect(() => {
     setRecents(getScanRecents());
     loadSavedReports();
+    loadBadgeCount();
   }, []);
 
   const loadSavedReports = async () => {
     setLoading(true);
     try {
-      // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user - showing empty state');
-        setSavedReports([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Error loading saved reports:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load saved reports",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
-      setSavedReports(data || []);
+      const { items } = await fetchSavedReports({ limit: 25 });
+      setSavedReports(items);
+      console.log(`[SCAN_RECENTS_PAGE] Loaded ${items.length} saved reports`);
     } catch (error) {
-      console.error('Error loading saved reports:', error);
+      console.error('[SCAN_RECENTS_PAGE] Load error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load saved reports",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBadgeCount = async () => {
+    try {
+      const count = await countSavedReports();
+      setBadgeCount(count);
+    } catch (error) {
+      console.error('[SCAN_RECENTS_PAGE] Count error:', error);
+      // Don't show error toast for count failures
     }
   };
 
@@ -174,7 +153,7 @@ export default function ScanRecents() {
               <BookOpen className="h-4 w-4 mr-2" />
               Saved Reports
               <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
-                {savedReports.length}
+                {badgeCount}
               </Badge>
             </TabsTrigger>
           </TabsList>
