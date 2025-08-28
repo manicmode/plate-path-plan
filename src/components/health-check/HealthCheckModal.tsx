@@ -52,6 +52,8 @@ interface HealthCheckModalProps {
     source?: string;
     barcode?: string;
     name?: string;
+    productName?: string;
+    product?: any;
   };
 }
 
@@ -149,8 +151,54 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return; // Don't fall through to any "health/analysis" effects
     }
     
+    // Handle manual product analysis directly in modal
+    if (source === 'manual' && analysisData.product) {
+      console.log('[MANUAL→HEALTH] Processing product directly:', analysisData.product);
+      
+      const runId = crypto.randomUUID();
+      currentRunId.current = runId;
+      
+      setCurrentState('loading');
+      setLoadingMessage(`Analyzing "${analysisData.productName || name}"...`);
+      setAnalysisType('manual');
+      setCurrentAnalysisData({ source: 'manual' });
+      
+      // Convert product to analysis format and process
+      setTimeout(async () => {
+        try {
+          const { handleSearchPick } = await import('@/shared/search-to-analysis');
+          await handleSearchPick({
+            item: analysisData.product,
+            source: 'manual',
+            setAnalysisData: (result) => {
+              if (currentRunId.current !== runId) return;
+              processDirectAnalysisResult(result);
+            },
+            setStep: (step: string) => {
+              if (currentRunId.current !== runId) return;
+              if (step === 'report') {
+                // Result was processed successfully
+                return;
+              }
+              setCurrentState(step as ModalState);
+            },
+            onError: (error) => {
+              if (currentRunId.current !== runId) return;
+              console.error('[MANUAL→HEALTH] Analysis failed:', error);
+              setCurrentState('fallback');
+            }
+          });
+        } catch (error) {
+          if (currentRunId.current !== runId) return;
+          console.error('[MANUAL→HEALTH] Processing failed:', error);
+          setCurrentState('fallback');
+        }
+      }, 100);
+      return;
+    }
+    
     // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
-    const isSearchFlow = source === 'voice' || source === 'manual';
+    const isSearchFlow = source === 'voice';
     if (isSearchFlow) {
       console.log(`🚫 Blocking enhanced-health-scanner for search flow: ${source}`);
       return;
@@ -305,6 +353,67 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       processAnalysisData();
     }
   }, [isOpen, analysisData, initialState]);
+
+  // Helper to process direct analysis results from manual entry
+  const processDirectAnalysisResult = (result: any) => {
+    if (!result) {
+      setCurrentState('fallback');
+      return;
+    }
+
+    try {
+      // Normalize the result to match HealthAnalysisResult format
+      const normalizedResult: HealthAnalysisResult = {
+        itemName: result.itemName || result.productName || 'Unknown Product',
+        productName: result.productName || result.itemName,
+        title: result.title || result.productName || result.itemName,
+        healthScore: extractScore(result.score || result.healthScore) || 50,
+        ingredientsText: result.ingredientsText || result.ingredients || '',
+        ingredientFlags: result.ingredientFlags || [],
+        nutritionData: result.nutritionData || {
+          calories: result.calories || result.caloriesPer100g,
+          protein: result.protein || result.proteinPer100g,
+          carbs: result.carbs || result.carbsPer100g,
+          fat: result.fat || result.fatPer100g,
+          fiber: result.fiber || result.fiberPer100g,
+          sugar: result.sugar || result.sugarPer100g,
+          sodium: result.sodium || result.sodiumPer100mg
+        },
+        healthProfile: result.healthProfile || {
+          isOrganic: result.isOrganic,
+          isGMO: result.isGMO,
+          allergens: result.allergens || [],
+          preservatives: result.preservatives || [],
+          additives: result.additives || []
+        },
+        personalizedWarnings: result.personalizedWarnings || result.warnings || [],
+        suggestions: result.suggestions || [],
+        overallRating: result.overallRating || result.rating || 'fair'
+      };
+
+      setAnalysisResult(normalizedResult);
+      setCurrentState('report');
+      
+      // Add to recents
+      if (user?.id) {
+        addRecent({ 
+          mode: 'manual', 
+          label: normalizedResult.itemName
+        });
+      }
+      
+      // Trigger daily score calculation if user is logged in
+      if (user?.id) {
+        triggerDailyScoreCalculation(user.id).catch(err => 
+          console.warn('Daily score calculation failed:', err)
+        );
+      }
+      
+    } catch (error) {
+      console.error('Failed to process analysis result:', error);
+      setCurrentState('fallback');
+    }
+  };
 
   // Photo Pipeline v2 handler
   const handleImageCaptureV2 = async (payload: any) => {

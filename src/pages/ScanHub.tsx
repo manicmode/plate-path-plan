@@ -99,6 +99,10 @@ export default function ScanHub() {
     didInitVoice: false
   });
 
+  // Health modal state for unified analysis pipeline
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [healthModalStep, setHealthModalStep] = useState<'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm'>('scanner');
+
   // Feature flag checks
   const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
   const voiceEnabled = isFeatureEnabled('fallback_voice_enabled');
@@ -182,18 +186,20 @@ export default function ScanHub() {
     setManualEntryOpen(true);
   };
 
-  // Handle manual entry product selection
+  // Handle manual entry product selection - use unified in-modal pipeline
   const handleManualProductSelected = (product: any) => {
     console.log('Manual product selected:', product);
     addRecent({ mode: 'manual', label: product.productName || 'Manual entry' });
     
-    // Use the URL-based navigation to health analyzer
-    import('@/lib/nav').then(({ goToHealthAnalysis }) => {
-      goToHealthAnalysis(navigate, {
-        source: 'off',
-        barcode: product?.barcode || undefined,
-        name: product?.productName || ''
-      });
+    // Close manual entry and stay in health modal for analysis
+    setManualEntryOpen(false);
+    setHealthCheckModalOpen(true);
+    setHealthModalStep('loading');
+    setAnalysisData({
+      source: 'manual',
+      productName: product.productName || product.name,
+      barcode: product.barcode,
+      product: product
     });
   };
 
@@ -349,6 +355,8 @@ export default function ScanHub() {
         onClose={() => {
           console.log('[SCAN] Health modal closed');
           setHealthCheckModalOpen(false);
+          setAnalysisData(null);
+          setHealthModalStep('scanner');
           handledRef.current = false;
           
           // Debug logging
@@ -365,8 +373,8 @@ export default function ScanHub() {
             navigate('/', { replace: true });
           }
         }}
-        initialState={forceHealth ? 'loading' : 'scanner'}
-        analysisData={forceHealth ? { source, barcode, name } : undefined}
+        initialState={forceHealth ? 'loading' : analysisData ? healthModalStep : 'scanner'}
+        analysisData={forceHealth ? { source, barcode, name } : analysisData}
       />
 
       <PhotoCaptureModal
@@ -383,22 +391,27 @@ export default function ScanHub() {
             addRecent({ mode: searchState.source, label: product.productName || 'Search entry' });
             setCurrentState('hub'); // Return to hub
             
-            // Use the URL-based navigation to health analyzer
-            import('@/lib/nav').then(({ goToHealthAnalysis }) => {
-              goToHealthAnalysis(navigate, {
-                source: 'off',
-                barcode: product?.barcode || undefined,
-                name: product?.productName || ''
-              });
+            // Use unified in-modal pipeline instead of navigation
+            setHealthCheckModalOpen(true);
+            setHealthModalStep('loading');
+            setAnalysisData({
+              source: searchState.source,
+              productName: product.productName || product.name,
+              barcode: product.barcode,
+              product: product
             });
           }}
           onBack={() => setCurrentState('hub')}
           initialQuery={searchState.initialQuery}
+          setAnalysisData={setAnalysisData}
+          setStep={(step: string) => setHealthModalStep(step as 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm')}
         />
       ) : manualEntryOpen && (
         <ImprovedManualEntry
           onProductSelected={handleManualProductSelected}
           onBack={() => setManualEntryOpen(false)}
+          setAnalysisData={setAnalysisData}
+          setStep={(step: string) => setHealthModalStep(step as 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm')}
         />
       )}
 
