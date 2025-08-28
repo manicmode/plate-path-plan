@@ -16,31 +16,6 @@ import { useTorch } from '@/lib/camera/useTorch';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 
-// DEV: media lifecycle logging (scoped to this component; remove after audit)
-const DEV_MEDIA_AUDIT = true;
-function mediaLog(tag: string, videoEl: HTMLVideoElement | null | undefined) {
-  if (!DEV_MEDIA_AUDIT) return;
-  const v = videoEl || null;
-  const s = (v?.srcObject as MediaStream) || null;
-  const tracks = s ? s.getVideoTracks() : [];
-  const readyStates = tracks.map(t => t.readyState);
-  const videosWithSrc = Array.from(document.querySelectorAll('video'))
-    .filter(el => (el as HTMLVideoElement).srcObject).length;
-  const audioTracks = s ? s.getAudioTracks().length : 0;
-  const activeEls = Array.from(document.querySelectorAll('video,audio')).map(e=>{
-    const s = (e as any).srcObject as MediaStream | null;
-    return { tag: e.tagName, hasAudio: !!s?.getAudioTracks?.().length, hasVideo: !!s?.getVideoTracks?.().length };
-  });
-  // eslint-disable-next-line no-console
-  console.log(tag, {
-    route: location.pathname + location.search,
-    tracks: tracks.length,
-    audioTracks,
-    readyStates,
-    videosWithSrc,
-    activeEls,
-  });
-}
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -60,16 +35,6 @@ interface HealthScannerInterfaceProps {
   onCancel?: () => void;
 }
 
-// PHASE 3: Stream/track forensics helper
-function tapStream(s: MediaStream, component: string) {
-  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
-  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
-  for (const t of s.getTracks()) {
-    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
-    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
-    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
-  }
-}
 
 export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onCapture,
@@ -107,8 +72,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       warmUpDecoder();
     }
     return () => {
-      mediaLog('[MEDIA][HealthScannerInterface][pre_cleanup]', videoRef.current);
-
       // 1) Torch off first
       const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
       torchOff(track);
@@ -116,11 +79,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // 2) Stop all tracks
       const stream = (videoRef.current?.srcObject as MediaStream) || undefined;
       if (stream) {
-        console.warn('[CLEANUP][tracks]', { 
-          videoTracks: stream.getVideoTracks().length, 
-          audioTracks: stream.getAudioTracks().length,
-          component: 'HealthScannerInterface' 
-        });
         for (const t of stream.getTracks()) {
           try { t.stop(); } catch {}
           try { stream.removeTrack(t); } catch {}
@@ -130,8 +88,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // 3) Detach video & clear refs
       hardDetachVideo(videoRef.current);
       try { updateStreamRef?.(null); } catch {}
-
-      mediaLog('[MEDIA][HealthScannerInterface][post_cleanup]', videoRef.current);
     };
   }, [currentView]);
 
@@ -201,7 +157,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // Defensive strip: remove any audio tracks that slipped in
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-      console.warn('[MEDIA][camera-only] removed audio tracks:', s.getAudioTracks?.().length);
 
       console.log("[VIDEO] Stream received:", mediaStream);
 
@@ -217,22 +172,18 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       trackRef.current = videoTrack;
       setStream(mediaStream);
-      updateStreamRef(mediaStream);
+        // Update stream reference
+        updateStreamRef(mediaStream);
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
-        
-        // PHASE 3: Add stream forensics
-        tapStream(mediaStream, 'HealthScannerInterface');
-        
-        mediaLog('[MEDIA][HealthScannerInterface][mount]', videoRef.current);
-        
-        // Ensure torch state after track is ready
-        setTimeout(() => {
-          ensureTorchState();
-        }, 200);
-      }
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+          
+          // Ensure torch state after track is ready
+          setTimeout(() => {
+            ensureTorchState();
+          }, 200);
+        }
       
       // Log torch capabilities
       const caps = videoTrack?.getCapabilities?.();

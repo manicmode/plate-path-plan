@@ -16,6 +16,10 @@ export interface CanonicalSearchResult {
   confidence?: number;     // 0-1 ranking score
 }
 
+export function normalizeFoodQuery(s: string) {
+  return s.toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^\p{L}\p{N}\s]/gu,'');
+}
+
 /**
  * Debounced search function with timeout protection
  */
@@ -25,6 +29,7 @@ export async function searchFoodByName(
 ): Promise<CanonicalSearchResult[]> {
   const { timeout = 6000, maxResults = 10 } = options;
   
+  console.warn('[FOOD-SEARCH][submit]', { raw: query });
   console.log('🔍 [FoodSearch] Starting search for:', query);
   
   if (!isFeatureEnabled('fallback_text_enabled')) {
@@ -33,13 +38,18 @@ export async function searchFoodByName(
   }
   
   const trimmedQuery = query.trim();
-  if (trimmedQuery.length < 2) {
+  const normalized = normalizeFoodQuery(trimmedQuery);
+  console.warn('[FOOD-SEARCH][normalize]', { raw: query, normalized });
+  
+  if (normalized.length < 2) {
     console.log('🚫 [FoodSearch] Query too short');
     return [];
   }
   
   try {
+    console.warn('[FOOD-SEARCH][request]', { endpoint: 'supabase:food-search', payload: { query: normalized, maxResults, sources: ['off'] } });
     console.log('📡 [FoodSearch] Calling food-search edge function...');
+    const t0 = performance.now();
     
     // Create timeout controller for 10s timeout
     const timeoutController = new AbortController();
@@ -47,15 +57,17 @@ export async function searchFoodByName(
     
     const { data, error } = await supabase.functions.invoke('food-search', {
       body: { 
-        query: trimmedQuery,
+        query: normalized,  // Use normalized query instead of trimmedQuery
         maxResults,
         sources: ['off'] // Start with OpenFoodFacts only
       }
     });
     
+    const dt = Math.round(performance.now() - t0);
     clearTimeout(timeoutId);
     
     if (error) {
+      console.warn('[FOOD-SEARCH][error]', { name: error?.name, code: error?.code, message: error?.message });
       console.error('❌ [FoodSearch] Edge function error:', error);
       
       // Create custom error with HTTP status code for better UX
@@ -74,23 +86,26 @@ export async function searchFoodByName(
     }
     
     if (!data?.results) {
+      console.warn('[FOOD-SEARCH][response]', { status: 'no_results', count: 0, ms: dt });
       console.log('⚠️ [FoodSearch] No results returned');
       return [];
     }
     
     const results = data.results as CanonicalSearchResult[];
+    console.warn('[FOOD-SEARCH][response]', { status: 200, count: results.length, ms: dt });
     console.log(`✅ [FoodSearch] Found ${results.length} results`);
     
     // Apply client-side ranking boosts
     return results
       .map(result => ({
         ...result,
-        confidence: calculateConfidence(result, trimmedQuery)
+        confidence: calculateConfidence(result, normalized)  // Use normalized query
       }))
       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
       .slice(0, maxResults);
       
   } catch (error) {
+    console.warn('[FOOD-SEARCH][error]', { name: error?.name, code: error?.code, message: error?.message });
     if (error instanceof Error && error.name === 'AbortError') {
       console.log('⏰ [FoodSearch] Search timeout');
       throw new Error('Search timed out - please try a shorter query');

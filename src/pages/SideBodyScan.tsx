@@ -31,16 +31,6 @@ interface AlignmentFeedback {
   feedback: string;
 }
 
-// PHASE 3: Stream/track forensics helper
-function tapStream(s: MediaStream, component: string) {
-  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
-  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
-  for (const t of s.getTracks()) {
-    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
-    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
-    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
-  }
-}
 
 export default function SideBodyScan() {
   const videoRef = useRef<HTMLVideoElement>(null);
