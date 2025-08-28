@@ -153,6 +153,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     // Handle manual product analysis directly in modal
     if (source === 'manual' && analysisData.product) {
+      console.log('[ANALYZER][REQ]', {
+        source: analysisData?.source,
+        name: analysisData?.name,
+        text: (analysisData as any)?.text,
+        hasProduct: !!analysisData?.product
+      });
       console.log('[MANUAL→HEALTH] Processing product directly:', analysisData.product);
       
       const runId = crypto.randomUUID();
@@ -172,6 +178,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             source: 'manual',
             setAnalysisData: (result) => {
               if (currentRunId.current !== runId) return;
+              console.log('[ANALYZER][RES]', {
+                status: 'success',
+                itemName: result?.analysis?.itemName,
+                scoreRaw: result?.analysis?.healthScore ?? result?.analysis?.quality?.score,
+                scoreUnit: 'expected 0–10',
+              });
               processDirectAnalysisResult(result);
             },
             setStep: (step: string) => {
@@ -184,12 +196,18 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             },
             onError: (error) => {
               if (currentRunId.current !== runId) return;
+              console.log('[ANALYZER][RES]', {
+                status: 'error',
+                error: error?.message,
+                scoreUnit: 'failed',
+              });
               console.error('[MANUAL→HEALTH] Analysis failed:', error);
               setCurrentState('fallback');
             }
           });
         } catch (error) {
           if (currentRunId.current !== runId) return;
+          console.log('[ANALYZER][SKIP][FALLBACK]', { reason: 'processing_failed' });
           console.error('[MANUAL→HEALTH] Processing failed:', error);
           setCurrentState('fallback');
         }

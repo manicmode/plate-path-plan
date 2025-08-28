@@ -104,6 +104,11 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  console.log('[REPORT][TITLE+SCORE]', {
+    title: result?.itemName ?? (analysisData as any)?.name,
+    rawScore: result?.healthScore ?? (result as any)?.quality?.score,
+    path: (result as any)?.__fromSnapshot ? 'snapshot' : 'live',
+  });
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);

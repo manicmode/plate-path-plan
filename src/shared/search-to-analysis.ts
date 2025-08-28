@@ -85,7 +85,7 @@ const stripForAnalyze = (p: any) => ({
  */
 const productToText = (p: any) => {
   const n = p.nutriments ?? {};
-  return [
+  const text = [
     `Analyze this product: ${p.name}${p.brand ? ` by ${p.brand}` : ''}.`,
     p.serving ? `Serving: ${p.serving}.` : '',
     'Nutrition:',
@@ -99,6 +99,9 @@ const productToText = (p: any) => {
     n.saturated_fat != null ? `, ${n.saturated_fat} g saturated fat` : '',
     p.ingredients ? `. Ingredients: ${String(p.ingredients).slice(0,400)}.` : ''
   ].join('').replace('Nutrition:,', 'Nutrition:').trim();
+  
+  console.log('[ANALYZER][TEXT_BUILT]', { text });
+  return text;
 };
 
 /**
@@ -119,6 +122,7 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
 
   // PARITY logging: before invoke
   console.log('[PARITY][REQ]', { source, hasText: !!body.text });
+  console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
   
   const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
     body

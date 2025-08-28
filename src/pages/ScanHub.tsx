@@ -387,6 +387,11 @@ export default function ScanHub() {
       {currentState === 'search' ? (
         <ImprovedManualEntry
           onProductSelected={(result) => {
+            console.log('[SELECTION→MODAL][PAYLOAD]', {
+              raw: result, 
+              name: result?.name ?? result?.title ?? result?.product_name ?? null,
+              brand: result?.brand ?? result?.brand_name ?? null
+            });
             console.log('[SELECT→MODAL][OPEN]');
             console.log('[SELECT→MODAL][DATA]', { 
               source: 'manual', 
@@ -401,12 +406,14 @@ export default function ScanHub() {
             // Open HealthCheckModal with normalized data
             setHealthCheckModalOpen(true);
             setHealthModalStep('loading');
-            setAnalysisData({
+            const analysisData = {
               source: 'manual',
               name: result?.name ?? null,
               barcode: result?.barcode ?? null,
               product: result ?? null
-            });
+            };
+            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
+            setAnalysisData(analysisData);
           }}
           onBack={() => setCurrentState('hub')}
           initialQuery={searchState.initialQuery}
@@ -414,6 +421,11 @@ export default function ScanHub() {
       ) : manualEntryOpen && (
         <ImprovedManualEntry
           onProductSelected={(result) => {
+            console.log('[SELECTION→MODAL][PAYLOAD]', {
+              raw: result, 
+              name: result?.name ?? result?.title ?? result?.product_name ?? null,
+              brand: result?.brand ?? result?.brand_name ?? null
+            });
             console.log('[SELECT→MODAL][OPEN]');
             console.log('[SELECT→MODAL][DATA]', { 
               source: 'manual', 
@@ -428,12 +440,14 @@ export default function ScanHub() {
             // Open HealthCheckModal with normalized data
             setHealthCheckModalOpen(true);
             setHealthModalStep('loading');
-            setAnalysisData({
+            const analysisData = {
               source: 'manual',
               name: result?.name ?? null,
               barcode: result?.barcode ?? null,
               product: result ?? null
-            });
+            };
+            console.log('[MODAL][OPEN][FROM_SELECTION]', { analysisData });
+            setAnalysisData(analysisData);
           }}
           onBack={() => setManualEntryOpen(false)}
         />
