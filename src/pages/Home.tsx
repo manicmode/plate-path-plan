@@ -1849,12 +1849,12 @@ const Home = () => {
                 if (tileId === 'supplement-hub') {
                   navigate('/supplement-hub');
                  } else if (tileId === 'health-check') {
-                   // Check if Scan Hub is enabled
-                   if (isFeatureEnabled('scan_hub_enabled')) {
-                     navigate('/scan');
-                   } else {
-                     setIsHealthCheckOpen(true);
-                   }
+                    // Check if Scan Hub is enabled
+                    if (isFeatureEnabled('scan_hub_enabled')) {
+                      navigate('/scan', { state: { from: '/' } });
+                    } else {
+                      setIsHealthCheckOpen(true);
+                    }
                 } else if (tileId === 'game-challenge') {
                   navigate('/game-and-challenge');
                 } else if (tileId === 'influencers') {

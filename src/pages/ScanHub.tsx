@@ -39,32 +39,36 @@ export default function ScanHub() {
   const forceVoice = modalParam === 'voice';
   const handledRef = useRef(false);
 
-  // Track original entry point on first load
+  // Track original entry point - only set once and persist
   useEffect(() => {
+    // Only track the original entry if not already set and not coming from scan-related pages
     if (!originalEntryRef.current) {
-      // Get the referrer from location state or document referrer
-      const stateReferrer = location.state?.from;
-      const docReferrer = document.referrer;
+      const stateFrom = location.state?.from;
+      const currentPath = location.pathname;
       
-      // Determine original entry point, avoiding saved/recent scans pages
-      if (stateReferrer && !stateReferrer.includes('/saved-reports') && !stateReferrer.includes('/recent-scans')) {
-        originalEntryRef.current = stateReferrer;
-      } else if (docReferrer && !docReferrer.includes('/saved-reports') && !docReferrer.includes('/recent-scans')) {
-        // Extract path from full URL
-        try {
-          const url = new URL(docReferrer);
-          originalEntryRef.current = url.pathname;
-        } catch {
+      // If coming with state.from and it's not a scan page, use it
+      if (stateFrom && !stateFrom.includes('/scan')) {
+        originalEntryRef.current = stateFrom;
+      } 
+      // If no state or coming from scan pages, check session storage for persistence
+      else {
+        const storedEntry = sessionStorage.getItem('scan-original-entry');
+        if (storedEntry && !storedEntry.includes('/scan')) {
+          originalEntryRef.current = storedEntry;
+        } else {
+          // Default to home page if no clear non-scan entry point
           originalEntryRef.current = '/';
+          sessionStorage.setItem('scan-original-entry', '/');
         }
-      } else {
-        // Default fallback - prefer home if no clear referrer
-        originalEntryRef.current = '/';
       }
       
-      console.log('[SCAN] Tracked original entry:', originalEntryRef.current);
+      // Store for persistence across navigation
+      if (originalEntryRef.current) {
+        sessionStorage.setItem('scan-original-entry', originalEntryRef.current);
+        console.log('[SCAN] Tracked original entry:', originalEntryRef.current);
+      }
     }
-  }, [location.state]);
+  }, [location]);
   
   const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -287,6 +291,7 @@ export default function ScanHub() {
           // Navigate back to original entry point to avoid saved/recent scans loop
           if (originalEntryRef.current) {
             console.log('[SCAN] Navigating to original entry:', originalEntryRef.current);
+            sessionStorage.removeItem('scan-original-entry'); // Clear after use
             navigate(originalEntryRef.current, { replace: true });
           } else {
             navigate(-1);
