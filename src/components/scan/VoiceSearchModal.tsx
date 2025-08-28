@@ -8,6 +8,11 @@ import { cn } from '@/lib/utils';
 import { StickyHeader } from '@/components/ui/sticky-header';
 import { toast } from 'sonner';
 
+// Navigation helper for routing to Search Modal
+function goToSearchModal(navigate: any, { source, name }: { source: 'voice'; name: string }) {
+  navigate(`/scan?modal=search&source=${source}&name=${encodeURIComponent(name)}&ts=${Date.now()}`, { replace: true });
+}
+
 interface VoiceSearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -77,14 +82,15 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     }
   }, []);
 
-  // Handle suggestion chip clicks - route directly to Health Analysis
+  // Handle suggestion chip clicks - route to Search Modal instead of Health Analysis
   const handleSuggestionClick = useCallback((text: string) => {
     console.log(`[VOICE] Suggestion clicked: ${text}`);
-    goToHealthAnalysis(navigate, { source: 'voice', name: text });
+    goToSearchModal(navigate, { source: 'voice', name: text });
+    console.log('[NAV][goToSearch]', { source: 'voice', name: text });
     onOpenChange(false);
   }, [navigate, onOpenChange]);
 
-  // Handle transcript result - route to Health Analysis or Manual Entry based on confidence
+  // Handle transcript result - route to Search Modal for user selection
   const handleTranscriptAccepted = useCallback((text: string, confidence?: number) => {
     console.log(`[VOICE] Transcript accepted: "${text}" (confidence: ${confidence})`);
     safeSetStatus('processing');
@@ -104,19 +110,12 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
       
       clearTimers();
       
-      // High confidence - go straight to Health Analysis
-      if ((confidence ?? 0) >= 0.82) {
-        console.log('[VOICE] High confidence → Health Analysis');
-        goToHealthAnalysis(navigate, { source: 'voice', name: text });
-        safeSetStatus('done');
-        onOpenChange(false);
-      } else {
-        // Low confidence - go to Manual Entry with query pre-filled
-        console.log('[VOICE] Low confidence → Manual Entry');
-        navigate(`/scan?modal=manual&query=${encodeURIComponent(text)}`);
-        safeSetStatus('done');
-        onOpenChange(false);
-      }
+      // Route to Search Modal regardless of confidence
+      console.log('[VOICE] Routing to Search Modal');
+      goToSearchModal(navigate, { source: 'voice', name: text });
+      console.log('[NAV][goToSearch]', { source: 'voice', name: text });
+      safeSetStatus('done');
+      onOpenChange(false);
     }, 500);
   }, [navigate, onOpenChange, safeSetStatus, clearTimers, status]);
 

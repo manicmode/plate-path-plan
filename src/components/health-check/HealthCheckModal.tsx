@@ -133,6 +133,20 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     const { source, barcode, name } = analysisData;
     
+    // Check URL params for search modal routing
+    const urlParams = new URLSearchParams(window.location.search);
+    const modal = urlParams.get('modal');
+    const urlSource = urlParams.get('source');
+    const urlName = urlParams.get('name');
+    
+    // Voice → Search guard - prevent health analysis flow
+    if (modal === 'search' && urlSource === 'voice' && urlName) {
+      console.log('[VOICE→SEARCH] initialized', { q: urlName });
+      setCurrentState('fallback'); // Use fallback state which shows manual entry
+      setLoadingMessage('');
+      return; // Don't fall through to any "health/analysis" effects
+    }
+    
     // Prevent enhanced-health-scanner calls for search flows (voice/manual selection)
     const isSearchFlow = source === 'voice' || source === 'manual';
     if (isSearchFlow) {
