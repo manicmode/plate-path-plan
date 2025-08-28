@@ -18,14 +18,7 @@ interface SmartLogAIProps {
   onFoodSelect?: (food: FoodPrediction) => void;
 }
 
-const DUMMY_PREDICTIONS: FoodPrediction[] = [
-  { name: "Greek Yogurt", time: "8:30 AM", calories: 150 },
-  { name: "Chicken Salad", time: "12:45 PM", calories: 420 },
-  { name: "Protein Shake", time: "6:00 PM", calories: 280 },
-  { name: "Apple", time: "3:30 PM", calories: 95 },
-  { name: "Stew", time: "7:00 PM", calories: 530 },
-  { name: "Baked Beans", time: "8:00 PM", calories: 210 },
-];
+// Removed mock data - use only real DB data or fallback foods for new users
 
 // Fallback foods for new users with no log history
 const FALLBACK_FOODS: FoodPrediction[] = [
@@ -148,18 +141,11 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   const getSmartPredictions = (): FoodPrediction[] => {
     // If user is very new (less than 5 logs), show mostly fallback foods
     if (!logCount || logCount < 5) {
-      return FALLBACK_FOODS;
+      return FALLBACK_FOODS.slice(0, 4);
     }
     
-    // If user has some history but not much (5-15 logs), mix predictions with fallbacks
-    if (logCount < 15) {
-      const actualPredictions = DUMMY_PREDICTIONS.slice(0, 3);
-      const fallbacksToAdd = FALLBACK_FOODS.slice(0, 3);
-      return [...actualPredictions, ...fallbacksToAdd];
-    }
-    
-    // User has good history, show full AI predictions
-    return DUMMY_PREDICTIONS;
+    // For users with some log history, use fallback foods only (no more mock data)
+    return FALLBACK_FOODS.slice(0, 6);
   };
 
   const getCurrentData = (): FoodPrediction[] => {

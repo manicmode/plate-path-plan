@@ -47,6 +47,12 @@ export default function ScanRecents() {
         return;
       }
 
+      // DEV-only forensic logging
+      if (import.meta.env.DEV) {
+        const { data: sess } = await supabase.auth.getSession();
+        console.log('[SAVED-REPORTS][SESSION]', { hasSession: !!sess?.session, user: sess?.session?.user?.id });
+      }
+
       const { data, error } = await supabase
         .from('nutrition_logs')
         .select('*')
@@ -65,6 +71,12 @@ export default function ScanRecents() {
       }
 
       console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
+      
+      // DEV-only forensic logging
+      if (import.meta.env.DEV) {
+        console.log('[SAVED-REPORTS][DATASOURCE]', { source: 'db', count: data?.length || 0 });
+      }
+      
       setSavedReports(data || []);
     } catch (error) {
       console.error('Error loading saved reports:', error);
