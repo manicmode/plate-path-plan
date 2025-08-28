@@ -361,6 +361,13 @@ export default function ScanHub() {
           setHealthModalStep('scanner');
           handledRef.current = false;
           
+          // Log initial state decision for debugging
+          console.log('[HC][OPEN]', { 
+            from: analysisData?.source, 
+            initial: forceHealth ? 'loading' :
+              (analysisData && analysisData.source !== 'photo') ? 'loading' : 'scanner'
+          });
+          
           // Debug logging
           const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
           console.log('[SCAN] Original entry for navigation:', originalEntry);
@@ -375,7 +382,13 @@ export default function ScanHub() {
             navigate('/', { replace: true });
           }
         }}
-        initialState={forceHealth ? 'loading' : analysisData ? healthModalStep : 'scanner'}
+        initialState={
+          forceHealth
+            ? 'loading'
+            : (analysisData && analysisData.source !== 'photo')
+              ? 'loading'
+              : 'scanner'
+        }
         analysisData={forceHealth ? { source, barcode, name } : analysisData}
       />
 

@@ -153,6 +153,65 @@ function coerceScoreTo10(rawScore: any): number {
   return Math.max(0, Math.min(10, s)); // clamp
 }
 
+type MacroPack = {
+  calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number;
+  sugar_g?: number; sodium_mg?: number; fiber_g?: number; satfat_g?: number;
+  ingredientsText?: string;
+};
+
+const extractMacrosAndIngredients = (product: any): MacroPack => {
+  const p = product || {};
+  const n = p.nutriments || p.nutrition || p.nutrients || {};
+
+  // OFF style keys + common fallbacks
+  const kcal = n['energy-kcal_100g'] ?? n.kcal ?? n.calories ?? n.energy_kcal;
+  const protein = n['proteins_100g'] ?? n.protein_g ?? n.protein;
+  const carbs   = n['carbohydrates_100g'] ?? n.carbs_g ?? n.carbs;
+  const fat     = n['fat_100g'] ?? n.fat_g ?? n.fat;
+  const sugar   = n['sugars_100g'] ?? n.sugar_g ?? n.sugars ?? n.sugar;
+  const sodium  = n['sodium_100g'] ?? n.sodium_mg ?? n.sodium; // mg preferred
+  const fiber   = n['fiber_100g'] ?? n.fiber_g ?? n.fiber;
+  const satfat  = n['saturated-fat_100g'] ?? n.satfat_g ?? n.saturated_fat;
+
+  const ing =
+    p.ingredients_text ??
+    (Array.isArray(p.ingredients) ? p.ingredients.map((i:any)=>i.text||i).join(', ') : undefined) ??
+    p.ingredientsList ??
+    p.ingredients;
+
+  return {
+    calories: kcal, protein_g: protein, carbs_g: carbs, fat_g: fat,
+    sugar_g: sugar, sodium_mg: sodium, fiber_g: fiber, satfat_g: satfat,
+    ingredientsText: ing
+  };
+};
+
+const enrichViaExtractIfNeeded = async (product: any) => {
+  const base = extractMacrosAndIngredients(product);
+  const missingMacros = !base.calories && !base.protein_g && !base.carbs_g && !base.fat_g;
+  const missingIngredients = !base.ingredientsText;
+  const barcode = product?.barcode || product?.code;
+
+  if (!(missingMacros || missingIngredients) || !barcode) {
+    return base;
+  }
+
+  try {
+    const { data, error }: any = await (supabase as any).functions.invoke(
+      'enhanced-health-scanner',
+      { body: { mode: 'extract', barcode } }
+    );
+    if (error) return base;
+
+    const merged = { ...base, ...extractMacrosAndIngredients(data || {}) };
+    console.log('[ENRICH][EXTRACT][HIT]', { barcode, keys: Object.keys(data||{}) });
+    return merged;
+  } catch {
+    console.log('[ENRICH][EXTRACT][MISS]', { barcode });
+    return base;
+  }
+};
+
 /**
  * Map raw analyzer data to core fields with robust extraction
  */
@@ -207,18 +266,77 @@ export async function handleSearchPick({
     
     const product = normalizeSearchItem(item);
 
-    // Use unified analysis - always text-based, no mode: 'product'
-    const analysis = await analyzeFromProduct(product, { source });
+    // Build enriched analyzer text with brand + name + ingredients + macros
+    const brand = item?.brand || item?.brand_name || item?.brands || '';
+    const name = item?.name || item?.product_name || item?.title || item?.label || '';
 
-    // Apply robust mapping to normalize analyzer response
-    const mappedAnalysis = mapAnalyzerToCore(analysis, product.name);
+    // Enrich with detailed nutrition/ingredients if needed
+    const enriched = await enrichViaExtractIfNeeded(product);
+
+    const parts: string[] = [];
+    parts.push(`Analyze this product: ${[brand, name].filter(Boolean).join(' ').trim()}.`);
+
+    if (enriched.ingredientsText) {
+      parts.push(`Ingredients: ${enriched.ingredientsText}.`);
+    }
+
+    const macros: string[] = [];
+    if (enriched.calories != null) macros.push(`${enriched.calories} kcal`);
+    if (enriched.protein_g != null) macros.push(`${enriched.protein_g} g protein`);
+    if (enriched.carbs_g  != null) macros.push(`${enriched.carbs_g} g carbs`);
+    if (enriched.fat_g    != null) macros.push(`${enriched.fat_g} g fat`);
+    if (enriched.sugar_g  != null) macros.push(`${enriched.sugar_g} g sugar`);
+    if (enriched.sodium_mg!= null) macros.push(`${enriched.sodium_mg} mg sodium`);
+    if (enriched.fiber_g  != null) macros.push(`${enriched.fiber_g} g fiber`);
+    if (enriched.satfat_g != null) macros.push(`${enriched.satfat_g} g saturated fat`);
+
+    if (macros.length) parts.push(`Nutrition (per serving or 100g): ${macros.join(', ')}.`);
+
+    const text = parts.join(' ');
+    console.log('[ANALYZER][TEXT]', text);
+
+    // Call analyzer with enriched text
+    const body = { text, taskType: 'food_analysis', complexity: 'auto' };
     
-    // PROOF: Log mapped result
-    console.log('[MAPPED][REPORT]', { 
-      itemName: mappedAnalysis.itemName, 
-      healthScore10: mappedAnalysis.healthScore 
+    // PARITY logging: before invoke
+    console.log('[PARITY][REQ]', { source, hasText: !!body.text });
+    console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
+    
+    const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
+      body
     });
-    console.log('[REPORT][FEED]', { itemName: mappedAnalysis?.itemName, healthScore: mappedAnalysis?.healthScore, hasNutrition: !!product.nutriments, hasIngredients: !!product.ingredients });
+    
+    // PROBE: Log raw analyzer response
+    console.log('[ANALYZER][RAW]', { keys: Object.keys(data||{}), sample: { itemName: data?.itemName, productName: data?.productName, quality: data?.quality, nutrition: data?.nutrition, report: data?.report ? Object.keys(data.report) : null }});
+    
+    // PARITY logging: after invoke
+    console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
+    
+    if (error) {
+      throw new Error(error.message || 'Failed to analyze product');
+    }
+
+    // Robust mapping to feed the popup
+    const raw = data || {};
+    const itemName =
+      raw.itemName || raw.productName || raw.title || raw.name ||
+      raw?.report?.itemName || name || 'Unknown Product';
+
+    const healthScore =
+      coerceScoreTo10(raw.healthScore ?? raw?.quality?.score ?? raw?.report?.quality?.score) ?? 0;
+
+    const analysisNormalized = {
+      ...raw,
+      itemName,
+      healthScore
+    };
+
+    console.log('[REPORT][FEED]', {
+      itemName: analysisNormalized.itemName,
+      healthScore: analysisNormalized.healthScore,
+      hasNutrition: !!(analysisNormalized.nutrition || analysisNormalized.nutritionData),
+      hasIngredients: !!(analysisNormalized.ingredientsText || enriched.ingredientsText)
+    });
 
     // Transform analysis to Health Analysis result format
     const analysisResult = {
@@ -238,7 +356,7 @@ export async function handleSearchPick({
           saturated_fat: product.nutriments?.saturated_fat || 0,
         }
       },
-      analysis: mappedAnalysis,
+      analysis: analysisNormalized,
       source: source,
       confidence: item.confidence || 0.8
     };
