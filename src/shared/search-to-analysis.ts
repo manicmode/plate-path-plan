@@ -105,8 +105,6 @@ const productToText = (p: any) => {
  * Call the same health analysis pipeline that manual entry uses
  */
 export async function analyzeFromProduct(product: NormalizedProduct, options: { source?: SearchSource } = {}) {
-  console.log('[ANALYZE] source=%s normalized=', options.source || 'manual', product);
-  
   const source = options.source || 'manual';
   const stripped = stripForAnalyze(product);
   
@@ -115,20 +113,19 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
     throw new Error('Could not analyze selection: missing product details');
   }
   
-  // Convert product to text format for analysis (both manual and voice selections)
+  // Convert product to text format for analysis (unified approach)
   const text = productToText(stripped);
-  const body = { text, taskType: 'food_analysis', complexity: 'auto', meta: { source } };
+  const body = { text, taskType: 'food_analysis', complexity: 'auto' };
 
-  // DEV diagnostics: log request before invoke
-  const bytes = new Blob([JSON.stringify(body)]).size;
-  logDev('[ANALYZE][REQ]', { source, bytes, body });
+  // PARITY logging: before invoke
+  console.log('[PARITY][REQ]', { source, hasText: !!body.text });
   
   const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
     body
   });
   
-  // DEV diagnostics: log response after invoke
-  logDev('[ANALYZE][RES]', { source, status: error?.context?.status ?? 200, ok: !error });
+  // PARITY logging: after invoke
+  console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
   
   if (error) {
     throw new Error(error.message || 'Failed to analyze product');
@@ -154,11 +151,15 @@ export async function handleSearchPick({
   setStep: (step: string) => void;
   onError?: (error: any) => void;
 }) {
+  console.log('[SEARCH→ANALYSIS]', { source });
+  
   try {
+    // Set loading state
+    setStep('loading');
+    
     const product = normalizeSearchItem(item);
-    console.log(`[SEARCH→ANALYSIS] ${source} selection:`, product.name);
 
-    // IMPORTANT: Call the SAME analyzer used by manual entry
+    // Use unified analysis - always text-based, no mode: 'product'
     const analysis = await analyzeFromProduct(product, { source });
 
     // Transform analysis to Health Analysis result format
@@ -184,11 +185,11 @@ export async function handleSearchPick({
       confidence: item.confidence || 0.8
     };
 
-    console.log(`[SEARCH→ANALYSIS] ${source} analysis complete:`, analysisResult);
     setAnalysisData(analysisResult);
     setStep('report');
   } catch (error) {
-    console.error(`[SEARCH→ANALYSIS] ${source} error:`, error);
+    console.error(`[SEARCH→ANALYSIS][${source.toUpperCase()}] Failed:`, error);
     onError?.(error);
+    setStep('fallback');
   }
 }
