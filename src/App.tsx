@@ -152,6 +152,8 @@ const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
 const CamPure = lazy(() => import('@/pages/debug/CamPure'));
 const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
+const DebugCamPure = lazy(() => import('@/pages/debug/DebugCamPure'));
+const DebugCamPhoto = lazy(() => import('@/pages/debug/DebugCamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
@@ -542,18 +544,22 @@ function AppContent() {
                                <ScanHub />
                              </ProtectedRoute>
                            } />
-                           <Route path="/scan/recents" element={
+                            <Route path="/scan/recents" element={
+                              <ProtectedRoute>
+                                <ScanRecents />
+                              </ProtectedRoute>
+                            } />
+                            
+                          {/* Debug routes - PUBLIC ACCESS (no auth required) */}
+                          <Route path="/debug/cam-pure" element={<DebugCamPure />} />
+                          <Route path="/debug/cam-photo" element={<DebugCamPhoto />} />
+                            
+                          {/* Other debug routes for developers */}
+                           <Route path="/debug/*" element={
                              <ProtectedRoute>
-                               <ScanRecents />
+                               <DebugRoutes />
                              </ProtectedRoute>
                            } />
-                           
-                         {/* Debug routes for developers */}
-                          <Route path="/debug/*" element={
-                            <ProtectedRoute>
-                              <DebugRoutes />
-                            </ProtectedRoute>
-                          } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>
