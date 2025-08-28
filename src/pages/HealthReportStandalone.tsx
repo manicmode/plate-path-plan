@@ -6,6 +6,7 @@ import { HealthReportPopup } from '@/components/health-check/HealthReportPopup';
 import { HealthAnalysisResult } from '@/components/health-check/HealthCheckModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { extractScore } from '@/lib/health/extractScore';
 
 interface NutritionLogData {
   id: string;
@@ -96,8 +97,9 @@ export default function HealthReportStandalone() {
   };
 
   const convertToHealthAnalysisResult = (data: NutritionLogData): HealthAnalysisResult => {
-    // Convert quality score from 0-100 to 0-10 scale
-    const healthScore = (data.quality_score || 0) / 10;
+    // Extract and normalize quality score to 0-100 scale, then convert to 0-10 for HealthAnalysisResult
+    const normalizedScore = extractScore(data.quality_score) ?? 0;
+    const healthScore = normalizedScore / 10;
     
     // Convert quality reasons to ingredient flags format
     const ingredientFlags = (data.quality_reasons || []).map((reason, index) => ({
