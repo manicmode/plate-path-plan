@@ -146,24 +146,43 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      // Don't reset state for voice flow - let voice init handle it
-      if (!isVoice) {
-        console.log('[SCANNER][reset]', { currentState: 'before reset', initialState });
-        setCurrentState(initialState);
-        setAnalysisResult(null);
-        setCandidates([]);
-        setMealFoods([]);
-        setIsProcessing(false);
-        setCaptureId(null);
-        setLoadingMessage('');
-        setCurrentAnalysisData({ source: 'photo' });
-        console.log('[SCANNER][reset]', { currentState: 'after reset', initialState });
+      if (import.meta.env.DEV) {
+        console.log('[MODAL][INIT]', { 
+          source, 
+          isVoice, 
+          isManual, 
+          isBarcodeSource, 
+          isPhotoSource,
+          allowScanner,
+          initialState 
+        });
       }
+      
+      // Set initial state based on source
+      if (isVoice || isManual) {
+        // Voice and manual go to search
+        setCurrentState('search');
+        if (isVoice && voiceName) {
+          setInitialQuery(voiceName);
+        }
+      } else {
+        // Barcode and photo go to scanner
+        setCurrentState('scanner');
+      }
+      
+      // Reset other states
+      setAnalysisResult(null);
+      setCandidates([]);
+      setMealFoods([]);
+      setIsProcessing(false);
+      setCaptureId(null);
+      setLoadingMessage('');
+      setCurrentAnalysisData({ source: 'photo' });
     } else {
       // Reset voice init flag when modal closes
       didInitVoice.current = false;
     }
-  }, [isOpen, initialState, isVoice]);
+  }, [isOpen, source, isVoice, isManual, isBarcodeSource, isPhotoSource, voiceName]);
 
   // Handle analysis data from URL params (e.g., from barcode scans)
   useEffect(() => {
