@@ -296,14 +296,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 <Button
                   onClick={toggleTorch}
                   size="lg"
-                  className={`rounded-full w-12 h-12 p-0 transition-all duration-200 ${
+                  className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 ${
                     torchOn 
-                      ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-500/30' 
-                      : 'bg-gray-700 hover:bg-gray-600 text-white border border-gray-500'
+                      ? 'bg-white/20 hover:bg-white/30 text-yellow-400 border-yellow-400 shadow-lg shadow-yellow-400/30' 
+                      : 'bg-white/10 hover:bg-white/20 text-white border-white/40'
                   }`}
                   title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
                 >
-                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-white' : 'text-gray-300'}`} />
+                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-400' : 'text-white'}`} />
                 </Button>
               </div>
             )}
