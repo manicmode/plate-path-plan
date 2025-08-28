@@ -16,23 +16,44 @@ function stripForAnalyze(p: NormalizedProduct) {
   };
 }
 
+// Convert product to text description that Edge Function expects
+function productToText(product: NormalizedProduct): string {
+  const parts = [];
+  
+  if (product.brand) parts.push(`${product.brand}`);
+  parts.push(product.name);
+  
+  const nutriments = product.nutriments;
+  if (nutriments?.energy_kcal) parts.push(`${nutriments.energy_kcal} calories`);
+  if (nutriments?.proteins) parts.push(`${nutriments.proteins}g protein`);
+  if (nutriments?.carbohydrates) parts.push(`${nutriments.carbohydrates}g carbs`);
+  if (nutriments?.fat) parts.push(`${nutriments.fat}g fat`);
+  
+  if (product.serving) parts.push(`serving size: ${product.serving}`);
+  
+  return parts.join(', ');
+}
+
 export async function analyzeFromProduct(
   product: NormalizedProduct,
   opts?: { source?: ScanSource }
 ): Promise<HealthAnalysis> {
+  const source = opts?.source ?? 'manual';
+  
   // 1) Guarantee Authorization header (401s often happen only on one path)
   const { data: sessionData } = await supabase.auth.getSession();
   const access_token = sessionData?.session?.access_token ?? null;
 
-  // 2) Trim payload (avoid 400/413 from huge objects)
+  // 2) Convert product to text format that Edge Function expects
+  const productText = productToText(product);
   const body = {
-    mode: 'product',
-    product: stripForAnalyze(product),
-    source: opts?.source ?? 'manual'
+    text: productText,
+    complexity: 'auto'
   };
 
   if (import.meta.env.DEV) {
-    console.log('[ANALYZE] calling gpt-smart-food-analyzer with:', body);
+    console.log(`[ANALYZE] payload source=${source}`, JSON.stringify(body, null, 2));
+    console.log(`[ANALYZE] normalized product:`, JSON.stringify(stripForAnalyze(product), null, 2));
   }
 
   // 3) Invoke with strong error surface + one 401 refresh retry
@@ -68,6 +89,37 @@ export async function analyzeFromProduct(
     console.log('[ANALYZE] success:', data);
   }
 
+  // Transform Edge Function response to HealthAnalysis format
+  const transformResponse = (edgeResponse: any, originalProduct: NormalizedProduct): HealthAnalysis => {
+    const food = edgeResponse.foods?.[0] || {};
+    
+    return {
+      itemName: food.name || originalProduct.name,
+      productName: originalProduct.name,
+      healthScore: Math.round((edgeResponse.total_confidence || 0.8) * 100),
+      ingredientsText: originalProduct.ingredients ? JSON.stringify(originalProduct.ingredients) : undefined,
+      ingredientFlags: [], // Edge function doesn't return ingredient flags yet
+      nutritionData: {
+        calories: food.calories || originalProduct.nutriments?.energy_kcal,
+        protein: food.protein || originalProduct.nutriments?.proteins,
+        carbs: food.carbs || originalProduct.nutriments?.carbohydrates,
+        fat: food.fat || originalProduct.nutriments?.fat,
+        fiber: food.fiber || originalProduct.nutriments?.fiber,
+        sugar: food.sugar || originalProduct.nutriments?.sugars,
+        sodium: food.sodium || originalProduct.nutriments?.sodium,
+        saturated_fat: originalProduct.nutriments?.saturated_fat,
+      },
+      analysis: {
+        summary: edgeResponse.processing_notes || 'AI analysis completed',
+        positives: food.confidence > 0.8 ? ['High confidence analysis'] : [],
+        concerns: food.confidence < 0.6 ? ['Low confidence in nutritional data'] : [],
+        recommendations: ['Verify nutritional information for accuracy'],
+      },
+      source,
+      confidence: edgeResponse.total_confidence || 0.8,
+    };
+  };
+
   // Expect the function to return a HealthAnalysis shape
-  return data as HealthAnalysis;
+  return transformResponse(data, product);
 }
