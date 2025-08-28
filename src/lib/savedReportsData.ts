@@ -8,9 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number; cursor?: string | null }) {
   const before = cursor ?? new Date().toISOString();
   // @ts-ignore - New columns not in generated types yet  
-  const q = supabase
+  const q = (supabase as any)
     .from('nutrition_logs_clean')
     .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
+    .in('source', ['photo','barcode','vision_api','manual'])
     .lt('created_at', before)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -25,8 +26,9 @@ export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number
 
 export async function countSavedReports() {
   // @ts-ignore - New columns not in generated types yet
-  const { count, error: countErr } = await supabase
+  const { count, error: countErr } = await (supabase as any)
     .from('nutrition_logs_clean')
+    .in('source', ['photo','barcode','vision_api','manual'])
     .select('*', { count: 'exact', head: true });
   
   if (countErr) {

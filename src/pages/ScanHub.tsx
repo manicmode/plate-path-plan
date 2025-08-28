@@ -233,12 +233,14 @@ export default function ScanHub() {
             size="sm"
             onClick={() => {
               console.log('[HUB][BACK] invoked');
-              if (window?.history?.length > 1) return navigate(-1);
-              const orig = sessionStorage.getItem('scan-original-entry');
-              if (orig && orig !== '/scan') return navigate(orig, { replace: true });
-              return navigate('/explore', { replace: true });
+              const origin = (sessionStorage.getItem('scan-original-entry') || '').toLowerCase();
+              // Normalize: only allow Home or Explore; everything else → Explore
+              const dest =
+                origin.includes('home') || origin === '/' ? '/' :
+                '/explore';
+              navigate(dest, { replace: true });
             }}
-            className="absolute left-0 top-0 text-white hover:bg-white/10 relative z-[80] pointer-events-auto"
+            className="absolute left-4 top-4 z-[80] pointer-events-auto text-white hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
