@@ -25,6 +25,9 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
   
+  // Track original entry point to avoid going back to saved/recent scans
+  const originalEntryRef = useRef<string | null>(null);
+  
   // Parse URL params for forced health modal
   const qs = new URLSearchParams(location.search);
   const modalParam = qs.get('modal');                // 'health' | 'barcode' | 'voice' | null
@@ -35,6 +38,33 @@ export default function ScanHub() {
   const forceHealth = modalParam === 'health';
   const forceVoice = modalParam === 'voice';
   const handledRef = useRef(false);
+
+  // Track original entry point on first load
+  useEffect(() => {
+    if (!originalEntryRef.current) {
+      // Get the referrer from location state or document referrer
+      const stateReferrer = location.state?.from;
+      const docReferrer = document.referrer;
+      
+      // Determine original entry point, avoiding saved/recent scans pages
+      if (stateReferrer && !stateReferrer.includes('/saved-reports') && !stateReferrer.includes('/recent-scans')) {
+        originalEntryRef.current = stateReferrer;
+      } else if (docReferrer && !docReferrer.includes('/saved-reports') && !docReferrer.includes('/recent-scans')) {
+        // Extract path from full URL
+        try {
+          const url = new URL(docReferrer);
+          originalEntryRef.current = url.pathname;
+        } catch {
+          originalEntryRef.current = '/';
+        }
+      } else {
+        // Default fallback - prefer home if no clear referrer
+        originalEntryRef.current = '/';
+      }
+      
+      console.log('[SCAN] Tracked original entry:', originalEntryRef.current);
+    }
+  }, [location.state]);
   
   const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -91,13 +121,18 @@ export default function ScanHub() {
 
   const handleSaves = () => {
     logTileClick('saves');
-    // Navigate to saved reports page
-    navigate('/scan/saved-reports');
+    // Navigate to saved reports page with current scan hub as referrer
+    navigate('/scan/saved-reports', { 
+      state: { from: '/scan' } 
+    });
   };
 
   const handleRecents = () => {
     logTileClick('recents');
-    navigate('/scan/recent-scans');
+    // Navigate to recent scans page with current scan hub as referrer  
+    navigate('/scan/recent-scans', { 
+      state: { from: '/scan' } 
+    });
   };
 
   // Handle barcode detection from scanner - this will be handled by HealthCheckModal
@@ -249,8 +284,13 @@ export default function ScanHub() {
           console.log('[SCAN] Health modal closed');
           setHealthCheckModalOpen(false);
           handledRef.current = false;
-          // Navigate back to previous page instead of hardcoded routes
-          navigate(-1);
+          // Navigate back to original entry point to avoid saved/recent scans loop
+          if (originalEntryRef.current) {
+            console.log('[SCAN] Navigating to original entry:', originalEntryRef.current);
+            navigate(originalEntryRef.current, { replace: true });
+          } else {
+            navigate(-1);
+          }
         }}
         initialState={forceHealth ? 'loading' : 'scanner'}
         analysisData={forceHealth ? { source, barcode, name } : undefined}
