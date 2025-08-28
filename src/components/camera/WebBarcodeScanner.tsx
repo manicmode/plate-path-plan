@@ -250,18 +250,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   }, []);
 
   const startCamera = async () => {
-    // iOS fallback: use photo capture for barcode
-    if (!scannerLiveCamEnabled()) {
-      console.warn('[SCANNER] iOS fallback: photo capture for barcode');
-      try {
-        const file = await openPhotoCapture('image/*','environment');
-        const val = await decodeBarcodeFromFile(file);
-        if (val) onBarcodeDetected(val);
-      } catch {}
-      onClose(); // close the scanner UI since we're one-shot
-      return null; // prevent live pipeline from starting
-    }
-
     try {
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
@@ -309,10 +297,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       } else {
         console.error("[CAMERA] videoRef.current is null");
       }
-    } catch (err) {
-      console.error("[CAMERA FAIL] getUserMedia error:", err);
-      console.error('Camera access error:', err);
-      setError('Unable to access camera. Please check permissions and try again.');
+    } catch (err: any) {
+      console.warn('[SCANNER] Live video denied, using photo fallback', err?.name || err);
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        const val = await decodeBarcodeFromFile(file);
+        if (val) onBarcodeDetected(val);
+        onClose();
+        return null;
+      } catch (fallbackErr) {
+        console.error("[CAMERA FAIL] Both live and photo capture failed:", err, fallbackErr);
+        setError('Unable to access camera. Please check permissions and try again.');
+      }
     }
   };
 

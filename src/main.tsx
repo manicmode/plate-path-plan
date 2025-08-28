@@ -17,21 +17,27 @@ applySecurityHeaders();
 
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};
+// To temporarily re-enable live video on iOS for dev: window.__featureFlags.IOS_LIVE_SCANNER_CAM = true
 
-// --- GLOBAL MIC GUARD ON SCANNER ROUTES (TEMP) ---
-(function guardGetUserMedia() {
+// --- GLOBAL VIDEO getUserMedia HARD BLOCK FOR iOS (TEMP) ---
+(function guardVideoGUM() {
+  const isIOSWebKit =
+    /AppleWebKit/.test(navigator.userAgent) &&
+    (/iP(hone|ad|od)/.test(navigator.userAgent) || ('ontouchend' in document));
+
   const md = navigator.mediaDevices;
   if (!md || !md.getUserMedia) return;
+
   const orig = md.getUserMedia.bind(md);
-  (navigator.mediaDevices as any).getUserMedia = (constraints: any) => {
+  (navigator.mediaDevices as any).getUserMedia = (constraints: any = {}) => {
     try {
-      const path = location.pathname;
-      const isScanner = /^\/(scan|health-scan|barcode|photo)(\/|$)/i.test(path);
-      if (isScanner) {
-        constraints = constraints || {};
-        // Force-disable audio on scanner routes even if callers forget
-        if (constraints.audio !== false) constraints.audio = false;
-        console.warn('[GUARD][GUM] audio forced false on', path);
+      const hasVideo = !!(constraints && constraints.video);
+      const allowVideo =
+        !!((window as any).__featureFlags && (window as any).__featureFlags.IOS_LIVE_SCANNER_CAM);
+      if (isIOSWebKit && hasVideo && !allowVideo) {
+        console.error('[HARD-BLOCK][GUM] Blocking video getUserMedia on iOS');
+        const err = new DOMException('Video getUserMedia disabled on iOS', 'NotAllowedError');
+        return Promise.reject(err);
       }
     } catch {}
     return orig(constraints);

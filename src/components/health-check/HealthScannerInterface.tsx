@@ -219,36 +219,21 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const caps = videoTrack?.getCapabilities?.();
       console.log('[TORCH] caps', caps);
       console.log('[TORCH] supported', !!(caps && 'torch' in caps));
-    } catch (error) {
-      console.error("[CAMERA FAIL] getUserMedia error:", error);  
-      // Fallback to basic camera
+    } catch (error: any) {
+      console.warn('[PHOTO] Live video denied, using native capture', error?.name || error);
       try {
-        const fallbackConstraints = {
-          video: { facingMode: 'environment' },
-          audio: false
+        const file = await openPhotoCapture('image/*','environment');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          onCapture(imageBase64);
         };
-        const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-        
-        // Defensive strip: remove any audio tracks that slipped in
-        const s = fallbackStream;
-        s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-        console.warn('[MEDIA][camera-only] removed audio tracks:', s.getAudioTracks?.().length);
-        
-        const fallbackTrack = fallbackStream.getVideoTracks()[0];
-        trackRef.current = fallbackTrack;
-        setStream(fallbackStream);
-        updateStreamRef(fallbackStream);
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
-        }
-        
-        // Log torch capabilities for fallback stream
-        const caps = fallbackTrack?.getCapabilities?.();
-        console.log('[TORCH] fallback caps', caps);
-        console.log('[TORCH] fallback supported', !!(caps && 'torch' in caps));
-      } catch (fallbackError) {
-        console.error('Camera access completely failed:', fallbackError);
+        reader.readAsDataURL(file);
+        return null;
+      } catch (fallbackErr) {
+        console.error("[HS] Both live and photo capture failed:", error, fallbackErr);
+        // Fallback to the regular view since this component doesn't have error state
+        setCurrentView('manual');
       }
     }
   };

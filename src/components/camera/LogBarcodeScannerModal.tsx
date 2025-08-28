@@ -246,9 +246,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         
         setError(null);
       }
-    } catch (err) {
-      console.error("[LOG] Camera access error:", err);
-      setError('Unable to access camera. Please check permissions and try again.');
+    } catch (err: any) {
+      console.warn('[SCANNER] Live video denied, using photo fallback', err?.name || err);
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        const val = await decodeBarcodeFromFile(file);
+        if (val) onBarcodeDetected(val);
+        onOpenChange(false);
+        return null;
+      } catch (fallbackErr) {
+        console.error("[LOG] Both live and photo capture failed:", err, fallbackErr);
+        setError('Unable to access camera. Please check permissions and try again.');
+      }
     }
   };
 

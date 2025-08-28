@@ -68,11 +68,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
-  // Add debug logging for torch state changes
-  useEffect(() => {
-    console.log('[TORCH_DEBUG] Torch state changed:', { supportsTorch, torchOn });
-  }, [supportsTorch, torchOn]);
-
   useEffect(() => {
     if (open) {
       startCamera();
@@ -84,23 +79,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   }, [open]);
 
   const startCamera = async () => {
-    // iOS fallback: use photo capture for photo analysis
-    if (!scannerLiveCamEnabled()) {
-      console.warn('[PHOTO] iOS fallback: photo capture (no live stream)');
-      try {
-        const file = await openPhotoCapture('image/*','environment');
-        // Process the file with existing photo analysis flow
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imageBase64 = e.target?.result as string;
-          onCapture(imageBase64);
-        };
-        reader.readAsDataURL(file);
-      } catch {}
-      onOpenChange(false);
-      return null;
-    }
-
     try {
       console.log("[PHOTO] Requesting camera stream...");
       const constraints = {
@@ -123,38 +101,34 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         await videoRef.current.play();
         
         const track = mediaStream.getVideoTracks()[0];
-        console.log('[TORCH_DEBUG] Setting track:', { 
-          trackId: track?.id, 
-          readyState: track?.readyState,
-          capabilities: track?.getCapabilities?.() 
-        });
         trackRef.current = track;
         setStream(mediaStream);
         
         mediaLog('[MEDIA][PhotoCapture][mount]', videoRef.current);
         
-        // Check torch support immediately
-        if (track) {
-          const caps = track.getCapabilities?.();
-          const hasTorch = !!(caps && 'torch' in caps);
-          console.log('[TORCH_DEBUG] Track capabilities:', { 
-            caps, 
-            hasTorch,
-            allCaps: Object.keys(caps || {})
-          });
-        }
-        
         // Ensure torch state after track is ready
         setTimeout(() => {
-          console.log('[TORCH_DEBUG] Ensuring torch state after timeout');
           ensureTorchState();
         }, 100);
         
         setError(null);
       }
-    } catch (err) {
-      console.error("[PHOTO] Camera access error:", err);
-      setError('Unable to access camera. Please check permissions and try again.');
+    } catch (err: any) {
+      console.warn('[PHOTO] Live video denied, using native capture', err?.name || err);
+      try {
+        const file = await openPhotoCapture('image/*','environment');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          onCapture(imageBase64);
+        };
+        reader.readAsDataURL(file);
+        onOpenChange(false);
+        return null;
+      } catch (fallbackErr) {
+        console.error("[PHOTO] Both live and photo capture failed:", err, fallbackErr);
+        setError('Unable to access camera. Please check permissions and try again.');
+      }
     }
   };
 
@@ -178,30 +152,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const toggleTorch = async () => {
-    console.log('[TORCH_DEBUG] toggleTorch called', { 
-      supportsTorch, 
-      torchOn, 
-      hasTrack: !!trackRef.current,
-      trackId: trackRef.current?.id,
-      trackReadyState: trackRef.current?.readyState 
-    });
-    
-    if (!supportsTorch) {
-      console.error('[TORCH_DEBUG] Torch not supported');
-      return;
-    }
-    
-    if (!trackRef.current) {
-      console.error('[TORCH_DEBUG] No track available');
-      return;
-    }
-    
     try {
-      console.log('[TORCH_DEBUG] Calling setTorch with:', !torchOn);
       const result = await setTorch(!torchOn);
-      console.log('[TORCH_DEBUG] setTorch result:', result);
       if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason, result.error);
+        console.warn("Torch toggle failed:", result.reason);
       }
     } catch (error) {
       console.error("Error toggling torch:", error);
@@ -355,10 +309,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             {supportsTorch && (
               <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)]">
                 <Button
-                  onClick={() => {
-                    console.log('[TORCH_DEBUG] Button clicked');
-                    toggleTorch();
-                  }}
+                  onClick={toggleTorch}
                   size="lg"
                   className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 ${
                     torchOn 
