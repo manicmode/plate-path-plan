@@ -43,19 +43,24 @@ export default function SavedReports() {
         return;
       }
 
-      // Session & auth audit logging
-      const { data: sess } = await supabase.auth.getSession();
-      console.log('[SAVED][SESSION]', { user: sess?.session?.user?.id, hasAuth: !!sess?.session });
+      // DEV proof of session
+      const { data: s } = await supabase.auth.getSession();
+      console.log('[SAVED][SESSION]', { user: s?.session?.user?.id, hasAuth: !!s?.session });
 
-      // Phase 1: DB-only query with RLS (no manual user filtering)
-      const { data, error } = await supabase
+      // Main list (DB only, RLS, no local merges)
+      // @ts-ignore - New columns not in generated types yet
+      const query = supabase
         .from('nutrition_logs')
         .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
+        .eq('is_mock', false)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(25);
 
+      const { data, error } = await query;
+
       if (error) {
-        console.error('Error loading saved reports:', error);
+        console.error('[SAVED][QUERY][ERROR]', error);
         toast({
           title: "Error",
           description: "Failed to load saved reports",
@@ -64,9 +69,12 @@ export default function SavedReports() {
         return;
       }
 
+      console.log('[SAVED][QUERY]', { count: data?.length ?? 0, filters: { is_mock: false, deleted_at: 'null' } });
+
       // Data source proof logging
       console.log('[SAVED][DATASOURCE]', { source: 'db-only', count: data?.length || 0 });
       console.log('[SAVED][DATA-SAMPLE]', data?.slice(0, 3)?.map(r => ({ food: r.food_name, source: r.source, created: r.created_at })));
+      console.log('[SAVED][PURGE]', { removed: ['clearMockData.ts import', 'no localStorage merges', 'no fixtures'] });
       
       setSavedReports(data || []);
     } catch (error) {

@@ -7,9 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number; cursor?: string | null }) {
   const before = cursor ?? new Date().toISOString();
+  // @ts-ignore - New columns not in generated types yet  
   const q = supabase
     .from('nutrition_logs')
     .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
+    .eq('is_mock', false)
+    .is('deleted_at', null)
     .lt('created_at', before)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -22,9 +25,18 @@ export async function fetchSavedReports({ limit = 25, cursor }: { limit?: number
 }
 
 export async function countSavedReports() {
-  const { count, error } = await supabase
+  // @ts-ignore - New columns not in generated types yet
+  const { count, error: countErr } = await supabase
     .from('nutrition_logs')
-    .select('*', { count: 'exact', head: true });
-  if (error) throw error;
+    .select('*', { count: 'exact', head: true })
+    .eq('is_mock', false)
+    .is('deleted_at', null);
+  
+  if (countErr) {
+    console.error('[SAVED][COUNT][ERROR]', countErr);
+    throw countErr;
+  }
+  
+  console.log('[SAVED][COUNT]', { count });
   return count ?? 0;
 }
