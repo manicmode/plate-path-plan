@@ -308,7 +308,7 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-xl w-full max-w-full overflow-x-hidden"
+      className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-xl w-full max-w-full overflow-x-hidden"
       style={{ 
         height: "100dvh"
       }}
