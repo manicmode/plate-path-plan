@@ -31,6 +31,17 @@ interface AlignmentFeedback {
   feedback: string;
 }
 
+// PHASE 3: Stream/track forensics helper
+function tapStream(s: MediaStream, component: string) {
+  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
+  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
+  for (const t of s.getTracks()) {
+    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
+    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
+    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
+  }
+}
+
 export default function BackBodyScan() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,6 +80,11 @@ export default function BackBodyScan() {
     startCamera();
     return () => {
       if (stream) {
+        console.warn('[CLEANUP][tracks]', { 
+          videoTracks: stream.getVideoTracks().length, 
+          audioTracks: stream.getAudioTracks().length,
+          component: 'BackBodyScan' 
+        });
         stream.getTracks().forEach(track => track.stop());
       }
     };

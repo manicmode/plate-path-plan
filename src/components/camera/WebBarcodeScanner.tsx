@@ -50,6 +50,17 @@ interface WebBarcodeScannerProps {
   onClose: () => void;
 }
 
+// PHASE 3: Stream/track forensics helper
+function tapStream(s: MediaStream, component: string) {
+  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
+  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
+  for (const t of s.getTracks()) {
+    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
+    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
+    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
+  }
+}
+
 export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   onBarcodeDetected,
   onClose
@@ -293,6 +304,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         setStream(mediaStream);
         setIsScanning(true);
         
+        // PHASE 3: Add stream forensics
+        tapStream(mediaStream, 'WebBarcodeScanner');
+        
         mediaLog('[MEDIA][WebBarcodeScanner][mount]', videoRef.current);
       } else {
         console.error("[CAMERA] videoRef.current is null");
@@ -320,6 +334,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     if (s) {
+      console.warn('[CLEANUP][tracks]', { 
+        videoTracks: s.getVideoTracks().length, 
+        audioTracks: s.getAudioTracks().length,
+        component: 'WebBarcodeScanner' 
+      });
       for (const t of s.getTracks()) {
         try { t.stop(); } catch {}
         try { s.removeTrack(t); } catch {}

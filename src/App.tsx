@@ -150,6 +150,8 @@ const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
 const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
 const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
 const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
+const CamPure = lazy(() => import('@/pages/debug/CamPure'));
+const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));

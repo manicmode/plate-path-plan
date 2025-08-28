@@ -57,6 +57,17 @@ interface LogBarcodeScannerModalProps {
   onManualEntry: () => void;
 }
 
+// PHASE 3: Stream/track forensics helper
+function tapStream(s: MediaStream, component: string) {
+  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
+  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
+  for (const t of s.getTracks()) {
+    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
+    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
+    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
+  }
+}
+
 export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   open,
   onOpenChange,
@@ -237,6 +248,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
         
+        // PHASE 3: Add stream forensics
+        tapStream(mediaStream, 'LogBarcodeScannerModal');
+        
         mediaLog('[MEDIA][LogBarcodeScanner][mount]', videoRef.current);
         
         // Ensure torch state after track is ready
@@ -269,6 +283,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     if (s) {
+      console.warn('[CLEANUP][tracks]', { 
+        videoTracks: s.getVideoTracks().length, 
+        audioTracks: s.getAudioTracks().length,
+        component: 'LogBarcodeScannerModal' 
+      });
       for (const t of s.getTracks()) {
         try { t.stop(); } catch {}
         try { s.removeTrack(t); } catch {}
