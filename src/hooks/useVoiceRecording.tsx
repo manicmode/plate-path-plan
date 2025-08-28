@@ -104,11 +104,11 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       
     // Allow voice on scanner routes when specifically in voice modal context
     const params = new URLSearchParams(location.search);
-    const forceVoice = params.get('modal') === 'voice';
-    const isScannerRoute = /^\/(scan|health-scan|barcode|photo)/i.test(location.pathname);
-    const allowVoiceHere = forceVoice || !isScannerRoute;
+    const modalParam = params.get('modal');
+    const isScannerRoute = /^\/scan(\/)?$/i.test(location.pathname);
+    const allowVoiceHere = isScannerRoute && modalParam === 'voice';
     
-    if (!allowVoiceHere) {
+    if (isScannerRoute && !allowVoiceHere) {
       debugLog('Voice blocked on scanner route');
       throw new Error('Voice recording disabled on scanner routes');
     }

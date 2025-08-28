@@ -32,6 +32,7 @@ export default function ScanHub() {
   const name = qs.get('name') ?? undefined;
 
   const forceHealth = modalParam === 'health';
+  const forceVoice = modalParam === 'voice';
   const handledRef = useRef(false);
   
   const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
@@ -89,8 +90,8 @@ export default function ScanHub() {
 
   const handleSaves = () => {
     logTileClick('saves');
-    // Navigate to existing saved reports
-    navigate('/saved-reports'); // Adjust route to actual saved reports page
+    // Navigate to scan recents which has the saved reports tab
+    navigate('/scan/recents');
   };
 
   const handleRecents = () => {
@@ -143,15 +144,17 @@ export default function ScanHub() {
 
   // Handle URL params to force health modal (with guards)
   useEffect(() => {
-    console.warn('[NAV][scan]', { modalParam, source, barcode, name, forceHealth, handled: handledRef.current });
-    
-    if (!forceHealth || handledRef.current) return;
+    if ((!forceHealth && !forceVoice) || handledRef.current) return;
     handledRef.current = true;
 
-    // Open the health analysis modal immediately
-    console.warn('[NAV][open-health]', { modalParam, source, barcode, name });
-    setHealthCheckModalOpen(true);
-  }, [forceHealth, source, barcode, name, modalParam, navigate]);
+    if (forceHealth) {
+      // Open the health analysis modal immediately
+      setHealthCheckModalOpen(true);
+    } else if (forceVoice) {
+      // Open the voice search modal immediately  
+      setVoiceModalOpen(true);
+    }
+  }, [forceHealth, forceVoice, source, barcode, name, modalParam, navigate]);
 
   // Log page open
   console.log('scan_hub_open', { timestamp: Date.now() });
@@ -262,7 +265,13 @@ export default function ScanHub() {
 
       <VoiceSearchModal
         open={voiceModalOpen}
-        onOpenChange={setVoiceModalOpen}
+        onOpenChange={(open) => {
+          setVoiceModalOpen(open);
+          if (!open) {
+            handledRef.current = false;
+            if (forceVoice) navigate('/scan', { replace: true });
+          }
+        }}
         onProductSelected={handleVoiceProductSelected}
       />
     </div>
