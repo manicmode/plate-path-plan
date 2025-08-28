@@ -9,6 +9,7 @@ import {
   History,
   ArrowLeft
 } from 'lucide-react';
+import greenCross from '@/assets/green-cross.png';
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
 import { isFeatureEnabled } from '@/lib/featureFlags';
@@ -205,7 +206,7 @@ export default function ScanHub() {
   console.log('scan_hub_open', { timestamp: Date.now() });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700 pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700 pb-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="relative text-center mb-8">
@@ -217,9 +218,16 @@ export default function ScanHub() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Health Scan
-          </h1>
+          <div className="relative flex items-center justify-center">
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Health Scan
+            </h1>
+            <img 
+              src={greenCross} 
+              alt="Health cross" 
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8"
+            />
+          </div>
           <p className="text-rose-100/80 text-lg">
             Choose how you want to analyze food
           </p>
