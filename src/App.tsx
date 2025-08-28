@@ -122,6 +122,7 @@ const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
+const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -511,6 +512,11 @@ function AppContent() {
                                <ProtectedRoute>
                                  <ScanRecents />
                                </ProtectedRoute>
+                              } />
+                              <Route path="/nutrition-report/:reportId" element={
+                                <ProtectedRoute>
+                                  <NutritionReport />
+                                </ProtectedRoute>
                               } />
                              
                              {/* Legacy health-report redirect to scan hub */}

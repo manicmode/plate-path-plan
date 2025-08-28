@@ -16,15 +16,21 @@ export function addScanRecent(item: Omit<ScanRecentItem, 'ts'>) {
       ts: Date.now()
     };
     
-    // Remove any existing entry with the same id or label
-    const filtered = recents.filter(r => 
-      r.id !== newItem.id && r.label !== newItem.label
-    );
+    // Only remove duplicate by id if both have ids, otherwise allow multiple entries with same label
+    const filtered = recents.filter(r => {
+      // If both have IDs, remove duplicates by ID
+      if (r.id && newItem.id) {
+        return r.id !== newItem.id;
+      }
+      // Otherwise, allow multiple entries (don't filter by label to allow multiple scans)
+      return true;
+    });
     
     // Add new item at the beginning
     const updated = [newItem, ...filtered].slice(0, MAX_RECENTS);
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    console.log('Recent scan added:', { total: updated.length, newItem });
   } catch (error) {
     console.warn('Failed to save scan recent:', error);
   }

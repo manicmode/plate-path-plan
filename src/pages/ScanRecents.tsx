@@ -1,19 +1,66 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Trash2, Eye } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, Eye, BookOpen, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { getScanRecents, clearScanRecents, removeScanRecent } from '@/lib/scanRecents';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+interface NutritionLog {
+  id: string;
+  food_name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quality_score: number;
+  quality_verdict: string;
+  created_at: string;
+  source: string;
+}
 
 export default function ScanRecents() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [recents, setRecents] = useState(getScanRecents());
+  const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('recent');
 
   useEffect(() => {
     setRecents(getScanRecents());
+    loadSavedReports();
   }, []);
+
+  const loadSavedReports = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading saved reports:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load saved reports",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setSavedReports(data || []);
+    } catch (error) {
+      console.error('Error loading saved reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleClearAll = () => {
     clearScanRecents();
@@ -33,12 +80,9 @@ export default function ScanRecents() {
     });
   };
 
-  const handleViewReport = (item: any) => {
-    // For now, just show a toast since we don't have report IDs
-    toast({
-      title: "View Report",
-      description: `Would navigate to report for: ${item.label}`,
-    });
+  const handleViewReport = (reportId: string) => {
+    // Navigate to a detailed view of the nutrition report
+    navigate(`/nutrition-report/${reportId}`);
   };
 
   const getModeIcon = (mode: string) => {
@@ -51,8 +95,18 @@ export default function ScanRecents() {
     }
   };
 
-  const formatTime = (ts: number) => {
-    const date = new Date(ts);
+  const getQualityColor = (verdict: string) => {
+    switch (verdict?.toLowerCase()) {
+      case 'excellent': return 'bg-green-100 text-green-800';
+      case 'good': return 'bg-green-100 text-green-800';
+      case 'moderate': return 'bg-yellow-100 text-yellow-800';
+      case 'poor': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatTime = (ts: number | string) => {
+    const date = typeof ts === 'number' ? new Date(ts) : new Date(ts);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = diffMs / (1000 * 60 * 60);
@@ -84,87 +138,180 @@ export default function ScanRecents() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-white">Recent Scans</h1>
-            <p className="text-rose-100/80">Your last 20 food lookups</p>
+            <h1 className="text-3xl font-bold text-white">Scan History</h1>
+            <p className="text-rose-100/80">Recent scans and saved reports</p>
           </div>
         </div>
 
-        {/* Clear all button */}
-        {recents.length > 0 && (
-          <div className="flex justify-end mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearAll}
-              className="border-white/20 text-white hover:bg-white/10"
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-white/10 border-white/20">
+            <TabsTrigger 
+              value="recent" 
+              className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All
-            </Button>
-          </div>
-        )}
+              <Clock className="h-4 w-4 mr-2" />
+              Recent Scans
+              <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
+                {recents.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="saved" 
+              className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Saved Reports
+              <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
+                {savedReports.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Recents list */}
-        <div className="space-y-4">
-          {recents.length === 0 ? (
-            <Card className="bg-white/10 border-white/20">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Clock className="h-12 w-12 text-white/50 mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  No recent scans
-                </h3>
-                <p className="text-rose-100/70 text-center">
-                  Start scanning foods to see your history here
-                </p>
+          {/* Recent Scans Tab */}
+          <TabsContent value="recent" className="mt-6">
+            {/* Clear all button */}
+            {recents.length > 0 && (
+              <div className="flex justify-end mb-4">
                 <Button
-                  onClick={() => navigate('/scan')}
-                  className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAll}
+                  className="border-white/20 text-white hover:bg-white/10"
                 >
-                  Start Scanning
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            recents.map((item) => (
-              <Card key={item.ts} className="bg-white/10 border-white/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{getModeIcon(item.mode)}</span>
-                      <div>
-                        <h3 className="font-semibold text-white">
-                          {item.label}
-                        </h3>
-                        <p className="text-sm text-rose-100/70">
-                          {item.mode} • {formatTime(item.ts)}
-                        </p>
+              </div>
+            )}
+
+            {/* Recents list */}
+            <div className="space-y-4">
+              {recents.length === 0 ? (
+                <Card className="bg-white/10 border-white/20">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Clock className="h-12 w-12 text-white/50 mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No recent scans
+                    </h3>
+                    <p className="text-rose-100/70 text-center">
+                      Start scanning foods to see your history here
+                    </p>
+                    <Button
+                      onClick={() => navigate('/scan')}
+                      className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                    >
+                      Start Scanning
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                recents.map((item) => (
+                  <Card key={item.ts} className="bg-white/10 border-white/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">{getModeIcon(item.mode)}</span>
+                          <div>
+                            <h3 className="font-semibold text-white">
+                              {item.label}
+                            </h3>
+                            <p className="text-sm text-rose-100/70">
+                              {item.mode} • {formatTime(item.ts)}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveItem(item.ts)}
+                            className="text-white hover:bg-white/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewReport(item)}
-                        className="text-white hover:bg-white/10"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveItem(item.ts)}
-                        className="text-white hover:bg-white/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Saved Reports Tab */}
+          <TabsContent value="saved" className="mt-6">
+            <div className="space-y-4">
+              {loading ? (
+                <Card className="bg-white/10 border-white/20">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    <span className="ml-3 text-white">Loading saved reports...</span>
+                  </CardContent>
+                </Card>
+              ) : savedReports.length === 0 ? (
+                <Card className="bg-white/10 border-white/20">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <BookOpen className="h-12 w-12 text-white/50 mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No saved reports
+                    </h3>
+                    <p className="text-rose-100/70 text-center">
+                      Complete food analyses to see saved nutrition reports here
+                    </p>
+                    <Button
+                      onClick={() => navigate('/scan')}
+                      className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                    >
+                      Start Scanning
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                savedReports.map((report) => (
+                  <Card key={report.id} className="bg-white/10 border-white/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-green-600 rounded-full p-2">
+                            <Utensils className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className="font-semibold text-white">
+                                {report.food_name}
+                              </h3>
+                              <Badge className={getQualityColor(report.quality_verdict)}>
+                                {report.quality_verdict}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-rose-100/70">
+                              <span>{report.calories} cal</span>
+                              <span>P: {report.protein}g</span>
+                              <span>C: {report.carbs}g</span>
+                              <span>F: {report.fat}g</span>
+                              <span>{formatTime(report.created_at)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewReport(report.id)}
+                          className="text-white hover:bg-white/10"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
