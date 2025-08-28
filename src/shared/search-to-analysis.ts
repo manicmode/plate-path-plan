@@ -3,10 +3,30 @@
  * Ensures voice and manual search selections use identical analysis pipeline
  */
 
-import { analyzeFromProduct } from '@/services/healthAnalysis';
-import type { ScanSource, NormalizedProduct } from '@/types/health';
+import { supabase } from '@/integrations/supabase/client';
 
-export type SearchSource = ScanSource;
+export type SearchSource = 'manual' | 'voice';
+
+export interface NormalizedProduct {
+  id?: string | null;
+  barcode?: string | null;
+  name: string;
+  brand?: string | null;
+  imageUrl?: string | null;
+  nutriments?: {
+    energy_kcal?: number | null;
+    proteins?: number | null;
+    carbohydrates?: number | null;
+    fat?: number | null;
+    fiber?: number | null;
+    sugars?: number | null;
+    sodium?: number | null;
+    saturated_fat?: number | null;
+  };
+  ingredients?: any;
+  novaGroup?: number | null;
+  serving?: string | null;
+}
 
 /**
  * Normalize any search result item to canonical product format
@@ -37,7 +57,26 @@ export function normalizeSearchItem(item: any): NormalizedProduct {
   };
 }
 
-// analyzeFromProduct is now imported from the unified service
+/**
+ * Call the same health analysis pipeline that manual entry uses
+ */
+export async function analyzeFromProduct(product: NormalizedProduct, options: { source?: SearchSource } = {}) {
+  console.log('[ANALYZE] source=%s normalized=', options.source || 'manual', product);
+  
+  const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
+    body: {
+      mode: 'product',
+      product: product,
+      source: options.source || 'manual'
+    }
+  });
+  
+  if (error) {
+    throw new Error(error.message || 'Failed to analyze product');
+  }
+  
+  return data;
+}
 
 /**
  * Unified handler for search result selection
@@ -51,7 +90,7 @@ export async function handleSearchPick({
   onError,
 }: {
   item: any;
-  source: ScanSource;
+  source: SearchSource;
   setAnalysisData: (data: any) => void;
   setStep: (step: string) => void;
   onError?: (error: any) => void;

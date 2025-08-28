@@ -4,46 +4,67 @@ import { ArrowLeft, BookOpen, Eye, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { fetchSavedReports, countSavedReports, SavedReportItem } from '@/services/savedReports';
+
+interface NutritionLog {
+  id: string;
+  food_name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quality_score: number;
+  quality_verdict: string;
+  created_at: string;
+  source: string;
+}
 
 export default function SavedReports() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [savedReports, setSavedReports] = useState<SavedReportItem[]>([]);
+  const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [badgeCount, setBadgeCount] = useState(0);
 
   useEffect(() => {
     loadSavedReports();
-    loadBadgeCount();
   }, []);
 
   const loadSavedReports = async () => {
     setLoading(true);
     try {
-      const { items } = await fetchSavedReports({ limit: 25 });
-      setSavedReports(items);
-      console.log(`[SAVED_REPORTS_PAGE] Loaded ${items.length} reports`);
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user - showing empty state');
+        setSavedReports([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading saved reports:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load saved reports",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log(`Loaded ${data?.length || 0} saved reports for user ${user.id}`);
+      setSavedReports(data || []);
     } catch (error) {
-      console.error('[SAVED_REPORTS_PAGE] Load error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load saved reports",
-        variant: "destructive"
-      });
+      console.error('Error loading saved reports:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadBadgeCount = async () => {
-    try {
-      const count = await countSavedReports();
-      setBadgeCount(count);
-    } catch (error) {
-      console.error('[SAVED_REPORTS_PAGE] Count error:', error);
-      // Don't show error toast for count failures
     }
   };
 
@@ -103,7 +124,7 @@ export default function SavedReports() {
         <div className="flex items-center space-x-2 mb-6">
           <BookOpen className="h-5 w-5 text-white" />
           <Badge variant="secondary" className="bg-white/20 text-white">
-            {badgeCount}
+            {savedReports.length}
           </Badge>
         </div>
 
