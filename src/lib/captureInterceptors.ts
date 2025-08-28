@@ -2,13 +2,19 @@
 // This module MUST load first to intercept all capture APIs with full stack traces
 // Remove this file after forensic investigation is complete
 
-// BOOT MARKER
+const FF = (window as any).__featureFlags || {};
 console.warn('[CAPTURE-GUARD][boot]', { 
   path: location.pathname, 
   ua: navigator.userAgent,
   standalone: (navigator as any).standalone,
-  timestamp: Date.now()
+  timestamp: Date.now(),
+  flags: FF
 });
+
+function safePatch(label: string, fn: () => void) {
+  try { fn(); console.warn(`[CAPTURE-GUARD][ok] ${label}`); }
+  catch (err) { console.error(`[CAPTURE-GUARD][patch-failed] ${label}`, err); }
+}
 
 // Helper function for logging with stack traces
 function tag(k: string, extra?: any) { 
@@ -20,21 +26,22 @@ function tag(k: string, extra?: any) {
 
 // ========= getUserMedia INTERCEPTORS =========
 
-// Modern getUserMedia
-const md = navigator.mediaDevices;
-if (md?.getUserMedia) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('getUserMedia', () => {
+  const md = navigator.mediaDevices;
+  if (!md?.getUserMedia) return;
   const orig = md.getUserMedia.bind(md);
   md.getUserMedia = (c: any = {}) => {
-    tag('[INTCPT][GUM][CALL]', { 
+    console.warn('[INTCPT][GUM][CALL]', { 
       path: location.pathname, 
       constraints: c,
       video: !!c?.video,
       audio: !!c?.audio,
       timestamp: Date.now()
     });
+    try { console.trace('[INTCPT][GUM][TRACE]'); } catch {}
     return orig(c)
       .then((s: MediaStream) => { 
-        tag('[INTCPT][GUM][OK]', { 
+        console.warn('[INTCPT][GUM][OK]', { 
           videoTracks: s.getVideoTracks().length, 
           audioTracks: s.getAudioTracks().length,
           streamId: s.id
@@ -42,7 +49,7 @@ if (md?.getUserMedia) {
         return s; 
       })
       .catch((e: any) => { 
-        tag('[INTCPT][GUM][ERR]', { 
+        console.warn('[INTCPT][GUM][ERR]', { 
           name: e?.name, 
           message: e?.message,
           code: e?.code
@@ -50,32 +57,35 @@ if (md?.getUserMedia) {
         throw e; 
       });
   };
-}
-
-// Legacy getUserMedia (all prefixed variants)
-const anyNav: any = navigator;
-['getUserMedia', 'webkitGetUserMedia', 'mozGetUserMedia'].forEach(m => {
-  if (anyNav[m]) {
-    const o = anyNav[m].bind(anyNav);
-    anyNav[m] = function(...args: any[]) {
-      tag(`[INTCPT][${m}][CALL]`, { path: location.pathname, args });
-      return o(...args);
-    };
-  }
 });
 
-// ========= getDisplayMedia INTERCEPTORS =========
-const mdd: any = navigator.mediaDevices;
-if (mdd?.getDisplayMedia) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('legacy getUserMedia', () => {
+  const anyNav: any = navigator;
+  ['getUserMedia', 'webkitGetUserMedia', 'mozGetUserMedia'].forEach(m => {
+    if (anyNav[m]) {
+      const o = anyNav[m].bind(anyNav);
+      anyNav[m] = function(...args: any[]) {
+        console.warn(`[INTCPT][${m}][CALL]`, { path: location.pathname, args });
+        try { console.trace(`[INTCPT][${m}][TRACE]`); } catch {}
+        return o(...args);
+      };
+    }
+  });
+});
+
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('getDisplayMedia', () => {
+  const mdd: any = navigator.mediaDevices;
+  if (!mdd?.getDisplayMedia) return;
   const g = mdd.getDisplayMedia.bind(mdd);
   mdd.getDisplayMedia = (c: any = {}) => { 
-    tag('[INTCPT][GDM][CALL]', { 
+    console.warn('[INTCPT][GDM][CALL]', { 
       path: location.pathname,
       constraints: c 
     }); 
+    try { console.trace('[INTCPT][GDM][TRACE]'); } catch {}
     return g(c)
       .then((s: MediaStream) => { 
-        tag('[INTCPT][GDM][OK]', {
+        console.warn('[INTCPT][GDM][OK]', {
           videoTracks: s.getVideoTracks().length,
           audioTracks: s.getAudioTracks().length,
           streamId: s.id
@@ -83,76 +93,96 @@ if (mdd?.getDisplayMedia) {
         return s; 
       })
       .catch((e: any) => { 
-        tag('[INTCPT][GDM][ERR]', { 
+        console.warn('[INTCPT][GDM][ERR]', { 
           name: e?.name, 
           message: e?.message 
         }); 
         throw e; 
       }); 
   };
-}
+});
 
-// ========= captureStream INTERCEPTORS =========
-function wrapCaptureStream(proto: any, label: string) {
-  if (!proto || !(proto as any).captureStream) return;
-  const o = (proto as any).captureStream;
-  (proto as any).captureStream = function(...args: any[]) { 
-    tag(`[INTCPT][${label}.captureStream][CALL]`, { 
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('HTMLMediaElement.captureStream', () => {
+  if (!(HTMLMediaElement.prototype as any).captureStream) return;
+  const o = (HTMLMediaElement.prototype as any).captureStream;
+  (HTMLMediaElement.prototype as any).captureStream = function(...args: any[]) { 
+    console.warn('[INTCPT][HTMLMediaElement.captureStream][CALL]', { 
       path: location.pathname, 
       args,
       tagName: this?.tagName,
       src: this?.src || this?.currentSrc
     }); 
+    try { console.trace('[INTCPT][HTMLMediaElement.captureStream][TRACE]'); } catch {}
     return o.apply(this, args); 
   };
-}
+});
 
-wrapCaptureStream(HTMLMediaElement.prototype, 'HTMLMediaElement');
-wrapCaptureStream(HTMLCanvasElement.prototype, 'HTMLCanvasElement');
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('HTMLCanvasElement.captureStream', () => {
+  if (!HTMLCanvasElement.prototype.captureStream) return;
+  const o = HTMLCanvasElement.prototype.captureStream;
+  HTMLCanvasElement.prototype.captureStream = function(...args: any[]) { 
+    console.warn('[INTCPT][HTMLCanvasElement.captureStream][CALL]', { 
+      path: location.pathname, 
+      args
+    }); 
+    try { console.trace('[INTCPT][HTMLCanvasElement.captureStream][TRACE]'); } catch {}
+    return o.apply(this, args); 
+  };
+});
 
-// OffscreenCanvas if available
-if ((window as any).OffscreenCanvas) {
-  wrapCaptureStream((window as any).OffscreenCanvas.prototype, 'OffscreenCanvas');
-}
+if (FF.MEDIA_INTERCEPTORS_ENABLED && typeof OffscreenCanvas !== 'undefined') safePatch('OffscreenCanvas.captureStream', () => {
+  if (!(window as any).OffscreenCanvas?.prototype?.captureStream) return;
+  const o = (window as any).OffscreenCanvas.prototype.captureStream;
+  (window as any).OffscreenCanvas.prototype.captureStream = function(...args: any[]) { 
+    console.warn('[INTCPT][OffscreenCanvas.captureStream][CALL]', { 
+      path: location.pathname, 
+      args
+    }); 
+    try { console.trace('[INTCPT][OffscreenCanvas.captureStream][TRACE]'); } catch {}
+    return o.apply(this, args); 
+  };
+});
 
-// ========= MediaRecorder INTERCEPTORS =========
-const MR: any = (window as any).MediaRecorder;
-if (MR) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('MediaRecorder', () => {
+  const MR: any = (window as any).MediaRecorder;
+  if (!MR) return;
   const Orig = MR;
   (window as any).MediaRecorder = function(...args: any[]) {
-    tag('[INTCPT][MR][NEW]', { 
+    console.warn('[INTCPT][MR][NEW]', { 
       streamId: args[0]?.id,
       options: args[1],
       path: location.pathname
     });
+    try { console.trace('[INTCPT][MR][TRACE]'); } catch {}
     const inst = new Orig(...args);
-    inst.addEventListener('start', () => tag('[INTCPT][MR][start]', { streamId: args[0]?.id }));
-    inst.addEventListener('stop', () => tag('[INTCPT][MR][stop]', { streamId: args[0]?.id }));
-    inst.addEventListener('dataavailable', (e: any) => tag('[INTCPT][MR][data]', { 
+    inst.addEventListener('start', () => console.warn('[INTCPT][MR][start]', { streamId: args[0]?.id }));
+    inst.addEventListener('stop', () => console.warn('[INTCPT][MR][stop]', { streamId: args[0]?.id }));
+    inst.addEventListener('dataavailable', (e: any) => console.warn('[INTCPT][MR][data]', { 
       size: e.data?.size, 
       type: e.data?.type 
     }));
     return inst;
   } as any;
   (window as any).MediaRecorder.prototype = Orig.prototype;
-}
+});
 
-// ========= ImageCapture INTERCEPTORS =========
-const IC: any = (window as any).ImageCapture;
-if (IC) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('ImageCapture', () => {
+  const IC: any = (window as any).ImageCapture;
+  if (!IC) return;
   const Orig = IC;
   (window as any).ImageCapture = function(...args: any[]) { 
-    tag('[INTCPT][ImageCapture][NEW]', { 
+    console.warn('[INTCPT][ImageCapture][NEW]', { 
       trackKind: args?.[0]?.kind,
       trackLabel: args?.[0]?.label,
       trackId: args?.[0]?.id
     }); 
+    try { console.trace('[INTCPT][ImageCapture][TRACE]'); } catch {}
     const inst = new Orig(...args);
     
     const gf = inst.grabFrame?.bind(inst); 
     if (gf) {
       inst.grabFrame = () => { 
-        tag('[INTCPT][ImageCapture][grabFrame]'); 
+        console.warn('[INTCPT][ImageCapture][grabFrame]'); 
         return gf(); 
       };
     }
@@ -160,7 +190,7 @@ if (IC) {
     const tp = inst.takePhoto?.bind(inst); 
     if (tp) {
       inst.takePhoto = (...a: any[]) => { 
-        tag('[INTCPT][ImageCapture][takePhoto]', a); 
+        console.warn('[INTCPT][ImageCapture][takePhoto]', a); 
         return tp(...a); 
       };
     }
@@ -168,46 +198,52 @@ if (IC) {
     return inst;
   } as any;
   (window as any).ImageCapture.prototype = Orig.prototype;
-}
+});
 
-// ========= video.srcObject INTERCEPTORS =========
-const desc: any = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype as any, 'srcObject');
-if (desc?.set) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('video.srcObject setter', () => {
+  const desc: any = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype as any, 'srcObject');
+  if (!desc?.set) return;
   Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
     configurable: true,
     set: function(v: any) { 
-      tag('[INTCPT][video.srcObject][SET]', { 
-        videoTracks: v?.getVideoTracks?.().length || 0, 
-        audioTracks: v?.getAudioTracks?.().length || 0, 
-        tagName: this?.tagName,
-        streamId: v?.id,
-        path: location.pathname
-      }); 
+      try {
+        const vt = v?.getVideoTracks?.().length || 0;
+        const at = v?.getAudioTracks?.().length || 0;
+        console.warn('[INTCPT][video.srcObject][SET]', { 
+          tag: this?.tagName, 
+          vt, 
+          at, 
+          path: location.pathname,
+          streamId: v?.id
+        }); 
+        try { console.trace('[INTCPT][video.srcObject][TRACE]'); } catch {}
+      } catch {}
       return desc.set!.call(this, v); 
     },
     get: desc.get
   });
-}
+});
 
-// ========= applyConstraints INTERCEPTORS =========
-const MediaStreamTrackProto = (window as any).MediaStreamTrack?.prototype;
-if (MediaStreamTrackProto?.applyConstraints) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('applyConstraints', () => {
+  const MediaStreamTrackProto = (window as any).MediaStreamTrack?.prototype;
+  if (!MediaStreamTrackProto?.applyConstraints) return;
   const origApply = MediaStreamTrackProto.applyConstraints;
   MediaStreamTrackProto.applyConstraints = function(constraints: any) {
-    tag('[INTCPT][applyConstraints][CALL]', {
+    console.warn('[INTCPT][applyConstraints][CALL]', {
       trackKind: this.kind,
       trackId: this.id,
       trackLabel: this.label,
       constraints,
       path: location.pathname
     });
+    try { console.trace('[INTCPT][applyConstraints][TRACE]'); } catch {}
     return origApply.call(this, constraints)
       .then((result: any) => {
-        tag('[INTCPT][applyConstraints][OK]', { trackId: this.id });
+        console.warn('[INTCPT][applyConstraints][OK]', { trackId: this.id });
         return result;
       })
       .catch((e: any) => {
-        tag('[INTCPT][applyConstraints][ERR]', { 
+        console.warn('[INTCPT][applyConstraints][ERR]', { 
           trackId: this.id, 
           name: e?.name, 
           message: e?.message 
@@ -215,12 +251,11 @@ if (MediaStreamTrackProto?.applyConstraints) {
         throw e;
       });
   };
-}
+});
 
-// ========= AUDIOCONTEXT TRACKING =========
-(function tapAudioContext(){
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('AudioContext', () => {
   const anyWin = window as any;
-  anyWin.__activeAudioContexts = [];
+  anyWin.__activeAudioContexts = anyWin.__activeAudioContexts || [];
   const AC = (window as any).AudioContext;
   const WAC = (window as any).webkitAudioContext;
   function wrap(Ctor:any){
@@ -229,38 +264,37 @@ if (MediaStreamTrackProto?.applyConstraints) {
     (window as any)[Orig.name] = function(...args:any[]){
       const inst = new Orig(...args);
       try { anyWin.__activeAudioContexts.push(inst); } catch {}
-      tag('[INTCPT][AudioContext][NEW]');
+      console.warn('[INTCPT][AudioContext][NEW]');
+      try { console.trace('[INTCPT][AudioContext][TRACE]'); } catch {}
       return inst;
     } as any;
     (window as any)[Orig.name].prototype = Orig.prototype;
   }
   wrap(AC); wrap(WAC);
-})();
+});
 
-// ========= AUDIO STREAM SOURCE TRACKING =========
-const AC: any = (window as any).AudioContext?.prototype || (window as any).webkitAudioContext?.prototype;
-if (AC?.createMediaStreamSource) {
+if (FF.MEDIA_INTERCEPTORS_ENABLED) safePatch('createMediaStreamSource', () => {
+  const AC: any = (window as any).AudioContext?.prototype || (window as any).webkitAudioContext?.prototype;
+  if (!AC?.createMediaStreamSource) return;
   const orig = AC.createMediaStreamSource;
   AC.createMediaStreamSource = function(stream: any) {
-    tag('[INTCPT][createMediaStreamSource][CALL]', {
+    console.warn('[INTCPT][createMediaStreamSource][CALL]', {
       streamId: stream?.id,
       tracks: stream?.getTracks?.().length || 0
     });
+    try { console.trace('[INTCPT][createMediaStreamSource][TRACE]'); } catch {}
     return orig.call(this, stream);
   };
-}
+});
 
-// ========= PREVENT CACHED REFERENCES =========
-// Make getUserMedia non-replaceable to prevent cached refs from bypassing
-try {
+// ========= PREVENT CACHED REFERENCES (optional) =========
+if (FF.MEDIA_STRICT_LOCKDOWN) safePatch('lock getUserMedia', () => {
   Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { 
     configurable: false, 
     writable: false, 
     value: navigator.mediaDevices.getUserMedia 
   });
-} catch (e) {
-  tag('[INTCPT][LOCK][ERR]', { message: 'Could not lock getUserMedia' });
-}
+});
 
 // ========= PERMISSIONS SNAPSHOT HELPER =========
 (window as any).checkPermissionsAndContext = async function() {
@@ -279,17 +313,4 @@ try {
   }
 };
 
-console.warn('[CAPTURE-GUARD][boot-complete]', { 
-  interceptorsInstalled: {
-    getUserMedia: !!md?.getUserMedia,
-    getDisplayMedia: !!mdd?.getDisplayMedia,
-    captureStream: !!(HTMLMediaElement.prototype as any).captureStream,
-    mediaRecorder: !!MR,
-    imageCapture: !!IC,
-    srcObjectSetter: !!desc?.set,
-    applyConstraints: !!MediaStreamTrackProto?.applyConstraints,
-    audioContext: !!(window as any).AudioContext,
-    createMediaStreamSource: !!AC?.createMediaStreamSource,
-    getUserMediaLocked: !Object.getOwnPropertyDescriptor(navigator.mediaDevices, 'getUserMedia')?.configurable
-  }
-});
+console.warn('[CAPTURE-GUARD][boot-ok]');

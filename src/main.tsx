@@ -1,3 +1,15 @@
+// ---- feature flags (must run before any other imports) ----
+;(window as any).__featureFlags = {
+  MEDIA_INTERCEPTORS_ENABLED: true,           // master switch for all interceptors
+  MEDIA_BLOCK_SRCOBJECT_ON_IOS: false,        // MUST be false for now (no throws)
+  MEDIA_STRICT_LOCKDOWN: false,               // prevents non-configurable property locks
+  ...(window as any).__featureFlags,
+};
+
+// capture runtime errors so we can see why a blank page ever happens
+window.onerror = (m, s, l, c, e) => console.error('[BOOT][onerror]', m, s, l, c, e);
+window.onunhandledrejection = (e) => console.error('[BOOT][unhandledrejection]', e?.reason || e);
+
 /* MUST LOAD FIRST */ 
 import '@/lib/captureInterceptors';
 
