@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { X, Mic, Search, Edit3, Loader2 } from 'lucide-react';
-import { useProgressiveVoiceSTT } from '@/hooks/useProgressiveVoiceSTT';
 import { searchFoodByName, CanonicalSearchResult, searchResultToLegacyProduct } from '@/lib/foodSearch';
 import { SearchResultsList } from '../health-check/SearchResultsList';
 import { logFallbackEvents } from '@/lib/healthScanTelemetry';
+import { toast } from 'sonner';
+import { goToHealthAnalysis } from '@/lib/nav';
+import { useNavigate } from 'react-router-dom';
 
 interface VoiceSearchModalProps {
   open: boolean;
@@ -20,118 +22,152 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   onOpenChange,
   onProductSelected
 }) => {
+  const navigate = useNavigate();
   const [editableTranscript, setEditableTranscript] = useState('');
   const [searchResults, setSearchResults] = useState<CanonicalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'processing' | 'error'>('idle');
-
-  const { 
-    isRecording, 
-    isProcessing,
-    transcript,
-    startRecording, 
-    stopRecording, 
-    isBrowserSTTSupported,
-    isServerSTTAvailable
-  } = useProgressiveVoiceSTT({ allowOnScannerRoutes: true });
+  const recognitionRef = useRef<any>(null);
 
   // Suggestion chips for quick searches
   const suggestionChips = ['Greek yogurt', 'Chicken breast', 'Kind bar'];
 
-  // Update editable transcript and auto-search when new transcript comes in
-  useEffect(() => {
-    if (transcript) {
-      setEditableTranscript(transcript);
+  // Check if Speech Recognition API is supported (including webkitSpeechRecognition)
+  const isBrowserSTTSupported = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    return !!SR && window.isSecureContext;
+  }, []);
+
+  // Check route guard exception for voice on scanner routes
+  const isVoiceAllowedHere = useCallback(() => {
+    const params = new URLSearchParams(location.search);
+    const forceVoice = params.get('modal') === 'voice';
+    const isScannerRoute = /^\/(scan|health-scan|barcode|photo)/i.test(location.pathname);
+    return forceVoice || !isScannerRoute;
+  }, []);
+
+  // Start listening with Speech Recognition API
+  const startListening = useCallback(() => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setVoiceState('error');
+      return;
+    }
+
+    if (!isVoiceAllowedHere()) {
+      setVoiceState('error');
+      toast.error('Voice search not allowed on this route');
+      return;
+    }
+
+    try {
+      const recognition = new SR();
+      recognitionRef.current = recognition;
       
-      // Auto-search if we have a confident transcript
-      if (transcript.trim().length > 2) {
-        const searchQuery = transcript.trim();
-        performSearch(searchQuery);
-      }
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
+      recognition.continuous = false;
+
+      recognition.onstart = () => setVoiceState('listening');
+      recognition.onerror = (e: any) => {
+        setVoiceState('idle');
+        if (e.error === 'not-allowed') {
+          setVoiceState('error');
+        } else {
+          toast.error(`Voice recognition error: ${e.error}`);
+        }
+      };
+      recognition.onend = () => {
+        if (voiceState !== 'processing') {
+          setVoiceState('idle');
+        }
+      };
+      recognition.onresult = (evt: any) => {
+        const text = evt.results?.[0]?.[0]?.transcript?.trim();
+        if (!text) {
+          setVoiceState('idle');
+          return;
+        }
+        handleTranscript(text);
+      };
+
+      recognition.start();
+    } catch (e) {
+      setVoiceState('error');
+      toast.error('Failed to start voice recognition');
     }
-  }, [transcript]);
+  }, [voiceState, isVoiceAllowedHere]);
 
-  // Update voice state based on recording/processing
-  useEffect(() => {
-    if (isRecording) {
-      setVoiceState('listening');
-    } else if (isProcessing) {
-      setVoiceState('processing');
-    } else {
-      setVoiceState('idle');
+  // Stop listening
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
-  }, [isRecording, isProcessing]);
+    setVoiceState('idle');
+  }, []);
 
-  // Reset state when modal opens/closes
-  useEffect(() => {
-    if (open) {
-      setEditableTranscript('');
-      setSearchResults([]);
-      setShowResults(false);
-    }
-  }, [open]);
-
-  const handleVoiceToggle = async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      try {
-        await startRecording();
-      } catch (error) {
-        setVoiceState('error');
-      }
-    }
-  };
-
-  const handleSuggestionClick = async (suggestion: string) => {
-    setEditableTranscript(suggestion);
-    await performSearch(suggestion);
-  };
-
-  const performSearch = async (query: string) => {
-    if (!query) return;
-
-    setIsSearching(true);
+  // Handle transcript from speech recognition
+  const handleTranscript = useCallback(async (text: string) => {
+    setVoiceState('processing');
+    setEditableTranscript(text);
     
     try {
-      console.log('🔍 [VoiceSearch] Searching for:', query);
+      const results = await searchFoodByName(text);
       
-      // Log telemetry
-      logFallbackEvents.searchStarted('voice', query.length);
-      const startTime = Date.now();
+      if (results.length === 0) {
+        setVoiceState('idle');
+        toast.error('No foods found. Try being more specific.');
+        return;
+      }
       
-      const results = await searchFoodByName(query);
-      const latency = Date.now() - startTime;
+      // Check for high confidence match
+      const topResult = results[0];
+      if (topResult && topResult.confidence && topResult.confidence >= 0.82) {
+        const legacyProduct = searchResultToLegacyProduct(topResult);
+        onProductSelected(legacyProduct);
+        onOpenChange(false);
+        return;
+      }
       
+      // Show results list for user selection
       setSearchResults(results);
       setShowResults(true);
       setVoiceState('idle');
       
-      // Log telemetry
-      logFallbackEvents.resultsReceived(
-        results.length, 
-        results.length > 0, 
-        latency, 
-        results[0]?.confidence
-      );
-      
     } catch (error) {
-      console.error('❌ [VoiceSearch] Search failed:', error);
       setVoiceState('error');
-    } finally {
-      setIsSearching(false);
+      toast.error('Search failed. Please try again.');
     }
-  };
+  }, [onProductSelected, onOpenChange]);
 
-  const handleSearch = async () => {
+  // Handle voice toggle (start/stop)
+  const handleVoiceToggle = useCallback(() => {
+    if (voiceState === 'listening') {
+      stopListening();
+    } else if (voiceState === 'idle') {
+      startListening();
+    }
+  }, [voiceState, startListening, stopListening]);
+
+  // Handle suggestion chip clicks
+  const handleSuggestionClick = useCallback(async (suggestion: string) => {
+    setEditableTranscript(suggestion);
+    await handleTranscript(suggestion);
+  }, [handleTranscript]);
+
+  // Handle manual search
+  const handleManualSearch = useCallback(async () => {
     const query = editableTranscript.trim();
-    await performSearch(query);
-  };
-
-  const handleResultSelect = async (result: CanonicalSearchResult) => {
-    console.log('✅ [VoiceSearch] User selected:', result);
+    if (!query) return;
     
+    await handleTranscript(query);
+  }, [editableTranscript, handleTranscript]);
+
+  // Handle result selection
+  const handleResultSelect = useCallback((result: CanonicalSearchResult) => {
     // Transform to legacy product format
     const legacyProduct = searchResultToLegacyProduct(result);
     
@@ -144,16 +180,32 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     
     onProductSelected(legacyProduct);
     onOpenChange(false);
-  };
+  }, [onProductSelected, onOpenChange]);
 
-  const canRecord = isBrowserSTTSupported() || isServerSTTAvailable();
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setEditableTranscript('');
+      setSearchResults([]);
+      setShowResults(false);
+      setVoiceState('idle');
+    } else {
+      // Clean up recognition when modal closes
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    }
+  }, [open]);
 
-  // MicButton component with animations
+  const canRecord = isBrowserSTTSupported();
+
+  // MicButton component with breathing animation
   const MicButton = ({ state, onTap }: { state: 'idle' | 'listening' | 'processing', onTap: () => void }) => {
     const getButtonClass = () => {
       switch (state) {
         case 'listening':
-          return 'bg-red-600 hover:bg-red-700 animate-pulse';
+          return 'bg-red-600 hover:bg-red-700 animate-pulse shadow-lg shadow-red-500/50';
         case 'processing':
           return 'bg-blue-600 hover:bg-blue-700';
         default:
@@ -163,9 +215,9 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
     const getContent = () => {
       if (state === 'processing') {
-        return <Loader2 className="h-8 w-8 animate-spin" />;
+        return <Loader2 className="h-8 w-8 animate-spin text-white" />;
       }
-      return <Mic className={`h-8 w-8 ${state === 'listening' ? 'animate-bounce' : ''}`} />;
+      return <Mic className={`h-8 w-8 text-white ${state === 'listening' ? 'animate-bounce' : ''}`} />;
     };
 
     return (
@@ -179,7 +231,10 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
           {getContent()}
         </Button>
         {state === 'listening' && (
-          <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-ping opacity-20"></div>
+          <>
+            <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-ping opacity-30"></div>
+            <div className="absolute inset-2 rounded-full border-2 border-red-400 animate-pulse opacity-50"></div>
+          </>
         )}
       </div>
     );
@@ -295,14 +350,14 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
                       />
                       
                       <Button
-                        onClick={handleSearch}
-                        disabled={!editableTranscript.trim() || isSearching}
+                        onClick={handleManualSearch}
+                        disabled={!editableTranscript.trim() || voiceState === 'processing'}
                         className="w-full bg-green-600 hover:bg-green-700"
                       >
-                        {isSearching ? (
+                        {voiceState === 'processing' ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Searching...
+                            Analyzing...
                           </>
                         ) : (
                           <>
@@ -344,7 +399,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
           {/* Footer */}
           <div className="p-6 pt-3 bg-gradient-to-t from-black/40 to-transparent">
             <p className="text-center text-gray-500 text-xs">
-              Powered by {isBrowserSTTSupported() ? 'browser' : 'server'} speech recognition
+              Powered by browser speech recognition
             </p>
           </div>
         </div>
