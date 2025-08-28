@@ -386,32 +386,56 @@ export default function ScanHub() {
 
       {currentState === 'search' ? (
         <ImprovedManualEntry
-          onProductSelected={(product) => {
-            console.log('Search modal product selected:', product);
-            addRecent({ mode: searchState.source, label: product.productName || 'Search entry' });
+          onProductSelected={(result) => {
+            console.log('[SELECT→MODAL][OPEN]');
+            console.log('[SELECT→MODAL][DATA]', { 
+              source: 'manual', 
+              name: result?.name ?? null, 
+              barcode: result?.barcode ?? null, 
+              hasProduct: !!result 
+            });
+            
+            addRecent({ mode: searchState.source, label: result.productName || result.name || 'Search entry' });
             setCurrentState('hub'); // Return to hub
             
-            // Use unified in-modal pipeline instead of navigation
+            // Open HealthCheckModal with normalized data
             setHealthCheckModalOpen(true);
             setHealthModalStep('loading');
             setAnalysisData({
-              source: searchState.source,
-              productName: product.productName || product.name,
-              barcode: product.barcode,
-              product: product
+              source: 'manual',
+              name: result?.name ?? null,
+              barcode: result?.barcode ?? null,
+              product: result ?? null
             });
           }}
           onBack={() => setCurrentState('hub')}
           initialQuery={searchState.initialQuery}
-          setAnalysisData={setAnalysisData}
-          setStep={(step: string) => setHealthModalStep(step as 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm')}
         />
       ) : manualEntryOpen && (
         <ImprovedManualEntry
-          onProductSelected={handleManualProductSelected}
+          onProductSelected={(result) => {
+            console.log('[SELECT→MODAL][OPEN]');
+            console.log('[SELECT→MODAL][DATA]', { 
+              source: 'manual', 
+              name: result?.name ?? null, 
+              barcode: result?.barcode ?? null, 
+              hasProduct: !!result 
+            });
+            
+            addRecent({ mode: 'manual', label: result.productName || result.name || 'Manual entry' });
+            setManualEntryOpen(false);
+            
+            // Open HealthCheckModal with normalized data
+            setHealthCheckModalOpen(true);
+            setHealthModalStep('loading');
+            setAnalysisData({
+              source: 'manual',
+              name: result?.name ?? null,
+              barcode: result?.barcode ?? null,
+              product: result ?? null
+            });
+          }}
           onBack={() => setManualEntryOpen(false)}
-          setAnalysisData={setAnalysisData}
-          setStep={(step: string) => setHealthModalStep(step as 'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm')}
         />
       )}
 
