@@ -1,332 +1,265 @@
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
-import { blobFromVideo } from '@/pipelines/utils';
+import React, { useEffect, useRef } from 'react';
 import { analyzePhoto } from '@/pipelines/photoPipeline';
 
 export default function PhotoSandbox() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [isPinging, setIsPinging] = useState(false);
-  const [isOfflineTest, setIsOfflineTest] = useState(false);
+  if (!import.meta.env.DEV) {
+    return (
+      <div style={{ padding: 24 }}>
+        <h1>Photo Sandbox (DEV only)</h1>
+        <p>This page renders only in development builds.</p>
+      </div>
+    );
+  }
 
-  const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `${timestamp}: ${message}`;
-    console.log(logEntry);
-    setLogs(prev => [...prev.slice(-19), logEntry]);
-  };
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
-  // Key logs we care about monitoring
-  const monitoredLogs = [
-    '[IMG READY]',
-    '[IMG BLOB]', 
-    '[PHOTO][FN_BASE]',
-    '[PHOTO][FETCH_START]',
-    '[PHOTO][FETCH_DONE]',
-    '[PHOTO][OCR][RESP]',
-    '[PHOTO][RESOLVED]'
-  ];
-
-  // Override console.log to capture monitored logs
   useEffect(() => {
-    const originalLog = console.log;
-    console.log = (...args: any[]) => {
-      const message = typeof args[0] === 'string' ? args[0] : '';
-      if (monitoredLogs.some(log => message.includes(log))) {
-        const fullMessage = args.join(' ');
-        addLog(`🔍 ${fullMessage}`);
+    if (!import.meta.env.DEV) return;
+    
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        append('[SANDBOX] camera ready');
+      } catch (e) {
+        append('[SANDBOX][ERR] getUserMedia ' + String(e));
       }
-      originalLog(...args);
-    };
+    })();
 
     return () => {
-      console.log = originalLog;
+      // Cleanup
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
-  const startCamera = async () => {
-    try {
-      setError(null);
-      addLog('[CAMERA] Requesting camera access...');
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+  function append(line: string) {
+    if (!logRef.current) return;
+    const p = document.createElement('div');
+    p.textContent = `${new Date().toLocaleTimeString()}: ${line}`;
+    logRef.current.appendChild(p);
+    logRef.current.scrollTop = logRef.current.scrollHeight;
+    console.log(line);
+  }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
-        setStream(mediaStream);
-        addLog('[CAMERA] Camera started successfully');
+  async function captureAndRun() {
+    try {
+      const v = videoRef.current;
+      if (!v || v.readyState < 2 || v.videoWidth === 0) {
+        append('[IMG READY] video not ready');
+        return;
       }
-    } catch (err) {
-      const errorMsg = `Camera error: ${err instanceof Error ? err.message : String(err)}`;
-      setError(errorMsg);
-      addLog(`❌ ${errorMsg}`);
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-      addLog('[CAMERA] Camera stopped');
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const handleCapture = async () => {
-    if (!videoRef.current || !stream) {
-      addLog('❌ No video stream available');
-      return;
-    }
-
-    setIsCapturing(true);
-    
-    try {
-      addLog('[CAPTURE] Starting photo capture...');
       
-      // Extract blob from video using pipeline utility
-      const { blob, outW, outH } = await blobFromVideo(videoRef.current);
-      addLog(`[IMG READY] Blob created: ${blob.size} bytes, ${outW}x${outH}`);
-      addLog(`[IMG BLOB] type=${blob.type}, size=${blob.size}`);
+      const maxDim = 1280;
+      const scale = Math.min(1, maxDim / Math.max(v.videoWidth, v.videoHeight));
+      const w = Math.max(1, Math.round(v.videoWidth * scale));
+      const h = Math.max(1, Math.round(v.videoHeight * scale));
+      
+      const c = document.createElement('canvas');
+      c.width = w; 
+      c.height = h;
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        append('[IMG BLOB] no context');
+        return;
+      }
+      
+      ctx.drawImage(v, 0, 0, w, h);
+      const blob: Blob | null = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.72));
+      if (!blob) { 
+        append('[IMG BLOB] null'); 
+        return; 
+      }
+      
+      append(`[IMG READY] ${v.videoWidth}x${v.videoHeight}`);
+      append(`[IMG BLOB] size=${Math.round(blob.size/1024)}KB type=${blob.type}`);
 
       // Call the isolated photo pipeline
-      addLog('[PHOTO] Calling analyzePhoto pipeline...');
+      append('[PHOTO] Calling analyzePhoto pipeline...');
       const result = await analyzePhoto({ blob });
       
       if (result.ok) {
-        addLog(`✅ [PHOTO][RESOLVED] Success: ${JSON.stringify(result.report)}`);
+        append(`[PHOTO][RESOLVED] Success: ${JSON.stringify(result.report)}`);
       } else {
-        addLog(`❌ [PHOTO][RESOLVED] Failed: ${(result as { ok: false; reason: string }).reason}`);
+        append(`[PHOTO][RESOLVED] Failed: ${(result as { ok: false; reason: string }).reason}`);
       }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      addLog(`❌ [PHOTO] Capture failed: ${errorMsg}`);
-    } finally {
-      setIsCapturing(false);
+    } catch (e) {
+      append('[SANDBOX][ERR] ' + String(e));
     }
-  };
+  }
 
   // Functions base URL
   const fnBase = 'https://uzoiiijqtahohfafqirm.functions.supabase.co';
 
-  const handlePing = async () => {
-    setIsPinging(true);
-    
+  async function pingTest() {
     try {
-      addLog('[PHOTO][FN_BASE] ' + fnBase);
-      addLog('[PING] Testing vision-ocr/ping endpoint...');
+      append('[PHOTO][FN_BASE] ' + fnBase);
+      append('[PING] Testing vision-ocr/ping endpoint...');
       
       const response = await fetch(`${fnBase}/vision-ocr/ping`);
       const data = await response.json();
       
       if (response.ok) {
-        addLog(`✅ [PING] ${JSON.stringify(data)}`);
+        append(`[PING] ${JSON.stringify(data)}`);
       } else {
-        addLog(`❌ [PING][ERROR] Status: ${response.status}, Data: ${JSON.stringify(data)}`);
+        append(`[PING][ERROR] Status: ${response.status}, Data: ${JSON.stringify(data)}`);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      addLog(`❌ [PING][ERROR] ${errorMsg}`);
-    } finally {
-      setIsPinging(false);
+      append(`[PING][ERROR] ${errorMsg}`);
     }
-  };
+  }
 
-  const handleOfflineTest = async () => {
-    setIsOfflineTest(true);
-    
+  async function offlineTest() {
     try {
-      addLog('[PHOTO][FN_BASE] ' + fnBase);
-      addLog('[OFFLINE TEST] Simulating network failure and watchdog test...');
+      append('[PHOTO][FN_BASE] ' + fnBase);
+      append('[OFFLINE TEST] Simulating network failure and watchdog test...');
       
       // Start watchdog timer
       const watchdogStart = Date.now();
       const watchdogTimeout = setTimeout(() => {
         const elapsed = Date.now() - watchdogStart;
-        addLog(`⏰ [PHOTO][RESOLVED] Watchdog triggered after ${elapsed}ms (≤18000ms expected)`);
-        setIsOfflineTest(false);
+        append(`[PHOTO][RESOLVED] Watchdog triggered after ${elapsed}ms (≤18000ms expected)`);
       }, 18000); // 18 second watchdog
       
       // Simulate network abort
       const controller = new AbortController();
       const abortTimer = setTimeout(() => {
         controller.abort();
-        addLog('[OFFLINE TEST] Network request aborted (simulated failure)');
-      }, 1000); // Abort after 1 second to simulate failure
+        append('[OFFLINE TEST] Network request aborted (simulated failure)');
+      }, 1000);
       
       try {
-        const response = await fetch(`${fnBase}/vision-ocr/ping`, {
+        await fetch(`${fnBase}/vision-ocr/ping`, {
           signal: controller.signal
         });
         
-        // If request succeeds (shouldn't happen due to abort), clear timers
         clearTimeout(abortTimer);
         clearTimeout(watchdogTimeout);
-        addLog('[OFFLINE TEST] Unexpected success - request should have been aborted');
-        setIsOfflineTest(false);
+        append('[OFFLINE TEST] Unexpected success - request should have been aborted');
       } catch (fetchError) {
         clearTimeout(abortTimer);
         
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          addLog('[OFFLINE TEST] ✅ Request aborted as expected');
+          append('[OFFLINE TEST] ✅ Request aborted as expected');
           // Let watchdog continue running to test the 18s timeout
         } else {
           clearTimeout(watchdogTimeout);
-          addLog(`[OFFLINE TEST] ❌ Unexpected error: ${fetchError}`);
-          setIsOfflineTest(false);
+          append(`[OFFLINE TEST] ❌ Unexpected error: ${fetchError}`);
         }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      addLog(`❌ [OFFLINE TEST] Setup failed: ${errorMsg}`);
-      setIsOfflineTest(false);
+      append(`[OFFLINE TEST] Setup failed: ${errorMsg}`);
     }
-  };
-
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      addLog('[SANDBOX] Photo sandbox mounted');
-    }
-    
-    return () => {
-      stopCamera();
-    };
-  }, []);
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="container mx-auto max-w-4xl space-y-6">
-        {/* Dev Warning Banner */}
-        <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-4 text-yellow-200">
-          <div className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-5 w-5" />
-            DEV ONLY — Photo sandbox (barcode/manual/voice unaffected)
-          </div>
-          <p className="text-sm mt-1 text-yellow-300">
-            Isolated photo pipeline testing. Only photo analysis runs here.
-          </p>
+    <div style={{ padding: 24, display: 'grid', gap: 12, backgroundColor: '#0f172a', color: '#e2e8f0', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: 16, borderRadius: 8, border: '1px solid #f59e0b' }}>
+        <strong>⚠️ DEV ONLY — Photo sandbox (barcode/manual/voice unaffected)</strong>
+        <div style={{ fontSize: 14, marginTop: 4 }}>
+          Isolated photo pipeline testing. Only photo analysis runs here.
         </div>
-
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Photo Pipeline Sandbox</h1>
-          <p className="text-slate-300">Test isolated photo analysis pipeline</p>
-        </div>
-
-        {/* Camera Controls */}
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Camera Controls
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button onClick={startCamera} disabled={!!stream}>
-                Start Camera
-              </Button>
-              <Button onClick={stopCamera} disabled={!stream} variant="outline">
-                Stop Camera
-              </Button>
-              <Button 
-                onClick={handleCapture} 
-                disabled={!stream || isCapturing}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isCapturing ? 'Capturing...' : 'Capture & Analyze'}
-              </Button>
-            </div>
-            
-            {/* Dev Test Buttons */}
-            <div className="border-t pt-4 space-y-3">
-              <h4 className="text-sm font-medium text-slate-300">Dev Tests</h4>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handlePing}
-                  disabled={isPinging}
-                  variant="secondary"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Wifi className="h-4 w-4" />
-                  {isPinging ? 'Pinging...' : 'Ping'}
-                </Button>
-                <Button 
-                  onClick={handleOfflineTest}
-                  disabled={isOfflineTest}
-                  variant="secondary"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <WifiOff className="h-4 w-4" />
-                  {isOfflineTest ? 'Testing...' : 'Offline Test'}
-                </Button>
-              </div>
-            </div>
-            
-            {error && (
-              <div className="bg-red-900/20 border border-red-500/30 rounded p-3 text-red-200">
-                {error}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Video Preview */}
-        {stream && (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Camera Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full max-w-md mx-auto rounded-lg bg-black"
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Log Panel */}
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Pipeline Logs</CardTitle>
-            <p className="text-slate-400 text-sm">
-              Monitoring: {monitoredLogs.join(', ')}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-slate-900 p-4 rounded text-sm text-slate-300 space-y-1 max-h-80 overflow-y-auto">
-              {logs.length === 0 ? (
-                <div className="text-slate-500">No logs yet... Start camera and capture to see pipeline activity</div>
-              ) : (
-                logs.map((log, i) => (
-                  <div key={i} className="font-mono text-xs">
-                    {log}
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
+      
+      <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0 }}>Photo Pipeline Sandbox</h1>
+      
+      <video 
+        ref={videoRef} 
+        autoPlay 
+        playsInline 
+        muted 
+        style={{ 
+          width: 320, 
+          height: 240, 
+          backgroundColor: '#000',
+          borderRadius: 8,
+          border: '1px solid #374151'
+        }} 
+      />
+      
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <button 
+          onClick={captureAndRun} 
+          style={{ 
+            padding: '8px 16px', 
+            backgroundColor: '#3b82f6', 
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500
+          }}
+        >
+          Capture & Analyze
+        </button>
+        
+        <button 
+          onClick={pingTest} 
+          style={{ 
+            padding: '8px 16px', 
+            backgroundColor: '#6b7280', 
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500
+          }}
+        >
+          Ping
+        </button>
+        
+        <button 
+          onClick={offlineTest} 
+          style={{ 
+            padding: '8px 16px', 
+            backgroundColor: '#6b7280', 
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500
+          }}
+        >
+          Offline Test
+        </button>
+      </div>
+      
+      <div style={{ marginTop: 16 }}>
+        <strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>Pipeline Logs</strong>
+        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 8 }}>
+          Monitoring: [IMG READY], [IMG BLOB], [PHOTO][FN_BASE], [PHOTO][FETCH_START], [PHOTO][FETCH_DONE], [PHOTO][OCR][RESP], [PHOTO][RESOLVED]
+        </div>
+        <div 
+          ref={logRef} 
+          style={{ 
+            fontFamily: 'monospace', 
+            fontSize: 12, 
+            whiteSpace: 'pre-wrap', 
+            backgroundColor: '#1e293b',
+            padding: 12,
+            borderRadius: 6,
+            border: '1px solid #374151',
+            maxHeight: 300,
+            overflowY: 'auto',
+            minHeight: 100
+          }} 
+        />
+      </div>
+      
+      <div id="photo-sandbox-root" />
     </div>
   );
 }
