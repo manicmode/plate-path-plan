@@ -51,7 +51,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-error'>('camera');
+  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down'>('camera');
   const inFlightRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   const rafRef = useRef<number>(0);
@@ -277,11 +277,18 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
       try {
         const result = await ocr.extractText(imageBytes);
         text = result?.text ?? '';
+        if (!text || text.trim().length < 8) {
+          if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
+          setStatus('photo-ocr-missing'); // stays in modal
+          return;
+        }
         if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-      } catch (e) {
-        if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', e);
-        setStatus('photo-ocr-error');
-        toast.error('Failed to read text from photo. Try manual entry.');
+      } catch (e: any) {
+        if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', { name: e?.name, message: e?.message });
+        // Map specific errors to clear UI states:
+        if (e?.message === 'payload_too_large') setStatus('photo-ocr-too-large');
+        else if ((e?.message || '').startsWith('ocr_http_')) setStatus('photo-ocr-service-down');
+        else setStatus('photo-ocr-error');
         return;
       }
 
@@ -386,11 +393,18 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             try {
               const result = await ocr.extractText(imageBytes);
               text = result?.text ?? '';
+              if (!text || text.trim().length < 8) {
+                if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
+                setStatus('photo-ocr-missing'); // stays in modal
+                return;
+              }
               if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-            } catch (e) {
-              if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', e);
-              setStatus('photo-ocr-error');
-              toast.error('Failed to read text from image. Try manual entry.');
+            } catch (e: any) {
+              if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', { name: e?.name, message: e?.message });
+              // Map specific errors to clear UI states:
+              if (e?.message === 'payload_too_large') setStatus('photo-ocr-too-large');
+              else if ((e?.message || '').startsWith('ocr_http_')) setStatus('photo-ocr-service-down');
+              else setStatus('photo-ocr-error');
               return;
             }
 

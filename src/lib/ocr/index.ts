@@ -1,56 +1,56 @@
-export type OCRResult = { text: string; blocks?: any[] };
+import { bytesToBase64JPEG, bytesToBase64Node } from './bytesToBase64';
 
-export interface OCR {
-  extractText(imageBytes: Uint8Array): Promise<OCRResult>;
-}
+export type OCRResult = { text: string };
+export interface OCR { extractText(imageBytes: Uint8Array): Promise<OCRResult>; }
 
 export async function getOCR(): Promise<OCR | null> {
   const raw = (import.meta.env.VITE_PHOTO_OCR_PROVIDER ?? '').toString();
   const provider = raw.trim().toLowerCase();
   const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
-
   if (DEBUG) console.info('[PHOTO][OCR][CFG]', { raw, provider });
 
-  if (provider !== 'vision') {
-    if (DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: 'provider_mismatch', expected: 'vision', got: provider });
-    return null;
-  }
+  if (provider !== 'vision') return null;
 
-  // Vision-backed OCR through our edge function (server can swap impl)
   const vision: OCR = {
     async extractText(imageBytes: Uint8Array) {
-      const body = {
-        mode: 'ocr',
-        imageBase64: typeof window === 'undefined'
-          ? Buffer.from(imageBytes).toString('base64')
-          : btoa(String.fromCharCode(...imageBytes)),
-      };
-      
-      if (DEBUG) console.info('[PHOTO][OCR][REQUEST]', { mode: body.mode, imageSize: imageBytes.length });
-      
+      // 2.1 compress already happened upstream; here we only encode + send
+      let image_base64 = '';
+      if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+        image_base64 = await bytesToBase64JPEG(imageBytes);   // SAFE
+      } else {
+        image_base64 = bytesToBase64Node(imageBytes);         // SSR fallback
+      }
+
+      // 2.2 hard cap payload (~2 MB base64); if too big, short-circuit with friendly error
+      const approxBytes = Math.ceil(image_base64.length * 0.75);
+      if (approxBytes > 2_000_000) {
+        if (DEBUG) console.warn('[PHOTO][OCR][CAP]', { approxBytes });
+        throw new Error('payload_too_large');
+      }
+
+      const body = { mode: 'ocr', image_base64, contentType: 'image/jpeg' };
+
       const res = await fetch('/functions/v1/enhanced-health-scanner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      
-      if (!res.ok) {
-        const errorText = await res.text().catch(() => 'unknown error');
-        throw new Error(`OCR request failed: ${res.status} - ${errorText}`);
+
+      if (DEBUG) {
+        console.info('[PHOTO][OCR][HTTP]', { status: res.status, ok: res.ok });
       }
-      
-      const data = await res.json();
-      const text = data?.extractedText ?? data?.text ?? '';
-      
-      if (DEBUG) console.info('[PHOTO][OCR][RESPONSE]', { 
-        textLength: text.length, 
-        hasText: !!text,
-        preview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
-      });
-      
-      return { text };
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        if (DEBUG) console.warn('[PHOTO][OCR][HTTP_ERR]', { status: res.status, text: text.slice(0, 200) });
+        throw new Error(`ocr_http_${res.status}`);
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (DEBUG) console.info('[PHOTO][OCR][RESP]', { textLen: (data?.text || '').length });
+      return { text: data?.text ?? '' };
     }
   };
-  
+
   return vision;
 }
