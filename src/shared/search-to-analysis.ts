@@ -6,6 +6,28 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
+const norm = (s?: string) =>
+  (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+export const pickBrand = (p: any) =>
+  p.brand || p.brands || p.manufacturer || p.store || p.retailer || '';
+
+export const pickName = (p: any) =>
+  p.product_name || p.generic_name || p.name || p.title || p.label || '';
+
+export const displayNameFor = (p: any) => {
+  const brand = pickBrand(p);
+  const name  = pickName(p);
+  if (brand && name) return `${brand} ${name}`;
+  return name || brand || 'Unknown Product';
+};
+
+const isGeneric = (analyzerName: string, brand: string) => {
+  const a = norm(analyzerName);
+  const b = norm(brand);
+  return !a || a === b || a.length < 4;
+};
+
 /**
  * Robust numeric parser for analyzer responses
  * Handles strings with units, fractions, and percentages
@@ -306,14 +328,15 @@ export async function handleSearchPick({
     const product = normalizeSearchItem(item);
 
     // Build enriched analyzer text with brand + name + ingredients + macros
-    const brand = item?.brand || item?.brand_name || item?.brands || '';
-    const name = item?.name || item?.product_name || item?.title || item?.label || '';
+    const brand = pickBrand(product);
+    const pickedName = displayNameFor(product); // what the user tapped
+    const selectionId = `${norm(brand)}|${norm(pickName(product))}|${product?.barcode||''}`;
 
     // Enrich with detailed nutrition/ingredients if needed
     const enriched = await enrichViaExtractIfNeeded(product);
 
     const parts: string[] = [];
-    parts.push(`Analyze this product: ${[brand, name].filter(Boolean).join(' ').trim()}.`);
+    parts.push(`Analyze this product: ${pickedName}.`);
 
     if (enriched.ingredientsText) {
       parts.push(`Ingredients: ${enriched.ingredientsText}.`);
@@ -334,8 +357,14 @@ export async function handleSearchPick({
     const text = parts.join(' ');
     console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
 
-    // Call analyzer with enriched text
-    const body = { text, taskType: 'full_report' };
+    // Call analyzer with enriched text and canonical identity
+    const body = {
+      taskType: 'full_report',
+      text,                       // existing rich text you already build
+      hintName: pickedName,       // NEW
+      hintBrand: brand,           // NEW
+      selectionId,                // NEW
+    };
     
     // PARITY logging: before invoke
     console.log('[PARITY][REQ]', { source, hasText: !!body.text });
@@ -399,6 +428,17 @@ export async function handleSearchPick({
       insights: analyzerData.insights ?? analyzerData.suggestions ?? [],
       ...analyzerData
     };
+
+    // **Canonical title enforcement**
+    const analyzerName = flattened.itemName;
+    const finalName = isGeneric(analyzerName, brand) ? pickedName : analyzerName;
+    if (finalName !== analyzerName) {
+      console.log('[ANALYZER][ITEMNAME_FIX]', { from: analyzerName, to: finalName, pickedName, brand });
+    }
+    flattened.itemName = finalName;
+
+    // **Attach selection metadata for cross-checking later**
+    flattened.__selection = { selectionId, hintName: pickedName, hintBrand: brand };
 
     // Add fallback mapping for top-level macros when nutrition object is missing
     if (!flattened.nutrition || Object.keys(flattened.nutrition).length === 0) {

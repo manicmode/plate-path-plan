@@ -90,7 +90,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, imageBase64, taskType = 'full_report', complexity = 'auto' } = await req.json().catch(() => ({}));
+    const { text, imageBase64, taskType = 'full_report', complexity = 'auto', hintName, hintBrand, selectionId } = await req.json().catch(() => ({}));
     
     // Early validation
     if (!text && !imageBase64) {
@@ -137,6 +137,9 @@ serve(async (req) => {
 
 For taskType "full_report": Analyze ingredients, calculate health scores, and provide complete nutritional data.
 For taskType "food_analysis": Basic nutrition extraction only.
+
+Use the provided hintName as the product's itemName. Do not generalize to brand-only names.
+Return a quality.score (0–10), a nutrition object (kcal, protein_g, carbs_g, fat_g, sugar_g, fiber_g, sodium_mg), ingredientsText, and flags.
 
 Always respond with valid JSON in this format:
 {
@@ -293,13 +296,31 @@ Always respond with valid JSON in this format:
       }
     }
 
-    const standardized = standardizeAnalyzerResponse(parsedResponse);
+    const out = standardizeAnalyzerResponse(parsedResponse);
+    
+    const isGenericFunc = (an: string, br: string) => {
+      const n = (an||'').toLowerCase().trim();
+      const b = (br||'').toLowerCase().trim();
+      return !n || n === b || n.length < 4;
+    };
+
+    if (hintName && isGenericFunc(out.itemName, hintBrand)) {
+      console.log('[ANALYZER][TITLE_OVERRIDE]', { from: out.itemName, to: hintName });
+      out.itemName = hintName;
+    }
+
+    out._meta = {
+      selectionId: selectionId || null,
+      hintName: hintName || null,
+      hintBrand: hintBrand || null,
+    };
+
     console.log('[GPT][STANDARDIZED]', {
-      itemName: standardized.itemName,
-      score: standardized.quality?.score,
-      hasNutrition: !!standardized.nutrition && Object.keys(standardized.nutrition).length > 0
+      itemName: out.itemName,
+      score: out.quality?.score,
+      hasNutrition: !!out.nutrition && Object.keys(out.nutrition).length > 0
     });
-    return new Response(JSON.stringify(standardized), {
+    return new Response(JSON.stringify(out), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200
     });

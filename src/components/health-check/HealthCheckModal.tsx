@@ -22,7 +22,7 @@ import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { useHealthCheckV2 } from './HealthCheckModalV2';
-import { handleSearchPick, num, score10 } from '@/shared/search-to-analysis';
+import { handleSearchPick, num, score10, pickBrand, displayNameFor } from '@/shared/search-to-analysis';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -399,15 +399,24 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         }
       }
 
-      // Name
-      const itemName =
-        raw?.itemName ??
-        raw?.productName ??
-        raw?.title ??
-        raw?.name ??
-        raw?.product?.name ??
-        result?.product?.name ??
-        'Unknown Product';
+      // Canonical name enforcement
+      const brand = pickBrand(result?.product || {});
+      const pickedName = displayNameFor(result?.product || {});
+      const rawName = raw.itemName || raw.productName || raw.title || raw.name || '';
+
+      const isGeneric = (analyzerName: string, brand: string) => {
+        const a = (analyzerName||'').toLowerCase().trim();
+        const b = (brand||'').toLowerCase().trim();
+        return !a || a === b || a.length < 4;
+      };
+
+      const finalName = isGeneric(rawName, brand) ? pickedName : rawName;
+
+      if (finalName !== rawName) {
+        console.log('[REPORT][TITLE_FIX]', { from: rawName, to: finalName, pickedName, brand });
+      }
+
+      const itemName = finalName || 'Unknown Product';
 
       // Score
       const ENABLE_LOCAL_SCORE_FALLBACK = import.meta.env.VITE_LOCAL_SCORE_FALLBACK === 'true';
@@ -458,6 +467,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           'low',
         reason: f.reason,
       }));
+
+      // Optional sanity: if analyzer echoed selection meta, assert it:
+      if (result?._meta?.selectionId && result?.__selection?.selectionId) {
+        const same = result._meta.selectionId === result.__selection.selectionId;
+        if (!same) console.warn('[REPORT][SELECTION_MISMATCH]', { analyzer: result._meta, client: result.__selection });
+      }
 
       // Compose → state
       const normalized: HealthAnalysisResult = {
