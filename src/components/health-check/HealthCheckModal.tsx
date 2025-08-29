@@ -48,6 +48,44 @@ function extractScore(raw: unknown): number | undefined {
   return Math.max(0, Math.min(100, pct));     // clamp
 }
 
+// PATCH 3: Map OFF nutriments to UI nutrition grid (7 explicit fields only)
+function mapOffNutritionToGrid(nutritionData: any) {
+  const n = nutritionData || {};
+
+  // kcal: prefer energy-kcal_100g; if only kJ provided, convert (1 kJ ≈ 0.239005736 kcal)
+  const kcal = typeof n['energy-kcal_100g'] === 'number'
+    ? n['energy-kcal_100g']
+    : (typeof n['energy_100g'] === 'number'
+         ? n['energy_100g'] * 0.239005736
+         : 0);
+
+  // sodium: if only salt is present (g/100g), convert to sodium mg/100g
+  const sodiumMg = (() => {
+    if (typeof n['sodium_100g'] === 'number') return n['sodium_100g'] * 1000; // g -> mg
+    if (typeof n['salt_100g'] === 'number')   return n['salt_100g'] * 400 * 1000; // g salt -> mg sodium
+    return 0;
+  })();
+
+  const nutritionGridData = {
+    calories: Math.max(0, Number(kcal) || 0),
+    protein:  Math.max(0, Number(n['proteins_100g']) || 0),
+    carbs:    Math.max(0, Number(n['carbohydrates_100g']) || 0),
+    fat:      Math.max(0, Number(n['fat_100g']) || 0),
+    sugar:    Math.max(0, Number(n['sugars_100g']) || 0),
+    fiber:    Math.max(0, Number(n['fiber_100g']) || 0),
+    sodium:   Math.max(0, sodiumMg || 0),
+  };
+
+  if (DEBUG) {
+    console.log('[REPORT][NUTRITION_MAP]', {
+      offKeys: Object.keys(n),
+      gridPreview: nutritionGridData
+    });
+  }
+
+  return nutritionGridData;
+}
+
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -927,9 +965,21 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         
         // Process successful barcode result (same logic as barcode capture)
         const itemName = legacy.productName || 'Unknown item';
-        const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score;
-        const scorePct = extractScore(rawScore);
-        const score10 = scorePct == null ? null : scorePct / 10;
+        
+        // PATCH 3: No double-scaling when flagged as 0-10
+        const rawLegacyScore = Number(legacy?.healthScore);
+        const score10 =
+          legacy?.scoreUnit === '0-10'
+            ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
+            : extractScore(rawLegacyScore) / 10; // legacy normalization for non-barcode paths
+        
+        if (DEBUG) {
+          console.log('[REPORT][SCORE_TRACE]', {
+            fromAdapter: legacy.healthScore,
+            unit: legacy.scoreUnit,
+            final10: score10
+          });
+        }
         
         const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
         const ingredientFlags = rawFlags.map((f: any) => ({
@@ -945,7 +995,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText: legacy.ingredientsText,
           ingredientFlags,
-          nutritionData: legacy.nutritionData || {},
+          nutritionData: mapOffNutritionToGrid(legacy.nutritionData || {}),
           healthProfile: {
             isOrganic: legacy.ingredientsText?.includes('organic') || false,
             isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1444,9 +1494,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       // Process the result same as barcode flow
       const itemName = legacy.productName || 'Unknown item';
-      const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? null;
-      const scorePct = extractScore(rawScore);
-      const score10 = scorePct == null ? null : scorePct / 10;
+      
+      // PATCH 3: No double-scaling when flagged as 0-10
+      const rawLegacyScore = Number(legacy?.healthScore);
+      const score10 =
+        legacy?.scoreUnit === '0-10'
+          ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
+          : extractScore(rawLegacyScore) / 10; // legacy normalization for non-barcode paths
       
       const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
       const ingredientFlags = rawFlags.map((f: any) => ({
@@ -1465,7 +1519,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText,
           ingredientFlags,
-          nutritionData: nutritionData || {},
+          nutritionData: mapOffNutritionToGrid(legacy.nutritionData || {}),
           healthProfile: {
             isOrganic: ingredientsText?.includes('organic') || false,
             isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
