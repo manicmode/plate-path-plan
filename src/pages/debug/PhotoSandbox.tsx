@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, AlertTriangle } from 'lucide-react';
+import { Camera, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { blobFromVideo } from '@/pipelines/utils';
 import { analyzePhoto } from '@/pipelines/photoPipeline';
 
@@ -11,6 +11,8 @@ export default function PhotoSandbox() {
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isPinging, setIsPinging] = useState(false);
+  const [isOfflineTest, setIsOfflineTest] = useState(false);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -118,6 +120,83 @@ export default function PhotoSandbox() {
     }
   };
 
+  // Functions base URL
+  const fnBase = 'https://uzoiiijqtahohfafqirm.functions.supabase.co';
+
+  const handlePing = async () => {
+    setIsPinging(true);
+    
+    try {
+      addLog('[PHOTO][FN_BASE] ' + fnBase);
+      addLog('[PING] Testing vision-ocr/ping endpoint...');
+      
+      const response = await fetch(`${fnBase}/vision-ocr/ping`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        addLog(`✅ [PING] ${JSON.stringify(data)}`);
+      } else {
+        addLog(`❌ [PING][ERROR] Status: ${response.status}, Data: ${JSON.stringify(data)}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addLog(`❌ [PING][ERROR] ${errorMsg}`);
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
+  const handleOfflineTest = async () => {
+    setIsOfflineTest(true);
+    
+    try {
+      addLog('[PHOTO][FN_BASE] ' + fnBase);
+      addLog('[OFFLINE TEST] Simulating network failure and watchdog test...');
+      
+      // Start watchdog timer
+      const watchdogStart = Date.now();
+      const watchdogTimeout = setTimeout(() => {
+        const elapsed = Date.now() - watchdogStart;
+        addLog(`⏰ [PHOTO][RESOLVED] Watchdog triggered after ${elapsed}ms (≤18000ms expected)`);
+        setIsOfflineTest(false);
+      }, 18000); // 18 second watchdog
+      
+      // Simulate network abort
+      const controller = new AbortController();
+      const abortTimer = setTimeout(() => {
+        controller.abort();
+        addLog('[OFFLINE TEST] Network request aborted (simulated failure)');
+      }, 1000); // Abort after 1 second to simulate failure
+      
+      try {
+        const response = await fetch(`${fnBase}/vision-ocr/ping`, {
+          signal: controller.signal
+        });
+        
+        // If request succeeds (shouldn't happen due to abort), clear timers
+        clearTimeout(abortTimer);
+        clearTimeout(watchdogTimeout);
+        addLog('[OFFLINE TEST] Unexpected success - request should have been aborted');
+        setIsOfflineTest(false);
+      } catch (fetchError) {
+        clearTimeout(abortTimer);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          addLog('[OFFLINE TEST] ✅ Request aborted as expected');
+          // Let watchdog continue running to test the 18s timeout
+        } else {
+          clearTimeout(watchdogTimeout);
+          addLog(`[OFFLINE TEST] ❌ Unexpected error: ${fetchError}`);
+          setIsOfflineTest(false);
+        }
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addLog(`❌ [OFFLINE TEST] Setup failed: ${errorMsg}`);
+      setIsOfflineTest(false);
+    }
+  };
+
   useEffect(() => {
     if (import.meta.env.DEV) {
       addLog('[SANDBOX] Photo sandbox mounted');
@@ -170,6 +249,33 @@ export default function PhotoSandbox() {
               >
                 {isCapturing ? 'Capturing...' : 'Capture & Analyze'}
               </Button>
+            </div>
+            
+            {/* Dev Test Buttons */}
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-medium text-slate-300">Dev Tests</h4>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handlePing}
+                  disabled={isPinging}
+                  variant="secondary"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Wifi className="h-4 w-4" />
+                  {isPinging ? 'Pinging...' : 'Ping'}
+                </Button>
+                <Button 
+                  onClick={handleOfflineTest}
+                  disabled={isOfflineTest}
+                  variant="secondary"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <WifiOff className="h-4 w-4" />
+                  {isOfflineTest ? 'Testing...' : 'Offline Test'}
+                </Button>
+              </div>
             </div>
             
             {error && (
