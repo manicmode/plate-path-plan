@@ -1449,15 +1449,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
 
       if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-        const nd = report.nutritionData || {};
-        const ns = report.nutritionDataPerServing || {};
         console.info('[REPORT][FINAL][BARCODE]', {
-          title: report.title,
-          score: report.health?.score,
-          flagsCount: report.ingredientFlags?.length ?? 0,
-          per100g: { kcal: (nd as any).energyKcal, sugar: (nd as any).sugar_g, sodium_mg: (nd as any).sodium_mg },
-          perServing: { kcal: (ns as any).energyKcal, sugar: (ns as any).sugar_g, sodium_mg: (ns as any).sodium_mg },
-          serving_size: report.serving_size
+          score10: report.health?.score,
+          has_perServing: !!report.nutritionDataPerServing,
+          perServing_kcal: report.nutritionDataPerServing?.energyKcal
         });
       }
 

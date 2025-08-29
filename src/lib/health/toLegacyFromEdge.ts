@@ -139,8 +139,27 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     const hasAny = ['energyKcal','sugar_g','sodium_mg','satfat_g','fiber_g','protein_g']
       .some(k => mapped[k as keyof typeof mapped] != null && !Number.isNaN(+(mapped[k as keyof typeof mapped] || 0)));
 
-    let score10: number | undefined;
-    if (import.meta.env.VITE_SCORE_ENGINE_V1 === 'true' && hasAny) {
+    const engineOn = import.meta.env.VITE_SCORE_ENGINE_V1 === 'true';
+    
+    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+      console.info('[ADAPTER][BARCODE.ENGINE_INPUT]', {
+        engine_flag: engineOn,
+        hasAny,
+        inputs: {
+          energy_kcal_100g: mapped.energyKcal,
+          sugar_g_100g:     mapped.sugar_g,
+          sodium_mg_100g:   mapped.sodium_mg,
+          satfat_g_100g:    mapped.satfat_g,
+          fiber_g_100g:     mapped.fiber_g,
+          protein_g_100g:   mapped.protein_g,
+        }
+      });
+    }
+
+    let score10: number | undefined = undefined;
+
+    // Use engine only when we have real inputs
+    if (engineOn && hasAny) {
       const res = calculateHealthScore({
         name: p.product_name || p.generic_name || '',
         nutrition: {
@@ -158,9 +177,17 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       });
       score10 = toFinal10(res.score);
     } else {
-      // No fake constants. If legacy score exists, normalize once; else undefined.
-      const legacy = p.health?.score;
-      score10 = legacy == null ? undefined : (legacy <= 10 ? +legacy : Math.round(+legacy/10));
+      // No invented constants. If an upstream legacy *number* exists, normalize once; else leave undefined.
+      const legacyRaw = (p as any)?.health?.score;
+      score10 = typeof legacyRaw === 'number'
+        ? (legacyRaw <= 10 ? legacyRaw : Math.round(legacyRaw / 10))
+        : undefined;
+    }
+
+    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+      console.info('[ADAPTER][BARCODE.SCORE_OUT]', {
+        score10, used_legacy_score: p?.health?.score != null
+      });
     }
 
     // Parse serving size correctly (units-aware)
@@ -221,13 +248,16 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
     // Debug performance logging
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-      const nd = legacy.nutritionData as any || {};
-      console.info('[ADAPTER][BARCODE]', {
-        score: legacy.healthScore, 
-        flags: legacy.flags?.length, 
-        per100g: { kcal: nd.energyKcal }, 
-        perServing: { kcal: perServingData.energyKcal }, 
-        serving: legacy.serving_size
+      console.info('[ADAPTER][BARCODE.OUT]', {
+        healthScore: score10,
+        flags_count: flags?.length || 0,
+        per100g: { kcal: mapped.energyKcal, sugar_g: mapped.sugar_g, sodium_mg: mapped.sodium_mg },
+        perServing: {
+          kcal: perServingData?.energyKcal,
+          sugar_g: perServingData?.sugar_g,
+          sodium_mg: perServingData?.sodium_mg
+        },
+        serving_size: servingTxt
       });
     }
     

@@ -106,11 +106,15 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
-  if (DEBUG) {
-    console.log('[REPORT][TITLE+SCORE]', {
-      title: result?.itemName ?? (analysisData as any)?.name,
-      rawScore: result?.healthScore ?? (result as any)?.quality?.score,
-      path: (result as any)?.__fromSnapshot ? 'snapshot' : 'live',
+  if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+    console.info('[UI][NUTRITION.READ]', {
+      reads_per100g_from: 'result.nutritionData.*',
+      reads_perServing_from: 'result.nutritionDataPerServing.*',
+      has_perServing_prop: !!(result as any)?.nutritionDataPerServing,
+      sample: {
+        per100g_kcal: result?.nutritionData?.calories,
+        perServing_kcal: (result as any)?.nutritionDataPerServing?.energyKcal
+      }
     });
   }
   
@@ -435,35 +439,84 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           </CardHeader>
           <CardContent>
             {hasValidNutrition(result.nutritionData) ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(result.nutritionData).map(([key, value]) => {
-                  if (value === undefined || value === null || value === 0) return null;
-                  
-                  const getUnit = (nutrientKey: string) => {
-                    if (nutrientKey === 'calories') return '';
-                    if (nutrientKey === 'sodium') return 'g';
-                    return 'g';
-                  };
-                  
-                  const getDisplayKey = (nutrientKey: string) => {
-                    if (nutrientKey === 'carbs') return 'Carbs';
-                    return nutrientKey.charAt(0).toUpperCase() + nutrientKey.slice(1);
-                  };
-                  
-                  const unit = getUnit(key);
-                  const displayKey = getDisplayKey(key);
-                  
-                  return (
-                    <div key={key} className="text-center p-4 bg-accent/20 border border-accent/30 rounded-xl">
-                      <div className="text-3xl font-bold text-foreground mb-1">
-                        {typeof value === 'number' ? value : value}
+              <>
+                <h4 className="text-lg font-semibold mb-3">Per 100g</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(result.nutritionData).map(([key, value]) => {
+                    if (value === undefined || value === null || value === 0) return null;
+                    
+                    const getUnit = (nutrientKey: string) => {
+                      if (nutrientKey === 'calories') return '';
+                      if (nutrientKey === 'sodium') return 'mg';
+                      return 'g';
+                    };
+                    
+                    const getDisplayKey = (nutrientKey: string) => {
+                      if (nutrientKey === 'carbs') return 'Carbs';
+                      return nutrientKey.charAt(0).toUpperCase() + nutrientKey.slice(1);
+                    };
+                    
+                    const unit = getUnit(key);
+                    const displayKey = getDisplayKey(key);
+                    
+                    return (
+                      <div key={key} className="text-center p-4 bg-accent/20 border border-accent/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">
+                          {typeof value === 'number' ? Math.round(value * 10) / 10 : value}
+                        </div>
+                        <div className="text-sm text-foreground font-medium mb-1">{unit}</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">{displayKey}</div>
                       </div>
-                      <div className="text-sm text-foreground font-medium mb-1">{unit}</div>
-                      <div className="text-xs text-foreground font-semibold uppercase tracking-wide">{displayKey}</div>
+                    );
+                  })}
+                </div>
+                
+                {/* Per-serving nutrition if available */}
+                {(result as any)?.nutritionDataPerServing && (
+                  <section className="mt-6">
+                    <h4 className="text-lg font-semibold mb-3">
+                      Per serving{(result as any)?.serving_size ? ` (${(result as any).serving_size})` : ''}
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.energyKcal ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1"></div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Calories</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.sugar_g ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">g</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sugar</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.sodium_mg ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">mg</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sodium</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.fat_g ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">g</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Fat</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.satfat_g ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">g</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sat Fat</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.fiber_g ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">g</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Fiber</div>
+                      </div>
+                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.protein_g ?? '—'}</div>
+                        <div className="text-sm text-foreground font-medium mb-1">g</div>
+                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Protein</div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </section>
+                )}
+              </>
             ) : (
               <div className="p-4 text-center text-foreground font-medium">
                 Nutrition facts not available from scan data
