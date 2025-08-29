@@ -410,9 +410,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         'Unknown Product';
 
       // Score
-      const score10Value = score10(
+      const ENABLE_LOCAL_SCORE_FALLBACK = import.meta.env.VITE_LOCAL_SCORE_FALLBACK === 'true';
+      
+      let score10Value = score10(
         raw?.healthScore ?? raw?.quality?.score ?? raw?.score ?? raw?.rating ?? raw?.overall?.score ?? raw?.grades?.health
       );
+
+      if (ENABLE_LOCAL_SCORE_FALLBACK && (!isFinite(score10Value) || score10Value === 0)) {
+        const n = raw?.nutrition ?? raw?.nutritionData ?? raw?.macros ?? {};
+        const kcal = num(n.calories ?? n.energy_kcal) ?? 0;
+        score10Value = Math.max(0, Math.min(10, 10 - (kcal / 1000) * 10));
+      }
 
       // Nutrition (convert unit strings -> numbers)
       const n = raw?.nutrition ?? raw?.nutritionData ?? raw?.macros ?? {};

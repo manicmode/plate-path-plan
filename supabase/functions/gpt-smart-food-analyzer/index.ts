@@ -1,12 +1,57 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+function standardizeAnalyzerResponse(r: any) {
+  const food = Array.isArray(r?.foods) && r.foods.length ? r.foods[0] : r;
+
+  const itemName =
+    food?.itemName ?? food?.productName ?? food?.title ?? food?.name ?? 'Unknown Product';
+
+  // Accept top-level macros if no "nutrition" object
+  const n = food?.nutrition ?? {
+    calories: food?.calories,
+    protein_g: food?.protein,
+    carbs_g:   food?.carbs,
+    fat_g:     food?.fat,
+    sugar_g:   food?.sugar,
+    fiber_g:   food?.fiber,
+    sodium_mg: food?.sodium,
+  };
+
+  // Numeric score in [0,10]
+  let score =
+    typeof food?.healthScore === 'number' ? food.healthScore :
+    typeof food?.quality?.score === 'number' ? food.quality.score :
+    typeof food?.score === 'number' ? food.score :
+    null;
+
+  // Minimal temporary heuristic if model omitted a score
+  if (score == null) {
+    const kcal = Number(n?.calories) || 0;
+    score = Math.max(0, Math.min(10, 10 - (kcal / 1000) * 10)); // e.g. 500 kcal ~ 5/10
+  }
+  score = Math.max(0, Math.min(10, score));
+
+  return {
+    itemName,
+    quality: { score }, // ALWAYS present and numeric 0–10
+    nutrition: {
+      calories:  Number(n?.calories) || 0,
+      protein_g: Number(n?.protein_g ?? n?.protein) || 0,
+      carbs_g:   Number(n?.carbs_g   ?? n?.carbs   ?? n?.carbohydrates) || 0,
+      fat_g:     Number(n?.fat_g     ?? n?.fat) || 0,
+      sugar_g:   Number(n?.sugar_g   ?? n?.sugar   ?? n?.sugars) || 0,
+      fiber_g:   Number(n?.fiber_g   ?? n?.fiber   ?? n?.dietary_fiber) || 0,
+      sodium_mg: Number(n?.sodium_mg ?? n?.sodium) || 0,
+    },
+    ingredientsText: food?.ingredientsText ?? food?.ingredients ?? '',
+    flags:    food?.flags    ?? food?.ingredientFlags ?? [],
+    insights: food?.insights ?? food?.suggestions     ?? [],
+  };
+}
+
 
 /**
  * Robust JSON parser that handles code fences and malformed responses
@@ -36,9 +81,12 @@ function parseAIResponse(aiResponse: string): any {
  * 🧠 Smart GPT Food Analyzer with intelligent model routing
  */
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -245,12 +293,15 @@ Always respond with valid JSON in this format:
       }
     }
 
-    return new Response(JSON.stringify({
-      ...parsedResponse,
-      model_used: selectedModel,
-      fallback_used: false
-    }), {
+    const standardized = standardizeAnalyzerResponse(parsedResponse);
+    console.log('[GPT][STANDARDIZED]', {
+      itemName: standardized.itemName,
+      score: standardized.quality?.score,
+      hasNutrition: !!standardized.nutrition && Object.keys(standardized.nutrition).length > 0
+    });
+    return new Response(JSON.stringify(standardized), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
     });
 
   } catch (error) {
