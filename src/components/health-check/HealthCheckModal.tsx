@@ -55,6 +55,8 @@ interface HealthCheckModalProps {
     name?: string;
     productName?: string;
     product?: any;
+    imageBase64?: string;
+    captureTs?: number;
   };
 }
 
@@ -117,9 +119,48 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
   const { onAnalyzeImage } = useHealthCheckV2();
+  const processedPhotoKeyRef = useRef<string>('');
+
+  // Helper to choose v1/v2 pipeline
+  const runPhotoAnalysis = async (imgB64: string) => {
+    // Use existing handlers in this file - match existing pattern
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+    if (usePhotoPipelineV2) {
+      await handleImageCaptureV2(imgB64);
+    } else {
+      await handleImageCapture(imgB64);
+    }
+  };
 
   // Mount probe
   useEffect(() => { console.log('[HC][MOUNT] v1'); }, []);
+
+  // AUTO-KICK when a photo payload is provided from ScanHub
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const isPhoto = analysisData?.source === 'photo';
+    const img = (analysisData as any)?.imageBase64 as string | undefined;
+    if (!isPhoto || !img || img.length < 50) return; // trivial sanity
+
+    // Avoid reprocessing same image if component re-renders
+    const key = `${img.length}:${analysisData?.captureTs ?? ''}`;
+    if (processedPhotoKeyRef.current === key) return;
+    processedPhotoKeyRef.current = key;
+
+    console.log('[HC][PHOTO][AUTO]', { hasImage: true, key });
+
+    // ensure UI shows loading (not scanner)
+    setCurrentState('loading');
+
+    // fire analysis
+    runPhotoAnalysis(img).catch(err => {
+      console.error('[HC][PHOTO][AUTO][ERROR]', err);
+      // fall back gracefully
+      setCurrentState('fallback');
+    });
+  }, [isOpen, analysisData?.source, (analysisData as any)?.imageBase64, analysisData?.captureTs]);
 
   // Reset state when modal opens/closes
   useEffect(() => {

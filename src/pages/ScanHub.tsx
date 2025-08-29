@@ -172,13 +172,24 @@ export default function ScanHub() {
   // Just track in recents when modal closes successfully
 
   // Handle photo capture
-  const handlePhotoCapture = (imageData: string) => {
-    console.log('Photo captured, processing...');
-    addRecent({ mode: 'photo', label: 'Photo scan' });
-    
-    // Use the modal system instead of broken /health-report route
-    setPhotoModalOpen(false); // Close photo modal
-    setHealthCheckModalOpen(true); // Open health check with image data
+  const handlePhotoCapture = (imageBase64: string) => {
+    console.log('[PHOTO][CAPTURE]', { len: imageBase64?.length || 0 });
+
+    // Close the capture UI
+    setPhotoModalOpen(false);
+
+    // Provide the image to Health modal
+    const payload = {
+      source: 'photo' as const,
+      imageBase64,                 // <-- IMPORTANT
+      captureTs: Date.now(),
+    };
+
+    setAnalysisData(payload);
+    setHealthModalStep('loading'); // first view should be loading
+    console.log('[HC][OPEN]', { from: 'photo', initial: 'loading' });
+
+    setHealthCheckModalOpen(true);
   };
 
   // Handle photo fallback to manual
@@ -392,9 +403,11 @@ export default function ScanHub() {
         initialState={
           forceHealth
             ? 'loading'
-            : (analysisData && analysisData.source !== 'photo')
+            : (analysisData?.source === 'photo' && (analysisData as any)?.imageBase64)
               ? 'loading'
-              : 'scanner'
+              : (analysisData && analysisData.source !== 'photo')
+                  ? 'loading'
+                  : 'scanner'
         }
         analysisData={forceHealth ? { source, barcode, name } : analysisData}
       />

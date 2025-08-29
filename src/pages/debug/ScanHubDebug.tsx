@@ -87,10 +87,20 @@ export function ScanHubDebug() {
     setHealthCheckModalOpen(true);
   };
 
-  const handlePhotoCapture = (imageData: string) => {
-    console.log('[DEBUG] Photo captured');
+  const handlePhotoCapture = (imageBase64: string) => {
+    console.log('[PHOTO][CAPTURE]', { len: imageBase64?.length || 0 });
     toast.success('Photo captured successfully');
-    // Use modal system instead of broken route
+    
+    // Close the capture UI and provide image to Health modal
+    setPhotoModalOpen(false);
+    
+    const payload = {
+      source: 'photo' as const,
+      imageBase64,
+      captureTs: Date.now(),
+    };
+    
+    // Use modal system with image data
     setHealthCheckModalOpen(true);
   };
 
