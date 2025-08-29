@@ -19,37 +19,77 @@ export interface NutritionThresholds {
 }
 
 /**
- * Ingredient-based flag rules
+ * Ingredient-based flag rules with US FD&C color names
  */
 export const INGREDIENT_RULES = [
   {
-    key: 'artificial_sweeteners',
-    test: (text: string) => /aspartame|sucralose|acesulfame|saccharin|neotame|advantame/i.test(text),
+    key: 'aspartame',
+    test: (text: string) => /\b(aspartame|e951)\b/i.test(text),
     flag: {
-      key: 'artificial_sweeteners',
-      label: 'Contains artificial sweeteners',
+      key: 'aspartame',
+      label: 'Artificial sweetener (Aspartame)',
+      severity: 'danger' as const,
+      description: 'Contains aspartame artificial sweetener'
+    }
+  },
+  {
+    key: 'acesulfame_k',
+    test: (text: string) => /\b(acesulfame[-\s]?k|e950)\b/i.test(text),
+    flag: {
+      key: 'acesulfame_k',
+      label: 'Artificial sweetener (Acesulfame K)',
       severity: 'warning' as const,
-      description: 'Contains synthetic sugar substitutes'
+      description: 'Contains acesulfame K artificial sweetener'
+    }
+  },
+  {
+    key: 'sucralose',
+    test: (text: string) => /\b(sucralose|splenda|e955)\b/i.test(text),
+    flag: {
+      key: 'sucralose',
+      label: 'Artificial sweetener (Sucralose)',
+      severity: 'warning' as const,
+      description: 'Contains sucralose artificial sweetener'
+    }
+  },
+  {
+    key: 'saccharin',
+    test: (text: string) => /\b(saccharin|e954)\b/i.test(text),
+    flag: {
+      key: 'saccharin',
+      label: 'Artificial sweetener (Saccharin)',
+      severity: 'warning' as const,
+      description: 'Contains saccharin artificial sweetener'
+    }
+  },
+  {
+    key: 'nitrites',
+    test: (text: string) => /\b(sodium nitrite|potassium nitrite|sodium nitrate|potassium nitrate|e249|e250|e251|e252)\b/i.test(text),
+    flag: {
+      key: 'nitrites',
+      label: 'Nitrites/nitrates',
+      severity: 'danger' as const,
+      description: 'Contains nitrites or nitrates'
     }
   },
   {
     key: 'artificial_colors',
-    test: (text: string) => /red.*40|yellow.*5|yellow.*6|blue.*1|fd&c|artificial.*color/i.test(text),
+    test: (text: string) => /\b(e10[2-5]|tartrazine|sunset yellow|azorubine|ponceau 4r|allura red|red\s*40|yellow\s*5|yellow\s*6|blue\s*1|fd&c\s*(red|yellow|blue)\s*\d+)\b/i.test(text),
     flag: {
-      key: 'artificial_colors', 
-      label: 'Contains artificial colors',
+      key: 'artificial_colors',
+      label: 'Artificial colors',
       severity: 'warning' as const,
-      description: 'Contains synthetic food coloring'
+      description: 'Contains artificial food coloring'
     }
   },
   {
-    key: 'preservatives',
-    test: (text: string) => /sodium benzoate|potassium sorbate|bht|bha|tbhq|sodium nitrite/i.test(text),
+    key: 'trans_fats',
+    test: (text: string) => /\b(partially hydrogenated)\b/i.test(text),
     flag: {
-      key: 'preservatives',
-      label: 'Contains preservatives',
-      severity: 'warning' as const,
-      description: 'Contains chemical preservatives'
+      key: 'trans_fats',
+      label: 'Trans fats',
+      severity: 'danger' as const,
+      description: 'Contains harmful trans fatty acids'
     }
   },
   {
@@ -71,16 +111,6 @@ export const INGREDIENT_RULES = [
       severity: 'warning' as const,
       description: 'Contains monosodium glutamate flavor enhancer'
     }
-  },
-  {
-    key: 'trans_fats',
-    test: (text: string) => /partially hydrogenated|trans fat/i.test(text),
-    flag: {
-      key: 'trans_fats',
-      label: 'Contains trans fats',
-      severity: 'danger' as const,
-      description: 'Contains harmful trans fatty acids'
-    }
   }
 ];
 
@@ -89,31 +119,11 @@ export const INGREDIENT_RULES = [
  */
 export const NUTRITION_RULES = [
   {
-    key: 'high_sodium',
-    test: (nutrition: NutritionThresholds) => (nutrition.sodium_mg_100g || 0) >= 600,
-    flag: {
-      key: 'high_sodium',
-      label: 'High in sodium',
-      severity: 'warning' as const,
-      description: 'Contains high levels of sodium (≥600mg per 100g)'
-    }
-  },
-  {
-    key: 'very_high_sodium',
-    test: (nutrition: NutritionThresholds) => (nutrition.sodium_mg_100g || 0) >= 1500,
-    flag: {
-      key: 'very_high_sodium', 
-      label: 'Very high in sodium',
-      severity: 'danger' as const,
-      description: 'Contains very high levels of sodium (≥1500mg per 100g)'
-    }
-  },
-  {
     key: 'high_sugar',
     test: (nutrition: NutritionThresholds) => (nutrition.sugar_g_100g || 0) >= 22.5,
     flag: {
       key: 'high_sugar',
-      label: 'High in sugar',
+      label: 'Sugar ≥22.5 g/100g',
       severity: 'warning' as const, 
       description: 'Contains high levels of sugar (≥22.5g per 100g)'
     }
@@ -123,9 +133,39 @@ export const NUTRITION_RULES = [
     test: (nutrition: NutritionThresholds) => (nutrition.satfat_g_100g || 0) >= 5,
     flag: {
       key: 'high_saturated_fat',
-      label: 'High in saturated fat',
+      label: 'Sat fat ≥5 g/100g',
       severity: 'warning' as const,
       description: 'Contains high levels of saturated fat (≥5g per 100g)'
+    }
+  },
+  {
+    key: 'high_sodium',
+    test: (nutrition: NutritionThresholds) => (nutrition.sodium_mg_100g || 0) >= 600,
+    flag: {
+      key: 'high_sodium',
+      label: 'Sodium ≥600 mg/100g',
+      severity: 'danger' as const,
+      description: 'Contains high levels of sodium (≥600mg per 100g)'
+    }
+  },
+  {
+    key: 'very_high_sodium',
+    test: (nutrition: NutritionThresholds) => (nutrition.sodium_mg_100g || 0) >= 1500,
+    flag: {
+      key: 'very_high_sodium', 
+      label: 'Sodium ≥1500 mg/100g',
+      severity: 'danger' as const,
+      description: 'Contains very high levels of sodium (≥1500mg per 100g)'
+    }
+  },
+  {
+    key: 'low_fiber',
+    test: (nutrition: NutritionThresholds) => (nutrition.fiber_g_100g || 0) <= 2,
+    flag: {
+      key: 'low_fiber',
+      label: 'Low fiber ≤2 g/100g',
+      severity: 'warning' as const,
+      description: 'Low in dietary fiber (≤2g per 100g)'
     }
   },
   {
