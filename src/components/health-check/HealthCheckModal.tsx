@@ -54,7 +54,7 @@ function extractScore(raw: unknown, scoreUnit?: string): number | undefined {
   return Math.max(0, Math.min(100, pct));     // clamp
 }
 
-// Extract nutrition data with 7-field mapping for OFF
+// Extract nutrition data with 7-field mapping for OFF - prefer per-serving with fallbacks
 function extractNutritionData(nutritionData: any) {
   if (!nutritionData || typeof nutritionData !== 'object') {
     return {
@@ -68,21 +68,66 @@ function extractNutritionData(nutritionData: any) {
     };
   }
 
+  // OFF nutriments → prefer per serving; fallback to per 100g; scale by serving_size if needed
   const n = nutritionData;
-  const kcal = typeof n['energy-kcal_100g'] === 'number'
-    ? n['energy-kcal_100g']
-    : (typeof n['energy_100g'] === 'number' ? n['energy_100g'] * 0.239005736 : 0);
+  const getNum = (v: any) => (typeof v === 'number' ? v : Number(v));
+
+  const servingSizeStr = n['serving_size'] || n['serving-size'] || null;
+  const servingG = (() => {
+    if (!servingSizeStr || typeof servingSizeStr !== 'string') return null;
+    const m = servingSizeStr.toLowerCase().match(/([\d.]+)\s*g/);
+    return m ? Number(m[1]) : null;
+  })();
+
+  const pick = (servKey: string, per100Key: string, convert?: (v:number)=>number) => {
+    const s = getNum(n[servKey]);
+    if (isFinite(s)) return convert ? convert(s) : s;
+
+    const h = getNum(n[per100Key]);
+    if (isFinite(h) && servingG != null) {
+      const scaled = (h * servingG) / 100; // scale per 100g → per serving grams
+      return convert ? convert(scaled) : scaled;
+    }
+    return isFinite(h) ? (convert ? convert(h) : h) : 0;
+  };
+
+  // energy: kcal
+  const kcal = (() => {
+    // explicit kcal_serving or energy_serving (kJ)
+    const kcalServing = getNum(n['energy-kcal_serving']);
+    if (isFinite(kcalServing)) return kcalServing;
+
+    const kJserv = getNum(n['energy_serving']); // kJ
+    if (isFinite(kJserv)) return kJserv * 0.239005736;
+
+    // per 100g fallback
+    const kcal100 = getNum(n['energy-kcal_100g']);
+    if (isFinite(kcal100) && servingG != null) return (kcal100 * servingG) / 100;
+
+    const kJ100 = getNum(n['energy_100g']);
+    if (isFinite(kJ100) && servingG != null) return (kJ100 * 0.239005736 * servingG) / 100;
+
+    return isFinite(kcal100) ? kcal100 : (isFinite(kJ100) ? kJ100 * 0.239005736 : 0);
+  })();
+
+  // Sodium: OFF is usually grams; UI expects mg
+  const toMg = (g:number) => g * 1000;
+
+  // Salt→Sodium: g of salt × 400 = mg sodium
+  const saltToSodiumMg = (g:number) => g * 400 * 1000;
 
   return {
-    calories: Number(kcal) || 0,
-    protein:  Number(n['proteins_100g']) || 0,
-    carbs:    Number(n['carbohydrates_100g']) || 0,
-    fat:      Number(n['fat_100g']) || 0,
-    sugar:    Number(n['sugars_100g']) || 0,
-    fiber:    Number(n['fiber_100g']) || 0,
+    calories: Math.max(0, Number(kcal) || 0),
+    protein:  Math.max(0, Number(pick('proteins_serving', 'proteins_100g')) || 0),
+    carbs:    Math.max(0, Number(pick('carbohydrates_serving', 'carbohydrates_100g')) || 0),
+    fat:      Math.max(0, Number(pick('fat_serving', 'fat_100g')) || 0),
+    sugar:    Math.max(0, Number(pick('sugars_serving', 'sugars_100g')) || 0),
+    fiber:    Math.max(0, Number(pick('fiber_serving', 'fiber_100g')) || 0),
     sodium:   (() => {
-      if (typeof n['sodium_100g'] === 'number') return n['sodium_100g'] * 1000; // g→mg
-      if (typeof n['salt_100g'] === 'number')   return n['salt_100g'] * 400 * 1000;
+      const sServ = getNum(n['sodium_serving']); if (isFinite(sServ)) return toMg(sServ);
+      const s100 = getNum(n['sodium_100g']);     if (isFinite(s100) && servingG != null) return toMg((s100 * servingG) / 100);
+      const saltServ = getNum(n['salt_serving']); if (isFinite(saltServ)) return saltToSodiumMg(saltServ);
+      const salt100 = getNum(n['salt_100g']);     if (isFinite(salt100) && servingG != null) return saltToSodiumMg((salt100 * servingG) / 100);
       return 0;
     })()
   };
@@ -1351,12 +1396,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     console.log('[REPORT][BARCODE]', { scoreUnit: legacy.scoreUnit });
     
-    // Fixed score handling - never re-scale when flagged as 0-10
-    const rawLegacyScore = Number(legacy?.healthScore);
+    // Respect 0–10 scores from adapter without re-scaling
     const score10 =
       legacy?.scoreUnit === '0-10'
-        ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
-        : extractScore(rawLegacyScore, legacy?.scoreUnit) ? extractScore(rawLegacyScore, legacy?.scoreUnit)! / 10 : 0;
+        ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
+        : extractScore(legacy?.healthScore, legacy?.scoreUnit) ? extractScore(legacy?.healthScore, legacy?.scoreUnit)! / 10 : 0;
+    
+    console.log('[REPORT][BARCODE]', { scoreUnit: legacy?.scoreUnit, score10 });
     
     // Extract nutrition data using helper
     const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});

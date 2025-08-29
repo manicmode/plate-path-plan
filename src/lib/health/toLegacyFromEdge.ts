@@ -4,6 +4,20 @@
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
+// Helper functions for grade-to-score mapping
+const gradeTo10 = (g?: string): number | null => {
+  if (!g) return null;
+  const t = String(g).trim().toUpperCase();
+  const map: Record<string, number> = { A: 9.5, B: 8, C: 6, D: 4, E: 2 };
+  return map[t] ?? null;
+};
+
+const clamp10 = (n: any) => {
+  const v = Number(n);
+  if (!isFinite(v)) return 0;
+  return Math.max(0, Math.min(10, v));
+};
+
 // Helper to safely convert to number
 const num = (v: any) => (v == null ? 0 : Number(v)) || 0;
 
@@ -101,12 +115,39 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   // Barcode mode - use legacy fields only
   if (envelope?.mode === 'barcode' && envelope?.product) {
     const p = envelope.product;
+
+    // OFF letter grade on product (several aliases exist)
+    const grade =
+      p.nutriscore_grade ||
+      p.nutrition_grade_fr ||
+      (Array.isArray(p.nutrition_grades_tags) ? p.nutrition_grades_tags[0] : undefined);
+
+    // 1) if we got a numeric 0..10 in p.health.score AND it isn't a suspicious 10, use it
+    let score10: number | null = (p.health && p.health.score != null) ? Number(p.health.score) : null;
+    if (!(isFinite(score10 as number) && (score10 as number) >= 0 && (score10 as number) <= 10)) {
+      score10 = null;
+    }
+
+    // 2) if score is exactly 10 but we do have a letter grade, prefer the grade mapping
+    if (score10 === 10 && grade) {
+      const fromGrade = gradeTo10(grade);
+      if (fromGrade != null) score10 = fromGrade;
+    }
+
+    // 3) fallback to letter grade when no reliable numeric score
+    if (score10 == null && grade) {
+      score10 = gradeTo10(grade);
+    }
+
+    // 4) final clamp
+    const healthScore = clamp10(score10 ?? 0);
+
     const legacy = {
       status: 'ok' as const,
       productName: p.productName || p.product_name || p.generic_name || 'Unknown Product',
-      healthScore: Number(p.health?.score) || 0,  // already 0..10
-      scoreUnit: '0-10',
-      nutritionData: p.nutriments || {},          // OFF nutriments as-is
+      healthScore,              // final 0..10
+      scoreUnit: '0-10',        // tell UI not to re-scale
+      nutritionData: p.nutriments || {}, // raw OFF nutriments
       ingredientsText: p.ingredients_text || '',
       barcode: p.code || envelope.barcode || '',
       brands: p.brands || '',
