@@ -22,7 +22,7 @@ import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { useHealthCheckV2 } from './HealthCheckModalV2';
-import { handleSearchPick } from '@/shared/search-to-analysis';
+import { handleSearchPick, num, score10 } from '@/shared/search-to-analysis';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -409,27 +409,27 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         result?.product?.name ??
         'Unknown Product';
 
-      // Score 0–10
-      const ensure0to10 = (v: any) => {
-        if (typeof v !== 'number') return 0;
-        const x = v > 10 ? v / 10 : v;
-        return Math.max(0, Math.min(10, x));
-      };
-      const healthScore = ensure0to10(
-        raw?.healthScore ?? raw?.quality?.score ?? raw?.score ?? raw?.report?.quality?.score
+      // Score
+      const score10Value = score10(
+        raw?.healthScore ?? raw?.quality?.score ?? raw?.score ?? raw?.rating ?? raw?.overall?.score ?? raw?.grades?.health
       );
 
-      // Nutrition (support multiple spellings)
+      // Nutrition (convert unit strings -> numbers)
       const n = raw?.nutrition ?? raw?.nutritionData ?? raw?.macros ?? {};
       const nutritionData = {
-        calories: n.calories ?? n.energy_kcal ?? n['energy-kcal'] ?? 0,
-        protein:  n.protein_g ?? n.protein ?? n.proteins ?? 0,
-        carbs:    n.carbs_g   ?? n.carbs   ?? n.carbohydrates ?? 0,
-        fat:      n.fat_g     ?? n.fat     ?? n.fats ?? 0,
-        sugar:    n.sugar_g   ?? n.sugar   ?? n.sugars ?? 0,
-        fiber:    n.fiber_g   ?? n.fiber   ?? n.dietary_fiber ?? 0,
-        sodium:   n.sodium_mg ?? n.sodium  ?? 0,
+        calories: num(n.calories ?? n.energy_kcal) ?? 0,
+        protein:  num(n.protein_g ?? n.protein) ?? 0,
+        carbs:    num(n.carbs_g   ?? n.carbs   ?? n.carbohydrates) ?? 0,
+        fat:      num(n.fat_g     ?? n.fat) ?? 0,
+        sugar:    num(n.sugar_g   ?? n.sugar   ?? n.sugars) ?? 0,
+        fiber:    num(n.fiber_g   ?? n.fiber   ?? n.dietary_fiber) ?? 0,
+        sodium:   num(n.sodium_mg ?? n.sodium) ?? 0,
       };
+
+      console.log('[REPORT][NUMERIC]', {
+        score10: score10Value,
+        nutritionPreview: Object.fromEntries(Object.entries(nutritionData).slice(0,6))
+      });
 
       // Ingredients + flags/insights
       const ingredientsText =
@@ -456,7 +456,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         itemName,
         productName: itemName,
         title: itemName,
-        healthScore,
+        healthScore: score10Value,
         ingredientsText,
         ingredientFlags,
         nutritionData,

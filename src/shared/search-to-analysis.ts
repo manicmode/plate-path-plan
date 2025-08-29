@@ -6,6 +6,45 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
+/**
+ * Robust numeric parser for analyzer responses
+ * Handles strings with units, fractions, and percentages
+ */
+export const num = (v: any): number | null => {
+  if (v == null) return null;
+  if (typeof v === 'number' && isFinite(v)) return v;
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+
+  // common forms: "8", "8.5", "8/10", "80%", "134 kcal", "12 g", "500 mg"
+  // normalize fraction "8/10"
+  const frac = s.match(/^(\d+(\.\d+)?)\s*\/\s*(\d+(\.\d+)?)/);
+  if (frac) {
+    const a = parseFloat(frac[1]); const b = parseFloat(frac[3]);
+    if (b > 0) return (a / b) * 10; // convert to 0–10 scale if someone writes "8/10"
+  }
+
+  // percentage "80%"
+  const pct = s.match(/^(\d+(\.\d+)?)\s*%$/);
+  if (pct) return parseFloat(pct[1]) / 10; // 80% -> 8
+
+  // strip units like "kcal", "g", "mg", "grams", etc.
+  const unit = s.replace(/[,]/g,'').replace(/(kcal|cal|grams|gram|g|mg|mcg|µg|ml|mL|l|kg|kJ)\b/g,'').trim();
+  const f = parseFloat(unit);
+  return isFinite(f) ? f : null;
+};
+
+/**
+ * Convert any numeric/string input to 0–10 health score scale
+ */
+export const score10 = (v: any): number => {
+  const n = num(v);
+  if (n == null) return 0;
+  // if someone supplied a 0–100 number (e.g., 80) treat as 0–100 -> 0–10
+  const normalized = n > 10 ? n / 10 : n;
+  return Math.max(0, Math.min(10, normalized));
+};
+
 export type SearchSource = 'manual' | 'voice';
 
 export interface NormalizedProduct {
@@ -293,7 +332,7 @@ export async function handleSearchPick({
     if (macros.length) parts.push(`Nutrition (per serving or 100g): ${macros.join(', ')}.`);
 
     const text = parts.join(' ');
-    console.log('[ANALYZER][TEXT]', text);
+    console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
 
     // Call analyzer with enriched text
     const body = { text, taskType: 'food_analysis', complexity: 'auto' };
@@ -306,11 +345,17 @@ export async function handleSearchPick({
       body
     });
     
-    console.log('[ANALYZER][RAW]', {
-      keys: Object.keys(data || {}),
-      hasFoods: !!data?.foods,
-      foodsLength: data?.foods?.length
-    });
+    console.log('[ANALYZER][RAW_JSON]', JSON.stringify(data)?.slice(0, 2000));
+
+    let analyzerData = data || {};
+    if (analyzerData?.foods) {
+      if (Array.isArray(analyzerData.foods) && analyzerData.foods.length > 0) {
+        console.log('[ANALYZER][FOODS] using foods[0] keys=', Object.keys(analyzerData.foods[0]||{}));
+        analyzerData = analyzerData.foods[0];
+      } else {
+        console.warn('[ANALYZER][FOODS] empty/invalid foods array');
+      }
+    }
 
     // PARITY logging: after invoke
     console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
@@ -319,15 +364,17 @@ export async function handleSearchPick({
       throw new Error(error.message || 'Failed to analyze product');
     }
 
-    let analyzerData = data || {};
-    if (analyzerData?.foods) {
-      if (Array.isArray(analyzerData.foods) && analyzerData.foods.length > 0) {
-        console.log('[ANALYZER][FOODS] Extracting first food from array');
-        analyzerData = analyzerData.foods[0];
-      } else {
-        console.warn('[ANALYZER][FOODS] Empty or invalid foods array');
-      }
-    }
+    // Score candidates (log value + typeof so we can see strings)
+    const scoreCandidates = {
+      healthScore: analyzerData?.healthScore,
+      quality_score: analyzerData?.quality?.score,
+      score: analyzerData?.score,
+      rating: analyzerData?.rating,
+      overall_score: analyzerData?.overall?.score,
+      grade_score: analyzerData?.grades?.health,
+    };
+    console.log('[ANALYZER][SCORE_CANDIDATES]',
+      Object.fromEntries(Object.entries(scoreCandidates).map(([k,v]) => [k, {v, t: typeof v}])));
 
     if (!analyzerData || Object.keys(analyzerData).length === 0) {
       console.warn('[ANALYZER][EMPTY] No data from analyzer, using fallback');
@@ -341,13 +388,11 @@ export async function handleSearchPick({
       };
     }
 
-    const to10 = (v:any) => (typeof v === 'number')
-      ? Math.max(0, Math.min(10, v > 10 ? v/10 : v))
-      : 0;
-
     const flattened = {
       itemName: analyzerData.itemName ?? analyzerData.productName ?? analyzerData.title ?? analyzerData.name ?? product?.name ?? 'Unknown Product',
-      healthScore: to10(analyzerData.healthScore ?? analyzerData.quality?.score ?? analyzerData.score ?? 0),
+      healthScore: score10(
+        analyzerData.healthScore ?? analyzerData.quality?.score ?? analyzerData.score ?? analyzerData.rating ?? analyzerData.overall?.score ?? analyzerData.grades?.health
+      ),
       nutrition: analyzerData.nutrition ?? analyzerData.nutritionData ?? analyzerData.macros ?? {},
       ingredientsText: analyzerData.ingredientsText ?? analyzerData.ingredients ?? enriched?.ingredientsText ?? '',
       flags: analyzerData.flags ?? analyzerData.ingredientFlags ?? [],
@@ -356,9 +401,9 @@ export async function handleSearchPick({
     };
 
     console.log('[ANALYZER][NORMALIZED]', {
-      itemName: flattened.itemName,
+      name: flattened.itemName,
       healthScore: flattened.healthScore,
-      hasNutrition: Object.keys(flattened.nutrition || {}).length > 0,
+      nutrKeys: Object.keys(flattened.nutrition||{}),
       hasIngredients: !!flattened.ingredientsText
     });
 
