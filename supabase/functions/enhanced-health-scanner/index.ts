@@ -32,28 +32,59 @@ serve(async (req) => {
       return Math.max(0, Math.min(10, v));
     };
 
-    // Handle mode: "scan" - basic photo analysis for UI flow  
-    if (mode === 'scan') {
-      // This would typically do image analysis, but for now return a basic structure
+    // Handle mode: "extract" with barcode - behave like barcode mode
+    if (mode === 'extract' && barcode) {
+      // Redirect to barcode mode for consistency
+      const offUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+      let offResult = null;
+      
+      try {
+        const response = await fetch(offUrl);
+        offResult = await response.json();
+      } catch (error) {
+        console.log('[EDGE][EXTRACT→BARCODE][OFF_ERROR]', { barcode, error: error.message });
+      }
+
+      if (offResult?.status === 1 && offResult?.product) {
+        const p = offResult.product ?? {};
+        const to10 = (v: any) => {
+          const n = Number(v);
+          if (!isFinite(n)) return 0;
+          if (n <= 1) return Math.max(0, Math.min(10, n * 10));
+          if (n > 10) return Math.max(0, Math.min(10, n / 10));
+          return Math.max(0, Math.min(10, n));
+        };
+        const normalizedScore = to10(p.nutriscore_score ?? 0);
+
+        return json200({
+          ok: true,
+          fallback: false,
+          mode: 'extract',
+          barcode,
+          product: {
+            productName: p.product_name || p.generic_name || `Product ${barcode}`,
+            ingredients_text: p.ingredients_text || '',
+            nutriments: p.nutriments || {},
+            health: { score: normalizedScore },
+            brands: p.brands || '',
+            image_url: p.image_front_url || p.image_url || '',
+            code: barcode
+          }
+        });
+      }
+
       return json200({
-        ok: true,
-        fallback: false,
+        ok: false, fallback: true, error: 'Product not found', barcode
+      });
+    }
+
+    // Handle mode: "scan" - remove placeholder data
+    if (mode === 'scan') {
+      return json200({
+        ok: false,
+        fallback: true,
         mode: 'scan',
-        detected: 'food_item',
-        confidence: 0.85,
-        itemName: 'Detected Product',
-        quality: { score: 7.5 },
-        nutrition: {
-          calories: 180,
-          protein_g: 8,
-          carbs_g: 25,
-          fat_g: 6,
-          fiber_g: 3,
-          sugar_g: 12,
-          sodium_mg: 340
-        },
-        ingredientsText: 'Ingredients may vary',
-        flags: []
+        error: 'Image analysis not implemented'
       });
     }
 

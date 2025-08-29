@@ -257,7 +257,7 @@ const extractMacrosAndIngredients = (product: any): MacroPack => {
  * Enrich product data by calling OFF if barcode exists
  * NEVER inject placeholder data - only real OFF data or skip enrichment
  */
-const enrichViaExtractIfNeeded = async (product: any) => {
+export const enrichViaExtractIfNeeded = async (product: any) => {
   // Helper checks
   const hasBarcode =
     !!product?.barcode ||
@@ -276,14 +276,13 @@ const enrichViaExtractIfNeeded = async (product: any) => {
   // If we already have reasonable macros, skip enrichment
   if (hasMacros) return product;
 
-  // 🚫 Never call 'extract' to get placeholders.
-  // ✅ If we have a barcode, do a real OFF lookup via 'barcode' mode.
+  // If barcode present, call enhanced-health-scanner with barcode mode
   if (hasBarcode) {
     try {
       const barcode =
         product?.barcode ?? product?.code ?? product?.ean ?? product?.ean13;
 
-  const { data, error }: any = await supabase.functions.invoke(
+      const { data, error }: any = await supabase.functions.invoke(
         'enhanced-health-scanner',
         { body: { mode: 'barcode', barcode } }
       );
@@ -304,6 +303,13 @@ const enrichViaExtractIfNeeded = async (product: any) => {
 
       if (valid) {
         if (DEBUG) console.log('[ENRICH][OFF_HIT]', { barcode, hasNutriments: !!enriched.nutriments });
+        
+        // Debug performance logging under flag
+        if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+          const fingerprint = `${enriched.productName || 'NA'}|kcal:${enriched.nutriments?.['energy-kcal_100g'] || 'NA'}|p:${enriched.nutriments?.proteins_100g || 'NA'}|c:${enriched.nutriments?.carbohydrates_100g || 'NA'}|f:${enriched.nutriments?.fat_100g || 'NA'}`;
+          console.log('[ENRICH][FINGERPRINT]', fingerprint);
+        }
+        
         return {
           ...product,
           ...enriched,
@@ -323,10 +329,10 @@ const enrichViaExtractIfNeeded = async (product: any) => {
     }
   }
 
-  // ❌ No barcode: SKIP enrichment entirely - never inject placeholders
+  // No barcode: return original product with no enrichment call
   return {
     ...product,
-    _dataSource: 'manual/no_barcode', // optional flag for later UI
+    _dataSource: 'manual/no_barcode',
   };
 };
 
