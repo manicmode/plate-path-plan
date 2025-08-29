@@ -51,7 +51,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down'>('camera');
+  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-failed' | 'photo-ocr-unavailable' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down'>('camera');
   const inFlightRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   const rafRef = useRef<number>(0);
@@ -262,35 +262,26 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
       const prep = await prepareImageForAnalysis(canvas);
       const imageBytes = await canvasToBytes(canvas);
 
-      // OCR provider
-      const ocr = await getOCR();
-      if (!ocr) {
-        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: 'no_provider' });
-        // Stay in modal with a gentle, test-only state (no redirect)
-        setStatus('photo-ocr-missing');
+      // OCR using new function
+      const ocrResult = await getOCR(`data:image/jpeg;base64,${prep.base64NoPrefix}`);
+      if (!ocrResult.ok) {
+        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
+        // Stay in modal with precise reason
+        const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' : 'photo-ocr-failed';
+        setStatus(status);
         toast.info('OCR unavailable—try barcode or manual entry.');
         return;
       }
 
       // Extract text
-      let text = '';
-      try {
-        const result = await ocr.extractText(imageBytes);
-        text = result?.text ?? '';
-        if (!text || text.trim().length < 8) {
-          if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
-          setStatus('photo-ocr-missing'); // stays in modal
-          return;
-        }
-        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-      } catch (e: any) {
-        if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', { name: e?.name, message: e?.message });
-        // Map specific errors to clear UI states:
-        if (e?.message === 'payload_too_large') setStatus('photo-ocr-too-large');
-        else if ((e?.message || '').startsWith('ocr_http_')) setStatus('photo-ocr-service-down');
-        else setStatus('photo-ocr-error');
+      const text = ocrResult.text || '';
+      if (CFG.DEBUG) console.info('[PHOTO][OCR][FINAL]', { textLen: text.length, snippet: text.slice(0, 100) });
+      if (!text || text.trim().length < 8) {
+        if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
+        setStatus('photo-ocr-missing'); // stays in modal
         return;
       }
+      if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
 
       // Parse & map to unified shape
       const legacy = toLegacyFromPhoto(text);
@@ -325,15 +316,15 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
       onCapture(JSON.stringify(report));
       onOpenChange(false);
       
-    } catch (error) {
-      console.error('[PHOTO] Capture failed:', error);
-      toast.error('Failed to capture photo. Please try again.');
-      setStatus('photo-ocr-error');
-    } finally {
-      setIsCapturing(false);
-      inFlightRef.current = false;
-    }
-  };
+      } catch (error) {
+        console.error('[PHOTO] Capture failed:', error);
+        toast.error('Failed to capture photo. Please try again.');
+        setStatus('photo-ocr-error');
+      } finally {
+        setIsCapturing(false);
+        inFlightRef.current = false;
+      }
+    };
 
   const handleImageUpload = async () => {
     if (!CFG.PHOTO_ENABLED || !CFG.PIPE_V1) {
@@ -379,34 +370,25 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             const arrayBuffer = await blob.arrayBuffer();
             const imageBytes = new Uint8Array(arrayBuffer);
 
-            // OCR provider
-            const ocr = await getOCR();
-            if (!ocr) {
-              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: 'no_provider' });
-              setStatus('photo-ocr-missing');
+            // OCR using new function
+            const ocrResult = await getOCR(imageBase64);
+            if (!ocrResult.ok) {
+              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
+              const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' : 'photo-ocr-failed';
+              setStatus(status);
               toast.info('OCR unavailable—try barcode or manual entry.');
               return;
             }
 
             // Extract text
-            let text = '';
-            try {
-              const result = await ocr.extractText(imageBytes);
-              text = result?.text ?? '';
-              if (!text || text.trim().length < 8) {
-                if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
-                setStatus('photo-ocr-missing'); // stays in modal
-                return;
-              }
-              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-            } catch (e: any) {
-              if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', { name: e?.name, message: e?.message });
-              // Map specific errors to clear UI states:
-              if (e?.message === 'payload_too_large') setStatus('photo-ocr-too-large');
-              else if ((e?.message || '').startsWith('ocr_http_')) setStatus('photo-ocr-service-down');
-              else setStatus('photo-ocr-error');
+            const text = ocrResult.text || '';
+            if (CFG.DEBUG) console.info('[PHOTO][OCR][FINAL]', { textLen: text.length, snippet: text.slice(0, 100) });
+            if (!text || text.trim().length < 8) {
+              if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
+              setStatus('photo-ocr-missing'); // stays in modal
               return;
             }
+            if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
 
             const legacy = toLegacyFromPhoto(text);
             const report = {
