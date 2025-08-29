@@ -122,12 +122,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const toggleTorch = async () => {
     try {
+      console.log("[PHOTO-TORCH] Attempting to toggle torch. Current state:", torchOn, "Track:", !!trackRef.current);
       const result = await setTorch(!torchOn);
+      console.log("[PHOTO-TORCH] Toggle result:", result);
       if (!result.ok) {
         console.warn("Torch toggle failed:", result.reason);
+        toast.error(`Flash not available: ${result.reason}`);
+      } else {
+        console.log("[PHOTO-TORCH] Successfully toggled torch to:", !torchOn);
       }
     } catch (error) {
       console.error("Error toggling torch:", error);
+      toast.error("Failed to toggle flashlight");
     }
   };
 
