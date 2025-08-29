@@ -73,103 +73,108 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
   });
 }
 
-export function toLegacyFromEdge(edge: any): LegacyRecognized {
-  // The function sometimes returns { data, error }, sometimes directly an object.
-  const envelope = edge?.data ?? edge;
-  const p = envelope?.product ?? envelope ?? {};
+export function toLegacyFromEdge(envelope: any): LegacyRecognized {
+  if (!envelope) return { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'no_detection' };
+  
+  console.log('[ADAPTER][INPUT_KEYS]', {
+    topLevel: Object.keys(envelope),
+    hasProduct: !!envelope.product,
+    productKeys: envelope.product ? Object.keys(envelope.product) : []
+  });
 
-  const productName = extractName(edge);
+  if (envelope.error || envelope.ok === false) {
+    return envelope.fallback ? 
+      { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'not_found' } : 
+      { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'no_detection' };
+  }
 
-  const barcode =
-    p?.code ?? p?.barcode ?? envelope?.barcode ?? null;
+  const product = envelope.product || envelope.data?.product || envelope;
 
-  const ingredientsText =
-    p?.ingredientsText ??
-    (Array.isArray(p?.ingredients) ? p.ingredients.join(", ") : null) ??
-    null;
+  const productName =
+    product.productName ||
+    product.product_name ||
+    product.generic_name ||
+    product.displayName ||
+    product.name ||
+    envelope.itemName ||
+    envelope.productName ||
+    'Unknown Product';
 
-  // Extract health score with envelope.quality?.score fallback and scale normalization
-  const extractScore = (env: any, p: any) => {
-    let score = p?.health?.score ?? env?.health?.score ?? p?.quality?.score ?? env?.quality?.score;
-    
-    if (typeof score === 'number') {
-      // Scale normalization: ensure 0-10 range for legacy compatibility
-      if (score <= 1) score = score * 10;        // 0–1 -> 0–10
-      if (score > 10) score = score / 10;        // >10 -> 0–10 (not >100)
-      score = Math.max(0, Math.min(10, score));  // clamp to 0-10
-      return score;
-    }
-
-    return null;
+  const normalize = (s: any): number => {
+    const n = Number(s);
+    if (!isFinite(n)) return 0;
+    const v = n <= 1 ? n * 10 : n > 10 ? n / 10 : n;
+    return Math.max(0, Math.min(10, v));
   };
 
-  const healthScore = extractScore(envelope, p);
+  const healthScore = normalize(
+    product.health?.score ??
+    envelope.quality?.score ??
+    envelope.healthScore ??
+    product.score
+  );
 
-  const healthFlags =
-    coerceFlags(p?.health?.flags ?? envelope?.health?.flags ?? envelope?.healthFlags);
-
-  let nutrition = p?.nutrition ?? envelope?.nutrition ?? envelope?.nutritionSummary ?? null;
-
-  // If only envelope.nutrition exists, synthesize OFF-style keys for downstream mapping
-  if (!nutrition && envelope?.nutrition) {
+  let nutriments = product.nutriments;
+  if (!nutriments && envelope.nutrition) {
     const n = envelope.nutrition;
-    nutrition = {
-      'energy-kcal_100g': n.calories,
-      'proteins_100g': n.protein_g,
-      'carbohydrates_100g': n.carbs_g,
-      'fat_100g': n.fat_g,
-      'sugars_100g': n.sugar_g,
-      'fiber_100g': n.fiber_g,
-      'sodium_100g': n.sodium_mg,
-      'saturated-fat_100g': n.satfat_g,
-      // Also keep original format
-      ...n
+    nutriments = {
+      'energy-kcal_100g': n.calories ?? n.energy_kcal,
+      'energy_100g':      n.calories ?? n.energy_kcal,
+      'proteins_100g':    n.protein_g ?? n.protein ?? n.proteins,
+      'carbohydrates_100g': n.carbs_g ?? n.carbs ?? n.carbohydrates,
+      'fat_100g':         n.fat_g ?? n.fat ?? n.fats,
+      'fiber_100g':       n.fiber_g ?? n.fiber ?? n.dietary_fiber,
+      'sugars_100g':      n.sugar_g ?? n.sugar ?? n.sugars,
+      'sodium_100g':      n.sodium_mg ?? n.sodium,
+      'salt_100g':        n.sodium_mg ? n.sodium_mg / 400 : undefined,
+      'saturated-fat_100g': n['saturated-fat_100g'] ?? n.satfat_g ?? 0,
     };
   }
 
-  // Detect any meaningful signal
-  const hasAnySignal = !!(
-    barcode ||
-    (productName && productName !== 'Unknown item' && productName !== 'Unknown product') ||
-    nutrition ||
-    (ingredientsText && ingredientsText.trim().length > 5) ||
-    (Array.isArray(envelope?.detections) && envelope.detections.length > 0)
-  );
+  const ingredientsText =
+    product.ingredients_text ||
+    product.ingredientsText ||
+    envelope.ingredientsText ||
+    envelope.ingredients ||
+    '';
 
-  // Determine status and set defaults for no detection
+  const barcode = product.code || product.barcode || envelope.barcode || '';
+
+  const healthFlags = coerceFlags(envelope.flags || envelope.ingredientFlags || product.flags || []);
+
+  // Determine status
   let status: 'ok' | 'no_detection' | 'not_found' = 'ok';
-  let finalHealthScore = typeof healthScore === "number"
-    ? healthScore
-    : healthScore == null
-    ? null
-    : Number(healthScore) || null;
-  let finalHealthFlags = healthFlags;
-  let recommendation: string | null = null;
-
-  // Handle explicit fallback flag first
   if (envelope?.fallback === true) {
-    status = 'no_detection';
-    finalHealthScore = null;
-    finalHealthFlags = [];
-    recommendation = null;
-  } else if (!hasAnySignal) {
-    status = 'no_detection';
-    finalHealthScore = null;
-    finalHealthFlags = [];
-    recommendation = null;
-  } else if (barcode && !productName) {
-    // Has barcode but no product found
     status = 'not_found';
+  } else if (!productName || productName === 'Unknown Product') {
+    if (barcode) {
+      status = 'not_found';
+    } else {
+      status = 'no_detection';
+    }
   }
 
-  return {
-    productName,
-    barcode: typeof barcode === "string" ? barcode : null,
-    ingredientsText,
-    healthScore: finalHealthScore,
-    healthFlags: finalHealthFlags,
-    nutrition,
+  const legacy = {
+    productName: productName === 'Unknown Product' ? null : productName,
+    healthScore,
+    ingredientsText: ingredientsText || null,
+    nutrition: nutriments || {},
+    barcode: barcode || null,
+    healthFlags,
+    brands: product.brands || '',
+    imageUrl: product.image_url || product.image_front_url || product.imageUrl || '',
     status,
-    recommendation,
+    recommendation: null,
   };
+
+  console.log('[ADAPTER][OUTPUT_SUMMARY]', {
+    name: legacy.productName,
+    score10: legacy.healthScore,
+    hasNutriments: !!legacy.nutrition && Object.keys(legacy.nutrition).length > 0,
+    hasIngredients: !!legacy.ingredientsText,
+    barcode: legacy.barcode,
+    status: legacy.status
+  });
+
+  return legacy;
 }

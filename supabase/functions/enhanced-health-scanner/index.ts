@@ -38,8 +38,95 @@ serve(async (req) => {
     
     console.log('[ENHANCED-HEALTH-SCANNER]', { mode, hasBarcode: !!barcode, hasImage: !!imageBase64, source });
 
-    // This is a placeholder that returns a standardized response
-    // In a real implementation, this would call external APIs for product data
+    // helper
+    const normalizeScore = (s: any): number => {
+      const n = Number(s);
+      if (!isFinite(n)) return 0;
+      const v = n <= 1 ? n * 10 : n > 10 ? n / 10 : n;
+      return Math.max(0, Math.min(10, v));
+    };
+
+    if (mode === 'barcode' && barcode) {
+      // OFF lookup
+      const offUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+      let offResult = null;
+      
+      try {
+        const response = await fetch(offUrl);
+        offResult = await response.json();
+      } catch (error) {
+        console.log('[EDGE][BARCODE][OFF_ERROR]', { barcode, error: error.message });
+      }
+
+      if (offResult?.status === 1 && offResult?.product) {
+        const p = offResult.product;
+        const healthScore = normalizeScore(
+          p.nutriscore_score ?? p.nutriscore_score_100 ?? 0
+        );
+
+        const payload = {
+          ok: true,
+          fallback: false,
+          mode: 'barcode',
+          barcode,
+
+          // NEW SHAPE (manual/speak parity)
+          itemName: p.product_name || p.generic_name || `Product ${barcode}`,
+          quality: { score: healthScore },
+          nutrition: {
+            calories:    p.nutriments?.['energy-kcal_100g'] ?? p.nutriments?.['energy_100g'] ?? 0,
+            protein_g:   p.nutriments?.['proteins_100g'] ?? 0,
+            carbs_g:     p.nutriments?.['carbohydrates_100g'] ?? 0,
+            fat_g:       p.nutriments?.['fat_100g'] ?? 0,
+            fiber_g:     p.nutriments?.['fiber_100g'] ?? 0,
+            sugar_g:     p.nutriments?.['sugars_100g'] ?? 0,
+            sodium_mg:   p.nutriments?.['sodium_100g'] ?? (p.nutriments?.['salt_100g'] ? p.nutriments['salt_100g'] * 400 : 0),
+            'saturated-fat_100g': p.nutriments?.['saturated-fat_100g'] ?? 0,
+          },
+          ingredientsText: p.ingredients_text || '',
+
+          // LEGACY MIRROR (adapter compatibility)
+          product: {
+            productName: p.product_name || p.generic_name || `Product ${barcode}`,
+            product_name: p.product_name,
+            generic_name: p.generic_name,
+            brands: p.brands || '',
+            image_url: p.image_url || p.image_front_url,
+            ingredients_text: p.ingredients_text || '',
+            nutriments: p.nutriments || {},
+            health: { score: healthScore },
+            barcode,
+            code: barcode,
+          },
+        };
+
+        console.log('[EDGE][BARCODE][OFF_HIT]', {
+          barcode,
+          hasName: !!payload.product.productName,
+          hasNutriments: !!payload.product.nutriments && Object.keys(payload.product.nutriments).length > 0,
+        });
+        console.log('[EDGE][BARCODE][RESP_KEYS]', {
+          top: Object.keys(payload),
+          product: Object.keys(payload.product || {}),
+        });
+
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // OFF miss
+      console.log('[EDGE][BARCODE][OFF_HIT]', { barcode, found: false });
+      return new Response(JSON.stringify({
+        ok: false, fallback: true, error: 'Product not found', barcode
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Non-barcode modes - return placeholder data for other modes
     const itemName = barcode ? `Product ${barcode}` : 'Detected Product';
     const rawScore = 7.5;
     const nutrition = {
@@ -50,14 +137,6 @@ serve(async (req) => {
       sugar_g: 10.0,
       fiber_g: 3.0,
       sodium_mg: 200,
-    };
-
-    // Normalize score to 0-10 using the rule: <=1 → *10, >10 → /10, clamp 0..10
-    const normalizeScore = (score: number): number => {
-      let normalized = score;
-      if (score <= 1) normalized = score * 10;
-      else if (score > 10) normalized = score / 10;
-      return Math.max(0, Math.min(10, normalized));
     };
 
     const qualityScore = normalizeScore(rawScore);

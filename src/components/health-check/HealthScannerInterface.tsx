@@ -500,35 +500,37 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
         }
         // Legacy: Barcode path - only succeed when we have meaningful data
-        const legacy = toLegacyFromEdge(data);
-        const hasName = !!legacy?.productName && 
-          legacy.productName !== 'Unknown item' && 
-          legacy.productName !== 'Unknown product';
-        const hasBarcode = !!legacy?.barcode;
-        
-        if (data?.ok && !data?.fallback && (hasName || hasBarcode)) {
-          // Convert to base64 for result
-          const still = await captureStillFromVideo(video);
-          const fullBlob: Blob = await new Promise((resolve, reject) => {
-            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
-          });
-          const fullBase64 = await new Promise<string>((resolve, reject) => {
-            const fr = new FileReader();
-            fr.onload = () => resolve(String(fr.result));
-            fr.onerror = () => reject(fr.error);
-            fr.readAsDataURL(fullBlob);
-          });
-          
-          onCapture(fullBase64 + `&barcode=${result.raw}`);
-          setIsFrozen(false);
-          console.timeEnd('[HS] analyze_total');
-          return; 
+        if (data && !error && data.ok && !data.fallback) {
+          const hasProductData =
+            !!(data.product?.productName || data.product?.product_name || data.itemName) ||
+            !!data.barcode;
+
+          if (hasProductData) {
+            // Convert to base64 for result
+            const still = await captureStillFromVideo(video);
+            const fullBlob: Blob = await new Promise((resolve, reject) => {
+              still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+            });
+            const fullBase64 = await new Promise<string>((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve(String(fr.result));
+              fr.onerror = () => reject(fr.error);
+              fr.readAsDataURL(fullBlob);
+            });
+            
+            onCapture(fullBase64 + `&barcode=${result.raw}`);
+            setIsFrozen(false);
+            console.timeEnd('[HS] analyze_total');
+            return; 
+          } else {
+            console.warn('[HS] OFF hit but no product data, continuing to burst');
+            // continue with the existing burst flow
+          }
         } else {
           console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
             ok: data?.ok, 
-            hasName, 
-            hasBarcode, 
-            fallback: data?.fallback
+            fallback: data?.fallback, 
+            error: !!error
           });
           // let the normal analyzer path run
         }
@@ -553,35 +555,37 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        // Legacy: Barcode path - only succeed when we have meaningful data
-        const legacy2 = toLegacyFromEdge(data);
-        const hasName2 = !!legacy2?.productName && 
-          legacy2.productName !== 'Unknown item' && 
-          legacy2.productName !== 'Unknown product';
-        const hasBarcode2 = !!legacy2?.barcode;
         
-        if (data?.ok && !data?.fallback && (hasName2 || hasBarcode2)) {
-          const still = await captureStillFromVideo(video);
-          const fullBlob: Blob = await new Promise((resolve, reject) => {
-            still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
-          });
-          const fullBase64 = await new Promise<string>((resolve, reject) => {
-            const fr = new FileReader();
-            fr.onload = () => resolve(String(fr.result));
-            fr.onerror = () => reject(fr.error);
-            fr.readAsDataURL(fullBlob);
-          });
-          
-          onCapture(fullBase64 + `&barcode=${winner.raw}`);
-          setIsFrozen(false);
-          console.timeEnd('[HS] analyze_total');
-          return; 
+        if (data && !error && data.ok && !data.fallback) {
+          const hasProductData =
+            !!(data.product?.productName || data.product?.product_name || data.itemName) ||
+            !!data.barcode;
+
+          if (hasProductData) {
+            const still = await captureStillFromVideo(video);
+            const fullBlob: Blob = await new Promise((resolve, reject) => {
+              still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+            });
+            const fullBase64 = await new Promise<string>((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve(String(fr.result));
+              fr.onerror = () => reject(fr.error);
+              fr.readAsDataURL(fullBlob);
+            });
+            
+            onCapture(fullBase64 + `&barcode=${winner.raw}`);
+            setIsFrozen(false);
+            console.timeEnd('[HS] analyze_total');
+            return; 
+          } else {
+            console.warn('[HS] OFF hit but no product data, continuing to burst');
+            // continue with the existing burst flow
+          }
         } else {
           console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
             ok: data?.ok, 
-            hasName: hasName2, 
-            hasBarcode: hasBarcode2, 
-            fallback: data?.fallback
+            fallback: data?.fallback, 
+            error: !!error
           });
           // let the normal analyzer path run
         }
