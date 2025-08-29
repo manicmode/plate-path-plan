@@ -24,11 +24,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // Handle ping endpoint for connectivity testing
   if (new URL(req.url).pathname.endsWith('/ping')) {
-    return new Response(JSON.stringify({ 
-      ok: true, 
-      timestamp: new Date().toISOString(),
-      service: 'vision-ocr' 
-    }), { 
+    return new Response(JSON.stringify({ ok: true, timestamp: new Date().toISOString() }), { 
       status: 200, 
       headers: { ...cors, 'content-type': 'application/json' } 
     });
@@ -101,12 +97,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (!text?.trim()) {
       return json({ ok: false, cid, reason: 'no_text_detected' }, { status: 200 });
-    }
-
-    // Validate blob size for guards
-    if (clean.length > 0) {
-      const estimatedSize = (clean.length * 3) / 4; // base64 to bytes approximation
-      if (DEBUG) console.log(`[VISION][BLOB_SIZE][${cid}] estimated bytes:`, estimatedSize);
     }
 
     const response: any = { ok: true, cid, text };

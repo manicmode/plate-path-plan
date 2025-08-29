@@ -244,9 +244,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Helper to choose v1/v2 pipeline
   const runPhotoAnalysis = async (imgB64: string) => {
-    // Use V2 as default, V1 as fallback
-    const usePhotoV2 = (import.meta.env.VITE_PHOTO_PIPELINE_V2 ?? 'true') === 'true';
-    if (usePhotoV2) {
+    // Use existing handlers in this file - match existing pattern
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+    if (usePhotoPipelineV2) {
       await handleImageCaptureV2(imgB64);
     } else {
       await handleImageCapture(imgB64);
@@ -759,22 +760,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           });
           setCurrentState('fallback');
           cleanup();
-        },
-        () => {
-          if (currentRunId.current !== runId) {
-            cleanup();
-            return; // stale  
-          }
-          
-          console.warn('[HC][V2][TIMEOUT]');
-          toast({
-            title: "Analysis Timeout", 
-            description: "Image analysis took too long. Please try again.",
-            variant: "destructive"
-          });
-          
-          cleanup();
-          setCurrentState('scanner');
         }
       );
       
@@ -799,10 +784,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return;
     }
 
-    // Check for Photo Pipeline v2 feature flag - default to V2
-    const usePhotoV2 = (import.meta.env.VITE_PHOTO_PIPELINE_V2 ?? 'true') === 'true';
+    // Check for Photo Pipeline v2 feature flag
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
 
-    if (usePhotoV2) {
+    if (usePhotoPipelineV2) {
       return handleImageCaptureV2(payload);
     }
     
@@ -1872,7 +1858,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
               onCancel={handleClose}
-              // Bridge callbacks - only for photo analysis
               onAnalysisTimeout={() => setCurrentState('scanner')}
               onAnalysisFail={() => setCurrentState('scanner')}
               onAnalysisSuccess={() => setCurrentState('report')}

@@ -83,25 +83,10 @@ export const useHealthCheckV2 = () => {
     imageBase64: string, 
     detectedBarcode?: string,
     onResult?: (result: any, sourceMeta: any) => void,
-    onError?: (error: string) => void,
-    onTimeout?: () => void
+    onError?: (error: string) => void
   ) => {
     const runId = crypto.randomUUID();
     currentRunId.current = runId;
-    
-    // Base URL logging
-    const fnBase = import.meta.env.VITE_FUNCTIONS_BASE ?? '/functions/v1';
-    console.log('[PHOTO][FN_BASE]', { fnBase });
-    
-    // Watchdog for timeout handling
-    let resolved = false;
-    const watchdog = setTimeout(() => {
-      if (!resolved) {
-        console.warn('[PHOTO][WATCHDOG] V2 timeout after 18s');
-        resolved = true;
-        onTimeout?.();
-      }
-    }, 18000);
     
     try {
       // A) Barcode path
@@ -123,20 +108,16 @@ export const useHealthCheckV2 = () => {
             body: { text }
           });
           
-          if (currentRunId.current !== runId || resolved) return; // stale
+          if (currentRunId.current !== runId) return; // stale
           
           if (error) {
             console.error('[ANALYZE][ERROR]', { source: 'photo', error });
-            resolved = true;
-            clearTimeout(watchdog);
             onError?.('Analysis failed');
             return;
           }
           
           console.log('[ANALYZE][RES]', { source: 'photo', status: 'success' });
           
-          resolved = true;
-          clearTimeout(watchdog);
           onResult?.(result, {
             source: 'photo',
             barcode: detectedBarcode,
@@ -147,8 +128,7 @@ export const useHealthCheckV2 = () => {
         // Keep going to vision if lookup miss
       }
 
-      // B) Vision extraction with fetch logging
-      console.log('[PHOTO][FETCH_START]', { target: 'enhanced-health-scanner' });
+      // B) Vision extraction (extract only, no health)
       console.log('[PHOTO][VISION][REQ]', { len: imageBase64.length });
       
       const { data: extract, error: visionError } = await supabase.functions.invoke('enhanced-health-scanner', {
@@ -158,19 +138,10 @@ export const useHealthCheckV2 = () => {
         }
       });
       
-      console.log('[PHOTO][FETCH_DONE]', { status: visionError ? 'error' : 'ok' });
-      console.log('[PHOTO][OCR][RESP]', { 
-        ok: !visionError, 
-        kind: extract?.kind,
-        confidence: extract?.confidence
-      });
-      
-      if (currentRunId.current !== runId || resolved) return; // stale
+      if (currentRunId.current !== runId) return; // stale
       
       if (visionError) {
         console.error('[PHOTO][VISION][ERROR]', { error: visionError });
-        resolved = true;
-        clearTimeout(watchdog);
         onError?.('Vision extraction failed');
         return;
       }
@@ -185,8 +156,6 @@ export const useHealthCheckV2 = () => {
       // C) Low-confidence fallback
       if (!extract || (extract.confidence < 0.55 && !extract.nutrition && !extract.ingredientsText)) {
         console.log('[PHOTO][FALLBACK→MANUAL]', { reason: 'low_conf_or_no_data' });
-        resolved = true;
-        clearTimeout(watchdog);
         openManualPrefilled(extract?.productName, extract?.brand, extract?.ingredientsText);
         return;
       }
@@ -200,20 +169,16 @@ export const useHealthCheckV2 = () => {
         body: { text }
       });
       
-      if (currentRunId.current !== runId || resolved) return; // stale
+      if (currentRunId.current !== runId) return; // stale
       
       if (analyzeError) {
         console.error('[ANALYZE][ERROR]', { source: 'photo', error: analyzeError });
-        resolved = true;
-        clearTimeout(watchdog);
         onError?.('Analysis failed');
         return;
       }
       
       console.log('[ANALYZE][RES]', { source: 'photo', status: 'success' });
       
-      resolved = true;
-      clearTimeout(watchdog);
       onResult?.(result, {
         source: 'photo',
         barcode: extract.barcode,
@@ -221,11 +186,9 @@ export const useHealthCheckV2 = () => {
       });
       
     } catch (error) {
-      if (currentRunId.current !== runId || resolved) return; // stale
+      if (currentRunId.current !== runId) return; // stale
       
       console.error('[ANALYZE][FATAL]', { error });
-      resolved = true;
-      clearTimeout(watchdog);
       onError?.('Analysis failed');
     }
   };
