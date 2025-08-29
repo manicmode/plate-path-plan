@@ -60,56 +60,29 @@ serve(async (req) => {
 
       if (offResult?.status === 1 && offResult?.product) {
         const p = offResult.product;
-        const healthScore = normalizeScore(
-          p.nutriscore_score ?? p.nutriscore_score_100 ?? 0
-        );
 
-        // Cache successful OFF responses for 24h
-        const cacheKey = `off_${barcode}`;
-        const cacheData = {
-          barcode,
-          product: p,
-          healthScore,
-          timestamp: Date.now()
+        const to10 = (v: any) => {
+          const n = Number(v);
+          if (!isFinite(n)) return 0;
+          if (n <= 1) return Math.max(0, Math.min(10, n * 10));
+          if (n > 10) return Math.max(0, Math.min(10, n / 10));
+          return Math.max(0, Math.min(10, n));
         };
-        
-        // Store in a simple cache (in memory for this instance)
-        // In production, you'd use a proper cache like Redis or Supabase storage
-        
+
         const payload = {
           ok: true,
           fallback: false,
           mode: 'barcode',
           barcode,
-
-          // NEW SHAPE (manual/speak parity)
-          itemName: p.product_name || p.generic_name || `Product ${barcode}`,
-          quality: { score: healthScore },
-          nutrition: {
-            calories:    p.nutriments?.['energy-kcal_100g'] ?? p.nutriments?.['energy_100g'] ?? 0,
-            protein_g:   p.nutriments?.['proteins_100g'] ?? 0,
-            carbs_g:     p.nutriments?.['carbohydrates_100g'] ?? 0,
-            fat_g:       p.nutriments?.['fat_100g'] ?? 0,
-            fiber_g:     p.nutriments?.['fiber_100g'] ?? 0,
-            sugar_g:     p.nutriments?.['sugars_100g'] ?? 0,
-            sodium_mg:   p.nutriments?.['sodium_100g'] ?? (p.nutriments?.['salt_100g'] ? p.nutriments['salt_100g'] * 400 : 0),
-            'saturated-fat_100g': p.nutriments?.['saturated-fat_100g'] ?? 0,
-          },
-          ingredientsText: p.ingredients_text || '',
-
-          // LEGACY MIRROR (adapter compatibility)
           product: {
             productName: p.product_name || p.generic_name || `Product ${barcode}`,
-            product_name: p.product_name,
-            generic_name: p.generic_name,
-            brands: p.brands || '',
-            image_url: p.image_url || p.image_front_url,
             ingredients_text: p.ingredients_text || '',
-            nutriments: p.nutriments || {},
-            health: { score: healthScore },
-            barcode,
-            code: barcode,
-          },
+            nutriments: p.nutriments || {},       // raw OFF object
+            health: { score: to10(p.nutriscore_score ?? 0) },  // 0..10
+            brands: p.brands || '',
+            image_url: p.image_front_url || p.image_url || '',
+            code: barcode
+          }
         };
 
         console.log('[EDGE][BARCODE][OFF_HIT]', {
@@ -117,18 +90,10 @@ serve(async (req) => {
           hasName: !!payload.product.productName,
           hasNutriments: !!payload.product.nutriments && Object.keys(payload.product.nutriments).length > 0,
         });
-        console.log('[EDGE][BARCODE][RESP_KEYS]', {
-          top: Object.keys(payload),
-          product: Object.keys(payload.product || {}),
-        });
 
         return new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=300' // 5-minute cache for successful barcode lookups
-          },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
         });
       }
 
@@ -142,68 +107,94 @@ serve(async (req) => {
       });
     }
 
-    // Non-barcode modes - return placeholder data for other modes
-    const itemName = barcode ? `Product ${barcode}` : 'Detected Product';
-    const rawScore = 7.5;
-    const nutrition = {
-      calories: 150,
-      protein_g: 5.0,
-      carbs_g: 30.0,
-      fat_g: 2.0,
-      sugar_g: 10.0,
-      fiber_g: 3.0,
-      sodium_mg: 200,
-    };
+    // Non-barcode modes or extract with barcode
+    if (mode === 'extract') {
+      // ✅ NEW: If extract mode has a barcode, treat exactly as barcode mode
+      if (barcode) {
+        console.log('[EDGE][EXTRACT_WITH_BARCODE] Redirecting to barcode lookup', { barcode });
+        // Recursively call the barcode lookup (same as mode: 'barcode')
+        const offUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+        try {
+          const response = await fetch(offUrl);
+          const offResult = await response.json();
+          
+          if (offResult?.status === 1 && offResult?.product) {
+            const p = offResult.product;
+            const healthScore = normalizeScore(
+              p.nutriscore_score ?? p.nutriscore_score_100 ?? 0
+            );
 
-    const qualityScore = normalizeScore(rawScore);
+            const payload = {
+              ok: true,
+              fallback: false,
+              mode: 'extract_with_barcode',
+              barcode,
+              itemName: p.product_name || p.generic_name || `Product ${barcode}`,
+              quality: { score: healthScore },
+              nutrition: {
+                calories:    p.nutriments?.['energy-kcal_100g'] ?? p.nutriments?.['energy_100g'] ?? 0,
+                protein_g:   p.nutriments?.['proteins_100g'] ?? 0,
+                carbs_g:     p.nutriments?.['carbohydrates_100g'] ?? 0,
+                fat_g:       p.nutriments?.['fat_100g'] ?? 0,
+                fiber_g:     p.nutriments?.['fiber_100g'] ?? 0,
+                sugar_g:     p.nutriments?.['sugars_100g'] ?? 0,
+                sodium_mg:   p.nutriments?.['sodium_100g'] ?? (p.nutriments?.['salt_100g'] ? p.nutriments['salt_100g'] * 400 : 0),
+              },
+              ingredientsText: p.ingredients_text || '',
+              product: {
+                productName: p.product_name || p.generic_name || `Product ${barcode}`,
+                product_name: p.product_name,
+                generic_name: p.generic_name,
+                brands: p.brands || '',
+                image_url: p.image_url || p.image_front_url,
+                ingredients_text: p.ingredients_text || '',
+                nutriments: p.nutriments || {},
+                health: { score: healthScore },
+                barcode,
+                code: barcode,
+              },
+            };
 
-    // Check if we have meaningful data for fallback determination
-    const hasProductData = !!(itemName && itemName !== 'Detected Product');
-    const hasNutritionData = !!(nutrition && (nutrition.calories || nutrition.protein_g));
-    const shouldFallback = !(hasProductData || hasNutritionData);
+            console.log('[EDGE][EXTRACT_BARCODE_SUCCESS]', { barcode });
+            return new Response(JSON.stringify(payload), {
+              status: 200,
+              headers: { 
+                ...corsHeaders, 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, max-age=300'
+              },
+            });
+          }
+        } catch (error) {
+          console.error('[EDGE][EXTRACT_BARCODE_ERROR]', { barcode, error: error.message });
+        }
+      }
 
-    // Legacy-friendly mirrors for client adapter compatibility
-    const mirroredProduct = {
-      // OFF/legacy friendly fields:
-      productName: itemName,             // mirror for adapter
-      health: { score: qualityScore },   // normalized 0-10 for legacy
-      barcode,                           // echo input barcode
-      nutriments: {                      // OFF-style nutrition
-        'energy-kcal_100g': nutrition.calories,
-        'proteins_100g': nutrition.protein_g,
-        'carbohydrates_100g': nutrition.carbs_g,
-        'fat_100g': nutrition.fat_g,
-        'sugars_100g': nutrition.sugar_g,
-        'fiber_100g': nutrition.fiber_g,
-        'sodium_100g': nutrition.sodium_mg,
-      },
-      ingredients_text: 'Sample ingredients list',
+      // No barcode: we no longer fabricate data.
+      // Return a minimal "nothing to enrich" payload.
+      console.log('[EDGE][EXTRACT_NO_BARCODE] No enrichment available');
+      return new Response(JSON.stringify({ 
+        ok: true,
+        product: null, 
+        source: 'none',
+        fallback: true,
+        reason: 'No barcode provided for enrichment'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-      // Keep new-schema fields too (don't remove):
-      itemName,
-      quality: { score: qualityScore },
-      nutrition,                         // keep normalized macros
-      ingredientsText: 'Sample ingredients list',
-      flags: [],
-      insights: [],
-    };
-
-    const standardizedResponse = {
-      ok: true,
-      source: source || 'health-scanner',
-      barcode,                           // top-level barcode
-      product: mirroredProduct,
-      // Keep whatever you already return (new schema):
-      itemName,
-      quality: { score: qualityScore },
-      nutrition,
-      fallback: shouldFallback,
-      ...(shouldFallback && { reason: 'No meaningful product or nutrition data available' })
-    };
-
-    return new Response(JSON.stringify(standardizedResponse), {
+    // ❌ REMOVED: All placeholder/sample data generation
+    // Any remaining non-barcode modes return minimal response
+    console.log('[EDGE][UNKNOWN_MODE]', { mode });
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'Unknown mode or insufficient data',
+      fallback: true
+    }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
     });
 
   } catch (error) {

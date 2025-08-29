@@ -627,10 +627,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               fr.readAsDataURL(fullBlob);
             });
             
+            // PATCH 4: Remove duplicate capture - onCapture already includes the barcode
             onCapture(fullBase64 + `&barcode=${winner.raw}`);
-            setIsFrozen(false);
-            console.timeEnd('[HS] analyze_total');
-            return; 
+            return; // Early exit on success
           } else {
             console.warn('[HS] OFF hit but no product data, continuing to burst');
             // continue with the existing burst flow
@@ -663,12 +662,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
-      // Never auto-disable torch - let user control it
+      // PATCH 4: Always unfreeze and reset scanning state
       setIsScanning(false);
       if (videoRef.current) {
         unfreezeVideo(videoRef.current);
       }
-      setIsFrozen(false);
+      setIsFrozen(false); // Ensure this always runs for success, error, or timeout
       mark('[HS] analyze_end');
       measure('[HS] analyze_total', '[HS] analyze_start');
       const analyzeTime = performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0);

@@ -253,30 +253,81 @@ const extractMacrosAndIngredients = (product: any): MacroPack => {
   };
 };
 
+/**
+ * Enrich product data by calling OFF if barcode exists
+ * NEVER inject placeholder data - only real OFF data or skip enrichment
+ */
 const enrichViaExtractIfNeeded = async (product: any) => {
-  const base = extractMacrosAndIngredients(product);
-  const missingMacros = !base.calories && !base.protein_g && !base.carbs_g && !base.fat_g;
-  const missingIngredients = !base.ingredientsText;
-  const barcode = product?.barcode || product?.code;
+  // Helper checks
+  const hasBarcode =
+    !!product?.barcode ||
+    !!product?.code ||
+    !!product?.ean ||
+    !!product?.ean13;
 
-  if (!(missingMacros || missingIngredients) || !barcode) {
-    return base;
+  const hasMacros =
+    !!product?.nutriments &&
+    (product?.nutriments?.energy_kcal != null ||
+      product?.nutriments?.['energy-kcal_100g'] != null ||
+      product?.nutriments?.protein_100g != null ||
+      product?.nutriments?.fat_100g != null ||
+      product?.nutriments?.carbohydrates_100g != null);
+
+  // If we already have reasonable macros, skip enrichment
+  if (hasMacros) return product;
+
+  // 🚫 Never call 'extract' to get placeholders.
+  // ✅ If we have a barcode, do a real OFF lookup via 'barcode' mode.
+  if (hasBarcode) {
+    try {
+      const barcode =
+        product?.barcode ?? product?.code ?? product?.ean ?? product?.ean13;
+
+      const { data, error }: any = await supabase.functions.invoke(
+        'enhanced-health-scanner',
+        { body: { mode: 'barcode', barcode, returnLegacy: true } }
+      );
+
+      if (error || !data) {
+        if (DEBUG) console.warn('[ENRICH][OFF_LOOKUP_FAILED]', barcode, error?.message);
+        return { ...product, _dataSource: 'manual/failed_barcode' };
+      }
+
+      // Minimal sanity: require nutriments or ingredients before merging
+      const enriched = data?.product;
+      const valid =
+        enriched &&
+        enriched.nutriments &&
+        (enriched.nutriments.energy_kcal != null ||
+          enriched.nutriments['energy-kcal_100g'] != null ||
+          enriched.nutriments.protein_100g != null);
+
+      if (valid) {
+        if (DEBUG) console.log('[ENRICH][OFF_HIT]', { barcode, hasNutriments: !!enriched.nutriments });
+        return {
+          ...product,
+          ...enriched,
+          // Preserve local name if ours is better
+          productName: product?.productName || enriched?.productName,
+          _dataSource: 'openfoodfacts/barcode',
+        };
+      }
+
+      // If OFF returned nothing useful, just return original
+      if (DEBUG) console.warn('[ENRICH][OFF_INVALID]', { barcode, hasEnriched: !!enriched });
+      return { ...product, _dataSource: 'manual/invalid_off' };
+    } catch (e) {
+      const barcodeStr = product?.barcode ?? product?.code ?? product?.ean ?? product?.ean13;
+      if (DEBUG) console.error('[ENRICH][EXCEPTION]', barcodeStr, e);
+      return { ...product, _dataSource: 'manual/exception' };
+    }
   }
 
-  try {
-    const { data, error }: any = await (supabase as any).functions.invoke(
-      'enhanced-health-scanner',
-      { body: { mode: 'extract', barcode } }
-    );
-    if (error) return base;
-
-    const merged = { ...base, ...extractMacrosAndIngredients(data || {}) };
-    console.log('[ENRICH][EXTRACT][HIT]', { barcode, keys: Object.keys(data||{}) });
-    return merged;
-  } catch {
-    console.log('[ENRICH][EXTRACT][MISS]', { barcode });
-    return base;
-  }
+  // ❌ No barcode: SKIP enrichment entirely - never inject placeholders
+  return {
+    ...product,
+    _dataSource: 'manual/no_barcode', // optional flag for later UI
+  };
 };
 
 /**
@@ -338,30 +389,56 @@ export async function handleSearchPick({
     const pickedName = displayNameFor(product); // what the user tapped
     const selectionId = `${norm(brand)}|${norm(pickName(product))}|${product?.barcode||''}`;
 
+    // Fingerprint for debugging identical results (DEBUG only)
+    function fp(obj: any) {
+      try {
+        const name = obj?.productName || obj?.name || obj?.title || 'NA';
+        const n = obj?.nutriments || {};
+        const kcal =
+          n.energy_kcal ??
+          n['energy-kcal_100g'] ??
+          n['energy-kcal_serving'] ??
+          'NA';
+        const prot = n.protein_100g ?? 'NA';
+        const flagsCount = Array.isArray(obj?.flags) ? obj.flags.length : 0;
+        return `${name}|kcal:${kcal}|p:${prot}|flags:${flagsCount}`;
+      } catch {
+        return 'fp-error';
+      }
+    }
+
     // Enrich with detailed nutrition/ingredients if needed
     const enriched = await enrichViaExtractIfNeeded(product);
+    
+    if (DEBUG) {
+      console.info('[HEALTH_ANALYZE][INPUT_FP]', fp(enriched));
+      console.info('[HEALTH_ANALYZE][DATA_SOURCE]', enriched._dataSource);
+    }
 
+    // Extract macros from enriched product (OFF style or direct)
+    const macros = extractMacrosAndIngredients(enriched);
+    
     const parts: string[] = [];
     parts.push(`Analyze this product: ${pickedName}.`);
 
-    if (enriched.ingredientsText) {
-      parts.push(`Ingredients: ${enriched.ingredientsText}.`);
+    if (macros.ingredientsText) {
+      parts.push(`Ingredients: ${macros.ingredientsText}.`);
     }
 
-    const macros: string[] = [];
-    if (enriched.calories != null) macros.push(`${enriched.calories} kcal`);
-    if (enriched.protein_g != null) macros.push(`${enriched.protein_g} g protein`);
-    if (enriched.carbs_g  != null) macros.push(`${enriched.carbs_g} g carbs`);
-    if (enriched.fat_g    != null) macros.push(`${enriched.fat_g} g fat`);
-    if (enriched.sugar_g  != null) macros.push(`${enriched.sugar_g} g sugar`);
-    if (enriched.sodium_mg!= null) macros.push(`${enriched.sodium_mg} mg sodium`);
-    if (enriched.fiber_g  != null) macros.push(`${enriched.fiber_g} g fiber`);
-    if (enriched.satfat_g != null) macros.push(`${enriched.satfat_g} g saturated fat`);
+    const macrosList: string[] = [];
+    if (macros.calories != null) macrosList.push(`${macros.calories} kcal`);
+    if (macros.protein_g != null) macrosList.push(`${macros.protein_g} g protein`);
+    if (macros.carbs_g  != null) macrosList.push(`${macros.carbs_g} g carbs`);
+    if (macros.fat_g    != null) macrosList.push(`${macros.fat_g} g fat`);
+    if (macros.sugar_g  != null) macrosList.push(`${macros.sugar_g} g sugar`);
+    if (macros.sodium_mg!= null) macrosList.push(`${macros.sodium_mg} mg sodium`);
+    if (macros.fiber_g  != null) macrosList.push(`${macros.fiber_g} g fiber`);
+    if (macros.satfat_g != null) macrosList.push(`${macros.satfat_g} g saturated fat`);
 
-    if (macros.length) parts.push(`Nutrition (per serving or 100g): ${macros.join(', ')}.`);
+    if (macrosList.length) parts.push(`Nutrition (per serving or 100g): ${macrosList.join(', ')}.`);
 
     const text = parts.join(' ');
-    if (DEBUG) console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
+    if (DEBUG) console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160), selectionId });
 
     // Call analyzer with enriched text and canonical identity
     const body = {
@@ -449,6 +526,11 @@ export async function handleSearchPick({
 
     // **Attach selection metadata for cross-checking later**
     flattened.__selection = { selectionId, hintName: pickedName, hintBrand: brand };
+    
+    // Debug fingerprint after analyzer (DEBUG only)
+    if (DEBUG) {
+      console.info('[HEALTH_ANALYZE][OUTPUT_FP]', fp(flattened));
+    }
 
     // Add fallback mapping for top-level macros when nutrition object is missing
     if (!flattened.nutrition || Object.keys(flattened.nutrition).length === 0) {
