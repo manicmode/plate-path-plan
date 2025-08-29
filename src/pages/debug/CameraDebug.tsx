@@ -13,7 +13,7 @@ export default function CameraDebug() {
   const [capabilities, setCapabilities] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   
-  const { supported, ready, on, toggle, attach } = useTorch();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   const addLog = (message: string) => {
     setLogs(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${message}`]);
@@ -75,28 +75,25 @@ export default function CameraDebug() {
 
   const handleTorchOn = async () => {
     addLog('Attempting to turn torch ON...');
-    await toggle(true);
-    addLog(`Torch ON completed`);
+    const result = await setTorch(true);
+    addLog(`Torch ON result: ${JSON.stringify(result)}`);
   };
 
   const handleTorchOff = async () => {
     addLog('Attempting to turn torch OFF...');
-    await toggle(false);
-    addLog(`Torch OFF completed`);
+    const result = await setTorch(false);
+    addLog(`Torch OFF result: ${JSON.stringify(result)}`);
   };
 
   const handleTorchToggle = async () => {
-    addLog(`Toggling torch (currently ${on ? 'ON' : 'OFF'})...`);
-    await toggle();
-    addLog(`Torch toggle completed`);
+    addLog(`Toggling torch (currently ${torchOn ? 'ON' : 'OFF'})...`);
+    const result = await setTorch(!torchOn);
+    addLog(`Torch toggle result: ${JSON.stringify(result)}`);
   };
 
   const handleEnsureState = async () => {
     addLog('Ensuring torch state...');
-    // No ensureTorchState in new hook, but we can re-attach
-    if (trackRef.current) {
-      attach(trackRef.current);
-    }
+    await ensureTorchState();
     addLog('Torch state ensured');
   };
 
@@ -168,45 +165,45 @@ export default function CameraDebug() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4 mb-4">
-              <Badge variant={supported ? "default" : "secondary"}>
-                Torch Supported: {supported ? 'YES' : 'NO'}
+              <Badge variant={supportsTorch ? "default" : "secondary"}>
+                Torch Supported: {supportsTorch ? 'YES' : 'NO'}
               </Badge>
-              <Badge variant={on ? "default" : "outline"}>
-                Current State: {on ? 'ON' : 'OFF'}
+              <Badge variant={torchOn ? "default" : "outline"}>
+                Current State: {torchOn ? 'ON' : 'OFF'}
               </Badge>
             </div>
             
             <div className="flex gap-2 flex-wrap">
               <Button 
                 onClick={handleTorchOn} 
-                disabled={!supported}
-                variant={on ? "default" : "outline"}
+                disabled={!supportsTorch}
+                variant={torchOn ? "default" : "outline"}
               >
                 Turn On
               </Button>
               <Button 
                 onClick={handleTorchOff} 
-                disabled={!supported}
-                variant={!on ? "default" : "outline"}
+                disabled={!supportsTorch}
+                variant={!torchOn ? "default" : "outline"}
               >
                 Turn Off
               </Button>
               <Button 
                 onClick={handleTorchToggle} 
-                disabled={!supported}
+                disabled={!supportsTorch}
               >
                 Toggle
               </Button>
               <Button 
                 onClick={handleEnsureState} 
-                disabled={!supported}
+                disabled={!supportsTorch}
                 variant="secondary"
               >
                 Ensure State
               </Button>
             </div>
             
-            {!supported && (
+            {!supportsTorch && (
               <div className="bg-yellow-900/20 border border-yellow-500/30 rounded p-3 text-yellow-200 flex items-start gap-2">
                 <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span className="text-sm">

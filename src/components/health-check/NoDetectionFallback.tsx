@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Camera, Keyboard, Mic, Search } from 'lucide-react';
 
 interface NoDetectionFallbackProps {
   onRetryPhoto: () => void;
@@ -91,6 +91,7 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
               onClick={onRetryCamera}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-4 text-lg"
             >
+              <Camera className="w-5 h-5 mr-2" />
               📸 Retry Scan
             </Button>
 
@@ -98,6 +99,7 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
               onClick={onRetryPhoto}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg"
             >
+              <Camera className="w-5 h-5 mr-2" />
               📷 Photo Mode
             </Button>
 
@@ -105,6 +107,7 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
               onClick={onManualEntry}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 text-lg"
             >
+              <Keyboard className="w-5 h-5 mr-2" />
               ⌨️ Manual Entry
             </Button>
 
@@ -113,6 +116,7 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
                 onClick={onVoiceEntry}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 text-lg"
               >
+                <Mic className="w-5 h-5 mr-2" />
                 🎤 Voice Entry
               </Button>
             )}
