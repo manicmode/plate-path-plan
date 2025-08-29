@@ -18,6 +18,7 @@ import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
+import { analyzeProductForQuality, nutriScoreTo10, type AnalyzerResult } from '@/shared/barcode-analyzer';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
@@ -131,6 +132,67 @@ function extractNutritionData(nutritionData: any) {
       return 0;
     })()
   };
+}
+
+// Barcode enrichment helper - calls analyzer for better scores and flags  
+async function enrichBarcodeReport(legacy: {
+  productName: string;
+  ingredientsText?: string;
+  nutritionData?: Record<string, any>; // OFF nutriments
+  healthScore?: number;                // ignore if came from previous wrong path
+  scoreUnit?: string;                  // ignore if not '0-10'
+}) {
+  const n = legacy.nutritionData || {};
+
+  // Build per-100g nutrition for analyzer (best-effort)
+  const forAnalyzer = {
+    calories: typeof n['energy-kcal_100g'] === 'number'
+      ? n['energy-kcal_100g']
+      : (typeof n['energy_100g'] === 'number' ? n['energy_100g'] * 0.239005736 : undefined),
+    protein_g: n['proteins_100g'],
+    carbs_g: n['carbohydrates_100g'],
+    fat_g: n['fat_100g'],
+    sugar_g: n['sugars_100g'],
+    fiber_g: n['fiber_100g'],
+    sodium_mg: typeof n['sodium_100g'] === 'number'
+      ? n['sodium_100g'] * 1000 // g -> mg
+      : (typeof n['salt_100g'] === 'number' ? n['salt_100g'] * 400 * 1000 : undefined)
+  };
+
+  // 1) Ask the same analyzer used by manual/speak to compute score + flags
+  const ar = await analyzeProductForQuality({
+    name: legacy.productName,
+    ingredientsText: legacy.ingredientsText,
+    nutrition: forAnalyzer
+  });
+
+  // 2) Decide score:
+  //    a) analyzer quality.score (0..10 expected by manual/speak path)
+  //    b) OFF Nutri-Score mapping (fallback)
+  //    c) keep current if neither (but clamp)
+  let score10: number | null = null;
+
+  if (ar?.quality?.score != null && isFinite(Number(ar.quality.score))) {
+    const v = Number(ar.quality.score);
+    score10 = v > 10 ? v / 10 : v; // accept both 0..1 or 0..100 edge cases
+    score10 = Math.max(0, Math.min(10, score10));
+  } else {
+    // try OFF's nutri/nutriscore if available on legacy.nutritionData mirror
+    const offNutriRaw =
+      n['nutrition-score-fr_100g'] ??
+      n['nutrition-score-uk_100g'] ??
+      n['nutriscore_score'] ?? // sometimes copied
+      null;
+    const mapped = nutriScoreTo10(offNutriRaw);
+    if (mapped != null) score10 = mapped;
+  }
+
+  // 3) Flags: prefer analyzer flags; otherwise leave empty (no bogus placeholders)
+  const flags = (ar?.ingredientFlags && Array.isArray(ar.ingredientFlags) ? ar.ingredientFlags
+               : (ar?.flags && Array.isArray(ar.flags) ? ar.flags
+               : []));
+
+  return { score10, flags, analyzerInsights: ar?.insights || [] };
 }
 
 interface HealthCheckModalProps {
@@ -1396,28 +1458,43 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     console.log('[REPORT][BARCODE]', { scoreUnit: legacy.scoreUnit });
     
-    // Respect 0–10 scores from adapter without re-scaling
-    const score10 =
-      legacy?.scoreUnit === '0-10'
-        ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
-        : extractScore(legacy?.healthScore, legacy?.scoreUnit) ? extractScore(legacy?.healthScore, legacy?.scoreUnit)! / 10 : 0;
+    // Enrich barcode reports with analyzer data for better scores and flags
+    let finalScore10: number;
+    let ingredientFlags: any[] = [];
+    let analyzerInsights: string[] = [];
     
-    console.log('[REPORT][BARCODE]', { scoreUnit: legacy?.scoreUnit, score10 });
+    if (type === 'barcode') {
+      const enrichment = await enrichBarcodeReport(legacy);
+      
+      finalScore10 = enrichment.score10 != null
+        ? enrichment.score10
+        : (legacy?.scoreUnit === '0-10'
+          ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
+          : Math.max(0, Math.min(10, Number(legacy.healthScore) || 0)));
+      
+      ingredientFlags = enrichment.flags;
+      analyzerInsights = enrichment.analyzerInsights;
+    } else {
+      // Non-barcode paths use existing logic
+      finalScore10 = legacy?.scoreUnit === '0-10'
+        ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
+        : (extractScore(legacy?.healthScore, legacy?.scoreUnit) || 0) / 10;
+      
+      // Keep existing flag logic for non-barcode paths
+      const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
+        : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
+        : [];
+      ingredientFlags = rawFlags.map((f: any) => ({
+        ingredient: f.title || f.label || f.key || 'Ingredient',
+        flag: f.description || f.label || '',
+        severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+      }));
+    }
+    
+    console.log('[REPORT][ENRICHED]', { scoreUnit: legacy?.scoreUnit, finalScore10, flagsCount: ingredientFlags.length });
     
     // Extract nutrition data using helper
     const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
-    
-    // PATCH 3: Keep flags empty for barcode path until OFF tags are mapped properly
-    const rawFlags = type === 'barcode' ? [] : (
-      Array.isArray(legacy.healthFlags) ? legacy.healthFlags
-      : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
-      : []
-    );
-    const ingredientFlags = rawFlags.map((f: any) => ({
-      ingredient: f.title || f.label || f.key || 'Ingredient',
-      flag: f.description || f.label || '',
-      severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
-    }));
     
     const ingredientsText = legacy.ingredientsText;
     
@@ -1425,7 +1502,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       itemName,
       productName: itemName,
       title: itemName,
-      healthScore: score10 ?? 0,
+      healthScore: finalScore10 * 10, // Convert back to 0-100 for display
       ingredientsText,
       ingredientFlags,
       nutritionData: nutritionData || {},
@@ -1451,11 +1528,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       },
       personalizedWarnings: [],
       suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
-      overallRating: score10 == null ? 'avoid' : 
-                    score10 >= 8 ? 'excellent' : 
-                    score10 >= 6 ? 'good' : 
-                    score10 >= 4 ? 'fair' : 
-                    score10 >= 2 ? 'poor' : 'avoid'
+      overallRating: finalScore10 == null ? 'avoid' : 
+                    finalScore10 >= 8 ? 'excellent' : 
+                    finalScore10 >= 6 ? 'good' : 
+                    finalScore10 >= 4 ? 'fair' : 
+                    finalScore10 >= 2 ? 'poor' : 'avoid'
     };
     
     setAnalysisResult(analysisResult);
