@@ -429,11 +429,13 @@ export async function handleSearchPick({
       ...analyzerData
     };
 
-    // **Canonical title enforcement**
+    // **Canonical title enforcement** - prefer OFF product_name if analyzer's itemName is brand-only or too short
     const analyzerName = flattened.itemName;
-    const finalName = isGeneric(analyzerName, brand) ? pickedName : analyzerName;
+    const offProductName = product?.name;
+    const finalName = isGeneric(analyzerName, brand) ? 
+      (offProductName || pickedName) : analyzerName;
     if (finalName !== analyzerName) {
-      console.log('[ANALYZER][ITEMNAME_FIX]', { from: analyzerName, to: finalName, pickedName, brand });
+      console.log('[REPORT][TITLE_FIX]', { from: analyzerName, to: finalName, pickedName, brand, offProductName });
     }
     flattened.itemName = finalName;
 

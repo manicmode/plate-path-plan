@@ -499,14 +499,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const { toast } = await import('@/components/ui/sonner');
           toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
         }
-        // Legacy: Barcode path - validate response has usable data through adapter
+        // Legacy: Barcode path - only succeed when we have meaningful data
         const legacy = toLegacyFromEdge(data);
-        const hasUsableData = 
-          !!legacy?.productName || 
-          !!legacy?.barcode || 
-          (typeof legacy?.healthScore === 'number' && legacy.healthScore > 0);
+        const hasName = !!legacy?.productName && 
+          legacy.productName !== 'Unknown item' && 
+          legacy.productName !== 'Unknown product';
+        const hasBarcode = !!legacy?.barcode;
         
-        if (!error && data?.ok && hasUsableData && data?.fallback !== true) {
+        if (data?.ok && !data?.fallback && (hasName || hasBarcode)) {
           // Convert to base64 for result
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -526,9 +526,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         } else {
           console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
             ok: data?.ok, 
-            productName: legacy?.productName, 
-            barcode: legacy?.barcode, 
-            healthScore: legacy?.healthScore,
+            hasName, 
+            hasBarcode, 
             fallback: data?.fallback
           });
           // let the normal analyzer path run
@@ -554,14 +553,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        // Legacy: Barcode path - validate response has usable data through adapter
+        // Legacy: Barcode path - only succeed when we have meaningful data
         const legacy2 = toLegacyFromEdge(data);
-        const hasUsableData2 = 
-          !!legacy2?.productName || 
-          !!legacy2?.barcode || 
-          (typeof legacy2?.healthScore === 'number' && legacy2.healthScore > 0);
+        const hasName2 = !!legacy2?.productName && 
+          legacy2.productName !== 'Unknown item' && 
+          legacy2.productName !== 'Unknown product';
+        const hasBarcode2 = !!legacy2?.barcode;
         
-        if (!error && data?.ok && hasUsableData2 && data?.fallback !== true) {
+        if (data?.ok && !data?.fallback && (hasName2 || hasBarcode2)) {
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
             still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
@@ -580,9 +579,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         } else {
           console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
             ok: data?.ok, 
-            productName: legacy2?.productName, 
-            barcode: legacy2?.barcode, 
-            healthScore: legacy2?.healthScore,
+            hasName: hasName2, 
+            hasBarcode: hasBarcode2, 
             fallback: data?.fallback
           });
           // let the normal analyzer path run

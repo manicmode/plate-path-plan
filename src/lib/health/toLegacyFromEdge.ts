@@ -12,7 +12,7 @@ const pickName = (...vals: Array<unknown>) =>
 function extractName(edge: any): string | undefined {
   const p = edge?.product ?? edge;
 
-  // Try all common OFF + normalized fields + itemName fallback
+  // Try all common OFF + normalized fields + itemName fallback (including envelope.itemName)
   const name = pickName(
     p?.displayName,
     p?.name,
@@ -25,7 +25,7 @@ function extractName(edge: any): string | undefined {
     edge?.productName, // some functions return this top-level
     edge?.name,
     p?.itemName,            // new-schema fallback
-    edge?.itemName          // top-level itemName fallback
+    edge?.itemName          // envelope.itemName as final fallback
   ) ?? (
     // brand + product_name fallback
     p?.brands && p?.product_name
@@ -81,21 +81,21 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
   const productName = extractName(edge);
 
   const barcode =
-    p?.barcode ?? p?.code ?? envelope?.barcode ?? null;
+    p?.code ?? p?.barcode ?? envelope?.barcode ?? null;
 
   const ingredientsText =
     p?.ingredientsText ??
     (Array.isArray(p?.ingredients) ? p.ingredients.join(", ") : null) ??
     null;
 
-  // Extract health score with quality.score fallback and scale normalization
+  // Extract health score with envelope.quality?.score fallback and scale normalization
   const extractScore = (env: any, p: any) => {
     let score = p?.health?.score ?? env?.health?.score ?? p?.quality?.score ?? env?.quality?.score;
     
     if (typeof score === 'number') {
       // Scale normalization: ensure 0-10 range for legacy compatibility
       if (score <= 1) score = score * 10;        // 0–1 -> 0–10
-      if (score > 100) score = score / 10;       // 0–100 -> 0–10
+      if (score > 10) score = score / 10;        // >10 -> 0–10 (not >100)
       score = Math.max(0, Math.min(10, score));  // clamp to 0-10
       return score;
     }
@@ -108,8 +108,24 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
   const healthFlags =
     coerceFlags(p?.health?.flags ?? envelope?.health?.flags ?? envelope?.healthFlags);
 
-  const nutrition =
-    p?.nutrition ?? envelope?.nutrition ?? envelope?.nutritionSummary ?? null;
+  let nutrition = p?.nutrition ?? envelope?.nutrition ?? envelope?.nutritionSummary ?? null;
+
+  // If only envelope.nutrition exists, synthesize OFF-style keys for downstream mapping
+  if (!nutrition && envelope?.nutrition) {
+    const n = envelope.nutrition;
+    nutrition = {
+      'energy-kcal_100g': n.calories,
+      'proteins_100g': n.protein_g,
+      'carbohydrates_100g': n.carbs_g,
+      'fat_100g': n.fat_g,
+      'sugars_100g': n.sugar_g,
+      'fiber_100g': n.fiber_g,
+      'sodium_100g': n.sodium_mg,
+      'saturated-fat_100g': n.satfat_g,
+      // Also keep original format
+      ...n
+    };
+  }
 
   // Detect any meaningful signal
   const hasAnySignal = !!(
