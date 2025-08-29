@@ -7,17 +7,24 @@ import CameraDebug from './CameraDebug';
 const PhotoSandbox = React.lazy(() => import('./PhotoSandbox'));
 
 export default function DebugRoutes() {
-  if (!import.meta.env.DEV) {
+  const enableSandbox = import.meta.env.DEV || FF.PHOTO_SANDBOX_ALLOW_PROD;
+  
+  // Allow debug routes in dev, or if specific flags are enabled
+  const allowDebugRoutes = import.meta.env.DEV || enableSandbox;
+  
+  if (!allowDebugRoutes) {
     return null;
   }
   
-  const enableSandbox = import.meta.env.DEV || FF.PHOTO_SANDBOX_ALLOW_PROD;
-  
   return (
     <Routes>
-      <Route path="nudges-qa" element={<NudgesQA />} />
-      <Route path="scan-hub" element={<ScanHubDebug />} />
-      <Route path="camera" element={<CameraDebug />} />
+      {import.meta.env.DEV && (
+        <>
+          <Route path="nudges-qa" element={<NudgesQA />} />
+          <Route path="scan-hub" element={<ScanHubDebug />} />
+          <Route path="camera" element={<CameraDebug />} />
+        </>
+      )}
       
       {enableSandbox && (
         <>
