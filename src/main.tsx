@@ -7,6 +7,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { enablePerfHUD, enableResourceMonitoring } from '@/lib/perf';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
@@ -159,6 +160,15 @@ if (isIOS && isSafari) {
   } catch (error) {
     console.error('iOS Safari storage test failed:', error);
   }
+}
+
+// Check for performance monitoring flags
+const urlParams = new URLSearchParams(window.location.search);
+const shouldEnablePerf = urlParams.has('perf') || import.meta.env.VITE_PERF_HUD === 'true';
+
+if (shouldEnablePerf) {
+  enablePerfHUD();
+  enableResourceMonitoring();
 }
 
 // Create QueryClient instance

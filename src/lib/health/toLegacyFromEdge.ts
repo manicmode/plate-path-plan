@@ -2,6 +2,8 @@
  * the existing Health/Confirm modals already consume.
  */
 
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
 // Helper to safely convert to number
 const num = (v: any) => (v == null ? 0 : Number(v)) || 0;
 
@@ -166,14 +168,16 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     recommendation: null,
   };
 
-  // Replace the noisy log with a tiny summary
-  console.log('[ADAPTER][OUTPUT_SUMMARY]', {
-    name: legacy.productName,
-    score10: legacy.healthScore,
-    macros: legacy.nutritionData,
-    hasIngredients: !!legacy.ingredientsText,
-    barcode: legacy.barcode,
-  });
+  // Log summary only in debug mode
+  if (DEBUG) {
+    console.log('[ADAPTER][OUTPUT_SUMMARY]', {
+      name: legacy.productName,
+      score10: legacy.healthScore,
+      macros: legacy.nutritionData,
+      hasIngredients: !!legacy.ingredientsText,
+      barcode: legacy.barcode,
+    });
+  }
 
   return legacy;
 }

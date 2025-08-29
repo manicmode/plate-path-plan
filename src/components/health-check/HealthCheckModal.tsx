@@ -23,6 +23,9 @@ import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { useHealthCheckV2 } from './HealthCheckModalV2';
 import { handleSearchPick, num, score10, pickBrand, displayNameFor } from '@/shared/search-to-analysis';
+import { mark, measure } from '@/lib/perf';
+
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -967,7 +970,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         });
 
         setAnalysisResult(analysisResult);
-        setCurrentState('report');
+      setCurrentState('report');
+      mark('[HC] process_analysis_end');
+      measure('[HC] process_analysis_total', '[HC] process_analysis_start');
         
       } else {
         console.log('📝 Input detected as text/description, routing to GPT analyzer');

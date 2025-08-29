@@ -6,6 +6,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
 const norm = (s?: string) =>
   (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
@@ -179,23 +181,27 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   
   // Convert product to text format for analysis (unified approach)
   const text = productToText(stripped);
-  console.log('[ANALYZER][TEXT]', text);
-  console.log('[SELECTION][PRODUCT_KEYS]', Object.keys(product||{}));
+  if (DEBUG) {
+    console.log('[ANALYZER][TEXT]', text);
+    console.log('[SELECTION][PRODUCT_KEYS]', Object.keys(product||{}));
+  }
   const body = { text, taskType: 'food_analysis', complexity: 'auto' };
 
   // PARITY logging: before invoke
-  console.log('[PARITY][REQ]', { source, hasText: !!body.text });
-  console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
+  if (DEBUG) {
+    console.log('[PARITY][REQ]', { source, hasText: !!body.text });
+    console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
+  }
   
   const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
     body
   });
   
-  // PROBE: Log raw analyzer response
-  console.log('[ANALYZER][RAW]', { keys: Object.keys(data||{}), sample: { itemName: data?.itemName, productName: data?.productName, quality: data?.quality, nutrition: data?.nutrition, report: data?.report ? Object.keys(data.report) : null }});
-  
-  // PARITY logging: after invoke
-  console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
+  // PROBE: Log raw analyzer response (debug only)
+  if (DEBUG) {
+    console.log('[ANALYZER][RAW]', { keys: Object.keys(data||{}), sample: { itemName: data?.itemName, productName: data?.productName } });
+    console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
+  }
   
   if (error) {
     throw new Error(error.message || 'Failed to analyze product');

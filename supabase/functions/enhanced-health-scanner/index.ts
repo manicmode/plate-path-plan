@@ -112,7 +112,11 @@ serve(async (req) => {
 
         return new Response(JSON.stringify(payload), {
           status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=300' // 5-minute cache for successful barcode lookups
+          },
         });
       }
 

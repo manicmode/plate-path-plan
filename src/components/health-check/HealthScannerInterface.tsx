@@ -16,6 +16,10 @@ import { useTorch } from '@/lib/camera/useTorch';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
+import { mark, measure, checkBudget } from '@/lib/perf';
+import { PERF_BUDGET } from '@/config/perfBudget';
+
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -60,10 +64,30 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
+  // Performance throttling
+  const lastDecodeTime = useRef<number>(0);
+  const rafRef = useRef<number>(0);
+  const isVisible = useRef<boolean>(true);
+
   // Scanner mount probe
   useEffect(() => {
-    console.log('[SCANNER][MOUNT]');
-    return () => console.log('[SCANNER][UNMOUNT]');
+    if (DEBUG) console.log('[SCANNER][MOUNT]');
+    mark('[HS] component_mount');
+    return () => {
+      if (DEBUG) console.log('[SCANNER][UNMOUNT]');
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Page visibility handling for performance
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isVisible.current = !document.hidden;
+      if (DEBUG) console.log('[HS] visibility', { visible: isVisible.current });
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Tuning constants
@@ -150,12 +174,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         return;
       }
 
-      // High-res back camera request with optimized constraints
+      // High-res back camera request with optimized constraints for performance
       const constraints = {
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 720 },    // Reduced from 1280 for performance
+          height: { ideal: 720 },   // Keep square aspect ratio
+          frameRate: { ideal: 24, max: 30 } // Cap frame rate for performance
         },
         audio: false
       };
@@ -170,12 +195,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const videoTrack = mediaStream.getVideoTracks()[0];
       const settings = videoTrack.getSettings();
       
-      console.log('[HS] Stream settings:', {
-        width: settings.width,
-        height: settings.height,
-        facingMode: settings.facingMode,
-        deviceId: settings.deviceId
-      });
+      if (DEBUG) {
+        console.log('[HS] Stream settings:', {
+          width: settings.width,
+          height: settings.height,
+          facingMode: settings.facingMode,
+          deviceId: settings.deviceId?.substring(0, 8) + '...' // No PII
+        });
+      }
 
       trackRef.current = videoTrack;
       setStream(mediaStream);
@@ -192,10 +219,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           }, 200);
         }
       
-      // Log torch capabilities
+      // Log torch capabilities (debug only)
       const caps = videoTrack?.getCapabilities?.();
-      console.log('[TORCH] caps', caps);
-      console.log('[TORCH] supported', !!(caps && 'torch' in caps));
+      if (DEBUG) {
+        console.log('[TORCH] caps', caps ? Object.keys(caps) : 'none');
+        console.log('[TORCH] supported', !!(caps && 'torch' in caps));
+      }
     } catch (error: any) {
       console.warn('[PHOTO] Live video denied, using native capture', error?.name || error);
       try {
@@ -448,7 +477,15 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       return;
     }
 
-    console.time('[HS] analyze_total');
+    // Throttle capture attempts
+    const now = Date.now();
+    if (now - lastDecodeTime.current < PERF_BUDGET.scannerThrottleMs) {
+      if (DEBUG) console.log('[HS] throttled, too soon');
+      return;
+    }
+    lastDecodeTime.current = now;
+
+    mark('[HS] analyze_start');
     setIsFrozen(true);
     playCameraClickSound();
     setIsScanning(true);
@@ -482,17 +519,23 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       // Return early on any 8/12/13/14-digit hit (even if checksum is false)
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
-        console.log('[HS] off_fetch_start', { code: result.raw });
+        mark('[HS] barcode_found');
+        if (DEBUG) console.log('[HS] off_fetch_start', { code: result.raw });
         
         // Optional: Add toast for PWA testing  
         if (window.location.search.includes('debug=toast')) {
           const { toast } = await import('@/components/ui/sonner');
           toast.info(`[HS] off_fetch_start: ${result.raw}`);
         }
+        
+        mark('[HS] edge_call_start');
         const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: result.raw, source: 'health' }
+          body: { mode: 'barcode', barcode: result.raw, source: 'health-scan' }
         });
-        console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
+        mark('[HS] edge_call_end');
+        measure('[HS] edge_call_total', '[HS] edge_call_start');
+        
+        if (DEBUG) console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
         
         // Optional: Add toast for PWA testing
         if (window.location.search.includes('debug=toast')) {
@@ -520,8 +563,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             
             onCapture(fullBase64 + `&barcode=${result.raw}`);
             setIsFrozen(false);
-            console.timeEnd('[HS] analyze_total');
-            return; 
+            mark('[HS] analyze_end');
+            measure('[HS] analyze_total', '[HS] analyze_start');
+            checkBudget('analyze_total', performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0), PERF_BUDGET.analyzeTotalMs);
+            return;
           } else {
             console.warn('[HS] OFF hit but no product data, continuing to burst');
             // continue with the existing burst flow
@@ -615,7 +660,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         unfreezeVideo(videoRef.current);
       }
       setIsFrozen(false);
-      console.timeEnd('[HS] analyze_total');
+      mark('[HS] analyze_end');
+      measure('[HS] analyze_total', '[HS] analyze_start');
+      const analyzeTime = performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0);
+      checkBudget('analyze_total', analyzeTime, PERF_BUDGET.analyzeTotalMs);
     }
   };
 
