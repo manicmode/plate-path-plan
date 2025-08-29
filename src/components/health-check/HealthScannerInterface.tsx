@@ -465,6 +465,25 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return true;
   };
 
+  // Deterministic blob creation from video - single source of truth
+  const blobFromVideo = async (video: HTMLVideoElement, maxDim = 1280, quality = 0.72) => {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const scale = Math.min(1, maxDim / Math.max(vw, vh));
+    const outW = Math.max(1, Math.round(vw * scale));
+    const outH = Math.max(1, Math.round(vh * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outW; 
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(video, 0, 0, outW, outH);
+
+    const blob: Blob | null = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!blob) throw new Error('blob_null');
+
+    return { blob, outW, outH };
+  };
+
   // Helper to convert canvas to base64 without CSP violation
   const canvasToBase64 = async (canvas: HTMLCanvasElement): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -579,54 +598,30 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // Capture still image for both barcode and OCR processing
-      const { canvas } = await captureStill();
-      
-      // 2) Make the blob creation bullet-proof and logged
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-
-      // Resize to keep payload small; target max dim = 1280
-      const maxDim = 1280;
-      const scale = Math.min(1, maxDim / Math.max(vw, vh));
-      const outW = Math.max(1, Math.round(vw * scale));
-      const outH = Math.max(1, Math.round(vh * scale));
-
-      const resizeCanvas = document.createElement('canvas');
-      resizeCanvas.width = outW;
-      resizeCanvas.height = outH;
-      const ctx = resizeCanvas.getContext('2d', { willReadFrequently: true })!;
-      ctx.drawImage(video, 0, 0, outW, outH);
-
-      // Convert to JPEG blob with explicit quality
-      const fullBlob: Blob | null = await new Promise((res) => 
-        resizeCanvas.toBlob(res, 'image/jpeg', 0.72)
-      );
-
-      if (!fullBlob) {
-        console.warn('[IMG BLOB] null');
-        throw new Error('blob_null');
-      }
-
-      console.log('[IMG BLOB]', {
-        type: fullBlob.type,
-        sizeKB: Math.round(fullBlob.size / 1024),
-        outW, outH
+      // 2) Create blob deterministically - single source of truth for all paths
+      const { blob: fullBlob, outW, outH } = await blobFromVideo(video);
+      console.log('[IMG BLOB]', { 
+        type: fullBlob.type, 
+        sizeKB: Math.round(fullBlob.size / 1024), 
+        outW, outH 
       });
 
-      // 3) Show a tiny preview (dev only) so you see a still frame was captured
+      // 3) Show debug preview (dev only)
       if (import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true') {
         const url = URL.createObjectURL(fullBlob);
         setDebugPreviewUrl(url);
         console.log('[IMG PREVIEW]', { url });
       }
       
-      // Convert to base64 for compatibility
+      // Convert to base64 for compatibility - use fullBlob as single source
       const fullBase64 = await new Promise<string>(resolve => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(fullBlob);
       });
+
+      // Capture still image canvas for barcode detection (legacy compatibility)
+      const { canvas } = await captureStill();
 
       if (import.meta.env.VITE_DEBUG_PERF === 'true') {
         console.info('[PHOTO][ROUTE]', { 
@@ -768,6 +763,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               
               // Bridge: notify modal to exit loading state
               onAnalysisTimeout?.();
+              console.log('[PHOTO][CALLBACK] onAnalysisTimeout');
               
               resolved = true;
             }
@@ -909,6 +905,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
             // Bridge: notify modal of success before showing report
             onAnalysisSuccess?.();
+            console.log('[PHOTO][CALLBACK] onAnalysisSuccess');
 
             // Success: show the report
             onCapture({
@@ -923,6 +920,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             
             // Bridge: notify modal of failure
             onAnalysisFail?.(String(error));
+            console.log('[PHOTO][CALLBACK] onAnalysisFail', String(error));
             
             // Show error state instead of falling back to legacy
             return { success: false, error: String(error) };
