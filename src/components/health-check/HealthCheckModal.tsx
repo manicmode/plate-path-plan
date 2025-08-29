@@ -394,10 +394,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
 
     try {
-      // --- begin robust mapping ---
-      const raw = (result?.analysis ?? result) as any;
+      // Handle both raw and wrapped shapes
+      let raw = (result?.analysis ?? result) as any;
 
-      // Extract name (first defined of):
+      // NEW: unwrap { foods: [...] } if present
+      if (raw && Array.isArray(raw.foods) && raw.foods.length > 0) {
+        raw = raw.foods[0];
+      }
+
+      // Name
       const itemName =
         raw?.itemName ??
         raw?.productName ??
@@ -407,49 +412,56 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         result?.product?.name ??
         'Unknown Product';
 
-      // Extract score, then normalize to 0–10:
-      const rawScore =
-        raw?.healthScore ??
-        raw?.quality?.score ??
-        raw?.score ??
-        raw?.report?.quality?.score;
+      // Score 0–10
+      const ensure0to10 = (v: any) => {
+        if (typeof v !== 'number') return 0;
+        const x = v > 10 ? v / 10 : v;
+        return Math.max(0, Math.min(10, x));
+      };
+      const healthScore = ensure0to10(
+        raw?.healthScore ?? raw?.quality?.score ?? raw?.score ?? raw?.report?.quality?.score
+      );
 
-      const score10 = (() => {
-        if (typeof rawScore !== 'number') return 0;
-        const v = rawScore > 10 ? rawScore / 10 : rawScore;
-        return Math.max(0, Math.min(10, v));
-      })();
-
-      // Build nutritionData supporting both nutrition and nutritionData shapes:
-      const n = raw?.nutrition ?? raw?.nutritionData ?? {};
+      // Nutrition (support multiple spellings)
+      const n = raw?.nutrition ?? raw?.nutritionData ?? raw?.macros ?? {};
       const nutritionData = {
-        calories: n.calories ?? n.energy_kcal ?? 0,
-        protein:  n.protein_g ?? n.protein ?? 0,
+        calories: n.calories ?? n.energy_kcal ?? n['energy-kcal'] ?? 0,
+        protein:  n.protein_g ?? n.protein ?? n.proteins ?? 0,
         carbs:    n.carbs_g   ?? n.carbs   ?? n.carbohydrates ?? 0,
-        fat:      n.fat_g     ?? n.fat     ?? 0,
+        fat:      n.fat_g     ?? n.fat     ?? n.fats ?? 0,
         sugar:    n.sugar_g   ?? n.sugar   ?? n.sugars ?? 0,
         fiber:    n.fiber_g   ?? n.fiber   ?? n.dietary_fiber ?? 0,
         sodium:   n.sodium_mg ?? n.sodium  ?? 0,
       };
 
-      // Ingredients text:
+      // Ingredients + flags/insights
       const ingredientsText =
         raw?.ingredientsText ??
         raw?.ingredients ??
         result?.product?.ingredientsText ??
         '';
 
-      // Flags & insights: pass through if present (don't synthesize in this patch):
       const flags    = raw?.flags ?? raw?.ingredientFlags ?? [];
       const insights = raw?.insights ?? raw?.suggestions ?? [];
 
-      const normalized = {
+      const ingredientFlags = flags.map((f: any) => ({
+        ingredient: f.ingredient || f.key || f.label || 'Ingredient',
+        flag: f.flag || f.description || f.label || '',
+        severity:
+          f.severity === 'high' || f.level === 'danger' ? 'high' :
+          f.severity === 'medium' || f.level === 'warning' ? 'medium' :
+          'low',
+        reason: f.reason,
+      }));
+
+      // Compose → state
+      const normalized: HealthAnalysisResult = {
         itemName,
         productName: itemName,
         title: itemName,
-        healthScore: score10, // keep 0–10
+        healthScore,
         ingredientsText,
-        ingredientFlags: flags,
+        ingredientFlags,
         nutritionData,
         healthProfile: raw?.healthProfile || {
           isOrganic: raw?.isOrganic,
@@ -463,10 +475,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         overallRating: raw?.overallRating || raw?.rating || 'fair'
       };
 
-      console.log('[MAPPED][REPORT]', {
-        itemName: normalized.itemName,
-        healthScore10: normalized.healthScore
-      });
+      if (import.meta.env.VITE_DEBUG_HEALTH === 'true') {
+        console.log('[MAPPED][REPORT]', {
+          itemName: normalized.itemName,
+          healthScore10: normalized.healthScore,
+          hasNutrition: Object.values(nutritionData).some(v => Number(v) > 0),
+          hasIngredients: !!ingredientsText,
+          flagCount: ingredientFlags.length,
+        });
+      }
 
       setAnalysisResult(normalized);
       setCurrentState('report');

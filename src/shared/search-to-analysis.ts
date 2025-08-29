@@ -338,9 +338,62 @@ export async function handleSearchPick({
       hasIngredients: !!(analysisNormalized.ingredientsText || enriched.ingredientsText)
     });
 
+    // Normalize alternate analyzer shapes
+    let processedData = analysisNormalized; // whatever var holds the analyzer JSON
+
+    // NEW: unwrap { foods: [...] } if present
+    if (processedData && Array.isArray(processedData.foods) && processedData.foods.length > 0) {
+      processedData = processedData.foods[0]; // use the first analyzed food
+    }
+
+    // Ensure core fields exist (fallback to selected product)
+    const fallbackName =
+      product?.name ||
+      product?.brand ||
+      'Unknown Product';
+
+    const ensure0to10 = (v: any) => {
+      if (typeof v !== 'number') return 0;
+      const x = v > 10 ? v / 10 : v;
+      return Math.max(0, Math.min(10, x));
+    };
+
+    // Build a minimal, consistent object we hand to the modal (top-level; no nesting)
+    const flattened = {
+      // names
+      itemName:
+        processedData?.itemName ??
+        processedData?.productName ??
+        processedData?.title ??
+        processedData?.name ??
+        fallbackName,
+
+      // score
+      healthScore: ensure0to10(
+        processedData?.healthScore ?? processedData?.quality?.score ?? processedData?.score ?? processedData?.report?.quality?.score
+      ),
+
+      // nutrition (support multiple keys)
+      nutrition:
+        processedData?.nutrition ??
+        processedData?.nutritionData ??
+        processedData?.macros ??
+        {},
+
+      // ingredients and flags/insights passthrough
+      ingredientsText:
+        processedData?.ingredientsText ??
+        processedData?.ingredients ??
+        enriched?.ingredientsText ??
+        '',
+
+      flags: processedData?.flags ?? processedData?.ingredientFlags ?? [],
+      insights: processedData?.insights ?? processedData?.suggestions ?? [],
+    };
+
     // Pass flattened analyzer data with metadata - no wrapper
     setAnalysisData({
-      ...analysisNormalized,   // raw analyzer fields at top level
+      ...flattened,
       product: {               // keep original product object for reference
         productName: product.name,
         barcode: product.barcode,
