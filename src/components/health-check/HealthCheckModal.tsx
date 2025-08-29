@@ -134,77 +134,6 @@ function extractNutritionData(nutritionData: any) {
   };
 }
 
-// Barcode enrichment helper - calls analyzer for better scores and flags  
-async function enrichBarcodeReport(legacy: {
-  productName: string;
-  ingredientsText?: string;
-  nutritionData?: Record<string, any>; // OFF nutriments
-  healthScore?: number;                // ignore if came from previous wrong path
-  scoreUnit?: string;                  // ignore if not '0-10'
-}) {
-  const n = legacy.nutritionData || {};
-
-  // Build per-100g nutrition for analyzer (best-effort)
-  const forAnalyzer = {
-    calories: typeof n['energy-kcal_100g'] === 'number'
-      ? n['energy-kcal_100g']
-      : (typeof n['energy_100g'] === 'number' ? n['energy_100g'] * 0.239005736 : undefined),
-    protein_g: n['proteins_100g'],
-    carbs_g: n['carbohydrates_100g'],
-    fat_g: n['fat_100g'],
-    sugar_g: n['sugars_100g'],
-    fiber_g: n['fiber_100g'],
-    sodium_mg: typeof n['sodium_100g'] === 'number'
-      ? n['sodium_100g'] * 1000 // g -> mg
-      : (typeof n['salt_100g'] === 'number' ? n['salt_100g'] * 400 * 1000 : undefined)
-  };
-
-  console.log('[BARCODE][NUTRITION][FOR_ANALYZER]', { forAnalyzer });
-
-  // 1) Ask the same analyzer used by manual/speak to compute score + flags
-  const ar = await analyzeProductForQuality({
-    name: legacy.productName,
-    ingredientsText: legacy.ingredientsText,
-    nutrition: forAnalyzer
-  });
-
-  // 2) Decide score:
-  //    a) analyzer quality.score (0..10 expected by manual/speak path)
-  //    b) OFF Nutri-Score mapping (fallback)  
-  //    c) leave undefined if neither (no hardcoded defaults)
-  let score10: number | null = null;
-
-  if (ar?.quality?.score != null && isFinite(Number(ar.quality.score))) {
-    const v = Number(ar.quality.score);
-    score10 = v > 10 ? v / 10 : v; // accept both 0..1 or 0..100 edge cases
-    score10 = Math.max(0, Math.min(10, score10));
-  } else {
-    // try OFF's nutri/nutriscore if available on legacy.nutritionData mirror
-    const offNutriRaw =
-      n['nutrition-score-fr_100g'] ??
-      n['nutrition-score-uk_100g'] ??
-      n['nutriscore_score'] ?? // sometimes copied
-      null;
-    const mapped = nutriScoreTo10(offNutriRaw);
-    if (mapped != null) score10 = mapped;
-    // ✅ NO hardcoded fallback to 7.3 - leave undefined if no score available
-  }
-
-  // 3) Flags: prefer analyzer flags; otherwise leave empty (no bogus placeholders)  
-  const flags = (ar?.ingredientFlags && Array.isArray(ar.ingredientFlags) ? ar.ingredientFlags
-                : (ar?.flags && Array.isArray(ar.flags) ? ar.flags
-                : []));
-
-  console.log('[BARCODE][ENRICHMENT]', { 
-    score10, 
-    flagsCount: flags.length,
-    analyzerScore: ar?.quality?.score,
-    offNutriRaw: n['nutrition-score-fr_100g'] ?? n['nutrition-score-uk_100g'] ?? n['nutriscore_score']
-  });
-
-  return { score10, flags, analyzerInsights: ar?.insights || [] };
-}
-
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -1445,8 +1374,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
    * Process result and show appropriate report
    */
   const processAndShowResult = async (legacy: any, data: any, captureId: string, type: string) => {
-    // Process barcode result
-    
     // Handle different statuses
     if (legacy.status === 'no_detection') {
       console.log(`[HS] No detection from ${type} [${captureId}], showing no detection UI`);
@@ -1460,6 +1387,127 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return;
     }
     
+    // Robust barcode detection - trust adapter output and skip enrichment entirely
+    const isBarcode =
+      type === 'barcode' ||
+      legacy?._dataSource === 'openfoodfacts/barcode' ||
+      !!legacy?.barcode ||
+      data?.mode === 'barcode' ||
+      !!data?.barcode;
+
+    // Early return for barcode - trust adapter values completely
+    if (isBarcode) {
+      const nutritionData = legacy.nutritionData || {};
+      const flags = Array.isArray(legacy.flags) ? legacy.flags : [];
+
+      const report = {
+        source: 'barcode',
+        title: legacy.productName || legacy.label || 'Unknown item',
+        image_url: legacy.image_url,
+        brands: legacy.brands,
+        health: { score: legacy.health?.score, unit: '0-10' }, // keep adapter score
+        flags,                                                // keep adapter flags
+        nutritionData,                                       // UI path A
+        nutrition: { nutritionData },                        // UI path B (compat)
+      };
+
+      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+        const nd = nutritionData || {};
+        console.info('[REPORT][FINAL][BARCODE]', {
+          title: report.title, score: report.health?.score,
+          flagsCount: report.flags?.length ?? 0,
+          kcal: nd.energyKcal, protein: nd.protein_g, carbs: nd.carbs_g,
+          sugar: nd.sugar_g, fat: nd.fat_g, satfat: nd.satfat_g,
+          fiber: nd.fiber_g, sodium_mg: nd.sodium_mg
+        });
+      }
+
+      // Convert to HealthAnalysisResult format
+      const itemName = report.title;
+      
+      // Add to recent scans 
+      addRecent({
+        mode: 'barcode',
+        label: itemName
+      });
+
+      const ingredientFlags = flags.map((f: any) => ({
+        ingredient: f.label || f.key || f.code || 'Ingredient',
+        flag: f.description || f.label || '',
+        severity: (f.severity === 'high' || f.level === 'danger' ? 'high' : 
+                  f.severity === 'medium' || f.level === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+        reason: f.reason,
+      }));
+
+      const analysisResult: HealthAnalysisResult = {
+        itemName,
+        productName: itemName,
+        title: itemName,
+        healthScore: report.health?.score ?? 0,
+        ingredientsText: legacy.ingredientsText,
+        ingredientFlags,
+        flags: ingredientFlags, // Set both properties so UI can find them
+        nutritionData: {
+          ...nutritionData,
+          // Add legacy aliases for UI compatibility
+          calories: nutritionData.energyKcal || nutritionData.calories || 0,
+          protein: nutritionData.protein_g || nutritionData.protein || 0,
+          carbs: nutritionData.carbs_g || nutritionData.carbs || 0,
+          fat: nutritionData.fat_g || nutritionData.fat || 0,
+          fiber: nutritionData.fiber_g || nutritionData.fiber || 0,
+          sugar: nutritionData.sugar_g || nutritionData.sugar || 0,
+          sodium: nutritionData.sodium_mg || nutritionData.sodium || 0,
+        },
+        // Provide both nutrition shapes for UI compatibility
+        nutrition: { nutritionData: {
+          ...nutritionData,
+          calories: nutritionData.energyKcal || nutritionData.calories || 0,
+          protein: nutritionData.protein_g || nutritionData.protein || 0,
+          carbs: nutritionData.carbs_g || nutritionData.carbs || 0,
+          fat: nutritionData.fat_g || nutritionData.fat || 0,
+          fiber: nutritionData.fiber_g || nutritionData.fiber || 0,
+          sugar: nutritionData.sugar_g || nutritionData.sugar || 0,
+          sodium: nutritionData.sodium_mg || nutritionData.sodium || 0,
+        }},
+        healthProfile: {
+          isOrganic: legacy.ingredientsText?.includes('organic') || false,
+          isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
+          allergens: legacy.ingredientsText ? 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+              legacy.ingredientsText!.toLowerCase().includes(allergen)
+            ) : [],
+          preservatives: legacy.ingredientsText ? 
+            legacy.ingredientsText.split(',').filter(ing => 
+              ing.toLowerCase().includes('preservative') || 
+              ing.toLowerCase().includes('sodium benzoate') ||
+              ing.toLowerCase().includes('potassium sorbate')
+            ) : [],
+          additives: legacy.ingredientsText ? 
+            legacy.ingredientsText.split(',').filter(ing => 
+              ing.toLowerCase().includes('artificial') || 
+              ing.toLowerCase().includes('flavor') ||
+              ing.toLowerCase().includes('color')
+            ) : []
+        },
+        personalizedWarnings: [],
+        suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
+        overallRating: (report.health?.score ?? 0) >= 8 ? 'excellent' : 
+                      (report.health?.score ?? 0) >= 6 ? 'good' : 
+                      (report.health?.score ?? 0) >= 4 ? 'fair' : 
+                      (report.health?.score ?? 0) >= 2 ? 'poor' : 'avoid'
+      };
+
+      setAnalysisResult(analysisResult);
+      setCurrentState('report');
+      
+      // Trigger daily score calculation
+      if (user?.id) {
+        triggerDailyScoreCalculation(user.id);
+      }
+      return; // ⬅️ IMPORTANT: do not run any enrichment below
+    }
+
+    // Non-barcode processing continues below...
     // Set name once and mirror to all possible header keys
     const itemName = legacy.productName || 'Unknown item';
     console.log(`[HS ${type.toUpperCase()}] Final itemName [${captureId}]:`, itemName);
@@ -1474,88 +1522,27 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       label: itemName
     });
     
-    console.log('[REPORT][BARCODE]', { scoreUnit: legacy.scoreUnit });
+    console.log('[REPORT][NON_BARCODE]', { scoreUnit: legacy.scoreUnit });
     
-    // For barcode reports, trust the adapter output. Do not recompute score or replace flags.
-    let finalScore10: number;
-    let ingredientFlags: any[] = [];
-    let analyzerInsights: string[] = [];
+    // Non-barcode paths use existing logic
+    const finalScore10 = legacy?.scoreUnit === '0-10'
+      ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
+      : (extractScore(legacy?.healthScore, legacy?.scoreUnit) || 0) / 10;
     
-    if (type === 'barcode' && legacy._dataSource === 'openfoodfacts/barcode') {
-      // ✅ Trust adapter values as authoritative - no recomputation
-      finalScore10 = legacy.health?.score ?? 0; // Use adapter score directly
-      
-      // ✅ Keep adapter flags instead of replacing
-      ingredientFlags = Array.isArray(legacy.flags) ? legacy.flags.map((f: any) => ({
-        ingredient: f.label || f.key || f.code || 'Ingredient',
-        flag: f.description || f.label || '',
-        severity: (f.severity === 'high' || f.level === 'danger' ? 'high' : 
-                  f.severity === 'medium' || f.level === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high',
-        reason: f.reason,
-      })) : [];
-      
-      // Skip analyzer enrichment for adapter reports
-      analyzerInsights = [];
-      
-    } else if (type === 'barcode') {
-      // Legacy barcode path - enrich with analyzer but don't override if adapter has values
-      const enrichment = await enrichBarcodeReport(legacy);
-      
-      // ✅ Only use enrichment score if adapter doesn't have one
-      finalScore10 = legacy.health?.score != null 
-        ? legacy.health.score
-        : (enrichment.score10 != null 
-          ? enrichment.score10
-          : 0); // No hardcoded defaults
-      
-      // ✅ Merge flags instead of replacing
-      const adapterFlags = Array.isArray(legacy.flags) ? legacy.flags : [];
-      const enrichmentFlags = enrichment.flags || [];
-      const flagMap = new Map(adapterFlags.map(f => [f.code || f.key, f]));
-      for (const f of enrichmentFlags) {
-        if (!flagMap.has(f.code || f.key)) flagMap.set(f.code || f.key, f);
-      }
-      ingredientFlags = Array.from(flagMap.values());
-      
-      analyzerInsights = enrichment.analyzerInsights;
-    } else {
-      // Non-barcode paths use existing logic
-      finalScore10 = legacy?.scoreUnit === '0-10'
-        ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
-        : (extractScore(legacy?.healthScore, legacy?.scoreUnit) || 0) / 10;
-      
-      // Keep existing flag logic for non-barcode paths
-      const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
-        : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
-        : [];
-      ingredientFlags = rawFlags.map((f: any) => ({
-        ingredient: f.title || f.label || f.key || 'Ingredient',
-        flag: f.description || f.label || '',
-        severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
-      }));
-    }
+    // Keep existing flag logic for non-barcode paths
+    const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
+      : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
+      : [];
+    const ingredientFlags = rawFlags.map((f: any) => ({
+      ingredient: f.title || f.label || f.key || 'Ingredient',
+      flag: f.description || f.label || '',
+      severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+    }));
     
     console.log('[REPORT][ENRICHED]', { scoreUnit: legacy?.scoreUnit, finalScore10, flagsCount: ingredientFlags.length });
     
-    // Extract nutrition data - ensure both shapes for UI compatibility
-    let nutritionData;
-    if (type === 'barcode' && legacy._dataSource === 'openfoodfacts/barcode' && legacy.nutritionData) {
-      // For barcode adapter output, use nutritionData directly and add aliases
-      nutritionData = {
-        ...legacy.nutritionData,
-        // Add legacy aliases for UI compatibility
-        calories: legacy.nutritionData.energyKcal || legacy.nutritionData.calories || 0,
-        protein: legacy.nutritionData.protein_g || legacy.nutritionData.protein || 0,
-        carbs: legacy.nutritionData.carbs_g || legacy.nutritionData.carbs || 0,
-        fat: legacy.nutritionData.fat_g || legacy.nutritionData.fat || 0,
-        fiber: legacy.nutritionData.fiber_g || legacy.nutritionData.fiber || 0,
-        sugar: legacy.nutritionData.sugar_g || legacy.nutritionData.sugar || 0,
-        sodium: legacy.nutritionData.sodium_mg || legacy.nutritionData.sodium || 0,
-      };
-    } else {
-      // Use existing extraction logic
-      nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
-    }
+    // Extract nutrition data - use existing extraction logic for non-barcode paths
+    const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
     console.log('[REPORT][NUTRITION]', { nutritionData });
     
     const ingredientsText = legacy.ingredientsText;
@@ -1602,24 +1589,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                     finalScore10 >= 4 ? 'fair' : 
                     finalScore10 >= 2 ? 'poor' : 'avoid'
     };
-    
-    // Add debug logging for barcode reports
-    if (import.meta.env.VITE_DEBUG_PERF === 'true' && type === 'barcode') {
-      const nd = analysisResult.nutritionData || {};
-      console.info('[REPORT][FINAL][BARCODE]', {
-        title: analysisResult.title,
-        score: analysisResult.healthScore,
-        flagsCount: analysisResult.flags?.length ?? 0,
-        kcal: (nd as any).energyKcal || nd.calories, 
-        protein: (nd as any).protein_g || nd.protein, 
-        carbs: (nd as any).carbs_g || nd.carbs, 
-        sugar: (nd as any).sugar_g || nd.sugar,
-        fat: (nd as any).fat_g || nd.fat, 
-        satfat: (nd as any).satfat_g || (nd as any).satfat, 
-        fiber: (nd as any).fiber_g || nd.fiber, 
-        sodium_mg: (nd as any).sodium_mg || nd.sodium
-      });
-    }
     
     setAnalysisResult(analysisResult);
     setCurrentState('report');
