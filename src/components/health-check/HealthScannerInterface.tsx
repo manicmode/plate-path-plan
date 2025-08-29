@@ -628,7 +628,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
         const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
         const HEALTH_DEBUG = import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true';
-        const OCR_TIMEOUT_MS = 15000;
+        const FETCH_TIMEOUT_MS = 15000;
+        const JSON_TIMEOUT_MS = 5000;
+        const WATCHDOG_MS = 18000;
 
         // Import health diagnostics if debug enabled
         let hlog: any, newCID: any, safeScore: any, runFlagsEngine: any;
@@ -646,76 +648,83 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           }
         }
 
-        const cid = HEALTH_DEBUG && newCID ? newCID() : undefined;
-        const ctx = HEALTH_DEBUG ? { cid, tags: ['PHOTO'] } : undefined;
-
-        async function runVisionOCR(imageBase64: string) {
-          let timeoutId: any;
-          const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('timeout')), OCR_TIMEOUT_MS);
-          });
-
-          if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
-          if (HEALTH_DEBUG && hlog) hlog('[OCR][HTTP] request → vision-ocr', ctx);
+        async function fetchWithTimeout(url: string, body: BodyInit, cid: string, signal: AbortSignal) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort('timeout_fetch'), FETCH_TIMEOUT_MS);
+          
+          // Chain both signals
+          const combinedSignal = AbortSignal.any ? AbortSignal.any([signal, controller.signal]) : controller.signal;
 
           try {
-            const ocrPromise = supabase.functions.invoke('vision-ocr', {
-              body: { imageBase64 },
-              headers: cid ? { 'x-cid': cid } : undefined
+            const resp = await fetch(url, {
+              method: 'POST',
+              body,
+              headers: { 'x-cid': cid },
+              signal: combinedSignal,
             });
-
-            const result = await Promise.race([ocrPromise, timeoutPromise]);
-            clearTimeout(timeoutId);
-
-            const { data, error } = result as any;
-
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: !!data?.ok, textLen: data?.text?.length ?? 0, reason: data?.reason });
-            if (HEALTH_DEBUG && hlog) hlog('[OCR][RESP] payload', ctx, { ok: !!data?.ok, textLen: data?.text?.length ?? 0, reason: data?.reason });
-
-            if (error) {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: 'invoke_error', error });
-              return { ok: false as const, reason: 'invoke_error' };
-            }
-            if (!data || typeof data !== 'object') {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: 'no_data' });
-              return { ok: false as const, reason: 'no_data' };
-            }
-            if (!data.ok) {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: data.reason || 'provider_error' });
-              return { ok: false as const, reason: data.reason || 'provider_error' };
-            }
-
-            return { ok: true as const, text: String(data.text || '') };
-          } catch (err: any) {
-            clearTimeout(timeoutId);
-            const isTimeout = err?.message === 'timeout';
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: isTimeout ? 'timeout' : 'exception', err: String(err) });
-            return { ok: false as const, reason: isTimeout ? 'timeout' : 'exception' };
+            return resp;
+          } finally {
+            clearTimeout(timer);
           }
         }
 
-        // Compress image for OCR
-        const prep = await prepareImageForAnalysis(fullBlob, { 
-          maxEdge: 1280, 
-          quality: 0.7, 
-          targetMaxBytes: 900_000 
-        });
+        async function jsonWithTimeout(resp: Response) {
+          const parse = resp.json();
+          const timer = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout_json')), JSON_TIMEOUT_MS));
+          return Promise.race([parse, timer]) as Promise<any>;
+        }
 
-        if (HEALTH_DEBUG && hlog) hlog('Start capture', ctx);
+        async function analyzePhotoSafely(blob: Blob) {
+          const cid = HEALTH_DEBUG && newCID ? newCID() : `photo_${Date.now()}`;
+          const ctx = HEALTH_DEBUG ? { cid, tags: ['PHOTO'] } : undefined;
+          
+          let resolved = false;
+          const watchdog = setTimeout(() => {
+            if (!resolved) {
+              if (HEALTH_DEBUG && hlog) {
+                hlog('WATCHDOG trip → forcing resolution', { ...ctx, tags: ['PHOTO','WATCHDOG'] });
+              } else {
+                console.warn('[PHOTO][WATCHDOG] Force resolution after 18s');
+              }
+              // Force close with error state - this will be implemented below
+              resolved = true;
+            }
+          }, WATCHDOG_MS);
 
-        let ocrResult;
-        try {
-          ocrResult = await runVisionOCR(prep.base64NoPrefix);
-          if (ocrResult.ok) {
-            // Build unified report exactly like barcode/manual
+          try {
+            if (HEALTH_DEBUG && hlog) hlog('Start capture', ctx);
+            if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
+            if (HEALTH_DEBUG && hlog) hlog('[OCR][HTTP] request → vision-ocr', ctx);
+
+            // Use FormData for reliable multipart handling
+            const form = new FormData();
+            form.append('file', new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+            
+            // Create abort controller for this specific request
+            const abortController = new AbortController();
+            const resp = await fetchWithTimeout('/functions/v1/vision-ocr', form, cid, abortController.signal);
+
+            // Parse JSON with separate timeout
+            const json = await jsonWithTimeout(resp).catch((e) => {
+              if (DEBUG) console.warn('[PHOTO][JSON] Parse timeout or error:', e);
+              return { ok: false, reason: 'bad_json' };
+            });
+            
+            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
+            if (HEALTH_DEBUG && hlog) hlog('[OCR][RESP] payload', ctx, { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
+
+            if (!json?.ok) {
+              throw new Error(`ocr_fail:${json?.reason ?? 'unknown'}`);
+            }
+
+            // Parse and process the OCR text
             const { toLegacyFromPhoto } = await import('@/lib/health/toLegacyFromPhoto');
             const { parseNutritionFromOCR } = await import('@/lib/health/parseNutritionPanel');
             
-            // Parse nutrition data
-            const parsed = parseNutritionFromOCR(ocrResult.text);
+            const parsed = parseNutritionFromOCR(json.text);
             if (HEALTH_DEBUG && hlog) hlog('[PARSE] nutrition profile', ctx, parsed);
 
-            const legacy = toLegacyFromPhoto(ocrResult.text);
+            const legacy = toLegacyFromPhoto(json.text);
 
             // Enhanced scoring if debug enabled
             let enhancedScore = legacy.healthScore;
@@ -727,7 +736,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
                 sodium_mg_per_100g: parsed.per100?.sodium_mg,
                 fiber_g_per_100g: parsed.per100?.fiber_g,
                 protein_g_per_100g: parsed.per100?.protein_g,
-                ultra_processed: false // Would need ingredient analysis for this
+                ultra_processed: false
               };
               
               if (hlog) hlog('[SCORE_IN]', ctx, scoreIn);
@@ -735,7 +744,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               try {
                 const scoreOut = await safeScore(scoreIn);
                 if (hlog) hlog('[SCORE_OUT]', ctx, scoreOut);
-                enhancedScore = scoreOut.finalScore / 10; // Convert to 0-10 scale
+                enhancedScore = scoreOut.finalScore / 10;
               } catch (e) {
                 console.warn('[HEALTH] Safe scoring failed:', e);
               }
@@ -753,7 +762,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
                 const newFlags = runFlagsEngine({ ...parsed, facts: parsed?.per100 });
                 if (hlog) hlog('[FLAGS_OUT]', ctx, newFlags);
                 
-                // Convert to legacy format
                 enhancedFlags = newFlags.map((f: any) => ({
                   title: f.code,
                   reason: f.reason,
@@ -802,20 +810,46 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
             if (HEALTH_DEBUG && hlog) hlog('[FINAL]', ctx, report);
 
-            // Pass the report data in a compatible way
+            // Success: show the report
             onCapture({
               imageBase64: prep.base64NoPrefix,
               detectedBarcode: null
             });
+            
+            return { success: true };
+          } catch (error) {
+            if (DEBUG) console.warn('[PHOTO] OCR pipeline exception:', error);
+            if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, String(error));
+            
+            // Show error state instead of falling back to legacy
+            return { success: false, error: String(error) };
+          } finally {
+            resolved = true;
+            clearTimeout(watchdog);
+            if (HEALTH_DEBUG && hlog) hlog('[RESOLVED]', ctx);
+            if (DEBUG) console.info('[PHOTO][RESOLVED]', { cid });
+          }
+        }
+
+        // Compress image for OCR
+        const prep = await prepareImageForAnalysis(fullBlob, { 
+          maxEdge: 1280, 
+          quality: 0.7, 
+          targetMaxBytes: 900_000 
+        });
+
+        // Run the safe photo analysis with all safeguards
+        try {
+          const result = await analyzePhotoSafely(fullBlob);
+          if (result.success) {
+            // Success case already handled in analyzePhotoSafely
             return;
           } else {
-            // Graceful failure path - fall back to legacy pipeline
-            if (DEBUG) console.warn('[PHOTO] Vision OCR failed, falling back to legacy:', ocrResult.reason);
-            if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, ocrResult.reason);
+            // Error case - fall back to legacy or show error
+            if (DEBUG) console.warn('[PHOTO] Analysis failed, falling back to legacy:', result.error);
           }
         } catch (error) {
-          if (DEBUG) console.warn('[PHOTO] OCR pipeline exception, falling back to legacy:', error);
-          if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, String(error));
+          if (DEBUG) console.warn('[PHOTO] Analysis exception, falling back to legacy:', error);
         }
       }
 

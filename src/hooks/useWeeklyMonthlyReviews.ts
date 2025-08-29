@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { safeSupabaseQuery } from '@/lib/health/spinnerGuards';
 
 interface ReviewInsight {
   title: string;
@@ -23,13 +24,35 @@ export const useWeeklyMonthlyReviews = () => {
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
     try {
-      // Fetch data from past 7 days
-      const [nutritionData, hydrationData, supplementData, moodData] = await Promise.all([
-        supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
-        supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
-        supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
-        supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr)
-      ]);
+      // Fetch data from past 7 days - guard against PostgREST 500s
+      let nutritionData = { data: [], error: null };
+      let hydrationData = { data: [], error: null };
+      let supplementData = { data: [], error: null };
+      let moodData = { data: [], error: null };
+
+      try {
+        nutritionData = await supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr);
+      } catch (err) {
+        console.warn('[WEEKLY_REVIEW][POSTGREST_500][nutrition]', err);
+      }
+
+      try {
+        hydrationData = await supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr);
+      } catch (err) {
+        console.warn('[WEEKLY_REVIEW][POSTGREST_500][hydration]', err);
+      }
+
+      try {
+        supplementData = await supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr);
+      } catch (err) {
+        console.warn('[WEEKLY_REVIEW][POSTGREST_500][supplement]', err);
+      }
+
+      try {
+        moodData = await supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr);
+      } catch (err) {
+        console.warn('[WEEKLY_REVIEW][POSTGREST_500][mood]', err);
+      }
 
       const insights = [];
       
@@ -101,12 +124,35 @@ export const useWeeklyMonthlyReviews = () => {
     const monthAgoStr = monthAgo.toISOString().split('T')[0];
 
     try {
-      const [nutritionData, supplementData, moodData, hydrationData] = await Promise.all([
-        supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
-        supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
-        supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
-        supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr)
-      ]);
+      // Guard against PostgREST 500s that could block UI
+      let nutritionData = { data: [], error: null };
+      let supplementData = { data: [], error: null };
+      let moodData = { data: [], error: null };
+      let hydrationData = { data: [], error: null };
+
+      try {
+        nutritionData = await supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr);
+      } catch (err) {
+        console.warn('[MONTHLY_REVIEW][POSTGREST_500][nutrition]', err);
+      }
+
+      try {
+        supplementData = await supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr);
+      } catch (err) {
+        console.warn('[MONTHLY_REVIEW][POSTGREST_500][supplement]', err);
+      }
+
+      try {
+        moodData = await supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr);
+      } catch (err) {
+        console.warn('[MONTHLY_REVIEW][POSTGREST_500][mood]', err);
+      }
+
+      try {
+        hydrationData = await supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr);
+      } catch (err) {
+        console.warn('[MONTHLY_REVIEW][POSTGREST_500][hydration]', err);
+      }
 
       const insights = [];
       

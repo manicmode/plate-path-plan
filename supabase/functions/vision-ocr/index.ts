@@ -10,38 +10,64 @@ function getCredJSON(): string | null {
   );
 }
 
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cid',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests immediately
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors });
+  }
+
   const DEBUG = Deno.env.get('HEALTH_DEBUG_SAFE') === 'true';
   const cid = req.headers.get('x-cid') ?? crypto.randomUUID();
-  
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cid',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      },
-    });
-  }
 
   function json(body: unknown, init: ResponseInit = {}) {
     const headers = new Headers(init.headers);
     headers.set('content-type','application/json');
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type, x-cid');
+    Object.entries(cors).forEach(([k, v]) => headers.set(k, v));
     return new Response(JSON.stringify(body), { ...init, headers });
   }
 
   try {
-    const { imageBase64 } = await req.json().catch(() => ({} as any));
+    const contentType = req.headers.get('content-type') ?? '';
+    let imageBase64 = '';
+
+    // Handle multipart/form-data (preferred for reliability)
+    if (contentType.includes('multipart/form-data')) {
+      try {
+        const formData = await req.formData();
+        const file = formData.get('file') as File | null;
+        
+        if (file) {
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          imageBase64 = btoa(String.fromCharCode(...uint8Array));
+        }
+      } catch (e) {
+        if (DEBUG) console.log(`[VISION][FORM][${cid}] FormData parse error:`, e);
+        return json({ ok: false, cid, reason: 'form_parse_error' }, { status: 400 });
+      }
+    } else {
+      // Handle JSON body (legacy support)
+      try {
+        const body = await req.json();
+        imageBase64 = body?.imageBase64 || '';
+      } catch (e) {
+        if (DEBUG) console.log(`[VISION][JSON][${cid}] JSON parse error:`, e);
+        return json({ ok: false, cid, reason: 'json_parse_error' }, { status: 400 });
+      }
+    }
     
     if (!Deno.env.get('VISION_OCR_ENABLED') || Deno.env.get('VISION_OCR_ENABLED').toLowerCase() !== 'true') {
       return json({ ok: false, cid, reason: 'provider_disabled' }, { status: 200 });
     }
     
     if (!imageBase64) {
-      return json({ ok: false, cid, reason: 'missing_image' }, { status: 200 });
+      return json({ ok: false, cid, reason: 'missing_image' }, { status: 400 });
     }
 
     // Strip data URL prefix if present
