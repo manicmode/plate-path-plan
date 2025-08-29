@@ -1,25 +1,35 @@
-import { serve } from "https://deno.land/std/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { create } from "https://deno.land/x/djwt@v3.0.1/mod.ts";
 import { buildCors, handleOptions } from '../_shared/cors.ts';
-// @ts-ignore - use ESM from gcloud if already vendored; otherwise use REST fetch below
-import vision from "npm:@google-cloud/vision";
 
-function getCredJSON(): string | null {
-  return (
-    Deno.env.get("GOOGLE_APPLICATION_CREDENTIALS_JSON") ??
-    Deno.env.get("GOOGLE_APPLICATION_CREDENTIAL") ??
-    Deno.env.get("GOOGLE_SERVICE_ACCOUNT") ??
-    null
-  );
+// Get Google Cloud credentials (supports JSON string or file path)
+function getCreds() {
+  const raw = Deno.env.get('GOOGLE_APPLICATION_CREDENTIALS');
+  if (!raw) return null;
+  
+  // Raw may be the JSON itself (secret) or a path to a file
+  if (raw.trim().startsWith('{')) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  
+  try { 
+    return JSON.parse(Deno.readTextFileSync(raw)); 
+  } catch { 
+    return null; 
+  }
 }
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return handleOptions(req);
 
   const cors = buildCors(req.headers.get('origin'));
-  const enabled = (Deno.env.get("VISION_OCR_ENABLED") ?? "").toLowerCase() === "true";
-  const debug = (Deno.env.get("DEBUG_PERF") ?? "").toLowerCase() === "true";
 
   try {
+    const enabled = Deno.env.get('VISION_OCR_ENABLED') === 'true';
     if (!enabled) {
       return new Response(JSON.stringify({ 
         ok: false, provider: 'vision', text: '', textLen: 0, reason: 'provider_disabled' 
@@ -29,10 +39,10 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const body = await req.json().catch(() => ({}));
-    // Support both new (image_b64) and existing (image/imageBase64) parameter names
-    const b64 = body?.image_b64 ?? body?.image ?? body?.imageBase64 ?? "";
-    
+    const { image, imageBase64, mode: requestMode } = await req.json().catch(() => ({}));
+    const b64 = image || imageBase64;
+    const mode = (requestMode || Deno.env.get('VISION_OCR_MODE') || 'document').toUpperCase(); // 'DOCUMENT' | 'TEXT'
+
     if (!b64) {
       return new Response(JSON.stringify({ 
         ok: false, provider: 'vision', text: '', textLen: 0, reason: 'missing_image' 
@@ -42,52 +52,127 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Strip data URL prefix if present
-    const clean = b64.replace(/^data:image\/\w+;base64,/, "");
-    const credentialsJSON = getCredJSON();
-    
-    if (!credentialsJSON) {
+    const creds = getCreds();
+    if (!creds?.client_email || !creds?.private_key) {
       return new Response(JSON.stringify({ 
         ok: false, provider: 'vision', text: '', textLen: 0, reason: 'missing_credentials' 
       }), {
         headers: { ...cors, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 500,
       });
     }
 
-    const credentials = JSON.parse(credentialsJSON);
+    // ---- Get access token via JWT ----
+    const now = Math.floor(Date.now() / 1000);
+    const claim = {
+      iss: creds.client_email,
+      scope: 'https://www.googleapis.com/auth/cloud-platform',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now,
+    };
 
-    // Use official Google Cloud Vision client
-    const client = new vision.ImageAnnotatorClient({ credentials });
-    const [result] = await client.textDetection({ image: { content: clean } });
-    const text = result?.fullTextAnnotation?.text ?? result?.textAnnotations?.[0]?.description ?? "";
+    const jwt = await create({ alg: 'RS256', typ: 'JWT' }, claim, creds.private_key);
 
-    if (debug) console.log("[VISION][OCR] len:", text?.length ?? 0);
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt,
+      }),
+    });
 
-    if (!text?.trim()) {
+    const tokenJson = await tokenRes.json();
+    const accessToken = tokenJson.access_token;
+    if (!accessToken) {
       return new Response(JSON.stringify({ 
-        ok: false, provider: 'vision', text: '', textLen: 0, reason: 'no_text_detected' 
+        ok: false, provider: 'vision', text: '', textLen: 0, reason: 'token_error' 
       }), {
         headers: { ...cors, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 500,
       });
     }
 
-    return new Response(JSON.stringify({ 
-      ok: true, provider: 'vision', text, textLen: text.length 
+    // ---- Vision annotate ----
+    const featureType = mode.startsWith('DOC') ? 'DOCUMENT_TEXT_DETECTION' : 'TEXT_DETECTION';
+    const visionRes = await fetch('https://vision.googleapis.com/v1/images:annotate', {
+      method: 'POST',
+      headers: { 
+        'authorization': `Bearer ${accessToken}`, 
+        'content-type': 'application/json' 
+      },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: b64.replace(/^data:image\/\w+;base64,/, '') },
+          features: [{ type: featureType }],
+          imageContext: {
+            languageHints: ['en']
+          }
+        }]
+      }),
+    });
+
+    if (!visionRes.ok) {
+      const errorText = await visionRes.text().catch(() => '');
+      console.error('[VISION-OCR] API Error:', visionRes.status, errorText);
+      return new Response(JSON.stringify({ 
+        ok: false, provider: 'vision', text: '', textLen: 0, reason: 'vision_api_error' 
+      }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const visionJson = await visionRes.json().catch(() => null);
+    if (!visionJson?.responses?.[0]) {
+      return new Response(JSON.stringify({ 
+        ok: false, provider: 'vision', text: '', textLen: 0, reason: 'vision_no_response' 
+      }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const response = visionJson.responses[0];
+    if (response.error) {
+      console.error('[VISION-OCR] Vision Error:', response.error);
+      return new Response(JSON.stringify({ 
+        ok: false, provider: 'vision', text: '', textLen: 0, reason: 'vision_error' 
+      }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const text = response?.fullTextAnnotation?.text
+              ?? response?.textAnnotations?.[0]?.description
+              ?? '';
+
+    return new Response(JSON.stringify({
+      ok: text.length > 0,
+      provider: 'vision',
+      text,
+      textLen: text.length,
+      reason: text.length ? undefined : 'no_text_detected',
+      mode: mode.toLowerCase()
     }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
       status: 200,
     });
 
-  } catch (err) {
-    console.error("[VISION][ERROR]", err?.message || err);
-    // Keep error text minimal in response
+  } catch (e) {
+    console.error('[VISION-OCR] Server Error:', e);
     return new Response(JSON.stringify({ 
-      ok: false, provider: 'vision', text: '', textLen: 0, reason: 'vision_api_error' 
+      ok: false, 
+      provider: 'vision', 
+      text: '', 
+      textLen: 0, 
+      reason: 'vision_api_error', 
+      error: String(e?.message || e) 
     }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
-      status: 200,
+      status: 500,
     });
   }
 });
