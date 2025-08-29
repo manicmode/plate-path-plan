@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon } from 'lucide-react';
@@ -20,6 +20,24 @@ import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
+function useDynamicViewportVar() {
+  useLayoutEffect(() => {
+    const set = () => {
+      const h =
+        (window.visualViewport && Math.round(window.visualViewport.height)) ||
+        window.innerHeight;
+      document.documentElement.style.setProperty('--app-dvh', `${h}px`);
+    };
+    set();
+    window.addEventListener('resize', set);
+    window.visualViewport?.addEventListener('resize', set);
+    return () => {
+      window.removeEventListener('resize', set);
+      window.visualViewport?.removeEventListener('resize', set);
+    };
+  }, []);
+}
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -63,6 +81,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+
+  // Apply dynamic viewport height fix
+  useDynamicViewportVar();
 
   // Performance throttling
   const lastDecodeTime = useRef<number>(0);
@@ -926,7 +947,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner View
   if (currentView === 'scanner') {
     return (
-      <div className="relative flex flex-col min-h-dvh bg-black">
+      <div 
+        className="scanner-root"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          height: 'var(--app-dvh, 100dvh)',   // dynamic height
+          overflow: 'hidden',
+          background: 'black',
+          zIndex: 1000,
+        }}
+      >
 
         {/* camera/video area */}
         <main 
@@ -934,7 +965,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           style={{
             position: 'absolute',
             inset: 0,
-            height: '100dvh',              // iOS dynamic viewport
+            height: '100%',
             overflow: 'hidden'
           }}
         >
@@ -1011,7 +1042,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
           {/* Flashlight Button - Positioned in lower right */}
           {supportsTorch && (
-            <div className="absolute bottom-32 right-6 pb-[env(safe-area-inset-bottom)]">
+            <div 
+              style={{
+                position: 'fixed',
+                right: '24px',
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)',
+                zIndex: 1010
+              }}
+            >
               <Button
                 onClick={handleFlashlightToggle}
                 size="lg"
@@ -1029,8 +1067,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           )}
         </main>
 
-        {/* Sticky footer (always visible) */}
-        <footer className="sticky bottom-0 z-40 bg-black/70 backdrop-blur-md px-4 pt-3 pb-safe">
+        {/* CTA bar fixed to real bottom */}
+        <div
+          className="scanner-cta"
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+            padding: '0 20px',
+            zIndex: 1010,         // above overlays
+            pointerEvents: 'auto' // make sure it's clickable
+          }}
+        >
           <ScannerActions
             onAnalyze={captureImage}
             onCancel={onCancel}
@@ -1040,7 +1089,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             torchEnabled={torchOn}
             torchSupported={supportsTorch}
           />
-        </footer>
+        </div>
       </div>
     );
   }
