@@ -283,9 +283,9 @@ const enrichViaExtractIfNeeded = async (product: any) => {
       const barcode =
         product?.barcode ?? product?.code ?? product?.ean ?? product?.ean13;
 
-      const { data, error }: any = await supabase.functions.invoke(
+  const { data, error }: any = await supabase.functions.invoke(
         'enhanced-health-scanner',
-        { body: { mode: 'barcode', barcode, returnLegacy: true } }
+        { body: { mode: 'barcode', barcode } }
       );
 
       if (error || !data) {

@@ -48,54 +48,37 @@ function extractScore(raw: unknown): number | undefined {
   return Math.max(0, Math.min(100, pct));     // clamp
 }
 
-// PATCH 3: Map OFF nutriments to UI nutrition grid (7 explicit fields only)
-function mapOffNutritionToGrid(nutritionData: any) {
-  const n = nutritionData || {};
+// Helper function to extract nutrition data safely
+function extractNutritionData(nutritionData: any) {
+  if (!nutritionData || typeof nutritionData !== 'object') {
+    return {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    };
+  }
 
-  // kcal: prefer energy-kcal_100g; if only kJ provided, convert (1 kJ ≈ 0.239005736 kcal)
-  const kcal = typeof n['energy-kcal_100g'] === 'number'
-    ? n['energy-kcal_100g']
-    : (typeof n['energy_100g'] === 'number'
-         ? n['energy_100g'] * 0.239005736
-         : 0);
-
-  // sodium: if only salt is present (g/100g), convert to sodium mg/100g
-  const sodiumMg = (() => {
-    if (typeof n['sodium_100g'] === 'number') return n['sodium_100g'] * 1000; // g -> mg
-    if (typeof n['salt_100g'] === 'number')   return n['salt_100g'] * 400 * 1000; // g salt -> mg sodium
-    return 0;
-  })();
-
-  const nutritionGridData = {
-    calories: Math.max(0, Number(kcal) || 0),
-    protein:  Math.max(0, Number(n['proteins_100g']) || 0),
-    carbs:    Math.max(0, Number(n['carbohydrates_100g']) || 0),
-    fat:      Math.max(0, Number(n['fat_100g']) || 0),
-    sugar:    Math.max(0, Number(n['sugars_100g']) || 0),
-    fiber:    Math.max(0, Number(n['fiber_100g']) || 0),
-    sodium:   Math.max(0, sodiumMg || 0),
+  // Handle both direct values and per-100g values from OFF
+  const getValue = (key: string, per100gKey?: string) => {
+    const directValue = nutritionData[key];
+    const per100gValue = per100gKey ? nutritionData[per100gKey] : undefined;
+    return directValue !== undefined ? directValue : (per100gValue || 0);
   };
 
-  if (DEBUG) {
-    console.log('[REPORT][NUTRITION_MAP]', {
-      offKeys: Object.keys(n),
-      gridPreview: nutritionGridData
-    });
-  }
-
-  return nutritionGridData;
-}
-
-// Add barcode report logging
-function logBarcodeReport(legacy: any) {
-  if (DEBUG) {
-    console.log('[REPORT][BARCODE]', {
-      fromAdapterScore: legacy.healthScore,
-      unit: legacy.scoreUnit,
-      hasGridSource: !!legacy.nutritionData && Object.keys(legacy.nutritionData||{}).length>0,
-      hasIngredients: !!legacy.ingredientsText
-    });
-  }
+  return {
+    calories: getValue('calories', 'energy-kcal_100g') || getValue('energy_kcal') || getValue('energy-kcal_serving') || 0,
+    protein: getValue('protein', 'proteins_100g') || getValue('proteins') || 0,
+    carbs: getValue('carbs', 'carbohydrates_100g') || getValue('carbohydrates') || 0,
+    fat: getValue('fat', 'fat_100g') || 0,
+    fiber: getValue('fiber', 'fiber_100g') || 0,
+    sugar: getValue('sugar', 'sugars_100g') || getValue('sugars') || 0,
+    sodium: getValue('sodium', 'sodium_100g') || 
+           (nutritionData['salt_100g'] ? nutritionData['salt_100g'] * 400 : 0) || 0,
+  };
 }
 
 interface HealthCheckModalProps {
@@ -778,8 +761,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           const legacy = toLegacyFromEdge(result);
           console.log(`[HS BARCODE] Legacy after adapter [${currentCaptureId}]:`, legacy);
           
-          // Add barcode report logging
-          logBarcodeReport(legacy);
+          // Barcode analysis completed successfully
           
           // Handle different statuses
           if (legacy.status === 'no_detection') {
@@ -1010,7 +992,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText: legacy.ingredientsText,
           ingredientFlags,
-          nutritionData: mapOffNutritionToGrid(legacy.nutritionData || {}),
+          nutritionData: extractNutritionData(legacy.nutritionData || {}),
           healthProfile: {
             isOrganic: legacy.ingredientsText?.includes('organic') || false,
             isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1331,10 +1313,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
    * Process result and show appropriate report
    */
   const processAndShowResult = async (legacy: any, data: any, captureId: string, type: string) => {
-    // Log barcode report if it's a barcode type
-    if (type === 'barcode') {
-      logBarcodeReport(legacy);
-    }
+    // Process barcode result
     
     // Handle different statuses
     if (legacy.status === 'no_detection') {
@@ -1370,10 +1349,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
         : extractScore(rawLegacyScore) ? extractScore(rawLegacyScore)! / 10 : 0; // used by non-barcode paths only
     
-    // PATCH 3: Use 7-field nutrition grid mapping for barcode data
-    const nutritionData = type === 'barcode' && legacy.nutritionData 
-      ? mapOffNutritionToGrid(legacy.nutritionData)
-      : legacy.nutrition || {};
+    // Extract nutrition data using helper
+    const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
     
     // PATCH 3: Keep flags empty for barcode path until OFF tags are mapped properly
     const rawFlags = type === 'barcode' ? [] : (
@@ -1548,7 +1525,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText,
           ingredientFlags,
-          nutritionData: mapOffNutritionToGrid(legacy.nutritionData || {}),
+          nutritionData: extractNutritionData(legacy.nutritionData || {}),
           healthProfile: {
             isOrganic: ingredientsText?.includes('organic') || false,
             isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,

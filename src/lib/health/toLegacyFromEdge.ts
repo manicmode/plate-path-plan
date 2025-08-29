@@ -94,9 +94,9 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
 
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   if (DEBUG) {
-    console.log('[ADAPTER][IN]', {
-      top: Object.keys(envelope||{}).slice(0,10),
-      prod: Object.keys((envelope?.product)||{}).slice(0,10)
+    console.log('[ADAPTER][toLegacy]', { 
+      keys: Object.keys(envelope || {}), 
+      productKeys: Object.keys(envelope?.product || {}) 
     });
   }
   
@@ -108,27 +108,26 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'no_detection' };
   }
 
-  // PATCH 2: Ensure barcode path reads ONLY envelope.product.*
+  const extractedName = extractName(envelope);
   const p = envelope?.product || {};
   
   let legacy = {
     status: 'ok' as 'ok' | 'no_detection' | 'not_found',
-    productName: p.productName || p.product_name || p.generic_name || 'Unknown Product',
-    healthScore: Number(p.health?.score) || 0, // already 0..10
-    scoreUnit: '0-10',                         // <- critical to avoid re-scaling
-    nutritionData: p.nutriments || {},         // raw OFF nutriments
-    ingredientsText: p.ingredients_text || '',
+    productName: extractedName,
+    healthScore: Number(envelope?.quality?.score || p.health?.score) || 0,
+    nutritionData: p.nutriments || {},
+    ingredientsText: p.ingredients_text || envelope?.ingredientsText || '',
     barcode: p.code || envelope?.barcode || '',
     brands: p.brands || '',
     imageUrl: p.image_url || '',
-    healthFlags: [],  // Keep empty for barcode path until OFF tags are mapped properly
+    healthFlags: coerceFlags(envelope?.healthFlags || envelope?.flags),
     recommendation: null,
   };
 
   // Determine status based on data availability
   if (envelope?.fallback === true) {
     legacy.status = 'not_found';
-  } else if (!legacy.productName || legacy.productName === 'Unknown Product') {
+  } else if (!legacy.productName) {
     if (legacy.barcode) {
       legacy.status = 'not_found';
     } else {
@@ -136,18 +135,11 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
   }
 
-  // Clean up productName
-  if (legacy.productName === 'Unknown Product') {
-    legacy.productName = null;
-  }
-
-  // Log summary only in debug mode
   if (DEBUG) {
     console.log('[ADAPTER][OUT]', {
       name: legacy.productName,
-      score10: legacy.healthScore,
-      unit: legacy.scoreUnit,
-      hasNutr: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length>0
+      score: legacy.healthScore,
+      hasNutr: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length > 0
     });
   }
 
