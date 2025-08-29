@@ -28,6 +28,18 @@ import { mark, measure } from '@/lib/perf';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
+// Performance optimization: throttle debug logs in production
+const debugThrottled = (() => {
+  let lastLog = 0;
+  return (message: string, data?: any) => {
+    const now = Date.now();
+    if (now - lastLog > 1000) { // Max 1 log per second
+      console.log(message, data);
+      lastLog = now;
+    }
+  };
+})();
+
 // Robust score extractor (0–100) with scoreUnit handling
 function extractScore(raw: unknown, scoreUnit?: string): number | undefined {
   const candidate =
@@ -176,6 +188,18 @@ export interface HealthAnalysisResult {
     sugar?: number;
     sodium?: number;
   };
+  // Add per-serving nutrition support
+  nutritionDataPerServing?: {
+    energyKcal?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
+    sugar_g?: number;
+    sodium_mg?: number;
+    satfat_g?: number;
+  };
+  serving_size?: string;
   // Provide both nutrition shapes for UI compatibility
   nutrition?: { nutritionData: any };
   healthProfile: {
@@ -1400,14 +1424,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // --- Pull from adapter (authoritative for barcode) ---
       const name = legacy.productName || legacy.label || 'Unknown item';
 
-      // 1) SCORE: adapter emits top-level healthScore (0–10). Also allow nested health.score.
+      // 1) SCORE: adapter emits healthScore (0–10). Also allow nested health.score.
       const score10 =
         legacy.healthScore ??
         legacy.health?.score ??
         (typeof legacy.health === 'number' ? legacy.health : undefined);
 
-      // 2) FLAGS → UI shape (ingredientFlags). Adapter flags are deterministic rules.
-      const rawFlags = Array.isArray(legacy.flags) ? legacy.flags : [];
+      // 2) FLAGS → UI shape (ingredientFlags). Use adapter flags or healthFlags.
+      const rawFlags = Array.isArray(legacy.flags) ? legacy.flags : Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
       const ingredientFlags = rawFlags.map((f: any) => ({
         ingredient: f.title || f.label || f.code || f.ingredient || 'Ingredient',
         flag: f.reason || f.description || f.label || f.code || '',
@@ -1416,35 +1440,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           /med|warn/i.test(f.severity)   ? 'medium' : 'low',
       }));
 
-      // 3) NUTRITION: per-100g + per-serving
+      // 3) NUTRITION: Use adapter's per-100g and per-serving data directly
       const nd100 = legacy.nutritionData || {};
-      // OFF sometimes provides *_serving; if not, derive from serving size when possible.
-      const servingTxt = legacy.serving_size || legacy.servingSize || legacy.nutriments?.serving_size;
-      const serving_g =
-        legacy.serving_size_g ??
-        legacy.servingSize_g ??
-        (typeof servingTxt === 'string'
-          ? (parseFloat(servingTxt) || undefined)
-          : undefined);
+      const perServing =
+        legacy.nutritionDataPerServing ??
+        legacy.perServing ??
+        legacy.nutrition_per_serving ?? null;
 
-      function derivePerServing(key100: string, keyServing?: string) {
-        const valServing = legacy.nutriments?.[keyServing || `${key100.replace('_100g', '')}_serving`];
-        if (valServing != null && !Number.isNaN(+valServing)) return +valServing;
-        const val100 = nd100[key100];
-        if (serving_g != null && val100 != null) return +(val100 * (serving_g / 100)).toFixed(2);
-        return undefined;
-      }
-
-      const nutritionDataPerServing = {
-        energyKcal: derivePerServing('energyKcal', 'energy-kcal_serving'),
-        protein_g:  derivePerServing('protein_g', 'proteins_serving'),
-        carbs_g:    derivePerServing('carbs_g', 'carbohydrates_serving'),
-        sugar_g:    derivePerServing('sugar_g', 'sugars_serving'),
-        fat_g:      derivePerServing('fat_g', 'fat_serving'),
-        satfat_g:   derivePerServing('satfat_g', 'saturated-fat_serving'),
-        fiber_g:    derivePerServing('fiber_g', 'fiber_serving'),
-        sodium_mg:  derivePerServing('sodium_mg', 'sodium_serving')
-      };
+      const SHOW_PER_SERVING = import.meta.env.VITE_SHOW_PER_SERVING === 'true';
 
       // 4) Build final report object with both shapes and aliases
       const report = {
@@ -1459,41 +1462,26 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         // flags panel expects ingredientFlags
         ingredientFlags,
 
-        // nutrition per 100g (canonical + UI aliases)
-        nutritionData: {
-          ...nd100,
-          calories: nd100.energyKcal,
-          protein: nd100.protein_g,
-          carbs: nd100.carbs_g,
-          sugars_g: nd100.sugar_g,
-          fat: nd100.fat_g,
-          saturated_fat_g: nd100.satfat_g,
-          fiber: nd100.fiber_g,
-          sodium: nd100.sodium_mg
-        },
+        // nutrition per 100g (canonical + UI aliases) - adapter already has these
+        nutritionData: nd100,
 
-        // nutrition per serving for the UI
-        nutritionDataPerServing,
+        // nutrition per serving for the UI - adapter provides this (gated)
+        ...(SHOW_PER_SERVING && { nutritionDataPerServing: perServing }),
 
         // keep old nesting some components may read
-        nutrition: { nutritionData: { ...nd100 } },
+        nutrition: { nutritionData: nd100 },
 
         // helpful metadata
-        serving_size: servingTxt,
-        serving_size_g: serving_g,
+        serving_size: legacy.serving_size,
+        serving_size_g: legacy.serving_size_g,
         _dataSource: legacy._dataSource || 'openfoodfacts/barcode'
       };
 
       if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-        const nd = report.nutritionData || {};
-        const ns = report.nutritionDataPerServing || {};
         console.info('[REPORT][FINAL][BARCODE]', {
-          title: report.title,
-          score: report.health?.score,
-          flagsCount: report.ingredientFlags?.length ?? 0,
-          per100g: { kcal: nd.energyKcal, sugar: nd.sugar_g, sodium_mg: nd.sodium_mg },
-          perServing: { kcal: (ns as any).energyKcal, sugar: (ns as any).sugar_g, sodium_mg: (ns as any).sodium_mg },
-          serving_size: report.serving_size
+          score10: report.health?.score,
+          has_perServing: !!report.nutritionDataPerServing,
+          perServing_kcal: report.nutritionDataPerServing?.energyKcal
         });
       }
 
@@ -1515,6 +1503,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         ingredientFlags,
         flags: ingredientFlags, // Set both properties so UI can find them
         nutritionData: report.nutritionData,
+        // Add per-serving nutrition data for UI display (gated)
+        ...(SHOW_PER_SERVING && { nutritionDataPerServing: perServing }),
+        serving_size: legacy.serving_size,
         // Provide both nutrition shapes for UI compatibility
         nutrition: { nutritionData: report.nutritionData },
         healthProfile: {
@@ -1910,11 +1901,18 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                 setCurrentState('scanner');
               }}
               onRetryPhoto={() => {
-                console.log('[HC][STEP]', 'scanner', { source: 'retry_photo' });
-                setCurrentState('scanner');
+                console.log('[HC][STEP] Photo Mode requested');
+                sessionStorage.setItem('scan-next', 'photo');
+                window.dispatchEvent(new CustomEvent('scan:open-photo'));
+                handleClose(); // no timeout, no redirect
               }}
               onManualEntry={() => setCurrentState('fallback')}
-              onVoiceEntry={() => setCurrentState('fallback')}
+              onVoiceEntry={() => {
+                console.log('[HC][STEP] Voice Entry requested');
+                sessionStorage.setItem('scan-next', 'voice');
+                window.dispatchEvent(new CustomEvent('scan:open-voice'));
+                handleClose(); // no timeout, no redirect
+              }}
               onBack={handleClose}
             />
           )}
