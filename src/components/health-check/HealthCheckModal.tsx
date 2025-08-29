@@ -1858,9 +1858,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               onManualEntry={() => setCurrentState('fallback')}
               onManualSearch={handleManualEntry}
               onCancel={handleClose}
-              onAnalysisTimeout={() => setCurrentState('scanner')}
-              onAnalysisFail={() => setCurrentState('scanner')}
-              onAnalysisSuccess={() => setCurrentState('report')}
             />
           )}
 
