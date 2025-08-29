@@ -54,7 +54,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const runningRef = useRef(false);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supported, ready, on, toggle, attach } = useTorch();
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
@@ -224,10 +224,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
         
-        // Ensure torch state after track is ready
-        setTimeout(() => {
-          ensureTorchState();
-        }, 100);
+        // Attach torch hook when stream changes
+        if (import.meta.env.VITE_SCANNER_TORCH_FIX === 'true') {
+          attach(track);
+          if (import.meta.env.VITE_DEBUG_PERF === 'true') console.info('[TORCH] attach', { hasTrack: !!track });
+        }
         
         setError(null);
       }
@@ -407,15 +408,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      console.log("[TORCH] Attempting to toggle torch. Current state:", torchOn, "Track:", !!trackRef.current);
-      const result = await setTorch(!torchOn);
-      console.log("[TORCH] Toggle result:", result);
-      if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason);
-        toast.error(`Flash not available: ${result.reason}`);
-      } else {
-        console.log("[TORCH] Successfully toggled torch to:", !torchOn);
-      }
+      console.log("[TORCH] Attempting to toggle torch. Current state:", on, "Ready:", ready);
+      await toggle();
+      console.log("[TORCH] Successfully toggled torch to:", !on);
     } catch (error) {
       console.error("Error toggling torch:", error);
       toast.error("Failed to toggle flashlight");
@@ -532,14 +527,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 <Button
                   variant="outline"
                   onClick={toggleTorch}
-                  disabled={!supportsTorch}
-                  title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
+                  disabled={!supported}
+                  title={!supported ? "Flash not available on this camera" : `Turn flash ${on ? 'off' : 'on'}`}
                   className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 transition-all duration-200 ${
-                    torchOn ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
-                  } ${!supportsTorch ? 'opacity-50' : ''}`}
+                    on ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
+                  } ${!supported ? 'opacity-50' : ''}`}
                 >
-                  <Lightbulb className={`h-5 w-5 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-                  {torchOn ? 'Flash On' : 'Flash'}
+                  <Lightbulb className={`h-5 w-5 mr-2 ${on ? 'text-yellow-300' : 'text-white'}`} />
+                  {on ? 'Flash On' : 'Flash'}
                 </Button>
                 
                 {/* Manual Entry */}

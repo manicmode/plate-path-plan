@@ -20,6 +20,7 @@ import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+const TORCH_FIX = import.meta.env.VITE_SCANNER_TORCH_FIX === 'true';
 
 function useDynamicViewportVar() {
   useLayoutEffect(() => {
@@ -80,7 +81,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supported, ready, on, toggle, attach } = useTorch();
 
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
@@ -213,10 +214,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // High-res back camera request with optimized constraints for performance
       const constraints = {
         video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 720 },    // Optimized for performance
-          height: { ideal: 720 },   // Keep square aspect ratio
-          frameRate: { ideal: 24, max: 30 } // Cap frame rate for performance
+          facingMode: { ideal: 'environment' }, // don't use exact to keep iOS happy
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       };
@@ -249,10 +249,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
           
-          // Ensure torch state after track is ready
-          setTimeout(() => {
-            ensureTorchState();
-          }, 200);
+          // Attach torch hook when stream changes
+          if (TORCH_FIX) {
+            const track = mediaStream.getVideoTracks()[0] || null;
+            attach(track);
+            if (DEBUG) console.info('[TORCH] attach', { hasTrack: !!track });
+          }
         }
       
       // Log torch capabilities (debug only)
@@ -985,10 +987,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const handleFlashlightToggle = async () => {
     try {
-      const result = await setTorch(!torchOn);
-      if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason);
-      }
+      await toggle();
     } catch (error) {
       console.error("Error toggling torch:", error);
     }
@@ -1212,8 +1211,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
-            torchEnabled={torchOn}
-            torchSupported={supportsTorch}
+            torchEnabled={on}
+            torchSupported={supported}
           />
         </div>
       </div>

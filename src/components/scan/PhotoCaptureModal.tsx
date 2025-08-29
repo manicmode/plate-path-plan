@@ -51,13 +51,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-failed' | 'photo-ocr-unavailable' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down'>('camera');
+  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-failed' | 'photo-ocr-unavailable' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down' | 'photo-ocr-no-text'>('camera');
   const inFlightRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   const rafRef = useRef<number>(0);
   const timerRef = useRef<number>(0);
 
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supported, ready, on, toggle, attach } = useTorch();
 
   // Print config once for debugging
   useEffect(() => {
@@ -121,10 +121,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         trackRef.current = track;
         setStream(mediaStream);
         
-        // Ensure torch state after track is ready
-        setTimeout(() => {
-          ensureTorchState();
-        }, 100);
+        // Attach torch hook when stream changes
+        if (import.meta.env.VITE_SCANNER_TORCH_FIX === 'true') {
+          attach(track);
+          if (CFG.DEBUG) console.info('[TORCH] attach', { hasTrack: !!track });
+        }
         
         setError(null);
       }
@@ -164,15 +165,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      console.log("[PHOTO-TORCH] Attempting to toggle torch. Current state:", torchOn, "Track:", !!trackRef.current);
-      const result = await setTorch(!torchOn);
-      console.log("[PHOTO-TORCH] Toggle result:", result);
-      if (!result.ok) {
-        console.warn("Torch toggle failed:", result.reason);
-        toast.error(`Flash not available: ${result.reason}`);
-      } else {
-        console.log("[PHOTO-TORCH] Successfully toggled torch to:", !torchOn);
-      }
+      console.log("[PHOTO-TORCH] Attempting to toggle torch. Current state:", on, "Ready:", ready);
+      await toggle();
+      console.log("[PHOTO-TORCH] Successfully toggled torch to:", !on);
     } catch (error) {
       console.error("Error toggling torch:", error);
       toast.error("Failed to toggle flashlight");
@@ -267,9 +262,16 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
       if (!ocrResult.ok) {
         if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
         // Stay in modal with precise reason
-        const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' : 'photo-ocr-failed';
+        const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' 
+                     : ocrResult.reason === 'auth_required' ? 'photo-ocr-missing'
+                     : ocrResult.reason === 'no_text_detected' ? 'photo-ocr-no-text'
+                     : 'photo-ocr-failed';
         setStatus(status);
-        toast.info('OCR unavailable—try barcode or manual entry.');
+        if (ocrResult.reason === 'auth_required') {
+          toast.info('OCR unavailable—please sign in or try barcode');
+        } else {
+          toast.info('OCR unavailable—try barcode or manual entry.');
+        }
         return;
       }
 
@@ -374,9 +376,16 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             const ocrResult = await getOCR(imageBase64);
             if (!ocrResult.ok) {
               if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
-              const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' : 'photo-ocr-failed';
+              const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' 
+                           : ocrResult.reason === 'auth_required' ? 'photo-ocr-missing'
+                           : ocrResult.reason === 'no_text_detected' ? 'photo-ocr-no-text'
+                           : 'photo-ocr-failed';
               setStatus(status);
-              toast.info('OCR unavailable—try barcode or manual entry.');
+              if (ocrResult.reason === 'auth_required') {
+                toast.info('OCR unavailable—please sign in or try barcode');
+              } else {
+                toast.info('OCR unavailable—try barcode or manual entry.');
+              }
               return;
             }
 
@@ -492,19 +501,19 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
             
             {/* Flashlight Button - Positioned above upload button */}
-            {supportsTorch && (
+            {import.meta.env.VITE_SCANNER_TORCH_FIX === 'true' && supported && ready && (
               <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)] z-50 pointer-events-auto">
                 <Button
                   onClick={toggleTorch}
                   size="lg"
                   className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 shadow-lg ${
-                    torchOn 
+                    on 
                       ? 'bg-white/20 hover:bg-white/30 text-yellow-400 border-yellow-400 shadow-yellow-400/30' 
                       : 'bg-white/10 hover:bg-white/20 text-white border-white/40'
                   }`}
-                  title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
+                  title={`Turn flashlight ${on ? 'off' : 'on'}`}
                 >
-                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-400' : 'text-white'}`} />
+                  <Lightbulb className={`h-5 w-5 ${on ? 'text-yellow-400' : 'text-white'}`} />
                 </Button>
               </div>
             )}
