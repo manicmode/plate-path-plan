@@ -626,65 +626,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       // 2) No barcode found - proceed with OCR/image analysis
       if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
-        const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
-        const OCR_TIMEOUT_MS = 15000;
-
-        async function runVisionOCR(imageBase64: string) {
-          let timeoutId: any;
-          const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('timeout')), OCR_TIMEOUT_MS);
+        // New OCR pipeline
+        try {
+          console.log('[PHOTO] Using OCR pipeline...');
+          
+          // Compress image for OCR
+          const prep = await prepareImageForAnalysis(fullBlob, { 
+            maxEdge: 1280, 
+            quality: 0.7, 
+            targetMaxBytes: 900_000 
           });
 
-          if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
-
-          try {
-            const ocrPromise = supabase.functions.invoke('vision-ocr', {
-              body: { imageBase64 }
-            });
-
-            const result = await Promise.race([ocrPromise, timeoutPromise]);
-            clearTimeout(timeoutId);
-
-            const { data, error } = result as any;
-
-            if (error) {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: 'invoke_error', error });
-              return { ok: false as const, reason: 'invoke_error' };
+          // Send to edge function with OCR mode
+          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+            body: {
+              mode: 'ocr',
+              imageBase64: prep.base64NoPrefix
             }
-            if (!data || typeof data !== 'object') {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: 'no_data' });
-              return { ok: false as const, reason: 'no_data' };
-            }
-            if (!data.ok) {
-              if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: data.reason || 'provider_error' });
-              return { ok: false as const, reason: data.reason || 'provider_error' };
-            }
+          });
 
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: true, textLen: data.text?.length ?? 0 });
-            return { ok: true as const, text: String(data.text || '') };
-          } catch (err: any) {
-            clearTimeout(timeoutId);
-            const isTimeout = err?.message === 'timeout';
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: isTimeout ? 'timeout' : 'exception', err: String(err) });
-            return { ok: false as const, reason: isTimeout ? 'timeout' : 'exception' };
-          }
-        }
-
-        // Compress image for OCR
-        const prep = await prepareImageForAnalysis(fullBlob, { 
-          maxEdge: 1280, 
-          quality: 0.7, 
-          targetMaxBytes: 900_000 
-        });
-
-        let ocrResult;
-        try {
-          ocrResult = await runVisionOCR(prep.base64NoPrefix);
-          if (ocrResult.ok) {
-            // Build unified report exactly like barcode/manual
+          if (!error && data?.extractedText) {
+            // Process with new OCR parser
             const { toLegacyFromPhoto } = await import('@/lib/health/toLegacyFromPhoto');
-            const legacy = toLegacyFromPhoto(ocrResult.text);
+            const legacy = toLegacyFromPhoto(data.extractedText);
             
+            // Build report (mirror barcode early return)
             const report = {
               source: 'photo',
               title: legacy.productName,
@@ -697,27 +663,29 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               })),
               nutritionData: legacy.nutritionData,
               ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
-                nutritionDataPerServing: legacy.nutritionDataPerServing,
+                nutritionDataPerServing: legacy.nutritionDataPerServing
               }),
               serving_size: legacy.serving_size,
               _dataSource: legacy._dataSource,
             };
 
-            if (DEBUG) console.info('[PHOTO][FINAL]', {
-              score10: report.health?.score,
-              flagsCount: report.ingredientFlags?.length,
-              per100g: {
-                kcal: report.nutritionData?.energyKcal,
-                sugar_g: report.nutritionData?.sugar_g,
-                sodium_mg: report.nutritionData?.sodium_mg,
-              },
-              perServing: {
-                kcal: report.nutritionDataPerServing?.energyKcal,
-                sugar_g: report.nutritionDataPerServing?.sugar_g,
-                sodium_mg: report.nutritionDataPerServing?.sodium_mg,
-              },
-              serving: report.serving_size,
-            });
+            if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+              console.info('[PHOTO][FINAL]', {
+                score10: report.health?.score,
+                flagsCount: report.ingredientFlags?.length,
+                per100g: { 
+                  kcal: report.nutritionData?.energyKcal, 
+                  sugar_g: report.nutritionData?.sugar_g, 
+                  sodium_mg: report.nutritionData?.sodium_mg 
+                },
+                perServing: { 
+                  kcal: report.nutritionDataPerServing?.energyKcal, 
+                  sugar_g: report.nutritionDataPerServing?.sugar_g, 
+                  sodium_mg: report.nutritionDataPerServing?.sodium_mg 
+                },
+                serving: report.serving_size
+              });
+            }
 
             // Pass the report data in a compatible way
             onCapture({
@@ -725,12 +693,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               detectedBarcode: null
             });
             return;
-          } else {
-            // Graceful failure path - fall back to legacy pipeline
-            if (DEBUG) console.warn('[PHOTO] Vision OCR failed, falling back to legacy:', ocrResult.reason);
           }
         } catch (error) {
-          if (DEBUG) console.warn('[PHOTO] OCR pipeline exception, falling back to legacy:', error);
+          console.warn('[PHOTO] OCR pipeline failed, falling back to legacy:', error);
         }
       }
 

@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { toLegacyFromPhoto } from '@/lib/health/toLegacyFromPhoto';
-import { parseNutritionFromOCR } from '@/lib/health/parseNutritionPanel';
 import { getOCR } from '@/lib/ocr';
 
 
@@ -604,70 +603,14 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             </div>
           )}
 
-          {/* OCR Unavailable State */}
-          {status === 'photo-ocr-unavailable' && (
+          {/* OCR Error State */}
+          {status === 'photo-ocr-error' && (
             <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
               <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">🚫</div>
-                <h3 className="text-xl font-bold mb-2">OCR Unavailable</h3>
-                <p className="text-white/70 mb-6">
-                  OCR service is currently disabled. Try scanning a barcode or manual entry instead.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Back to Camera
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR No Text Detected State */}
-          {status === 'photo-ocr-no-text' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">📄</div>
-                <h3 className="text-xl font-bold mb-2">No Text Detected</h3>
-                <p className="text-white/70 mb-6">
-                  Could not detect any text in the photo. Try taking another photo with better lighting or closer to the label.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR Failed State */}
-          {status === 'photo-ocr-failed' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">❌</div>
+                <div className="text-6xl mb-4">⚠️</div>
                 <h3 className="text-xl font-bold mb-2">OCR Failed</h3>
                 <p className="text-white/70 mb-6">
-                  OCR processing failed. Try taking another photo or manual entry.
+                  Could not read text from the photo. Try taking another photo or manual entry.
                 </p>
                 <div className="flex gap-3 justify-center">
                   <Button 
