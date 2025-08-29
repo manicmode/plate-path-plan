@@ -3,6 +3,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { HealthScannerInterface } from './HealthScannerInterface';
+import { FF } from '@/featureFlags';
+import { PipelineRouter } from './PipelineRouter';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
@@ -1835,12 +1837,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (
-            <HealthScannerInterface 
-              onCapture={handleImageCapture}
-              onManualEntry={() => setCurrentState('fallback')}
-              onManualSearch={handleManualEntry}
-              onCancel={handleClose}
-            />
+            FF.PIPELINE_ISOLATION ? (
+              <PipelineRouter mode="barcode">
+                <HealthScannerInterface 
+                  onCapture={handleImageCapture}
+                  onManualEntry={() => setCurrentState('fallback')}
+                  onManualSearch={handleManualEntry}
+                  onCancel={handleClose}
+                />
+              </PipelineRouter>
+            ) : (
+              <HealthScannerInterface 
+                onCapture={handleImageCapture}
+                onManualEntry={() => setCurrentState('fallback')}
+                onManualSearch={handleManualEntry}
+                onCancel={handleClose}
+              />
+            )
           )}
 
           {currentState === 'loading' && (
