@@ -229,7 +229,8 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         fiber: per100.fiber_g,
         sodium: per100.sodium_mg,
       },
-      nutritionDataPerServing: perServingData,
+      perServing: perServingData,              // existing property for backward compatibility
+      nutritionDataPerServing: perServingData, // alias for UI consumption
       serving_size: servingTxt,
       flags,
       healthScore: score10,                 // 0–10

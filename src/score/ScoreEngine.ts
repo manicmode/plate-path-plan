@@ -58,19 +58,63 @@ export function calculateHealthScore(input: ScoreInput): ScoreResult {
 }
 
 function calculateNutritionScore(nutrition: any): number {
-  let score = 70; // baseline
+  // Start with neutral baseline (50 instead of 70 to allow more score variation)
+  let score = 50;
 
-  // Positive factors
-  if (nutrition.protein_g && nutrition.protein_g > 10) score += 10;
-  if (nutrition.fiber_g && nutrition.fiber_g > 3) score += 10;
+  // Debug logging for score calculation
+  if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+    console.info('[ENGINE][NUTRITION_DETAIL]', {
+      inputs: {
+        calories: nutrition.calories,
+        sugar_g: nutrition.sugar_g,
+        sodium_mg: nutrition.sodium_mg,
+        saturated_fat_g: nutrition.saturated_fat_g,
+        fiber_g: nutrition.fiber_g,
+        protein_g: nutrition.protein_g
+      },
+      baseline: score
+    });
+  }
 
-  // Negative factors  
-  if (nutrition.sugar_g && nutrition.sugar_g > 15) score -= 15;
-  if (nutrition.sodium_mg && nutrition.sodium_mg > 600) score -= 15;
-  if (nutrition.saturated_fat_g && nutrition.saturated_fat_g > 5) score -= 10;
-  if (nutrition.calories && nutrition.calories > 400) score -= 5;
+  // Positive factors (more generous scoring)
+  if (nutrition.protein_g && nutrition.protein_g > 10) {
+    const bonus = Math.min(20, Math.floor(nutrition.protein_g / 5) * 5); // Up to +20
+    score += bonus;
+  }
+  if (nutrition.fiber_g && nutrition.fiber_g > 3) {
+    const bonus = Math.min(15, Math.floor(nutrition.fiber_g / 2) * 5); // Up to +15
+    score += bonus;
+  }
 
-  return Math.max(0, Math.min(100, score));
+  // Negative factors (more impactful penalties)
+  if (nutrition.sugar_g && nutrition.sugar_g > 15) {
+    const penalty = Math.min(30, Math.floor((nutrition.sugar_g - 15) / 10) * 10 + 15); // Escalating penalty
+    score -= penalty;
+  }
+  if (nutrition.sodium_mg && nutrition.sodium_mg > 600) {
+    const penalty = Math.min(25, Math.floor((nutrition.sodium_mg - 600) / 300) * 10 + 15); // Escalating penalty
+    score -= penalty;
+  }
+  if (nutrition.saturated_fat_g && nutrition.saturated_fat_g > 5) {
+    const penalty = Math.min(20, Math.floor((nutrition.saturated_fat_g - 5) / 3) * 8 + 10);
+    score -= penalty;
+  }
+  if (nutrition.calories && nutrition.calories > 400) {
+    const penalty = Math.min(15, Math.floor((nutrition.calories - 400) / 100) * 3 + 5);
+    score -= penalty;
+  }
+
+  const finalScore = Math.max(0, Math.min(100, score));
+  
+  if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+    console.info('[ENGINE][NUTRITION_RESULT]', {
+      baseline: 50,
+      adjustments: score - 50,
+      finalScore
+    });
+  }
+
+  return finalScore;
 }
 
 function calculateIngredientsScore(ingredientsText: string): number {

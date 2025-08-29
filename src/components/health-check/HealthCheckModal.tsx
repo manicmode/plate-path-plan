@@ -28,6 +28,18 @@ import { mark, measure } from '@/lib/perf';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
+// Performance optimization: throttle debug logs in production
+const debugThrottled = (() => {
+  let lastLog = 0;
+  return (message: string, data?: any) => {
+    const now = Date.now();
+    if (now - lastLog > 1000) { // Max 1 log per second
+      console.log(message, data);
+      lastLog = now;
+    }
+  };
+})();
+
 // Robust score extractor (0–100) with scoreUnit handling
 function extractScore(raw: unknown, scoreUnit?: string): number | undefined {
   const candidate =
@@ -176,6 +188,18 @@ export interface HealthAnalysisResult {
     sugar?: number;
     sodium?: number;
   };
+  // Add per-serving nutrition support
+  nutritionDataPerServing?: {
+    energyKcal?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
+    sugar_g?: number;
+    sodium_mg?: number;
+    satfat_g?: number;
+  };
+  serving_size?: string;
   // Provide both nutrition shapes for UI compatibility
   nutrition?: { nutritionData: any };
   healthProfile: {
@@ -1418,7 +1442,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       // 3) NUTRITION: Use adapter's per-100g and per-serving data directly
       const nd100 = legacy.nutritionData || {};
-      const nutritionDataPerServing = legacy.nutritionDataPerServing || {};
+      const perServing =
+        legacy.nutritionDataPerServing ??
+        legacy.perServing ??
+        legacy.nutrition_per_serving ?? null;
+      const nutritionDataPerServing = perServing;
 
       // 4) Build final report object with both shapes and aliases
       const report = {
@@ -1437,7 +1465,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         nutritionData: nd100,
 
         // nutrition per serving for the UI - adapter provides this
-        nutritionDataPerServing,
+        nutritionDataPerServing: perServing,
 
         // keep old nesting some components may read
         nutrition: { nutritionData: nd100 },
@@ -1474,6 +1502,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         ingredientFlags,
         flags: ingredientFlags, // Set both properties so UI can find them
         nutritionData: report.nutritionData,
+        // Add per-serving nutrition data for UI display
+        nutritionDataPerServing: perServing,
+        serving_size: legacy.serving_size,
         // Provide both nutrition shapes for UI compatibility
         nutrition: { nutritionData: report.nutritionData },
         healthProfile: {

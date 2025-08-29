@@ -24,6 +24,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
+// Performance: gate heavy logging in production
+const shouldDebugPerf = import.meta.env.VITE_DEBUG_PERF === 'true';
+
 // Memoized Circular Progress Component with Animation
 const CircularProgress = React.memo<{ 
   percentage: number; 
@@ -106,7 +109,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
-  if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+  if (shouldDebugPerf) {
     console.info('[UI][NUTRITION.READ]', {
       reads_per100g_from: 'result.nutritionData.*',
       reads_perServing_from: 'result.nutritionDataPerServing.*',
