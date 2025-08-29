@@ -58,14 +58,21 @@ interface HealthScannerInterfaceProps {
   onManualEntry: () => void;
   onManualSearch?: (query: string, type: 'text' | 'voice') => void;
   onCancel?: () => void;
+  // Modal state bridge callbacks
+  onAnalysisTimeout?: () => void;
+  onAnalysisFail?: (reason?: string) => void;
+  onAnalysisSuccess?: () => void;
 }
 
 
-export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
-  onCapture,
-  onManualEntry,
-  onManualSearch,
-  onCancel
+export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({ 
+  onCapture, 
+  onManualEntry, 
+  onManualSearch, 
+  onCancel,
+  onAnalysisTimeout,
+  onAnalysisFail,
+  onAnalysisSuccess
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -697,6 +704,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               toast.error('Analysis timeout. Try again or use Manual/Barcode.');
               setCurrentView('notRecognized');
               
+              // Bridge: notify modal to exit loading state
+              onAnalysisTimeout?.();
+              
               resolved = true;
             }
           }, WATCHDOG_MS);
@@ -820,6 +830,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
             if (HEALTH_DEBUG && hlog) hlog('[FINAL]', ctx, report);
 
+            // Bridge: notify modal of success before showing report
+            onAnalysisSuccess?.();
+
             // Success: show the report
             onCapture({
               imageBase64: prep.base64NoPrefix,
@@ -830,6 +843,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           } catch (error) {
             if (DEBUG) console.warn('[PHOTO] OCR pipeline exception:', error);
             if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, String(error));
+            
+            // Bridge: notify modal of failure
+            onAnalysisFail?.(String(error));
             
             // Show error state instead of falling back to legacy
             return { success: false, error: String(error) };
