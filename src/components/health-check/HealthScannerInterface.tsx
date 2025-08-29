@@ -1040,31 +1040,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             }}></div>
           </div>
 
-          {/* Flashlight Button - Positioned in lower right */}
-          {supportsTorch && (
-            <div 
-              style={{
-                position: 'fixed',
-                right: '24px',
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)',
-                zIndex: 1010
-              }}
-            >
-              <Button
-                onClick={handleFlashlightToggle}
-                size="lg"
-                disabled={isScanning}
-                className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-0 ${
-                  torchOn 
-                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 shadow-lg shadow-yellow-500/20' 
-                    : 'bg-white/10 hover:bg-white/20 text-white/70 backdrop-blur-sm'
-                }`}
-                title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
-              >
-                <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-400' : 'text-white/70'}`} />
-              </Button>
-            </div>
-          )}
         </main>
 
         {/* CTA bar fixed to real bottom */}
@@ -1329,14 +1304,36 @@ function ScannerActions({
         {isScanning ? '🔍 SCANNING...' : '🧪 ANALYZE NOW'}
       </button>
 
-      {/* Middle: Enter Barcode Manually (unchanged) */}
-      <button
-        onClick={onEnterBarcode}
-        className="h-12 rounded-xl bg-zinc-800 text-zinc-100 flex items-center justify-center gap-2"
-      >
-        <Keyboard className="w-5 h-5" />
-        ⌨️ Enter Barcode Manually
-      </button>
+      {/* Secondary Actions Row */}
+      <div className="flex gap-3">
+        {/* Flashlight Toggle */}
+        {torchSupported && onFlashlight && (
+          <button
+            onClick={onFlashlight}
+            disabled={isScanning}
+            className={`flex-1 h-12 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${
+              torchEnabled 
+                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-400/30' 
+                : 'bg-zinc-800 text-zinc-100 border border-zinc-700'
+            } ${isScanning ? 'opacity-50' : ''}`}
+            title={`Turn flashlight ${torchEnabled ? 'off' : 'on'}`}
+          >
+            <Lightbulb className={`w-5 h-5 ${torchEnabled ? 'text-yellow-400' : 'text-zinc-300'}`} />
+            {torchEnabled ? 'Flash On' : 'Flash'}
+          </button>
+        )}
+        
+        {/* Enter Barcode Manually */}
+        <button
+          onClick={onEnterBarcode}
+          className={`h-12 rounded-xl bg-zinc-800 text-zinc-100 flex items-center justify-center gap-2 border border-zinc-700 ${
+            torchSupported ? 'flex-1' : 'w-full'
+          }`}
+        >
+          <Keyboard className="w-5 h-5" />
+          ⌨️ Manual Entry
+        </button>
+      </div>
 
       {/* Red cancel LAST */}
       {onCancel && (

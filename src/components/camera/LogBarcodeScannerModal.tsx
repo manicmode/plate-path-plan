@@ -514,12 +514,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   onClick={toggleTorch}
                   disabled={!supportsTorch}
                   title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
-                  className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 ${
-                    torchOn ? 'bg-yellow-500/20 border-yellow-400/50' : 'bg-transparent'
+                  className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 transition-all duration-200 ${
+                    torchOn ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
                   } ${!supportsTorch ? 'opacity-50' : ''}`}
                 >
-                  <Lightbulb className={`h-4 w-4 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-                  {torchOn ? 'Flash On' : 'Flash Off'}
+                  <Lightbulb className={`h-5 w-5 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                  {torchOn ? 'Flash On' : 'Flash'}
                 </Button>
                 
                 {/* Manual Entry */}

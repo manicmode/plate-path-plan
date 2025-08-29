@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Camera, AlertCircle, FlashlightIcon, Zap } from 'lucide-react';
+import { X, Camera, AlertCircle, FlashlightIcon, Zap, Lightbulb } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
 import { supabase } from '@/integrations/supabase/client';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
@@ -393,14 +393,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
               <button
                 onClick={handleFlashlightToggle}
                 disabled={isScanning}
-                className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-[.99] disabled:opacity-50 transition-colors ${
+                className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-[.99] disabled:opacity-50 transition-all duration-200 ${
                   torchEnabled 
-                    ? 'bg-yellow-500 text-white' 
-                    : 'bg-zinc-800 text-zinc-100'
+                    ? 'bg-yellow-500/30 text-yellow-300 border border-yellow-400/50' 
+                    : 'bg-zinc-800 text-zinc-100 border border-zinc-700'
                 }`}
-                title="Flashlight"
+                title={`Turn flashlight ${torchEnabled ? 'off' : 'on'}`}
               >
-                <FlashlightIcon className={`w-5 h-5 ${torchEnabled ? 'text-white' : 'text-zinc-300'}`} />
+                <Lightbulb className={`w-5 h-5 ${torchEnabled ? 'text-yellow-300' : 'text-zinc-300'}`} />
               </button>
             )}
           </div>
