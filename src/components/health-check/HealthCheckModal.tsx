@@ -397,41 +397,60 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // --- begin robust mapping ---
       const raw = (result?.analysis ?? result) as any;
 
-      function coerceScoreTo10(v: any) {
-        const n = Number(
-          v ?? raw?.health?.score ?? raw?.quality?.score ?? raw?.summary?.score
-        );
-        if (!Number.isFinite(n)) return null;
-        const s = n > 10 ? n / 10 : n;     // handle 0–100 inputs
-        return Math.max(0, Math.min(10, s)); // clamp
-      }
-
+      // Extract name (first defined of):
       const itemName =
         raw?.itemName ??
         raw?.productName ??
         raw?.title ??
         raw?.name ??
         raw?.product?.name ??
-        null;
+        result?.product?.name ??
+        'Unknown Product';
 
-      const score10 = coerceScoreTo10(raw?.healthScore);
+      // Extract score, then normalize to 0–10:
+      const rawScore =
+        raw?.healthScore ??
+        raw?.quality?.score ??
+        raw?.score ??
+        raw?.report?.quality?.score;
+
+      const score10 = (() => {
+        if (typeof rawScore !== 'number') return 0;
+        const v = rawScore > 10 ? rawScore / 10 : rawScore;
+        return Math.max(0, Math.min(10, v));
+      })();
+
+      // Build nutritionData supporting both nutrition and nutritionData shapes:
+      const n = raw?.nutrition ?? raw?.nutritionData ?? {};
+      const nutritionData = {
+        calories: n.calories ?? n.energy_kcal ?? 0,
+        protein:  n.protein_g ?? n.protein ?? 0,
+        carbs:    n.carbs_g   ?? n.carbs   ?? n.carbohydrates ?? 0,
+        fat:      n.fat_g     ?? n.fat     ?? 0,
+        sugar:    n.sugar_g   ?? n.sugar   ?? n.sugars ?? 0,
+        fiber:    n.fiber_g   ?? n.fiber   ?? n.dietary_fiber ?? 0,
+        sodium:   n.sodium_mg ?? n.sodium  ?? 0,
+      };
+
+      // Ingredients text:
+      const ingredientsText =
+        raw?.ingredientsText ??
+        raw?.ingredients ??
+        result?.product?.ingredientsText ??
+        '';
+
+      // Flags & insights: pass through if present (don't synthesize in this patch):
+      const flags    = raw?.flags ?? raw?.ingredientFlags ?? [];
+      const insights = raw?.insights ?? raw?.suggestions ?? [];
 
       const normalized = {
-        itemName: itemName ?? 'Unknown Product',
-        productName: itemName ?? raw?.productName ?? 'Unknown Product',
-        title: itemName ?? raw?.title ?? 'Unknown Product',
-        healthScore: score10 ?? 0, // keep 0–10
-        ingredientsText: raw?.ingredientsText || raw?.ingredients || '',
-        ingredientFlags: raw?.ingredientFlags || [],
-        nutritionData: raw?.nutritionData || {
-          calories: raw?.calories || raw?.caloriesPer100g,
-          protein: raw?.protein || raw?.proteinPer100g,
-          carbs: raw?.carbs || raw?.carbsPer100g,
-          fat: raw?.fat || raw?.fatPer100g,
-          fiber: raw?.fiber || raw?.fiberPer100g,
-          sugar: raw?.sugar || raw?.sugarPer100g,
-          sodium: raw?.sodium || raw?.sodiumPer100mg
-        },
+        itemName,
+        productName: itemName,
+        title: itemName,
+        healthScore: score10, // keep 0–10
+        ingredientsText,
+        ingredientFlags: flags,
+        nutritionData,
         healthProfile: raw?.healthProfile || {
           isOrganic: raw?.isOrganic,
           isGMO: raw?.isGMO,
@@ -440,7 +459,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           additives: raw?.additives || []
         },
         personalizedWarnings: raw?.personalizedWarnings || raw?.warnings || [],
-        suggestions: raw?.suggestions || [],
+        suggestions: insights,
         overallRating: raw?.overallRating || raw?.rating || 'fair'
       };
 

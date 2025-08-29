@@ -338,9 +338,10 @@ export async function handleSearchPick({
       hasIngredients: !!(analysisNormalized.ingredientsText || enriched.ingredientsText)
     });
 
-    // Transform analysis to Health Analysis result format
-    const analysisResult = {
-      product: {
+    // Pass flattened analyzer data with metadata - no wrapper
+    setAnalysisData({
+      ...analysisNormalized,   // raw analyzer fields at top level
+      product: {               // keep original product object for reference
         productName: product.name,
         barcode: product.barcode,
         brand: product.brand,
@@ -356,12 +357,9 @@ export async function handleSearchPick({
           saturated_fat: product.nutriments?.saturated_fat || 0,
         }
       },
-      analysis: analysisNormalized,
-      source: source,
-      confidence: item.confidence || 0.8
-    };
-
-    setAnalysisData(analysisResult);
+      source: source,          // 'manual' or 'voice'
+      confidence: item.confidence ?? 0.8,
+    });
     setStep('report');
   } catch (error) {
     console.error(`[SEARCH→ANALYSIS][${source.toUpperCase()}] Failed:`, error);
