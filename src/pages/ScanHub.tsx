@@ -395,22 +395,20 @@ export default function ScanHub() {
           setAnalysisData(null);
           setHealthModalStep('scanner');
           handledRef.current = false;
-          
-          // Log initial state decision for debugging
-          console.log('[HC][OPEN]', { 
-            from: analysisData?.source, 
-            initial: forceHealth ? 'loading' :
-              (analysisData && analysisData.source !== 'photo') ? 'loading' : 'scanner'
-          });
-          
-          // Debug logging
+
+          const next = sessionStorage.getItem('scan-next');
+          if (next === 'photo' || next === 'voice') {
+            console.log('[SCAN][CLOSE] Switch-flow requested:', next, '— staying on /scan');
+            sessionStorage.removeItem('scan-next');
+            return; // don't navigate away; event already opened the correct modal
+          }
+
+          // Existing navigation back to original entry:
           const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
           console.log('[SCAN] Original entry for navigation:', originalEntry);
-          
-          // Navigate back to original entry point to avoid saved/recent scans loop
           if (originalEntry && originalEntry !== '/scan') {
             console.log('[SCAN] Navigating to original entry:', originalEntry);
-            sessionStorage.removeItem('scan-original-entry'); // Clear after use
+            sessionStorage.removeItem('scan-original-entry');
             navigate(originalEntry, { replace: true });
           } else {
             console.log('[SCAN] Fallback navigation to home');
