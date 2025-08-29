@@ -13,6 +13,8 @@ import { FF } from '@/featureFlags';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
+const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
+
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -511,8 +513,23 @@ function AppContent() {
                                <FeatureFlagsPage />
                              </ProtectedRoute>
                            } />
-                           
-                             {/* Scan Hub Routes */}
+                            
+                            {/* DEV-only Photo Sandbox - Unconditional in dev */}
+                            {import.meta.env.DEV && (
+                              <>
+                                <Route
+                                  path="/debug/photo"
+                                  element={
+                                    <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
+                                      <PhotoSandbox />
+                                    </React.Suspense>
+                                  }
+                                />
+                                <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                              </>
+                            )}
+
+                              {/* Scan Hub Routes */}
                              <Route path="/scan" element={
                                <ProtectedRoute>
                                  <ScanHub />

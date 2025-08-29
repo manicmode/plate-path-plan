@@ -223,6 +223,30 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </header>
 
+        {/* DEV-only Photo Sandbox Button */}
+        {import.meta.env.DEV && (
+          <button
+            onClick={() => (window.location.href = '/debug/photo')}
+            style={{ 
+              position: 'fixed', 
+              right: 12, 
+              bottom: 12, 
+              zIndex: 9999, 
+              padding: '8px 12px',
+              backgroundColor: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 500,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            🔧 Photo Sandbox
+          </button>
+        )}
+
       {/* Main Content with safe area padding for bottom nav */}
       <main
         className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
