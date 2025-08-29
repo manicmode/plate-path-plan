@@ -1446,7 +1446,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         legacy.nutritionDataPerServing ??
         legacy.perServing ??
         legacy.nutrition_per_serving ?? null;
-      const nutritionDataPerServing = perServing;
+
+      const SHOW_PER_SERVING = import.meta.env.VITE_SHOW_PER_SERVING === 'true';
 
       // 4) Build final report object with both shapes and aliases
       const report = {
@@ -1464,8 +1465,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         // nutrition per 100g (canonical + UI aliases) - adapter already has these
         nutritionData: nd100,
 
-        // nutrition per serving for the UI - adapter provides this
-        nutritionDataPerServing: perServing,
+        // nutrition per serving for the UI - adapter provides this (gated)
+        ...(SHOW_PER_SERVING && { nutritionDataPerServing: perServing }),
 
         // keep old nesting some components may read
         nutrition: { nutritionData: nd100 },
@@ -1502,8 +1503,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         ingredientFlags,
         flags: ingredientFlags, // Set both properties so UI can find them
         nutritionData: report.nutritionData,
-        // Add per-serving nutrition data for UI display
-        nutritionDataPerServing: perServing,
+        // Add per-serving nutrition data for UI display (gated)
+        ...(SHOW_PER_SERVING && { nutritionDataPerServing: perServing }),
         serving_size: legacy.serving_size,
         // Provide both nutrition shapes for UI compatibility
         nutrition: { nutritionData: report.nutritionData },

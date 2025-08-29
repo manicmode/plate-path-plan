@@ -447,74 +447,71 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(result.nutritionData).map(([key, value]) => {
                     if (value === undefined || value === null || value === 0) return null;
-                    
-                    const getUnit = (nutrientKey: string) => {
-                      if (nutrientKey === 'calories') return '';
-                      if (nutrientKey === 'sodium') return 'mg';
-                      return 'g';
-                    };
-                    
-                    const getDisplayKey = (nutrientKey: string) => {
-                      if (nutrientKey === 'carbs') return 'Carbs';
-                      return nutrientKey.charAt(0).toUpperCase() + nutrientKey.slice(1);
-                    };
-                    
-                    const unit = getUnit(key);
-                    const displayKey = getDisplayKey(key);
-                    
+
+                    // Map nutrient keys to display names and units
+                    const nutrientInfo = {
+                      calories: { label: 'Calories', unit: 'kcal', priority: 1 },
+                      protein: { label: 'Protein', unit: 'g', priority: 2 },
+                      carbs: { label: 'Carbs', unit: 'g', priority: 3 },
+                      fat: { label: 'Total Fat', unit: 'g', priority: 4 },
+                      sugar: { label: 'Sugar', unit: 'g', priority: 5 },
+                      fiber: { label: 'Fiber', unit: 'g', priority: 6 },
+                      sodium: { label: 'Sodium', unit: 'mg', priority: 7 },
+                      // Additional mappings for different naming schemes
+                      sugars_g: { label: 'Sugar', unit: 'g', priority: 5 },
+                      saturated_fat_g: { label: 'Sat Fat', unit: 'g', priority: 8 }
+                    }[key as keyof typeof result.nutritionData];
+
+                    if (!nutrientInfo) return null;
+
                     return (
-                      <div key={key} className="text-center p-4 bg-accent/20 border border-accent/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">
-                          {typeof value === 'number' ? Math.round(value * 10) / 10 : value}
+                      <div key={key} className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">{nutrientInfo.label}</div>
+                        <div className="text-lg font-semibold text-foreground">
+                          {typeof value === 'number' ? 
+                            (nutrientInfo.unit === 'mg' ? Math.round(value) : value.toFixed(1)) : 
+                            value
+                          } {nutrientInfo.unit}
                         </div>
-                        <div className="text-sm text-foreground font-medium mb-1">{unit}</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">{displayKey}</div>
                       </div>
                     );
                   })}
                 </div>
-                
-                {/* Per-serving nutrition if available */}
-                {(result as any)?.nutritionDataPerServing && (
+
+                {/* Per-serving nutrition (gated) */}
+                {import.meta.env.VITE_SHOW_PER_SERVING === 'true' && result?.nutritionDataPerServing && (
                   <section className="mt-6">
                     <h4 className="text-lg font-semibold mb-3">
-                      Per serving{(result as any)?.serving_size ? ` (${(result as any).serving_size})` : ''}
+                      Per serving{result?.serving_size ? ` (${result.serving_size})` : ''}
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.energyKcal ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1"></div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Calories</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Calories</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.energyKcal ?? '—'} kcal</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.sugar_g ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">g</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sugar</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Sugar</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.sugar_g ?? '—'} g</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.sodium_mg ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">mg</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sodium</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Sodium</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.sodium_mg ?? '—'} mg</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.fat_g ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">g</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Fat</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Fat</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.fat_g ?? '—'} g</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.satfat_g ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">g</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Sat Fat</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Sat fat</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.satfat_g ?? '—'} g</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.fiber_g ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">g</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Fiber</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Fiber</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.fiber_g ?? '—'} g</div>
                       </div>
-                      <div className="text-center p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                        <div className="text-3xl font-bold text-foreground mb-1">{(result as any).nutritionDataPerServing.protein_g ?? '—'}</div>
-                        <div className="text-sm text-foreground font-medium mb-1">g</div>
-                        <div className="text-xs text-foreground font-semibold uppercase tracking-wide">Protein</div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Protein</div>
+                        <div className="text-lg font-semibold text-foreground">{result.nutritionDataPerServing.protein_g ?? '—'} g</div>
                       </div>
                     </div>
                   </section>

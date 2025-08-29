@@ -59,10 +59,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
 
-  // Constants for decode parameters
-  const BUDGET_MS = 900;
+  // Constants for decode parameters (gated throttling)
+  const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
+  const BUDGET_MS = THROTTLE ? 500 : 900;
   const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
-  const COOLDOWN_MS = 600;
+  const COOLDOWN_MS = THROTTLE ? 300 : 600;
 
   // Quick decode for autoscan with better tolerance
   const quickDecode = useCallback(async (video: HTMLVideoElement, opts: { budgetMs: number }) => {
@@ -151,7 +152,19 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       cleanup();
     }
     
-    return cleanup;
+    // Enhanced cleanup on unmount when throttle enabled
+    return () => {
+      const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
+      if (THROTTLE) {
+        // Cancel any pending animation frames and timers
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        // Reset all refs
+        inFlightRef.current = false;
+        runningRef.current = false;
+        hitsRef.current = [];
+      }
+      cleanup();
+    };
   }, [open]);
 
   useEffect(() => {
@@ -185,11 +198,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
     try {
       console.log("[LOG] Requesting camera stream...");
+      const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
       const constraints = {
         video: { 
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: THROTTLE ? 640 : 1280 },
+          height: { ideal: THROTTLE ? 480 : 720 }
         },
         audio: false
       };
