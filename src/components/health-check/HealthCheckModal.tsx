@@ -171,7 +171,7 @@ async function enrichBarcodeReport(legacy: {
   // 2) Decide score:
   //    a) analyzer quality.score (0..10 expected by manual/speak path)
   //    b) OFF Nutri-Score mapping (fallback)  
-  //    c) keep current if neither (but clamp)
+  //    c) leave undefined if neither (no hardcoded defaults)
   let score10: number | null = null;
 
   if (ar?.quality?.score != null && isFinite(Number(ar.quality.score))) {
@@ -187,12 +187,13 @@ async function enrichBarcodeReport(legacy: {
       null;
     const mapped = nutriScoreTo10(offNutriRaw);
     if (mapped != null) score10 = mapped;
+    // ✅ NO hardcoded fallback to 7.3 - leave undefined if no score available
   }
 
   // 3) Flags: prefer analyzer flags; otherwise leave empty (no bogus placeholders)  
   const flags = (ar?.ingredientFlags && Array.isArray(ar.ingredientFlags) ? ar.ingredientFlags
-               : (ar?.flags && Array.isArray(ar.flags) ? ar.flags
-               : []));
+                : (ar?.flags && Array.isArray(ar.flags) ? ar.flags
+                : []));
 
   console.log('[BARCODE][ENRICHMENT]', { 
     score10, 
@@ -1481,14 +1482,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     let analyzerInsights: string[] = [];
     
     if (type === 'barcode' && legacy._dataSource === 'openfoodfacts/barcode') {
-      // Trust adapter values as authoritative - no recomputation
-      finalScore10 = legacy.health?.score != null
-        ? legacy.health.score
-        : (legacy?.scoreUnit === '0-10'
-          ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
-          : Math.max(0, Math.min(10, Number(legacy.healthScore) || 0)));
+      // ✅ Trust adapter values as authoritative - no recomputation
+      finalScore10 = legacy.health?.score ?? 0; // Use adapter score directly
       
-      // Keep adapter flags instead of replacing
+      // ✅ Keep adapter flags instead of replacing
       ingredientFlags = Array.isArray(legacy.flags) ? legacy.flags.map((f: any) => ({
         ingredient: f.label || f.key || f.code || 'Ingredient',
         flag: f.description || f.label || '',
@@ -1497,17 +1494,29 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         reason: f.reason,
       })) : [];
       
+      // Skip analyzer enrichment for adapter reports
+      analyzerInsights = [];
+      
     } else if (type === 'barcode') {
-      // Legacy barcode path - enrich with analyzer
+      // Legacy barcode path - enrich with analyzer but don't override if adapter has values
       const enrichment = await enrichBarcodeReport(legacy);
       
-      finalScore10 = enrichment.score10 != null
-        ? enrichment.score10
-        : (legacy?.scoreUnit === '0-10'
-          ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
-          : Math.max(0, Math.min(10, Number(legacy.healthScore) || 0)));
+      // ✅ Only use enrichment score if adapter doesn't have one
+      finalScore10 = legacy.health?.score != null 
+        ? legacy.health.score
+        : (enrichment.score10 != null 
+          ? enrichment.score10
+          : 0); // No hardcoded defaults
       
-      ingredientFlags = enrichment.flags;
+      // ✅ Merge flags instead of replacing
+      const adapterFlags = Array.isArray(legacy.flags) ? legacy.flags : [];
+      const enrichmentFlags = enrichment.flags || [];
+      const flagMap = new Map(adapterFlags.map(f => [f.code || f.key, f]));
+      for (const f of enrichmentFlags) {
+        if (!flagMap.has(f.code || f.key)) flagMap.set(f.code || f.key, f);
+      }
+      ingredientFlags = Array.from(flagMap.values());
+      
       analyzerInsights = enrichment.analyzerInsights;
     } else {
       // Non-barcode paths use existing logic
