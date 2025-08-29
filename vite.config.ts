@@ -19,11 +19,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  define: {
-    // Development debug flags - set to 'false' for production
-    ...(mode === 'development' && {
-      'import.meta.env.VITE_HEALTH_DEBUG_SAFE': '"true"',
-      'import.meta.env.VITE_DEBUG_PERF': '"true"'
-    })
-  }
 }));

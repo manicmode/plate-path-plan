@@ -54,16 +54,15 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const runningRef = useRef(false);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supported, ready, on, toggle, attach } = useTorch();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
 
-  // Constants for decode parameters (gated throttling)
-  const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
-  const BUDGET_MS = THROTTLE ? 500 : 900;
+  // Constants for decode parameters
+  const BUDGET_MS = 900;
   const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
-  const COOLDOWN_MS = THROTTLE ? 300 : 600;
+  const COOLDOWN_MS = 600;
 
   // Quick decode for autoscan with better tolerance
   const quickDecode = useCallback(async (video: HTMLVideoElement, opts: { budgetMs: number }) => {
@@ -152,19 +151,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       cleanup();
     }
     
-    // Enhanced cleanup on unmount when throttle enabled
-    return () => {
-      const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
-      if (THROTTLE) {
-        // Cancel any pending animation frames and timers
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        // Reset all refs
-        inFlightRef.current = false;
-        runningRef.current = false;
-        hitsRef.current = [];
-      }
-      cleanup();
-    };
+    return cleanup;
   }, [open]);
 
   useEffect(() => {
@@ -198,12 +185,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
     try {
       console.log("[LOG] Requesting camera stream...");
-      const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
       const constraints = {
         video: { 
           facingMode: { ideal: 'environment' },
-          width: { ideal: THROTTLE ? 640 : 1280 },
-          height: { ideal: THROTTLE ? 480 : 720 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       };
@@ -224,11 +210,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
         
-        // Attach torch hook when stream changes
-        if (import.meta.env.VITE_SCANNER_TORCH_FIX === 'true') {
-          attach(track);
-          if (import.meta.env.VITE_DEBUG_PERF === 'true') console.info('[TORCH] attach', { hasTrack: !!track });
-        }
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 100);
         
         setError(null);
       }
@@ -408,12 +393,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      console.log("[TORCH] Attempting to toggle torch. Current state:", on, "Ready:", ready);
-      await toggle();
-      console.log("[TORCH] Successfully toggled torch to:", !on);
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
+      }
     } catch (error) {
       console.error("Error toggling torch:", error);
-      toast.error("Failed to toggle flashlight");
     }
   };
 
@@ -461,7 +446,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center px-4 -mt-16">
+            <div className="flex-1 flex items-center justify-center px-4 -mt-32">
               {/* Centered scan frame */}
               <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
                 {/* Corner indicators */}
@@ -527,14 +512,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 <Button
                   variant="outline"
                   onClick={toggleTorch}
-                  disabled={!supported}
-                  title={!supported ? "Flash not available on this camera" : `Turn flash ${on ? 'off' : 'on'}`}
+                  disabled={!supportsTorch}
+                  title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
                   className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 transition-all duration-200 ${
-                    on ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
-                  } ${!supported ? 'opacity-50' : ''}`}
+                    torchOn ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
+                  } ${!supportsTorch ? 'opacity-50' : ''}`}
                 >
-                  <Lightbulb className={`h-5 w-5 mr-2 ${on ? 'text-yellow-300' : 'text-white'}`} />
-                  {on ? 'Flash On' : 'Flash'}
+                  <Lightbulb className={`h-5 w-5 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                  {torchOn ? 'Flash On' : 'Flash'}
                 </Button>
                 
                 {/* Manual Entry */}

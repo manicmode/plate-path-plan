@@ -9,9 +9,6 @@ import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
-import { toLegacyFromPhoto } from '@/lib/health/toLegacyFromPhoto';
-import { parseNutritionFromOCR } from '@/lib/health/parseNutritionPanel';
-import { getOCR } from '@/lib/ocr';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -33,14 +30,6 @@ interface PhotoCaptureModalProps {
 }
 
 
-// 1) Verify flags once (and print them)
-const CFG = {
-  PHOTO_ENABLED: import.meta.env.VITE_FEATURE_TAKE_PHOTO_ENABLED === 'true',
-  PIPE_V1: import.meta.env.VITE_PHOTO_PIPE_V1 === 'true',
-  PHOTO_BARCODES: import.meta.env.VITE_PHOTO_BARCODES_ENABLE === 'true',
-  DEBUG: import.meta.env.VITE_DEBUG_PERF === 'true',
-};
-
 export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
@@ -52,33 +41,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-failed' | 'photo-ocr-unavailable' | 'photo-ocr-error' | 'photo-ocr-too-large' | 'photo-ocr-service-down' | 'photo-ocr-no-text'>('camera');
-  const inFlightRef = useRef<boolean>(false);
-  const controllerRef = useRef<AbortController | null>(null);
-  const rafRef = useRef<number>(0);
-  const timerRef = useRef<number>(0);
 
-  const { supported, ready, on, toggle, attach } = useTorch();
-
-  // Print config once for debugging
-  useEffect(() => {
-    if (CFG.DEBUG) console.info('[PHOTO][CFG]', CFG);
-  }, []);
-
-  // 2) Hard block any scan hub while Take Photo is open
-  useEffect(() => {
-    if (open) {
-      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Setting data-photo-open=1');
-      document.body.setAttribute('data-photo-open', '1');
-    } else {
-      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Removing data-photo-open');
-      document.body.removeAttribute('data-photo-open');
-    }
-    return () => {
-      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Cleanup removing data-photo-open');
-      document.body.removeAttribute('data-photo-open');
-    };
-  }, [open]);
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   useEffect(() => {
     if (open) {
@@ -89,13 +53,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     
     return cleanup;
   }, [open]);
-
-  // 4) Cleanup on unmount (prevents "scanner remount" race)
-  useEffect(() => () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    controllerRef.current?.abort?.();
-  }, []);
 
   const startCamera = async () => {
     try {
@@ -122,11 +79,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         trackRef.current = track;
         setStream(mediaStream);
         
-        // Attach torch hook when stream changes
-        if (import.meta.env.VITE_SCANNER_TORCH_FIX === 'true') {
-          attach(track);
-          if (CFG.DEBUG) console.info('[TORCH] attach', { hasTrack: !!track });
-        }
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 100);
         
         setError(null);
       }
@@ -166,12 +122,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const toggleTorch = async () => {
     try {
-      console.log("[PHOTO-TORCH] Attempting to toggle torch. Current state:", on, "Ready:", ready);
-      await toggle();
-      console.log("[PHOTO-TORCH] Successfully toggled torch to:", !on);
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
+      }
     } catch (error) {
       console.error("Error toggling torch:", error);
-      toast.error("Failed to toggle flashlight");
     }
   };
 
@@ -197,33 +153,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-// Helper function to convert canvas to Uint8Array for OCR
-const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        reject(new Error('Canvas toBlob failed'));
-        return;
-      }
-      const arrayBuffer = await blob.arrayBuffer();
-      resolve(new Uint8Array(arrayBuffer));
-    }, 'image/jpeg', 0.85);
-  });
-};
-
-// 3) Rewire the capture handler to OCR (never call mode:'scan')
   const capturePhoto = async () => {
     if (!videoRef.current || !stream) return;
-    
-    if (!CFG.PHOTO_ENABLED || !CFG.PIPE_V1) return; // keep old behavior / noop
 
-    if (inFlightRef.current) return; // re-entry guard
-    inFlightRef.current = true;
-    
     setIsCapturing(true);
     playCameraClickSound();
 
     try {
+      // Check if analyzer is enabled
+      if (!isFeatureEnabled('image_analyzer_v1')) {
+        console.log('[PHOTO] Analyzer disabled, redirecting to manual');
+        toast.info('Photo analysis is in beta. Try manual or voice for now.');
+        onOpenChange(false);
+        onManualFallback();
+        return;
+      }
+
       console.log('[PHOTO] Capturing photo...');
       
       const video = videoRef.current;
@@ -236,206 +181,34 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
       
       // Convert to base64
       const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-      const capturedImageUrl = imageBase64;
       
       console.log('[PHOTO] Photo captured, processing...');
       
-      let routedToBarcode = false;
-
-      // Single barcode-from-image try
-      if (CFG.PHOTO_BARCODES) {
-        // TODO: Implement tryDecodeBarcodeFromImage when barcode detection is ready
-        // const bc = await tryDecodeBarcodeFromImage(imageBase64);
-        if (CFG.DEBUG) console.info('[PHOTO][ROUTE]', { foundBarcode: false });
-        // if (bc) {
-        //   routedToBarcode = true;
-        //   await runBarcodeFlow(bc); // existing barcode path
-        //   return;
-        // }
-      }
-
-      // Compress image for OCR
-      const prep = await prepareImageForAnalysis(canvas);
-      const imageBytes = await canvasToBytes(canvas);
-
-      // OCR using new function
-      const ocrResult = await getOCR(`data:image/jpeg;base64,${prep.base64NoPrefix}`);
-      if (!ocrResult.ok) {
-        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
-        // Stay in modal with precise reason
-        const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' 
-                     : ocrResult.reason === 'auth_required' ? 'photo-ocr-missing'
-                     : ocrResult.reason === 'no_text_detected' ? 'photo-ocr-no-text'
-                     : 'photo-ocr-failed';
-        setStatus(status);
-        if (ocrResult.reason === 'auth_required') {
-          toast.info('OCR unavailable—please sign in or try barcode');
-        } else {
-          toast.info('OCR unavailable—try barcode or manual entry.');
-        }
-        return;
-      }
-
-      // Extract text
-      const text = ocrResult.text || '';
-      if (CFG.DEBUG) console.info('[PHOTO][OCR][FINAL]', { textLen: text.length, snippet: text.slice(0, 100) });
-      if (!text || text.trim().length < 8) {
-        if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
-        setStatus('photo-ocr-missing'); // stays in modal
-        return;
-      }
-      if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-
-      // Parse & map to unified shape
-      const legacy = toLegacyFromPhoto(text);
-
-      const report = {
-        source: 'photo',
-        title: legacy.productName,
-        image_url: capturedImageUrl,
-        health: { score: legacy.healthScore, unit: '0-10' },
-        ingredientFlags: (legacy.flags || []).map((f: any) => ({
-          ingredient: f.title || f.label || f.code || 'Ingredient',
-          flag: f.reason || f.description || f.label || '',
-          severity: (/high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low') as 'low'|'medium'|'high',
-        })),
-        nutritionData: legacy.nutritionData,
-        ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
-          nutritionDataPerServing: legacy.nutritionDataPerServing,
-        }),
-        serving_size: legacy.serving_size,
-        _dataSource: legacy._dataSource,
-      };
-
-      if (CFG.DEBUG) console.info('[PHOTO][FINAL]', {
-        score10: report.health?.score,
-        flagsCount: report.ingredientFlags?.length,
-        per100g: { kcal: report.nutritionData?.energyKcal, sugar_g: report.nutritionData?.sugar_g, sodium_mg: report.nutritionData?.sodium_mg },
-        perServing: { kcal: report.nutritionDataPerServing?.energyKcal, sugar_g: report.nutritionDataPerServing?.sugar_g, sodium_mg: report.nutritionDataPerServing?.sodium_mg },
-        serving: report.serving_size
-      });
-
-      // Process with existing analyzer flow - pass as string for compatibility
-      onCapture(JSON.stringify(report));
+      // Process with existing analyzer flow
+      onCapture(imageBase64);
       onOpenChange(false);
       
-      } catch (error) {
-        console.error('[PHOTO] Capture failed:', error);
-        toast.error('Failed to capture photo. Please try again.');
-        setStatus('photo-ocr-error');
-      } finally {
-        setIsCapturing(false);
-        inFlightRef.current = false;
-      }
-    };
-
-  const handleImageUpload = async () => {
-    if (!CFG.PHOTO_ENABLED || !CFG.PIPE_V1) {
-      // Old behavior
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageBase64 = e.target?.result as string;
-            console.log('[PHOTO] Image uploaded, processing...');
-            onCapture(imageBase64);
-            onOpenChange(false);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-      return;
+    } catch (error) {
+      console.error('[PHOTO] Capture failed:', error);
+      toast.error('Failed to capture photo. Please try again.');
+    } finally {
+      setIsCapturing(false);
     }
-    
-    // New OCR-direct flow
+  };
+
+  const handleImageUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = async (e) => {
+    input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        setIsCapturing(true);
         const reader = new FileReader();
-        reader.onload = async (e) => {
+        reader.onload = (e) => {
           const imageBase64 = e.target?.result as string;
           console.log('[PHOTO] Image uploaded, processing...');
-          
-          try {
-            // Process through same OCR flow as capture
-            const response = await fetch(imageBase64);
-            const blob = await response.blob();
-            const prep = await prepareImageForAnalysis(blob);
-            const arrayBuffer = await blob.arrayBuffer();
-            const imageBytes = new Uint8Array(arrayBuffer);
-
-            // OCR using new function
-            const ocrResult = await getOCR(imageBase64);
-            if (!ocrResult.ok) {
-              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: ocrResult.reason });
-              const status = ocrResult.reason === 'provider_disabled' ? 'photo-ocr-unavailable' 
-                           : ocrResult.reason === 'auth_required' ? 'photo-ocr-missing'
-                           : ocrResult.reason === 'no_text_detected' ? 'photo-ocr-no-text'
-                           : 'photo-ocr-failed';
-              setStatus(status);
-              if (ocrResult.reason === 'auth_required') {
-                toast.info('OCR unavailable—please sign in or try barcode');
-              } else {
-                toast.info('OCR unavailable—try barcode or manual entry.');
-              }
-              return;
-            }
-
-            // Extract text
-            const text = ocrResult.text || '';
-            if (CFG.DEBUG) console.info('[PHOTO][OCR][FINAL]', { textLen: text.length, snippet: text.slice(0, 100) });
-            if (!text || text.trim().length < 8) {
-              if (CFG.DEBUG) console.info('[PHOTO][OCR][EMPTY]');
-              setStatus('photo-ocr-missing'); // stays in modal
-              return;
-            }
-            if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
-
-            const legacy = toLegacyFromPhoto(text);
-            const report = {
-              source: 'photo',
-              title: legacy.productName,
-              image_url: imageBase64,
-              health: { score: legacy.healthScore, unit: '0-10' },
-              ingredientFlags: (legacy.flags || []).map((f: any) => ({
-                ingredient: f.title || f.label || f.code || 'Ingredient',
-                flag: f.reason || f.description || f.label || '',
-                severity: (/high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low') as 'low'|'medium'|'high',
-              })),
-              nutritionData: legacy.nutritionData,
-              ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
-                nutritionDataPerServing: legacy.nutritionDataPerServing,
-              }),
-              serving_size: legacy.serving_size,
-              _dataSource: legacy._dataSource,
-            };
-
-            if (CFG.DEBUG) console.info('[PHOTO][FINAL]', {
-              score10: report.health?.score,
-              flagsCount: report.ingredientFlags?.length,
-              per100g: { kcal: report.nutritionData?.energyKcal, sugar_g: report.nutritionData?.sugar_g, sodium_mg: report.nutritionData?.sodium_mg },
-              perServing: { kcal: report.nutritionDataPerServing?.energyKcal, sugar_g: report.nutritionDataPerServing?.sugar_g, sodium_mg: report.nutritionDataPerServing?.sodium_mg },
-              serving: report.serving_size
-            });
-
-            onCapture(JSON.stringify(report));
-            onOpenChange(false);
-          } catch (error) {
-            console.error('[PHOTO] Upload processing failed:', error);
-            toast.error('Failed to process uploaded image.');
-            setStatus('photo-ocr-error');
-          } finally {
-            setIsCapturing(false);
-          }
+          onCapture(imageBase64);
+          onOpenChange(false);
         };
         reader.readAsDataURL(file);
       }
@@ -502,19 +275,19 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
             <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
             
             {/* Flashlight Button - Positioned above upload button */}
-            {import.meta.env.VITE_SCANNER_TORCH_FIX === 'true' && supported && ready && (
+            {supportsTorch && (
               <div className="absolute bottom-32 right-12 pb-[env(safe-area-inset-bottom)] z-50 pointer-events-auto">
                 <Button
                   onClick={toggleTorch}
                   size="lg"
                   className={`rounded-full w-12 h-12 p-0 transition-all duration-200 border-2 shadow-lg ${
-                    on 
+                    torchOn 
                       ? 'bg-white/20 hover:bg-white/30 text-yellow-400 border-yellow-400 shadow-yellow-400/30' 
                       : 'bg-white/10 hover:bg-white/20 text-white border-white/40'
                   }`}
-                  title={`Turn flashlight ${on ? 'off' : 'on'}`}
+                  title={`Turn flashlight ${torchOn ? 'off' : 'on'}`}
                 >
-                  <Lightbulb className={`h-5 w-5 ${on ? 'text-yellow-400' : 'text-white'}`} />
+                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-400' : 'text-white'}`} />
                 </Button>
               </div>
             )}
@@ -572,118 +345,6 @@ const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => 
                 <Button onClick={startCamera} variant="outline" className="text-white border-white">
                   Try Again
                 </Button>
-              </div>
-            </div>
-          )}
-
-          {/* OCR Missing State */}
-          {status === 'photo-ocr-missing' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-bold mb-2">OCR Unavailable</h3>
-                <p className="text-white/70 mb-6">
-                  Text recognition is not configured. Try scanning a barcode or manual entry instead.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Back to Camera
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR Unavailable State */}
-          {status === 'photo-ocr-unavailable' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">🚫</div>
-                <h3 className="text-xl font-bold mb-2">OCR Unavailable</h3>
-                <p className="text-white/70 mb-6">
-                  OCR service is currently disabled. Try scanning a barcode or manual entry instead.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Back to Camera
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR No Text Detected State */}
-          {status === 'photo-ocr-no-text' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">📄</div>
-                <h3 className="text-xl font-bold mb-2">No Text Detected</h3>
-                <p className="text-white/70 mb-6">
-                  Could not detect any text in the photo. Try taking another photo with better lighting or closer to the label.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR Failed State */}
-          {status === 'photo-ocr-failed' && (
-            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
-              <div className="text-center text-white max-w-sm">
-                <div className="text-6xl mb-4">❌</div>
-                <h3 className="text-xl font-bold mb-2">OCR Failed</h3>
-                <p className="text-white/70 mb-6">
-                  OCR processing failed. Try taking another photo or manual entry.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button 
-                    onClick={() => {setStatus('camera'); onManualFallback();}} 
-                    variant="outline" 
-                    className="text-white border-white"
-                  >
-                    Manual Entry
-                  </Button>
-                  <Button 
-                    onClick={() => setStatus('camera')} 
-                    className="bg-primary"
-                  >
-                    Try Again
-                  </Button>
-                </div>
               </div>
             </div>
           )}

@@ -1,83 +1,165 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
-type TorchState = {
-  supported: boolean;
-  ready: boolean;
-  on: boolean;
-  toggle: (next?: boolean) => Promise<void>;
-  attach: (track: MediaStreamTrack | null) => void;
-};
+interface TorchResult {
+  ok: boolean;
+  reason?: 'no_torch' | 'apply_failed' | 'no_track';
+  error?: string;
+}
 
-export function useTorch(): TorchState {
-  const enabled = import.meta.env.VITE_SCANNER_TORCH_FIX === 'true';
-  const trackRef = useRef<MediaStreamTrack | null>(null);
-  const [supported, setSupported] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [on, setOn] = useState(false);
+export function useTorch(trackRef: React.MutableRefObject<MediaStreamTrack | null>) {
+  const [torchOn, setTorchOn] = useState(false);
+  const [supportsTorch, setSupportsTorch] = useState(false);
+  const stateRef = useRef(false);
+  const lastTrackRef = useRef<MediaStreamTrack | null>(null);
 
-  const probe = useCallback(async (t: MediaStreamTrack | null) => {
-    if (!enabled || !t) { setSupported(false); setReady(!!t); return; }
-    try {
-      const caps: any = t.getCapabilities?.() || {};
-      // Safari sometimes exposes torch via ImageCapture caps:
-      let torchCap = !!caps.torch;
-      if (!torchCap && 'ImageCapture' in window) {
-        try {
-          // @ts-ignore
-          const ic = new (window as any).ImageCapture(t);
-          const pc = await ic.getPhotoCapabilities?.();
-          torchCap = Array.isArray(pc?.fillLightMode) && pc.fillLightMode.includes('torch');
-        } catch {}
-      }
-      setSupported(Boolean(torchCap));
-      setReady(t.readyState === 'live');
-    } catch {
-      setSupported(false);
-      setReady(t?.readyState === 'live');
+  // Check torch capabilities when track changes
+  const checkTorchSupport = useCallback((track: MediaStreamTrack | null) => {
+    if (!track) {
+      setSupportsTorch(false);
+      return false;
     }
-  }, [enabled]);
 
-  const applyTorch = useCallback(async (next: boolean) => {
-    const t = trackRef.current;
-    if (!enabled || !t) return;
     try {
-      // applyConstraints via advanced torch; wrap in rAF to avoid OverconstrainedError flakiness
-      await new Promise(requestAnimationFrame);
-      await t.applyConstraints({ advanced: [{ torch: next }] as any });
-      setOn(next);
-      console.info('[TORCH] set', next);
-    } catch (e) {
-      console.info('[TORCH][ERR]', (e as Error).message);
+      const caps = track.getCapabilities?.();
+      const supported = !!(caps && 'torch' in caps);
+      setSupportsTorch(supported);
+      return supported;
+    } catch (error) {
+      console.warn('[torch] getCapabilities failed:', error);
+      setSupportsTorch(false);
+      return false;
     }
-  }, [enabled]);
+  }, []);
 
-  const toggle = useCallback(async (next?: boolean) => {
-    const dest = typeof next === 'boolean' ? next : !on;
-    await applyTorch(dest);
-  }, [on, applyTorch]);
+  // Apply torch state to track
+  const setTorch = useCallback(async (on: boolean): Promise<TorchResult> => {
+    const track = trackRef.current;
+    
+    if (!track) {
+      return { ok: false, reason: 'no_track' };
+    }
 
-  const attach = useCallback(async (track: MediaStreamTrack | null) => {
-    trackRef.current = track;
-    await probe(track);
-    // re-apply state when page visibility changes (iOS may drop constraints)
-    const handler = () => { if (document.visibilityState === 'visible' && on) applyTorch(true); };
-    document.addEventListener('visibilitychange', handler);
-    return () => document.removeEventListener('visibilitychange', handler);
-  }, [probe, applyTorch, on]);
+    const caps = track.getCapabilities?.();
+    if (!caps || !('torch' in caps)) {
+      return { ok: false, reason: 'no_torch' };
+    }
 
-  // keep "ready" in sync with track state
+    try {
+      await track.applyConstraints({ 
+        advanced: [{ torch: on } as any] 
+      });
+      
+      stateRef.current = on;
+      setTorchOn(on);
+      
+      console.log('[torch] torch applied:', { on, trackId: track.id });
+      return { ok: true };
+    } catch (error) {
+      console.warn('[torch] applyConstraints failed:', error);
+      return { 
+        ok: false, 
+        reason: 'apply_failed', 
+        error: String(error) 
+      };
+    }
+  }, []);
+
+  // Ensure torch state matches desired state (for auto-reapply)
+  const ensureTorchState = useCallback(async () => {
+    const track = trackRef.current;
+    if (!track || !checkTorchSupport(track)) {
+      return;
+    }
+
+    // If we have a desired state stored, reapply it
+    if (stateRef.current !== torchOn) {
+      console.log('[torch] reapplying torch state:', stateRef.current);
+      await setTorch(stateRef.current);
+    }
+  }, [torchOn, setTorch, checkTorchSupport]);
+
+  // Handle track changes
   useEffect(() => {
-    const t = trackRef.current;
-    if (!t) return;
-    const onEnded = () => setReady(false);
-    const onUnmute = () => setReady(true);
-    t.addEventListener('ended', onEnded);
-    t.addEventListener('unmute', onUnmute);
-    return () => {
-      t.removeEventListener('ended', onEnded);
-      t.removeEventListener('unmute', onUnmute);
-    };
-  }, [trackRef.current]);
+    const track = trackRef.current;
+    
+    if (track !== lastTrackRef.current) {
+      lastTrackRef.current = track;
+      
+      if (track) {
+        console.log('[torch] track changed, checking support:', track.id);
+        checkTorchSupport(track);
+        
+        // Auto-reapply torch state after track is ready
+        const reapplyTorch = () => {
+          setTimeout(() => {
+            ensureTorchState();
+          }, 100);
+        };
+        
+        if (track.readyState === 'live') {
+          reapplyTorch();
+        } else {
+          // Wait for track to be ready
+          const checkReady = () => {
+            if (track.readyState === 'live') {
+              reapplyTorch();
+            } else {
+              setTimeout(checkReady, 50);
+            }
+          };
+          checkReady();
+        }
+      } else {
+        setSupportsTorch(false);
+        setTorchOn(false);
+      }
+    }
+  }, [trackRef.current, ensureTorchState, checkTorchSupport]);
 
-  return useMemo(() => ({ supported, ready, on, toggle, attach }), [supported, ready, on, toggle, attach]);
+  // Handle visibility changes (app comes back from background)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && trackRef.current) {
+        console.log('[torch] visibility restored, ensuring torch state');
+        setTimeout(() => {
+          ensureTorchState();
+        }, 200);
+      }
+    };
+
+    const handlePageShow = () => {
+      if (trackRef.current) {
+        console.log('[torch] page shown, ensuring torch state');
+        setTimeout(() => {
+          ensureTorchState();
+        }, 200);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [ensureTorchState]);
+
+  // Reset torch when component unmounts or stream stops
+  useEffect(() => {
+    return () => {
+      if (stateRef.current) {
+        console.log('[torch] cleanup: turning off torch');
+        stateRef.current = false;
+        setTorchOn(false);
+      }
+    };
+  }, []);
+
+  return {
+    supportsTorch,
+    torchOn,
+    setTorch,
+    ensureTorchState
+  };
 }

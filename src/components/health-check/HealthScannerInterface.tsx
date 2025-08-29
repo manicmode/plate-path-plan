@@ -18,10 +18,8 @@ import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
-import { toast } from 'sonner';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
-const TORCH_FIX = import.meta.env.VITE_SCANNER_TORCH_FIX === 'true';
 
 function useDynamicViewportVar() {
   useLayoutEffect(() => {
@@ -82,7 +80,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supported, ready, on, toggle, attach } = useTorch();
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
@@ -130,12 +128,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const ZOOM = 1.5;
 
   useEffect(() => {
-    // Don't mount scanner if photo modal is open
-    if (document.body.getAttribute('data-photo-open') === '1') {
-      if (DEBUG) console.log('[SCANNER][BLOCKED] Photo modal is open, not mounting scanner');
-      return;
-    }
-    
     if (currentView === 'scanner') {
       startCamera();
       warmUpDecoder();
@@ -215,9 +207,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // High-res back camera request with optimized constraints for performance
       const constraints = {
         video: {
-          facingMode: { ideal: 'environment' }, // don't use exact to keep iOS happy
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 720 },    // Optimized for performance
+          height: { ideal: 720 },   // Keep square aspect ratio
+          frameRate: { ideal: 24, max: 30 } // Cap frame rate for performance
         },
         audio: false
       };
@@ -250,12 +243,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
           
-          // Attach torch hook when stream changes
-          if (TORCH_FIX) {
-            const track = mediaStream.getVideoTracks()[0] || null;
-            attach(track);
-            if (DEBUG) console.info('[TORCH] attach', { hasTrack: !!track });
-          }
+          // Ensure torch state after track is ready
+          setTimeout(() => {
+            ensureTorchState();
+          }, 200);
         }
       
       // Log torch capabilities (debug only)
@@ -556,322 +547,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // Capture still image for both barcode and OCR processing
-      const { canvas } = await captureStill();
-      
-      // Convert to blob for efficient processing
-      const fullBlob = await new Promise<Blob>(resolve => {
-        canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.8);
-      });
-      
-      // Convert to base64 for compatibility
-      const fullBase64 = await new Promise<string>(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(fullBlob);
-      });
-
-      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-        console.info('[PHOTO][ROUTE]', { 
-          size: { w: canvas.width, h: canvas.height }, 
-          compressedKB: Math.round(fullBlob.size / 1024) 
-        });
-      }
-
-      let detectedBarcode: string | null = null;
-      
-      // 1) Barcode detection if enabled
-      if (import.meta.env.VITE_PHOTO_BARCODES_ENABLE === 'true') {
-        try {
-          console.log('[PHOTO] Checking for barcode...');
-          const roiCanvas = cropReticleROI(canvas);
-          const enhanced = enhancedBarcodeDecodeQuick(roiCanvas);
-          const result = await Promise.race([
-            enhanced,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
-          ]);
-          
-          if (result?.text) {
-            detectedBarcode = result.text;
-            console.log('[PHOTO][BARCODE][FOUND]', detectedBarcode);
-            
-            if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-              console.info('[PHOTO][ROUTE]', { 
-                foundBarcode: true, 
-                sentMode: 'barcode',
-                size: { w: canvas.width, h: canvas.height }, 
-                compressedKB: Math.round(fullBlob.size / 1024) 
-              });
-            }
-            
-            // Route to barcode pipeline and return early
-            onCapture({
-              imageBase64: fullBase64.split(',')[1],
-              detectedBarcode
-            });
-            return;
-          }
-        } catch (error) {
-          console.log('[PHOTO] No barcode detected or timeout');
-        }
-      }
-
-      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-        console.info('[PHOTO][ROUTE]', { 
-          foundBarcode: false, 
-          sentMode: 'ocr',
-          size: { w: canvas.width, h: canvas.height }, 
-          compressedKB: Math.round(fullBlob.size / 1024) 
-        });
-      }
-
-      // 2) No barcode found - proceed with OCR/image analysis
-      if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
-        const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
-        const HEALTH_DEBUG = import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true';
-        const FETCH_TIMEOUT_MS = 15000;
-        const JSON_TIMEOUT_MS = 5000;
-        const WATCHDOG_MS = 18000;
-
-        // Import health diagnostics if debug enabled
-        let hlog: any, newCID: any, safeScore: any, runFlagsEngine: any;
-        if (HEALTH_DEBUG) {
-          try {
-            const logger = await import('@/lib/health/logger');
-            const scorer = await import('@/lib/health/score');
-            const flagger = await import('@/lib/health/flags');
-            hlog = logger.hlog;
-            newCID = logger.newCID;
-            safeScore = scorer.safeScore;
-            runFlagsEngine = flagger.runFlagsEngine;
-          } catch (e) {
-            console.warn('[HEALTH] Debug imports failed, continuing without diagnostics:', e);
-          }
-        }
-
-        async function fetchWithTimeout(url: string, body: BodyInit, cid: string, signal: AbortSignal) {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort('timeout_fetch'), FETCH_TIMEOUT_MS);
-          
-          // Chain both signals
-          const combinedSignal = AbortSignal.any ? AbortSignal.any([signal, controller.signal]) : controller.signal;
-
-          try {
-            const resp = await fetch(url, {
-              method: 'POST',
-              body,
-              headers: { 'x-cid': cid },
-              signal: combinedSignal,
-            });
-            return resp;
-          } finally {
-            clearTimeout(timer);
-          }
-        }
-
-        async function jsonWithTimeout(resp: Response) {
-          const parse = resp.json();
-          const timer = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout_json')), JSON_TIMEOUT_MS));
-          return Promise.race([parse, timer]) as Promise<any>;
-        }
-
-        async function analyzePhotoSafely(blob: Blob) {
-          const cid = HEALTH_DEBUG && newCID ? newCID() : `photo_${Date.now()}`;
-          const ctx = HEALTH_DEBUG ? { cid, tags: ['PHOTO'] } : undefined;
-          
-          let resolved = false;
-          const watchdog = setTimeout(() => {
-            if (!resolved) {
-              if (HEALTH_DEBUG && hlog) {
-                hlog('WATCHDOG trip → forcing resolution', { ...ctx, tags: ['PHOTO','WATCHDOG'] });
-              } else {
-                console.warn('[PHOTO][WATCHDOG] Force resolution after 18s');
-              }
-              
-              // Force cleanup - stop spinner, unfreeze video, show error
-              setIsScanning(false);
-              setIsFrozen(false);
-              if (videoRef.current) {
-                unfreezeVideo(videoRef.current);
-              }
-              toast.error('Analysis timeout. Try again or use Manual/Barcode.');
-              setCurrentView('notRecognized');
-              
-              resolved = true;
-            }
-          }, WATCHDOG_MS);
-
-          try {
-            if (HEALTH_DEBUG && hlog) hlog('Start capture', ctx);
-            if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
-            if (HEALTH_DEBUG && hlog) hlog('[OCR][HTTP] request → vision-ocr', ctx);
-
-            // Use FormData for reliable multipart handling
-            const form = new FormData();
-            form.append('file', new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
-            
-            // Create abort controller for this specific request
-            const abortController = new AbortController();
-            const resp = await fetchWithTimeout('/functions/v1/vision-ocr', form, cid, abortController.signal);
-
-            // Parse JSON with separate timeout
-            const json = await jsonWithTimeout(resp).catch((e) => {
-              if (DEBUG) console.warn('[PHOTO][JSON] Parse timeout or error:', e);
-              return { ok: false, reason: 'bad_json' };
-            });
-            
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
-            if (HEALTH_DEBUG && hlog) hlog('[OCR][RESP] payload', ctx, { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
-
-            if (!json?.ok) {
-              throw new Error(`ocr_fail:${json?.reason ?? 'unknown'}`);
-            }
-
-            // Parse and process the OCR text
-            const { toLegacyFromPhoto } = await import('@/lib/health/toLegacyFromPhoto');
-            const { parseNutritionFromOCR } = await import('@/lib/health/parseNutritionPanel');
-            
-            const parsed = parseNutritionFromOCR(json.text);
-            if (HEALTH_DEBUG && hlog) hlog('[PARSE] nutrition profile', ctx, parsed);
-
-            const legacy = toLegacyFromPhoto(json.text);
-
-            // Enhanced scoring if debug enabled
-            let enhancedScore = legacy.healthScore;
-            if (HEALTH_DEBUG && safeScore && parsed?.per100) {
-              const scoreIn = {
-                calories_per_serving: parsed.perServing?.energyKcal,
-                sugar_g_per_100g: parsed.per100?.sugar_g,
-                satfat_g_per_100g: parsed.per100?.satfat_g,
-                sodium_mg_per_100g: parsed.per100?.sodium_mg,
-                fiber_g_per_100g: parsed.per100?.fiber_g,
-                protein_g_per_100g: parsed.per100?.protein_g,
-                ultra_processed: false
-              };
-              
-              if (hlog) hlog('[SCORE_IN]', ctx, scoreIn);
-              
-              try {
-                const scoreOut = await safeScore(scoreIn);
-                if (hlog) hlog('[SCORE_OUT]', ctx, scoreOut);
-                enhancedScore = scoreOut.finalScore / 10;
-              } catch (e) {
-                console.warn('[HEALTH] Safe scoring failed:', e);
-              }
-            }
-
-            // Enhanced flags if debug enabled
-            let enhancedFlags = legacy.flags;
-            if (HEALTH_DEBUG && runFlagsEngine) {
-              if (hlog) hlog('[FLAGS_IN] ingredients + facts', ctx, { 
-                ingredients: parsed?.ingredients_text, 
-                facts: parsed?.per100 
-              });
-              
-              try {
-                const newFlags = runFlagsEngine({ ...parsed, facts: parsed?.per100 });
-                if (hlog) hlog('[FLAGS_OUT]', ctx, newFlags);
-                
-                enhancedFlags = newFlags.map((f: any) => ({
-                  title: f.code,
-                  reason: f.reason,
-                  severity: f.severity,
-                  label: f.code,
-                  description: f.reason
-                }));
-              } catch (e) {
-                console.warn('[HEALTH] Enhanced flags failed:', e);
-              }
-            }
-            
-            const report = {
-              source: 'photo',
-              title: legacy.productName,
-              image_url: fullBase64,
-              health: { score: enhancedScore || legacy.healthScore, unit: '0-10' },
-              ingredientFlags: (enhancedFlags || legacy.flags || []).map((f: any) => ({
-                ingredient: f.title || f.label || f.code || 'Ingredient',
-                flag: f.reason || f.description || f.label || '',
-                severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
-              })),
-              nutritionData: legacy.nutritionData,
-              ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
-                nutritionDataPerServing: legacy.nutritionDataPerServing,
-              }),
-              serving_size: legacy.serving_size,
-              _dataSource: legacy._dataSource,
-            };
-
-            if (DEBUG) console.info('[PHOTO][FINAL]', {
-              score10: report.health?.score,
-              flagsCount: report.ingredientFlags?.length,
-              per100g: {
-                kcal: report.nutritionData?.energyKcal,
-                sugar_g: report.nutritionData?.sugar_g,
-                sodium_mg: report.nutritionData?.sodium_mg,
-              },
-              perServing: {
-                kcal: report.nutritionDataPerServing?.energyKcal,
-                sugar_g: report.nutritionDataPerServing?.sugar_g,
-                sodium_mg: report.nutritionDataPerServing?.sodium_mg,
-              },
-              serving: report.serving_size,
-            });
-
-            if (HEALTH_DEBUG && hlog) hlog('[FINAL]', ctx, report);
-
-            // Success: show the report
-            onCapture({
-              imageBase64: prep.base64NoPrefix,
-              detectedBarcode: null
-            });
-            
-            return { success: true };
-          } catch (error) {
-            if (DEBUG) console.warn('[PHOTO] OCR pipeline exception:', error);
-            if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, String(error));
-            
-            // Show error state instead of falling back to legacy
-            return { success: false, error: String(error) };
-          } finally {
-            resolved = true;
-            clearTimeout(watchdog);
-            
-            // Always ensure cleanup state is reset
-            setIsScanning(false);
-            setIsFrozen(false);
-            if (videoRef.current) {
-              unfreezeVideo(videoRef.current);
-            }
-            
-            if (HEALTH_DEBUG && hlog) hlog('[RESOLVED]', ctx);
-            if (DEBUG) console.info('[PHOTO][RESOLVED]', { cid });
-          }
-        }
-
-        // Compress image for OCR
-        const prep = await prepareImageForAnalysis(fullBlob, { 
-          maxEdge: 1280, 
-          quality: 0.7, 
-          targetMaxBytes: 900_000 
-        });
-
-        // Run the safe photo analysis with all safeguards
-        try {
-          const result = await analyzePhotoSafely(fullBlob);
-          if (result.success) {
-            // Success case already handled in analyzePhotoSafely
-            return;
-          } else {
-            // Error case - fall back to legacy or show error
-            if (DEBUG) console.warn('[PHOTO] Analysis failed, falling back to legacy:', result.error);
-          }
-        } catch (error) {
-          if (DEBUG) console.warn('[PHOTO] Analysis exception, falling back to legacy:', error);
-        }
-      }
-
-      // 3) Fallback to existing barcode detection and processing
       // Use shared hook
       const result = await snapAndDecode({
         videoEl: video,
@@ -1015,13 +690,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
-      // Always unfreeze and reset scanning state - no early returns allowed
+      // PATCH 4: Always unfreeze and reset scanning state
       if (DEBUG) console.log('[SCANNER][CAPTURE] unfreeze in finally');
       setIsScanning(false);
-      setIsFrozen(false);
       if (videoRef.current) {
         unfreezeVideo(videoRef.current);
       }
+      setIsFrozen(false); // Ensure this always runs for success, error, or timeout
       mark('[HS] analyze_end');
       measure('[HS] analyze_total', '[HS] analyze_start');
       const analyzeTime = performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0);
@@ -1159,7 +834,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const handleFlashlightToggle = async () => {
     try {
-      await toggle();
+      const result = await setTorch(!torchOn);
+      if (!result.ok) {
+        console.warn("Torch toggle failed:", result.reason);
+      }
     } catch (error) {
       console.error("Error toggling torch:", error);
     }
@@ -1383,8 +1061,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
-            torchEnabled={on}
-            torchSupported={supported}
+            torchEnabled={torchOn}
+            torchSupported={supportsTorch}
           />
         </div>
       </div>

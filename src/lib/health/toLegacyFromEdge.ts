@@ -8,17 +8,6 @@ import { calculateHealthScore, toFinal10 } from '@/score/ScoreEngine';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
-function parseServingToUnit(serving?: string): { value?: number; unit?: 'g'|'ml' } {
-  if (!serving || typeof serving !== 'string') return {};
-  // Prefer explicit "(30 g)" / "240 ml"
-  const m1 = /([\d.]+)\s*(g|ml)\b/i.exec(serving);
-  if (m1) return { value: parseFloat(m1[1]), unit: m1[2].toLowerCase() as 'g'|'ml' };
-  // Fallback: any number right before g/ml anywhere
-  const m2 = /([\d.]+)\s*(g|ml)\b/i.exec(serving.replace(/[()]/g, ' '));
-  if (m2) return { value: parseFloat(m2[1]), unit: m2[2].toLowerCase() as 'g'|'ml' };
-  return {};
-}
-
 // Helper functions for grade-to-score mapping
 const gradeTo10 = (g?: string): number | null => {
   if (!g) return null;
@@ -136,112 +125,68 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     const mapped = mapNutriments(raw);
     const ingredients_text = p.ingredients_text || '';
 
-    // Generate deterministic flags with correct per-100g keys
-    const flagInputs = {
-      sugar_g_100g: raw.sugars_100g ?? mapped.sugar_g,
-      satfat_g_100g: raw['saturated-fat_100g'] ?? mapped.satfat_g,
-      fiber_g_100g: raw.fiber_100g ?? mapped.fiber_g,
-      sodium_mg_100g: mapped.sodium_mg, // already mg/100g
+    // Generate deterministic flags
+    const flags = detectFlags(ingredients_text, {
+      sodium_mg_100g: mapped.sodium_mg,
+      sugar_g_100g: mapped.sugar_g,
+      satfat_g_100g: mapped.satfat_g,
+      fiber_g_100g: mapped.fiber_g,
       protein_g_100g: mapped.protein_g,
-    };
-    const flags = detectFlags(ingredients_text, flagInputs);
+    });
 
-    // Parse serving size correctly (units-aware)
-    const servingTxt = p.serving_size || raw.serving_size;
-    const { value: servingQty, unit: servingUnit } = parseServingToUnit(servingTxt);
-    const serving_g = servingUnit === 'ml' ? undefined : servingQty; // keep simple; can extend later
-
-    const per100 = mapped; // existing per-100g mapped object
-    const perServing = serving_g
-      ? {
-          energyKcal: +( (per100.energyKcal ?? 0) * (serving_g/100) ).toFixed(2),
-          protein_g:  +( (per100.protein_g  ?? 0) * (serving_g/100) ).toFixed(2),
-          carbs_g:    +( (per100.carbs_g    ?? 0) * (serving_g/100) ).toFixed(2),
-          sugar_g:    +( (per100.sugar_g    ?? 0) * (serving_g/100) ).toFixed(2),
-          fat_g:      +( (per100.fat_g      ?? 0) * (serving_g/100) ).toFixed(2),
-          satfat_g:   +( (per100.satfat_g   ?? 0) * (serving_g/100) ).toFixed(2),
-          fiber_g:    +( (per100.fiber_g    ?? 0) * (serving_g/100) ).toFixed(2),
-          sodium_mg:  +( (per100.sodium_mg  ?? 0) * (serving_g/100) ).toFixed(0),
-        }
-      : undefined;
-
-    // Score: Guard ScoreEngine, no constant default
-    const engineOn = import.meta.env.VITE_SCORE_ENGINE_V1 === 'true';
-    const engineFixes = import.meta.env.VITE_ENGINE_V1_FIXES === 'true';
-
-    const hasAny = ['energyKcal','sugar_g','sodium_mg','satfat_g','fiber_g','protein_g']
-      .some(k => per100?.[k] != null && !Number.isNaN(+(per100?.[k] || 0)));
-    
-    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-      console.info('[ADAPTER][BARCODE.ENGINE_INPUT]', {
-        engine_flag: engineOn,
-        hasAny,
-        inputs: {
-          energy_kcal_100g: mapped.energyKcal,
-          sugar_g_100g:     mapped.sugar_g,
-          sodium_mg_100g:   mapped.sodium_mg,
-          satfat_g_100g:    mapped.satfat_g,
-          fiber_g_100g:     mapped.fiber_g,
-          protein_g_100g:   mapped.protein_g,
-        }
-      });
-    }
-
+    // Score: unified engine (flag-gated), else keep legacy
     let score10: number | undefined = undefined;
-
-    if (engineOn && hasAny) {
+    if (import.meta.env.VITE_SCORE_ENGINE_V1 === 'true') {
       const res = calculateHealthScore({
         name: p.product_name || p.generic_name || '',
         nutrition: {
-          calories: per100.energyKcal,
-          protein_g: per100.protein_g,
-          carbs_g: per100.carbs_g,
-          fat_g: per100.fat_g,
-          sugar_g: per100.sugar_g,
-          fiber_g: per100.fiber_g,
-          sodium_mg: per100.sodium_mg,
-          saturated_fat_g: per100.satfat_g,
+          calories: mapped.energyKcal,
+          protein_g: mapped.protein_g,
+          carbs_g: mapped.carbs_g,
+          fat_g: mapped.fat_g,
+          sugar_g: mapped.sugar_g,
+          fiber_g: mapped.fiber_g,
+          sodium_mg: mapped.sodium_mg,
+          saturated_fat_g: mapped.satfat_g,
         },
         ingredientsText: ingredients_text,
         novaGroup: p.nova_group,
-        engineFixes       // pass through to engine
       });
-      score10 = toFinal10(res.final ?? res.score);
+      score10 = toFinal10(res.score);
     } else {
-      // No invented constants. If a legit numeric legacy exists, normalize once; else leave undefined.
-      const legacy = (p as any)?.health?.score;
-      score10 = typeof legacy === 'number' ? (legacy <= 10 ? legacy : Math.round(legacy/10)) : undefined;
-    }
+      // Legacy score mapping with grade fallbacks
+      const grade =
+        p.nutriscore_grade ||
+        p.nutrition_grade_fr ||
+        (Array.isArray(p.nutrition_grades_tags) ? p.nutrition_grades_tags[0] : undefined);
 
-    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-      console.info('[ADAPTER][BARCODE.SCORE_OUT]', {
-        score10, used_legacy_score: p?.health?.score != null
-      });
-    }
+      let legacyScore: number | null = (p.health && p.health.score != null) ? Number(p.health.score) : null;
+      if (!(isFinite(legacyScore as number) && (legacyScore as number) >= 0 && (legacyScore as number) <= 10)) {
+        legacyScore = null;
+      }
 
+      if (legacyScore === 10 && grade) {
+        const fromGrade = gradeTo10(grade);
+        if (fromGrade != null) legacyScore = fromGrade;
+      }
+
+      if (legacyScore == null && grade) {
+        legacyScore = gradeTo10(grade);
+      }
+
+      score10 = clamp10(legacyScore ?? 0);
+    }
 
     const legacy = {
       status: 'ok' as const,
-      productName: p.product_name || p.generic_name || p.brands || 'Unknown item',
-      nutriments: raw,
-      nutritionData: {
-        ...per100,
-        // legacy aliases many panels read:
-        calories: per100.energyKcal, protein: per100.protein_g, carbs: per100.carbs_g,
-        sugars_g: per100.sugar_g, fat: per100.fat_g, saturated_fat_g: per100.satfat_g,
-        fiber: per100.fiber_g, sodium: per100.sodium_mg,
-      },
-      // guaranteed per-serving alias for UI
-      nutritionDataPerServing: perServing,   // <-- canonical
-      perServing,                           // <-- keep old name as alias, harmless
-      serving_size: servingTxt,
-      flags,
-      healthScore: score10,                 // 0–10
-      _dataSource: 'openfoodfacts/barcode',
+      productName: p.productName || p.product_name || p.generic_name || 'Unknown Product',
+      healthScore: score10,
+      scoreUnit: '0-10',
+      nutritionData: mapped, // Use standardized nutrition data
       ingredientsText: ingredients_text,
       barcode: p.code || envelope.barcode || '',
       brands: p.brands || '',
-      image_url: p.image_url || p.image || '',
+      imageUrl: p.image_url || '',
       healthFlags: flags.map(f => ({
         key: f.key,
         label: f.label,
@@ -252,17 +197,8 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
     // Debug performance logging
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-      console.info('[ADAPTER][BARCODE.OUT]', {
-        healthScore: score10,
-        flags_count: flags?.length || 0,
-        per100g: { kcal: per100.energyKcal, sugar_g: per100.sugar_g, sodium_mg: per100.sodium_mg },
-        perServing: {
-          kcal: perServing?.energyKcal,
-          sugar_g: perServing?.sugar_g,
-          sodium_mg: perServing?.sodium_mg
-        },
-        serving_size: servingTxt
-      });
+      const fp = `${legacy.productName}|kcal:${mapped.energyKcal}|p:${mapped.protein_g}|flags:${flags.length}|s:${score10}`;
+      console.info('[BARCODE.output.fp]', fp);
     }
     
     console.log('[ADAPTER][BARCODE]', { name: legacy.productName, score10: legacy.healthScore, flagCount: flags.length });
