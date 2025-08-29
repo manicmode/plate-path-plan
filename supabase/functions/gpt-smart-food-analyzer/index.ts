@@ -42,7 +42,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, imageBase64, taskType = 'food_analysis', complexity = 'auto' } = await req.json().catch(() => ({}));
+    const { text, imageBase64, taskType = 'full_report', complexity = 'auto' } = await req.json().catch(() => ({}));
     
     // Early validation
     if (!text && !imageBase64) {
@@ -85,10 +85,10 @@ serve(async (req) => {
     const messages: any[] = [
       {
         role: 'system',
-        content: `You are a smart food analysis AI. Extract structured food data from user input. 
-        
-For text input: Parse food descriptions and return detailed nutrition estimates.
-For image input: Identify all visible food items with high accuracy.
+        content: `You are a comprehensive food health analyzer. Based on the taskType, provide detailed analysis.
+
+For taskType "full_report": Analyze ingredients, calculate health scores, and provide complete nutritional data.
+For taskType "food_analysis": Basic nutrition extraction only.
 
 Always respond with valid JSON in this format:
 {
@@ -103,7 +103,18 @@ Always respond with valid JSON in this format:
       "fiber": 3.0,
       "sugar": 8.5,
       "sodium": 120,
-      "serving_size": "1 medium apple"
+      "serving_size": "1 medium apple",
+      "quality": {
+        "score": 7.5
+      },
+      "ingredientsText": "apples, natural flavoring",
+      "flags": [
+        {
+          "type": "good",
+          "title": "Natural Ingredients",
+          "description": "Contains mostly whole food ingredients"
+        }
+      ]
     }
   ],
   "total_confidence": 0.95,

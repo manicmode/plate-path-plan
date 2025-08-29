@@ -9,6 +9,10 @@ export function getCorsHeaders(origin?: string | null): HeadersInit {
     'http://localhost:5173',
     'http://localhost:5174',
   ];
-  const allow = origin && allowed.includes(origin) ? origin : allowed[0];
+  
+  // Allow any lovable.dev subdomain
+  const isLovableDev = origin?.endsWith('.lovable.dev') || origin?.endsWith('.lovable.app');
+  const allow = origin && (allowed.includes(origin) || isLovableDev) ? origin : allowed[0];
+  
   return { ...baseCors, 'Access-Control-Allow-Origin': allow };
 }

@@ -335,7 +335,7 @@ export async function handleSearchPick({
     console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
 
     // Call analyzer with enriched text
-    const body = { text, taskType: 'food_analysis', complexity: 'auto' };
+    const body = { text, taskType: 'full_report' };
     
     // PARITY logging: before invoke
     console.log('[PARITY][REQ]', { source, hasText: !!body.text });
@@ -399,6 +399,20 @@ export async function handleSearchPick({
       insights: analyzerData.insights ?? analyzerData.suggestions ?? [],
       ...analyzerData
     };
+
+    // Add fallback mapping for top-level macros when nutrition object is missing
+    if (!flattened.nutrition || Object.keys(flattened.nutrition).length === 0) {
+      flattened.nutrition = {
+        calories: analyzerData?.calories || 0,
+        protein_g: analyzerData?.protein || 0,
+        carbs_g: analyzerData?.carbs || 0,
+        fat_g: analyzerData?.fat || 0,
+        fiber_g: analyzerData?.fiber || 0,
+        sugar_g: analyzerData?.sugar || 0,
+        sodium_mg: analyzerData?.sodium || 0,
+      };
+      console.log('[ANALYZER][FALLBACK] Mapped top-level macros to nutrition object');
+    }
 
     console.log('[ANALYZER][NORMALIZED]', {
       name: flattened.itemName,
