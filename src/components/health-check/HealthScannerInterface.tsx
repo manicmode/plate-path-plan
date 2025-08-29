@@ -87,7 +87,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
-  const [debugPreviewUrl, setDebugPreviewUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supported, ready, on, toggle, attach } = useTorch();
@@ -454,17 +453,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return await (scanner as any).reader.decodeFromImageElement(img);
   };
 
-  // Video readiness gate
-  const ensureVideoReady = async (video: HTMLVideoElement, ms = 2000): Promise<boolean> => {
-    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return true;
-    await new Promise<void>((resolve, reject) => {
-      const to = setTimeout(() => reject(new Error('video_not_ready_timeout')), ms);
-      const onCanPlay = () => { clearTimeout(to); video.removeEventListener('canplay', onCanPlay); resolve(); };
-      video.addEventListener('canplay', onCanPlay, { once: true });
-    });
-    return true;
-  };
-
   // Helper to convert canvas to base64 without CSP violation
   const canvasToBase64 = async (canvas: HTMLCanvasElement): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -560,10 +548,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const video = videoRef.current;
       await video.play(); // ensure >0 dimensions on iOS
       
-      // 1) Verify the camera is ready before capture
-      await ensureVideoReady(video);
-      console.log('[IMG READY]', { w: video.videoWidth, h: video.videoHeight });
-      
       // Apply zoom constraint before capture (NO auto-torch!)
       if (stream) {
         const track = stream.getVideoTracks()[0];
@@ -582,44 +566,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // Capture still image for both barcode and OCR processing
       const { canvas } = await captureStill();
       
-      // 2) Make the blob creation bullet-proof and logged
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-
-      // Resize to keep payload small; target max dim = 1280
-      const maxDim = 1280;
-      const scale = Math.min(1, maxDim / Math.max(vw, vh));
-      const outW = Math.max(1, Math.round(vw * scale));
-      const outH = Math.max(1, Math.round(vh * scale));
-
-      const resizeCanvas = document.createElement('canvas');
-      resizeCanvas.width = outW;
-      resizeCanvas.height = outH;
-      const ctx = resizeCanvas.getContext('2d', { willReadFrequently: true })!;
-      ctx.drawImage(video, 0, 0, outW, outH);
-
-      // Convert to JPEG blob with explicit quality
-      const fullBlob: Blob | null = await new Promise((res) => 
-        resizeCanvas.toBlob(res, 'image/jpeg', 0.72)
-      );
-
-      if (!fullBlob) {
-        console.warn('[IMG BLOB] null');
-        throw new Error('blob_null');
-      }
-
-      console.log('[IMG BLOB]', {
-        type: fullBlob.type,
-        sizeKB: Math.round(fullBlob.size / 1024),
-        outW, outH
+      // Convert to blob for efficient processing
+      const fullBlob = await new Promise<Blob>(resolve => {
+        canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.8);
       });
-
-      // 3) Show a tiny preview (dev only) so you see a still frame was captured
-      if (import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true') {
-        const url = URL.createObjectURL(fullBlob);
-        setDebugPreviewUrl(url);
-        console.log('[IMG PREVIEW]', { url });
-      }
       
       // Convert to base64 for compatibility
       const fullBase64 = await new Promise<string>(resolve => {
@@ -736,18 +686,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const cid = HEALTH_DEBUG && newCID ? newCID() : `photo_${Date.now()}`;
           const ctx = HEALTH_DEBUG ? { cid, tags: ['PHOTO'] } : undefined;
           
-          // 4) Prove the function URL and request actually happen
-          const fnBase = import.meta.env.VITE_FUNCTIONS_BASE ?? '/functions/v1';
-          const ocrUrl = `${fnBase}/vision-ocr`;
-          console.log('[PHOTO][FN_BASE]', { fnBase, ocrUrl });
-
-          try {
-            const probe = await fetch(ocrUrl.replace('/vision-ocr','/vision-ocr/ping'), { method: 'GET' });
-            console.log('[PHOTO][PING]', { status: probe.status });
-          } catch (e) {
-            console.warn('[PHOTO][PING_FAIL]', String(e));
-          }
-          
           let resolved = false;
           const watchdog = setTimeout(() => {
             if (!resolved) {
@@ -778,34 +716,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
             if (HEALTH_DEBUG && hlog) hlog('[OCR][HTTP] request → vision-ocr', ctx);
 
-            // 5) Post the blob with airtight logs
-            console.log('[PHOTO][FETCH_START]', { url: ocrUrl });
-
+            // Use FormData for reliable multipart handling
             const form = new FormData();
             form.append('file', new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+            
+            // Create abort controller for this specific request
+            const abortController = new AbortController();
+            const resp = await fetchWithTimeout('/functions/v1/vision-ocr', form, cid, abortController.signal);
 
-            const controller = new AbortController();
-            const fetchTimeout = setTimeout(() => controller.abort('timeout_fetch'), 15000);
-
-            let resp: Response;
-            try {
-              resp = await fetch(ocrUrl, { 
-                method: 'POST', 
-                body: form, 
-                headers: { 'x-cid': cid }, 
-                signal: controller.signal 
-              });
-              console.log('[PHOTO][FETCH_DONE]', { status: resp.status, ok: resp.ok });
-            } finally {
-              clearTimeout(fetchTimeout);
-            }
-
-            const json = await Promise.race([
-              resp.json(),
-              new Promise((_, rej) => setTimeout(() => rej(new Error('timeout_json')), 5000))
-            ]).catch((e) => ({ ok: false, reason: 'bad_json:' + String(e) }));
-
-            console.log('[PHOTO][OCR][RESP]', json);
+            // Parse JSON with separate timeout
+            const json = await jsonWithTimeout(resp).catch((e) => {
+              if (DEBUG) console.warn('[PHOTO][JSON] Parse timeout or error:', e);
+              return { ok: false, reason: 'bad_json' };
+            });
             
             if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
             if (HEALTH_DEBUG && hlog) hlog('[OCR][RESP] payload', ctx, { ok: !!json?.ok, textLen: json?.text?.length ?? 0, reason: json?.reason });
@@ -912,7 +835,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
             // Success: show the report
             onCapture({
-              imageBase64: fullBase64.split(',')[1],
+              imageBase64: prep.base64NoPrefix,
               detectedBarcode: null
             });
             
@@ -941,6 +864,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             if (DEBUG) console.info('[PHOTO][RESOLVED]', { cid });
           }
         }
+
+        // Compress image for OCR
+        const prep = await prepareImageForAnalysis(fullBlob, { 
+          maxEdge: 1280, 
+          quality: 0.7, 
+          targetMaxBytes: 900_000 
+        });
 
         // Run the safe photo analysis with all safeguards
         try {
@@ -1447,56 +1377,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               backgroundSize: '30px 30px'
             }}></div>
           </div>
-
-          {/* Debug controls for photo flow testing */}
-          {import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true' && (
-            <div className="absolute top-4 left-4 flex gap-2 z-10">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  console.log('[SELF-TEST] Success simulation');
-                  onAnalysisSuccess?.();
-                }}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                Test Success
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  console.log('[SELF-TEST] Fail simulation');
-                  onAnalysisFail?.('self_test_fail');
-                }}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                Test Fail
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  console.log('[SELF-TEST] Timeout simulation');
-                  onAnalysisTimeout?.();
-                }}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                Test Timeout
-              </Button>
-            </div>
-          )}
-
-          {/* Debug preview for captured image */}
-          {import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true' && debugPreviewUrl && (
-            <div className="fixed bottom-4 right-4 z-20">
-              <img 
-                src={debugPreviewUrl} 
-                alt="Debug capture preview" 
-                className="w-20 h-20 object-cover rounded border-2 border-green-500" 
-              />
-            </div>
-          )}
 
         </main>
 
