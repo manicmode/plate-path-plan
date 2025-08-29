@@ -1397,28 +1397,103 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
     // Early return for barcode - trust adapter values completely
     if (isBarcode) {
-      const nutritionData = legacy.nutritionData || {};
-      const flags = Array.isArray(legacy.flags) ? legacy.flags : [];
+      // --- Pull from adapter (authoritative for barcode) ---
+      const name = legacy.productName || legacy.label || 'Unknown item';
 
+      // 1) SCORE: adapter emits top-level healthScore (0–10). Also allow nested health.score.
+      const score10 =
+        legacy.healthScore ??
+        legacy.health?.score ??
+        (typeof legacy.health === 'number' ? legacy.health : undefined);
+
+      // 2) FLAGS → UI shape (ingredientFlags). Adapter flags are deterministic rules.
+      const rawFlags = Array.isArray(legacy.flags) ? legacy.flags : [];
+      const ingredientFlags = rawFlags.map((f: any) => ({
+        ingredient: f.title || f.label || f.code || f.ingredient || 'Ingredient',
+        flag: f.reason || f.description || f.label || f.code || '',
+        severity:
+          /high|danger/i.test(f.severity) ? 'high' :
+          /med|warn/i.test(f.severity)   ? 'medium' : 'low',
+      }));
+
+      // 3) NUTRITION: per-100g + per-serving
+      const nd100 = legacy.nutritionData || {};
+      // OFF sometimes provides *_serving; if not, derive from serving size when possible.
+      const servingTxt = legacy.serving_size || legacy.servingSize || legacy.nutriments?.serving_size;
+      const serving_g =
+        legacy.serving_size_g ??
+        legacy.servingSize_g ??
+        (typeof servingTxt === 'string'
+          ? (parseFloat(servingTxt) || undefined)
+          : undefined);
+
+      function derivePerServing(key100: string, keyServing?: string) {
+        const valServing = legacy.nutriments?.[keyServing || `${key100.replace('_100g', '')}_serving`];
+        if (valServing != null && !Number.isNaN(+valServing)) return +valServing;
+        const val100 = nd100[key100];
+        if (serving_g != null && val100 != null) return +(val100 * (serving_g / 100)).toFixed(2);
+        return undefined;
+      }
+
+      const nutritionDataPerServing = {
+        energyKcal: derivePerServing('energyKcal', 'energy-kcal_serving'),
+        protein_g:  derivePerServing('protein_g', 'proteins_serving'),
+        carbs_g:    derivePerServing('carbs_g', 'carbohydrates_serving'),
+        sugar_g:    derivePerServing('sugar_g', 'sugars_serving'),
+        fat_g:      derivePerServing('fat_g', 'fat_serving'),
+        satfat_g:   derivePerServing('satfat_g', 'saturated-fat_serving'),
+        fiber_g:    derivePerServing('fiber_g', 'fiber_serving'),
+        sodium_mg:  derivePerServing('sodium_mg', 'sodium_serving')
+      };
+
+      // 4) Build final report object with both shapes and aliases
       const report = {
         source: 'barcode',
-        title: legacy.productName || legacy.label || 'Unknown item',
+        title: name,
         image_url: legacy.image_url,
         brands: legacy.brands,
-        health: { score: legacy.health?.score, unit: '0-10' }, // keep adapter score
-        flags,                                                // keep adapter flags
-        nutritionData,                                       // UI path A
-        nutrition: { nutritionData },                        // UI path B (compat)
+
+        // score kept exactly as adapter computed
+        health: { score: score10, unit: '0-10' },
+
+        // flags panel expects ingredientFlags
+        ingredientFlags,
+
+        // nutrition per 100g (canonical + UI aliases)
+        nutritionData: {
+          ...nd100,
+          calories: nd100.energyKcal,
+          protein: nd100.protein_g,
+          carbs: nd100.carbs_g,
+          sugars_g: nd100.sugar_g,
+          fat: nd100.fat_g,
+          saturated_fat_g: nd100.satfat_g,
+          fiber: nd100.fiber_g,
+          sodium: nd100.sodium_mg
+        },
+
+        // nutrition per serving for the UI
+        nutritionDataPerServing,
+
+        // keep old nesting some components may read
+        nutrition: { nutritionData: { ...nd100 } },
+
+        // helpful metadata
+        serving_size: servingTxt,
+        serving_size_g: serving_g,
+        _dataSource: legacy._dataSource || 'openfoodfacts/barcode'
       };
 
       if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-        const nd = nutritionData || {};
+        const nd = report.nutritionData || {};
+        const ns = report.nutritionDataPerServing || {};
         console.info('[REPORT][FINAL][BARCODE]', {
-          title: report.title, score: report.health?.score,
-          flagsCount: report.flags?.length ?? 0,
-          kcal: nd.energyKcal, protein: nd.protein_g, carbs: nd.carbs_g,
-          sugar: nd.sugar_g, fat: nd.fat_g, satfat: nd.satfat_g,
-          fiber: nd.fiber_g, sodium_mg: nd.sodium_mg
+          title: report.title,
+          score: report.health?.score,
+          flagsCount: report.ingredientFlags?.length ?? 0,
+          per100g: { kcal: nd.energyKcal, sugar: nd.sugar_g, sodium_mg: nd.sodium_mg },
+          perServing: { kcal: (ns as any).energyKcal, sugar: (ns as any).sugar_g, sodium_mg: (ns as any).sodium_mg },
+          serving_size: report.serving_size
         });
       }
 
@@ -1431,44 +1506,17 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         label: itemName
       });
 
-      const ingredientFlags = flags.map((f: any) => ({
-        ingredient: f.label || f.key || f.code || 'Ingredient',
-        flag: f.description || f.label || '',
-        severity: (f.severity === 'high' || f.level === 'danger' ? 'high' : 
-                  f.severity === 'medium' || f.level === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high',
-        reason: f.reason,
-      }));
-
       const analysisResult: HealthAnalysisResult = {
         itemName,
         productName: itemName,
         title: itemName,
-        healthScore: report.health?.score ?? 0,
+        healthScore: score10 ?? 0,
         ingredientsText: legacy.ingredientsText,
         ingredientFlags,
         flags: ingredientFlags, // Set both properties so UI can find them
-        nutritionData: {
-          ...nutritionData,
-          // Add legacy aliases for UI compatibility
-          calories: nutritionData.energyKcal || nutritionData.calories || 0,
-          protein: nutritionData.protein_g || nutritionData.protein || 0,
-          carbs: nutritionData.carbs_g || nutritionData.carbs || 0,
-          fat: nutritionData.fat_g || nutritionData.fat || 0,
-          fiber: nutritionData.fiber_g || nutritionData.fiber || 0,
-          sugar: nutritionData.sugar_g || nutritionData.sugar || 0,
-          sodium: nutritionData.sodium_mg || nutritionData.sodium || 0,
-        },
+        nutritionData: report.nutritionData,
         // Provide both nutrition shapes for UI compatibility
-        nutrition: { nutritionData: {
-          ...nutritionData,
-          calories: nutritionData.energyKcal || nutritionData.calories || 0,
-          protein: nutritionData.protein_g || nutritionData.protein || 0,
-          carbs: nutritionData.carbs_g || nutritionData.carbs || 0,
-          fat: nutritionData.fat_g || nutritionData.fat || 0,
-          fiber: nutritionData.fiber_g || nutritionData.fiber || 0,
-          sugar: nutritionData.sugar_g || nutritionData.sugar || 0,
-          sodium: nutritionData.sodium_mg || nutritionData.sodium || 0,
-        }},
+        nutrition: { nutritionData: report.nutritionData },
         healthProfile: {
           isOrganic: legacy.ingredientsText?.includes('organic') || false,
           isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1491,10 +1539,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         },
         personalizedWarnings: [],
         suggestions: ingredientFlags.filter(f => f.severity === 'medium').map(f => f.flag),
-        overallRating: (report.health?.score ?? 0) >= 8 ? 'excellent' : 
-                      (report.health?.score ?? 0) >= 6 ? 'good' : 
-                      (report.health?.score ?? 0) >= 4 ? 'fair' : 
-                      (report.health?.score ?? 0) >= 2 ? 'poor' : 'avoid'
+        overallRating: (score10 ?? 0) >= 8 ? 'excellent' : 
+                      (score10 ?? 0) >= 6 ? 'good' : 
+                      (score10 ?? 0) >= 4 ? 'fair' : 
+                      (score10 ?? 0) >= 2 ? 'poor' : 'avoid'
       };
 
       setAnalysisResult(analysisResult);
@@ -1504,7 +1552,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if (user?.id) {
         triggerDailyScoreCalculation(user.id);
       }
-      return; // ⬅️ IMPORTANT: do not run any enrichment below
+      return; // IMPORTANT: skip any enrichment below
     }
 
     // Non-barcode processing continues below...
