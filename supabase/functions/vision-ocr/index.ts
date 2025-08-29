@@ -22,6 +22,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response(null, { status: 204, headers: cors });
   }
 
+  // Handle ping endpoint for connectivity testing
+  if (new URL(req.url).pathname.endsWith('/ping')) {
+    return new Response(JSON.stringify({ ok: true, timestamp: new Date().toISOString() }), { 
+      status: 200, 
+      headers: { ...cors, 'content-type': 'application/json' } 
+    });
+  }
+
   const DEBUG = Deno.env.get('HEALTH_DEBUG_SAFE') === 'true';
   const cid = req.headers.get('x-cid') ?? crypto.randomUUID();
 
