@@ -159,6 +159,8 @@ async function enrichBarcodeReport(legacy: {
       : (typeof n['salt_100g'] === 'number' ? n['salt_100g'] * 400 * 1000 : undefined)
   };
 
+  console.log('[BARCODE][NUTRITION][FOR_ANALYZER]', { forAnalyzer });
+
   // 1) Ask the same analyzer used by manual/speak to compute score + flags
   const ar = await analyzeProductForQuality({
     name: legacy.productName,
@@ -168,7 +170,7 @@ async function enrichBarcodeReport(legacy: {
 
   // 2) Decide score:
   //    a) analyzer quality.score (0..10 expected by manual/speak path)
-  //    b) OFF Nutri-Score mapping (fallback)
+  //    b) OFF Nutri-Score mapping (fallback)  
   //    c) keep current if neither (but clamp)
   let score10: number | null = null;
 
@@ -187,10 +189,17 @@ async function enrichBarcodeReport(legacy: {
     if (mapped != null) score10 = mapped;
   }
 
-  // 3) Flags: prefer analyzer flags; otherwise leave empty (no bogus placeholders)
+  // 3) Flags: prefer analyzer flags; otherwise leave empty (no bogus placeholders)  
   const flags = (ar?.ingredientFlags && Array.isArray(ar.ingredientFlags) ? ar.ingredientFlags
                : (ar?.flags && Array.isArray(ar.flags) ? ar.flags
                : []));
+
+  console.log('[BARCODE][ENRICHMENT]', { 
+    score10, 
+    flagsCount: flags.length,
+    analyzerScore: ar?.quality?.score,
+    offNutriRaw: n['nutrition-score-fr_100g'] ?? n['nutrition-score-uk_100g'] ?? n['nutriscore_score']
+  });
 
   return { score10, flags, analyzerInsights: ar?.insights || [] };
 }
@@ -222,6 +231,12 @@ export interface HealthAnalysisResult {
     severity: 'low' | 'medium' | 'high';
     reason?: string;
   }>;
+  flags?: Array<{
+    ingredient: string;
+    flag: string;
+    severity: 'low' | 'medium' | 'high';
+    reason?: string;
+  }>; // Alias for ingredientFlags to ensure UI compatibility
   nutritionData: {
     calories?: number;
     protein?: number;
@@ -1495,16 +1510,21 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     // Extract nutrition data using helper
     const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
+    console.log('[REPORT][NUTRITION]', { nutritionData });
     
     const ingredientsText = legacy.ingredientsText;
+
+    // Use the already-processed ingredientFlags for final flags
+    const finalFlags = ingredientFlags;
     
     const analysisResult: HealthAnalysisResult = {
       itemName,
       productName: itemName,
       title: itemName,
-      healthScore: finalScore10 * 10, // Convert back to 0-100 for display
+      healthScore: finalScore10, // Keep as 0-10 scale
       ingredientsText,
-      ingredientFlags,
+      ingredientFlags: finalFlags,
+      flags: finalFlags, // Set both properties so UI can find them
       nutritionData: nutritionData || {},
       healthProfile: {
         isOrganic: ingredientsText?.includes('organic') || false,

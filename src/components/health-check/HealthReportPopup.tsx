@@ -134,7 +134,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   }, [result?.nutritionData]);
 
   const flagsSummary = useMemo(() => {
-    const flags = result?.ingredientFlags || [];
+    // Check both flags and ingredientFlags properties for analyzer results
+    const flags = result?.flags ?? result?.ingredientFlags ?? [];
+    console.log('[REPORT][FLAGS]', { count: flags?.length ?? 0 });
     return {
       total: flags.length,
       high: flags.filter(f => f.severity === 'high').length,
@@ -142,10 +144,12 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
       low: flags.filter(f => f.severity === 'low').length,
       flags: flags.slice(0, 5) // Limit to first 5 for performance
     };
-  }, [result?.ingredientFlags]);
+  }, [result?.flags, result?.ingredientFlags]);
 
   const healthPercentage = useMemo(() => {
-    return Math.round((result?.healthScore || 0) * 10);
+    // Expect healthScore on a 0..10 scale for barcode or 0..100 for other sources
+    const score10 = Math.max(0, Math.min(10, Number(result?.healthScore) || 0));
+    return Math.round(score10 * 10); // Convert to percentage for display
   }, [result?.healthScore]);
 
   // Defer non-critical sections using requestIdleCallback
@@ -254,7 +258,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   };
 
   const getStarRating = (score: number) => {
-    return Math.round((score / 10) * 5);
+    // Normalize score to 0-10 range first, then convert to 0-5 stars
+    const score10 = Math.max(0, Math.min(10, Number(score) || 0));
+    return Math.round(score10 / 2); // 0..5 stars
   };
 
   const hasValidNutrition = (nutrition: any): boolean => {
@@ -297,7 +303,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             
             {/* Health Score Circular Progress */}
             <div className="mb-4">
-              <CircularProgress percentage={result.healthScore * 10} size={140} strokeWidth={10} />
+              <CircularProgress percentage={healthPercentage} size={140} strokeWidth={10} />
             </div>
             <div className="text-sm text-foreground font-medium mb-6">Health Score</div>
             
@@ -335,22 +341,22 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
               <h3 className="text-xl font-bold text-foreground flex items-center">
                 <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mr-3" />
                 Flagged Ingredients
-                {result.ingredientFlags.length > 0 && (
+                {flagsSummary.total > 0 && (
                   <Badge variant="destructive" className="ml-2">
-                    {result.ingredientFlags.length} warning{result.ingredientFlags.length > 1 ? 's' : ''}
+                    {flagsSummary.total} warning{flagsSummary.total > 1 ? 's' : ''}
                   </Badge>
                 )}
               </h3>
             </CardHeader>
             <CardContent>
-            {result.ingredientFlags.length > 0 ? (
+            {flagsSummary.total > 0 ? (
               <div className="space-y-4">
                 {/* Warning Summary */}
                 <div className="p-4 bg-destructive/10 border-l-4 border-destructive rounded-lg">
                   <div className="flex items-center">
                     <AlertTriangle className="w-5 h-5 text-destructive mr-2" />
                     <p className="text-destructive-foreground font-semibold">
-                      This product contains {result.ingredientFlags.length} ingredient{result.ingredientFlags.length > 1 ? 's' : ''} 
+                      This product contains {flagsSummary.total} ingredient{flagsSummary.total > 1 ? 's' : ''} 
                       that may not align with your health profile.
                     </p>
                   </div>
@@ -358,7 +364,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
 
                 {/* Detailed Flagged Ingredients */}
                 <div className="space-y-3">
-                  {result.ingredientFlags.map((flag, index) => {
+                  {flagsSummary.flags.map((flag, index) => {
                     const getSeverityColor = (severity: string) => {
                       switch (severity.toLowerCase()) {
                         case 'high': return { bg: 'bg-destructive/10 border-destructive/30', text: 'text-destructive-foreground', icon: 'text-destructive' };
