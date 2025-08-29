@@ -627,7 +627,27 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // 2) No barcode found - proceed with OCR/image analysis
       if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
         const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
+        const HEALTH_DEBUG = import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true';
         const OCR_TIMEOUT_MS = 15000;
+
+        // Import health diagnostics if debug enabled
+        let hlog: any, newCID: any, safeScore: any, runFlagsEngine: any;
+        if (HEALTH_DEBUG) {
+          try {
+            const logger = await import('@/lib/health/logger');
+            const scorer = await import('@/lib/health/score');
+            const flagger = await import('@/lib/health/flags');
+            hlog = logger.hlog;
+            newCID = logger.newCID;
+            safeScore = scorer.safeScore;
+            runFlagsEngine = flagger.runFlagsEngine;
+          } catch (e) {
+            console.warn('[HEALTH] Debug imports failed, continuing without diagnostics:', e);
+          }
+        }
+
+        const cid = HEALTH_DEBUG && newCID ? newCID() : undefined;
+        const ctx = HEALTH_DEBUG ? { cid, tags: ['PHOTO'] } : undefined;
 
         async function runVisionOCR(imageBase64: string) {
           let timeoutId: any;
@@ -636,16 +656,21 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           });
 
           if (DEBUG) console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
+          if (HEALTH_DEBUG && hlog) hlog('[OCR][HTTP] request → vision-ocr', ctx);
 
           try {
             const ocrPromise = supabase.functions.invoke('vision-ocr', {
-              body: { imageBase64 }
+              body: { imageBase64 },
+              headers: cid ? { 'x-cid': cid } : undefined
             });
 
             const result = await Promise.race([ocrPromise, timeoutPromise]);
             clearTimeout(timeoutId);
 
             const { data, error } = result as any;
+
+            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: !!data?.ok, textLen: data?.text?.length ?? 0, reason: data?.reason });
+            if (HEALTH_DEBUG && hlog) hlog('[OCR][RESP] payload', ctx, { ok: !!data?.ok, textLen: data?.text?.length ?? 0, reason: data?.reason });
 
             if (error) {
               if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: false, reason: 'invoke_error', error });
@@ -660,7 +685,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               return { ok: false as const, reason: data.reason || 'provider_error' };
             }
 
-            if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: true, textLen: data.text?.length ?? 0 });
             return { ok: true as const, text: String(data.text || '') };
           } catch (err: any) {
             clearTimeout(timeoutId);
@@ -677,20 +701,77 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           targetMaxBytes: 900_000 
         });
 
+        if (HEALTH_DEBUG && hlog) hlog('Start capture', ctx);
+
         let ocrResult;
         try {
           ocrResult = await runVisionOCR(prep.base64NoPrefix);
           if (ocrResult.ok) {
             // Build unified report exactly like barcode/manual
             const { toLegacyFromPhoto } = await import('@/lib/health/toLegacyFromPhoto');
+            const { parseNutritionFromOCR } = await import('@/lib/health/parseNutritionPanel');
+            
+            // Parse nutrition data
+            const parsed = parseNutritionFromOCR(ocrResult.text);
+            if (HEALTH_DEBUG && hlog) hlog('[PARSE] nutrition profile', ctx, parsed);
+
             const legacy = toLegacyFromPhoto(ocrResult.text);
+
+            // Enhanced scoring if debug enabled
+            let enhancedScore = legacy.healthScore;
+            if (HEALTH_DEBUG && safeScore && parsed?.per100) {
+              const scoreIn = {
+                calories_per_serving: parsed.perServing?.energyKcal,
+                sugar_g_per_100g: parsed.per100?.sugar_g,
+                satfat_g_per_100g: parsed.per100?.satfat_g,
+                sodium_mg_per_100g: parsed.per100?.sodium_mg,
+                fiber_g_per_100g: parsed.per100?.fiber_g,
+                protein_g_per_100g: parsed.per100?.protein_g,
+                ultra_processed: false // Would need ingredient analysis for this
+              };
+              
+              if (hlog) hlog('[SCORE_IN]', ctx, scoreIn);
+              
+              try {
+                const scoreOut = await safeScore(scoreIn);
+                if (hlog) hlog('[SCORE_OUT]', ctx, scoreOut);
+                enhancedScore = scoreOut.finalScore / 10; // Convert to 0-10 scale
+              } catch (e) {
+                console.warn('[HEALTH] Safe scoring failed:', e);
+              }
+            }
+
+            // Enhanced flags if debug enabled
+            let enhancedFlags = legacy.flags;
+            if (HEALTH_DEBUG && runFlagsEngine) {
+              if (hlog) hlog('[FLAGS_IN] ingredients + facts', ctx, { 
+                ingredients: parsed?.ingredients_text, 
+                facts: parsed?.per100 
+              });
+              
+              try {
+                const newFlags = runFlagsEngine({ ...parsed, facts: parsed?.per100 });
+                if (hlog) hlog('[FLAGS_OUT]', ctx, newFlags);
+                
+                // Convert to legacy format
+                enhancedFlags = newFlags.map((f: any) => ({
+                  title: f.code,
+                  reason: f.reason,
+                  severity: f.severity,
+                  label: f.code,
+                  description: f.reason
+                }));
+              } catch (e) {
+                console.warn('[HEALTH] Enhanced flags failed:', e);
+              }
+            }
             
             const report = {
               source: 'photo',
               title: legacy.productName,
               image_url: fullBase64,
-              health: { score: legacy.healthScore, unit: '0-10' },
-              ingredientFlags: (legacy.flags || []).map((f: any) => ({
+              health: { score: enhancedScore || legacy.healthScore, unit: '0-10' },
+              ingredientFlags: (enhancedFlags || legacy.flags || []).map((f: any) => ({
                 ingredient: f.title || f.label || f.code || 'Ingredient',
                 flag: f.reason || f.description || f.label || '',
                 severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
@@ -719,6 +800,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               serving: report.serving_size,
             });
 
+            if (HEALTH_DEBUG && hlog) hlog('[FINAL]', ctx, report);
+
             // Pass the report data in a compatible way
             onCapture({
               imageBase64: prep.base64NoPrefix,
@@ -728,9 +811,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           } else {
             // Graceful failure path - fall back to legacy pipeline
             if (DEBUG) console.warn('[PHOTO] Vision OCR failed, falling back to legacy:', ocrResult.reason);
+            if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, ocrResult.reason);
           }
         } catch (error) {
           if (DEBUG) console.warn('[PHOTO] OCR pipeline exception, falling back to legacy:', error);
+          if (HEALTH_DEBUG && hlog) hlog('FAIL', { ...ctx, tags: ['PHOTO','FAIL'] }, String(error));
         }
       }
 
