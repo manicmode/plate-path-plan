@@ -27,8 +27,8 @@ import { mark, measure } from '@/lib/perf';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
-// Robust score extractor (0–100)
-function extractScore(raw: unknown): number | undefined {
+// Robust score extractor (0–100) with scoreUnit handling
+function extractScore(raw: unknown, scoreUnit?: string): number | undefined {
   const candidate =
     raw && typeof raw === 'object' ? (raw as any).score ?? (raw as any).value ?? raw : raw;
   if (candidate == null) return undefined;
@@ -44,11 +44,17 @@ function extractScore(raw: unknown): number | undefined {
 
   const n = Number(s);
   if (!Number.isFinite(n)) return undefined;
+  
+  // Trust 0-10 scores, convert others
+  if (scoreUnit === '0-10') {
+    return Math.max(0, Math.min(100, n * 10)); // 0-10 to 0-100
+  }
+  
   const pct = n <= 1 ? n * 100 : n;           // accept 0–1 and 0–100
   return Math.max(0, Math.min(100, pct));     // clamp
 }
 
-// Helper function to extract nutrition data safely
+// Extract nutrition data with 7-field mapping for OFF
 function extractNutritionData(nutritionData: any) {
   if (!nutritionData || typeof nutritionData !== 'object') {
     return {
@@ -62,22 +68,23 @@ function extractNutritionData(nutritionData: any) {
     };
   }
 
-  // Handle both direct values and per-100g values from OFF
-  const getValue = (key: string, per100gKey?: string) => {
-    const directValue = nutritionData[key];
-    const per100gValue = per100gKey ? nutritionData[per100gKey] : undefined;
-    return directValue !== undefined ? directValue : (per100gValue || 0);
-  };
+  const n = nutritionData;
+  const kcal = typeof n['energy-kcal_100g'] === 'number'
+    ? n['energy-kcal_100g']
+    : (typeof n['energy_100g'] === 'number' ? n['energy_100g'] * 0.239005736 : 0);
 
   return {
-    calories: getValue('calories', 'energy-kcal_100g') || getValue('energy_kcal') || getValue('energy-kcal_serving') || 0,
-    protein: getValue('protein', 'proteins_100g') || getValue('proteins') || 0,
-    carbs: getValue('carbs', 'carbohydrates_100g') || getValue('carbohydrates') || 0,
-    fat: getValue('fat', 'fat_100g') || 0,
-    fiber: getValue('fiber', 'fiber_100g') || 0,
-    sugar: getValue('sugar', 'sugars_100g') || getValue('sugars') || 0,
-    sodium: getValue('sodium', 'sodium_100g') || 
-           (nutritionData['salt_100g'] ? nutritionData['salt_100g'] * 400 : 0) || 0,
+    calories: Number(kcal) || 0,
+    protein:  Number(n['proteins_100g']) || 0,
+    carbs:    Number(n['carbohydrates_100g']) || 0,
+    fat:      Number(n['fat_100g']) || 0,
+    sugar:    Number(n['sugars_100g']) || 0,
+    fiber:    Number(n['fiber_100g']) || 0,
+    sodium:   (() => {
+      if (typeof n['sodium_100g'] === 'number') return n['sodium_100g'] * 1000; // g→mg
+      if (typeof n['salt_100g'] === 'number')   return n['salt_100g'] * 400 * 1000;
+      return 0;
+    })()
   };
 }
 
@@ -1342,12 +1349,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       label: itemName
     });
     
-    // PATCH 3: Fixed score handling - never re-scale when flagged as 0-10
+    console.log('[REPORT][BARCODE]', { scoreUnit: legacy.scoreUnit });
+    
+    // Fixed score handling - never re-scale when flagged as 0-10
     const rawLegacyScore = Number(legacy?.healthScore);
     const score10 =
       legacy?.scoreUnit === '0-10'
         ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
-        : extractScore(rawLegacyScore) ? extractScore(rawLegacyScore)! / 10 : 0; // used by non-barcode paths only
+        : extractScore(rawLegacyScore, legacy?.scoreUnit) ? extractScore(rawLegacyScore, legacy?.scoreUnit)! / 10 : 0;
     
     // Extract nutrition data using helper
     const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});

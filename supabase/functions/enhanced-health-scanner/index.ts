@@ -2,6 +2,14 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
+// Helper for json response
+function json200(obj: any) { 
+  return new Response(JSON.stringify(obj), { 
+    status: 200, 
+    headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } 
+  }); 
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -27,7 +35,7 @@ serve(async (req) => {
     // Handle mode: "scan" - basic photo analysis for UI flow  
     if (mode === 'scan') {
       // This would typically do image analysis, but for now return a basic structure
-      return new Response(JSON.stringify({
+      return json200({
         ok: true,
         fallback: false,
         mode: 'scan',
@@ -46,9 +54,6 @@ serve(async (req) => {
         },
         ingredientsText: 'Ingredients may vary',
         flags: []
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
       });
     }
 
@@ -65,9 +70,19 @@ serve(async (req) => {
       }
 
       if (offResult?.status === 1 && offResult?.product) {
-        const p = offResult.product;
+        const p = offResult.product ?? {};
+        const to10 = (v: any) => {
+          const n = Number(v);
+          if (!isFinite(n)) return 0;
+          if (n <= 1) return Math.max(0, Math.min(10, n * 10));
+          if (n > 10) return Math.max(0, Math.min(10, n / 10));
+          return Math.max(0, Math.min(10, n));
+        };
+        const normalizedScore = to10(p.nutriscore_score ?? 0);
 
-        const payload = {
+        console.log('[EDGE][BARCODE]', { hasNutriments: !!p.nutriments, score: normalizedScore });
+
+        return json200({
           ok: true,
           fallback: false,
           mode: 'barcode',
@@ -75,37 +90,26 @@ serve(async (req) => {
           product: {
             productName: p.product_name || p.generic_name || `Product ${barcode}`,
             ingredients_text: p.ingredients_text || '',
-            nutriments: p.nutriments || {},
-            health: { score: normalizeScore(p.nutriscore_score ?? 0) },
+            nutriments: p.nutriments || {},     // raw OFF object
+            health: { score: normalizedScore }, // 0..10
             brands: p.brands || '',
             image_url: p.image_front_url || p.image_url || '',
             code: barcode
           }
-        };
-
-        return new Response(JSON.stringify(payload), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
         });
       }
 
       // OFF miss
-      return new Response(JSON.stringify({
+      return json200({
         ok: false, fallback: true, error: 'Product not found', barcode
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Default response for unknown modes
-    return new Response(JSON.stringify({
+    // Default response for unknown modes - never return 4xx
+    return json200({
       ok: false,
       error: 'Unknown mode or insufficient data',
       fallback: true
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {

@@ -320,17 +320,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return canvas;
   };
 
-  // Crop ROI in video pixel space (center 70% × 35% - tighter band)
+  // Fixed ROI calculation
+  function computeRoi(viewW: number, viewH: number) {
+    const size = Math.min(viewW, viewH) * 0.7; // square ROI centered
+    const roiW = size;
+    const roiH = size;
+    const left = (viewW - roiW) / 2;
+    const top  = (viewH - roiH) / 2;
+    return { roiW, roiH, left, top };
+  }
+
+  // Crop ROI in video pixel space
   const cropReticleROI = (src: HTMLCanvasElement): HTMLCanvasElement => {
     const w = src.width, h = src.height;
-    const roiW = Math.round(w * ROI.widthPct);
-    const roiH = Math.round(h * ROI.heightPct);
-    const x = Math.round((w - roiW) / 2);
-    const y = Math.round((h - roiH) / 2);
+    const roi = computeRoi(w, h);
     const out = document.createElement('canvas');
-    out.width = roiW; 
-    out.height = roiH;
-    out.getContext('2d')!.drawImage(src, x, y, roiW, roiH, 0, 0, roiW, roiH);
+    out.width = roi.roiW; 
+    out.height = roi.roiH;
+    out.getContext('2d')!.drawImage(src, roi.left, roi.top, roi.roiW, roi.roiH, 0, 0, roi.roiW, roi.roiH);
     return out;
   };
 
@@ -922,13 +929,27 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       <div className="relative flex flex-col min-h-dvh bg-black">
 
         {/* camera/video area */}
-        <main className="flex-1 relative overflow-hidden">
+        <main 
+          className="flex-1 relative overflow-hidden"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            height: '100dvh',              // iOS dynamic viewport
+            overflow: 'hidden'
+          }}
+        >
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: 'translateZ(0)'     // prevent black frames on iOS
+            }}
+            className={`transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
           />
           
           {/* Shutter flash effect */}
