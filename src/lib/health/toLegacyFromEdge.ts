@@ -12,7 +12,7 @@ const pickName = (...vals: Array<unknown>) =>
 function extractName(edge: any): string | undefined {
   const p = edge?.product ?? edge;
 
-  // Try all common OFF + normalized fields
+  // Try all common OFF + normalized fields + itemName fallback
   const name = pickName(
     p?.displayName,
     p?.name,
@@ -23,7 +23,9 @@ function extractName(edge: any): string | undefined {
     p?.generic_name_en,
     p?.generic_name,
     edge?.productName, // some functions return this top-level
-    edge?.name
+    edge?.name,
+    p?.itemName,            // new-schema fallback
+    edge?.itemName          // top-level itemName fallback
   ) ?? (
     // brand + product_name fallback
     p?.brands && p?.product_name
@@ -86,8 +88,18 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
     (Array.isArray(p?.ingredients) ? p.ingredients.join(", ") : null) ??
     null;
 
-  const healthScore =
-    p?.health?.score ?? envelope?.health?.score ?? null;
+  // Extract health score with quality.score fallback
+  const extractScore = (env: any, p: any) => {
+    const direct = p?.health?.score ?? env?.health?.score;
+    if (typeof direct === 'number') return direct;
+
+    const quality = p?.quality?.score ?? env?.quality?.score;
+    if (typeof quality === 'number') return quality;
+
+    return null;
+  };
+
+  const healthScore = extractScore(envelope, p);
 
   const healthFlags =
     coerceFlags(p?.health?.flags ?? envelope?.health?.flags ?? envelope?.healthFlags);

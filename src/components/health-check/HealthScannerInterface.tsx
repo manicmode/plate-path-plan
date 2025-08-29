@@ -498,7 +498,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           const { toast } = await import('@/components/ui/sonner');
           toast.success(`[HS] off_result: ${!!data ? 'hit' : 'miss'}`);
         }
-        if (data && !error) { 
+        // Legacy: Barcode path - validate response has usable data
+        const hasName = 
+          !!data?.product?.productName || !!data?.product?.itemName || !!data?.itemName;
+        const hasBarcode = !!data?.barcode || !!data?.product?.barcode;
+        
+        if (!error && data?.ok && (hasName || hasBarcode) && data?.fallback !== true) {
           // Convert to base64 for result
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -515,6 +520,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           setIsFrozen(false);
           console.timeEnd('[HS] analyze_total');
           return; 
+        } else {
+          console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
+            ok: data?.ok, hasName, hasBarcode, fallback: data?.fallback
+          });
+          // let the normal analyzer path run
         }
       }
 
@@ -537,7 +547,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           body: { mode: 'barcode', barcode: winner.raw, source: 'health' }
         });
         console.log('[HS] off_result', { status: error ? 'error' : 200, hit: !!data });
-        if (data && !error) { 
+        // Legacy: Barcode path - validate response has usable data  
+        const hasName = 
+          !!data?.product?.productName || !!data?.product?.itemName || !!data?.itemName;
+        const hasBarcode = !!data?.barcode || !!data?.product?.barcode;
+        
+        if (!error && data?.ok && (hasName || hasBarcode) && data?.fallback !== true) {
           const still = await captureStillFromVideo(video);
           const fullBlob: Blob = await new Promise((resolve, reject) => {
             still.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
@@ -553,6 +568,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           setIsFrozen(false);
           console.timeEnd('[HS] analyze_total');
           return; 
+        } else {
+          console.warn('[HS][BARCODE] Legacy preflight insufficient, falling back to normal image analysis', {
+            ok: data?.ok, hasName, hasBarcode, fallback: data?.fallback
+          });
+          // let the normal analyzer path run
         }
       }
 
