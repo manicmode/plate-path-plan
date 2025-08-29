@@ -88,13 +88,17 @@ export function toLegacyFromEdge(edge: any): LegacyRecognized {
     (Array.isArray(p?.ingredients) ? p.ingredients.join(", ") : null) ??
     null;
 
-  // Extract health score with quality.score fallback
+  // Extract health score with quality.score fallback and scale normalization
   const extractScore = (env: any, p: any) => {
-    const direct = p?.health?.score ?? env?.health?.score;
-    if (typeof direct === 'number') return direct;
-
-    const quality = p?.quality?.score ?? env?.quality?.score;
-    if (typeof quality === 'number') return quality;
+    let score = p?.health?.score ?? env?.health?.score ?? p?.quality?.score ?? env?.quality?.score;
+    
+    if (typeof score === 'number') {
+      // Scale normalization: ensure 0-10 range for legacy compatibility
+      if (score <= 1) score = score * 10;        // 0–1 -> 0–10
+      if (score > 100) score = score / 10;       // 0–100 -> 0–10
+      score = Math.max(0, Math.min(10, score));  // clamp to 0-10
+      return score;
+    }
 
     return null;
   };

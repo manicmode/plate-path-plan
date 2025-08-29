@@ -34,7 +34,7 @@ serve(async (req) => {
     const mirroredProduct = {
       // OFF/legacy friendly fields:
       productName: itemName,             // mirror for adapter
-      health: { score: qualityScore },   // mirror for adapter
+      health: { score: qualityScore >= 0 && qualityScore <= 1 ? qualityScore * 10 : qualityScore }, // force 0–10 for legacy
       barcode,                           // echo input barcode
 
       // Keep new-schema fields too (don't remove):
