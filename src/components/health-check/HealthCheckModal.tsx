@@ -940,7 +940,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText: legacy.ingredientsText,
           ingredientFlags,
-          nutritionData: legacy.nutrition || {},
+          nutritionData: legacy.nutritionData || {},
           healthProfile: {
             isOrganic: legacy.ingredientsText?.includes('organic') || false,
             isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1449,7 +1449,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       }));
       
       const ingredientsText = legacy.ingredientsText;
-      const nutritionData = legacy.nutrition || {};
+      const nutritionData = legacy.nutritionData || {};
       
         const analysisResult: HealthAnalysisResult = {
           itemName,

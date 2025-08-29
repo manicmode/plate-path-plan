@@ -2,6 +2,20 @@
  * the existing Health/Confirm modals already consume.
  */
 
+// Helper to safely convert to number
+const num = (v: any) => (v == null ? 0 : Number(v)) || 0;
+
+// Convert OFF nutriments to clean macro object
+const macrosFromNutriments = (n: any = {}) => ({
+  calories: num(n['energy-kcal_100g'] ?? n['energy_100g']),
+  protein:  num(n['proteins_100g']),
+  carbs:    num(n['carbohydrates_100g']),
+  fat:      num(n['fat_100g']),
+  sugar:    num(n['sugars_100g']),
+  fiber:    num(n['fiber_100g']),
+  sodium:   num(n['sodium_100g'] ?? (n['salt_100g'] ? n['salt_100g'] * 400 : 0)),
+});
+
 // Helper to pick first non-empty string with min length
 const pick = (...vals: Array<unknown>) =>
   vals.find(v => typeof v === 'string' && v.trim().length >= 3) as string | undefined;
@@ -49,7 +63,7 @@ export type LegacyRecognized = {
   ingredientsText: string | null;
   healthScore: number | null;
   healthFlags: LegacyHealthFlag[];
-  nutrition?: any | null; // pass-through; existing UI already knows how to read it
+  nutritionData?: any | null; // the key the UI actually uses
   status?: 'ok' | 'no_detection' | 'not_found';
   recommendation?: string | null;
 };
@@ -76,12 +90,6 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   if (!envelope) return { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'no_detection' };
   
-  console.log('[ADAPTER][INPUT_KEYS]', {
-    topLevel: Object.keys(envelope),
-    hasProduct: !!envelope.product,
-    productKeys: envelope.product ? Object.keys(envelope.product) : []
-  });
-
   if (envelope.error || envelope.ok === false) {
     return envelope.fallback ? 
       { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'not_found' } : 
@@ -90,57 +98,48 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
   const product = envelope.product || envelope.data?.product || envelope;
 
-  const productName =
-    product.productName ||
-    product.product_name ||
-    product.generic_name ||
-    product.displayName ||
-    product.name ||
-    envelope.itemName ||
-    envelope.productName ||
-    'Unknown Product';
-
-  const normalize = (s: any): number => {
-    const n = Number(s);
-    if (!isFinite(n)) return 0;
-    const v = n <= 1 ? n * 10 : n > 10 ? n / 10 : n;
-    return Math.max(0, Math.min(10, v));
-  };
-
-  const healthScore = normalize(
-    product.health?.score ??
-    envelope.quality?.score ??
-    envelope.healthScore ??
-    product.score
+  // Extract product name with envelope.itemName as final fallback
+  const productName = (
+    product.productName ??
+    product.product_name ?? product.generic_name ??
+    product.displayName ?? product.name ??
+    envelope.itemName ?? envelope.productName ??
+    'Unknown Product'
   );
 
-  let nutriments = product.nutriments;
-  if (!nutriments && envelope.nutrition) {
-    const n = envelope.nutrition;
-    nutriments = {
-      'energy-kcal_100g': n.calories ?? n.energy_kcal,
-      'energy_100g':      n.calories ?? n.energy_kcal,
-      'proteins_100g':    n.protein_g ?? n.protein ?? n.proteins,
-      'carbohydrates_100g': n.carbs_g ?? n.carbs ?? n.carbohydrates,
-      'fat_100g':         n.fat_g ?? n.fat ?? n.fats,
-      'fiber_100g':       n.fiber_g ?? n.fiber ?? n.dietary_fiber,
-      'sugars_100g':      n.sugar_g ?? n.sugar ?? n.sugars,
-      'sodium_100g':      n.sodium_mg ?? n.sodium,
-      'salt_100g':        n.sodium_mg ? n.sodium_mg / 400 : undefined,
-      'saturated-fat_100g': n['saturated-fat_100g'] ?? n.satfat_g ?? 0,
-    };
-  }
+  // Normalize score to 0-10 range
+  const healthScore = (() => {
+    const raw = 
+      product.health?.score ??
+      envelope.quality?.score ?? envelope.healthScore ?? product.score;
+    const v = Number(raw);
+    if (!isFinite(v)) return 0;
+    const n = v <= 1 ? v * 10 : v > 10 ? v / 10 : v;
+    return Math.max(0, Math.min(10, n));
+  })();
+
+  // Pick or synthesize nutriments -> nutritionData
+  const nutriments = product.nutriments || undefined;
+  const flat = envelope.nutrition || undefined;
+  const nutritionData = 
+    nutriments ? macrosFromNutriments(nutriments) :
+    flat ? {
+      calories: num(flat.calories ?? flat.energy_kcal),
+      protein:  num(flat.protein_g ?? flat.protein),
+      carbs:    num(flat.carbs_g   ?? flat.carbs ?? flat.carbohydrates),
+      fat:      num(flat.fat_g     ?? flat.fat),
+      sugar:    num(flat.sugar_g   ?? flat.sugar ?? flat.sugars),
+      fiber:    num(flat.fiber_g   ?? flat.fiber ?? flat.dietary_fiber),
+      sodium:   num(flat.sodium_mg ?? flat.sodium),
+    } : { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0 };
 
   const ingredientsText =
-    product.ingredients_text ||
-    product.ingredientsText ||
-    envelope.ingredientsText ||
-    envelope.ingredients ||
-    '';
+    product.ingredients_text ?? product.ingredientsText ??
+    envelope.ingredientsText ?? envelope.ingredients ?? '';
 
-  const barcode = product.code || product.barcode || envelope.barcode || '';
+  const barcode = product.code ?? product.barcode ?? envelope.barcode ?? '';
 
-  const healthFlags = coerceFlags(envelope.flags || envelope.ingredientFlags || product.flags || []);
+  const healthFlags = coerceFlags(envelope.flags ?? envelope.ingredientFlags ?? product.flags ?? []);
 
   // Determine status
   let status: 'ok' | 'no_detection' | 'not_found' = 'ok';
@@ -155,25 +154,25 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   }
 
   const legacy = {
+    status,
     productName: productName === 'Unknown Product' ? null : productName,
     healthScore,
     ingredientsText: ingredientsText || null,
-    nutrition: nutriments || {},
+    nutritionData,                          // <- **the key the UI actually uses**
     barcode: barcode || null,
     healthFlags,
     brands: product.brands || '',
     imageUrl: product.image_url || product.image_front_url || product.imageUrl || '',
-    status,
     recommendation: null,
   };
 
+  // Replace the noisy log with a tiny summary
   console.log('[ADAPTER][OUTPUT_SUMMARY]', {
     name: legacy.productName,
     score10: legacy.healthScore,
-    hasNutriments: !!legacy.nutrition && Object.keys(legacy.nutrition).length > 0,
+    macros: legacy.nutritionData,
     hasIngredients: !!legacy.ingredientsText,
     barcode: legacy.barcode,
-    status: legacy.status
   });
 
   return legacy;
