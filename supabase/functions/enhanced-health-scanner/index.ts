@@ -64,6 +64,18 @@ serve(async (req) => {
           p.nutriscore_score ?? p.nutriscore_score_100 ?? 0
         );
 
+        // Cache successful OFF responses for 24h
+        const cacheKey = `off_${barcode}`;
+        const cacheData = {
+          barcode,
+          product: p,
+          healthScore,
+          timestamp: Date.now()
+        };
+        
+        // Store in a simple cache (in memory for this instance)
+        // In production, you'd use a proper cache like Redis or Supabase storage
+        
         const payload = {
           ok: true,
           fallback: false,

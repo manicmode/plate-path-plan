@@ -187,11 +187,11 @@ export async function analyzeFromProduct(product: NormalizedProduct, options: { 
   }
   const body = { text, taskType: 'food_analysis', complexity: 'auto' };
 
-  // PARITY logging: before invoke
-  if (DEBUG) {
-    console.log('[PARITY][REQ]', { source, hasText: !!body.text });
-    console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
-  }
+    // PARITY logging: before invoke
+    if (DEBUG) {
+      console.log('[PARITY][REQ]', { source, hasText: !!body.text });
+      console.log('[EDGE][gpt-smart-food-analyzer][BODY]', { taskType: body?.taskType, textLen: body?.text?.length });
+    }
   
   const { data, error } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
     body
@@ -361,7 +361,7 @@ export async function handleSearchPick({
     if (macros.length) parts.push(`Nutrition (per serving or 100g): ${macros.join(', ')}.`);
 
     const text = parts.join(' ');
-    console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
+    if (DEBUG) console.log('[ANALYZER][TEXT]', { len: text?.length, preview: text?.slice(0,160) });
 
     // Call analyzer with enriched text and canonical identity
     const body = {
@@ -380,7 +380,7 @@ export async function handleSearchPick({
       body
     });
     
-    console.log('[ANALYZER][RAW_JSON]', JSON.stringify(data)?.slice(0, 2000));
+    if (DEBUG) console.log('[ANALYZER][RAW_JSON]', JSON.stringify(data)?.slice(0, 2000));
 
     let analyzerData = data || {};
     if (analyzerData?.foods) {
@@ -400,16 +400,18 @@ export async function handleSearchPick({
     }
 
     // Score candidates (log value + typeof so we can see strings)
-    const scoreCandidates = {
-      healthScore: analyzerData?.healthScore,
-      quality_score: analyzerData?.quality?.score,
-      score: analyzerData?.score,
-      rating: analyzerData?.rating,
-      overall_score: analyzerData?.overall?.score,
-      grade_score: analyzerData?.grades?.health,
-    };
-    console.log('[ANALYZER][SCORE_CANDIDATES]',
-      Object.fromEntries(Object.entries(scoreCandidates).map(([k,v]) => [k, {v, t: typeof v}])));
+    if (DEBUG) {
+      const scoreCandidates = {
+        healthScore: analyzerData?.healthScore,
+        quality_score: analyzerData?.quality?.score,
+        score: analyzerData?.score,
+        rating: analyzerData?.rating,
+        overall_score: analyzerData?.overall?.score,
+        grade_score: analyzerData?.grades?.health,
+      };
+      console.log('[ANALYZER][SCORE_CANDIDATES]',
+        Object.fromEntries(Object.entries(scoreCandidates).map(([k,v]) => [k, {v, t: typeof v}])));
+    }
 
     if (!analyzerData || Object.keys(analyzerData).length === 0) {
       console.warn('[ANALYZER][EMPTY] No data from analyzer, using fallback');
@@ -462,12 +464,14 @@ export async function handleSearchPick({
       console.log('[ANALYZER][FALLBACK] Mapped top-level macros to nutrition object');
     }
 
-    console.log('[ANALYZER][NORMALIZED]', {
-      name: flattened.itemName,
-      healthScore: flattened.healthScore,
-      nutrKeys: Object.keys(flattened.nutrition||{}),
-      hasIngredients: !!flattened.ingredientsText
-    });
+    if (DEBUG) {
+      console.log('[ANALYZER][NORMALIZED]', {
+        name: flattened.itemName,
+        healthScore: flattened.healthScore,
+        nutrKeys: Object.keys(flattened.nutrition||{}),
+        hasIngredients: !!flattened.ingredientsText
+      });
+    }
 
     setAnalysisData({ ...flattened, product, source, confidence: item?.confidence ?? 0.8 });
     setStep('report');

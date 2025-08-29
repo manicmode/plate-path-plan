@@ -1,6 +1,8 @@
 // Lightweight performance monitoring with optional HUD
 // Only activates when ?perf=1 or VITE_PERF_HUD=true
 
+import { PERF_BUDGET } from '@/config/perfBudget';
+
 let perfEnabled = false;
 let hudContainer: HTMLDivElement | null = null;
 let fpsHistory: number[] = [];
@@ -8,6 +10,8 @@ let longTaskTotalMs = 0;
 let longTaskWindow: number[] = [];
 let lastFrameTime = 0;
 let rafId = 0;
+
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 // Performance marks and measures
 export const mark = (name: string) => {
@@ -24,6 +28,11 @@ export const measure = (name: string, startMark: string) => {
       const latest = entries[entries.length - 1];
       if (latest) {
         console.log(`[PERF] ${name}: ${latest.duration.toFixed(2)}ms`);
+        
+        // Check budgets
+        if (name.includes('analyze_total')) {
+          checkBudget('Analysis Total', latest.duration, PERF_BUDGET.analyzeTotalMs);
+        }
       }
     } catch (e) {
       // Ignore if start mark doesn't exist
@@ -45,8 +54,8 @@ const initLongTaskObserver = () => {
           longTaskTotalMs += entry.duration;
           longTaskWindow.push(now);
           
-          // Keep only last 10 seconds of timestamps
-          const cutoff = now - 10000;
+          // Keep only last window of timestamps
+          const cutoff = now - PERF_BUDGET.longTaskWindowMs;
           longTaskWindow = longTaskWindow.filter(t => t > cutoff);
         }
       }
@@ -109,7 +118,7 @@ const updateHUD = () => {
     : 0;
   
   const now = Date.now();
-  const recentLongTasks = longTaskWindow.filter(t => t > now - 10000).length;
+  const recentLongTasks = longTaskWindow.filter(t => t > now - PERF_BUDGET.longTaskWindowMs).length;
   const longTaskMs = Math.round(longTaskTotalMs);
   
   let memoryInfo = '';
@@ -124,6 +133,16 @@ const updateHUD = () => {
     `LongTask: ${recentLongTasks} (${longTaskMs}ms)`,
     memoryInfo
   ].filter(Boolean).join('\n');
+  
+  // Check budgets and warn
+  if (DEBUG && avgFPS < PERF_BUDGET.minFpsWarn) {
+    console.warn(`[PERF][WARN] FPS below threshold: ${avgFPS} < ${PERF_BUDGET.minFpsWarn}`);
+  }
+  
+  const recentLongTaskMs = longTaskWindow.filter(t => t > now - PERF_BUDGET.longTaskWindowMs).length * 50; // Rough estimate
+  if (DEBUG && recentLongTaskMs > PERF_BUDGET.longTaskWarnMs) {
+    console.warn(`[PERF][WARN] Long tasks exceeded: ${recentLongTaskMs}ms > ${PERF_BUDGET.longTaskWarnMs}ms`);
+  }
 };
 
 // Main enable function

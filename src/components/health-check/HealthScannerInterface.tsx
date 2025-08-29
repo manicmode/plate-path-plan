@@ -68,6 +68,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const lastDecodeTime = useRef<number>(0);
   const rafRef = useRef<number>(0);
   const isVisible = useRef<boolean>(true);
+  const THROTTLE_MS = PERF_BUDGET.scannerThrottleMs;
 
   // Scanner mount probe
   useEffect(() => {
@@ -84,6 +85,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     const handleVisibilityChange = () => {
       isVisible.current = !document.hidden;
       if (DEBUG) console.log('[HS] visibility', { visible: isVisible.current });
+      
+      // Pause scanning when page is hidden
+      if (document.hidden) {
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = 0;
+        }
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -178,7 +187,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const constraints = {
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 720 },    // Reduced from 1280 for performance
+          width: { ideal: 720 },    // Optimized for performance
           height: { ideal: 720 },   // Keep square aspect ratio
           frameRate: { ideal: 24, max: 30 } // Cap frame rate for performance
         },

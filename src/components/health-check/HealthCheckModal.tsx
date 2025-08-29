@@ -425,6 +425,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Helper to process direct analysis results from manual entry
   const processDirectAnalysisResult = (result: any) => {
+    mark('[HS] process_result_start');
+    
     if (!result) {
       setCurrentState('fallback');
       return;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,12 +22,14 @@ import { useAuth } from '@/contexts/auth';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { supabase } from '@/integrations/supabase/client';
 
-// Circular Progress Component with Animation
-const CircularProgress: React.FC<{ 
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
+// Memoized Circular Progress Component with Animation
+const CircularProgress = React.memo<{ 
   percentage: number; 
   size?: number; 
   strokeWidth?: number;
-}> = ({ percentage, size = 120, strokeWidth = 8 }) => {
+}>(({ percentage, size = 120, strokeWidth = 8 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDasharray = `${circumference} ${circumference}`;
@@ -81,7 +83,7 @@ const CircularProgress: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 interface HealthReportPopupProps {
   result: HealthAnalysisResult;
@@ -104,17 +106,67 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
-  console.log('[REPORT][TITLE+SCORE]', {
-    title: result?.itemName ?? (analysisData as any)?.name,
-    rawScore: result?.healthScore ?? (result as any)?.quality?.score,
-    path: (result as any)?.__fromSnapshot ? 'snapshot' : 'live',
-  });
+  if (DEBUG) {
+    console.log('[REPORT][TITLE+SCORE]', {
+      title: result?.itemName ?? (analysisData as any)?.name,
+      rawScore: result?.healthScore ?? (result as any)?.quality?.score,
+      path: (result as any)?.__fromSnapshot ? 'snapshot' : 'live',
+    });
+  }
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(initialIsSaved);
 
-  const handleSaveToLog = async () => {
+  // Memoize heavy derived values
+  const nutritionSummary = useMemo(() => {
+    const nutrition = result?.nutritionData || {};
+    return {
+      calories: nutrition.calories || 0,
+      protein: nutrition.protein || 0,
+      carbs: nutrition.carbs || 0,
+      fat: nutrition.fat || 0,
+      fiber: nutrition.fiber || 0,
+      sugar: nutrition.sugar || 0,
+      sodium: nutrition.sodium || 0,
+    };
+  }, [result?.nutritionData]);
+
+  const flagsSummary = useMemo(() => {
+    const flags = result?.ingredientFlags || [];
+    return {
+      total: flags.length,
+      high: flags.filter(f => f.severity === 'high').length,
+      medium: flags.filter(f => f.severity === 'medium').length,
+      low: flags.filter(f => f.severity === 'low').length,
+      flags: flags.slice(0, 5) // Limit to first 5 for performance
+    };
+  }, [result?.ingredientFlags]);
+
+  const healthPercentage = useMemo(() => {
+    return Math.round((result?.healthScore || 0) * 10);
+  }, [result?.healthScore]);
+
+  // Defer non-critical sections using requestIdleCallback
+  const [showSecondaryInfo, setShowSecondaryInfo] = useState(false);
+
+  React.useEffect(() => {
+    const showSecondary = () => {
+      setShowSecondaryInfo(true);
+    };
+
+    if ('requestIdleCallback' in window) {
+      const idleCallback = requestIdleCallback(showSecondary, { timeout: 2000 });
+      return () => cancelIdleCallback(idleCallback);
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      const timeout = setTimeout(showSecondary, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, []);
+
+  const handleSaveToLog = useCallback(async () => {
     if (!user?.id) {
       toast({
         title: "Authentication Required",
@@ -186,7 +238,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [user?.id, isSaving, isSaved, result, analysisData, toast]);
   
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
@@ -276,8 +328,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           </CardContent>
         </Card>
 
-        {/* 🚩 2. FLAGGED INGREDIENTS SECTION - Only show for successful scans */}
-        {result.healthScore !== null && result.healthScore > 0 && (
+        {/* 🚩 2. FLAGGED INGREDIENTS SECTION - Only show for successful scans (deferred) */}
+        {showSecondaryInfo && result.healthScore !== null && result.healthScore > 0 && (
           <Card className="bg-card border-border backdrop-blur-sm">
             <CardHeader className="pb-4">
               <h3 className="text-xl font-bold text-foreground flex items-center">
@@ -435,7 +487,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           </CardContent>
         </Card>
 
-        {/* 💬 5. AI COACH COMMENTARY */}
+        {/* 💬 5. AI COACH COMMENTARY (deferred) */}
+        {showSecondaryInfo && (
         <Card className="bg-card border-border backdrop-blur-sm">
           <CardHeader className="pb-4">
             <h3 className="text-xl font-bold text-foreground flex items-center">
@@ -517,8 +570,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             </div>
           </CardContent>
         </Card>
+        )}
 
-        {/* Action Buttons */}
+        {/* 🎯 6. ACTION BUTTONS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
           <Button
             onClick={handleSaveToLog}
