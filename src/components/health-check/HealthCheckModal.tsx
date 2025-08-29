@@ -246,6 +246,8 @@ export interface HealthAnalysisResult {
     sugar?: number;
     sodium?: number;
   };
+  // Provide both nutrition shapes for UI compatibility
+  nutrition?: { nutritionData: any };
   healthProfile: {
     isOrganic?: boolean;
     isGMO?: boolean;
@@ -1473,12 +1475,30 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     console.log('[REPORT][BARCODE]', { scoreUnit: legacy.scoreUnit });
     
-    // Enrich barcode reports with analyzer data for better scores and flags
+    // For barcode reports, trust the adapter output. Do not recompute score or replace flags.
     let finalScore10: number;
     let ingredientFlags: any[] = [];
     let analyzerInsights: string[] = [];
     
-    if (type === 'barcode') {
+    if (type === 'barcode' && legacy._dataSource === 'openfoodfacts/barcode') {
+      // Trust adapter values as authoritative - no recomputation
+      finalScore10 = legacy.health?.score != null
+        ? legacy.health.score
+        : (legacy?.scoreUnit === '0-10'
+          ? Math.max(0, Math.min(10, Number(legacy.healthScore) || 0))
+          : Math.max(0, Math.min(10, Number(legacy.healthScore) || 0)));
+      
+      // Keep adapter flags instead of replacing
+      ingredientFlags = Array.isArray(legacy.flags) ? legacy.flags.map((f: any) => ({
+        ingredient: f.label || f.key || f.code || 'Ingredient',
+        flag: f.description || f.label || '',
+        severity: (f.severity === 'high' || f.level === 'danger' ? 'high' : 
+                  f.severity === 'medium' || f.level === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+        reason: f.reason,
+      })) : [];
+      
+    } else if (type === 'barcode') {
+      // Legacy barcode path - enrich with analyzer
       const enrichment = await enrichBarcodeReport(legacy);
       
       finalScore10 = enrichment.score10 != null
@@ -1508,8 +1528,25 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     console.log('[REPORT][ENRICHED]', { scoreUnit: legacy?.scoreUnit, finalScore10, flagsCount: ingredientFlags.length });
     
-    // Extract nutrition data using helper
-    const nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
+    // Extract nutrition data - ensure both shapes for UI compatibility
+    let nutritionData;
+    if (type === 'barcode' && legacy._dataSource === 'openfoodfacts/barcode' && legacy.nutritionData) {
+      // For barcode adapter output, use nutritionData directly and add aliases
+      nutritionData = {
+        ...legacy.nutritionData,
+        // Add legacy aliases for UI compatibility
+        calories: legacy.nutritionData.energyKcal || legacy.nutritionData.calories || 0,
+        protein: legacy.nutritionData.protein_g || legacy.nutritionData.protein || 0,
+        carbs: legacy.nutritionData.carbs_g || legacy.nutritionData.carbs || 0,
+        fat: legacy.nutritionData.fat_g || legacy.nutritionData.fat || 0,
+        fiber: legacy.nutritionData.fiber_g || legacy.nutritionData.fiber || 0,
+        sugar: legacy.nutritionData.sugar_g || legacy.nutritionData.sugar || 0,
+        sodium: legacy.nutritionData.sodium_mg || legacy.nutritionData.sodium || 0,
+      };
+    } else {
+      // Use existing extraction logic
+      nutritionData = extractNutritionData(legacy.nutritionData || legacy.nutrition || {});
+    }
     console.log('[REPORT][NUTRITION]', { nutritionData });
     
     const ingredientsText = legacy.ingredientsText;
@@ -1526,6 +1563,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       ingredientFlags: finalFlags,
       flags: finalFlags, // Set both properties so UI can find them
       nutritionData: nutritionData || {},
+      // Provide both nutrition shapes for UI compatibility
+      nutrition: { nutritionData: nutritionData || {} },
       healthProfile: {
         isOrganic: ingredientsText?.includes('organic') || false,
         isGMO: ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1554,6 +1593,24 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                     finalScore10 >= 4 ? 'fair' : 
                     finalScore10 >= 2 ? 'poor' : 'avoid'
     };
+    
+    // Add debug logging for barcode reports
+    if (import.meta.env.VITE_DEBUG_PERF === 'true' && type === 'barcode') {
+      const nd = analysisResult.nutritionData || {};
+      console.info('[REPORT][FINAL][BARCODE]', {
+        title: analysisResult.title,
+        score: analysisResult.healthScore,
+        flagsCount: analysisResult.flags?.length ?? 0,
+        kcal: (nd as any).energyKcal || nd.calories, 
+        protein: (nd as any).protein_g || nd.protein, 
+        carbs: (nd as any).carbs_g || nd.carbs, 
+        sugar: (nd as any).sugar_g || nd.sugar,
+        fat: (nd as any).fat_g || nd.fat, 
+        satfat: (nd as any).satfat_g || (nd as any).satfat, 
+        fiber: (nd as any).fiber_g || nd.fiber, 
+        sodium_mg: (nd as any).sodium_mg || nd.sodium
+      });
+    }
     
     setAnalysisResult(analysisResult);
     setCurrentState('report');
