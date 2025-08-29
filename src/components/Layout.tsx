@@ -223,28 +223,47 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </header>
 
-        {/* DEV-only Photo Sandbox Button */}
+        {/* DEV Debug Menu Button */}
         {import.meta.env.DEV && (
-          <button
-            onClick={() => (window.location.href = '/debug/photo')}
-            style={{ 
-              position: 'fixed', 
-              right: 12, 
-              bottom: 12, 
-              zIndex: 9999, 
-              padding: '8px 12px',
-              backgroundColor: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 500,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
-          >
-            🔧 Photo Sandbox
-          </button>
+          <div style={{ position: 'fixed', right: 12, bottom: 12, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={() => (window.location.href = '/debug')}
+              style={{ 
+                padding: '10px 14px',
+                backgroundColor: '#059669',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+              title="Open Debug Menu"
+            >
+              🔧 Debug Menu
+            </button>
+            <button
+              onClick={() => (window.location.href = '/debug/photo')}
+              style={{ 
+                padding: '8px 12px',
+                backgroundColor: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 500,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+              title="Quick access to Photo Sandbox"
+            >
+              📸 Photo
+            </button>
+          </div>
         )}
 
       {/* Main Content with safe area padding for bottom nav */}

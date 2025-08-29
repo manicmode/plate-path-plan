@@ -48,6 +48,13 @@ export default function DebugRoutes() {
         <h1 className="text-3xl font-bold mb-6">Debug Tools</h1>
         <div className="space-y-4">
           <button 
+            onClick={() => navigate('/debug/photo')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
+          >
+            <h3 className="font-semibold">📸 Photo Sandbox</h3>
+            <p className="text-muted-foreground">Test photo pipeline with camera and force mode</p>
+          </button>
+          <button 
             onClick={() => navigate('/debug/image-probe')}
             className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted"
           >
