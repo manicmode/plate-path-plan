@@ -407,12 +407,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const toggleTorch = async () => {
     try {
+      console.log("[TORCH] Attempting to toggle torch. Current state:", torchOn, "Track:", !!trackRef.current);
       const result = await setTorch(!torchOn);
+      console.log("[TORCH] Toggle result:", result);
       if (!result.ok) {
         console.warn("Torch toggle failed:", result.reason);
+        toast.error(`Flash not available: ${result.reason}`);
+      } else {
+        console.log("[TORCH] Successfully toggled torch to:", !torchOn);
       }
     } catch (error) {
       console.error("Error toggling torch:", error);
+      toast.error("Failed to toggle flashlight");
     }
   };
 
