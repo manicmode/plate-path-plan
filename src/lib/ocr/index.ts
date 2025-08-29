@@ -16,8 +16,8 @@ export async function getOCR(base64: string): Promise<{ ok: boolean; text: strin
     // Use Supabase SDK invoke (automatically adds auth token)
     const { data, error } = await supabase.functions.invoke('vision-ocr', {
       body: {
-        mode: import.meta.env.VITE_VISION_MODE || 'document',
-        imageBase64: base64.replace(/^data:image\/\w+;base64,/, '')
+        imageBase64: base64.replace(/^data:image\/\w+;base64,/, ''),
+        mode: 'document'
       }
     });
 
