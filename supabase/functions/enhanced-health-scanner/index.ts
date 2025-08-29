@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
 
 // Enhanced CORS with expanded allowlist
 const getCorsHeaders = (origin?: string | null): HeadersInit => {
@@ -24,12 +23,6 @@ const getCorsHeaders = (origin?: string | null): HeadersInit => {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 };
-
-// Initialize Supabase client for optional AI scoring
-const supabase = createClient(
-  'https://uzoiiijqtahohfafqirm.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw'
-);
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -71,34 +64,6 @@ serve(async (req) => {
           p.nutriscore_score ?? p.nutriscore_score_100 ?? 0
         );
 
-        // Helper to add ingredient flags from OFF data
-        const addFlag = (arr: any[], ingredient: string, flag: string, severity: 'low'|'medium'|'high', reason?: string) =>
-          arr.push({ ingredient, flag, severity, reason });
-
-        const flags: any[] = [];
-
-        // OFF allergens → high severity flags
-        (p?.allergens_tags || []).forEach((tag: string) => {
-          addFlag(flags, tag.replace('en:', ''), 'allergen', 'high', 'Listed allergen on OFF');
-        });
-
-        // OFF additives → medium severity flags
-        (p?.additives_tags || []).forEach((tag: string) => {
-          addFlag(flags, tag.replace('en:', ''), 'additive', 'medium', 'Listed additive on OFF');
-        });
-
-        // Basic heuristics from ingredients_text (kept minimal/safe)
-        const text = (p?.ingredients_text || '').toLowerCase();
-        [
-          { key: 'high fructose corn syrup', label: 'HFCS', sev: 'medium' },
-          { key: 'aspartame', label: 'aspartame', sev: 'medium' },
-          { key: 'acesulfame', label: 'acesulfame', sev: 'medium' },
-          { key: 'monosodium glutamate', label: 'msg', sev: 'medium' },
-          { key: 'hydrogenated', label: 'hydrogenated oil', sev: 'medium' },
-        ].forEach(r => {
-          if (text.includes(r.key)) addFlag(flags, r.label, 'ingredient concern', r.sev as any, 'Heuristic from ingredients_text');
-        });
-
         const payload = {
           ok: true,
           fallback: false,
@@ -133,10 +98,6 @@ serve(async (req) => {
             barcode,
             code: barcode,
           },
-          
-          // Add flags at both levels
-          flags: flags,                     // top-level (new shape)
-          ingredientFlags: flags,           // mirror for old consumers
         };
 
         console.log('[EDGE][BARCODE][OFF_HIT]', {
@@ -148,40 +109,6 @@ serve(async (req) => {
           top: Object.keys(payload),
           product: Object.keys(payload.product || {}),
         });
-
-        // PATCH D (Optional): Enhance score with AI analysis for more realistic 60-85% scores
-        let qualityScore = healthScore; // from OFF
-        let insights: string[] = [];
-
-        try {
-          const { data: ai, error: aiError } = await supabase.functions.invoke('gpt-smart-food-analyzer', {
-            body: {
-              taskType: 'quality_score_only',
-              // Keep it lightweight: send normalized macronutrients and ingredients_text only
-              product: {
-                name: payload.itemName,
-                nutrition: payload.nutrition,
-                ingredientsText: payload.ingredientsText
-              }
-            }
-          });
-          
-          if (!aiError && ai?.quality?.score != null) {
-            qualityScore = Math.max(0, Math.min(10, Number(ai.quality.score)));
-            console.log('[EDGE][AI_SCORE_ENHANCED]', { off: healthScore, ai: qualityScore });
-          }
-          
-          if (Array.isArray(ai?.insights)) {
-            insights = ai.insights.slice(0, 5);
-          }
-        } catch (e) {
-          console.warn('[EDGE][AI_SCORE_FALLBACK]', String(e));
-        }
-
-        // Update payload with enhanced scores
-        payload.quality = { score: qualityScore };
-        payload.product.health.score = qualityScore;
-        payload.insights = insights;
 
         return new Response(JSON.stringify(payload), {
           status: 200,
