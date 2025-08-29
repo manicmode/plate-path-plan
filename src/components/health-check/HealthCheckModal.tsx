@@ -22,6 +22,7 @@ import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { useHealthCheckV2 } from './HealthCheckModalV2';
+import { handleSearchPick } from '@/shared/search-to-analysis';
 
 // Robust score extractor (0–100)
 function extractScore(raw: unknown): number | undefined {
@@ -281,15 +282,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             }
             
             // Process successful result
-            const legacy = toLegacyFromEdge(data);
-            if (import.meta.env.DEV) console.log('[VOICE→HEALTH] lookup hit', legacy);
-            
-            if (legacy.status === 'no_detection' || legacy.status === 'not_found') {
-              toManualAdd(name);
-              return;
-            }
-            
-            await processAndShowResult(legacy, data, 'voice-lookup', 'manual');
+            processDirectAnalysisResult({ ...data, source: 'voice', confidence: 0.9 });
             
           } catch (networkError) {
             if (currentRunId.current !== runId) return; // stale
@@ -398,8 +391,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       let raw = (result?.analysis ?? result) as any;
 
       // NEW: unwrap { foods: [...] } if present
-      if (raw && Array.isArray(raw.foods) && raw.foods.length > 0) {
-        raw = raw.foods[0];
+      if (raw?.foods) {
+        if (Array.isArray(raw.foods) && raw.foods.length > 0) {
+          raw = raw.foods[0];
+        } else {
+          console.warn('[MODAL][FOODS] Empty or invalid foods array');
+        }
       }
 
       // Name
@@ -1558,9 +1555,18 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
           {currentState === 'fallback' && (
             <ImprovedManualEntry
-              onProductSelected={(product) => {
-                const legacy = toLegacyFromEdge({ product });
-                processAndShowResult(legacy, { product }, captureId || 'manual', 'manual');
+              onProductSelected={async (product) => {
+                await handleSearchPick({
+                  item: product,
+                  source: 'manual',
+                  setAnalysisData: (data) => { processDirectAnalysisResult(data); }, // flattened data
+                  setStep: (step) => {
+                    if (step === 'loading') setCurrentState('loading');
+                    else if (step === 'fallback') setCurrentState('fallback');
+                    // 'report' is driven by processDirectAnalysisResult
+                  },
+                  onError: (err) => { console.error('[FALLBACK] Analysis failed:', err); setCurrentState('fallback'); }
+                });
               }}
               onBack={() => {
                 console.log('[HC][STEP]', 'scanner', { source: 'manual_entry_back' });

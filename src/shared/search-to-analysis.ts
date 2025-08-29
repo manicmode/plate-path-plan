@@ -306,9 +306,12 @@ export async function handleSearchPick({
       body
     });
     
-    // PROBE: Log raw analyzer response
-    console.log('[ANALYZER][RAW]', { keys: Object.keys(data||{}), sample: { itemName: data?.itemName, productName: data?.productName, quality: data?.quality, nutrition: data?.nutrition, report: data?.report ? Object.keys(data.report) : null }});
-    
+    console.log('[ANALYZER][RAW]', {
+      keys: Object.keys(data || {}),
+      hasFoods: !!data?.foods,
+      foodsLength: data?.foods?.length
+    });
+
     // PARITY logging: after invoke
     console.log('[PARITY][RES]', { source, status: error?.context?.status ?? 200 });
     
@@ -316,103 +319,50 @@ export async function handleSearchPick({
       throw new Error(error.message || 'Failed to analyze product');
     }
 
-    // Robust mapping to feed the popup
-    const raw = data || {};
-    const itemName =
-      raw.itemName || raw.productName || raw.title || raw.name ||
-      raw?.report?.itemName || name || 'Unknown Product';
-
-    const healthScore =
-      coerceScoreTo10(raw.healthScore ?? raw?.quality?.score ?? raw?.report?.quality?.score) ?? 0;
-
-    const analysisNormalized = {
-      ...raw,
-      itemName,
-      healthScore
-    };
-
-    console.log('[REPORT][FEED]', {
-      itemName: analysisNormalized.itemName,
-      healthScore: analysisNormalized.healthScore,
-      hasNutrition: !!(analysisNormalized.nutrition || analysisNormalized.nutritionData),
-      hasIngredients: !!(analysisNormalized.ingredientsText || enriched.ingredientsText)
-    });
-
-    // Normalize alternate analyzer shapes
-    let processedData = analysisNormalized; // whatever var holds the analyzer JSON
-
-    // NEW: unwrap { foods: [...] } if present
-    if (processedData && Array.isArray(processedData.foods) && processedData.foods.length > 0) {
-      processedData = processedData.foods[0]; // use the first analyzed food
+    let analyzerData = data || {};
+    if (analyzerData?.foods) {
+      if (Array.isArray(analyzerData.foods) && analyzerData.foods.length > 0) {
+        console.log('[ANALYZER][FOODS] Extracting first food from array');
+        analyzerData = analyzerData.foods[0];
+      } else {
+        console.warn('[ANALYZER][FOODS] Empty or invalid foods array');
+      }
     }
 
-    // Ensure core fields exist (fallback to selected product)
-    const fallbackName =
-      product?.name ||
-      product?.brand ||
-      'Unknown Product';
+    if (!analyzerData || Object.keys(analyzerData).length === 0) {
+      console.warn('[ANALYZER][EMPTY] No data from analyzer, using fallback');
+      analyzerData = {
+        itemName: product?.name || 'Unknown Product',
+        healthScore: 0,
+        nutrition: {},
+        ingredientsText: enriched?.ingredientsText || '',
+        flags: [],
+        insights: ['Unable to fully analyze this product']
+      };
+    }
 
-    const ensure0to10 = (v: any) => {
-      if (typeof v !== 'number') return 0;
-      const x = v > 10 ? v / 10 : v;
-      return Math.max(0, Math.min(10, x));
-    };
+    const to10 = (v:any) => (typeof v === 'number')
+      ? Math.max(0, Math.min(10, v > 10 ? v/10 : v))
+      : 0;
 
-    // Build a minimal, consistent object we hand to the modal (top-level; no nesting)
     const flattened = {
-      // names
-      itemName:
-        processedData?.itemName ??
-        processedData?.productName ??
-        processedData?.title ??
-        processedData?.name ??
-        fallbackName,
-
-      // score
-      healthScore: ensure0to10(
-        processedData?.healthScore ?? processedData?.quality?.score ?? processedData?.score ?? processedData?.report?.quality?.score
-      ),
-
-      // nutrition (support multiple keys)
-      nutrition:
-        processedData?.nutrition ??
-        processedData?.nutritionData ??
-        processedData?.macros ??
-        {},
-
-      // ingredients and flags/insights passthrough
-      ingredientsText:
-        processedData?.ingredientsText ??
-        processedData?.ingredients ??
-        enriched?.ingredientsText ??
-        '',
-
-      flags: processedData?.flags ?? processedData?.ingredientFlags ?? [],
-      insights: processedData?.insights ?? processedData?.suggestions ?? [],
+      itemName: analyzerData.itemName ?? analyzerData.productName ?? analyzerData.title ?? analyzerData.name ?? product?.name ?? 'Unknown Product',
+      healthScore: to10(analyzerData.healthScore ?? analyzerData.quality?.score ?? analyzerData.score ?? 0),
+      nutrition: analyzerData.nutrition ?? analyzerData.nutritionData ?? analyzerData.macros ?? {},
+      ingredientsText: analyzerData.ingredientsText ?? analyzerData.ingredients ?? enriched?.ingredientsText ?? '',
+      flags: analyzerData.flags ?? analyzerData.ingredientFlags ?? [],
+      insights: analyzerData.insights ?? analyzerData.suggestions ?? [],
+      ...analyzerData
     };
 
-    // Pass flattened analyzer data with metadata - no wrapper
-    setAnalysisData({
-      ...flattened,
-      product: {               // keep original product object for reference
-        productName: product.name,
-        barcode: product.barcode,
-        brand: product.brand,
-        imageUrl: product.imageUrl,
-        nutrition: {
-          calories: product.nutriments?.energy_kcal || 0,
-          protein: product.nutriments?.proteins || 0,
-          carbs: product.nutriments?.carbohydrates || 0,
-          fat: product.nutriments?.fat || 0,
-          fiber: product.nutriments?.fiber || 0,
-          sugar: product.nutriments?.sugars || 0,
-          sodium: product.nutriments?.sodium || 0,
-          saturated_fat: product.nutriments?.saturated_fat || 0,
-        }
-      },
-      source: source,          // 'manual' or 'voice'
-      confidence: item.confidence ?? 0.8,
+    console.log('[ANALYZER][NORMALIZED]', {
+      itemName: flattened.itemName,
+      healthScore: flattened.healthScore,
+      hasNutrition: Object.keys(flattened.nutrition || {}).length > 0,
+      hasIngredients: !!flattened.ingredientsText
     });
+
+    setAnalysisData({ ...flattened, product, source, confidence: item?.confidence ?? 0.8 });
     setStep('report');
   } catch (error) {
     console.error(`[SEARCH→ANALYSIS][${source.toUpperCase()}] Failed:`, error);
