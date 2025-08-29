@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { toLegacyFromPhoto } from '@/lib/health/toLegacyFromPhoto';
+import { getOCR } from '@/lib/ocr';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -38,7 +39,6 @@ const CFG = {
   PHOTO_BARCODES: import.meta.env.VITE_PHOTO_BARCODES_ENABLE === 'true',
   DEBUG: import.meta.env.VITE_DEBUG_PERF === 'true',
 };
-if (CFG.DEBUG) console.info('[PHOTO][CFG]', CFG);
 
 export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
@@ -51,12 +51,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'camera' | 'photo-ocr-missing' | 'photo-ocr-error'>('camera');
   const inFlightRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   const rafRef = useRef<number>(0);
   const timerRef = useRef<number>(0);
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+
+  // Print config once for debugging
+  useEffect(() => {
+    if (CFG.DEBUG) console.info('[PHOTO][CFG]', CFG);
+  }, []);
 
   // 2) Hard block any scan hub while Take Photo is open
   useEffect(() => {
@@ -195,7 +201,21 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-  // 3) Rewire the capture handler to OCR (never call mode:'scan')
+// Helper function to convert canvas to Uint8Array for OCR
+const canvasToBytes = async (canvas: HTMLCanvasElement): Promise<Uint8Array> => {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject(new Error('Canvas toBlob failed'));
+        return;
+      }
+      const arrayBuffer = await blob.arrayBuffer();
+      resolve(new Uint8Array(arrayBuffer));
+    }, 'image/jpeg', 0.85);
+  });
+};
+
+// 3) Rewire the capture handler to OCR (never call mode:'scan')
   const capturePhoto = async () => {
     if (!videoRef.current || !stream) return;
     
@@ -208,15 +228,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     playCameraClickSound();
 
     try {
-      // Check if analyzer is enabled
-      if (!isFeatureEnabled('image_analyzer_v1')) {
-        console.log('[PHOTO] Analyzer disabled, redirecting to manual');
-        toast.info('Photo analysis is in beta. Try manual or voice for now.');
-        onOpenChange(false);
-        onManualFallback();
-        return;
-      }
-
       console.log('[PHOTO] Capturing photo...');
       
       const video = videoRef.current;
@@ -249,28 +260,34 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
       // Compress image for OCR
       const prep = await prepareImageForAnalysis(canvas);
-      
-      // OCR provider - use edge function
-      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-        body: {
-          mode: 'ocr',
-          imageBase64: prep.base64NoPrefix
-        }
-      });
+      const imageBytes = await canvasToBytes(canvas);
 
-      if (error || !data?.extractedText) {
-        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, error });
-        // safe fallback: suggest manual entry; DO NOT call enhanced-health-scanner 'scan'
-        toast.info('Could not read text from photo. Try manual entry.');
-        onOpenChange(false);
-        onManualFallback();
+      // OCR provider
+      const ocr = await getOCR();
+      if (!ocr) {
+        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: 'no_provider' });
+        // Stay in modal with a gentle, test-only state (no redirect)
+        setStatus('photo-ocr-missing');
+        toast.info('OCR unavailable—try barcode or manual entry.');
         return;
       }
 
-      // Parse + map → legacy
-      const legacy = toLegacyFromPhoto(data.extractedText);
+      // Extract text
+      let text = '';
+      try {
+        const result = await ocr.extractText(imageBytes);
+        text = result?.text ?? '';
+        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
+      } catch (e) {
+        if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', e);
+        setStatus('photo-ocr-error');
+        toast.error('Failed to read text from photo. Try manual entry.');
+        return;
+      }
 
-      // Build report (barcode-like early return)
+      // Parse & map to unified shape
+      const legacy = toLegacyFromPhoto(text);
+
       const report = {
         source: 'photo',
         title: legacy.productName,
@@ -279,7 +296,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         ingredientFlags: (legacy.flags || []).map((f: any) => ({
           ingredient: f.title || f.label || f.code || 'Ingredient',
           flag: f.reason || f.description || f.label || '',
-          severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
+          severity: (/high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low') as 'low'|'medium'|'high',
         })),
         nutritionData: legacy.nutritionData,
         ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
@@ -304,6 +321,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     } catch (error) {
       console.error('[PHOTO] Capture failed:', error);
       toast.error('Failed to capture photo. Please try again.');
+      setStatus('photo-ocr-error');
     } finally {
       setIsCapturing(false);
       inFlightRef.current = false;
@@ -340,6 +358,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        setIsCapturing(true);
         const reader = new FileReader();
         reader.onload = async (e) => {
           const imageBase64 = e.target?.result as string;
@@ -347,26 +366,35 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           
           try {
             // Process through same OCR flow as capture
-            // Convert base64 to blob for prepareImageForAnalysis
             const response = await fetch(imageBase64);
             const blob = await response.blob();
             const prep = await prepareImageForAnalysis(blob);
-            
-            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
-              body: {
-                mode: 'ocr',
-                imageBase64: prep.base64NoPrefix
-              }
-            });
+            const arrayBuffer = await blob.arrayBuffer();
+            const imageBytes = new Uint8Array(arrayBuffer);
 
-            if (error || !data?.extractedText) {
-              toast.info('Could not read text from image. Try manual entry.');
-              onOpenChange(false);
-              onManualFallback();
+            // OCR provider
+            const ocr = await getOCR();
+            if (!ocr) {
+              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, reason: 'no_provider' });
+              setStatus('photo-ocr-missing');
+              toast.info('OCR unavailable—try barcode or manual entry.');
               return;
             }
 
-            const legacy = toLegacyFromPhoto(data.extractedText);
+            // Extract text
+            let text = '';
+            try {
+              const result = await ocr.extractText(imageBytes);
+              text = result?.text ?? '';
+              if (CFG.DEBUG) console.info('[PHOTO][OCR]', { success: true, textLength: text.length });
+            } catch (e) {
+              if (CFG.DEBUG) console.warn('[PHOTO][OCR][ERROR]', e);
+              setStatus('photo-ocr-error');
+              toast.error('Failed to read text from image. Try manual entry.');
+              return;
+            }
+
+            const legacy = toLegacyFromPhoto(text);
             const report = {
               source: 'photo',
               title: legacy.productName,
@@ -375,7 +403,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               ingredientFlags: (legacy.flags || []).map((f: any) => ({
                 ingredient: f.title || f.label || f.code || 'Ingredient',
                 flag: f.reason || f.description || f.label || '',
-                severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
+                severity: (/high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low') as 'low'|'medium'|'high',
               })),
               nutritionData: legacy.nutritionData,
               ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
@@ -385,13 +413,23 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               _dataSource: legacy._dataSource,
             };
 
+            if (CFG.DEBUG) console.info('[PHOTO][FINAL]', {
+              score10: report.health?.score,
+              flagsCount: report.ingredientFlags?.length,
+              per100g: { kcal: report.nutritionData?.energyKcal, sugar_g: report.nutritionData?.sugar_g, sodium_mg: report.nutritionData?.sodium_mg },
+              perServing: { kcal: report.nutritionDataPerServing?.energyKcal, sugar_g: report.nutritionDataPerServing?.sugar_g, sodium_mg: report.nutritionDataPerServing?.sodium_mg },
+              serving: report.serving_size
+            });
+
             onCapture(JSON.stringify(report));
+            onOpenChange(false);
           } catch (error) {
             console.error('[PHOTO] Upload processing failed:', error);
             toast.error('Failed to process uploaded image.');
+            setStatus('photo-ocr-error');
+          } finally {
+            setIsCapturing(false);
           }
-          
-          onOpenChange(false);
         };
         reader.readAsDataURL(file);
       }
@@ -528,6 +566,62 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 <Button onClick={startCamera} variant="outline" className="text-white border-white">
                   Try Again
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* OCR Missing State */}
+          {status === 'photo-ocr-missing' && (
+            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
+              <div className="text-center text-white max-w-sm">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-bold mb-2">OCR Unavailable</h3>
+                <p className="text-white/70 mb-6">
+                  Text recognition is not configured. Try scanning a barcode or manual entry instead.
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button 
+                    onClick={() => {setStatus('camera'); onManualFallback();}} 
+                    variant="outline" 
+                    className="text-white border-white"
+                  >
+                    Manual Entry
+                  </Button>
+                  <Button 
+                    onClick={() => setStatus('camera')} 
+                    className="bg-primary"
+                  >
+                    Back to Camera
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* OCR Error State */}
+          {status === 'photo-ocr-error' && (
+            <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-8">
+              <div className="text-center text-white max-w-sm">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-xl font-bold mb-2">OCR Failed</h3>
+                <p className="text-white/70 mb-6">
+                  Could not read text from the photo. Try taking another photo or manual entry.
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button 
+                    onClick={() => {setStatus('camera'); onManualFallback();}} 
+                    variant="outline" 
+                    className="text-white border-white"
+                  >
+                    Manual Entry
+                  </Button>
+                  <Button 
+                    onClick={() => setStatus('camera')} 
+                    className="bg-primary"
+                  >
+                    Try Again
+                  </Button>
+                </div>
               </div>
             </div>
           )}
