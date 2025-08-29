@@ -60,9 +60,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   // 2) Hard block any scan hub while Take Photo is open
   useEffect(() => {
-    document.body.setAttribute('data-photo-open', '1');
-    return () => document.body.removeAttribute('data-photo-open');
-  }, []);
+    if (open) {
+      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Setting data-photo-open=1');
+      document.body.setAttribute('data-photo-open', '1');
+    } else {
+      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Removing data-photo-open');
+      document.body.removeAttribute('data-photo-open');
+    }
+    return () => {
+      if (CFG.DEBUG) console.info('[PHOTO][BLOCK] Cleanup removing data-photo-open');
+      document.body.removeAttribute('data-photo-open');
+    };
+  }, [open]);
 
   useEffect(() => {
     if (open) {

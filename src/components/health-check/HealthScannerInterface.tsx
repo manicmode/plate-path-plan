@@ -129,7 +129,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   useEffect(() => {
     // Don't mount scanner if photo modal is open
-    if (document.body.getAttribute('data-photo-open') === '1') return;
+    if (document.body.getAttribute('data-photo-open') === '1') {
+      if (DEBUG) console.log('[SCANNER][BLOCKED] Photo modal is open, not mounting scanner');
+      return;
+    }
     
     if (currentView === 'scanner') {
       startCamera();
