@@ -47,8 +47,10 @@ export async function getOCR(): Promise<OCR | null> {
       }
 
       const data = await res.json().catch(() => ({}));
-      if (DEBUG) console.info('[PHOTO][OCR][RESP]', { textLen: (data?.text || '').length });
-      return { text: data?.text ?? '' };
+      if (DEBUG) console.info('[PHOTO][OCR][RESP]', { ok: data?.ok, textLen: data?.textLen, reason: data?.reason });
+      
+      const text = data?.text ?? '';
+      return { text };
     }
   };
 
