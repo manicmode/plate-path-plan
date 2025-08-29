@@ -1,3 +1,7 @@
+import { mapNutriments } from '@/lib/health/mapNutrimentsToNutritionData';
+import { detectFlags } from '@/lib/health/flagger';
+import { calculateHealthScore, toFinal10 } from '@/score/ScoreEngine';
+
 /* Maps the enhanced-health-scanner response into the legacy shape
  * the existing Health/Confirm modals already consume.
  */
@@ -112,50 +116,92 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     prod: Object.keys((envelope?.product)||{}).slice(0,10)
   });
   
-  // Barcode mode - use legacy fields only
+  // Barcode mode - use ScoreEngine and deterministic flags when enabled
   if (envelope?.mode === 'barcode' && envelope?.product) {
     const p = envelope.product;
+    
+    // Map OFF nutriments to standardized format
+    const raw = p.nutriments || {};
+    const mapped = mapNutriments(raw);
+    const ingredients_text = p.ingredients_text || '';
 
-    // OFF letter grade on product (several aliases exist)
-    const grade =
-      p.nutriscore_grade ||
-      p.nutrition_grade_fr ||
-      (Array.isArray(p.nutrition_grades_tags) ? p.nutrition_grades_tags[0] : undefined);
+    // Generate deterministic flags
+    const flags = detectFlags(ingredients_text, {
+      sodium_mg_100g: mapped.sodium_mg,
+      sugar_g_100g: mapped.sugar_g,
+      satfat_g_100g: mapped.satfat_g,
+      fiber_g_100g: mapped.fiber_g,
+      protein_g_100g: mapped.protein_g,
+    });
 
-    // 1) if we got a numeric 0..10 in p.health.score AND it isn't a suspicious 10, use it
-    let score10: number | null = (p.health && p.health.score != null) ? Number(p.health.score) : null;
-    if (!(isFinite(score10 as number) && (score10 as number) >= 0 && (score10 as number) <= 10)) {
-      score10 = null;
+    // Score: unified engine (flag-gated), else keep legacy
+    let score10: number | undefined = undefined;
+    if (import.meta.env.VITE_SCORE_ENGINE_V1 === 'true') {
+      const res = calculateHealthScore({
+        name: p.product_name || p.generic_name || '',
+        nutrition: {
+          calories: mapped.energyKcal,
+          protein_g: mapped.protein_g,
+          carbs_g: mapped.carbs_g,
+          fat_g: mapped.fat_g,
+          sugar_g: mapped.sugar_g,
+          fiber_g: mapped.fiber_g,
+          sodium_mg: mapped.sodium_mg,
+          saturated_fat_g: mapped.satfat_g,
+        },
+        ingredientsText: ingredients_text,
+        novaGroup: p.nova_group,
+      });
+      score10 = toFinal10(res.score);
+    } else {
+      // Legacy score mapping with grade fallbacks
+      const grade =
+        p.nutriscore_grade ||
+        p.nutrition_grade_fr ||
+        (Array.isArray(p.nutrition_grades_tags) ? p.nutrition_grades_tags[0] : undefined);
+
+      let legacyScore: number | null = (p.health && p.health.score != null) ? Number(p.health.score) : null;
+      if (!(isFinite(legacyScore as number) && (legacyScore as number) >= 0 && (legacyScore as number) <= 10)) {
+        legacyScore = null;
+      }
+
+      if (legacyScore === 10 && grade) {
+        const fromGrade = gradeTo10(grade);
+        if (fromGrade != null) legacyScore = fromGrade;
+      }
+
+      if (legacyScore == null && grade) {
+        legacyScore = gradeTo10(grade);
+      }
+
+      score10 = clamp10(legacyScore ?? 0);
     }
-
-    // 2) if score is exactly 10 but we do have a letter grade, prefer the grade mapping
-    if (score10 === 10 && grade) {
-      const fromGrade = gradeTo10(grade);
-      if (fromGrade != null) score10 = fromGrade;
-    }
-
-    // 3) fallback to letter grade when no reliable numeric score
-    if (score10 == null && grade) {
-      score10 = gradeTo10(grade);
-    }
-
-    // 4) final clamp
-    const healthScore = clamp10(score10 ?? 0);
 
     const legacy = {
       status: 'ok' as const,
       productName: p.productName || p.product_name || p.generic_name || 'Unknown Product',
-      healthScore,              // final 0..10
-      scoreUnit: '0-10',        // tell UI not to re-scale
-      nutritionData: p.nutriments || {}, // raw OFF nutriments
-      ingredientsText: p.ingredients_text || '',
+      healthScore: score10,
+      scoreUnit: '0-10',
+      nutritionData: mapped, // Use standardized nutrition data
+      ingredientsText: ingredients_text,
       barcode: p.code || envelope.barcode || '',
       brands: p.brands || '',
       imageUrl: p.image_url || '',
-      healthFlags: []
+      healthFlags: flags.map(f => ({
+        key: f.key,
+        label: f.label,
+        severity: f.severity,
+        description: f.description || null
+      }))
     };
+
+    // Debug performance logging
+    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+      const fp = `${legacy.productName}|kcal:${mapped.energyKcal}|p:${mapped.protein_g}|flags:${flags.length}|s:${score10}`;
+      console.info('[BARCODE.output.fp]', fp);
+    }
     
-    console.log('[ADAPTER][BARCODE]', { name: legacy.productName, score10: legacy.healthScore });
+    console.log('[ADAPTER][BARCODE]', { name: legacy.productName, score10: legacy.healthScore, flagCount: flags.length });
     return legacy;
   }
   
