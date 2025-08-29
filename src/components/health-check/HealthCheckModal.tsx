@@ -1901,11 +1901,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                 setCurrentState('scanner');
               }}
               onRetryPhoto={() => {
-                console.log('[HC][STEP]', 'scanner', { source: 'retry_photo' });
-                setCurrentState('scanner');
+                console.log('[HC][STEP] Photo Mode requested');
+                // Close this modal and request photo modal from parent
+                handleClose();
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('scan:open-photo'));
+                }, 100);
               }}
               onManualEntry={() => setCurrentState('fallback')}
-              onVoiceEntry={() => setCurrentState('fallback')}
+              onVoiceEntry={() => {
+                console.log('[HC][STEP] Voice Entry requested');
+                // Close this modal and request voice modal from parent  
+                handleClose();
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('scan:open-voice'));
+                }, 100);
+              }}
               onBack={handleClose}
             />
           )}

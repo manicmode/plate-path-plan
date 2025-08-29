@@ -267,8 +267,25 @@ export default function ScanHub() {
       }));
     }
 
+    function onOpenPhoto() {
+      console.log('[SCAN][OPEN-PHOTO]', { source: 'no_detection_fallback' });
+      handleTakePhoto();
+    }
+
+    function onOpenVoice() {
+      console.log('[SCAN][OPEN-VOICE]', { source: 'no_detection_fallback' });
+      handleSpeakToAnalyze();
+    }
+
     window.addEventListener('scan:open-search', onOpenSearch);
-    return () => window.removeEventListener('scan:open-search', onOpenSearch);
+    window.addEventListener('scan:open-photo', onOpenPhoto);
+    window.addEventListener('scan:open-voice', onOpenVoice);
+    
+    return () => {
+      window.removeEventListener('scan:open-search', onOpenSearch);
+      window.removeEventListener('scan:open-photo', onOpenPhoto);
+      window.removeEventListener('scan:open-voice', onOpenVoice);
+    };
   }, []);
 
   // Log page open
