@@ -66,6 +66,8 @@ export type LegacyRecognized = {
   healthScore: number | null;
   healthFlags: LegacyHealthFlag[];
   nutritionData?: any | null; // the key the UI actually uses
+  nutrition?: any | null; // OFF nutriments for mapping
+  scoreUnit?: string; // Signal score normalization (e.g., '0-10')
   status?: 'ok' | 'no_detection' | 'not_found';
   recommendation?: string | null;
 };
@@ -159,8 +161,10 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     status,
     productName: productName === 'Unknown Product' ? null : productName,
     healthScore,
+    scoreUnit: '0-10',    // Signal that score is already normalized 0-10
     ingredientsText: ingredientsText || null,
     nutritionData,                          // <- **the key the UI actually uses**
+    nutrition: nutriments || {},            // Keep OFF nutriments for mapping
     barcode: barcode || null,
     healthFlags,
     brands: product.brands || '',

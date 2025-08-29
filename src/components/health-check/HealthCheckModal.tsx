@@ -923,18 +923,54 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           return;
         }
         
-        // Process successful barcode result (same logic as barcode capture)
+        // Process successful barcode result with proper score handling
         const itemName = legacy.productName || 'Unknown item';
         const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score;
-        const scorePct = extractScore(rawScore);
-        const score10 = scorePct == null ? null : scorePct / 10;
         
+        // Trust the unit from adapter - don't double normalize
+        const score10 = (legacy.scoreUnit === '0-10')
+          ? Math.max(0, Math.min(10, Number(rawScore) || 0))
+          : (() => {
+              const scorePct = extractScore(rawScore);
+              return scorePct == null ? null : scorePct / 10;
+            })();
+        
+        console.log('[REPORT][SCORE_TRACE]', {
+          fromAdapter: legacy.healthScore,
+          unit: legacy.scoreUnit,
+          final10: score10
+        });
         const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags : [];
         const ingredientFlags = rawFlags.map((f: any) => ({
           ingredient: f.title || f.label || f.key || 'Ingredient',
           flag: f.description || f.label || '',
           severity: (/danger|high/i.test(f.severity) ? 'high' : /warn|med/i.test(f.severity) ? 'medium' : 'low') as 'low' | 'medium' | 'high',
         }));
+
+        // Map OFF nutriments to UI nutrition grid format
+        const n = legacy.nutrition || {};
+        
+        // Helper to convert kJ to kcal if OFF only gave energy in kJ
+        const kjToKcal = (v?: number) => (typeof v === 'number' ? v * 0.239005736 : undefined);
+        
+        const calories = n['energy-kcal_100g'] ?? kjToKcal(n['energy_100g']);
+        
+        const nutritionData = {
+          calories: Number(calories) || 0,
+          protein:  Number(n['proteins_100g']) || 0,
+          carbs:    Number(n['carbohydrates_100g']) || 0,
+          fat:      Number(n['fat_100g']) || 0,
+          sugar:    Number(n['sugars_100g']) || 0,
+          fiber:    Number(n['fiber_100g']) || 0,
+          sodium:   (typeof n['sodium_100g'] === 'number')
+                      ? n['sodium_100g'] * 1000   // g → mg if OFF returns grams
+                      : (typeof n['salt_100g'] === 'number' ? n['salt_100g'] * 400 * 1000 : 0) // salt g → Na mg
+        };
+        
+        console.log('[REPORT][NUTRITION_MAP]', {
+          offKeys: Object.keys(n),
+          gridPreview: nutritionData
+        });
 
         const analysisResult: HealthAnalysisResult = {
           itemName,
@@ -943,7 +979,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           healthScore: score10 ?? 0,
           ingredientsText: legacy.ingredientsText,
           ingredientFlags,
-          nutritionData: legacy.nutritionData || {},
+          nutritionData: nutritionData,
           healthProfile: {
             isOrganic: legacy.ingredientsText?.includes('organic') || false,
             isGMO: legacy.ingredientsText?.toLowerCase().includes('gmo') || false,
@@ -1091,7 +1127,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
    */
   const legacyFromProduct = (product: any, metadata: { source: string }): HealthAnalysisResult => {
     const itemName = product.productName || 'Unknown item';
-    const healthScore = product.health?.score ? product.health.score / 10 : 0; // Convert 0-100 to 0-10
+    
+    // Handle score normalization based on adapter signal
+    const rawScore = product.health?.score;
+    const healthScore = (product.scoreUnit === '0-10')
+      ? Math.max(0, Math.min(10, Number(rawScore) || 0))
+      : rawScore ? rawScore / 10 : 0; // Convert 0-100 to 0-10 for legacy cases
     
     const ingredientFlags = (product.health?.flags || []).map((f: any) => ({
       ingredient: f.label || 'Ingredient',
@@ -1454,7 +1495,30 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       }));
       
       const ingredientsText = legacy.ingredientsText;
-      const nutritionData = legacy.nutritionData || {};
+      // Map OFF nutriments to UI nutrition grid format
+      const n = legacy.nutrition || {};
+      
+      // Helper to convert kJ to kcal if OFF only gave energy in kJ
+      const kjToKcal = (v?: number) => (typeof v === 'number' ? v * 0.239005736 : undefined);
+      
+      const calories = n['energy-kcal_100g'] ?? kjToKcal(n['energy_100g']);
+      
+      const nutritionData = {
+        calories: Number(calories) || 0,
+        protein:  Number(n['proteins_100g']) || 0,
+        carbs:    Number(n['carbohydrates_100g']) || 0,
+        fat:      Number(n['fat_100g']) || 0,
+        sugar:    Number(n['sugars_100g']) || 0,
+        fiber:    Number(n['fiber_100g']) || 0,
+        sodium:   (typeof n['sodium_100g'] === 'number')
+                    ? n['sodium_100g'] * 1000   // g → mg if OFF returns grams
+                    : (typeof n['salt_100g'] === 'number' ? n['salt_100g'] * 400 * 1000 : 0) // salt g → Na mg
+      };
+      
+      console.log('[REPORT][NUTRITION_MAP]', {
+        offKeys: Object.keys(n),
+        gridPreview: nutritionData
+      });
       
         const analysisResult: HealthAnalysisResult = {
           itemName,
