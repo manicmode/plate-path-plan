@@ -277,12 +277,28 @@ function AppContent() {
                       <ProtectedRoute>
                         <Explore />
                       </ProtectedRoute>
-                     } />
-                     <Route path="/friends" element={
-                       <ProtectedRoute>
-                         <Friends />
-                       </ProtectedRoute>
-                     } />
+                      } />
+                      <Route path="/friends" element={
+                        <ProtectedRoute>
+                          <Friends />
+                        </ProtectedRoute>
+                      } />
+
+                    {/* DEV-only Photo Sandbox route - force mount */}
+                    {import.meta.env.DEV && (
+                      <>
+                        <Route
+                          path="/debug/photo"
+                          element={
+                            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
+                              <PhotoSandbox />
+                            </React.Suspense>
+                          }
+                        />
+                        <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                      </>
+                    )}
+
                     <Route path="/exercise-hub" element={
                       <ProtectedRoute>
                         <ExerciseHub />
@@ -513,24 +529,9 @@ function AppContent() {
                                <FeatureFlagsPage />
                              </ProtectedRoute>
                            } />
-                            
-                            {/* DEV-only Photo Sandbox - Unconditional in dev */}
-                            {import.meta.env.DEV && (
-                              <>
-                                <Route
-                                  path="/debug/photo"
-                                  element={
-                                    <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
-                                      <PhotoSandbox />
-                                    </React.Suspense>
-                                  }
-                                />
-                                <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                              </>
-                            )}
-
-                              {/* Scan Hub Routes */}
-                             <Route path="/scan" element={
+                             
+                             {/* Scan Hub Routes */}
+                              <Route path="/scan" element={
                                <ProtectedRoute>
                                  <ScanHub />
                                </ProtectedRoute>
