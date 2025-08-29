@@ -13,3 +13,12 @@ export function hlog(msg: string, ctx: LogCtx = {}, extra?: unknown) {
 export function newCID() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
+
+// Auto-run sanity tests in development
+if (import.meta.env.VITE_HEALTH_DEBUG_SAFE === 'true') {
+  import('./score').then(({ runSanityTests }) => {
+    runSanityTests();
+  }).catch(() => {
+    console.warn('[HEALTH] Could not run sanity tests - score module unavailable');
+  });
+}
