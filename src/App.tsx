@@ -162,12 +162,18 @@ function AppContent() {
   // Mobile detection for debugging
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-  // STEP 2: Forensics performance marker and theme tracing
+  // STEP 2: Forensics performance marker and theme tracing + Feature Flag Logging
   useEffect(() => { 
     performance.mark('react:mounted'); 
     console.log('[boot] react:mounted'); 
     console.log('[boot+100ms] html.class after mount:', document.documentElement.className);
     setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
+    
+    // Log feature flags for debugging
+    console.log('[FF]', {
+      DEV: import.meta.env.DEV,
+      PHOTO_SANDBOX_ALLOW_PROD: (import.meta.env.VITE_PHOTO_SANDBOX_ALLOW_PROD ?? 'false') === 'true'
+    });
     
     // Defer heavy work behind initial paint
     requestIdle(() => {
