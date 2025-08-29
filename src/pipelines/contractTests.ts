@@ -1,43 +1,42 @@
 import { FF } from '@/featureFlags';
-import { analyzeBarcode } from './barcodePipeline';
-import { analyzePhoto } from './photoPipeline';
-import { analyzeVoice } from './voicePipeline';
-import { analyzeManual } from './manualPipeline';
+import { analyzeBarcode, __smokeTest as smokeBarcode } from './barcodePipeline';
+import { analyzePhoto, __smokeTest as smokePhoto } from './photoPipeline';
+import { analyzeVoice, __smokeTest as smokeVoice } from './voicePipeline';
+import { analyzeManual, __smokeTest as smokeManual } from './manualPipeline';
 
 export async function runPipelineContracts() {
   if (!FF.PIPELINE_ISOLATION) return { skipped: true };
   
   const results: Record<string, 'ok'|'fail'> = {};
   
-  // Test barcode pipeline contract
+  // Test barcode pipeline contract with working implementation
   try {
-    const result = await analyzeBarcode({ code: 'test' });
-    results.barcode = result.ok === false && result.reason === 'dark' ? 'ok' : 'fail';
+    const contractResult = smokeBarcode();
+    results.barcode = await contractResult;
   } catch {
     results.barcode = 'fail';
   }
 
-  // Test manual pipeline contract
+  // Test manual pipeline contract with working implementation
   try {
-    const result = await analyzeManual({ query: 'test' });
-    results.manual = result.ok === false && result.reason === 'dark' ? 'ok' : 'fail';
+    const contractResult = smokeManual();
+    results.manual = await contractResult;
   } catch {
     results.manual = 'fail';
   }
 
-  // Test voice pipeline contract
+  // Test voice pipeline contract with working implementation
   try {
-    const result = await analyzeVoice({ transcript: 'test' });
-    results.voice = result.ok === false && result.reason === 'dark' ? 'ok' : 'fail';
+    const contractResult = smokeVoice();
+    results.voice = await contractResult;
   } catch {
     results.voice = 'fail';
   }
 
-  // Test photo pipeline contract
+  // Test photo pipeline contract (stub)
   try {
-    const blob = new Blob(['test'], { type: 'image/jpeg' });
-    const result = await analyzePhoto({ blob });
-    results.photo = result.ok === false && result.reason === 'dark' ? 'ok' : 'fail';
+    const contractResult = smokePhoto();
+    results.photo = await contractResult;
   } catch {
     results.photo = 'fail';
   }
