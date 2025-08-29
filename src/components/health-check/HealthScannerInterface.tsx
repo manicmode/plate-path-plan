@@ -128,6 +128,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const ZOOM = 1.5;
 
   useEffect(() => {
+    // Don't mount scanner if photo modal is open
+    if (document.body.getAttribute('data-photo-open') === '1') return;
+    
     if (currentView === 'scanner') {
       startCamera();
       warmUpDecoder();

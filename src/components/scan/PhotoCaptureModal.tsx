@@ -9,6 +9,7 @@ import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
+import { toLegacyFromPhoto } from '@/lib/health/toLegacyFromPhoto';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -30,6 +31,15 @@ interface PhotoCaptureModalProps {
 }
 
 
+// 1) Verify flags once (and print them)
+const CFG = {
+  PHOTO_ENABLED: import.meta.env.VITE_FEATURE_TAKE_PHOTO_ENABLED === 'true',
+  PIPE_V1: import.meta.env.VITE_PHOTO_PIPE_V1 === 'true',
+  PHOTO_BARCODES: import.meta.env.VITE_PHOTO_BARCODES_ENABLE === 'true',
+  DEBUG: import.meta.env.VITE_DEBUG_PERF === 'true',
+};
+if (CFG.DEBUG) console.info('[PHOTO][CFG]', CFG);
+
 export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
@@ -41,8 +51,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef<boolean>(false);
+  const controllerRef = useRef<AbortController | null>(null);
+  const rafRef = useRef<number>(0);
+  const timerRef = useRef<number>(0);
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+
+  // 2) Hard block any scan hub while Take Photo is open
+  useEffect(() => {
+    document.body.setAttribute('data-photo-open', '1');
+    return () => document.body.removeAttribute('data-photo-open');
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -53,6 +73,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     
     return cleanup;
   }, [open]);
+
+  // 4) Cleanup on unmount (prevents "scanner remount" race)
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+    controllerRef.current?.abort?.();
+  }, []);
 
   const startCamera = async () => {
     try {
@@ -159,9 +186,15 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
+  // 3) Rewire the capture handler to OCR (never call mode:'scan')
   const capturePhoto = async () => {
     if (!videoRef.current || !stream) return;
+    
+    if (!CFG.PHOTO_ENABLED || !CFG.PIPE_V1) return; // keep old behavior / noop
 
+    if (inFlightRef.current) return; // re-entry guard
+    inFlightRef.current = true;
+    
     setIsCapturing(true);
     playCameraClickSound();
 
@@ -187,11 +220,76 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       
       // Convert to base64
       const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      const capturedImageUrl = imageBase64;
       
       console.log('[PHOTO] Photo captured, processing...');
       
-      // Process with existing analyzer flow
-      onCapture(imageBase64);
+      let routedToBarcode = false;
+
+      // Single barcode-from-image try
+      if (CFG.PHOTO_BARCODES) {
+        // TODO: Implement tryDecodeBarcodeFromImage when barcode detection is ready
+        // const bc = await tryDecodeBarcodeFromImage(imageBase64);
+        if (CFG.DEBUG) console.info('[PHOTO][ROUTE]', { foundBarcode: false });
+        // if (bc) {
+        //   routedToBarcode = true;
+        //   await runBarcodeFlow(bc); // existing barcode path
+        //   return;
+        // }
+      }
+
+      // Compress image for OCR
+      const prep = await prepareImageForAnalysis(canvas);
+      
+      // OCR provider - use edge function
+      const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: {
+          mode: 'ocr',
+          imageBase64: prep.base64NoPrefix
+        }
+      });
+
+      if (error || !data?.extractedText) {
+        if (CFG.DEBUG) console.info('[PHOTO][OCR]', { skipped: true, error });
+        // safe fallback: suggest manual entry; DO NOT call enhanced-health-scanner 'scan'
+        toast.info('Could not read text from photo. Try manual entry.');
+        onOpenChange(false);
+        onManualFallback();
+        return;
+      }
+
+      // Parse + map → legacy
+      const legacy = toLegacyFromPhoto(data.extractedText);
+
+      // Build report (barcode-like early return)
+      const report = {
+        source: 'photo',
+        title: legacy.productName,
+        image_url: capturedImageUrl,
+        health: { score: legacy.healthScore, unit: '0-10' },
+        ingredientFlags: (legacy.flags || []).map((f: any) => ({
+          ingredient: f.title || f.label || f.code || 'Ingredient',
+          flag: f.reason || f.description || f.label || '',
+          severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
+        })),
+        nutritionData: legacy.nutritionData,
+        ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
+          nutritionDataPerServing: legacy.nutritionDataPerServing,
+        }),
+        serving_size: legacy.serving_size,
+        _dataSource: legacy._dataSource,
+      };
+
+      if (CFG.DEBUG) console.info('[PHOTO][FINAL]', {
+        score10: report.health?.score,
+        flagsCount: report.ingredientFlags?.length,
+        per100g: { kcal: report.nutritionData?.energyKcal, sugar_g: report.nutritionData?.sugar_g, sodium_mg: report.nutritionData?.sodium_mg },
+        perServing: { kcal: report.nutritionDataPerServing?.energyKcal, sugar_g: report.nutritionDataPerServing?.sugar_g, sodium_mg: report.nutritionDataPerServing?.sodium_mg },
+        serving: report.serving_size
+      });
+
+      // Process with existing analyzer flow - pass as string for compatibility
+      onCapture(JSON.stringify(report));
       onOpenChange(false);
       
     } catch (error) {
@@ -199,21 +297,91 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       toast.error('Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
+      inFlightRef.current = false;
     }
   };
 
-  const handleImageUpload = () => {
+  const handleImageUpload = async () => {
+    if (!CFG.PHOTO_ENABLED || !CFG.PIPE_V1) {
+      // Old behavior
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const imageBase64 = e.target?.result as string;
+            console.log('[PHOTO] Image uploaded, processing...');
+            onCapture(imageBase64);
+            onOpenChange(false);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+      return;
+    }
+    
+    // New OCR-direct flow
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const imageBase64 = e.target?.result as string;
           console.log('[PHOTO] Image uploaded, processing...');
-          onCapture(imageBase64);
+          
+          try {
+            // Process through same OCR flow as capture
+            // Convert base64 to blob for prepareImageForAnalysis
+            const response = await fetch(imageBase64);
+            const blob = await response.blob();
+            const prep = await prepareImageForAnalysis(blob);
+            
+            const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+              body: {
+                mode: 'ocr',
+                imageBase64: prep.base64NoPrefix
+              }
+            });
+
+            if (error || !data?.extractedText) {
+              toast.info('Could not read text from image. Try manual entry.');
+              onOpenChange(false);
+              onManualFallback();
+              return;
+            }
+
+            const legacy = toLegacyFromPhoto(data.extractedText);
+            const report = {
+              source: 'photo',
+              title: legacy.productName,
+              image_url: imageBase64,
+              health: { score: legacy.healthScore, unit: '0-10' },
+              ingredientFlags: (legacy.flags || []).map((f: any) => ({
+                ingredient: f.title || f.label || f.code || 'Ingredient',
+                flag: f.reason || f.description || f.label || '',
+                severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
+              })),
+              nutritionData: legacy.nutritionData,
+              ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
+                nutritionDataPerServing: legacy.nutritionDataPerServing,
+              }),
+              serving_size: legacy.serving_size,
+              _dataSource: legacy._dataSource,
+            };
+
+            onCapture(JSON.stringify(report));
+          } catch (error) {
+            console.error('[PHOTO] Upload processing failed:', error);
+            toast.error('Failed to process uploaded image.');
+          }
+          
           onOpenChange(false);
         };
         reader.readAsDataURL(file);
