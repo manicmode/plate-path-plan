@@ -5,6 +5,7 @@ import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { HealthScannerInterface } from './HealthScannerInterface';
 import { FF } from '@/featureFlags';
 import { PipelineRouter } from './PipelineRouter';
+import BarcodeScannerShim from './BarcodeScannerShim';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
@@ -1837,9 +1838,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (
-            FF.PIPELINE_ISOLATION ? (
+            FF.PIPELINE_ISOLATION && FF.BARCODE_ISOLATED ? (
               <PipelineRouter mode="barcode">
-                <HealthScannerInterface 
+                <BarcodeScannerShim 
                   onCapture={handleImageCapture}
                   onManualEntry={() => setCurrentState('fallback')}
                   onManualSearch={handleManualEntry}

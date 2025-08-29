@@ -56,6 +56,10 @@ interface HealthScannerInterfaceProps {
   onManualEntry: () => void;
   onManualSearch?: (query: string, type: 'text' | 'voice') => void;
   onCancel?: () => void;
+  mode?: 'barcode' | 'photo' | 'mixed';
+  onAnalysisTimeout?: () => void;
+  onAnalysisFail?: (reason: string) => void;
+  onAnalysisSuccess?: (report: any) => void;
 }
 
 
@@ -63,7 +67,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onCapture,
   onManualEntry,
   onManualSearch,
-  onCancel
+  onCancel,
+  mode,
+  onAnalysisTimeout,
+  onAnalysisFail,
+  onAnalysisSuccess
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +93,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
 
+  // Mode detection and logging
+  const effectiveMode = mode ?? 'mixed';
+  
   // Performance throttling
   const lastDecodeTime = useRef<number>(0);
   const rafRef = useRef<number>(0);
@@ -93,7 +104,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   // Scanner mount probe
   useEffect(() => {
-    if (DEBUG) console.log('[PHOTO][MOUNT]'); // Changed to differentiate from barcode
+    if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
     mark('[HS] component_mount');
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
@@ -181,8 +192,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [currentView]);
 
   const startCamera = async () => {
+    // Guard photo capture in barcode-only mode
+    if (effectiveMode === 'barcode') {
+      console.log('[BARCODE] Skipping photo capture - barcode-only mode');
+    }
+    
     // iOS fallback: use photo capture for photo analysis
     if (!scannerLiveCamEnabled()) {
+      if (effectiveMode === 'barcode') {
+        console.warn('[BARCODE] iOS: skipping photo capture in barcode-only mode');
+        return null;
+      }
       console.warn('[PHOTO] iOS fallback: photo capture (no live stream)');
       try {
         const file = await openPhotoCapture('image/*','environment');
@@ -506,6 +526,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = async () => {
+    // Guard photo capture in barcode-only mode
+    if (effectiveMode === 'barcode') {
+      console.log('[BARCODE] Ignoring photo capture - barcode-only mode');
+      return;
+    }
+    
     if (!videoRef.current || !canvasRef.current) {
       console.error("❌ Missing video or canvas ref!", {
         video: !!videoRef.current,
@@ -944,6 +970,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
     
     // No barcode or barcode lookup failed - proceed with image analysis
+    if (effectiveMode === 'barcode') {
+      console.log('[BARCODE] Skipping photo analysis - barcode-only mode');
+      return;
+    }
+    
     if (isFeatureEnabled('photo_encoder_v1')) {
       try {
         console.log("🖼️ Using optimized photo encoder for analysis");
