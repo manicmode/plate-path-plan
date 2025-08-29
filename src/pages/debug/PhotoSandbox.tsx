@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { analyzePhoto } from '@/pipelines/photoPipeline';
+import { runPhotoPipeline } from '@/pipelines/photoPipeline';
+import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 
 export default function PhotoSandbox() {
   const videoRef = useRef<HTMLVideoElement|null>(null);
@@ -65,11 +66,13 @@ export default function PhotoSandbox() {
     }
 
     try {
-      const res = await analyzePhoto({ blob });
-      log('[PHOTO][RESOLVED]', { 
-        ok: res.ok, 
-        reason: res.ok ? 'success' : (res as { ok: false; reason: string }).reason 
-      });
+      const res = await runPhotoPipeline(blob, {
+        onTimeout: () => log('[PHOTO][WATCHDOG] timeout'),
+        onFail: (r) => log('[PHOTO][FAIL]', r),
+        onSuccess: (r) => log('[PHOTO][SUCCESS]', { score: r?.health?.score ?? 0 })
+      }, { force: true, offline });
+
+      log('[PHOTO][RESOLVED]', { success: res.success, error: res.error ?? null });
     } catch (e) {
       log('[PHOTO][ERROR]', String(e));
     }
@@ -77,10 +80,17 @@ export default function PhotoSandbox() {
 
   async function ping() {
     try {
-      const base = import.meta.env.VITE_FUNCTIONS_BASE ?? '/functions/v1';
+      const base = resolveFunctionsBase();
       const url = `${base}/vision-ocr/ping`;
       log('[PING][START]', { url });
-      const r = await fetch(url); const j = await r.json();
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const txt = await r.text();
+        log('[PING][ERROR]', `Non-JSON response: ${r.status} ${txt.slice(0,120)}…`);
+        return;
+      }
+      const j = await r.json();
       log('[PING]', j);
     } catch (e) { log('[PING][ERROR]', String(e)); }
   }
