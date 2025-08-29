@@ -9,6 +9,10 @@ export async function getOCR(base64: string): Promise<{ ok: boolean; text: strin
   const DEBUG = import.meta.env.VITE_DEBUG_PERF === 'true';
   
   try {
+    if (DEBUG) {
+      console.info('[PHOTO][OCR][HTTP]', { status: 'invoking', provider: 'vision' });
+    }
+
     // Use Supabase SDK invoke (automatically adds auth token)
     const { data, error } = await supabase.functions.invoke('vision-ocr', {
       body: {
@@ -16,6 +20,10 @@ export async function getOCR(base64: string): Promise<{ ok: boolean; text: strin
         imageBase64: base64.replace(/^data:image\/\w+;base64,/, '')
       }
     });
+
+    if (DEBUG) {
+      console.info('[PHOTO][OCR][HTTP]', { status: error ? 'error' : 'success', hasData: !!data, hasError: !!error });
+    }
 
     if (error) {
       if (DEBUG) {
