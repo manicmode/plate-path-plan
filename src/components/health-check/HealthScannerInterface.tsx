@@ -93,10 +93,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   // Scanner mount probe
   useEffect(() => {
-    if (DEBUG) console.log('[SCANNER][MOUNT]');
+    if (DEBUG) console.log('[PHOTO][MOUNT]'); // Changed to differentiate from barcode
     mark('[HS] component_mount');
     return () => {
-      if (DEBUG) console.log('[SCANNER][UNMOUNT]');
+      if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { FF } from '@/featureFlags';
 
 const APP_VERSION =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_APP_VERSION) ||
@@ -27,6 +28,11 @@ export default function HealthCheck() {
   });
 
   useEffect(() => {
+    // Flag logging (dev only)
+    if (import.meta.env.DEV) {
+      console.log('[FF]', FF);
+    }
+    
     const checkHealth = async () => {
       try {
         // Check DB and flag status

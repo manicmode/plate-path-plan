@@ -32,6 +32,26 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   });
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[BARCODE][MOUNT]');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[BARCODE][GUARD] active');
+      const original = console.log;
+      console.log = (...args: any[]) => {
+        if (typeof args[0] === 'string' && args[0].startsWith('[PHOTO]')) {
+          original('[GUARD][VIOLATION] Photo log during barcode mode:', args[0], args[1] ?? '');
+        }
+        original(...args);
+      };
+      return () => { console.log = original; };
+    }
+  }, []);
+
+  useEffect(() => {
     const checkPlatformAndSupport = async () => {
       // Detect platform
       const isNative = Capacitor.isNativePlatform();
