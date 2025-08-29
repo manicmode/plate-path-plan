@@ -1,12 +1,21 @@
 import React, { useEffect, useRef } from 'react';
 import { analyzePhoto } from '@/pipelines/photoPipeline';
+import { FF } from '@/featureFlags';
 
 export default function PhotoSandbox() {
-  if (!import.meta.env.DEV) {
+  // Log feature flags once
+  console.log('[FF]', { DEV: import.meta.env.DEV, ...FF });
+  
+  const enableSandbox = import.meta.env.DEV || FF.PHOTO_SANDBOX_ALLOW_PROD;
+  
+  if (!enableSandbox) {
     return (
-      <div style={{ padding: 24 }}>
-        <h1>Photo Sandbox (DEV only)</h1>
-        <p>This page renders only in development builds.</p>
+      <div style={{ padding: 24, fontFamily: 'system-ui' }}>
+        <h1>Photo Sandbox</h1>
+        <p>Disabled on this build. To enable on staging/prod set:</p>
+        <pre style={{ backgroundColor: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+          VITE_PHOTO_SANDBOX_ALLOW_PROD=true
+        </pre>
       </div>
     );
   }
