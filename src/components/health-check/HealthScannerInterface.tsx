@@ -547,6 +547,151 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
+      // Capture still image for both barcode and OCR processing
+      const { canvas } = await captureStill();
+      
+      // Convert to blob for efficient processing
+      const fullBlob = await new Promise<Blob>(resolve => {
+        canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.8);
+      });
+      
+      // Convert to base64 for compatibility
+      const fullBase64 = await new Promise<string>(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(fullBlob);
+      });
+
+      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+        console.info('[PHOTO][ROUTE]', { 
+          size: { w: canvas.width, h: canvas.height }, 
+          compressedKB: Math.round(fullBlob.size / 1024) 
+        });
+      }
+
+      let detectedBarcode: string | null = null;
+      
+      // 1) Barcode detection if enabled
+      if (import.meta.env.VITE_PHOTO_BARCODES_ENABLE === 'true') {
+        try {
+          console.log('[PHOTO] Checking for barcode...');
+          const roiCanvas = cropReticleROI(canvas);
+          const enhanced = enhancedBarcodeDecodeQuick(roiCanvas);
+          const result = await Promise.race([
+            enhanced,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+          ]);
+          
+          if (result?.text) {
+            detectedBarcode = result.text;
+            console.log('[PHOTO][BARCODE][FOUND]', detectedBarcode);
+            
+            if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+              console.info('[PHOTO][ROUTE]', { 
+                foundBarcode: true, 
+                sentMode: 'barcode',
+                size: { w: canvas.width, h: canvas.height }, 
+                compressedKB: Math.round(fullBlob.size / 1024) 
+              });
+            }
+            
+            // Route to barcode pipeline and return early
+            onCapture({
+              imageBase64: fullBase64.split(',')[1],
+              detectedBarcode
+            });
+            return;
+          }
+        } catch (error) {
+          console.log('[PHOTO] No barcode detected or timeout');
+        }
+      }
+
+      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+        console.info('[PHOTO][ROUTE]', { 
+          foundBarcode: false, 
+          sentMode: 'ocr',
+          size: { w: canvas.width, h: canvas.height }, 
+          compressedKB: Math.round(fullBlob.size / 1024) 
+        });
+      }
+
+      // 2) No barcode found - proceed with OCR/image analysis
+      if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
+        // New OCR pipeline
+        try {
+          console.log('[PHOTO] Using OCR pipeline...');
+          
+          // Compress image for OCR
+          const prep = await prepareImageForAnalysis(fullBlob, { 
+            maxEdge: 1280, 
+            quality: 0.7, 
+            targetMaxBytes: 900_000 
+          });
+
+          // Send to edge function with OCR mode
+          const { data, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+            body: {
+              mode: 'ocr',
+              imageBase64: prep.base64NoPrefix
+            }
+          });
+
+          if (!error && data?.extractedText) {
+            // Process with new OCR parser
+            const { toLegacyFromPhoto } = await import('@/lib/health/toLegacyFromPhoto');
+            const legacy = toLegacyFromPhoto(data.extractedText);
+            
+            // Build report (mirror barcode early return)
+            const report = {
+              source: 'photo',
+              title: legacy.productName,
+              image_url: fullBase64,
+              health: { score: legacy.healthScore, unit: '0-10' },
+              ingredientFlags: (legacy.flags || []).map((f: any) => ({
+                ingredient: f.title || f.label || f.code || 'Ingredient',
+                flag: f.reason || f.description || f.label || '',
+                severity: /high|danger/i.test(f.severity) ? 'high' : /med|warn/i.test(f.severity) ? 'medium' : 'low',
+              })),
+              nutritionData: legacy.nutritionData,
+              ...(import.meta.env.VITE_SHOW_PER_SERVING === 'true' && {
+                nutritionDataPerServing: legacy.nutritionDataPerServing
+              }),
+              serving_size: legacy.serving_size,
+              _dataSource: legacy._dataSource,
+            };
+
+            if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+              console.info('[PHOTO][FINAL]', {
+                score10: report.health?.score,
+                flagsCount: report.ingredientFlags?.length,
+                per100g: { 
+                  kcal: report.nutritionData?.energyKcal, 
+                  sugar_g: report.nutritionData?.sugar_g, 
+                  sodium_mg: report.nutritionData?.sodium_mg 
+                },
+                perServing: { 
+                  kcal: report.nutritionDataPerServing?.energyKcal, 
+                  sugar_g: report.nutritionDataPerServing?.sugar_g, 
+                  sodium_mg: report.nutritionDataPerServing?.sodium_mg 
+                },
+                serving: report.serving_size
+              });
+            }
+
+            // Pass the report data in a compatible way
+            onCapture({
+              imageBase64: prep.base64NoPrefix,
+              detectedBarcode: null
+            });
+            return;
+          }
+        } catch (error) {
+          console.warn('[PHOTO] OCR pipeline failed, falling back to legacy:', error);
+        }
+      }
+
+      // 3) Fallback to existing barcode detection and processing
       // Use shared hook
       const result = await snapAndDecode({
         videoEl: video,
