@@ -86,6 +86,18 @@ function mapOffNutritionToGrid(nutritionData: any) {
   return nutritionGridData;
 }
 
+// Add barcode report logging
+function logBarcodeReport(legacy: any) {
+  if (DEBUG) {
+    console.log('[REPORT][BARCODE]', {
+      fromAdapterScore: legacy.healthScore,
+      unit: legacy.scoreUnit,
+      hasGridSource: !!legacy.nutritionData && Object.keys(legacy.nutritionData||{}).length>0,
+      hasIngredients: !!legacy.ingredientsText
+    });
+  }
+}
+
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -766,6 +778,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           const legacy = toLegacyFromEdge(result);
           console.log(`[HS BARCODE] Legacy after adapter [${currentCaptureId}]:`, legacy);
           
+          // Add barcode report logging
+          logBarcodeReport(legacy);
+          
           // Handle different statuses
           if (legacy.status === 'no_detection') {
             console.log(`[HS] No detection from barcode [${currentCaptureId}], showing no detection UI`);
@@ -1316,6 +1331,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
    * Process result and show appropriate report
    */
   const processAndShowResult = async (legacy: any, data: any, captureId: string, type: string) => {
+    // Log barcode report if it's a barcode type
+    if (type === 'barcode') {
+      logBarcodeReport(legacy);
+    }
+    
     // Handle different statuses
     if (legacy.status === 'no_detection') {
       console.log(`[HS] No detection from ${type} [${captureId}], showing no detection UI`);
@@ -1343,14 +1363,24 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       label: itemName
     });
     
-    // Process score, flags, and nutrition same as before
-    const rawScore = legacy.healthScore ?? data?.product?.health?.score ?? data?.health?.score ?? (data as any)?.healthScore;
-    const scorePct = extractScore(rawScore);
-    const score10 = scorePct == null ? null : scorePct / 10;
+    // PATCH 3: Fixed score handling - never re-scale when flagged as 0-10
+    const rawLegacyScore = Number(legacy?.healthScore);
+    const score10 =
+      legacy?.scoreUnit === '0-10'
+        ? Math.max(0, Math.min(10, isFinite(rawLegacyScore) ? rawLegacyScore : 0))
+        : extractScore(rawLegacyScore) ? extractScore(rawLegacyScore)! / 10 : 0; // used by non-barcode paths only
     
-    const rawFlags = Array.isArray(legacy.healthFlags) ? legacy.healthFlags
-                    : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
-                    : [];
+    // PATCH 3: Use 7-field nutrition grid mapping for barcode data
+    const nutritionData = type === 'barcode' && legacy.nutritionData 
+      ? mapOffNutritionToGrid(legacy.nutritionData)
+      : legacy.nutrition || {};
+    
+    // PATCH 3: Keep flags empty for barcode path until OFF tags are mapped properly
+    const rawFlags = type === 'barcode' ? [] : (
+      Array.isArray(legacy.healthFlags) ? legacy.healthFlags
+      : Array.isArray((data as any)?.healthFlags) ? (data as any).healthFlags
+      : []
+    );
     const ingredientFlags = rawFlags.map((f: any) => ({
       ingredient: f.title || f.label || f.key || 'Ingredient',
       flag: f.description || f.label || '',
@@ -1358,7 +1388,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }));
     
     const ingredientsText = legacy.ingredientsText;
-    const nutritionData = legacy.nutrition || {};
     
     const analysisResult: HealthAnalysisResult = {
       itemName,

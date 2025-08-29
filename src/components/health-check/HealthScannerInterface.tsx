@@ -494,6 +494,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
     lastDecodeTime.current = now;
 
+    if (DEBUG) console.log('[SCANNER][CAPTURE] freeze');
     mark('[HS] analyze_start');
     setIsFrozen(true);
     playCameraClickSound();
@@ -570,11 +571,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               fr.readAsDataURL(fullBlob);
             });
             
+            if (DEBUG) console.log('[SCANNER][CAPTURE] onCapture with barcode');
             onCapture(fullBase64 + `&barcode=${result.raw}`);
-            setIsFrozen(false);
-            mark('[HS] analyze_end');
-            measure('[HS] analyze_total', '[HS] analyze_start');
-            checkBudget('analyze_total', performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0), PERF_BUDGET.analyzeTotalMs);
+            // PATCH 4: DO NOT capture again here - already captured once above
+            if (DEBUG) console.log('[SCANNER][CAPTURE] unfreeze after success');
             return;
           } else {
             console.warn('[HS] OFF hit but no product data, continuing to burst');
@@ -663,6 +663,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       onCapture(fallbackImageData);
     } finally {
       // PATCH 4: Always unfreeze and reset scanning state
+      if (DEBUG) console.log('[SCANNER][CAPTURE] unfreeze in finally');
       setIsScanning(false);
       if (videoRef.current) {
         unfreezeVideo(videoRef.current);

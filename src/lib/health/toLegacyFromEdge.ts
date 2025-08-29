@@ -93,6 +93,13 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
 }
 
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
+  if (DEBUG) {
+    console.log('[ADAPTER][IN]', {
+      top: Object.keys(envelope||{}).slice(0,10),
+      prod: Object.keys((envelope?.product)||{}).slice(0,10)
+    });
+  }
+  
   if (!envelope) return { productName: null, barcode: null, ingredientsText: null, healthScore: null, healthFlags: [], status: 'no_detection' };
   
   if (envelope.error || envelope.ok === false) {
@@ -136,12 +143,11 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
   // Log summary only in debug mode
   if (DEBUG) {
-    console.log('[ADAPTER][OUTPUT_SUMMARY]', {
+    console.log('[ADAPTER][OUT]', {
       name: legacy.productName,
       score10: legacy.healthScore,
-      scoreUnit: legacy.scoreUnit,
-      hasNutriments: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length > 0,
-      barcode: legacy.barcode,
+      unit: legacy.scoreUnit,
+      hasNutr: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length>0
     });
   }
 

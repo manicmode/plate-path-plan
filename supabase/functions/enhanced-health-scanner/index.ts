@@ -85,10 +85,12 @@ serve(async (req) => {
           }
         };
 
-        console.log('[EDGE][BARCODE][OFF_HIT]', {
-          barcode,
-          hasName: !!payload.product.productName,
-          hasNutriments: !!payload.product.nutriments && Object.keys(payload.product.nutriments).length > 0,
+        console.log('[EDGE][BARCODE]', {
+          mode: 'barcode',
+          hasProduct: !!payload?.product,
+          hasNutriments: !!payload?.product?.nutriments && Object.keys(payload.product.nutriments||{}).length>0,
+          score: payload?.product?.health?.score,
+          barcode
         });
 
         return new Response(JSON.stringify(payload), {
