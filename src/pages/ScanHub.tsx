@@ -211,11 +211,17 @@ export default function ScanHub() {
     console.log('Voice product selected:', product);
     addRecent({ mode: 'voice', label: product.productName || 'Voice entry' });
     
-    // Never open scanner from voice - go directly to health analysis
-    goToHealthAnalysis(navigate, { 
-      source: 'voice',
-      name: product.productName || product.name || ''
-    });
+    // Set analysis data BEFORE opening modal
+    const payload = { 
+      source: 'voice', 
+      name: product.productName || product.name || '', 
+      barcode: product?.barcode ?? null, 
+      product: product 
+    };
+    setAnalysisData(payload);
+    setHealthModalStep('loading');
+    console.log('[HC][OPEN]', { from: 'voice', initial: 'loading' });
+    setHealthCheckModalOpen(true);
   };
 
   // Handle URL params to force modals (with guards)

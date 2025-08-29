@@ -59,6 +59,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
 
+  // Scanner mount probe
+  useEffect(() => {
+    console.log('[SCANNER][MOUNT]');
+    return () => console.log('[SCANNER][UNMOUNT]');
+  }, []);
+
   // Tuning constants
   const QUICK_BUDGET_MS = 900;
   const ROI = { widthPct: 0.70, heightPct: 0.35 };

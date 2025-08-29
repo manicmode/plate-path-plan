@@ -1,11 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://plate-path-plan.lovable.app, http://localhost:5173, http://localhost:5174',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 // Legacy response format that UI expects (keep UI unchanged)
 interface BackendResponse {
@@ -1397,10 +1392,9 @@ async function processHealthScan(imageBase64: string, detectedBarcode?: string |
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
-  }
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const reqId = crypto.randomUUID().substring(0, 8);
   const t0 = Date.now();
@@ -1416,12 +1410,15 @@ serve(async (req) => {
     ]);
 
   try {
-    const body = await req.json();
-    const { provider: requestProvider } = body;
+    const body = await req.json().catch(() => ({}));
+    const mode = body?.mode ?? 'default';
+    const provider = body?.provider ?? null; // don't reference undeclared
+    
+    console.log('[ENRICH][REQ]', { mode, hasBarcode: !!body?.barcode, hasImage: !!body?.imageBase64 });
     
     // Provider toggle 
-    const provider = requestProvider ?? Deno.env.get('ANALYZER_PROVIDER') ?? 'hybrid';
-    console.log(`🚀 Processing health scan [${reqId}] with provider: ${provider}`);
+    const actualProvider = provider ?? Deno.env.get('ANALYZER_PROVIDER') ?? 'hybrid';
+    console.log(`🚀 Processing health scan [${reqId}] with provider: ${actualProvider}`);
     
     // Camera echo step with provider info
     steps.push({
@@ -1430,16 +1427,16 @@ serve(async (req) => {
       meta: {
         reqId, 
         mode: body.mode,
-        provider,
+        provider: actualProvider,
         dataLen: (body.imageBase64 || '').length
       }
     });
 
     // Handle extract mode for Photo Pipeline v2 
-    if (body.mode === 'extract') {
+    if (mode === 'extract') {
       console.log(`🔍 Extract mode [${reqId}] - vision only, no health analysis`);
       
-      // Handle barcode-only extract mode
+      // Handle barcode-only extract mode (allow barcode without imageBase64)
       if (body.barcode && !body.imageBase64) {
         const norm = normalizeBarcode(body.barcode);
         if (norm) {
@@ -1773,13 +1770,13 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('💥 Enhanced-health-scanner error:', error);
+    console.error('[ENRICH][ERR]', { msg: String(error) });
     
     // Handle timeout specifically
-    if (error.message === 'TIMEOUT') {
-      steps.push({stage: 'timeout', ok: false, meta: {ms: 8000, provider}});
+    if (String(error).includes('TIMEOUT')) {
+      steps.push({stage: 'timeout', ok: false, meta: {ms: 8000, provider: actualProvider}});
     } else {
-      steps.push({stage: 'fatal_error', ok: false, meta: {code: 'unknown_error', msg: error.message}});
+      steps.push({stage: 'fatal_error', ok: false, meta: {code: 'unknown_error', msg: String(error)}});
     }
     
     const errorResponse: BackendResponse = {
@@ -1798,7 +1795,7 @@ serve(async (req) => {
       fallback: true
     };
     
-    return new Response(JSON.stringify({...errorResponse, provider_used: provider || 'hybrid', steps}), {
+    return new Response(JSON.stringify({...errorResponse, provider_used: actualProvider || 'hybrid', steps}), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

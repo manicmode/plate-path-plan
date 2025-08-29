@@ -1,7 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-// Mount probe
-useEffect(() => console.log('[HC][MOUNT] v1'), []);
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
@@ -120,6 +117,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const currentRunId = useRef<string | null>(null);
   const { onAnalyzeImage } = useHealthCheckV2();
 
+  // Mount probe
+  useEffect(() => { console.log('[HC][MOUNT] v1'); }, []);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -140,6 +140,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     if (!isOpen || !analysisData) return;
     
     const { source, barcode, name } = analysisData;
+    
+    // Guard scanner mount for manual/voice
+    if (source === 'manual' || source === 'voice') {
+      console.log('[HC][STATE] skip scanner for', source);
+      setCurrentState('loading');
+      // Continue to manual/voice processing path
+    }
     
     // Check URL params for search modal routing
     const urlParams = new URLSearchParams(window.location.search);
@@ -1437,7 +1444,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       >
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {currentState === 'scanner' && !analysisData?.source?.includes('voice') && (
+          {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (
             <HealthScannerInterface 
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
