@@ -18,6 +18,7 @@ import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
+import { toast } from 'sonner';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 const TORCH_FIX = import.meta.env.VITE_SCANNER_TORCH_FIX === 'true';
@@ -686,7 +687,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               } else {
                 console.warn('[PHOTO][WATCHDOG] Force resolution after 18s');
               }
-              // Force close with error state - this will be implemented below
+              
+              // Force cleanup - stop spinner, unfreeze video, show error
+              setIsScanning(false);
+              setIsFrozen(false);
+              if (videoRef.current) {
+                unfreezeVideo(videoRef.current);
+              }
+              toast.error('Analysis timeout. Try again or use Manual/Barcode.');
+              setCurrentView('notRecognized');
+              
               resolved = true;
             }
           }, WATCHDOG_MS);
@@ -826,6 +836,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           } finally {
             resolved = true;
             clearTimeout(watchdog);
+            
+            // Always ensure cleanup state is reset
+            setIsScanning(false);
+            setIsFrozen(false);
+            if (videoRef.current) {
+              unfreezeVideo(videoRef.current);
+            }
+            
             if (HEALTH_DEBUG && hlog) hlog('[RESOLVED]', ctx);
             if (DEBUG) console.info('[PHOTO][RESOLVED]', { cid });
           }
@@ -997,13 +1015,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const fallbackImageData = canvas.toDataURL('image/jpeg', 0.8);
       onCapture(fallbackImageData);
     } finally {
-      // PATCH 4: Always unfreeze and reset scanning state
+      // Always unfreeze and reset scanning state - no early returns allowed
       if (DEBUG) console.log('[SCANNER][CAPTURE] unfreeze in finally');
       setIsScanning(false);
+      setIsFrozen(false);
       if (videoRef.current) {
         unfreezeVideo(videoRef.current);
       }
-      setIsFrozen(false); // Ensure this always runs for success, error, or timeout
       mark('[HS] analyze_end');
       measure('[HS] analyze_total', '[HS] analyze_start');
       const analyzeTime = performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0);

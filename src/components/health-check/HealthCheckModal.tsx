@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { HealthScannerInterface } from './HealthScannerInterface';
@@ -1832,6 +1832,24 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         }`}
         showCloseButton={false}
       >
+        {/* Hidden accessibility elements for Radix compliance */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>
+            {currentState === 'loading' ? 'Analyzing Product' :
+             currentState === 'report' ? 'Health Analysis Report' :
+             currentState === 'scanner' ? 'Health Scanner' :
+             currentState === 'fallback' ? 'Manual Entry' :
+             'Health Check'}
+          </DialogTitle>
+          <DialogDescription>
+            {currentState === 'loading' ? 'Please wait while we analyze your product' :
+             currentState === 'report' ? 'View your product health analysis results' :
+             currentState === 'scanner' ? 'Scan a product barcode or nutrition label' :
+             currentState === 'fallback' ? 'Enter product information manually' :
+             'Analyze the health profile of food products'}
+          </DialogDescription>
+        </DialogHeader>
+        
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (
