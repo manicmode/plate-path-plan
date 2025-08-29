@@ -154,14 +154,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   }, [result?.flags, result?.ingredientFlags]);
 
   const healthPercentage = useMemo(() => {
-    // Ensure we only use the healthScore field and it's numeric
-    const score = Number(result?.healthScore);
-    if (!Number.isFinite(score)) return 0;
-    
     // Expect healthScore on a 0..10 scale for barcode or 0..100 for other sources
-    // Clamp and normalize to percentage - ensure we don't show sodium values here
-    const score10 = Math.max(0, Math.min(10, score));
-    return Math.round((score10 / 10) * 100);
+    const score10 = Math.max(0, Math.min(10, Number(result?.healthScore) || 0));
+    return Math.round(score10 * 10); // Convert to percentage for display
   }, [result?.healthScore]);
 
   // Defer non-critical sections using requestIdleCallback
@@ -270,14 +265,9 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   };
 
   const getStarRating = (score: number) => {
-    // Ensure we have a valid numeric score
-    const numScore = Number(score);
-    if (!Number.isFinite(numScore)) return 0;
-    
-    // Clamp to 0-10 range first, then convert to 0-5 stars
-    const score10 = Math.max(0, Math.min(10, numScore));
-    const stars = Math.round(score10 / 2); // 0..5 stars
-    return Math.max(0, Math.min(5, stars));
+    // Normalize score to 0-10 range first, then convert to 0-5 stars
+    const score10 = Math.max(0, Math.min(10, Number(score) || 0));
+    return Math.round(score10 / 2); // 0..5 stars
   };
 
   const hasValidNutrition = (nutrition: any): boolean => {

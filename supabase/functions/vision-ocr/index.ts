@@ -11,37 +11,38 @@ function getCredJSON(): string | null {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  const DEBUG = Deno.env.get('HEALTH_DEBUG_SAFE') === 'true';
-  const cid = req.headers.get('x-cid') ?? crypto.randomUUID();
-  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cid',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
       },
     });
   }
 
-  function json(body: unknown, init: ResponseInit = {}) {
-    const headers = new Headers(init.headers);
-    headers.set('content-type','application/json');
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type, x-cid');
-    return new Response(JSON.stringify(body), { ...init, headers });
-  }
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Content-Type': 'application/json',
+  };
 
   try {
     const { imageBase64 } = await req.json().catch(() => ({} as any));
     
     if (!Deno.env.get('VISION_OCR_ENABLED') || Deno.env.get('VISION_OCR_ENABLED').toLowerCase() !== 'true') {
-      return json({ ok: false, cid, reason: 'provider_disabled' }, { status: 200 });
+      return Response.json({ ok: false, reason: 'provider_disabled' }, { 
+        status: 200, 
+        headers: corsHeaders 
+      });
     }
     
     if (!imageBase64) {
-      return json({ ok: false, cid, reason: 'missing_image' }, { status: 200 });
+      return Response.json({ ok: false, reason: 'missing_image' }, { 
+        status: 200, 
+        headers: corsHeaders 
+      });
     }
 
     // Strip data URL prefix if present
@@ -49,7 +50,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const credentialsJSON = getCredJSON();
     
     if (!credentialsJSON) {
-      return json({ ok: false, cid, reason: 'missing_credentials' }, { status: 200 });
+      return Response.json({ ok: false, reason: 'missing_credentials' }, { 
+        status: 200, 
+        headers: corsHeaders 
+      });
     }
 
     const credentials = JSON.parse(credentialsJSON);
@@ -59,27 +63,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const [result] = await client.textDetection({ image: { content: clean } });
     const text = result?.fullTextAnnotation?.text ?? result?.textAnnotations?.[0]?.description ?? "";
 
-    if (DEBUG) console.log(`[VISION][OCR][${cid}] len:`, text?.length ?? 0);
+    const debug = (Deno.env.get("DEBUG_PERF") ?? "").toLowerCase() === "true";
+    if (debug) console.log("[VISION][OCR] len:", text?.length ?? 0);
 
     if (!text?.trim()) {
-      return json({ ok: false, cid, reason: 'no_text_detected' }, { status: 200 });
+      return Response.json({ ok: false, reason: 'no_text_detected' }, { 
+        status: 200, 
+        headers: corsHeaders 
+      });
     }
 
-    const response: any = { ok: true, cid, text };
-    
-    // Add audit info if debug enabled (no PHI)
-    if (DEBUG) {
-      response.audit = {
-        cid,
-        textLen: text?.length ?? 0,
-        timestamp: new Date().toISOString()
-      };
-    }
-
-    return json(response, { status: 200 });
+    return Response.json({ ok: true, text }, { 
+      status: 200, 
+      headers: corsHeaders 
+    });
 
   } catch (err) {
-    console.error(`[VISION][ERROR][${cid}]`, err?.message || err);
-    return json({ ok: false, cid, reason: 'vision_exception', error: String(err) }, { status: 200 });
+    console.error("[VISION][ERROR]", err?.message || err);
+    return Response.json({ ok: false, reason: 'vision_exception', error: String(err) }, { 
+      status: 200, 
+      headers: corsHeaders 
+    });
   }
 });
