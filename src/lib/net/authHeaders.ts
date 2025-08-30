@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Reuse the app's env (same as your existing Supabase client)
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL!;
-const SUPA_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const SUPA_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
 
 // A very small, local client just to read the session token if user is logged in.
 // (We don't create duplicate connections; this is light and safe for browser.)
