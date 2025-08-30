@@ -3,6 +3,9 @@
  * Hard wall: display-only recompute, no shared state mutation
  */
 
+import { supabase } from "@/integrations/supabase/client";
+import { mark, wrap } from "@/lib/util/perf";
+
 interface PortionResult {
   grams: number;
   source: 'ocr' | 'db' | 'nutrition_ratio' | 'category_estimate' | 'fallback';
@@ -313,11 +316,12 @@ async function detectFromCategory(product: any): Promise<PortionResult | null> {
 }
 
 // Main detection function
-export async function detectPortionSafe(product: any, ocrText?: string, entry: string = 'unknown'): Promise<PortionResult> {
+export const detectPortionSafe = wrap('detectPortionSafe', async function(product: any, ocrText?: string, entry: string = 'unknown'): Promise<PortionResult> {
   const startTime = Date.now();
   const outcomes: PortionOutcome[] = [];
   const sourcesTried: string[] = [];
   
+  mark('detectPortionSafe.start', { entry, hasProduct: !!product, hasOcrText: !!ocrText });
   console.info('[PORTION][DETECTOR] Starting detection for entry:', entry, { 
     hasProduct: !!product, 
     hasOcrText: !!ocrText,
@@ -376,6 +380,7 @@ export async function detectPortionSafe(product: any, ocrText?: string, entry: s
       const result = await withTimeout(source.fn(), 3000); // 3s timeout per source
       const ms = Date.now() - sourceStartTime;
       
+      mark(`detectPortionSafe.${source.name}.complete`, { ms, hit: !!result });
       console.info(`[PORTION][DETECTOR] Source ${source.name} result:`, { result, ms });
       
       if (result && result.grams >= 5 && result.grams <= 250) {
@@ -441,8 +446,9 @@ export async function detectPortionSafe(product: any, ocrText?: string, entry: s
   if (!(window as any).__lastTraces) (window as any).__lastTraces = {};
   (window as any).__lastTraces[entry] = trace;
   
+  mark('detectPortionSafe.complete', { chosen: chosen.source, grams: chosen.grams, totalMs });
   return chosen;
-}
+});
 
 // Legacy compatibility functions
 export function getPortionInfoSync(cached?: any): any {

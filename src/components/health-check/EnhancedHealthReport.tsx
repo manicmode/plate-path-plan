@@ -30,6 +30,7 @@ import { PersonalizedSuggestions } from './PersonalizedSuggestions';
 import { detectPortionSafe, scalePer100ForDisplay } from '@/lib/nutrition/portionDetectionSafe';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
+import { mark } from '@/lib/util/perf';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -250,6 +251,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  mark('EnhancedHealthReport.render.start');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -288,6 +290,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     const productFingerprint = result?.itemName || 'unknown';
     const nutrientsFingerprint = JSON.stringify(result?.nutritionData || {}).substring(0, 50);
     
+    mark('EnhancedHealthReport.portionEffect.start', { productFingerprint, nutrientsFingerprint });
     console.info('[PORTION][EFFECT] start', { 
       productFingerprint, 
       nutrientsFingerprint,
@@ -301,6 +304,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     
     const runDetection = async () => {
       try {
+        mark('EnhancedHealthReport.portionDetection.start');
         console.info('[PORTION][EFFECT] calling detectPortionSafe with:', {
           result: !!result,
           ocrText: analysisData?.imageUrl || 'none',
@@ -309,6 +313,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         
         const detectedPortion = await detectPortionSafe(result, analysisData?.imageUrl || '', 'enhanced_report');
         
+        mark('EnhancedHealthReport.portionDetection.complete', { resolved: !!detectedPortion });
         console.info('[PORTION][EFFECT] resolved', detectedPortion);
         
         if (!alive) {
