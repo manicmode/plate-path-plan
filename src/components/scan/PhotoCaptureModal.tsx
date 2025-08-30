@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 
@@ -146,6 +146,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           onCapture(imageBase64);
         };
         reader.readAsDataURL(file);
+        camHardStop('modal_close');
         onOpenChange(false);
         return null;
       } catch (fallbackErr) {
@@ -234,6 +235,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       if (!isFeatureEnabled('image_analyzer_v1')) {
         console.log('[PHOTO] Analyzer disabled, redirecting to manual');
         toast.info('Photo analysis is in beta. Try manual or voice for now.');
+        camHardStop('modal_close');
         onOpenChange(false);
         onManualFallback();
         return;
@@ -256,6 +258,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       
       // Process with existing analyzer flow
       onCapture(imageBase64);
+      camHardStop('modal_close');
       onOpenChange(false);
       
     } catch (error) {
@@ -278,6 +281,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           const imageBase64 = e.target?.result as string;
           console.log('[PHOTO] Image uploaded, processing...');
           onCapture(imageBase64);
+          camHardStop('modal_close');
           onOpenChange(false);
         };
         reader.readAsDataURL(file);
@@ -287,9 +291,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleExit = useCallback(() => {
-    releaseNow();                  // <-- FIRST
-    stopAllVideos();               // belt & suspenders
-    onOpenChange(false);           // then close/navigate
+    camHardStop('modal_close');       // Force stop BEFORE anything else  
+    releaseNow();                     // Then normal cleanup
+    stopAllVideos();                  // Belt & suspenders
+    onOpenChange(false);              // Finally close/navigate
   }, [releaseNow, onOpenChange]);
 
   return (

@@ -2,6 +2,10 @@
 let current: MediaStream | null = null;
 let refs = 0;
 
+// Global registry for all streams (even those bypassing camAcquire)
+type Reg = { s: MediaStream, ownerHint?: string };
+const registry = new Set<Reg>();
+
 export async function camAcquire(owner: string, constraints: MediaStreamConstraints): Promise<MediaStream> {
   if (!current) {
     current = await navigator.mediaDevices.getUserMedia(constraints);
@@ -38,20 +42,33 @@ export function camRelease(owner: string) {
   }
 }
 
+export function camRegister(s: MediaStream, meta?: { ownerHint?: string; constraints?: any }) {
+  registry.add({ s, ownerHint: meta?.ownerHint });
+}
+
 export function camHardStop(reason: string) {
-  if (!current) return;
   if (process.env.NODE_ENV !== 'production') {
-    console.warn('[CAM][GUARD] HARD STOP', { reason });
+    console.warn('[CAM][GUARD] HARD STOP', { reason, registrySize: registry.size, currentStream: !!current });
   }
-  try { 
-    current.getTracks().forEach(t => { 
-      try { 
-        t.stop(); 
-      } catch {} 
-    }); 
-  } catch {}
-  current = null; 
-  refs = 0;
+  
+  // Stop registry streams (all getUserMedia calls)
+  registry.forEach(({ s }) => {
+    try { s.getTracks().forEach(t => { try { t.stop(); } catch {} }); } catch {}
+  });
+  registry.clear();
+  
+  // Stop current (camAcquire stream)
+  if (current) {
+    try { 
+      current.getTracks().forEach(t => { 
+        try { 
+          t.stop(); 
+        } catch {} 
+      }); 
+    } catch {}
+    current = null; 
+    refs = 0;
+  }
 }
 
 export function camGetCurrent(): MediaStream | null {

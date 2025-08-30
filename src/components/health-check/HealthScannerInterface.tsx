@@ -19,7 +19,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
@@ -1099,6 +1099,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           
           // Close scanner modal and navigate to health report
           console.log('[MANUAL][SUCCESS] Barcode found, closing modal');
+          camHardStop('modal_close'); // Force stop BEFORE cleanup
           releaseNow(); // Ensure camera cleanup before navigation
           
           // Use the same navigation pattern as auto-decode
@@ -1212,6 +1213,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
         
         // Close scanner and navigate
+        camHardStop('modal_close'); // Force stop BEFORE cleanup
         releaseNow();
         if (onManualSearch) {
           onCapture({

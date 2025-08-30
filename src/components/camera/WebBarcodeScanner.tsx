@@ -8,7 +8,7 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 // Removed debug logging - mediaLog function removed
@@ -163,6 +163,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           toast.info(`[LOG] off_fetch_start: ${result.raw}`);
         }
         onBarcodeDetected(result.raw);
+        camHardStop('modal_close');
         releaseNow();
         onClose();
         console.timeEnd('[LOG] analyze_total');
@@ -185,6 +186,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
         console.log('[LOG] off_fetch_start', { code: winner.raw });
         onBarcodeDetected(winner.raw);
+        camHardStop('modal_close');
         releaseNow();
         onClose();
         console.timeEnd('[LOG] analyze_total');
@@ -234,9 +236,10 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   }, []);
 
   const handleClose = useCallback(() => {
-    releaseNow();                  // <-- FIRST
-    stopAllVideos();               // belt & suspenders
-    onClose();                     // then close/navigate
+    camHardStop('modal_close');       // Force stop BEFORE anything else
+    releaseNow();                     // Then normal cleanup
+    stopAllVideos();                  // Belt & suspenders
+    onClose();                        // Finally close/navigate
   }, [releaseNow, onClose]);
 
   // Warm-up the decoder on modal open  
@@ -317,6 +320,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         const file = await openPhotoCapture('image/*','environment');
         const val = await decodeBarcodeFromFile(file);
         if (val) onBarcodeDetected(val);
+        camHardStop('modal_close');
         onClose();
         return null;
       } catch (fallbackErr) {

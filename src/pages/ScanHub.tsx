@@ -20,6 +20,7 @@ import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 import { goToHealthAnalysis } from '@/lib/nav';
+import { camHardStop } from '@/lib/camera/guardian';
 
 export default function ScanHub() {
   const navigate = useNavigate();
@@ -390,6 +391,7 @@ export default function ScanHub() {
         isOpen={healthCheckModalOpen}
         onClose={() => {
           console.log('[SCAN] Health modal closed - staying on scan page');
+          camHardStop('modal_close'); // Force stop before cleanup
           setHealthCheckModalOpen(false);
           setAnalysisData(null);
           setHealthModalStep('scanner');
