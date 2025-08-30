@@ -8,6 +8,7 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
+import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
 
 // Removed debug logging - mediaLog function removed
 
@@ -330,6 +331,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       logOwnerRelease('WebBarcodeScanner', stoppedKinds);
     }
 
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
     hardDetachVideo(videoRef.current);
 
     if (scanningIntervalRef.current) {
@@ -340,9 +343,17 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   };
 
   const handleClose = () => {
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
     cleanup();
     onClose();
   };
+
+  // B) unmount guard
+  useEffect(() => () => {
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
+  }, []);
 
   if (error) {
     return (

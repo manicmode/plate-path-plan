@@ -19,6 +19,7 @@ import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 import "./scripts/shipV2Globally"; // Load V2 global rollout
 import "./utils/portionKillSwitch"; // Emergency kill switches
+import "./lib/camera/cameraGuardian"; // Global camera cleanup
 
 // Apply security headers on app initialization
 applySecurityHeaders();

@@ -19,6 +19,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
+import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -113,9 +114,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      stopStream(videoRef.current?.srcObject as MediaStream | null);
+      detachVideo(videoRef.current);
       logPerfClose('HealthScannerInterface', startTimeRef.current);
       checkForLeaks('HealthScannerInterface');
     };
+  }, []);
+
+  // B) unmount guard for HealthScannerInterface
+  useEffect(() => () => {
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
   }, []);
 
   // Page visibility handling for performance
@@ -170,7 +179,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         logOwnerRelease('HealthScannerInterface', stoppedKinds);
       }
 
-      // 3) Detach video & clear refs
+      // 3) Use new utilities and detach video & clear refs
+      stopStream(videoRef.current?.srcObject as MediaStream | null);
+      detachVideo(videoRef.current);
       hardDetachVideo(videoRef.current);
       try { updateStreamRef?.(null); } catch {}
     };

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
+import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -132,6 +133,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       logOwnerRelease('PhotoCaptureModal', stoppedKinds);
     }
     
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
     hardDetachVideo(videoRef.current);
     
     trackRef.current = null;
@@ -242,8 +245,16 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleExit = () => {
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
     onOpenChange(false);
   };
+
+  // B) unmount guard for PhotoCaptureModal
+  useEffect(() => () => {
+    stopStream(videoRef.current?.srcObject as MediaStream | null);
+    detachVideo(videoRef.current);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
