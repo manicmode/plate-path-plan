@@ -16,12 +16,9 @@ export interface NutritionPer100g {
 export interface PortionInfo {
   grams: number;
   isEstimated: boolean;
-  source: 'ocr_declared' | 'db_declared' | 'nutrition_ratio' | 'category_estimate' | 'user_set' | 'fallback_default' | 'product' | 'ocr' | 'ocr_inferred_ratio' | 'model_estimate' | 'estimated';
+  source: 'product' | 'ocr' | 'ocr_declared' | 'ocr_inferred_ratio' | 'db_declared' | 'model_estimate' | 'user_set' | 'estimated';
   confidence?: number; // 0-2, higher = more reliable
   display?: string; // Human-readable display like "1 cup", "2 tbsp"
-  unit?: string; // Display unit: 'g' | 'ml' | 'cup' | 'tbsp' etc.
-  label?: string; // Human-readable: "45g · OCR" | "30g · est."
-  densityApplied?: boolean; // True if ml→g conversion happened
 }
 
 /**

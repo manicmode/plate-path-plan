@@ -27,13 +27,10 @@ import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
-import { detectPortionSafe } from '@/lib/nutrition/portionDetectionSafe';
-import { type PortionInfo, toPerPortion } from '@/lib/nutrition/portionCalculator';
+import { parsePortionGrams, type PortionInfo } from '@/lib/nutrition/portionCalculator';
+import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
-import { scoreProduct } from '@/lib/health/scoring';
-import { runFlagsEngine, FlagInfo } from '@/lib/health/flagsEngine';
-import { isPortionDetectionEnabled } from '@/lib/health/reportFlags';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -259,113 +256,50 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Add safety guards for all potentially undefined properties
   const nutritionData = result?.nutritionData || {};
+  const flags = Array.isArray(result?.flags) ? result.flags : Array.isArray(result?.ingredientFlags) ? result.ingredientFlags : [];
   const ingredientsText = result?.ingredientsText || '';
+  const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
-  // State for portion and flags
+  // Parse portion information with safety and user preferences
+  const portionInfo = useMemo(async () => {
+    try {
+      // Try to get user preference first
+      const userPref = await getUserPortionPreference(result);
+      return parsePortionGrams(
+        result, 
+        analysisData?.imageUrl,
+        userPref ? { grams: userPref.portionGrams, display: userPref.portionDisplay } : undefined
+      );
+    } catch (error) {
+      console.warn('Failed to parse portion grams:', error);
+      return { grams: 30, isEstimated: true, source: 'estimated' as const, confidence: 0 };
+    }
+  }, [result, analysisData?.imageUrl]);
+
+  // Since we need async, use state for portion info
   const [resolvedPortionInfo, setResolvedPortionInfo] = useState<PortionInfo>({ 
     grams: 30, 
     isEstimated: true, 
-    source: 'fallback_default' as const,
+    source: 'estimated' as const,
     confidence: 0 
   });
-  const [portionReady, setPortionReady] = useState(false);
-  const [analysisFlags, setAnalysisFlags] = useState<FlagInfo[]>([]);
-  const [computedHealthScore, setComputedHealthScore] = useState<number>(0);
 
-  // Load portion info and compute analysis safely
   useEffect(() => {
-    let alive = true;
-    
-    const performAnalysis = async () => {
-      try {
-        // Check if portion detection is enabled
-        const portionEnabled = await isPortionDetectionEnabled();
-        console.info('[REPORT][V2][PORTION][BOOT]', { 
-          enabled: portionEnabled.enabled, 
-          urlOverride: portionEnabled.urlOverride, 
-          entry: 'enhanced_report',
-          reason: portionEnabled.reason
-        });
-
-        let portionInfo: PortionInfo;
-        
-        if (portionEnabled.enabled) {
-          portionInfo = await detectPortionSafe(result, ingredientsText, 'enhanced_report');
-        } else {
-          portionInfo = { 
-            grams: 30, 
-            isEstimated: true, 
-            source: 'fallback_default',
-            confidence: 0,
-            label: '30g · est.'
-          };
-        }
-
-        if (!alive) return;
-
-        // Compute per-serving nutrition
-        const perServing = toPerPortion(nutritionData, portionInfo.grams);
-        
-        // Run flags engine
-        const flags = runFlagsEngine({
-          per100g: nutritionData,
-          perServing,
-          portionGrams: portionInfo.grams,
-          ingredientsText,
-          category: (result as any)?.category
-        });
-
-        // Calculate health score with V2 canonicalization
-        const score = scoreProduct({
-          per100g: nutritionData,
-          perServing,
-          meta: {
-            category: (result as any)?.category,
-            name: result?.itemName || result?.productName,
-            brand: (result as any)?.brand,
-            portionGrams: portionInfo.grams
-          },
-          flags: flags.map(f => f.flag)
-        });
-
-        // Log flags telemetry
-        console.info('[REPORT][V2][FLAGS][RUN]', { 
-          count: flags.length, 
-          sources: portionInfo.source 
-        });
-
-        if (!alive) return;
-
-        setResolvedPortionInfo(portionInfo);
-        setAnalysisFlags(flags);
-        setComputedHealthScore(score);
-        setPortionReady(true);
-
-      } catch (error) {
-        console.error('[REPORT][V2][ANALYSIS][ERROR]', { 
-          stage: 'enhanced_report', 
-          message: error?.message 
-        });
-        
-        if (!alive) return;
-        
-        // Set safe fallbacks
-        setResolvedPortionInfo({ 
-          grams: 30, 
-          isEstimated: true, 
-          source: 'fallback_default',
-          confidence: 0,
-          label: '30g · est.'
-        });
-        setAnalysisFlags([]);
-        setComputedHealthScore(result?.healthScore || 50);
-        setPortionReady(true);
-      }
+    const resolvePortionInfo = async () => {
+      const resolved = await portionInfo;
+      setResolvedPortionInfo(resolved);
+      
+      // Log telemetry
+      console.info('[REPORT][V2][PORTION]', { 
+        grams: resolved.grams, 
+        source: resolved.source, 
+        confidence: resolved.confidence,
+        from: 'enhanced_report'
+      });
     };
     
-    performAnalysis();
-    return () => { alive = false; };
-  }, [result, analysisData?.imageUrl, ingredientsText]);
+    resolvePortionInfo();
+  }, [portionInfo]);
 
   // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {
@@ -378,73 +312,33 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     }
   }, [ingredientsText, analysisData?.imageUrl]);
 
-  // Use computed health score with safety
-  const finalHealthScore = portionReady ? computedHealthScore : (result?.healthScore || 0);
-  const healthPercentage = Math.max(0, Math.min(100, Number(finalHealthScore) || 0));
+  // Memoize health percentage with safety
+  const healthPercentage = useMemo(() => {
+    const score10 = Math.max(0, Math.min(10, Number(healthScore) || 0));
+    return Math.round(score10 * 10); // Convert to percentage for display
+  }, [healthScore]);
 
-  // Helper functions for score-based ratings (0-100 scale)
+  // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
-    if (score >= 80) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
-    if (score >= 40) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
+    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
+    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
     return { label: 'Avoid', icon: '❌', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/30' };
   };
 
   const getScoreMessage = (score: number) => {
-    if (score >= 80) return 'Looking good! Healthy choice.';
-    if (score >= 40) return 'Some concerns to keep in mind.';
+    if (score >= 8) return 'Looking good! Healthy choice.';
+    if (score >= 4) return 'Some concerns to keep in mind.';
     return 'We recommend avoiding this product.';
   };
 
   const getStarRating = (score: number) => {
-    // Convert 0-100 score to 0-5 stars with proper half-star mapping for V2
-    const stars = (score / 20); // 0-100 -> 0-5 range  
-    return Math.round(stars * 2) / 2; // Round to nearest 0.5
+    // Normalize score to 0-10 range first, then convert to 0-5 stars
+    const score10 = Math.max(0, Math.min(10, Number(score) || 0));
+    return Math.round(score10 / 2); // 0..5 stars
   };
 
-  const scoreLabel = getScoreLabel(finalHealthScore);
-  const starCount = getStarRating(finalHealthScore);
-  
-  // Calculate corrected calories from canonical per-100g data
-  const correctedCalories = useMemo(() => {
-    if (!portionReady || !nutritionData) return null;
-    
-    // Use canonicalization for accurate calorie calculation
-    try {
-      // Import canonicalization dynamically
-      const canonicalizeModule = (() => {
-        try {
-          return require('@/lib/health/canonicalizeNutrients');
-        } catch {
-          return null;
-        }
-      })();
-      
-      if (canonicalizeModule) {
-        const { canonicalizePer100g } = canonicalizeModule;
-        const per100g = canonicalizePer100g(nutritionData);
-        const grams = resolvedPortionInfo.grams || 30;
-        return Math.round(per100g.energy_kcal * grams / 100);
-      }
-    } catch (error) {
-      console.warn('Canonicalization failed, using fallback:', error);
-    }
-    
-    // Fallback to existing calculation with any cast for diverse field names
-    const nutData = nutritionData as any;
-    const kcalPer100 = Number(
-      nutData?.energy_kcal_100g || 
-      nutData?.calories_100g || 
-      nutData?.energy_kcal || 
-      nutData?.calories || 
-      0
-    );
-    return Math.round(kcalPer100 * (resolvedPortionInfo.grams || 30) / 100);
-  }, [portionReady, nutritionData, resolvedPortionInfo.grams]);
-  
-  // Use analysis flags or fallback to legacy flags  
-  const displayFlags = portionReady ? analysisFlags : 
-    (Array.isArray(result?.flags) ? result.flags.map(f => ({ flag: f, severity: 'medium' as const, message: f, source: 'ocr' as const })) : 
-     Array.isArray(result?.ingredientFlags) ? result.ingredientFlags.map(f => ({ flag: f, severity: 'medium' as const, message: f, source: 'ocr' as const })) : []);
+  const scoreLabel = getScoreLabel(healthScore);
+  const starCount = getStarRating(healthScore);
 
   return (
     <div className="w-full min-h-screen bg-background">
@@ -501,7 +395,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             
             {/* Friendly Message */}
             <p className={`text-lg ${scoreLabel.color} font-medium leading-relaxed`}>
-              {getScoreMessage(finalHealthScore)}
+              {getScoreMessage(healthScore)}
             </p>
             
             {/* Source Badge */}
@@ -522,9 +416,9 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="flags">
               Flags
-              {displayFlags.length > 0 && (
+              {flags.length > 0 && (
                 <Badge variant="destructive" className="ml-1 text-xs">
-                  {displayFlags.length}
+                  {flags.length}
                 </Badge>
               )}
             </TabsTrigger>
