@@ -1198,37 +1198,19 @@ console.log('Global search enabled:', enableGlobalSearch);
              }
            });
            
-           setShowBarcodeNotFound(true);
-           setFailedBarcode(cleanBarcode);
-         }
-       }
-       
-       } finally {
-         clearTimeout(timeout);
-         console.log('[LOG] off_result', { status, hit });
-         setIsLoadingBarcode(false);
-       }
-
-           console.log('[LOG] confirm_open', {
-             name: mapped.name,
-             barcode: cleanBarcode,
-             hasIngredients: false,
-             flags: [],
-             score: 0,
-             fallback: true
-           });
-
-         }
-       } finally {
-         clearTimeout(timeout);
-         console.log('[LOG] off_result', { status, hit });
-         setIsLoadingBarcode(false);
-       }
-     } catch (outerError) {
-       console.error('=== OUTER BARCODE ERROR ===', outerError);
-       setIsLoadingBarcode(false);
-     }
-   };
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+        }
+      } finally {
+        clearTimeout(timeout);
+        console.log('[LOG] off_result', { status, hit });
+        setIsLoadingBarcode(false);
+      }
+    } catch (outerError) {
+      console.error('=== OUTER BARCODE ERROR ===', outerError);
+      setIsLoadingBarcode(false);
+    }
+  };
 
   const handleVoiceRecording = async () => {
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
