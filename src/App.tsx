@@ -568,13 +568,11 @@ function AppContent() {
                               <Route path="/health-report" element={<Navigate to="/scan" replace />} />
                               
                               {/* V2 Enhanced Health Report Test - Dev Only */}
-                              {import.meta.env.DEV && (
-                                <Route path="/standalone-test" element={
-                                  <ProtectedRoute>
-                                    <StandaloneReportTest />
-                                  </ProtectedRoute>
-                                } />
-                              )}
+                              <Route path="/standalone-test" element={
+                                <ProtectedRoute>
+                                  <StandaloneReportTest />
+                                </ProtectedRoute>
+                              } />
                               
                             {/* Other debug routes for developers */}
                              <Route path="/debug/*" element={
