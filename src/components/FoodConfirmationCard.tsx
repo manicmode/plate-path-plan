@@ -837,17 +837,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         {isFromBarcode && (
                           <div className="mt-4">
                             <Button
-                              onClick={async () => {
-                                try {
-                                  const { openHealthReportFromBarcode } = await import('@/features/health/openHealthReport');
-                                  const barcode = currentFoodItem?.barcode;
-                                  if (barcode) {
-                                    await openHealthReportFromBarcode(barcode, 'scanner-manual');
-                                  }
-                                } catch (error) {
-                                  console.error('Failed to open health report:', error);
-                                }
-                              }}
+                               onClick={async () => {
+                                 try {
+                                   const { openHealthReportFromBarcode } = await import('@/features/health/openHealthReport');
+                                   const barcode = currentFoodItem?.barcode;
+                                   if (barcode) {
+                                     const result = await openHealthReportFromBarcode(barcode, 'scanner-manual');
+                                     if (result.success) {
+                                       window.location.href = `${result.route}?mode=${result.params.mode}&barcode=${result.params.barcode}&source=${result.params.source}`;
+                                     }
+                                   }
+                                 } catch (error) {
+                                   console.error('Failed to open health report:', error);
+                                 }
+                               }}
                               className="w-full"
                               variant="outline"
                             >

@@ -6,7 +6,7 @@ import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, Fi
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { mapLookupToLoggedFood } from '@/features/logging/utils/loggingNutrition';
+import { mapToLogFood } from '@/features/logging/utils/barcodeToLogFood';
 import { useAuth } from '@/contexts/auth';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -1008,31 +1008,24 @@ console.log('Global search enabled:', enableGlobalSearch);
 
         try {
           // Map the response using robust nutrition handling
-          const mapped = mapLookupToLoggedFood(data);
+          const mapped = mapToLogFood(cleanBarcode, data);
           const p = data.product as LogProduct; // Keep for ingredients/health data
-          
-          // Use nutrition based on what's available (per serving or per 100g)
-          const nutrition = mapped.nutrition.basis === 'perServing' 
-            ? mapped.nutrition.perServing 
-            : mapped.nutrition.per100g;
           
           // Transform to RecognizedFood format with mapped nutrition
           const recognizedFood: RecognizedFood = {
             name: mapped.name,
-            calories: nutrition?.calories || 0,
-            protein: nutrition?.protein_g || 0,
-            carbs: nutrition?.carbs_g || 0,
-            fat: nutrition?.fat_g || 0,
-            fiber: nutrition?.fiber_g || 0,
-            sugar: nutrition?.sugar_g || 0,
-            sodium: nutrition?.sodium_mg || 0,
+            calories: mapped.calories || 0,
+            protein: mapped.protein_g || 0,
+            carbs: mapped.carbs_g || 0,
+            fat: mapped.fat_g || 0,
+            fiber: mapped.fiber_g || 0,
+            sugar: mapped.sugar_g || 0,
+            sodium: mapped.sodium_mg || 0,
             confidence: 95,
-            serving: mapped.nutrition.basis === 'perServing' 
-              ? `Per serving${mapped.servingG ? ` (${mapped.servingG}g)` : ''}` 
-              : 'Per 100g',
-            // Add ingredients data from mapped result
-            ingredientsText: mapped.ingredientsText || (p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined),
-            ingredientsAvailable: !!(mapped.ingredientsText || p?.ingredients?.length > 0),
+            serving: mapped.servingGrams ? `Per serving (${mapped.servingGrams}g)` : 'Per 100g',
+            // Add ingredients data from product data
+            ingredientsText: p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined,
+            ingredientsAvailable: !!(p?.ingredients?.length > 0),
             // Store image data for modal
             image: mapped.imageUrl || p?.imageUrl
           };
@@ -1082,7 +1075,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           console.error('=== NUTRITION PROCESSING ERROR ===', nutritionProcessingError);
           
           // Always try to open confirm modal with fallback data, even on nutrition processing error
-          const mapped = mapLookupToLoggedFood(null);
+          const mapped = mapToLogFood('', null);
           const fallbackFood: RecognizedFood = {
             name: mapped.name,
             calories: 0,
@@ -1151,7 +1144,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         
         // Always try to open confirm modal with fallback data, even on error
         try {
-          const mapped = mapLookupToLoggedFood(null);
+          const mapped = mapToLogFood('', null);
           const fallbackFood: RecognizedFood = {
             name: mapped.name,
             calories: 0,
