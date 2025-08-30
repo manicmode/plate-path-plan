@@ -24,6 +24,7 @@ import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
 import { analyzeProductForQuality } from '@/shared/barcode-analyzer';
 import { callOCRFunction } from '@/lib/ocrClient';
 import { toReportFromOCR } from './toReportInputFromOCR';
+import { isSuccessResult, isErrorResult } from './ocrResultHelpers';
 
 describe('OCR Pipeline', () => {
   beforeEach(() => {
@@ -47,8 +48,8 @@ describe('OCR Pipeline', () => {
     const result = await toReportFromOCR(mockOcrText);
     
     expect(parseFreeTextToReport).toHaveBeenCalledWith(mockOcrText.replace(/\s+/g, ' ').trim());
-    expect(result.ok).toBe(true);
-    if (result.ok) {
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       expect(result.report.source).toBe('OCR');
       expect(result.report.healthScore).toBe(7.5);
     }
@@ -58,9 +59,10 @@ describe('OCR Pipeline', () => {
     const shortText = 'ABC';
     const result = await toReportFromOCR(shortText);
     
-    expect(result.ok).toBe(false);
-    const failedResult = result as { ok: false, reason: string };
-    expect(failedResult.reason).toBe('no_text');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('no_text');
+    }
     expect(parseFreeTextToReport).not.toHaveBeenCalled();
   });
 
@@ -74,9 +76,10 @@ describe('OCR Pipeline', () => {
 
     const result = await toReportFromOCR(mockOcrText);
     
-    expect(result.ok).toBe(false);
-    const failedResult = result as { ok: false, reason: string };
-    expect(failedResult.reason).toBe('low_confidence');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('low_confidence');
+    }
   });
 
   it('should clean OCR text before parsing', async () => {
@@ -125,8 +128,8 @@ describe('OCR Pipeline', () => {
 
     const result = await toReportFromOCR(granolaBarsOCR);
     
-    expect(result.ok).toBe(true);
-    if (result.ok) {
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       expect(result.report.source).toBe('OCR');
       expect(result.report.healthScore).toBeGreaterThan(0);
       expect(result.report.ingredientFlags?.length).toBeGreaterThanOrEqual(1);

@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toReportFromOCR } from './toReportInputFromOCR';
 import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
+import { isSuccessResult, isErrorResult } from './ocrResultHelpers';
 
 // Mock the shared parser
 vi.mock('@/lib/health/freeTextParser', () => ({
@@ -66,8 +67,8 @@ describe('Parser Parity Tests', () => {
 
     const result = await toReportFromOCR(ocrText);
     
-    expect(result.ok).toBe(true);
-    if (result.ok) {
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       // Verify score is in expected range for granola (75-90 on 100-point scale)
       const normalizedScore = result.report.healthScore * 10;
       expect(normalizedScore).toBeGreaterThanOrEqual(75);
@@ -123,8 +124,8 @@ describe('Parser Parity Tests', () => {
 
     const result = await toReportFromOCR(ocrText);
     
-    expect(result.ok).toBe(true);
-    if (result.ok) {
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       // Verify score is in expected range for candy (20-45 on 100-point scale)  
       const normalizedScore = result.report.healthScore * 10;
       expect(normalizedScore).toBeGreaterThanOrEqual(20);
@@ -143,8 +144,10 @@ describe('Parser Parity Tests', () => {
     // Should not call parser for very short text
     const result = await toReportFromOCR('Hi');
     
-    expect(result.ok).toBe(false);
-    expect((result as any).reason).toBe('no_text');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('no_text');
+    }
     expect(vi.mocked(parseFreeTextToReport)).not.toHaveBeenCalled();
   });
 
@@ -158,8 +161,10 @@ describe('Parser Parity Tests', () => {
 
     const result = await toReportFromOCR(ocrText);
     
-    expect(result.ok).toBe(false);
-    expect((result as any).reason).toBe('low_confidence');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('low_confidence');
+    }
     expect(vi.mocked(parseFreeTextToReport)).toHaveBeenCalledWith(expect.stringContaining('unclear product text'));
   });
 

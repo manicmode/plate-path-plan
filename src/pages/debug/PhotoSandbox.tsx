@@ -3,6 +3,7 @@ import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getAuthHeaders } from '@/lib/net/authHeaders';
 // Import the new shared parser approach
 import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { isSuccessResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
 import { FF } from '@/featureFlags';
 import { useToast } from '@/hooks/use-toast';
 
@@ -237,7 +238,7 @@ export default function PhotoSandbox() {
           // Use the same parser as Manual/Voice flows
           const healthResult = await toReportFromOCR(ocrResult.summary.text_joined);
           
-          if (healthResult.ok) {
+          if (isSuccessResult(healthResult)) {
             healthReport = healthResult.report;
             score = Math.round((healthResult.report.healthScore || 0) * 10); // Convert to 0-100 scale
             flagsCount = healthResult.report.ingredientFlags?.length || 0;
@@ -252,8 +253,8 @@ export default function PhotoSandbox() {
               productName: healthResult.report.itemName,
               source: 'OCR'
             });
-          } else {
-            addLogEntry('WARN', `Health parsing failed: ${(healthResult as { reason: string }).reason}`);
+          } else if (isErrorResult(healthResult)) {
+            addLogEntry('WARN', `Health parsing failed: ${healthResult.reason}`);
           }
         } catch (healthError: any) {
           addLogEntry('ERROR', `Health analysis failed: ${healthError.message}`);

@@ -7,6 +7,7 @@
 // Enhanced photo pipeline with OCR health report integration
 import { FF } from '@/featureFlags';
 import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { isSuccessResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
 
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
@@ -97,7 +98,7 @@ export async function analyzePhoto(
         // Use the same free-text parser as Manual/Voice
         const healthResult = await toReportFromOCR(result.summary.text_joined);
         
-        if (healthResult.ok) {
+        if (isSuccessResult(healthResult)) {
           const words = result.summary.text_joined.split(/\s+/).length;
           const score = Math.round(healthResult.report.healthScore * 10); // Convert to 0-100 scale
           const flags = healthResult.report.ingredientFlags?.length || 0;
@@ -112,8 +113,8 @@ export async function analyzePhoto(
               source: 'OCR'
             }
           };
-        } else {
-          console.log('[PHOTO][HEALTH] Health analysis failed:', (healthResult as { reason: string }).reason);
+        } else if (isErrorResult(healthResult)) {
+          console.log('[PHOTO][HEALTH] Health analysis failed:', healthResult.reason);
           if (result.summary.text_joined.length < 30) {
             return { ok: false, reason: 'no_text' };
           }

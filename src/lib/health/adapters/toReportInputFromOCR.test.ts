@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { toReportInputFromOCR, toReportFromOCR } from './toReportInputFromOCR';
+import { isSuccessResult, isErrorResult } from './ocrResultHelpers';
 
 // Mock the free text parser
 vi.mock('@/lib/health/freeTextParser', () => ({
@@ -86,8 +87,10 @@ describe('toReportInputFromOCR (legacy)', () => {
 describe('toReportFromOCR (new shared parser)', () => {
   it('should return no_text for short input', async () => {
     const result = await toReportFromOCR('hi');
-    expect(result.ok).toBe(false);
-    expect((result as any).reason).toBe('no_text');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('no_text');
+    }
   });
 
   it('should use shared parser for longer text', async () => {
@@ -104,9 +107,11 @@ describe('toReportFromOCR (new shared parser)', () => {
 
     const result = await toReportFromOCR('Granola Bar with rolled oats, honey, and dried cranberries. Contains sugar.');
     
-    expect(result.ok).toBe(true);
-    expect((result as any).report.source).toBe('OCR');
-    expect((result as any).report.itemName).toBe('Test Product');
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
+      expect(result.report.source).toBe('OCR');
+      expect(result.report.itemName).toBe('Test Product');
+    }
   });
 
   it('should handle parser failures gracefully', async () => {
@@ -117,7 +122,9 @@ describe('toReportFromOCR (new shared parser)', () => {
 
     const result = await toReportFromOCR('Some unclear text that cannot be parsed properly');
     
-    expect(result.ok).toBe(false);
-    expect((result as any).reason).toBe('low_confidence');
+    expect(isErrorResult(result)).toBe(true);
+    if (isErrorResult(result)) {
+      expect(result.reason).toBe('low_confidence');
+    }
   });
 });

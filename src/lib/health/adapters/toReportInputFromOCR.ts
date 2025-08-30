@@ -8,6 +8,7 @@
 import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
 import { shouldReturnInconclusive, type InconclusiveResult } from './inconclusiveAnalyzer';
 
+export type { InconclusiveResult };
 export type OCRReportResult = { ok: true, report: any } | { ok: false, reason: string } | InconclusiveResult;
 
 export interface OCRHealthInput {
