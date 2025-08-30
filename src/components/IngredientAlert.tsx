@@ -194,10 +194,10 @@ export function IngredientAlert({
                         {ingredient.severity}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1 capitalize">
+                    <p className="text-xs text-destructive dark:text-muted-foreground mb-1 capitalize">
                       📂 {ingredient.category.replace('_', ' ')}
                     </p>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
+                    <p className="text-xs text-destructive dark:text-foreground/80 leading-relaxed">
                       {ingredient.description}
                     </p>
                   </div>
