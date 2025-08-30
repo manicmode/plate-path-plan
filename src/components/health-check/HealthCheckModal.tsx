@@ -242,6 +242,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     source: string;
     barcode?: string;
     imageUrl?: string;
+    ocrTextNormalized?: string;
+    ocrBlocks?: any[];
+    nutritionFields?: any;
   }>({ source: 'photo' });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -1116,7 +1119,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setCurrentAnalysisData({ 
         source: detectedBarcode ? 'barcode' : 'photo', 
         barcode: detectedBarcode || undefined,
-        imageUrl: typeof payload === 'string' ? payload : payload.imageBase64
+        imageUrl: typeof payload === 'string' ? payload : payload.imageBase64,
+        // Thread OCR data for portion resolver
+        ocrTextNormalized: typeof payload === 'object' ? payload.ocrTextNormalized : undefined,
+        ocrBlocks: typeof payload === 'object' ? payload.ocrBlocks : undefined,
+        nutritionFields: typeof payload === 'object' ? payload.nutritionFields : undefined
       });
       
       if (detectedBarcode) {
@@ -1171,6 +1178,37 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           // Continue with image analysis as fallback
           console.log(`🔄 Falling back to image analysis... [${currentCaptureId}]`);
         }
+      }
+      
+      // Check for unified photo pipeline with OCR data
+      const isPhotoUnified = typeof payload === 'object' && payload._photoUnified;
+      const lockView = typeof payload === 'object' ? payload._lockView : null;
+      
+      if (isPhotoUnified && typeof payload === 'object' && payload.ocrTextNormalized) {
+        console.log(`📝 Using unified photo pipeline with OCR data [${currentCaptureId}]`);
+        setAnalysisType('image');
+        
+        // Create mock result from unified pipeline data
+        const unifiedResult = {
+          ok: true,
+          summary: { text_joined: payload.ocrTextNormalized },
+          blocks: payload.ocrBlocks || [],
+          nutritionFields: payload.nutritionFields || {},
+          source: 'photo-unified'
+        };
+        
+        // Process with unified data - no "Inconclusive Analysis" placeholder
+        const legacy = {
+          productName: 'Nutrition Label Analysis',
+          healthScore: 0.5, // Will be calculated from nutrition data
+          nutritionData: payload.nutritionFields,
+          flags: [],
+          serving_size: '100g',
+          _dataSource: 'photo-unified'
+        };
+        
+        await processAndShowResult(legacy, unifiedResult, currentCaptureId, 'image');
+        return;
       }
       
       // If no barcode or barcode processing failed, proceed with image analysis

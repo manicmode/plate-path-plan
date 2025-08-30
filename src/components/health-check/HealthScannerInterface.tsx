@@ -26,6 +26,7 @@ import { openHealthReportFromBarcode } from '@/features/health/openHealthReport'
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
 import { toast } from 'sonner';
 import { devLog } from '@/lib/camera/devLog';
+import { photoReportFromImage } from '@/features/health/photoReportFromImage';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -60,7 +61,15 @@ function hardDetachVideo(video?: HTMLVideoElement | null) {
 }
 
 interface HealthScannerInterfaceProps {
-  onCapture: (imageData: string | { imageBase64: string; detectedBarcode: string | null }) => void;
+  onCapture: (imageData: string | { 
+    imageBase64: string; 
+    detectedBarcode: string | null;
+    ocrTextNormalized?: string;
+    ocrBlocks?: any[];
+    nutritionFields?: any;
+    _photoUnified?: boolean;
+    _lockView?: string;
+  }) => void;
   onManualEntry: () => void;
   onManualSearch?: (query: string, type: 'text' | 'voice') => void;
   onCancel?: () => void;
@@ -123,6 +132,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const urlParams = new URLSearchParams(window.location.search);
   const STICKY = urlParams.get('stickyMount') !== '0' && (window as any).__scannerStickyMount !== false; // Default ON, override with ?stickyMount=0
   const scannerStickyMount = STICKY;
+  const PHOTO_UNIFIED = urlParams.get('photoUnified') !== '0' && isFeatureEnabled('photo_unified_pipeline'); // Default ON
   
   // Performance throttling
   const lastDecodeTime = useRef<number>(0);
@@ -774,8 +784,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         reader.readAsDataURL(fullBlob);
       });
 
+      // Check for unified photo pipeline
+      if (PHOTO_UNIFIED) {
+        devLog('PHOTO][UNIFIED] Using unified pipeline');
+        
+        // Convert to File for unified pipeline
+        const file = new File([fullBlob], 'photo.jpg', { type: 'image/jpeg' });
+        
+        const result = await photoReportFromImage(file);
+        
+        if ('success' in result && result.success) {
+          // Never mount barcode scanner - pass data directly
+          onCapture({
+            imageBase64: result.payload.originalImage?.split(',')[1] || '',
+            detectedBarcode: result.source === 'barcode' ? result.payload.barcode : null
+          });
+          return;
+        } else if ('error' in result) {
+          devLog('PHOTO][UNIFIED][ERROR]', result.error, result.reason);
+          // Fall through to legacy flow
+        }
+      }
       if (import.meta.env.VITE_DEBUG_PERF === 'true') {
         console.info('[PHOTO][ROUTE]', { 
+          foundBarcode: false, 
+          sentMode: 'ocr',
           size: { w: canvas.width, h: canvas.height }, 
           compressedKB: Math.round(fullBlob.size / 1024) 
         });
@@ -1413,12 +1446,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [currentView]);
 
   // Render all views, use CSS to show/hide when sticky mount is enabled
+  // Block barcode scanner mounting in photo unified mode
+  const isBarcodeView = currentView === 'scanner' && effectiveMode !== 'photo';
+  
   if (STICKY) {
     return (
       <>
         {/* Scanner View - always mounted, hidden when not active */}
+        {/* Only mount scanner for barcode mode, never for photo unified */}
         <div 
-          className={`scanner-root ${currentView !== 'scanner' ? 'hidden' : ''}`}
+          className={`scanner-root ${!isBarcodeView ? 'hidden' : ''}`}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1426,7 +1463,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             overflow: 'hidden',
             background: 'black',
             zIndex: 100,
-            display: currentView !== 'scanner' ? 'none' : 'block'
+            display: !isBarcodeView ? 'none' : 'block'
           }}
         >
           <main className={`scanner-container h-full relative overflow-hidden`}>

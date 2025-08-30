@@ -12,6 +12,7 @@ export const FEATURE_FLAGS = {
   voice_stt_server_enabled: false, // Enable server-side STT (vs browser WebKit)
   scan_hub_enabled: true, // Enable by default for this demo // Enable the new Scan Hub entry page (default OFF)
   voice_analyze_v2: false, // Enable enhanced voice analysis pipeline (DEFAULT OFF)
+  photo_unified_pipeline: true, // Unified photo pipeline (uses enhanced-health-scanner, prevents barcode scanner mount)
   
   // Enhanced Health Report Features (STANDALONE ONLY FOR PHASED ROLLOUT)
   health_report_v2_enabled: true, // ENABLED - V2 active for standalone route only
