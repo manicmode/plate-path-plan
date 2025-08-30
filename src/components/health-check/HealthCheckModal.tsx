@@ -249,8 +249,203 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { onAnalyzeImage } = useHealthCheckV2();
   const processedPhotoKeyRef = useRef<string>('');
 
-  // Helper to choose v1/v2 pipeline
-  const runPhotoAnalysis = async (imgB64: string) => {
+  // OCR-only pipeline that bypasses barcode/hybrid scanners
+  const runOcrPipeline = async (imageBase64: string) => {
+    console.groupCollapsed("[PHOTO][OCR_ONLY]");
+    
+    const runId = crypto.randomUUID();
+    currentRunId.current = runId;
+    
+    const currentCaptureId = crypto.randomUUID().substring(0, 8);
+    setCaptureId(currentCaptureId);
+    setIsProcessing(true);
+    
+    try {
+      setCurrentState('loading');
+      setLoadingMessage('Reading text from image...');
+      setCurrentAnalysisData({ source: 'photo' });
+      
+      // Convert base64 to blob for OCR
+      let ocrBlob: Blob;
+      if (imageBase64.startsWith('data:')) {
+        const response = await fetch(imageBase64);
+        ocrBlob = await response.blob();
+        console.info("[CAPTURE]", { 
+          bytes: ocrBlob.size, 
+          mime: ocrBlob.type, 
+          dims: 'unknown' 
+        });
+      } else {
+        // Handle raw base64
+        const byteString = atob(imageBase64);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const int8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+          int8Array[i] = byteString.charCodeAt(i);
+        }
+        ocrBlob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+        console.info("[CAPTURE]", { 
+          bytes: ocrBlob.size, 
+          mime: 'image/jpeg', 
+          dims: 'unknown' 
+        });
+      }
+      
+      // Call OCR function
+      setLoadingMessage('Extracting text...');
+      const startTime = Date.now();
+      
+      const { callOCRFunction } = await import('@/lib/ocrClient');
+      const ocrResult = await callOCRFunction(ocrBlob, { withAuth: true });
+      
+      const durationMs = Date.now() - startTime;
+      console.info("[OCR][RESPONSE]", { 
+        status: ocrResult.ok ? 200 : 'error', 
+        durationMs, 
+        words: ocrResult.summary?.words || 0 
+      });
+      
+      if (currentRunId.current !== runId) return; // stale
+      
+      if (!ocrResult.ok || !ocrResult.summary?.text_joined) {
+        toast({
+          title: "No readable text found",
+          description: "Please try taking a clearer photo or use manual entry.",
+          variant: "destructive",
+        });
+        setCurrentState('scanner'); // Keep modal open
+        return;
+      }
+      
+      const text = ocrResult.summary.text_joined;
+      
+      // Handle low-signal text
+      if (text.trim().length < 30) {
+        toast({
+          title: "No readable ingredients/nutrition text found",
+          description: "Please try again with a clearer image or use manual entry.",
+          variant: "destructive",
+        });
+        setCurrentState('scanner'); // Keep modal open
+        return;
+      }
+      
+      // Parse through shared free-text parser
+      setLoadingMessage('Analyzing nutrition...');
+      const { toReportFromOCR } = await import('@/lib/health/adapters/toReportInputFromOCR');
+      const healthResult = await toReportFromOCR(text);
+      
+      if (currentRunId.current !== runId) return; // stale
+      
+      if (!healthResult.ok) {
+        const failedResult = healthResult as { ok: false, reason: string };
+        if (failedResult.reason === 'low_confidence') {
+          toast({
+            title: "Unable to analyze text",
+            description: "The extracted text doesn't contain enough nutrition information.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Analysis failed",
+            description: "Please try again or use manual entry.",
+            variant: "destructive",
+          });
+        }
+        setCurrentState('scanner'); // Keep modal open
+        return;
+      }
+      
+      // Run through same analyzer as other flows
+      const report = healthResult.report;
+      
+      // Convert report to analyzer input format
+      const analyzerInput = {
+        name: report.productName || 'OCR Product',
+        ingredientsText: report.ingredientsText,
+        nutrition: report.nutritionData
+      };
+      
+      const { analyzeProductForQuality } = await import('@/shared/barcode-analyzer');
+      const analyzerResult = await analyzeProductForQuality(analyzerInput);
+      
+      if (currentRunId.current !== runId) return; // stale
+      
+      // Log pipeline result
+      const words = text.split(/\s+/).length;
+      const score = Math.round((report.healthScore || 0) * 10); // Normalize to 0-100
+      const flags = report.ingredientFlags?.length || 0;
+      
+      console.info("[OCR][PIPELINE]", { words, score, flags });
+      
+      // Transform to HealthAnalysisResult format
+      const analysisResult: HealthAnalysisResult = {
+        itemName: report.productName || 'OCR Product',
+        productName: report.productName || 'OCR Product',
+        title: report.productName || 'OCR Product',
+        healthScore: (report.healthScore || 0) / 10, // Convert to 0-10 scale for display
+        ingredientsText: report.ingredientsText,
+        ingredientFlags: report.ingredientFlags || [],
+        flags: report.ingredientFlags || [],
+        nutritionData: extractNutritionData(report.nutritionData || {}),
+        healthProfile: {
+          isOrganic: report.ingredientsText?.toLowerCase().includes('organic') || false,
+          isGMO: report.ingredientsText?.toLowerCase().includes('gmo') || false,
+          allergens: report.ingredientsText ? 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+              report.ingredientsText!.toLowerCase().includes(allergen)
+            ) : [],
+          preservatives: [],
+          additives: []
+        },
+        personalizedWarnings: [],
+        suggestions: (report.ingredientFlags || []).filter((f: any) => f.severity === 'medium').map((f: any) => f.flag || f.description || ''),
+        overallRating: report.healthScore == null ? 'avoid' : 
+                      report.healthScore >= 8 ? 'excellent' : 
+                      report.healthScore >= 6 ? 'good' : 
+                      report.healthScore >= 4 ? 'fair' : 
+                      report.healthScore >= 2 ? 'poor' : 'avoid'
+      };
+      
+      // Add to recents
+      addRecent({
+        mode: 'photo',
+        label: report.productName || 'OCR Product'
+      });
+      
+      setAnalysisResult(analysisResult);
+      setCurrentState('report');
+      
+      // Update analysis data for ResultCard source badge
+      setCurrentAnalysisData({ 
+        source: 'photo',
+        imageUrl: imageBase64
+      });
+      
+    } catch (error) {
+      console.error('[OCR][ERROR]', error);
+      if (currentRunId.current !== runId) return; // stale
+      
+      toast({
+        title: "Analysis failed",
+        description: "Please try again or use manual entry.",
+        variant: "destructive",
+      });
+      setCurrentState('scanner'); // Keep modal open
+    } finally {
+      setIsProcessing(false);
+      console.groupEnd();
+    }
+  };
+
+  // Helper to choose v1/v2 pipeline or OCR-only mode
+  const runPhotoAnalysis = async (imgB64: string, options?: { ocrOnly?: boolean }) => {
+    // OCR-only mode bypass all hybrid/barcode scanners
+    if (options?.ocrOnly) {
+      await runOcrPipeline(imgB64);
+      return;
+    }
+    
     // Use existing handlers in this file - match existing pattern
     const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
                                import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
@@ -286,7 +481,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setCurrentState('loading');
 
     // fire analysis
-    runPhotoAnalysis(img).catch(err => {
+    runPhotoAnalysis(img, { ocrOnly: true }).catch(err => {
       console.error('[HC][PHOTO][AUTO][ERROR]', err);
       // fall back gracefully
       setCurrentState('fallback');
@@ -783,15 +978,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   };
 
-  const handleImageCapture = async (payload: any) => {
+  const handleImageCapture = async (payload: any, options?: { ocrOnly?: boolean }) => {
     console.log("🚀 HealthCheckModal.handleImageCapture called!");
     console.log("📥 Payload received:", payload);
     console.log("👤 User ID:", user?.id || "NO USER");
+    console.log("🔍 Options:", options);
     
     // Prevent concurrent analysis calls
     if (isProcessing) {
       console.log("⚠️ Analysis already in progress, ignoring request");
       return;
+    }
+
+    // OCR-only mode bypass all hybrid/barcode scanners
+    if (options?.ocrOnly) {
+      const imageData = typeof payload === 'string' ? payload : payload.imageBase64;
+      return runOcrPipeline(imageData);
     }
 
     // Check for Photo Pipeline v2 feature flag
@@ -1911,7 +2113,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             FF.PIPELINE_ISOLATION && FF.BARCODE_ISOLATED ? (
               <PipelineRouter mode="barcode">
                 <BarcodeScannerShim 
-                  onCapture={handleImageCapture}
+        onCapture={(blob) => handleImageCapture(blob, { ocrOnly: true })}
                   onManualEntry={() => setCurrentState('fallback')}
                   onManualSearch={handleManualEntry}
                   onCancel={handleClose}
@@ -1919,7 +2121,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               </PipelineRouter>
             ) : (
               <HealthScannerInterface 
-                onCapture={handleImageCapture}
+                onCapture={(blob) => handleImageCapture(blob, { ocrOnly: true })}
                 onManualEntry={() => setCurrentState('fallback')}
                 onManualSearch={handleManualEntry}
                 onCancel={handleClose}
