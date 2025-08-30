@@ -135,16 +135,6 @@ export default {
 				'gentle-float': {
 					'0%, 100%': { transform: 'translateY(0px)' },
 					'50%': { transform: 'translateY(-6px)' }
-				},
-				'pulse-border': {
-					'0%, 100%': {
-						transform: 'scale(1)',
-						boxShadow: '0 0 0 0 rgba(255, 255, 255, 0.6)'
-					},
-					'50%': {
-						transform: 'scale(1.05)',
-						boxShadow: '0 0 0 8px rgba(255, 255, 255, 0)'
-					}
 				}
 			},
 			animation: {
@@ -157,8 +147,7 @@ export default {
 				'extra-slow-pulse': 'extra-slow-pulse 14s ease-in-out infinite',
 				'camera-flash': 'cameraFlash 12s ease-in-out infinite',
 				'breathe': 'breathe 16s ease-in-out infinite',
-				'gentle-float': 'gentle-float 14s ease-in-out infinite',
-				'pulse-border': 'pulse-border 2s infinite ease-out'
+				'gentle-float': 'gentle-float 14s ease-in-out infinite'
 			}
 		}
 	},
