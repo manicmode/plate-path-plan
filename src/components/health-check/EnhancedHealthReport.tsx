@@ -151,9 +151,9 @@ const SaveCTA: React.FC<{
       <Button
         onClick={handleSaveReport}
         disabled={isSaving || !user?.id}
-        className="w-full rounded-2xl py-5 font-semibold shadow-lg text-lg
-                   bg-teal-500 hover:bg-teal-400 active:bg-teal-600
-                   text-slate-900 transition-colors disabled:opacity-50"
+        variant="outline"
+        className="w-full border-2 border-teal-500/50 text-teal-600 hover:bg-teal-500/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+        size="lg"
       >
         {isSaving ? (
           <>
