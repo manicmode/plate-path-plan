@@ -4,20 +4,12 @@ export const baseCors = {
 } as const;
 
 export function getCorsHeaders(origin?: string | null): HeadersInit {
-  const allow = (() => {
-    if (!origin) return 'https://plate-path-plan.lovable.app';
-    try {
-      const u = new URL(origin);
-      const host = u.hostname;
-      if (host.endsWith('.lovable.dev') || host.endsWith('.lovable.app')) return origin; // echo exact sandbox/app origin
-      if (origin === 'http://localhost:5173' || origin === 'http://localhost:5174') return origin;
-    } catch {}
-    return 'https://plate-path-plan.lovable.app';
-  })();
-
+  // Use '*' for Access-Control-Allow-Origin to handle Safari opaque origins and preview domains
+  // We don't send credentials, so this is safe and avoids CORS blocking
   return {
-    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
   };
 }
