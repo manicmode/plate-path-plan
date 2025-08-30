@@ -254,8 +254,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { onAnalyzeImage } = useHealthCheckV2();
   const processedPhotoKeyRef = useRef<string>('');
 
-  // Unified photo pipeline using openHealthReport
-  const runUnifiedPhotoPipeline = async (imageBase64: string) => {
+  // OCR-only pipeline that bypasses barcode/hybrid scanners
+  const runOcrPipeline = async (imageBase64: string) => {
+    console.groupCollapsed("[PHOTO][OCR_ONLY]");
+    
     const runId = crypto.randomUUID();
     currentRunId.current = runId;
     
@@ -265,15 +267,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     try {
       setCurrentState('loading');
-      setLoadingMessage('Processing image...');
+      setLoadingMessage('Reading text from image...');
       setCurrentAnalysisData({ source: 'photo' });
       
-      // Convert base64 to File
-      let imageFile: File;
+      // Convert base64 to blob for OCR
+      let ocrBlob: Blob;
       if (imageBase64.startsWith('data:')) {
         const response = await fetch(imageBase64);
-        const blob = await response.blob();
-        imageFile = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        ocrBlob = await response.blob();
+        console.info("[CAPTURE]", { 
+          bytes: ocrBlob.size, 
+          mime: ocrBlob.type, 
+          dims: 'unknown' 
+        });
       } else {
         // Handle raw base64
         const byteString = atob(imageBase64);
@@ -282,102 +288,250 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         for (let i = 0; i < byteString.length; i++) {
           int8Array[i] = byteString.charCodeAt(i);
         }
-        const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-        imageFile = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        ocrBlob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+        console.info("[CAPTURE]", { 
+          bytes: ocrBlob.size, 
+          mime: 'image/jpeg', 
+          dims: 'unknown' 
+        });
       }
       
-      // Use unified openHealthReport entry
-      const { openHealthReport } = await import('@/features/health/openHealthReport');
-      const result = await openHealthReport({
-        source: 'photo',
-        imageFile
+      // Call OCR function
+      setLoadingMessage('Extracting text...');
+      const startTime = Date.now();
+      
+      const { callOCRFunction } = await import('@/lib/ocrClient');
+      const ocrResult = await callOCRFunction(ocrBlob, { withAuth: true });
+      
+      const durationMs = Date.now() - startTime;
+      const words = ocrResult.summary?.words || 0;
+      
+      console.info("[OCR][RESPONSE]", { 
+        status: ocrResult.ok ? 200 : 'error', 
+        durationMs, 
+        words 
       });
       
       if (currentRunId.current !== runId) return; // stale
       
-      if ('error' in result) {
-        if (result.error === 'no_text') {
-          toast({
-            title: "Try Again",
-            description: "We couldn't read the label text. Try getting closer or improving lighting.",
-            variant: "default",
-          });
-          setCurrentState('scanner'); // Return to capture
-          return;
-        }
+      if (!ocrResult.ok || !ocrResult.summary?.text_joined) {
+        console.info("[OCR][FALLBACK] No readable text found");
         
-        if (result.error === 'not_found') {
-          toast({
-            title: "Product Not Found",
-            description: "We couldn't identify this product. Please try manual entry.",
-            variant: "default",
-          });
-          setCurrentState('no_detection');
-          return;
-        }
-        
-        // Other errors
-        toast({
-          title: "Analysis Failed",
-          description: "Something went wrong. Please try again.",
-          variant: "destructive",
+        // Log telemetry
+        console.info("[PHOTO][OCR_ONLY]", { 
+          words: 0, 
+          hasLabelData: false, 
+          reason: "no_text", 
+          nextAction: "route_to_not_found" 
         });
-        setCurrentState('scanner');
+        
+        // Route to not-found for photo OCR failures
+        navigate('/scan/not-found', { 
+          state: { status: 'no_detection', source: 'photo' } 
+        });
+        onClose();
         return;
       }
       
-      if (!result.success) {
+      const text = ocrResult.summary.text_joined;
+      
+      // Check for label data using enhanced analyzer
+      const { hasLabelData } = await import('@/lib/health/adapters/inconclusiveAnalyzer');
+      const hasValidLabelData = hasLabelData(text);
+      
+      // Parse through shared free-text parser
+      setLoadingMessage('Analyzing nutrition...');
+      const { toReportFromOCR } = await import('@/lib/health/adapters/toReportInputFromOCR');
+      const healthResult = await toReportFromOCR(text);
+      
+      if (currentRunId.current !== runId) return; // stale
+      
+      // Handle inconclusive results
+      if ('status' in healthResult && healthResult.status === 'inconclusive') {
+        console.info("[OCR][INCONCLUSIVE]", healthResult.reason);
+        
+        // Log telemetry
+        console.info("[PHOTO][OCR_ONLY]", { 
+          words, 
+          hasLabelData: hasValidLabelData, 
+          reason: healthResult.reason, 
+          nextAction: "retake" 
+        });
+        
+        // Show toast with specific guidance
+        const toastMessages = {
+          'front_of_pack': "We need the Ingredients or Nutrition Facts panel. Please retake with the back of the package.",
+          'no_ingredients': "We need the Ingredients or Nutrition Facts panel. Fill the frame and avoid glare.",
+          'insufficient_text': "We couldn't read enough label text. Try getting closer or improving lighting.",
+          'low_confidence': "We couldn't read the text clearly. Try retaking with better lighting."
+        };
+        
+        toast({
+          title: "Try Again",
+          description: toastMessages[healthResult.reason] || "We need a clearer photo of the ingredients or nutrition panel.",
+          variant: "default",
+        });
+        
+        // Create inconclusive analysis result for retake UI
+        const inconclusiveResult: HealthAnalysisResult = {
+          itemName: 'Inconclusive Analysis',
+          productName: 'Inconclusive Analysis', 
+          title: 'Inconclusive Analysis',
+          healthScore: 0, // Will be ignored in UI
+          ingredientsText: '',
+          ingredientFlags: [],
+          flags: [],
+          nutritionData: {},
+          healthProfile: {
+            isOrganic: false,
+            isGMO: false,
+            allergens: [],
+            preservatives: [],
+            additives: []
+          },
+          personalizedWarnings: [],
+          suggestions: [],
+          overallRating: 'avoid' // This will be overridden by inconclusive display
+        };
+        
+        // Mark as inconclusive for UI with reason
+        (inconclusiveResult as any).status = 'inconclusive';
+        (inconclusiveResult as any).message = healthResult.message;
+        (inconclusiveResult as any).reason = healthResult.reason;
+        
+        setAnalysisResult(inconclusiveResult);
+        setCurrentState('report');
+        setCurrentAnalysisData({ 
+          source: 'photo',
+          imageUrl: imageBase64
+        });
+        
+        return;
+      }
+      
+      if (!('ok' in healthResult) || !healthResult.ok) {
+        const failedResult = healthResult as { ok: false, reason: string };
+        console.info("[OCR][FALLBACK] Parser failed:", failedResult.reason);
         setCurrentState('no_detection');
         return;
       }
       
-      // Navigate to the photo report page with OCR data
-      const payload = result.payload;
-      const navigationState = {
-        source: 'photo',
-        used: (result as any).source || 'ocr', // 'barcode' or 'ocr'
-        ocrTextNormalized: (result as any).ocrTextNormalized,
-        ocrBlocks: (result as any).ocrBlocks,
-        nutritionFields: (result as any).nutritionFields,
-        originalImage: imageBase64,
-        payload
+      // Run through same analyzer as other flows
+      const report = healthResult.report;
+      
+      // Convert report to analyzer input format
+      const analyzerInput = {
+        name: report.productName || 'OCR Product',
+        ingredientsText: report.ingredientsText,
+        nutrition: report.nutritionData
       };
       
-      // Store analysis data for the report
-      setCurrentAnalysisData(navigationState);
+      const { analyzeProductForQuality } = await import('@/shared/barcode-analyzer');
+      const analyzerResult = await analyzeProductForQuality(analyzerInput);
       
-      // Navigate to photo report 
-      navigate('/photo', { 
-        state: navigationState
+      if (currentRunId.current !== runId) return; // stale
+      
+      // Log pipeline result
+      const wordCount = text.split(/\s+/).length;
+      const score = Math.round((report.healthScore || 0) * 10); // Normalize to 0-100
+      const flags = report.ingredientFlags?.length || 0;
+      
+      console.info("[OCR][PIPELINE]", { words: wordCount, score, flags });
+      
+      // Transform to HealthAnalysisResult format
+      const analysisResult: HealthAnalysisResult = {
+        itemName: report.productName || 'OCR Product',
+        productName: report.productName || 'OCR Product',
+        title: report.productName || 'OCR Product',
+        healthScore: (report.healthScore || 0) / 10, // Convert to 0-10 scale for display
+        ingredientsText: report.ingredientsText,
+        ingredientFlags: report.ingredientFlags || [],
+        flags: report.ingredientFlags || [],
+        nutritionData: extractNutritionData(report.nutritionData || {}),
+        healthProfile: {
+          isOrganic: report.ingredientsText?.toLowerCase().includes('organic') || false,
+          isGMO: report.ingredientsText?.toLowerCase().includes('gmo') || false,
+          allergens: report.ingredientsText ? 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].filter(allergen => 
+              report.ingredientsText!.toLowerCase().includes(allergen)
+            ) : [],
+          preservatives: [],
+          additives: []
+        },
+        personalizedWarnings: [],
+        suggestions: (report.ingredientFlags || []).filter((f: any) => f.severity === 'medium').map((f: any) => f.flag || f.description || ''),
+        overallRating: report.healthScore == null ? 'avoid' : 
+                      report.healthScore >= 8 ? 'excellent' : 
+                      report.healthScore >= 6 ? 'good' : 
+                      report.healthScore >= 4 ? 'fair' : 
+                      report.healthScore >= 2 ? 'poor' : 'avoid'
+      };
+      
+      // Add to recents
+      addRecent({
+        mode: 'photo',
+        label: report.productName || 'OCR Product'
       });
       
-      onClose();
+      setAnalysisResult(analysisResult);
+      setCurrentState('report');
       
-    } catch (error: any) {
-      console.error('[PHOTO][UNIFIED][ERROR]', error);
-      toast({
-        title: "Processing Failed",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
+      // Log successful analysis telemetry
+      console.info("[PHOTO][OCR_ONLY]", { 
+        words, 
+        hasLabelData: hasValidLabelData, 
+        reason: "success", 
+        nextAction: "scored" 
       });
-      setCurrentState('scanner');
+      
+      // Update analysis data for ResultCard source badge
+      setCurrentAnalysisData({ 
+        source: 'photo',
+        imageUrl: imageBase64
+      });
+      
+    } catch (error) {
+      console.error('[OCR][ERROR]', error);
+      if (currentRunId.current !== runId) return; // stale
+      
+      console.info("[OCR][FALLBACK] Network/processing error");
+      
+      // Navigate to no-detection page for photo mode failures
+      if (analysisData?.source === 'photo') {
+        navigate('/scan/not-found', { 
+          state: { 
+            source: 'photo', 
+            tips: ['Fill the frame with the Ingredients panel', 'Avoid glare; keep the label flat', 'Try Manual or Voice entry'], 
+            retryMode: 'photo' 
+          }
+        });
+        return;
+      }
+      
+      setCurrentState('no_detection');
     } finally {
       setIsProcessing(false);
+      console.groupEnd();
     }
   };
 
-  // Main photo analysis dispatcher
+  // Helper to choose v1/v2 pipeline or OCR-only mode
   const runPhotoAnalysis = async (imgB64: string, options?: { ocrOnly?: boolean }) => {
-    // Check if unified pipeline is enabled
-    const { isFeatureEnabled } = await import('@/lib/featureFlags');
-    const useUnifiedPipeline = isFeatureEnabled('photo_unified_pipeline');
-    
-    if (useUnifiedPipeline) {
-      return runUnifiedPhotoPipeline(imgB64);
+    // OCR-only mode: only applies to photo mode from the photo capture modal
+    const isPhotoOcrOnly = options?.ocrOnly && analysisData?.source === 'photo';
+    if (isPhotoOcrOnly) {
+      await runOcrPipeline(imgB64);
+      return;
     }
     
-    // Fall back to existing legacy pipeline for now
-    return handleImageCapture(imgB64);
+    // Use existing handlers in this file - match existing pattern
+    const usePhotoPipelineV2 = typeof import.meta.env.VITE_PHOTO_PIPELINE_V2 !== 'undefined' && 
+                               import.meta.env.VITE_PHOTO_PIPELINE_V2 === 'true';
+    if (usePhotoPipelineV2) {
+      await handleImageCaptureV2(imgB64);
+    } else {
+      await handleImageCapture(imgB64);
+    }
   };
 
   // Mount probe
@@ -931,7 +1085,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     const isPhotoOcrOnly = options?.ocrOnly && analysisData?.source === 'photo';
     if (isPhotoOcrOnly) {
       const imageData = typeof payload === 'string' ? payload : payload.imageBase64;
-      return runPhotoAnalysis(imageData);
+      return runOcrPipeline(imageData);
     }
 
     // Check for Photo Pipeline v2 feature flag
