@@ -9,6 +9,7 @@ import { PipelineRouter } from './PipelineRouter';
 import BarcodeScannerShim from './BarcodeScannerShim';
 import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
+import { renderHealthReport } from '@/lib/health/renderHealthReport';
 import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
 import { ImprovedManualEntry } from './ImprovedManualEntry';
@@ -2186,14 +2187,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             />
           )}
 
-          {currentState === 'report' && analysisResult && (
-            <HealthReportPopup
-              result={analysisResult}
-              onScanAnother={handleScanAnother}
-              onClose={handleClose}
-              analysisData={currentAnalysisData}
-            />
-          )}
+          {currentState === 'report' && analysisResult && 
+            renderHealthReport({
+              result: analysisResult,
+              onScanAnother: handleScanAnother,
+              onClose: handleClose,
+              analysisData: currentAnalysisData
+            })
+          }
 
           {currentState === 'meal_detection' && isInRollout('photo_meal_ui_v1', user?.id) && (
             <MultiAIFoodDetection

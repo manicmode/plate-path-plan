@@ -12,6 +12,13 @@ export const FEATURE_FLAGS = {
   voice_stt_server_enabled: false, // Enable server-side STT (vs browser WebKit)
   scan_hub_enabled: true, // Enable by default for this demo // Enable the new Scan Hub entry page (default OFF)
   voice_analyze_v2: false, // Enable enhanced voice analysis pipeline (DEFAULT OFF)
+  
+  // Enhanced Health Report Features (Universal Rollout)
+  health_report_v2_enabled: true, // Enable enhanced health report with tabs and toggle
+  nutrition_toggle_enabled: true, // Enable per 100g ↔ per portion toggle
+  flags_tab_enabled: true, // Enable flags tab with severity and actions
+  save_tab_enabled: true, // Enable save tab to persist reports
+  smart_suggestions_enabled: true, // Enable personalized suggestions
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

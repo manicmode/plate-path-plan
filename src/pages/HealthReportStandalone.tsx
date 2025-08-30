@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HealthReportPopup } from '@/components/health-check/HealthReportPopup';
+import { renderHealthReport } from '@/lib/health/renderHealthReport';
 import { HealthAnalysisResult } from '@/components/health-check/HealthCheckModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -247,13 +248,17 @@ export default function HealthReportStandalone() {
           </Button>
         </div>
         
-        <HealthReportPopup
-          result={analysis}
-          onScanAnother={handleScanAnother}
-          onClose={handleClose}
-          initialIsSaved={true}
-          hideCloseButton={true}
-        />
+        {renderHealthReport({
+          result: analysis,
+          onScanAnother: handleScanAnother,
+          onClose: handleClose,
+          analysisData: {
+            source: reportData.source || 'unknown',
+            barcode: reportData.barcode || undefined
+          },
+          initialIsSaved: true,
+          hideCloseButton: true
+        })}
       </div>
     );
   } else {
@@ -303,18 +308,18 @@ export default function HealthReportStandalone() {
       </div>
 
       {/* Health Report Popup */}
-        <HealthReportPopup
-          result={convertedResult}
-          onScanAnother={handleScanAnother}
-          onClose={handleClose}
-          initialIsSaved={true}
-          hideCloseButton={true}
-          analysisData={{
-            source: reportData?.source,
-            barcode: reportData?.barcode,
+        {renderHealthReport({
+          result: convertedResult,
+          onScanAnother: handleScanAnother,
+          onClose: handleClose,
+          analysisData: {
+            source: reportData?.source || 'unknown',
+            barcode: reportData?.barcode || undefined,
             imageUrl: reportData?.image_url
-          }}
-        />
+          },
+          initialIsSaved: true,
+          hideCloseButton: true
+        })}
     </div>
   );
 }

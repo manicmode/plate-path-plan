@@ -167,7 +167,7 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
       };
 
       // Submit to feedback endpoint
-      const response = await fetch('/api/support/flag-feedback', {
+      const response = await fetch('/functions/v1/support-flag-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
