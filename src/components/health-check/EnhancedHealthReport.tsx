@@ -117,24 +117,38 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Parse portion information
-  const portionInfo = useMemo(() => 
-    parsePortionGrams(result, analysisData?.imageUrl), 
-    [result, analysisData?.imageUrl]
-  );
+  // Add safety guards for all potentially undefined properties
+  const nutritionData = result?.nutritionData || {};
+  const flags = Array.isArray(result?.flags) ? result.flags : Array.isArray(result?.ingredientFlags) ? result.ingredientFlags : [];
+  const ingredientsText = result?.ingredientsText || '';
+  const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
-  // Generate OCR hash for caching
+  // Parse portion information with safety
+  const portionInfo = useMemo(() => {
+    try {
+      return parsePortionGrams(result, analysisData?.imageUrl);
+    } catch (error) {
+      console.warn('Failed to parse portion grams:', error);
+      return { grams: 30, isEstimated: true, source: 'fallback' };
+    }
+  }, [result, analysisData?.imageUrl]);
+
+  // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {
-    const text = result.ingredientsText || analysisData?.imageUrl || '';
-    return text.length > 0 ? btoa(text.slice(0, 100)).slice(0, 8) : undefined;
-  }, [result.ingredientsText, analysisData?.imageUrl]);
+    try {
+      const text = ingredientsText || analysisData?.imageUrl || '';
+      return text.length > 0 ? btoa(text.slice(0, 100)).slice(0, 8) : undefined;
+    } catch (error) {
+      console.warn('Failed to generate OCR hash:', error);
+      return undefined;
+    }
+  }, [ingredientsText, analysisData?.imageUrl]);
 
-  // Memoize heavy derived values
+  // Memoize health percentage with safety
   const healthPercentage = useMemo(() => {
-    // Expect healthScore on a 0..10 scale for barcode or 0..100 for other sources
-    const score10 = Math.max(0, Math.min(10, Number(result?.healthScore) || 0));
+    const score10 = Math.max(0, Math.min(10, Number(healthScore) || 0));
     return Math.round(score10 * 10); // Convert to percentage for display
-  }, [result?.healthScore]);
+  }, [healthScore]);
 
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
@@ -155,8 +169,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     return Math.round(score10 / 2); // 0..5 stars
   };
 
-  const scoreLabel = getScoreLabel(result.healthScore);
-  const starCount = getStarRating(result.healthScore);
+  const scoreLabel = getScoreLabel(healthScore);
+  const starCount = getStarRating(healthScore);
 
   return (
     <div className="w-full min-h-screen bg-background">
@@ -183,7 +197,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         <Card className={`${scoreLabel.bgColor} border-2 backdrop-blur-sm transition-all duration-300 shadow-xl`}>
           <CardContent className="p-8 text-center">
             {/* Product Name */}
-            <h1 className="text-2xl font-bold text-foreground mb-6">{result.itemName}</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-6">{result?.itemName || 'Unknown Product'}</h1>
             
             {/* Health Score Circular Progress */}
             <div className="mb-4">
@@ -213,7 +227,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             
             {/* Friendly Message */}
             <p className={`text-lg ${scoreLabel.color} font-medium leading-relaxed`}>
-              {getScoreMessage(result.healthScore)}
+              {getScoreMessage(healthScore)}
             </p>
             
             {/* Source Badge */}
@@ -234,9 +248,9 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="flags">
               Flags
-              {(result.flags?.length || result.ingredientFlags?.length || 0) > 0 && (
+              {flags.length > 0 && (
                 <Badge variant="destructive" className="ml-1 text-xs">
-                  {result.flags?.length || result.ingredientFlags?.length}
+                  {flags.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -246,18 +260,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           
           <TabsContent value="nutrition" className="mt-6">
             <NutritionToggle
-              nutrition100g={result.nutritionData || {}}
+              nutrition100g={nutritionData}
               productData={result}
-              ocrText={result.ingredientsText}
+              ocrText={ingredientsText}
             />
           </TabsContent>
           
           <TabsContent value="flags" className="mt-6">
             <FlagsTab
-              ingredientsText={result.ingredientsText || ''}
-              nutrition100g={result.nutritionData || {}}
+              ingredientsText={ingredientsText}
+              nutrition100g={nutritionData}
               reportId={ocrHash}
-              ocrPreview={result.ingredientsText?.slice(0, 160)}
+              ocrPreview={ingredientsText?.slice(0, 160)}
             />
           </TabsContent>
           
@@ -303,7 +317,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               <p className="text-foreground leading-relaxed">
                 <span className="font-semibold">Ingredients: </span>
                 <span className="text-foreground">
-                  {result.ingredientsText || 'Ingredient list not available from scan data'}
+                  {ingredientsText || 'Ingredient list not available from scan data'}
                 </span>
               </p>
             </div>

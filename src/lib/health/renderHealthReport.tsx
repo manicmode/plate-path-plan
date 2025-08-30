@@ -3,11 +3,17 @@
  * Single point of render for all health report flows
  */
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { EnhancedHealthReport } from '@/components/health-check/EnhancedHealthReport';
 import { HealthReportPopup } from '@/components/health-check/HealthReportPopup';
 import type { HealthAnalysisResult } from '@/components/health-check/HealthCheckModal';
+
+// Lazy import EnhancedHealthReport to prevent circular imports
+const EnhancedHealthReport = React.lazy(() => 
+  import('@/components/health-check/EnhancedHealthReport').then(module => ({
+    default: module.EnhancedHealthReport
+  }))
+);
 
 interface RenderHealthReportOptions {
   result: HealthAnalysisResult;
@@ -36,37 +42,46 @@ export function renderHealthReport(options: RenderHealthReportOptions) {
     hideCloseButton = false
   } = options;
 
-  // Log telemetry for monitoring
+  // Add safety guards for critical properties
+  const hasPerServing = !!(result as any)?.nutritionDataPerServing;
+  const hasPer100g = !!(result as any)?.nutritionDataPer100g;
+  const flags = Array.isArray(result?.flags) ? result.flags : Array.isArray(result?.ingredientFlags) ? result.ingredientFlags : [];
+  const portionGrams = typeof (result as any)?.portionGrams === 'number' ? (result as any).portionGrams : null;
+
+  // Log telemetry for monitoring and debugging
   React.useEffect(() => {
     const entry = analysisData?.source || 'unknown';
     const hasToggle = isFeatureEnabled('nutrition_toggle_enabled');
     const hasFlagsTab = isFeatureEnabled('flags_tab_enabled');
     const hasSaveTab = isFeatureEnabled('save_tab_enabled');
     const hasSuggestions = isFeatureEnabled('smart_suggestions_enabled');
-    const flagsCount = result.flags?.length || result.ingredientFlags?.length || 0;
     
-    console.log('[REPORT][V2]', {
+    console.log('[REPORT][V2][BOOT]', {
+      hasPerServing,
+      hasPer100g, 
+      flagsCount: flags.length,
+      portionGrams,
       entry,
       hasToggle,
       hasFlagsTab, 
       hasSaveTab,
-      hasSuggestions,
-      portionGrams: 'auto-detected',
-      flagsCount
+      hasSuggestions
     });
-  }, [result, analysisData]);
+  }, [result, analysisData, hasPerServing, hasPer100g, flags.length, portionGrams]);
 
   // Use Enhanced Health Report if V2 is enabled
   if (isFeatureEnabled('health_report_v2_enabled')) {
     return (
-      <EnhancedHealthReport
-        result={result}
-        onScanAnother={onScanAnother}
-        onClose={onClose}
-        analysisData={analysisData}
-        initialIsSaved={initialIsSaved}
-        hideCloseButton={hideCloseButton}
-      />
+      <Suspense fallback={<div className="flex items-center justify-center p-8">Loading report...</div>}>
+        <EnhancedHealthReport
+          result={result}
+          onScanAnother={onScanAnother}
+          onClose={onClose}
+          analysisData={analysisData}
+          initialIsSaved={initialIsSaved}
+          hideCloseButton={hideCloseButton}
+        />
+      </Suspense>
     );
   }
 

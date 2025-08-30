@@ -3,7 +3,7 @@
  * Shows detected flags with actions: feedback and hide preferences
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -116,10 +116,24 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
   className
 }) => {
   const { toast } = useToast();
-  const [hiddenFlags, setHiddenFlags] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('hidden-health-flags');
-    return new Set(saved ? JSON.parse(saved) : []);
-  });
+  
+  // Safe localStorage access with SSR guard
+  const [hiddenFlags, setHiddenFlags] = useState<Set<string>>(new Set());
+
+  // Load hidden flags after component mounts (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('hidden-health-flags');
+        if (saved) {
+          setHiddenFlags(new Set(JSON.parse(saved)));
+        }
+      } catch (error) {
+        console.warn('Failed to load hidden flags:', error);
+      }
+    }
+  }, []);
+
   const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; flag?: HealthFlag }>({
     isOpen: false
   });
@@ -143,7 +157,15 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
   const handleHideFlag = (flagKey: string) => {
     const newHiddenFlags = new Set([...hiddenFlags, flagKey]);
     setHiddenFlags(newHiddenFlags);
-    localStorage.setItem('hidden-health-flags', JSON.stringify([...newHiddenFlags]));
+    
+    // Safe localStorage write with error handling
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('hidden-health-flags', JSON.stringify([...newHiddenFlags]));
+      } catch (error) {
+        console.warn('Failed to save hidden flags:', error);
+      }
+    }
     
     toast({
       title: "Flag Hidden",

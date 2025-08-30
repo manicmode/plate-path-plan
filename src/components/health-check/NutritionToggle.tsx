@@ -3,7 +3,7 @@
  * Remembers user preference and shows portion estimation badge
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -25,15 +25,34 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
   ocrText,
   className
 }) => {
-  // Remember user preference
-  const [mode, setMode] = useState<NutritionMode>(() => {
-    const saved = localStorage.getItem('nutrition-display-mode');
-    return (saved === 'portion' ? 'portion' : 'per100g') as NutritionMode;
-  });
+  // Safe localStorage access with SSR guard
+  const [mode, setMode] = useState<NutritionMode>('per100g');
+
+  // Load saved preference after component mounts (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('nutrition-display-mode');
+        if (saved === 'portion') {
+          setMode('portion');
+        }
+      } catch (error) {
+        console.warn('Failed to load nutrition display mode:', error);
+      }
+    }
+  }, []);
 
   const handleModeChange = (newMode: NutritionMode) => {
     setMode(newMode);
-    localStorage.setItem('nutrition-display-mode', newMode);
+    
+    // Safe localStorage write with error handling
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nutrition-display-mode', newMode);
+      } catch (error) {
+        console.warn('Failed to save nutrition display mode:', error);
+      }
+    }
   };
 
   // Parse portion information
