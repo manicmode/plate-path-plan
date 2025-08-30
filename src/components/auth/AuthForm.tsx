@@ -407,11 +407,11 @@ const AuthForm = () => {
             console.log('🔄 Tab switching to:', value);
             setCurrentTab(value as 'login' | 'register');
           }} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 glass-button border-0">
-              <TabsTrigger value="login" className="flex items-center justify-center text-center data-[state=active]:gradient-primary data-[state=active]:text-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
+            <TabsList className="grid w-full grid-cols-2 glass-button border-0 h-12 p-1 overflow-hidden rounded-2xl">
+              <TabsTrigger value="login" className="flex items-center justify-center text-center h-full rounded-xl leading-none data-[state=active]:border-0 data-[state=active]:gradient-primary data-[state=active]:text-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
                 Sign In
               </TabsTrigger>
-              <TabsTrigger value="register" className="flex items-center justify-center text-center data-[state=active]:gradient-primary data-[state=active]:text-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
+              <TabsTrigger value="register" className="flex items-center justify-center text-center h-full rounded-xl leading-none data-[state=active]:border-0 data-[state=active]:gradient-primary data-[state=active]:text-white dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white">
                 Sign Up
               </TabsTrigger>
             </TabsList>
