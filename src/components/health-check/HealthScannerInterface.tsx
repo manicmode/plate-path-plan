@@ -22,12 +22,12 @@ import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
-import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
+import { openHealthReport, openHealthReportFromBarcode } from '@/features/health/openHealthReport';
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
 import { toast } from 'sonner';
 import { devLog } from '@/lib/camera/devLog';
 import { photoReportFromImage } from '@/features/health/photoReportFromImage';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { isOcrFallbackEnabled, isPhotoOcrEnabled } from '@/featureFlags';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
@@ -108,6 +108,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isFrozen, setIsFrozen] = useState(false);
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
@@ -755,10 +756,70 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return { canvas, captureType: 'VideoFrame' };
   };
 
-  const captureImage = async () => {
-    // Guard photo capture in barcode-only mode
-    if (effectiveMode === 'barcode') {
+  const captureImage = async (isExplicitCapture: boolean = false) => {
+    // Guard photo capture in barcode-only mode, but allow explicit "Analyze Now" button
+    if (effectiveMode === 'barcode' && !isExplicitCapture) {
       console.log('[BARCODE] Ignoring photo capture - barcode-only mode');
+      return;
+    }
+    
+    // For explicit captures on /scan route, route to /photo
+    if (isExplicitCapture && barcodeOnly) {
+      devLog('[SCAN][EXPLICIT]', 'Explicit capture - routing to /photo');
+      
+      // First capture the image
+      if (!videoRef.current || !canvasRef.current) {
+        console.error("❌ Missing video or canvas ref!", {
+          video: !!videoRef.current,
+          canvas: !!canvasRef.current
+        });
+        return;
+      }
+
+      try {
+        playCameraClickSound();
+        setIsScanning(true);
+        
+        // Capture still image
+        const { canvas } = await captureStill();
+        
+        // Convert to blob
+        const fullBlob = await new Promise<Blob>(resolve => {
+          canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.8);
+        });
+        
+        // Convert to File for openHealthReport
+        const file = new File([fullBlob], 'photo.jpg', { type: 'image/jpeg' });
+        
+        // Use openHealthReport to route to /photo
+        const result = await openHealthReport({
+          source: 'photo',
+          imageFile: file
+        });
+        
+        if (result && 'success' in result && result.success) {
+          // Navigate to /photo route
+          navigate('/photo', { 
+            state: { 
+              bootKey: (result as any).bootKey,
+              source: 'photo'
+            } 
+          });
+          
+          // Close the scanner modal
+          if (onCancel) onCancel();
+        } else {
+          const errorMsg = result && 'error' in result ? result.error : 'Unknown error';
+          console.error('[SCAN][EXPLICIT][ERROR]', errorMsg);
+          toast.error('Failed to analyze image. Please try again.');
+        }
+      } catch (error) {
+        console.error('[SCAN][EXPLICIT][EXCEPTION]', error);
+        toast.error('Failed to capture image. Please try again.');
+      } finally {
+        setIsScanning(false);
+      }
+      
       return;
     }
     
@@ -1863,7 +1924,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           }}
         >
           <ScannerActions
-            onAnalyze={captureImage}
+            onAnalyze={() => captureImage(true)}
             onCancel={onModalClose}
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
