@@ -16,7 +16,7 @@ export interface NutritionPer100g {
 export interface PortionInfo {
   grams: number;
   isEstimated: boolean;
-  source: 'product' | 'ocr' | 'ocr_declared' | 'ocr_inferred_ratio' | 'db_declared' | 'model_estimate' | 'user_set' | 'estimated';
+  source: 'product' | 'ocr' | 'ocr_declared' | 'ocr_inferred_ratio' | 'db_declared' | 'model_estimate' | 'user_set' | 'estimated' | 'fallback_default';
   confidence?: number; // 0-2, higher = more reliable
   display?: string; // Human-readable display like "1 cup", "2 tbsp"
 }

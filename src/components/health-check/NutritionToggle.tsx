@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info, Settings } from 'lucide-react';
-import { NutritionPer100g, toPerPortion, parsePortionGrams, PortionInfo } from '@/lib/nutrition/portionCalculator';
-import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
-import { PortionSheet } from './PortionSheet';
+import { NutritionPer100g, toPerPortion, type PortionInfo } from '@/lib/nutrition/portionCalculator';
+import { detectPortionSafe, getPortionInfoSync, formatPortionDisplay } from '@/lib/nutrition/portionDetectionSafe';
+import { PortionSheetLazy } from './PortionSheetLazy';
 
 interface NutritionToggleProps {
   nutrition100g: NutritionPer100g;
@@ -31,6 +31,7 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
   // Safe localStorage access with SSR guard
   const [mode, setMode] = useState<NutritionMode>('per100g');
   const [currentPortionInfo, setCurrentPortionInfo] = useState<PortionInfo | null>(null);
+  const [portionDetectionEnabled, setPortionDetectionEnabled] = useState(true);
 
   // Load saved preference after component mounts (client-side only)
   useEffect(() => {
@@ -46,28 +47,30 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
     }
   }, []);
 
-  // Load user portion preference and parse portion information
+  // Load portion information safely
   useEffect(() => {
     const loadPortionInfo = async () => {
-      // Try to get user preference first
-      const userPref = productData ? await getUserPortionPreference(productData) : null;
-      
-      // Parse portion with user preference
-      const portionInfo = parsePortionGrams(
-        productData, 
-        ocrText, 
-        userPref ? { grams: userPref.portionGrams, display: userPref.portionDisplay } : undefined
-      );
-      
-      setCurrentPortionInfo(portionInfo);
-      
-      // Log telemetry
-      console.info('[REPORT][V2][PORTION]', { 
-        grams: portionInfo.grams, 
-        source: portionInfo.source, 
-        confidence: portionInfo.confidence,
-        from: 'nutrition_toggle'
-      });
+      try {
+        const portionInfo = await detectPortionSafe(productData, ocrText, 'nutrition_toggle');
+        setCurrentPortionInfo(portionInfo);
+        
+        // Check if detection was actually enabled
+        const enabled = portionInfo.source !== 'fallback_default';
+        setPortionDetectionEnabled(enabled);
+      } catch (error) {
+        console.warn('[REPORT][V2][PORTION][ERROR]', { 
+          stage: 'nutrition_toggle', 
+          message: error.message 
+        });
+        // Use safe fallback
+        setCurrentPortionInfo({ 
+          grams: 30, 
+          isEstimated: true, 
+          source: 'estimated' as const, 
+          confidence: 0 
+        });
+        setPortionDetectionEnabled(false);
+      }
     };
     
     loadPortionInfo();
@@ -86,17 +89,18 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
     }
   };
 
-  // Parse portion information using current data
-  const portionInfo: PortionInfo = currentPortionInfo || useMemo(() => 
-    parsePortionGrams(productData, ocrText), 
-    [productData, ocrText]
-  );
+  // Get safe portion info for render
+  const portionInfo: PortionInfo = getPortionInfoSync(currentPortionInfo);
 
-  // Calculate portion nutrition
-  const portionNutrition = useMemo(() => 
-    toPerPortion(nutrition100g, portionInfo.grams),
-    [nutrition100g, portionInfo.grams]
-  );
+  // Calculate portion nutrition safely
+  const portionNutrition = useMemo(() => {
+    try {
+      return toPerPortion(nutrition100g, portionInfo.grams);
+    } catch (error) {
+      console.warn('Failed to calculate portion nutrition:', error);
+      return nutrition100g; // Fallback to 100g values
+    }
+  }, [nutrition100g, portionInfo.grams]);
 
   const displayNutrition = mode === 'portion' ? portionNutrition : nutrition100g;
 
@@ -113,14 +117,16 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
 
   // Get portion source label for display
   const getPortionSourceLabel = (source: string) => {
-    switch (source) {
-      case 'user_set': return 'Your setting';
-      case 'ocr_declared': return 'OCR';
-      case 'db_declared': return 'DB';
-      case 'ocr_inferred_ratio': return 'Calculated';
-      case 'model_estimate': return 'Estimated';
-      default: return 'est.';
-    }
+    const labels = {
+      'user_set': 'Your setting',
+      'ocr_declared': 'OCR',
+      'db_declared': 'DB',
+      'ocr_inferred_ratio': 'Calculated',
+      'model_estimate': 'Estimated',
+    'fallback_default': 'est.',
+      'estimated': 'est.'
+    };
+    return labels[source] || 'est.';
   };
 
   const hasValidNutrition = (nutrition: any): boolean => {
@@ -209,7 +215,7 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
           {/* Portion Info Chip */}
           {mode === 'portion' && (
             <div className="flex items-center space-x-2">
-              <PortionSheet
+              <PortionSheetLazy
                 currentGrams={portionInfo.grams}
                 currentDisplay={portionInfo.display}
                 isEstimated={portionInfo.isEstimated}
@@ -217,20 +223,21 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
                 productData={productData}
                 nutrition100g={nutrition100g}
                 onPortionChange={handlePortionChange}
+                enabled={portionDetectionEnabled}
               >
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8 px-3 text-xs"
                 >
-                  {portionInfo.grams}g · {getPortionSourceLabel(portionInfo.source)}
+                  {formatPortionDisplay(portionInfo)}
                   <Settings className="w-3 h-3 ml-1" />
                 </Button>
-              </PortionSheet>
+              </PortionSheetLazy>
               
-              {portionInfo.source !== 'user_set' && portionInfo.isEstimated && (
+              {portionInfo.source !== 'user_set' && portionInfo.isEstimated && portionDetectionEnabled && (
                 <span className="text-xs text-muted-foreground">
-                  <PortionSheet
+                  <PortionSheetLazy
                     currentGrams={portionInfo.grams}
                     currentDisplay={portionInfo.display}
                     isEstimated={portionInfo.isEstimated}
@@ -238,11 +245,12 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
                     productData={productData}
                     nutrition100g={nutrition100g}
                     onPortionChange={handlePortionChange}
+                    enabled={portionDetectionEnabled}
                   >
                     <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary">
                       Adjust
                     </Button>
-                  </PortionSheet>
+                  </PortionSheetLazy>
                 </span>
               )}
             </div>
@@ -282,11 +290,11 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
           </div>
 
           {/* Mode-specific notes */}
-          {mode === 'portion' && portionInfo.isEstimated && portionInfo.source !== 'user_set' && (
+          {mode === 'portion' && portionInfo.isEstimated && portionInfo.source !== 'user_set' && portionDetectionEnabled && (
             <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
                 <strong>Note:</strong> Portion size estimated at {portionInfo.grams}g. 
-                <PortionSheet
+                <PortionSheetLazy
                   currentGrams={portionInfo.grams}
                   currentDisplay={portionInfo.display}
                   isEstimated={portionInfo.isEstimated}
@@ -294,11 +302,12 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
                   productData={productData}
                   nutrition100g={nutrition100g}
                   onPortionChange={handlePortionChange}
+                  enabled={portionDetectionEnabled}
                 >
                   <Button variant="link" className="h-auto p-0 ml-1 text-yellow-600 dark:text-yellow-400 underline">
                     Set portion size
                   </Button>
-                </PortionSheet>
+                </PortionSheetLazy>
                 {' '}for accurate nutrition info.
               </p>
             </div>
