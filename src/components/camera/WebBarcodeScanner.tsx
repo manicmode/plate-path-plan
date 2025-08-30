@@ -269,7 +269,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   useLayoutEffect(() => {
     // Phase 1 instrumentation - behind ?camInq=1
     const isInquiry = window.location.search.includes('camInq=1');
-    if (isInquiry) console.log('[SCAN][MOUNT]');
+    if (isInquiry) {
+      console.log('[SCAN][MOUNT]');
+      // Dump on mount
+      const dumpOnMount = (window as any).__camDump?.() || 'no dump available';
+      console.log('[SCAN][DUMP] on mount', dumpOnMount);
+    }
     
     logPerfOpen('WebBarcodeScanner');
     logOwnerAcquire('WebBarcodeScanner');
@@ -277,7 +282,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     startCamera();
     warmUpDecoder();
     return () => {
-      if (isInquiry) console.log('[SCAN][UNMOUNT]');
+      if (isInquiry) {
+        console.log('[SCAN][UNMOUNT]');
+        // Dump on unmount
+        const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
+        console.log('[SCAN][DUMP] on unmount', dumpOnUnmount);
+      }
       console.log("[CAMERA] cleanup", { OWNER });
       camOwnerUnmount(OWNER);
       camHardStop('unmount');
@@ -313,9 +323,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         
         if (isInquiry) {
           console.log('[SCAN][GUM][CALL]', { constraints: primary });
-          // Guardian state before acquire
-          const guardianBefore = (window as any).__testCameraGuardian?.() || {};
-          console.log('[SCAN][GUARD] before acquire', guardianBefore);
+          // Dump before acquire
+          const dumpBefore = (window as any).__camDump?.() || 'no dump available';
+          console.log('[SCAN][DUMP] before acquire', dumpBefore);
         }
         
         try { 
@@ -324,7 +334,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           if (isInquiry) {
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { streamId, tracks });
+            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length });
           }
           
           return stream;
@@ -340,7 +350,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           if (isInquiry) {
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { streamId, tracks, fallback: true });
+            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length, fallback: true });
           }
           
           return stream;
@@ -361,10 +371,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             muted: video.muted, 
             autoplay: video.autoplay 
           });
-          
-          // Guardian state just after attach, before play
-          const guardianAfterAttach = (window as any).__testCameraGuardian?.() || {};
-          console.log('[SCAN][GUARD] after attach', guardianAfterAttach);
         }
         
         try {
@@ -373,19 +379,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           if (isInquiry) {
             console.log('[SCAN][VIDEO][PLAY][OK]');
             
-            // Guardian state after play
-            const guardianAfterPlay = (window as any).__testCameraGuardian?.() || {};
-            console.log('[SCAN][GUARD] after play', guardianAfterPlay);
-            
             // Readiness probe - 5 times @ 100ms
             let probeCount = 0;
             const probeReady = () => {
               if (probeCount < 5) {
                 console.log('[SCAN][VIDEO][READY]', { 
-                  probe: probeCount + 1,
                   readyState: video.readyState, 
-                  videoWidth: video.videoWidth, 
-                  videoHeight: video.videoHeight 
+                  w: video.videoWidth, 
+                  h: video.videoHeight 
                 });
                 probeCount++;
                 setTimeout(probeReady, 100);
@@ -393,20 +394,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             };
             probeReady();
             
-            // CSS and layout info
-            const computed = getComputedStyle(video);
-            const rect = video.getBoundingClientRect();
-            console.log('[SCAN][VIDEO][CSS]', { 
-              display: computed.display, 
-              visibility: computed.visibility, 
-              opacity: computed.opacity, 
-              zIndex: computed.zIndex, 
-              position: computed.position 
-            });
-            console.log('[SCAN][VIDEO][RECT]', { 
-              w: rect.width, 
-              h: rect.height 
-            });
+            // Dump after play to show live tracks
+            const dumpAfter = (window as any).__camDump?.() || 'no dump available';
+            console.log('[SCAN][DUMP] after play', dumpAfter);
           }
           
           console.log("[CAMERA] Video attached and playing");

@@ -20,7 +20,7 @@ import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 import "./scripts/shipV2Globally"; // Load V2 global rollout
 import "./utils/portionKillSwitch"; // Emergency kill switches
 import "./lib/camera/featureFlags"; // Initialize camera feature flags
-import "./lib/camera/cameraGuardian"; // Global camera cleanup
+// REMOVED: import "./lib/camera/cameraGuardian"; // Legacy guardian disabled
 import { installCameraGuardianWire } from "./lib/camera/guardianWire";
 import "./lib/camera/testGuardian"; // Test utilities
 
@@ -29,6 +29,10 @@ applySecurityHeaders();
 
 // Install camera guardian wire BEFORE any camera usage
 installCameraGuardianWire();
+
+// Single-guardian assertion logging
+console.log('[GUARD][LEGACY] disabled:true');
+console.log('[GUARD][NEW] wired:true');
 
 // Log active CSP on app mount (dev helper)
 logActiveCSP('APP_MOUNT');
