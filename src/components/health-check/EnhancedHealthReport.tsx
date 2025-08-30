@@ -471,8 +471,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             {analysisData?.source && (
               <div className="mt-4 space-y-2">
                 <Badge variant="outline" className="text-xs">
-                  Source: {analysisData.source === 'barcode' ? 'Barcode' : 
-                          analysisData.source === 'manual' ? 'Manual' : 'Photo'}
+                  Source: {
+                    (analysisData.source === 'barcode' || window.location.pathname.includes('/scan')) ? 'Barcode' : 
+                    analysisData.source === 'manual' ? 'Manual' : 
+                    window.location.pathname === '/photo' ? 'Photo' : 'Barcode'
+                  }
                 </Badge>
                 
                 {/* Portion Badge */}

@@ -57,8 +57,8 @@ export default function HealthReportStandalone() {
       mode: searchParams.get('mode')
     });
 
-    // Check for photo sessionStorage boot from unified pipeline
-    if (location.state?.bootKey && location.state?.entry === 'photo') {
+    // Check for photo sessionStorage boot from unified pipeline (only on /photo route)
+    if (location.pathname === '/photo' && location.state?.bootKey && location.state?.entry === 'photo') {
       console.log('[REPORT][PHOTO_BOOT] Using sessionStorage payload', location.state.bootKey);
       const storedPayload = sessionStorage.getItem(location.state.bootKey);
       if (storedPayload) {

@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { devLog } from '@/lib/camera/devLog';
 import { photoReportFromImage } from '@/features/health/photoReportFromImage';
 import { useLocation } from 'react-router-dom';
+import { isOcrFallbackEnabled } from '@/featureFlags';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -132,6 +133,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const entry = state?.entry;
   const photoOnly = source === 'photo' || entry === 'photo' || mode === 'photo';
   const effectiveMode = photoOnly ? 'photo_only' : (mode === 'barcode' ? 'barcode' : (mode ?? 'mixed'));
+  
+  // Clear photo payloads on scanner mount to prevent interference
+  useEffect(() => {
+    sessionStorage.removeItem('dhr:boot');
+  }, []);
   
   // Feature flags
   const urlParams = new URLSearchParams(window.location.search);
@@ -883,8 +889,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         });
       }
 
-      // 2) No barcode found - proceed with OCR/image analysis
-      if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true') {
+      // 2) No barcode found - gate OCR/image analysis behind feature flag
+      if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true' && isOcrFallbackEnabled()) {
         // New OCR pipeline
         try {
           console.log('[PHOTO] Using OCR pipeline...');
@@ -958,7 +964,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         }
       }
 
-      // 3) Fallback to existing barcode detection and processing
+      // 3) Continue scanning (no automatic OCR fallback unless explicitly enabled)
+      if (!isOcrFallbackEnabled()) {
+        devLog('SCAN][CONTINUE', 'No OCR fallback - continuing barcode scan');
+        // Keep scanning, don't navigate away
+        return;
+      }
+      
+      // Fallback to existing barcode detection and processing (only if OCR fallback enabled)
       // Use shared hook
       const result = await snapAndDecode({
         videoEl: video,
