@@ -1007,27 +1007,34 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('[LOG] off_result', { status: 200, hit: true });
 
         try {
-          // Map the response using null-safe nutrition handling
+          // Map the response using robust nutrition handling
           const mapped = mapLookupToLoggedFood(data);
           const p = data.product as LogProduct; // Keep for ingredients/health data
           
-          // Transform to RecognizedFood format with null-safe nutrition
+          // Use nutrition based on what's available (per serving or per 100g)
+          const nutrition = mapped.nutrition.basis === 'perServing' 
+            ? mapped.nutrition.perServing 
+            : mapped.nutrition.per100g;
+          
+          // Transform to RecognizedFood format with mapped nutrition
           const recognizedFood: RecognizedFood = {
             name: mapped.name,
-            calories: mapped.nutrition.calories || 0,
-            protein: mapped.nutrition.protein_g || 0,
-            carbs: mapped.nutrition.carbs_g || 0,
-            fat: mapped.nutrition.fat_g || 0,
-            fiber: 0, // Not in mapped nutrition but keep for compatibility
-            sugar: 0, // Not in mapped nutrition but keep for compatibility
-            sodium: mapped.nutrition.sodium_mg || 0,
+            calories: nutrition?.calories || 0,
+            protein: nutrition?.protein_g || 0,
+            carbs: nutrition?.carbs_g || 0,
+            fat: nutrition?.fat_g || 0,
+            fiber: nutrition?.fiber_g || 0,
+            sugar: nutrition?.sugar_g || 0,
+            sodium: nutrition?.sodium_mg || 0,
             confidence: 95,
-            serving: 'As labeled',
-            // Add ingredients data for the modal if available
-            ingredientsText: p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined,
-            ingredientsAvailable: p?.ingredients?.length > 0 || false,
-            // Store health data for potential future use
-            image: p?.imageUrl
+            serving: mapped.nutrition.basis === 'perServing' 
+              ? `Per serving${mapped.servingG ? ` (${mapped.servingG}g)` : ''}` 
+              : 'Per 100g',
+            // Add ingredients data from mapped result
+            ingredientsText: mapped.ingredientsText || (p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined),
+            ingredientsAvailable: !!(mapped.ingredientsText || p?.ingredients?.length > 0),
+            // Store image data for modal
+            image: mapped.imageUrl || p?.imageUrl
           };
 
           // Add forensics logging
@@ -1066,9 +1073,9 @@ console.log('Global search enabled:', enableGlobalSearch);
               carbs: recognizedFood.carbs,
               fat: recognizedFood.fat,
               fiber: recognizedFood.fiber,
-            sugar: recognizedFood.sugar,
-            sodium: recognizedFood.sodium
-          }
+              sugar: recognizedFood.sugar,
+              sodium: recognizedFood.sodium
+            }
           });
           
         } catch (nutritionProcessingError) {

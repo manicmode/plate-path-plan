@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
-import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus, ChevronDown, ChevronUp, Award } from 'lucide-react';
+import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus, ChevronDown, ChevronUp, Award, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
@@ -832,6 +832,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                             </div>
                           )}
                         </div>
+                        
+                        {/* Health Check Button for Barcode Items */}
+                        {isFromBarcode && (
+                          <div className="mt-4">
+                            <Button
+                              onClick={async () => {
+                                try {
+                                  const { openHealthReportFromBarcode } = await import('@/features/health/openHealthReport');
+                                  const barcode = currentFoodItem?.barcode;
+                                  if (barcode) {
+                                    await openHealthReportFromBarcode(barcode, 'scanner-manual');
+                                  }
+                                } catch (error) {
+                                  console.error('Failed to open health report:', error);
+                                }
+                              }}
+                              className="w-full"
+                              variant="outline"
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              View Full Health Report
+                            </Button>
+                          </div>
+                        )}
                       </>
                     )}
                   </>
