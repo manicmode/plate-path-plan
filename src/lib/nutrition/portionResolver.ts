@@ -255,10 +255,25 @@ export async function resolvePortion(
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
   
+  // Generate cache key for inquiry logging
+  const barcode = productData?.barcode || productData?.id;
+  const productNameForCache = productData?.name || productData?.productName || '';
+  const ocrHash = ocrText ? btoa(ocrText.slice(0, 100)).slice(0, 8) : '';
+  const cacheKey = `${barcode || productNameForCache.slice(0, 20)}_${ocrHash}`;
+  
   // Check cache first
   const cached = portionCache.get(productData, ocrText);
   if (cached) {
     mark('resolvePortion:cache_hit');
+    // Log cache hit for inquiry
+    console.info('[PORTION][INQ3][RESOLVE_DONE]', {
+      cache: { hit: true, key: cacheKey },
+      flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false }, // assuming defaults
+      inputs: { hasOcr: !!ocrText, ocrLen: ocrText?.length || 0, hasDb: !!productData, hasPer100: !!productData?.nutrition },
+      candidates: cached.candidates,
+      chosen: { source: cached.source, grams: cached.grams },
+      timing: 'cached'
+    });
     return cached;
   }
   
@@ -267,14 +282,38 @@ export async function resolvePortion(
   
   // Gather candidates from all sources
   const dbCandidate = parseFromDatabase(productData);
-  if (dbCandidate) candidates.push(dbCandidate);
+  if (dbCandidate) {
+    console.log('[PORTION][DB]', 'Found DB candidate:', dbCandidate.grams, 'g');
+    candidates.push(dbCandidate);
+  } else {
+    console.log('[PORTION][DB]', 'No DB serving size found:', { 
+      serving_size_g: productData?.serving_size_g, 
+      servingSize: productData?.servingSize,
+      reason: !productData ? 'no_product_data' : 'no_serving_fields' 
+    });
+  }
   
   const ratioCandidate = calculateFromRatio(productData);
-  if (ratioCandidate) candidates.push(ratioCandidate);
+  if (ratioCandidate) {
+    console.log('[PORTION][RATIO]', 'Found ratio candidate:', ratioCandidate.grams, 'g');
+    candidates.push(ratioCandidate);
+  } else {
+    console.log('[PORTION][RATIO]', 'No ratio calculation possible:', { 
+      nutrition: !!productData?.nutrition,
+      reason: !productData?.nutrition ? 'no_nutrition_data' : 'missing_per_serving_fields'
+    });
+  }
   
   if (ocrText) {
     const ocrCandidate = parseFromOCR(ocrText, productName);
-    if (ocrCandidate) candidates.push(ocrCandidate);
+    if (ocrCandidate) {
+      console.log('[PORTION][OCR]', 'Found OCR candidate:', ocrCandidate.grams, 'g');
+      candidates.push(ocrCandidate);
+    } else {
+      console.log('[PORTION][OCR]', 'No OCR serving found - check parseFromOCR logs');
+    }
+  } else {
+    console.log('[PORTION][OCR]', 'No OCR text provided');
   }
   
   const categoryCandidate = estimateFromCategory(productName);
@@ -322,6 +361,22 @@ export async function resolvePortion(
     selectedGrams: winner.grams,
     candidateCount: validCandidates.length,
     topScore: winner.score
+  });
+  
+  // PORTION INQUIRY - Detailed end trace
+  console.info('[PORTION][INQ3][RESOLVE_DONE]', {
+    cache: { hit: false, key: cacheKey },
+    flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false }, // assuming defaults 
+    inputs: { hasOcr: !!ocrText, ocrLen: ocrText?.length || 0, hasDb: !!productData, hasPer100: !!productData?.nutrition },
+    candidates: validCandidates.map(c => ({
+      source: c.source,
+      grams: c.grams,
+      confidence: c.confidence,
+      penalties: c.details || 'none',
+      reason: c.details || 'no_reason'
+    })),
+    chosen: { source: winner.source, grams: winner.grams },
+    timing: 'computed'
   });
   
   mark('resolvePortion:end');

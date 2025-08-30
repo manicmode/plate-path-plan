@@ -31,14 +31,20 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
   const dec = (s: string) => parseFloat(s.replace(/,/g, '.'));
   
   console.info('[PORTION][OCR] Parsing serving from OCR:', { lines: lines.length });
+  console.info('[PORTION][OCR] Top 3 lines:', lines.slice(0, 3));
   
   // Strategy 1: Explicit "serving size X g" patterns
   for (const line of lines) {
-    if (REJECT_PATTERNS.some(pattern => pattern.test(line))) continue;
+    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
+    if (rejected) {
+      console.log('[PORTION][OCR] Rejected line (negative filter):', line);
+      continue;
+    }
     
     const servingSizeMatch = line.match(/serving\s*size[^0-9]*?(\d+(?:[.,]\d+)?)\s*g/i);
     if (servingSizeMatch) {
       const grams = dec(servingSizeMatch[1]);
+      console.log('[PORTION][OCR] Found serving size match:', { line, grams, accepted: grams >= 5 && grams <= 250 });
       if (grams >= 5 && grams <= 250) {
         return {
           grams,
@@ -52,11 +58,13 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
   
   // Strategy 2: Volume with gram conversion "1 cup (30g)"
   for (const line of lines) {
-    if (REJECT_PATTERNS.some(pattern => pattern.test(line))) continue;
+    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
+    if (rejected) continue;
     
     const volumeMatch = line.match(/(?:(\d+(?:[.,]\d+)?)\s*)?(cup|tbsp|tablespoon|tsp|teaspoon|ml|fl\s*oz)[^()]{0,32}\((\d+(?:[.,]\d+)?)\s*g\)/i);
     if (volumeMatch) {
       const grams = dec(volumeMatch[3]);
+      console.log('[PORTION][OCR] Found volume match:', { line, grams, accepted: grams >= 5 && grams <= 250 });
       if (grams >= 5 && grams <= 250) {
         return {
           grams,
@@ -70,12 +78,14 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
   
   // Strategy 3: Plain grams but only in serving context
   for (const line of lines) {
-    if (REJECT_PATTERNS.some(pattern => pattern.test(line))) continue;
-    if (!SERVING_CONTEXT.some(pattern => pattern.test(line))) continue;
+    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
+    const hasServingContext = SERVING_CONTEXT.some(pattern => pattern.test(line));
+    if (rejected || !hasServingContext) continue;
     
     const gramsMatch = line.match(/(\d+(?:[.,]\d+)?)\s*g(?:\s|$|[^a-z])/i);
     if (gramsMatch) {
       const grams = dec(gramsMatch[1]);
+      console.log('[PORTION][OCR] Found context grams:', { line, grams, accepted: grams >= 10 && grams <= 200 });
       // More restrictive bounds for plain grams
       if (grams >= 10 && grams <= 200) {
         return {
@@ -88,32 +98,6 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
     }
   }
   
-  // Strategy 4: Volume to weight conversion using density
-  for (const line of lines) {
-    if (REJECT_PATTERNS.some(pattern => pattern.test(line))) continue;
-    if (!SERVING_CONTEXT.some(pattern => pattern.test(line))) continue;
-    
-    const volumeOnlyMatch = line.match(/(\d+(?:[.,]\d+)?)\s*(cup|tbsp|tablespoon|tsp|teaspoon|ml|fl\s*oz)/i);
-    if (volumeOnlyMatch) {
-      const amount = dec(volumeOnlyMatch[1]);
-      const unit = volumeOnlyMatch[2].toLowerCase().replace(/s$/, ''); // remove plural
-      
-      const mlPerUnit = VOLUME_TO_ML[unit];
-      if (mlPerUnit) {
-        const totalMl = amount * mlPerUnit;
-        const estimatedGrams = mlToGrams(totalMl, productName);
-        
-        if (estimatedGrams >= 5 && estimatedGrams <= 250) {
-          return {
-            grams: estimatedGrams,
-            confidence: 0.5,
-            source: 'volume_conversion',
-            extractedText: line
-          };
-        }
-      }
-    }
-  }
-  
+  console.log('[PORTION][OCR] No serving size found in OCR text');
   return null;
 }

@@ -109,6 +109,12 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  // PORTION INQUIRY - Route & Product Identification  
+  useEffect(() => {
+    console.info('[PORTION][INQ3][ROUTE]', { route: location?.pathname, hash: location?.hash });
+    console.info('[PORTION][INQ3][PRODUCT]', { id: (result as any)?.id, barcode: (result as any)?.barcode, name: result?.itemName });
+  }, [result]);
+
   // Portion resolver state
   const [portion, setPortion] = useState<{ grams: number; label: string; source: string } | null>(null);
   const [isResolvingPortion, setIsResolvingPortion] = useState(false);
@@ -136,6 +142,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
         
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
+        console.info('[PORTION][INQ3][RESOLVE_START]', { barcode: (result as any)?.barcode, id: (result as any)?.id });
         
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(result, ingredientsText);

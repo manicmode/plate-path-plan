@@ -55,11 +55,17 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
   useEffect(() => {
     if (typeof servingGrams === 'number') {
       console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
+      console.info('[PORTION][INQ3][WIDGET_PROPS]', {
+        gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null
+      });
       return; // external override in effect
     }
     
     const loadPortionInfo = async () => {
       try {
+        console.info('[PORTION][INQ3][WIDGET_PROPS]', {
+          gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null
+        });
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(productData, ocrText);
         
@@ -106,6 +112,16 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
     typeof servingGrams === 'number'
       ? { grams: servingGrams, isEstimated: false, source: 'external', display: portionLabel ?? `${servingGrams}g` }
       : getPortionInfoSync(currentPortionInfo);
+
+  // PORTION INQUIRY - Header and Chip Logging
+  useEffect(() => {
+    console.info('[PORTION][INQ3][HEADER]', {
+      headerGrams: portionInfo?.grams, source: portionInfo?.source
+    });
+    console.info('[PORTION][INQ3][CHIP]', {
+      chipLabel: portionInfo?.display, chipGrams: portionInfo?.grams, chipSource: portionInfo?.source
+    });
+  }, [portionInfo]);
 
   // Calculate portion nutrition safely - memoized
   const portionNutrition = useMemo(() => {

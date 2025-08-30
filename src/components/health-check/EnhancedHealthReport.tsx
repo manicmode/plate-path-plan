@@ -250,6 +250,12 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  // PORTION INQUIRY - Route & Product Identification
+  useEffect(() => {
+    console.info('[PORTION][INQ3][ROUTE]', { route: window.location?.pathname, hash: window.location?.hash });
+    console.info('[PORTION][INQ3][PRODUCT]', { id: (result as any)?.id, barcode: (result as any)?.barcode, name: result?.itemName });
+  }, [result]);
+
   mark('EnhancedHealthReport.render.start');
   const { toast } = useToast();
   const { user } = useAuth();
@@ -315,6 +321,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           entry: 'enhanced_report'
         });
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
+        console.info('[PORTION][INQ3][RESOLVE_START]', { barcode: (result as any)?.barcode, id: (result as any)?.id });
         
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(result, ingredientsText);
@@ -502,6 +509,15 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               servingGrams={portion?.grams ?? 30}
               portionLabel={portion?.label ?? '30g · est.'}
             />
+            {/* PORTION INQUIRY - Call Site Logging */}
+            {(() => {
+              console.info('[PORTION][INQ3][CALL]', {
+                nutritionPropType: 'per100',
+                servingGramsProp: portion?.grams ?? 30,
+                portionLabelProp: portion?.label ?? '30g · est.'
+              });
+              return null;
+            })()}
             {/* FORENSIC PROBE - PORTION INQUIRY */}
             {(() => {
               const route = window.location.pathname;
