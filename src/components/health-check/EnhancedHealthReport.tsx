@@ -148,7 +148,7 @@ const SaveCTA: React.FC<{
       <Button
         onClick={handleSaveReport}
         disabled={isSaving || !user?.id}
-        className="w-full rounded-2xl py-4 font-semibold shadow-lg
+        className="w-full rounded-2xl py-5 font-semibold shadow-lg text-lg
                    bg-teal-500 hover:bg-teal-400 active:bg-teal-600
                    text-slate-900 transition-colors disabled:opacity-50"
       >
@@ -164,9 +164,6 @@ const SaveCTA: React.FC<{
           </>
         )}
       </Button>
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        Saves score, flags & portion to your log
-      </p>
     </div>
   );
 };
