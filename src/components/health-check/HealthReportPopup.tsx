@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +109,84 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  // Portion resolver state
+  const [portion, setPortion] = useState<{ grams: number; label: string; source: string } | null>(null);
+  const [isResolvingPortion, setIsResolvingPortion] = useState(false);
+
+  // Extract ingredients text for OCR portion resolution
+  const ingredientsText = useMemo(() => {
+    return (result as any)?.ingredientsText || (result as any)?.ocrText || null;
+  }, [result]);
+
+  // Create stable product fingerprint for dependencies
+  const productFingerprint = useMemo(() => JSON.stringify({
+    id: (result as any)?.id,
+    barcode: (result as any)?.barcode || analysisData?.barcode,
+    itemName: result?.itemName,
+    hasNutrition: !!result?.nutritionData
+  }), [result, analysisData?.barcode]);
+
+  // Resolve portion size using the same system as EnhancedHealthReport
+  useEffect(() => {
+    let alive = true;
+    
+    const runDetection = async () => {
+      try {
+        const route = window.location.pathname;
+        const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+        
+        console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
+        
+        const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
+        const portionResult = await resolvePortion(result, ingredientsText);
+        
+        console.log('[PORTION][INQ][RESOLVE] done', { 
+          chosen: { source: portionResult.source, grams: portionResult.grams },
+          candidates: portionResult.candidates.map(c => ({ 
+            source: c.source, 
+            grams: c.grams, 
+            confidence: c.confidence,
+            penalties: c.details || 'none'
+          })),
+          route 
+        });
+        
+        if (!alive) {
+          return;
+        }
+        
+        setPortion({
+          grams: portionResult.grams,
+          label: portionResult.label,
+          source: portionResult.source
+        });
+        
+      } catch (error) {
+        if (!alive) return;
+        
+        console.error('Portion resolution failed:', error);
+        
+        // Fallback to default
+        setPortion({
+          grams: 30,
+          label: '30g · est.',
+          source: 'fallback'
+        });
+      } finally {
+        if (alive) {
+          setIsResolvingPortion(false);
+        }
+      }
+    };
+
+    setIsResolvingPortion(true);
+    runDetection();
+    
+    return () => {
+      alive = false;
+    };
+  }, [productFingerprint, ingredientsText]);
+  
   if (shouldDebugPerf) {
     console.info('[UI][NUTRITION.READ]', {
       reads_per100g_from: 'result.nutritionData.*',
@@ -443,10 +521,29 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           <CardContent>
             {hasValidNutrition(result.nutritionData) ? (
               <>
-                <h4 className="text-lg font-semibold mb-3">Per 100g</h4>
+                {/* FORENSIC PROBE - PORTION INQUIRY */}
+                {(() => {
+                  const route = window.location.pathname;
+                  const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+                  console.log('[PORTION][INQ][CALL]', { 
+                    route, 
+                    productId, 
+                    nutritionPropType: 'per100', 
+                    servingGramsProp: portion?.grams ?? 30, 
+                    portionLabelProp: portion?.label ?? '30g · est.' 
+                  });
+                  return null;
+                })()}
+                
+                <h4 className="text-lg font-semibold mb-3">
+                  {portion ? `Per portion (${portion.grams}g)` : 'Per 100g'}
+                </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(result.nutritionData).map(([key, value]) => {
                     if (value === undefined || value === null || value === 0) return null;
+
+                    // Scale nutrition values if we have a resolved portion
+                    const scaledValue = portion ? (Number(value) * portion.grams / 100) : value;
 
                     // Map nutrient keys to display names and units
                     const nutrientInfo = {
@@ -464,15 +561,17 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
 
                     if (!nutrientInfo) return null;
 
+                    const displayValue = typeof value === 'number' ? 
+                      (nutrientInfo.unit === 'mg' ? Math.round(Number(value)) : Number(value).toFixed(1)) : 
+                      value;
+
                     return (
-                      <div key={key} className="bg-muted/30 p-3 rounded-lg">
-                        <div className="text-sm text-muted-foreground">{nutrientInfo.label}</div>
-                        <div className="text-lg font-semibold text-foreground">
-                          {typeof value === 'number' ? 
-                            (nutrientInfo.unit === 'mg' ? Math.round(value) : value.toFixed(1)) : 
-                            value
-                          } {nutrientInfo.unit}
+                      <div key={key} className="text-center p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                        <div className="text-2xl font-bold text-foreground">
+                          {portion ? Math.round(scaledValue * 10) / 10 : displayValue}
+                          {nutrientInfo.unit}
                         </div>
+                        <div className="text-sm font-medium text-foreground mt-1">{nutrientInfo.label}</div>
                       </div>
                     );
                   })}
