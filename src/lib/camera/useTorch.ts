@@ -14,14 +14,19 @@ export function useTorch(trackRef: React.MutableRefObject<MediaStreamTrack | nul
 
   // Check torch capabilities when track changes
   const checkTorchSupport = useCallback((track: MediaStreamTrack | null) => {
+    console.log('[torch] checking torch support for track:', track ? track.id : 'null');
+    
     if (!track) {
+      console.log('[torch] no track, setting support to false');
       setSupportsTorch(false);
       return false;
     }
 
     try {
       const caps = track.getCapabilities?.();
+      console.log('[torch] track capabilities:', caps);
       const supported = !!(caps && 'torch' in caps);
+      console.log('[torch] torch supported:', supported);
       setSupportsTorch(supported);
       return supported;
     } catch (error) {
@@ -35,16 +40,23 @@ export function useTorch(trackRef: React.MutableRefObject<MediaStreamTrack | nul
   const setTorch = useCallback(async (on: boolean): Promise<TorchResult> => {
     const track = trackRef.current;
     
+    console.log('[torch] setTorch called:', { on, hasTrack: !!track, trackId: track?.id });
+    
     if (!track) {
+      console.warn('[torch] no track available');
       return { ok: false, reason: 'no_track' };
     }
 
     const caps = track.getCapabilities?.();
+    console.log('[torch] track capabilities:', caps ? Object.keys(caps) : 'none');
+    
     if (!caps || !('torch' in caps)) {
+      console.warn('[torch] torch not supported in capabilities');
       return { ok: false, reason: 'no_torch' };
     }
 
     try {
+      console.log('[torch] applying constraints:', { torch: on });
       await track.applyConstraints({ 
         advanced: [{ torch: on } as any] 
       });
@@ -52,7 +64,7 @@ export function useTorch(trackRef: React.MutableRefObject<MediaStreamTrack | nul
       stateRef.current = on;
       setTorchOn(on);
       
-      console.log('[torch] torch applied:', { on, trackId: track.id });
+      console.log('[torch] torch applied successfully:', { on, trackId: track.id });
       return { ok: true };
     } catch (error) {
       console.warn('[torch] applyConstraints failed:', error);
@@ -78,43 +90,55 @@ export function useTorch(trackRef: React.MutableRefObject<MediaStreamTrack | nul
     }
   }, [torchOn, setTorch, checkTorchSupport]);
 
-  // Handle track changes
+  // Handle track changes - fixed dependency issue
   useEffect(() => {
     const track = trackRef.current;
     
     if (track !== lastTrackRef.current) {
       lastTrackRef.current = track;
+      console.log('[torch] track changed, new track:', track ? track.id : 'null');
       
       if (track) {
-        console.log('[torch] track changed, checking support:', track.id);
-        checkTorchSupport(track);
+        // Check support immediately
+        const supported = checkTorchSupport(track);
+        console.log('[torch] support check result:', supported);
         
         // Auto-reapply torch state after track is ready
         const reapplyTorch = () => {
+          console.log('[torch] attempting to reapply torch state, current:', stateRef.current);
           setTimeout(() => {
-            ensureTorchState();
+            if (stateRef.current && supported) {
+              console.log('[torch] reapplying torch ON');
+              setTorch(true);
+            }
           }, 100);
         };
         
         if (track.readyState === 'live') {
+          console.log('[torch] track already live, reapplying immediately');
           reapplyTorch();
         } else {
+          console.log('[torch] waiting for track to be ready, current state:', track.readyState);
           // Wait for track to be ready
           const checkReady = () => {
             if (track.readyState === 'live') {
+              console.log('[torch] track is now live, reapplying');
               reapplyTorch();
             } else {
+              console.log('[torch] track still not ready:', track.readyState);
               setTimeout(checkReady, 50);
             }
           };
           checkReady();
         }
       } else {
+        console.log('[torch] no track, disabling torch support');
         setSupportsTorch(false);
         setTorchOn(false);
+        stateRef.current = false;
       }
     }
-  }, [trackRef.current, ensureTorchState, checkTorchSupport]);
+  }, [trackRef.current]);
 
   // Handle visibility changes (app comes back from background)
   useEffect(() => {
