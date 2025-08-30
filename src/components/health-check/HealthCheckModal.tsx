@@ -301,28 +301,40 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       const ocrResult = await callOCRFunction(ocrBlob, { withAuth: true });
       
       const durationMs = Date.now() - startTime;
+      const words = ocrResult.summary?.words || 0;
+      
       console.info("[OCR][RESPONSE]", { 
         status: ocrResult.ok ? 200 : 'error', 
         durationMs, 
-        words: ocrResult.summary?.words || 0 
+        words 
       });
       
       if (currentRunId.current !== runId) return; // stale
       
       if (!ocrResult.ok || !ocrResult.summary?.text_joined) {
         console.info("[OCR][FALLBACK] No readable text found");
-        setCurrentState('no_detection');
+        
+        // Log telemetry
+        console.info("[PHOTO][OCR_ONLY]", { 
+          words: 0, 
+          hasLabelData: false, 
+          reason: "no_text", 
+          nextAction: "route_to_not_found" 
+        });
+        
+        // Route to not-found for photo OCR failures
+        navigate('/scan/not-found', { 
+          state: { status: 'no_detection', source: 'photo' } 
+        });
+        onClose();
         return;
       }
       
       const text = ocrResult.summary.text_joined;
       
-      // Handle low-signal text
-      if (text.trim().length < 30) {
-        console.info("[OCR][FALLBACK] Text too short:", text.trim().length);
-        setCurrentState('no_detection');
-        return;
-      }
+      // Check for label data using enhanced analyzer
+      const { hasLabelData } = await import('@/lib/health/adapters/inconclusiveAnalyzer');
+      const hasValidLabelData = hasLabelData(text);
       
       // Parse through shared free-text parser
       setLoadingMessage('Analyzing nutrition...');
@@ -335,10 +347,32 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if ('status' in healthResult && healthResult.status === 'inconclusive') {
         console.info("[OCR][INCONCLUSIVE]", healthResult.reason);
         
-        // Create inconclusive analysis result
+        // Log telemetry
+        console.info("[PHOTO][OCR_ONLY]", { 
+          words, 
+          hasLabelData: hasValidLabelData, 
+          reason: healthResult.reason, 
+          nextAction: "retake" 
+        });
+        
+        // Show toast with specific guidance
+        const toastMessages = {
+          'front_of_pack': "We need the Ingredients or Nutrition Facts panel. Please retake with the back of the package.",
+          'no_ingredients': "We need the Ingredients or Nutrition Facts panel. Fill the frame and avoid glare.",
+          'insufficient_text': "We couldn't read enough label text. Try getting closer or improving lighting.",
+          'low_confidence': "We couldn't read the text clearly. Try retaking with better lighting."
+        };
+        
+        toast({
+          title: "Try Again",
+          description: toastMessages[healthResult.reason] || "We need a clearer photo of the ingredients or nutrition panel.",
+          variant: "default",
+        });
+        
+        // Create inconclusive analysis result for retake UI
         const inconclusiveResult: HealthAnalysisResult = {
           itemName: 'Inconclusive Analysis',
-          productName: 'Inconclusive Analysis',
+          productName: 'Inconclusive Analysis', 
           title: 'Inconclusive Analysis',
           healthScore: 0, // Will be ignored in UI
           ingredientsText: '',
@@ -357,9 +391,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           overallRating: 'avoid' // This will be overridden by inconclusive display
         };
         
-        // Mark as inconclusive for UI
+        // Mark as inconclusive for UI with reason
         (inconclusiveResult as any).status = 'inconclusive';
         (inconclusiveResult as any).message = healthResult.message;
+        (inconclusiveResult as any).reason = healthResult.reason;
         
         setAnalysisResult(inconclusiveResult);
         setCurrentState('report');
@@ -368,11 +403,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           imageUrl: imageBase64
         });
         
-        toast({
-          title: "Inconclusive analysis",
-          description: "We couldn't read enough label text.",
-          variant: "default",
-        });
         return;
       }
       
@@ -399,11 +429,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if (currentRunId.current !== runId) return; // stale
       
       // Log pipeline result
-      const words = text.split(/\s+/).length;
+      const wordCount = text.split(/\s+/).length;
       const score = Math.round((report.healthScore || 0) * 10); // Normalize to 0-100
       const flags = report.ingredientFlags?.length || 0;
       
-      console.info("[OCR][PIPELINE]", { words, score, flags });
+      console.info("[OCR][PIPELINE]", { words: wordCount, score, flags });
       
       // Transform to HealthAnalysisResult format
       const analysisResult: HealthAnalysisResult = {
@@ -442,6 +472,14 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       setAnalysisResult(analysisResult);
       setCurrentState('report');
+      
+      // Log successful analysis telemetry
+      console.info("[PHOTO][OCR_ONLY]", { 
+        words, 
+        hasLabelData: hasValidLabelData, 
+        reason: "success", 
+        nextAction: "scored" 
+      });
       
       // Update analysis data for ResultCard source badge
       setCurrentAnalysisData({ 

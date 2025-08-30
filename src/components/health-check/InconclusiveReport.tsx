@@ -6,6 +6,7 @@ import { Camera, Keyboard, Mic, RotateCcw } from 'lucide-react';
 
 interface InconclusiveReportProps {
   message: string;
+  reason?: 'front_of_pack' | 'no_ingredients' | 'insufficient_text' | 'low_confidence';
   onRetakePhoto: () => void;
   onManualEntry: () => void;
   onVoiceEntry: () => void;
@@ -13,10 +14,43 @@ interface InconclusiveReportProps {
 
 export const InconclusiveReport: React.FC<InconclusiveReportProps> = ({
   message,
+  reason,
   onRetakePhoto,
   onManualEntry,
   onVoiceEntry
 }) => {
+  
+  const getTips = () => {
+    switch (reason) {
+      case 'front_of_pack':
+        return [
+          "Turn to the back or side of the package",
+          "Look for 'Ingredients:' or 'Nutrition Facts'",
+          "Avoid brand names and marketing text"
+        ];
+      case 'no_ingredients':
+        return [
+          "Fill the frame with the ingredients panel",
+          "Keep the label flat and well-lit",
+          "Avoid shadows and glare"
+        ];
+      case 'insufficient_text':
+      case 'low_confidence':
+        return [
+          "Get closer to the text",
+          "Improve lighting conditions", 
+          "Keep the camera steady"
+        ];
+      default:
+        return [
+          "Find the ingredients or nutrition panel",
+          "Fill the frame with the label text",
+          "Avoid glare and shadows"
+        ];
+    }
+  };
+
+  const tips = getTips();
   return (
     <div className="p-6 space-y-6">
       {/* Status Card */}
@@ -32,10 +66,24 @@ export const InconclusiveReport: React.FC<InconclusiveReportProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
-          <div className="text-4xl mb-4">🔍</div>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
+          <div className="text-4xl mb-4">
+            {reason === 'front_of_pack' ? '🔄' : '🔍'}
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
             {message}
           </p>
+          
+          {/* Capture Tips */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4">
+            <p className="text-blue-700 dark:text-blue-300 text-xs font-medium mb-2">
+              💡 Photo Tips:
+            </p>
+            <ul className="text-blue-600 dark:text-blue-400 text-xs space-y-1 text-left">
+              {tips.map((tip, index) => (
+                <li key={index}>• {tip}</li>
+              ))}
+            </ul>
+          </div>
         </CardContent>
       </Card>
 
