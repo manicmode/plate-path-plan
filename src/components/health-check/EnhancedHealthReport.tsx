@@ -27,8 +27,7 @@ import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
-import { detectPortionSafe, getPortionInfoSync } from '@/lib/nutrition/portionDetectionSafe';
-import { type PortionInfo } from '@/lib/nutrition/portionCalculator';
+import { detectPortionSafe, scalePer100ForDisplay } from '@/lib/nutrition/portionDetectionSafe';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 
@@ -260,31 +259,44 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   const ingredientsText = result?.ingredientsText || '';
   const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
-  // Parse portion information with safety and user preferences
-  // Fixed: Remove async useMemo which was causing crashes
-  const [resolvedPortionInfo, setResolvedPortionInfo] = useState<PortionInfo>({ 
-    grams: 30, 
-    isEstimated: true, 
-    source: 'fallback_default' as const,
-    confidence: 0 
-  });
+  // Portion detection with zero spillover
+  const [portion, setPortion] = useState<{ grams: number; source: string; label: string } | null>(null);
 
-  // Load portion info safely
+  // Hard wall: per-serving display computation (local memo only)
+  const perServingDisplay = useMemo(() => {
+    const grams = portion?.grams ?? 30;
+    const per100Raw = result?.nutritionData || {};
+    return scalePer100ForDisplay(per100Raw, grams);
+  }, [portion?.grams, result?.nutritionData]);
+
+  // Async portion detection (no side effects, local state only)
   useEffect(() => {
-    const resolvePortionInfo = async () => {
+    let alive = true;
+    
+    // Immediately show temporary fallback
+    setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
+    
+    const runDetection = async () => {
       try {
-        const portionInfo = await detectPortionSafe(result, analysisData?.imageUrl, 'enhanced_report');
-        setResolvedPortionInfo(portionInfo);
-      } catch (error) {
-        console.error('[REPORT][V2][PORTION][ERROR]', { 
-          stage: 'enhanced_report', 
-          message: error.message 
+        const detectedPortion = await detectPortionSafe(result, analysisData?.imageUrl || '', 'enhanced_report');
+        
+        if (!alive) return; // Component unmounted
+        
+        // Only update local state - no shared state mutation
+        setPortion({
+          grams: detectedPortion.grams,
+          source: detectedPortion.source,
+          label: detectedPortion.label
         });
-        // Keep safe fallback
+      } catch (error) {
+        console.warn('[REPORT][PORTION] Detection failed, keeping fallback:', error);
+        // Keep the fallback portion
       }
     };
     
-    resolvePortionInfo();
+    runDetection();
+    
+    return () => { alive = false; };
   }, [result, analysisData?.imageUrl]);
 
   // Generate OCR hash for caching with safety
@@ -432,7 +444,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <TabsContent value="suggestions" className="mt-6">
             <PersonalizedSuggestions
               result={result}
-              portionGrams={resolvedPortionInfo.grams}
+              portionGrams={portion?.grams ?? 30}
               userProfile={{
                 // Mock user profile - replace with real user data
                 goals: user ? ['balanced_nutrition'] : [],
@@ -469,7 +481,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <SaveCTA
             result={result}
             analysisData={analysisData}
-            portionGrams={resolvedPortionInfo.grams}
+            portionGrams={portion?.grams ?? 30}
             ocrHash={ocrHash}
             onSaved={(logId) => {
               toast({

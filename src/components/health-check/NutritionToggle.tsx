@@ -51,11 +51,23 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
   useEffect(() => {
     const loadPortionInfo = async () => {
       try {
-        const portionInfo = await detectPortionSafe(productData, ocrText, 'nutrition_toggle');
+        const portionResult = await detectPortionSafe(productData, ocrText, 'nutrition_toggle');
+        
+        // Convert PortionResult to PortionInfo format for compatibility
+        const portionInfo = {
+          grams: portionResult.grams,
+          isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category_estimate',
+          source: portionResult.source === 'fallback' ? 'estimated' as const : 'ocr_declared' as const,
+          confidence: portionResult.source === 'ocr' ? 0.9 : 
+                     portionResult.source === 'db' ? 0.8 : 
+                     portionResult.source === 'nutrition_ratio' ? 0.7 : 0.3,
+          display: portionResult.label
+        };
+        
         setCurrentPortionInfo(portionInfo);
         
-        // Check if detection was actually enabled
-        const enabled = portionInfo.source !== 'fallback_default';
+        // Check if detection was actually enabled  
+        const enabled = portionResult.source !== 'fallback';
         setPortionDetectionEnabled(enabled);
       } catch (error) {
         console.warn('[REPORT][V2][PORTION][ERROR]', { 
