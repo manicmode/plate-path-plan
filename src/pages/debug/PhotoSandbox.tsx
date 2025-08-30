@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getAuthHeaders } from '@/lib/net/authHeaders';
-import { toReportInputFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
-import { analyzeProductForQuality } from '@/shared/barcode-analyzer';
+// Import the new shared parser approach
+import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { FF } from '@/featureFlags';
 import { useToast } from '@/hooks/use-toast';
 
 interface PingStatus {
@@ -16,16 +17,17 @@ interface OCRRun {
   timestamp: Date;
   duration: number;
   status: string;
-  score?: number;
+  score?: number | null;
   flagsCount: number;
   origin?: string;
   hasAuth?: boolean;
   textPreview?: string;
+  healthReport?: any; // Store the full health report
 }
 
 interface LogEntry {
   timestamp: Date;
-  level: 'START' | 'HEADERS' | 'REQUEST' | 'RESPONSE' | 'REPORT' | 'END' | 'ERROR';
+  level: 'START' | 'HEADERS' | 'REQUEST' | 'RESPONSE' | 'REPORT' | 'END' | 'ERROR' | 'HEALTH' | 'WARN';
   message: string;
   data?: any;
 }
@@ -223,30 +225,35 @@ export default function PhotoSandbox() {
 
       const ocrResult = await response.json();
       
-      // 5. Process OCR text through health pipeline
+      // 5. Process OCR text through health pipeline using shared parser
       let healthReport = null;
       let score = null;
       let flagsCount = 0;
 
-      if (ocrResult.ok && ocrResult.summary?.text_joined) {
+      if (ocrResult.ok && ocrResult.summary?.text_joined && FF.OCR_HEALTH_REPORT_ENABLED) {
         try {
-          // Convert OCR text to health input using the adapter
-          const healthInput = toReportInputFromOCR(ocrResult.summary.text_joined);
+          addLogEntry('HEALTH', 'Processing OCR text through shared parser');
           
-          // Use the same analyzer as barcode path
-          healthReport = await analyzeProductForQuality(healthInput);
+          // Use the same parser as Manual/Voice flows
+          const healthResult = await toReportFromOCR(ocrResult.summary.text_joined);
           
-          if (healthReport) {
-            score = healthReport.quality?.score || null;
-            flagsCount = healthReport.flags?.length || 0;
+          if (healthResult.ok) {
+            healthReport = healthResult.report;
+            score = Math.round((healthResult.report.healthScore || 0) * 10); // Convert to 0-100 scale
+            flagsCount = healthResult.report.ingredientFlags?.length || 0;
             
-            addLogEntry('REPORT', `Health report generated`, {
+            // Required logging output
+            const words = ocrResult.summary.text_joined.split(/\s+/).length;
+            console.info('[OCR][PIPELINE]', { words, score, flags: flagsCount });
+            
+            addLogEntry('REPORT', `Health report generated via shared parser`, {
               score,
               flagsCount,
-              productName: healthInput.name,
-              hasNutrition: !!healthInput.nutrition,
-              hasIngredients: !!healthInput.ingredientsText
+              productName: healthResult.report.itemName,
+              source: 'OCR'
             });
+          } else {
+            addLogEntry('WARN', `Health parsing failed: ${(healthResult as { reason: string }).reason}`);
           }
         } catch (healthError: any) {
           addLogEntry('ERROR', `Health analysis failed: ${healthError.message}`);
@@ -263,7 +270,8 @@ export default function PhotoSandbox() {
         flagsCount,
         origin: pingStatus.data?.origin,
         hasAuth: !!headers.Authorization,
-        textPreview: ocrResult.summary?.text_joined?.slice(0, 160)
+        textPreview: ocrResult.summary?.text_joined?.slice(0, 160),
+        healthReport // Store the full health report
       };
 
       setOcrHistory(prev => [newRun, ...prev.slice(0, 19)]); // Keep last 20
@@ -334,29 +342,40 @@ export default function PhotoSandbox() {
       };
       zip.file('network.json', JSON.stringify(networkData, null, 2));
 
-      // 2. ocr_response.json (simulated structure)
+      // 2. ocr_response.json (redacted/truncated)
       const ocrResponseData = {
         ok: ocrHistory[0]?.status === 'SUCCESS',
         ts: Date.now(),
         duration_ms: ocrHistory[0]?.duration || 0,
-        meta: { bytes: 0, mime: 'image/jpeg' },
-        summary: {
-          text_joined: ocrHistory[0]?.textPreview?.slice(0, 300) || 'No text detected',
-          words: ocrHistory[0]?.textPreview?.split(' ').length || 0
+        meta: {
+          bytes: 0, // Not tracked in current implementation
+          mime: 'image/jpeg'
         },
-        blocks: [{ type: 'text', content: 'Redacted for privacy' }]
+        summary: {
+          text_joined: ocrHistory[0]?.textPreview ? ocrHistory[0].textPreview.substring(0, 300) : '',
+          words: ocrHistory[0]?.textPreview ? ocrHistory[0].textPreview.split(/\s+/).length : 0
+        },
+        blocks: [] // Simplified for debug bundle
       };
       zip.file('ocr_response.json', JSON.stringify(ocrResponseData, null, 2));
 
-      // 3. report.json
-      const reportData = {
-        score: ocrHistory[0]?.score || null,
-        flags: Array.from({ length: ocrHistory[0]?.flagsCount || 0 }, (_, i) => ({
-          code: `flag_${i + 1}`,
-          label: 'Redacted flag',
-          severity: 'medium'
-        })),
-        source: 'OCR'
+      // 3. report.json (health analysis result)
+      const reportData = ocrHistory[0]?.healthReport ? {
+        score: ocrHistory[0].score,
+        flags: ocrHistory[0].healthReport.ingredientFlags?.map((flag: any) => ({
+          code: flag.code,
+          label: flag.label,
+          severity: flag.severity
+        })) || [],
+        source: 'OCR',
+        itemName: ocrHistory[0].healthReport.itemName,
+        healthScore: ocrHistory[0].healthReport.healthScore,
+        overallRating: ocrHistory[0].healthReport.overallRating
+      } : {
+        score: null,
+        flags: [],
+        source: 'OCR',
+        error: 'No health report generated'
       };
       zip.file('report.json', JSON.stringify(reportData, null, 2));
 
@@ -495,6 +514,64 @@ export default function PhotoSandbox() {
           {isRunningE2E ? '🔄 Running E2E Check...' : '🧪 E2E Take Photo Check'}
         </button>
       </div>
+
+      {/* Health Report Card - Show OCR Analysis Results */}
+      {ocrHistory.length > 0 && ocrHistory[0]?.healthReport && (
+        <div style={{ marginBottom: 12, padding: 12, background: '#f0fdf4', border: '1px solid #22c55e', borderRadius: 4 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            📊 Health Report Results
+            <span style={{ 
+              fontSize: 10, 
+              padding: '2px 6px', 
+              background: '#3b82f6', 
+              color: 'white', 
+              borderRadius: 4,
+              fontWeight: 'normal'
+            }}>
+              source: OCR
+            </span>
+          </h3>
+          
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            <div><strong>Product:</strong> {ocrHistory[0].healthReport.itemName || 'Unknown Product'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4 }}>
+              <span><strong>Health Score:</strong> {ocrHistory[0].score ? `${ocrHistory[0].score}/100` : 'N/A'}</span>
+              <span><strong>Rating:</strong> {ocrHistory[0].healthReport.overallRating || 'N/A'}</span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12 }}>
+            <strong>Flags: </strong>
+            {ocrHistory[0].healthReport.ingredientFlags?.length > 0 ? (
+              <div style={{ marginTop: 4 }}>
+                {ocrHistory[0].healthReport.ingredientFlags.slice(0, 3).map((flag: any, idx: number) => (
+                  <span 
+                    key={idx} 
+                    style={{ 
+                      display: 'inline-block',
+                      margin: '2px 4px 2px 0',
+                      padding: '2px 6px',
+                      background: flag.severity === 'high' ? '#fecaca' : flag.severity === 'medium' ? '#fed7aa' : '#fef3c7',
+                      color: flag.severity === 'high' ? '#7f1d1d' : flag.severity === 'medium' ? '#9a3412' : '#92400e',
+                      borderRadius: 3,
+                      fontSize: 11
+                    }}
+                  >
+                    {flag.label || flag.code}
+                  </span>
+                ))}
+                {ocrHistory[0].healthReport.ingredientFlags.length > 3 && (
+                  <span style={{ color: '#6b7280', fontSize: 11 }}>
+                    +{ocrHistory[0].healthReport.ingredientFlags.length - 3} more
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span style={{ color: '#059669', fontStyle: 'italic' }}>No major flags detected.</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Control Buttons */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
