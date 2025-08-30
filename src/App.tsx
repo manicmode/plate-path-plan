@@ -130,6 +130,7 @@ const RecentScans = lazy(() => import('@/pages/RecentScans'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
 const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
 const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
+const StandaloneReportTest = lazy(() => import('@/pages/StandaloneReportTest'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
 // ArenaDebug removed - V1 legacy
@@ -285,28 +286,20 @@ function AppContent() {
                         </ProtectedRoute>
                       } />
 
-                    {/* DEV-only Photo Sandbox route - force mount */}
-                    {import.meta.env.DEV && (
-                      <>
-                        <Route
-                          path="/debug/photo"
-                          element={
-                            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
-                              <PhotoSandbox />
-                            </React.Suspense>
-                          }
-                        />
-                        <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                        <Route
-                          path="/standalone-test"
-                          element={
-                            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading V2 Test…</div>}>
-                              <StandaloneTest />
-                            </React.Suspense>
-                          }
-                        />
-                      </>
-                    )}
+                     {/* DEV-only Photo Sandbox route - force mount */}
+                     {import.meta.env.DEV && (
+                       <>
+                         <Route
+                           path="/debug/photo"
+                           element={
+                             <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
+                               <PhotoSandbox />
+                             </React.Suspense>
+                           }
+                         />
+                         <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                       </>
+                     )}
 
                     <Route path="/exercise-hub" element={
                       <ProtectedRoute>
@@ -571,15 +564,24 @@ function AppContent() {
                                 </ProtectedRoute>
                               } />
                              
-                             {/* Legacy health-report redirect to scan hub */}
-                             <Route path="/health-report" element={<Navigate to="/scan" replace />} />
-                             
-                           {/* Other debug routes for developers */}
-                            <Route path="/debug/*" element={
-                              <ProtectedRoute>
-                                <DebugRoutes />
-                              </ProtectedRoute>
-                            } />
+                              {/* Legacy health-report redirect to scan hub */}
+                              <Route path="/health-report" element={<Navigate to="/scan" replace />} />
+                              
+                              {/* V2 Enhanced Health Report Test - Dev Only */}
+                              {import.meta.env.DEV && (
+                                <Route path="/standalone-test" element={
+                                  <ProtectedRoute>
+                                    <StandaloneReportTest />
+                                  </ProtectedRoute>
+                                } />
+                              )}
+                              
+                            {/* Other debug routes for developers */}
+                             <Route path="/debug/*" element={
+                               <ProtectedRoute>
+                                 <DebugRoutes />
+                               </ProtectedRoute>
+                             } />
                       
                       <Route path="*" element={<NotFound />} />
                   </Routes>
