@@ -263,11 +263,42 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         };
         const fallback = { video: true };
         
+        // Phase 1 instrumentation - behind ?camInq=1
+        const isInquiry = window.location.search.includes('camInq=1');
+        
+        if (isInquiry) {
+          console.log('[HEALTH][GUM][CALL]', { constraints: primary });
+          // Guardian state before acquire
+          const guardianBefore = (window as any).__testCameraGuardian?.() || {};
+          console.log('[HEALTH][GUARD] before acquire', guardianBefore);
+        }
+        
         try { 
-          return await camAcquire(OWNER, primary); 
+          const stream = await camAcquire(OWNER, primary);
+          
+          if (isInquiry) {
+            const streamId = (stream as any).__camInqId || stream.id || 'unknown';
+            const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
+            console.log('[HEALTH][GUM][OK]', { streamId, tracks });
+          }
+          
+          return stream;
         } catch (e: any) {
           console.warn('[CAM] primary failed', e?.name);
-          return await camAcquire(OWNER, fallback);
+          
+          if (isInquiry) {
+            console.log('[HEALTH][GUM][CALL]', { constraints: fallback, reason: 'primary_failed' });
+          }
+          
+          const stream = await camAcquire(OWNER, fallback);
+          
+          if (isInquiry) {
+            const streamId = (stream as any).__camInqId || stream.id || 'unknown';
+            const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
+            console.log('[HEALTH][GUM][OK]', { streamId, tracks, fallback: true });
+          }
+          
+          return stream;
         }
       };
       
@@ -297,7 +328,70 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       logOwnerAttach('HealthScannerInterface', streamId);
 
       if (videoRef.current) {
-        await attachStreamToVideo(videoRef.current, mediaStream);
+        const video = videoRef.current;
+        const isInquiry = window.location.search.includes('camInq=1');
+        
+        if (isInquiry) {
+          console.log('[HEALTH][VIDEO][ATTACH]', { 
+            hasSrc: !!video.srcObject, 
+            playsInline: (video as any).playsInline, 
+            muted: video.muted, 
+            autoplay: video.autoplay 
+          });
+          
+          // Guardian state just after attach, before play
+          const guardianAfterAttach = (window as any).__testCameraGuardian?.() || {};
+          console.log('[HEALTH][GUARD] after attach', guardianAfterAttach);
+        }
+        
+        try {
+          await attachStreamToVideo(video, mediaStream);
+          
+          if (isInquiry) {
+            console.log('[HEALTH][VIDEO][PLAY][OK]');
+            
+            // Guardian state after play
+            const guardianAfterPlay = (window as any).__testCameraGuardian?.() || {};
+            console.log('[HEALTH][GUARD] after play', guardianAfterPlay);
+            
+            // Readiness probe - 5 times @ 100ms
+            let probeCount = 0;
+            const probeReady = () => {
+              if (probeCount < 5) {
+                console.log('[HEALTH][VIDEO][READY]', { 
+                  probe: probeCount + 1,
+                  readyState: video.readyState, 
+                  videoWidth: video.videoWidth, 
+                  videoHeight: video.videoHeight 
+                });
+                probeCount++;
+                setTimeout(probeReady, 100);
+              }
+            };
+            probeReady();
+            
+            // CSS and layout info
+            const computed = getComputedStyle(video);
+            const rect = video.getBoundingClientRect();
+            console.log('[HEALTH][VIDEO][CSS]', { 
+              display: computed.display, 
+              visibility: computed.visibility, 
+              opacity: computed.opacity, 
+              zIndex: computed.zIndex, 
+              position: computed.position 
+            });
+            console.log('[HEALTH][VIDEO][RECT]', { 
+              w: rect.width, 
+              h: rect.height 
+            });
+          }
+          
+        } catch (playError) {
+          if (isInquiry) {
+            console.log('[HEALTH][VIDEO][PLAY][ERR]', { err: playError });
+          }
+          throw playError;
+        }
         
         // Ensure torch state after track is ready
         setTimeout(() => {

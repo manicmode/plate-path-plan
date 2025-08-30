@@ -12,10 +12,22 @@ export const camOwnerMount = (id: string) => owners.add(id);
 export const camOwnerUnmount = (id: string) => owners.delete(id);
 
 export async function camAcquire(owner: string, constraints: MediaStreamConstraints): Promise<MediaStream> {
+  // Update owner count for legacy guardian
+  (window as any).__guardianOwnerCount = owners.size;
+  
+  // Signal to legacy guardian that we're acquiring (prevent premature stops)
+  (window as any).__setGuardianAcquiring?.(true);
+  
   if (!current) {
     current = await navigator.mediaDevices.getUserMedia(constraints);
   }
   refs++;
+  
+  // Clear acquiring state after successful acquisition
+  setTimeout(() => {
+    (window as any).__setGuardianAcquiring?.(false);
+  }, 1500);
+  
   if (process.env.NODE_ENV !== 'production') {
     console.info('[CAM][GUARD] acquire', { 
       owner, 
@@ -28,6 +40,13 @@ export async function camAcquire(owner: string, constraints: MediaStreamConstrai
 
 export function camRelease(owner: string) {
   refs = Math.max(0, refs - 1);
+  
+  // Update owner count for legacy guardian
+  (window as any).__guardianOwnerCount = owners.size;
+  
+  // Clear acquiring state on release
+  (window as any).__setGuardianAcquiring?.(false);
+  
   if (process.env.NODE_ENV !== 'production') {
     console.info('[CAM][GUARD] release', { owner, refs });
   }
