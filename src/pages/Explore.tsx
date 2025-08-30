@@ -76,18 +76,18 @@ const Explore = () => {
 
   const mainTiles = [
     {
-      id: 'game-challenge',
-      title: 'Game & Challenge',
-      emoji: '🏆',
-      color: 'from-yellow-300 to-orange-600',
-      shadowColor: 'shadow-yellow-500/20',
-    },
-    {
       id: 'health-check',
       title: 'Health Scan',
       emoji: '❤️',
       color: 'from-red-300 to-rose-600',
       shadowColor: 'shadow-red-500/20',
+    },
+    {
+      id: 'game-challenge',
+      title: 'Game & Challenge',
+      emoji: '🏆',
+      color: 'from-yellow-300 to-orange-600',
+      shadowColor: 'shadow-yellow-500/20',
     },
     {
       id: 'supplement-hub',
