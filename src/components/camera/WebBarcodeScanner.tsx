@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Camera, AlertCircle, FlashlightIcon, Zap, Lightbulb } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
@@ -8,7 +8,8 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
+import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 // Removed debug logging - mediaLog function removed
 
@@ -54,6 +55,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const scanningIntervalRef = useRef<NodeJS.Timeout>();
   const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
+
+  const OWNER = 'barcode_scanner';
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -160,7 +163,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           toast.info(`[LOG] off_fetch_start: ${result.raw}`);
         }
         onBarcodeDetected(result.raw);
-        releaseCamera();
+        releaseNow();
         onClose();
         console.timeEnd('[LOG] analyze_total');
         return;
@@ -182,7 +185,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
         console.log('[LOG] off_fetch_start', { code: winner.raw });
         onBarcodeDetected(winner.raw);
-        releaseCamera();
+        releaseNow();
         onClose();
         console.timeEnd('[LOG] analyze_total');
         return;
@@ -209,6 +212,32 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     const newTorchState = !torchEnabled;
     await setTorch(newTorchState);
   };
+
+  const releaseNow = useCallback(() => {
+    // release BEFORE any navigation/unmount
+    if (videoRef.current) {
+      try { 
+        videoRef.current.srcObject = null; 
+      } catch {}
+    }
+    
+    camRelease(OWNER);
+    logOwnerRelease('WebBarcodeScanner', ['video']);
+    
+    if (scanningIntervalRef.current) {
+      clearInterval(scanningIntervalRef.current);
+    }
+    
+    streamRef.current = null;
+    setIsScanning(false);
+    setStream(null);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    releaseNow();                  // <-- FIRST
+    stopAllVideos();               // belt & suspenders
+    onClose();                     // then close/navigate
+  }, [releaseNow, onClose]);
 
   // Warm-up the decoder on modal open  
   const warmUpDecoder = async () => {
@@ -238,11 +267,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     startCamera();
     warmUpDecoder();
     return () => {
-      releaseCamera();
+      releaseNow();
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
       checkForLeaks('WebBarcodeScanner');
     };
-  }, []);
+  }, [releaseNow]);
 
   const startCamera = async () => {
     if (streamRef.current) return streamRef.current;
@@ -254,18 +283,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         return;
       }
 
-      if (location.protocol !== 'https:') {
-        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
-      }
-
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
-          console.log("[PERMISSION] Camera permission state:", res.state);
-        }).catch((err) => {
-          console.log("[PERMISSION] Could not query camera permission:", err);
-        });
-      }
-
       console.log("[CAMERA] Requesting camera stream...");
       const constraints = {
         video: {
@@ -275,17 +292,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         },
         audio: false
       };
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      // Defensive strip: remove any audio tracks that slipped in
-      const s = mediaStream;
-      s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-
+      const mediaStream = await camAcquire(OWNER, constraints);
       streamRef.current = mediaStream;
-      console.log("[CAMERA] Stream received:", mediaStream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.style.border = "2px solid red";
         console.log("[CAMERA] srcObject set, playing video");
         
         // Camera inquiry logging
@@ -314,49 +326,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
   };
 
-  const releaseCamera = () => {
-    const s = streamRef.current; 
-    streamRef.current = null;
-    if (!s) return;
-    
-    const track = s.getVideoTracks?.()?.[0];
-    torchOff(track);
-
-    const stoppedKinds: string[] = [];
-    try { 
-      s.getTracks().forEach(t => { 
-        stoppedKinds.push(t.kind);
-        try { t.stop(); } catch {} 
-      }); 
-    } catch {}
-
-    // Camera inquiry logging
-    if (stoppedKinds.length > 0) {
-      logOwnerRelease('WebBarcodeScanner', stoppedKinds);
-    }
-
-    try { if (videoRef.current) videoRef.current.srcObject = null; } catch {}
-    hardDetachVideo(videoRef.current);
-
-    if (scanningIntervalRef.current) {
-      clearInterval(scanningIntervalRef.current);
-    }
-    
-    setIsScanning(false);
-    setStream(null);
-  };
-
-  const handleClose = () => {
-    releaseCamera();
-    onClose();
-  };
-
   // Unmount guard
-  useEffect(() => () => releaseCamera(), []);
+  useEffect(() => () => releaseNow(), [releaseNow]);
   
   // Visibility & route guards
   useEffect(() => {
-    const hardStop = () => releaseCamera();
+    const hardStop = () => releaseNow();
     window.addEventListener('pagehide', hardStop);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') hardStop();
@@ -365,7 +340,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       window.removeEventListener('pagehide', hardStop);
       document.removeEventListener('visibilitychange', hardStop);
     };
-  }, []);
+  }, [releaseNow]);
 
   if (error) {
     return (

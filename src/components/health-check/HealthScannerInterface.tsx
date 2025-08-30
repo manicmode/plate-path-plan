@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon } from 'lucide-react';
@@ -19,7 +19,8 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
+import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -94,6 +95,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
+  const OWNER = 'health_scanner';
+
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
 
@@ -107,34 +110,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const THROTTLE_MS = PERF_BUDGET.scannerThrottleMs;
 
   // Scanner mount probe
-  const releaseCamera = () => {
-    const s = streamRef.current; 
-    streamRef.current = null;
-    if (!s) return;
-    
-    const track = s.getVideoTracks?.()?.[0];
-    torchOff(track);
-
-    const stoppedKinds: string[] = [];
-    try { 
-      s.getTracks().forEach(t => { 
-        stoppedKinds.push(t.kind);
-        try { t.stop(); } catch {} 
-      }); 
-    } catch {}
-
-    // Camera inquiry logging
-    if (stoppedKinds.length > 0) {
-      logOwnerRelease('HealthScannerInterface', stoppedKinds);
+  const releaseNow = useCallback(() => {
+    // release BEFORE any navigation/unmount
+    if (videoRef.current) {
+      try { 
+        videoRef.current.srcObject = null; 
+      } catch {}
     }
-
-    try { if (videoRef.current) videoRef.current.srcObject = null; } catch {}
-    hardDetachVideo(videoRef.current);
+    
+    camRelease(OWNER);
+    logOwnerRelease('HealthScannerInterface', ['video']);
     try { updateStreamRef?.(null); } catch {}
     
     trackRef.current = null;
+    streamRef.current = null;
     setStream(null);
-  };
+  }, [updateStreamRef]);
 
   useEffect(() => {
     if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
@@ -144,18 +135,18 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      releaseCamera();
+      releaseNow();
       logPerfClose('HealthScannerInterface', startTimeRef.current);
       checkForLeaks('HealthScannerInterface');
     };
-  }, []);
+  }, [releaseNow]);
 
   // Unmount guard
-  useEffect(() => () => releaseCamera(), []);
+  useEffect(() => () => releaseNow(), [releaseNow]);
   
   // Visibility & route guards
   useEffect(() => {
-    const hardStop = () => releaseCamera();
+    const hardStop = () => releaseNow();
     window.addEventListener('pagehide', hardStop);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') hardStop();
@@ -164,7 +155,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       window.removeEventListener('pagehide', hardStop);
       document.removeEventListener('visibilitychange', hardStop);
     };
-  }, []);
+  }, [releaseNow]);
 
   // Page visibility handling for performance
   useEffect(() => {
@@ -198,7 +189,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       warmUpDecoder();
     }
     return () => {
-      releaseCamera();
+      releaseNow();
     };
   }, [currentView]);
 
@@ -275,12 +266,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         },
         audio: false
       };
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      // Defensive strip: remove any audio tracks that slipped in
-      const s = mediaStream;
-      s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-
+      const mediaStream = await camAcquire(OWNER, constraints);
       streamRef.current = mediaStream;
       console.log("[VIDEO] Stream received:", mediaStream);
 

@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { stopStream, detachVideo } from '@/lib/camera/streamUtils';
+import { camAcquire, camRelease } from '@/lib/camera/guardian';
+import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -48,26 +49,45 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
+  const OWNER = 'photo_capture';
+
+  const releaseNow = useCallback(() => {
+    // release BEFORE any navigation/unmount
+    if (videoRef.current) {
+      try { 
+        videoRef.current.srcObject = null; 
+      } catch {}
+    }
+    
+    camRelease(OWNER);
+    logOwnerRelease('PhotoCaptureModal', ['video']);
+    
+    trackRef.current = null;
+    streamRef.current = null;
+    setStream(null);
+    setIsCapturing(false);
+  }, []);
+
   useEffect(() => {
     if (open) {
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
       startCamera();
     } else {
-      releaseCamera();
+      releaseNow();
       logPerfClose('PhotoCaptureModal', startTimeRef.current);
       checkForLeaks('PhotoCaptureModal');
     }
     
-    return releaseCamera;
-  }, [open]);
+    return releaseNow;
+  }, [open, releaseNow]);
 
   // Unmount guard
-  useEffect(() => () => releaseCamera(), []);
+  useEffect(() => () => releaseNow(), [releaseNow]);
   
   // Visibility & route guards
   useEffect(() => {
-    const hardStop = () => releaseCamera();
+    const hardStop = () => releaseNow();
     window.addEventListener('pagehide', hardStop);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') hardStop();
@@ -76,7 +96,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       window.removeEventListener('pagehide', hardStop);
       document.removeEventListener('visibilitychange', hardStop);
     };
-  }, []);
+  }, [releaseNow]);
 
   const startCamera = async () => {
     if (streamRef.current) return streamRef.current;
@@ -91,13 +111,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         },
         audio: false
       };
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      // Defensive strip: remove any audio tracks that slipped in
-      const s = mediaStream;
-      s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
-
+      const mediaStream = await camAcquire(OWNER, constraints);
       streamRef.current = mediaStream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
@@ -269,10 +286,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     input.click();
   };
 
-  const handleExit = () => {
-    releaseCamera();
-    onOpenChange(false);
-  };
+  const handleExit = useCallback(() => {
+    releaseNow();                  // <-- FIRST
+    stopAllVideos();               // belt & suspenders
+    onOpenChange(false);           // then close/navigate
+  }, [releaseNow, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

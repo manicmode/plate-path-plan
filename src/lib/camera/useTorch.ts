@@ -96,12 +96,20 @@ export function useTorch(getActiveVideoTrack: () => MediaStreamTrack | null) {
     }
   }, [probe]); // Only depend on probe function, not the track itself
 
-  // Teardown - stop track on unmount
+  // Teardown - stop track on unmount and when switching cameras
   useEffect(() => {
     return () => {
       pending.current?.abort();
+      // Stop previous track to prevent leaks
       if (lastTrack.current) {
-        try { lastTrack.current.stop(); } catch {}
+        try { 
+          lastTrack.current.stop();
+          if (process.env.NODE_ENV !== 'production') {
+            console.info('[TORCH][CLEANUP] Stopped track on unmount', { 
+              trackId: lastTrack.current.id?.substring(0, 8) 
+            });
+          }
+        } catch {}
       }
     };
   }, []);
