@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HealthReportPopup } from '@/components/health-check/HealthReportPopup';
@@ -40,16 +40,98 @@ interface NutritionLogData {
 export default function HealthReportStandalone() {
   const { reportId } = useParams<{ reportId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<NutritionLogData | null>(null);
   const [originalData, setOriginalData] = useState<any>(null);
+  const [directPayload, setDirectPayload] = useState<any>(null);
 
   useEffect(() => {
+    console.log('[REPORT][BOOT]', { 
+      reportId, 
+      hasLocationState: !!location.state,
+      barcode: searchParams.get('barcode'),
+      source: searchParams.get('source'),
+      mode: searchParams.get('mode')
+    });
+
+    // Check for direct barcode payload from unified pipeline
+    if (location.state && (searchParams.get('mode') === 'barcode' || searchParams.get('barcode'))) {
+      console.log('[REPORT][DIRECT] Using location state payload');
+      setDirectPayload(location.state);
+      setLoading(false);
+      return;
+    }
+
+    // Check for barcode parameter and fetch via enhanced-health-scanner
+    const barcode = searchParams.get('barcode');
+    const source = searchParams.get('source') || 'unknown';
+    if (barcode && !reportId) {
+      console.log('[REPORT][BARCODE] Fetching barcode data', { barcode, source });
+      fetchBarcodeData(barcode, source);
+      return;
+    }
+
+    // Fallback to reportId lookup
     if (reportId) {
       fetchReportData(reportId);
+    } else {
+      // No valid params, redirect to scan
+      navigate('/scan');
     }
-  }, [reportId]);
+  }, [reportId, location.state, searchParams]);
+
+  const fetchBarcodeData = async (barcode: string, source: string) => {
+    try {
+      setLoading(true);
+      console.log('[REPORT][FETCH] Fetching barcode from enhanced-health-scanner');
+      
+      const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
+        body: { 
+          mode: 'barcode', 
+          barcode, 
+          source: `health-scan-${source}`
+        }
+      });
+
+      if (error) {
+        console.error('[REPORT][ERROR] Failed to fetch barcode data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load product information",
+          variant: "destructive"
+        });
+        navigate('/scan');
+        return;
+      }
+
+      if (!result) {
+        toast({
+          title: "Product Not Found",
+          description: "This product is not in our database",
+          variant: "destructive"
+        });
+        navigate('/scan');
+        return;
+      }
+
+      console.log('[REPORT][SUCCESS] Barcode data loaded');
+      setDirectPayload(result);
+      
+    } catch (error) {
+      console.error('[REPORT][EXCEPTION] Error fetching barcode:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to load product information",
+        variant: "destructive"
+      });
+      navigate('/scan');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchReportData = async (id: string) => {
     try {
@@ -201,7 +283,7 @@ export default function HealthReportStandalone() {
   };
 
   const handleClose = () => {
-    navigate('/scan/saved-reports');
+    navigate('/scan');
   };
 
   if (loading) {
@@ -211,6 +293,40 @@ export default function HealthReportStandalone() {
           <Loader2 className="h-8 w-8 animate-spin text-green-400" />
           <p className="text-white">Loading health report...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Handle direct payload from unified barcode pipeline
+  if (directPayload) {
+    console.log('[REPORT][RENDER] Rendering direct payload from unified pipeline');
+    
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="sticky top-0 z-50 flex items-center justify-between p-4 bg-background/95 backdrop-blur border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/scan')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Scan
+          </Button>
+        </div>
+        
+        {renderHealthReport({
+          result: directPayload,
+          onScanAnother: handleScanAnother,
+          onClose: handleClose,
+          analysisData: {
+            source: searchParams.get('source') || 'barcode',
+            barcode: searchParams.get('barcode') || undefined
+          },
+          initialIsSaved: false,
+          hideCloseButton: true
+        })}
       </div>
     );
   }

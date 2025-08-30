@@ -21,6 +21,9 @@ import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { camAcquire, camRelease } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
+import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
+import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
+import { toast } from 'sonner';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -1058,14 +1061,72 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     setCurrentView('manual');
   };
 
+  // Helper function to detect if input is a barcode
+  const isBarcode = (input: string): boolean => {
+    // Remove non-digits and check if it looks like a barcode
+    const digits = input.replace(/\D+/g, '');
+    // Common barcode lengths: 8 (EAN-8), 11-13 (UPC/EAN-13), 12 (UPC-A)
+    return digits.length >= 8 && digits.length <= 14 && digits === input.replace(/\s+/g, '');
+  };
+
   const handleSearchDatabase = async () => {
     if (barcodeInput.trim()) {
       console.log('🔍 Searching database for:', barcodeInput);
       
-      // If we have the onManualSearch prop, use it (preferred)
+      const inputValue = barcodeInput.trim();
+      
+      // Check if input looks like a barcode
+      if (isBarcode(inputValue)) {
+        console.log('[MANUAL][BARCODE] Detected barcode input, using unified pipeline');
+        
+        try {
+          const result = await openHealthReportFromBarcode(inputValue, 'scanner-manual');
+          
+          if ('error' in result) {
+            const errorMsg = result.error === 'not_found' 
+              ? 'Product not found in database' 
+              : result.error === 'invalid_barcode'
+              ? 'Invalid barcode format'
+              : 'Failed to fetch product information';
+            
+            toast.error(errorMsg);
+            
+            // Generate suggestions on barcode failure
+            await generateSmartSuggestions(barcodeInput);
+            setShowSuggestions(true);
+            return;
+          }
+          
+          // Close scanner modal and navigate to health report
+          console.log('[MANUAL][SUCCESS] Barcode found, closing modal');
+          releaseNow(); // Ensure camera cleanup before navigation
+          
+          // Use the same navigation pattern as auto-decode
+          if (onManualSearch) {
+            // If we have onManualSearch, the parent will handle the result
+            onCapture({
+              imageBase64: '', // No image for barcode-only
+              detectedBarcode: result.payload.barcode || inputValue
+            });
+          } else {
+            // Direct navigation (fallback)
+            window.location.href = `/health-report-standalone?barcode=${encodeURIComponent(result.payload.barcode || inputValue)}&source=scanner-manual`;
+          }
+          
+        } catch (error) {
+          console.error('[MANUAL][BARCODE][ERROR]', error);
+          toast.error('Failed to process barcode');
+          await generateSmartSuggestions(barcodeInput);
+          setShowSuggestions(true);
+        }
+        
+        return;
+      }
+      
+      // If we have the onManualSearch prop, use it for product names (preferred)
       if (onManualSearch) {
         try {
-          await onManualSearch(barcodeInput.trim(), 'text');
+          await onManualSearch(inputValue, 'text');
         } catch (error) {
           console.error('❌ Manual search failed:', error);
           throw error; // Re-throw to be caught by voice handler
@@ -1073,12 +1134,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         return;
       }
       
-      // Fallback: try to call the health-check-processor directly
+      // Fallback: try to call the health-check-processor directly for product names
       try {
         const { data, error } = await supabase.functions.invoke('health-check-processor', {
           body: {
             inputType: 'text',
-            data: barcodeInput.trim(),
+            data: inputValue,
             userId: user?.id,
             detectedBarcode: null
           }
@@ -1137,13 +1198,43 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    // Use the manual search if available, otherwise fall back to manual entry
-    if (onManualSearch) {
-      onManualSearch(suggestion, 'text');
+  const handleSuggestionClick = async (suggestion: string) => {
+    // Check if suggestion looks like a barcode
+    if (isBarcode(suggestion)) {
+      console.log('[SUGGESTION][BARCODE] Processing barcode suggestion:', suggestion);
+      
+      try {
+        const result = await openHealthReportFromBarcode(suggestion, 'scanner-manual');
+        
+        if ('error' in result) {
+          toast.error(result.error === 'not_found' ? 'Product not found' : 'Failed to process barcode');
+          return;
+        }
+        
+        // Close scanner and navigate
+        releaseNow();
+        if (onManualSearch) {
+          onCapture({
+            imageBase64: '',
+            detectedBarcode: result.payload.barcode || suggestion
+          });
+        } else {
+          window.location.href = `/health-report-standalone?barcode=${encodeURIComponent(result.payload.barcode || suggestion)}&source=scanner-manual`;
+        }
+        
+      } catch (error) {
+        console.error('[SUGGESTION][BARCODE][ERROR]', error);
+        toast.error('Failed to process barcode');
+      }
+      
     } else {
-      setBarcodeInput(suggestion);
-      onManualEntry(); // This will trigger the health check
+      // Use the manual search if available for product names, otherwise fall back to manual entry
+      if (onManualSearch) {
+        onManualSearch(suggestion, 'text');
+      } else {
+        setBarcodeInput(suggestion);
+        onManualEntry(); // This will trigger the health check
+      }
     }
   };
 
