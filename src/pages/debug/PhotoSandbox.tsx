@@ -58,8 +58,18 @@ export default function PhotoSandbox() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [ocrResult, setOcrResult] = useState<any>(null);
-  const [lastOcrStatus, setLastOcrStatus] = useState<string>('');
+  const [ocrResult, setOcrResult] = useState<{
+    ok: boolean;
+    summary: { words: number; text_joined: string };
+    duration_ms: number;
+    healthReport?: any;
+    source?: string;
+  } | null>(null);
+  const [lastOcrStatus, setLastOcrStatus] = useState<{
+    duration: number;
+    status: string;
+    hasHealthReport?: boolean;
+  } | null>(null);
 
   async function captureAndAnalyze() {
     const v = videoRef.current;
@@ -97,16 +107,28 @@ export default function PhotoSandbox() {
 
       if (result.ok) {
         setOcrResult(result);
-        setLastOcrStatus(`${duration}ms · SUCCESS`);
+        setLastOcrStatus({
+          duration: duration,
+          status: 'SUCCESS',
+          hasHealthReport: !!(result as any).healthReport
+        });
       } else {
         setOcrResult(null);
-        setLastOcrStatus(`${duration}ms · ${result.error || 'FAILED'}`);
+        setLastOcrStatus({
+          duration: duration,
+          status: result.error || 'FAILED',
+          hasHealthReport: false
+        });
       }
 
     } catch (e) {
       log('[OCR][ERROR]', String(e));
       setOcrResult(null);
-      setLastOcrStatus('ERROR');
+      setLastOcrStatus({
+        duration: 0,
+        status: 'ERROR',
+        hasHealthReport: false
+      });
       
       // Show toast for user feedback
       if (e instanceof Error) {
@@ -240,19 +262,41 @@ export default function PhotoSandbox() {
 
       {/* OCR Result Card */}
       {ocrResult && (
-        <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,255,0,0.1)', borderRadius: 8, border: '1px solid rgba(0,255,0,0.2)' }}>
-          <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>📄 OCR Result</div>
-          <div style={{ fontSize: 12 }}>
-            <div><strong>Lines detected:</strong> {ocrResult.summary?.words || 0} words</div>
-            <div><strong>Summary:</strong> {ocrResult.summary?.text_joined?.slice(0, 120) || 'No text detected'}</div>
-            <div><strong>Duration:</strong> {ocrResult.duration_ms}ms</div>
+          <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,255,0,0.1)', borderRadius: 8, border: '1px solid rgba(0,255,0,0.2)' }}>
+            <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              📄 OCR Result
+              {ocrResult.source && (
+                <span style={{ background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+                  {ocrResult.source}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12 }}>
+              <div><strong>Lines detected:</strong> {ocrResult.summary?.words || 0} words</div>
+              <div><strong>Summary:</strong> {ocrResult.summary?.text_joined?.slice(0, 120) || 'No text detected'}</div>
+              <div><strong>Duration:</strong> {ocrResult.duration_ms}ms</div>
+            </div>
+            {ocrResult.healthReport && (
+              <div style={{ marginTop: 8, padding: 8, background: 'rgba(59, 130, 246, 0.1)', borderRadius: 4, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>🧬 Health Analysis</div>
+                <div style={{ fontSize: 11 }}>
+                  <div><strong>Health Score:</strong> {ocrResult.healthReport.quality?.score || 'N/A'}/10</div>
+                  <div><strong>Flags:</strong> {ocrResult.healthReport.flags?.length || 0} warnings</div>
+                  <div style={{ color: '#059669', fontSize: 10, marginTop: 2 }}>Generated via OCR → Health Analysis</div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
       )}
 
       {lastOcrStatus && (
         <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-          Last OCR: {lastOcrStatus}
+          Last OCR: {lastOcrStatus.duration}ms · {lastOcrStatus.status}
+          {lastOcrStatus.hasHealthReport && (
+            <span style={{ marginLeft: 8, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+              Health Report
+            </span>
+          )}
         </div>
       )}
 

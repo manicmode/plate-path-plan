@@ -4,6 +4,11 @@
  * Enhanced with force option for sandbox testing
  */
 
+// Enhanced photo pipeline with OCR health report integration
+import { FF } from '@/featureFlags';
+import { toReportInputFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { analyzeProductForQuality, type AnalyzerResult } from '@/shared/barcode-analyzer';
+
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
 
@@ -84,6 +89,39 @@ export async function analyzePhoto(
 
     const result = await response.json();
     console.log('[PHOTO][OCR][RESP]', result);
+
+    // NEW: OCR Health Report Integration
+    if (FF.OCR_HEALTH_REPORT_ENABLED && result.ok && result.summary?.text_joined) {
+      console.log('[PHOTO][HEALTH] OCR health report enabled, analyzing text');
+      
+      try {
+        // Convert OCR text to health analysis input
+        const healthInput = toReportInputFromOCR(result.summary.text_joined);
+        console.log('[PHOTO][HEALTH] OCR input converted:', {
+          name: healthInput.name,
+          hasIngredients: !!healthInput.ingredientsText,
+          hasNutrition: !!healthInput.nutrition
+        });
+        
+        // Use the same analyzer as barcode path
+        const healthReport = await analyzeProductForQuality(healthInput);
+        
+        if (healthReport) {
+          console.log('[PHOTO][HEALTH] Health report generated from OCR');
+          return { 
+            ok: true, 
+            report: {
+              ...result,
+              healthReport,
+              source: 'OCR'
+            }
+          };
+        }
+      } catch (healthError: any) {
+        console.log('[PHOTO][HEALTH] Health analysis failed:', healthError.message);
+        // Continue with OCR-only result
+      }
+    }
 
     return { ok: true, report: result };
   } catch (error) {
