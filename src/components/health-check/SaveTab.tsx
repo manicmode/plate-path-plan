@@ -188,7 +188,11 @@ export const SaveTab: React.FC<SaveTabProps> = ({
               </div>
               
               <Button
-                onClick={() => window.open('/nutrition-log', '_blank')}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open('/nutrition-log', '_blank');
+                  }
+                }}
                 variant="outline"
                 className="w-full"
               >

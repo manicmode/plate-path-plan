@@ -48,31 +48,41 @@ export function renderHealthReport(options: RenderHealthReportOptions) {
   const flags = Array.isArray(result?.flags) ? result.flags : Array.isArray(result?.ingredientFlags) ? result.ingredientFlags : [];
   const portionGrams = typeof (result as any)?.portionGrams === 'number' ? (result as any).portionGrams : null;
 
-  // Log telemetry for monitoring and debugging
-  React.useEffect(() => {
-    const entry = analysisData?.source || 'unknown';
-    const hasToggle = isFeatureEnabled('nutrition_toggle_enabled');
-    const hasFlagsTab = isFeatureEnabled('flags_tab_enabled');
-    const hasSaveTab = isFeatureEnabled('save_tab_enabled');
-    const hasSuggestions = isFeatureEnabled('smart_suggestions_enabled');
+  // Telemetry component to log boot info safely within React context
+  const ReportBootLog = ({ hasPerServing, hasPer100g, flagsCount, portionGrams, entry }: any) => {
+    React.useEffect(() => {
+      const hasToggle = isFeatureEnabled('nutrition_toggle_enabled');
+      const hasFlagsTab = isFeatureEnabled('flags_tab_enabled');
+      const hasSaveTab = isFeatureEnabled('save_tab_enabled');
+      const hasSuggestions = isFeatureEnabled('smart_suggestions_enabled');
+      
+      console.log('[REPORT][V2][BOOT]', {
+        hasPerServing,
+        hasPer100g, 
+        flagsCount,
+        portionGrams,
+        entry,
+        hasToggle,
+        hasFlagsTab, 
+        hasSaveTab,
+        hasSuggestions
+      });
+    }, [hasPerServing, hasPer100g, flagsCount, portionGrams, entry]);
     
-    console.log('[REPORT][V2][BOOT]', {
-      hasPerServing,
-      hasPer100g, 
-      flagsCount: flags.length,
-      portionGrams,
-      entry,
-      hasToggle,
-      hasFlagsTab, 
-      hasSaveTab,
-      hasSuggestions
-    });
-  }, [result, analysisData, hasPerServing, hasPer100g, flags.length, portionGrams]);
+    return null;
+  };
 
   // Use Enhanced Health Report if V2 is enabled
   if (isFeatureEnabled('health_report_v2_enabled')) {
     return (
-      <Suspense fallback={<div className="flex items-center justify-center p-8">Loading report...</div>}>
+      <Suspense fallback={null}>
+        <ReportBootLog 
+          hasPerServing={hasPerServing}
+          hasPer100g={hasPer100g}
+          flagsCount={flags.length}
+          portionGrams={portionGrams}
+          entry={analysisData?.source || 'unknown'}
+        />
         <EnhancedHealthReport
           result={result}
           onScanAnother={onScanAnother}

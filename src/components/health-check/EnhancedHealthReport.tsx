@@ -21,7 +21,7 @@ import {
   X,
   Loader2
 } from 'lucide-react';
-import { HealthAnalysisResult } from './HealthCheckModal';
+import type { HealthAnalysisResult } from './HealthCheckModal';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
