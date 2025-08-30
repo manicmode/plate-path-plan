@@ -389,32 +389,12 @@ export default function ScanHub() {
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
         onClose={() => {
-          console.log('[SCAN] Health modal closed');
+          console.log('[SCAN] Health modal closed - staying on scan page');
           setHealthCheckModalOpen(false);
           setAnalysisData(null);
           setHealthModalStep('scanner');
           handledRef.current = false;
-          
-          // Log initial state decision for debugging
-          console.log('[HC][OPEN]', { 
-            from: analysisData?.source, 
-            initial: forceHealth ? 'loading' :
-              (analysisData && analysisData.source !== 'photo') ? 'loading' : 'scanner'
-          });
-          
-          // Debug logging
-          const originalEntry = originalEntryRef.current || sessionStorage.getItem('scan-original-entry');
-          console.log('[SCAN] Original entry for navigation:', originalEntry);
-          
-          // Navigate back to original entry point to avoid saved/recent scans loop
-          if (originalEntry && originalEntry !== '/scan') {
-            console.log('[SCAN] Navigating to original entry:', originalEntry);
-            sessionStorage.removeItem('scan-original-entry'); // Clear after use
-            navigate(originalEntry, { replace: true });
-          } else {
-            console.log('[SCAN] Staying on health scan page');
-            // Stay on /scan page when canceling barcode scanner
-          }
+          // Always stay on /scan page when modal is closed/canceled
         }}
         initialState={
           forceHealth
