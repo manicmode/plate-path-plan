@@ -892,6 +892,69 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         imageData.replace(/&barcode=\d+$/, '') : 
         imageData;
         
+      // First, try OCR extraction
+      let ocrText = '';
+      try {
+        console.log(`🔍 Attempting OCR extraction [${currentCaptureId}]...`);
+        
+        // Convert base64 to blob for OCR
+        let ocrBlob: Blob;
+        if (cleanImageData.startsWith('data:')) {
+          const response = await fetch(cleanImageData);
+          ocrBlob = await response.blob();
+        } else {
+          // Handle raw base64
+          const byteString = atob(cleanImageData);
+          const arrayBuffer = new ArrayBuffer(byteString.length);
+          const int8Array = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < byteString.length; i++) {
+            int8Array[i] = byteString.charCodeAt(i);
+          }
+          ocrBlob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+        }
+        
+        const { callOCRFunction } = await import('@/lib/ocrClient');
+        const ocrResult = await callOCRFunction(ocrBlob, { withAuth: true });
+        
+        if (ocrResult.ok && ocrResult.summary?.text_joined) {
+          ocrText = ocrResult.summary.text_joined;
+          console.log(`✅ OCR extracted text [${currentCaptureId}]:`, ocrText.slice(0, 100) + '...');
+        } else {
+          console.log(`⚠️ OCR returned no text [${currentCaptureId}]`);
+        }
+      } catch (ocrError) {
+        console.log(`⚠️ OCR failed [${currentCaptureId}], continuing with image analysis:`, ocrError);
+      }
+      
+      // If we have meaningful OCR text, try to use it for health analysis
+      if (ocrText && ocrText.length > 10) {
+        try {
+          console.log(`📝 Using OCR text for health analysis [${currentCaptureId}]`);
+          setLoadingMessage('Analyzing extracted text...');
+          
+          const { data: textResult, error: textError } = await supabase.functions.invoke('enhanced-health-scanner', {
+            body: { 
+              mode: 'search',
+              query: ocrText,
+              source: 'ocr-health-scan'
+            }
+          });
+          
+          if (currentRunId.current !== runId) return; // stale
+          
+          if (!textError && textResult?.ok) {
+            console.log(`✅ OCR-based health analysis successful [${currentCaptureId}]`);
+            const legacy = toLegacyFromEdge(textResult);
+            await processAndShowResult(legacy, textResult, currentCaptureId, 'image');
+            return;
+          } else {
+            console.log(`⚠️ OCR-based health analysis failed [${currentCaptureId}], falling back to image analysis`);
+          }
+        } catch (textAnalysisError) {
+          console.log(`⚠️ OCR text analysis failed [${currentCaptureId}], falling back to image analysis:`, textAnalysisError);
+        }
+      }
+        
       // Helper to check for brand signal in steps
       const hasBrandSignal = (steps?: any[]): boolean =>
         !!steps?.some(s =>

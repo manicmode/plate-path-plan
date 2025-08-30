@@ -58,6 +58,9 @@ export default function PhotoSandbox() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [lastOcrStatus, setLastOcrStatus] = useState<string>('');
+
   async function captureAndAnalyze() {
     const v = videoRef.current;
     if (!v || v.readyState < 2 || v.videoWidth === 0) { log('[IMG READY] not ready'); return; }
@@ -67,25 +70,52 @@ export default function PhotoSandbox() {
     const h = Math.max(1, Math.round(v.videoHeight * scale));
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const ctx = c.getContext('2d', { willReadFrequently: true })!; ctx.drawImage(v, 0, 0, w, h);
-    const blob: Blob|null = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.72));
+    const blob: Blob|null = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.8));
     if (!blob) { log('[IMG BLOB] null'); return; }
     log('[IMG READY]', { w: v.videoWidth, h: v.videoHeight });
     log('[IMG BLOB]', { sizeKB: Math.round(blob.size/1024), type: blob.type });
 
     if (offline) {
       log('[PHOTO][OFFLINE] simulating timeout/failure');
+      return;
     }
 
     try {
-      const res = await runPhotoPipeline(blob, {
-        onTimeout: () => log('[PHOTO][WATCHDOG] timeout'),
-        onFail: (r) => log('[PHOTO][FAIL]', r),
-        onSuccess: (r) => log('[PHOTO][SUCCESS]', { score: r?.health?.score ?? 0 })
-      }, { force: true, offline });
+      const { callOCRFunction } = await import('@/lib/ocrClient');
+      log('[OCR][START]', { blob: `${Math.round(blob.size/1024)}KB` });
 
-      log('[PHOTO][RESOLVED]', { success: res.success, error: res.error ?? null });
+      const startTime = Date.now();
+      const result = await callOCRFunction(blob, { withAuth: true });
+      const duration = Date.now() - startTime;
+      
+      log('[OCR][RESULT]', { 
+        status: 'success', 
+        ok: result.ok, 
+        words: result.summary?.words,
+        duration: `${duration}ms`
+      });
+
+      if (result.ok) {
+        setOcrResult(result);
+        setLastOcrStatus(`${duration}ms · SUCCESS`);
+      } else {
+        setOcrResult(null);
+        setLastOcrStatus(`${duration}ms · ${result.error || 'FAILED'}`);
+      }
+
     } catch (e) {
-      log('[PHOTO][ERROR]', String(e));
+      log('[OCR][ERROR]', String(e));
+      setOcrResult(null);
+      setLastOcrStatus('ERROR');
+      
+      // Show toast for user feedback
+      if (e instanceof Error) {
+        if (e.message.includes('rate_limit_exceeded')) {
+          log('[OCR][RATE_LIMIT] 6 requests per minute exceeded');
+        } else if (e.message.includes('unauthorized')) {
+          log('[OCR][AUTH] Authorization failed');
+        }
+      }
     }
   }
 
@@ -135,36 +165,28 @@ export default function PhotoSandbox() {
 
   async function runTestOCR() {
     try {
-      const base = resolveFunctionsBase();
-      const url = `${base}/vision-ocr`;
-      log('[OCR][TEST][START]', { url });
+      log('[OCR][TEST][START]', { type: '1x1 PNG test' });
 
       // 1x1 PNG transparent pixel
       const dataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
       
-      // Convert to blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      const { callOCRFunctionWithDataUrl } = await import('@/lib/ocrClient');
+      const result = await callOCRFunctionWithDataUrl(dataUrl, { withAuth: true });
       
-      const formData = new FormData();
-      formData.append('image', blob, 'test.png');
-
-      const headers = await getAuthHeaders(true);
-      console.log('[OCR][TEST][HEADERS]', Object.keys(headers));
-
-      const r = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: headers
+      log('[OCR][TEST][RESULT]', { 
+        status: 'success',
+        ok: result.ok, 
+        words: result.summary?.words,
+        text: result.summary?.text_joined || 'no text found'
       });
 
-      console.log('[OCR][TEST][DONE]', { status: r.status, ok: r.ok });
-
-      const result = await r.json();
-      log('[OCR][RESULT]', { status: r.status, result });
+      // Show friendly message for test case
+      if (result.ok && result.summary?.words === 0) {
+        log('[OCR][TEST][NOTE]', 'Test successful - no text found in 1x1 image (expected)');
+      }
 
     } catch (e) {
-      log('[OCR][ERROR]', String(e));
+      log('[OCR][TEST][ERROR]', String(e));
     }
   }
 
@@ -215,6 +237,24 @@ export default function PhotoSandbox() {
 
       <video ref={videoRef} autoPlay playsInline muted
         style={{ width: 320, height: 240, background: '#000', borderRadius: 8, display: 'block' }} />
+
+      {/* OCR Result Card */}
+      {ocrResult && (
+        <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,255,0,0.1)', borderRadius: 8, border: '1px solid rgba(0,255,0,0.2)' }}>
+          <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>📄 OCR Result</div>
+          <div style={{ fontSize: 12 }}>
+            <div><strong>Lines detected:</strong> {ocrResult.summary?.words || 0} words</div>
+            <div><strong>Summary:</strong> {ocrResult.summary?.text_joined?.slice(0, 120) || 'No text detected'}</div>
+            <div><strong>Duration:</strong> {ocrResult.duration_ms}ms</div>
+          </div>
+        </div>
+      )}
+
+      {lastOcrStatus && (
+        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+          Last OCR: {lastOcrStatus}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={captureAndAnalyze} disabled={!ready} style={{ padding: '8px 12px', cursor: ready ? 'pointer' : 'not-allowed' }}>

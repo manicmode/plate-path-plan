@@ -28,7 +28,7 @@ export async function getSupabaseAuthHeaders() {
   };
 }
 
-export async function getAuthHeaders(withAuth: boolean): Promise<Record<string, string>> {
+export async function getAuthHeaders(withAuth = true): Promise<Record<string, string>> {
   if (!withAuth) {
     return {};
   }
