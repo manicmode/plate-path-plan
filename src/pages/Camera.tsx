@@ -1167,103 +1167,68 @@ console.log('Global search enabled:', enableGlobalSearch);
             flags: [],
             score: 0,
             fallback: true
-          });
+           });
 
-          console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
-          setRecognizedFoods([fallbackFood]);
-          setShowConfirmation(true);
-          addRecentBarcode({
-            barcode: cleanBarcode,
-            productName: fallbackFood.name,
-            nutrition: {
-              calories: fallbackFood.calories,
-              protein: fallbackFood.protein,
-              carbs: fallbackFood.carbs,
-              fat: fallbackFood.fat,
-              fiber: fallbackFood.fiber,
-              sugar: fallbackFood.sugar,
-              sodium: fallbackFood.sodium
-            }
-          });
-        } catch (fallbackError) {
-          console.error('=== FALLBACK MODAL ERROR ===', fallbackError);
-          toast.error("Barcode lookup failed", {
-            description: "Please enter manually",
-            action: {
-              label: "Enter Manually",
-              onClick: () => {
-                setShowBarcodeNotFound(true);
-                setFailedBarcode(cleanBarcode);
-              }
-            }
-          });
-          
-          setShowBarcodeNotFound(true);
-          setFailedBarcode(cleanBarcode);
-        }
-      }
-      
-      } finally {
-        clearTimeout(timeout);
-        console.log('[LOG] off_result', { status, hit });
-        setIsLoadingBarcode(false);
-      }
+           console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
+           setRecognizedFoods([fallbackFood]);
+           setShowConfirmation(true);
+           addRecentBarcode({
+             barcode: cleanBarcode,
+             productName: fallbackFood.name,
+             nutrition: {
+               calories: fallbackFood.calories,
+               protein: fallbackFood.protein,
+               carbs: fallbackFood.carbs,
+               fat: fallbackFood.fat,
+               fiber: fallbackFood.fiber,
+               sugar: fallbackFood.sugar,
+               sodium: fallbackFood.sodium
+             }
+           });
+         } catch (fallbackError) {
+           console.error('=== FALLBACK MODAL ERROR ===', fallbackError);
+           toast.error("Barcode lookup failed", {
+             description: "Please enter manually",
+             action: {
+               label: "Enter Manually",
+               onClick: () => {
+                 setShowBarcodeNotFound(true);
+                 setFailedBarcode(cleanBarcode);
+               }
+             }
+           });
+           
+           setShowBarcodeNotFound(true);
+           setFailedBarcode(cleanBarcode);
+         }
+       }
+       
+       } finally {
+         clearTimeout(timeout);
+         console.log('[LOG] off_result', { status, hit });
+         setIsLoadingBarcode(false);
+       }
 
-          console.log('[LOG] confirm_open', {
-            name: mapped.name,
-            barcode: cleanBarcode,
-            hasIngredients: false,
-            flags: [],
-            score: 0,
-            fallback: true
-          });
+           console.log('[LOG] confirm_open', {
+             name: mapped.name,
+             barcode: cleanBarcode,
+             hasIngredients: false,
+             flags: [],
+             score: 0,
+             fallback: true
+           });
 
-          console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
-          setRecognizedFoods([fallbackFood]);
-          setShowConfirmation(true);
-          addRecentBarcode({
-            barcode: cleanBarcode,
-            productName: fallbackFood.name,
-            nutrition: {
-              calories: fallbackFood.calories,
-              protein: fallbackFood.protein,
-              carbs: fallbackFood.carbs,
-              fat: fallbackFood.fat,
-              fiber: fallbackFood.fiber,
-              sugar: fallbackFood.sugar,
-              sodium: fallbackFood.sodium
-            }
-          });
-        } catch (fallbackError) {
-          console.error('=== FALLBACK MODAL ERROR ===', fallbackError);
-          // Enhanced error messaging with fallback options
-          const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
-          
-          toast.error("Barcode lookup failed", {
-            description: errorMessage,
-            action: {
-              label: "Enter Manually",
-              onClick: () => {
-                setShowBarcodeNotFound(true);
-                setFailedBarcode(cleanBarcode);
-              }
-            }
-          });
-          
-          setShowBarcodeNotFound(true);
-          setFailedBarcode(cleanBarcode);
-        }
-        
-      } finally {
-        clearTimeout(timeout);
-        console.log('[LOG] off_result', { status, hit });
-        setIsLoadingBarcode(false);
-      }
-    } catch (outerError) {
-      console.error('=== OUTER BARCODE ERROR ===', outerError);
-      setIsLoadingBarcode(false);
-    }
-  };
+         }
+       } finally {
+         clearTimeout(timeout);
+         console.log('[LOG] off_result', { status, hit });
+         setIsLoadingBarcode(false);
+       }
+     } catch (outerError) {
+       console.error('=== OUTER BARCODE ERROR ===', outerError);
+       setIsLoadingBarcode(false);
+     }
+   };
 
   const handleVoiceRecording = async () => {
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
