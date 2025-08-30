@@ -132,7 +132,7 @@ const SaveCTA: React.FC<{
 
   if (savedLogId) {
     return (
-      <div className="sticky bottom-[88px] md:bottom-6 z-20 px-4">
+      <div className="px-4">
         <div className="p-4 bg-primary/10 border border-primary/30 rounded-2xl text-center shadow-lg">
           <div className="flex items-center justify-center space-x-2 text-primary font-semibold">
             <CheckCircle className="w-5 h-5" />
@@ -144,7 +144,7 @@ const SaveCTA: React.FC<{
   }
 
   return (
-    <div className="sticky bottom-[88px] md:bottom-6 z-20 px-4">
+    <div className="px-4">
       <Button
         onClick={handleSaveReport}
         disabled={isSaving || !user?.id}
@@ -445,22 +445,22 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           </CardContent>
         </Card>
 
-        {/* 💾 FULL-WIDTH SAVE CTA */}
-        <SaveCTA
-          result={result}
-          analysisData={analysisData}
-          portionGrams={portionInfo.grams}
-          ocrHash={ocrHash}
-          onSaved={(logId) => {
-            toast({
-              title: "Successfully Saved!",
-              description: `Report saved with ID: ${logId.slice(0, 8)}...`,
-            });
-          }}
-        />
-
         {/* 🎯 4. ACTION BUTTONS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+          {/* 💾 SAVE BUTTON */}
+          <SaveCTA
+            result={result}
+            analysisData={analysisData}
+            portionGrams={portionInfo.grams}
+            ocrHash={ocrHash}
+            onSaved={(logId) => {
+              toast({
+                title: "Successfully Saved!",
+                description: `Report saved with ID: ${logId.slice(0, 8)}...`,
+              });
+            }}
+          />
+
           <Button
             onClick={onScanAnother}
             variant="outline"
