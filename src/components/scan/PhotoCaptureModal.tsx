@@ -13,9 +13,6 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
-import { useNavigate } from 'react-router-dom';
-import { openHealthReport } from '@/features/health/openHealthReport';
-import { devLog } from '@/lib/camera/devLog';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -32,7 +29,7 @@ function hardDetachVideo(video?: HTMLVideoElement | null) {
 interface PhotoCaptureModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCapture?: (imageData: string) => void;
+  onCapture: (imageData: string) => void;
   onManualFallback: () => void;
 }
 
@@ -43,7 +40,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onCapture,
   onManualFallback
 }) => {
-  const navigate = useNavigate();
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -241,7 +237,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     playCameraClickSound();
 
     try {
-      devLog('PHOTO][CAPTURE', { w: videoRef.current.videoWidth, h: videoRef.current.videoHeight });
+      // Check if analyzer is enabled
+      if (!isFeatureEnabled('image_analyzer_v1')) {
+        console.log('[PHOTO] Analyzer disabled, redirecting to manual');
+        toast.info('Photo analysis is in beta. Try manual or voice for now.');
+        camHardStop('modal_close');
+        onOpenChange(false);
+        onManualFallback();
+        return;
+      }
+
+      console.log('[PHOTO] Capturing photo...');
       
       const video = videoRef.current;
       const canvas = document.createElement('canvas');
@@ -251,61 +257,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-        // Convert to blob for unified pipeline
-        canvas.toBlob(async (blob) => {
-          if (!blob) {
-            toast.error('Failed to capture photo. Please try again.');
-            return;
-          }
-          
-          // Convert blob to File for API compatibility
-          const file = new File([blob], 'photo-capture.jpg', { 
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-          
-          devLog('PHOTO][PIPE', 'start → route \'/photo\'');
-          
-          try {
-            // Use unified pipeline
-            const result = await openHealthReport({
-              source: 'photo',
-              imageFile: file
-            });
-          
-          if ('error' in result) {
-            devLog('PHOTO][ERR', result.error);
-            toast.error('Failed to analyze photo. Please try again.');
-            return;
-          }
-          
-          devLog('PHOTO][ROUTE', { 
-            used: result.source === 'barcode' ? 'barcode' : 'ocr',
-            route: result.route,
-            hasOCR: !!result.ocrTextNormalized,
-            hasNutrition: !!result.nutritionFields
-          });
-          
-          // Navigate to report with unified payload
-          navigate(result.route, { 
-            state: { 
-              entry: 'photo',
-              source: 'photo',
-              ...result
-            } 
-          });
-          
-          camHardStop('modal_close');
-          onOpenChange(false);
-          
-        } catch (error) {
-          devLog('PHOTO][ERR', error);
-          toast.error('Failed to analyze photo. Please try again.');
-        }
-      }, 'image/jpeg', 0.85);
+      // Convert to base64
+      const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      
+      console.log('[PHOTO] Photo captured, processing...');
+      
+      // Process with existing analyzer flow
+      onCapture(imageBase64);
+      camHardStop('modal_close');
+      onOpenChange(false);
       
     } catch (error) {
-      devLog('PHOTO][ERR', error);
+      console.error('[PHOTO] Capture failed:', error);
       toast.error('Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -316,45 +279,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = async (e) => {
+    input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        devLog('PHOTO][UPLOAD', { size: file.size, type: file.type });
-        
-        try {
-          // Use unified pipeline
-          const result = await openHealthReport({
-            source: 'photo',
-            imageFile: file
-          });
-          
-          if ('error' in result) {
-            devLog('PHOTO][ERR', result.error);
-            toast.error('Failed to analyze photo. Please try again.');
-            return;
-          }
-          
-          devLog('PHOTO][ROUTE', { 
-            used: result.source === 'barcode' ? 'barcode' : 'ocr',
-            route: result.route 
-          });
-          
-          // Navigate to report with unified payload
-          navigate(result.route, { 
-            state: { 
-              entry: 'photo',
-              source: 'photo',
-              ...result
-            } 
-          });
-          
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          console.log('[PHOTO] Image uploaded, processing...');
+          onCapture(imageBase64);
           camHardStop('modal_close');
           onOpenChange(false);
-          
-        } catch (error) {
-          devLog('PHOTO][ERR', error);
-          toast.error('Failed to analyze photo. Please try again.');
-        }
+        };
+        reader.readAsDataURL(file);
       }
     };
     input.click();

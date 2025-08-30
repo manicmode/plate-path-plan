@@ -29,7 +29,6 @@ function hardDetachVideo(video?: HTMLVideoElement | null) {
 interface WebBarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
   onClose: () => void;
-  disabled?: boolean;
 }
 
 // PHASE 3: Stream/track forensics helper - gated
@@ -45,8 +44,7 @@ function tapStream(s: MediaStream, component: string) {
 
 export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   onBarcodeDetected,
-  onClose,
-  disabled = false
+  onClose
 }) => {
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -271,7 +269,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       ctx.fillRect(0, 0, 100, 50);
       
       // Warm decode (will fail but initializes reader)
-      await scanner.scanQuick(warmCanvas, { enabled: true }).catch(() => null);
+      await scanner.scanQuick(warmCanvas).catch(() => null);
       setWarmScanner(scanner);
       devLog('WARM] Decoder warmed up');
     } catch (error) {
@@ -319,11 +317,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   }, [releaseNow]);
 
   const startCamera = async () => {
-    if (disabled) {
-      devLog('SCAN][DISABLED', 'Scanner disabled by prop');
-      return null;
-    }
-    
     if (streamRef.current) return streamRef.current;
     
     try {

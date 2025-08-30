@@ -33,10 +33,7 @@ export class MultiPassBarcodeScanner {
   private reader: BrowserMultiFormatReader;
   
   // Quick decode mode with narrowed search space (≤ 900ms)
-  async scanQuick(canvas: HTMLCanvasElement, opts?: { enabled?: boolean }): Promise<BarcodeResult | null> {
-    if (!opts?.enabled) {
-      return null;
-    }
+  async scanQuick(canvas: HTMLCanvasElement): Promise<BarcodeResult | null> {
     const startTime = performance.now();
     const BUDGET_MS = 900;
     
