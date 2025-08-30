@@ -14,11 +14,16 @@ import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
+import { logActiveCSP, validateSupabaseCSP } from "./lib/cspUtils";
 import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 
 // Apply security headers on app initialization
 applySecurityHeaders();
+
+// Log active CSP on app mount (dev helper)
+logActiveCSP('APP_MOUNT');
+validateSupabaseCSP();
 
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};

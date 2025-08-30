@@ -1,6 +1,5 @@
 // Security headers and configuration for Edge Functions
 export const getSecurityHeaders = () => ({
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'nonce-*'; style-src 'self' 'unsafe-inline' 'nonce-*'; img-src 'self' data: blob: https:; connect-src 'self' https://tfhub.dev https://www.kaggle.com https://storage.googleapis.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests;",
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -150,14 +149,6 @@ setInterval(() => {
 // Enhanced security headers application
 export const applySecurityHeaders = () => {
   const headers = getSecurityHeaders();
-  
-  // Apply CSP via meta tag if not already present
-  if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
-    const cspMeta = document.createElement('meta');
-    cspMeta.httpEquiv = 'Content-Security-Policy';
-    cspMeta.content = headers['Content-Security-Policy'];
-    document.head.appendChild(cspMeta);
-  }
 
   // Apply other headers via meta tags where applicable
   const metaHeaders = [

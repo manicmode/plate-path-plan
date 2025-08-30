@@ -30,6 +30,7 @@ import { useScanRecents } from '@/hooks/useScanRecents';
 import { useHealthCheckV2 } from './HealthCheckModalV2';
 import { handleSearchPick, num, score10, pickBrand, displayNameFor } from '@/shared/search-to-analysis';
 import { mark, measure } from '@/lib/perf';
+import { logActiveCSP } from '@/lib/cspUtils';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -266,6 +267,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // AUTO-KICK when a photo payload is provided from ScanHub
   useEffect(() => {
     if (!isOpen) return;
+
+    // Log CSP when Health Check modal opens (dev helper)
+    logActiveCSP('HEALTH_MODAL_OPEN');
 
     const isPhoto = analysisData?.source === 'photo';
     const img = (analysisData as any)?.imageBase64 as string | undefined;
