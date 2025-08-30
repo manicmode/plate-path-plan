@@ -33,18 +33,9 @@ export async function openHealthReport(input: {
       hasNutrition: !!result.nutritionFields 
     });
     
-    // Store photo payload in sessionStorage for route navigation
-    const bootKey = `ehr:boot:${Date.now()}`;
-    sessionStorage.setItem(bootKey, JSON.stringify({
-      ...result.payload,
-      source: 'photo',
-      route: '/photo'
-    }));
-
     return {
       success: true as const,
-      route: '/photo' as const,
-      bootKey,
+      route: result.route,
       source: result.source,
       payload: result.payload,
       ocrTextNormalized: result.ocrTextNormalized,

@@ -57,24 +57,6 @@ export default function HealthReportStandalone() {
       mode: searchParams.get('mode')
     });
 
-    // Check for photo sessionStorage boot from unified pipeline (only on /photo route)
-    if (location.pathname === '/photo' && location.state?.bootKey && location.state?.entry === 'photo') {
-      console.log('[REPORT][PHOTO_BOOT] Using sessionStorage payload', location.state.bootKey);
-      const storedPayload = sessionStorage.getItem(location.state.bootKey);
-      if (storedPayload) {
-        try {
-          const payload = JSON.parse(storedPayload);
-          setDirectPayload(payload);
-          setLoading(false);
-          // Clean up sessionStorage after boot
-          sessionStorage.removeItem(location.state.bootKey);
-          return;
-        } catch (e) {
-          console.error('[REPORT][PHOTO_BOOT] Failed to parse payload:', e);
-        }
-      }
-    }
-
     // Check for direct barcode payload from unified pipeline
     if (location.state && (searchParams.get('mode') === 'barcode' || searchParams.get('barcode'))) {
       console.log('[REPORT][DIRECT] Using location state payload');
@@ -301,7 +283,6 @@ export default function HealthReportStandalone() {
   };
 
   const handleClose = () => {
-    // Navigate back to scan for now - could be improved to remember entry point
     navigate('/scan');
   };
 
