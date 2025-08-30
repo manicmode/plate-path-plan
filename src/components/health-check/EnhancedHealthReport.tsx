@@ -220,7 +220,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             </div>
             
             {/* Large Status Label */}
-            <div className={`inline-flex items-center space-x-3 px-8 py-4 rounded-2xl ${scoreLabel.bgColor} border-2 mb-6 shadow-lg`}>
+            <div className={`inline-flex items-center space-x-3 px-8 py-4 rounded-2xl ${scoreLabel.bgColor} border-2 mb-6 shadow-lg animate-pulse-border`}>
               <span className="text-3xl">{scoreLabel.icon}</span>
               <span className={`text-2xl font-bold ${scoreLabel.color}`}>{scoreLabel.label}</span>
             </div>
