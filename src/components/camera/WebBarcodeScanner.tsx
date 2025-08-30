@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Camera, AlertCircle, FlashlightIcon, Zap, Lightbulb } from 'lucide-react';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
@@ -219,7 +219,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     // release BEFORE any navigation/unmount
     if (videoRef.current) {
       try { 
-        videoRef.current.srcObject = null; 
+        videoRef.current.srcObject = null;
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
       } catch {}
     }
     
@@ -264,12 +266,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     logPerfOpen('WebBarcodeScanner');
     logOwnerAcquire('WebBarcodeScanner');
     startCamera();
     warmUpDecoder();
     return () => {
+      console.log("[CAMERA] cleanup", { OWNER });
+      camHardStop('unmount');
       releaseNow();
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
       checkForLeaks('WebBarcodeScanner');

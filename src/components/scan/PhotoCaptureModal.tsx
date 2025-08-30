@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Lightbulb, Upload } from 'lucide-react';
+import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Upload } from 'lucide-react';
+import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +11,6 @@ import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 
@@ -55,7 +55,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     // release BEFORE any navigation/unmount
     if (videoRef.current) {
       try { 
-        videoRef.current.srcObject = null; 
+        videoRef.current.srcObject = null;
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
       } catch {}
     }
     
@@ -68,18 +70,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     setIsCapturing(false);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
       startCamera();
     } else {
+      camHardStop('modal_close');
       releaseNow();
       logPerfClose('PhotoCaptureModal', startTimeRef.current);
       checkForLeaks('PhotoCaptureModal');
     }
     
-    return releaseNow;
+    return () => {
+      camHardStop('unmount');
+      releaseNow();
+    };
   }, [open, releaseNow]);
 
   // Unmount guard

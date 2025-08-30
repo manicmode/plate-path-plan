@@ -1,11 +1,13 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/library';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Zap, FlashlightIcon, Lightbulb } from 'lucide-react';
+import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb } from 'lucide-react';
+import { toast } from 'sonner';
+import { camHardStop } from '@/lib/camera/guardian';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { useTorch } from '@/lib/camera/useTorch';
@@ -147,12 +149,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     hitsRef.current = [];
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
       logPerfOpen('LogBarcodeScannerModal');
       logOwnerAcquire('LogBarcodeScannerModal');
       startCamera();
     } else {
+      camHardStop('modal_close');
       cleanup();
       logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
       checkForLeaks('LogBarcodeScannerModal');
@@ -169,6 +172,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         runningRef.current = false;
         hitsRef.current = [];
       }
+      camHardStop('unmount');
       cleanup();
     };
   }, [open]);
@@ -275,7 +279,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
     }
 
-    hardDetachVideo(videoRef.current);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.removeAttribute('src');
+      videoRef.current.load();
+    }
 
     // tiniest fix because the hook already supports it:
     try { updateStreamRef?.(null); } catch {}

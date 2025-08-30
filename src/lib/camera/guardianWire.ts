@@ -1,4 +1,39 @@
-import { camHardStop, camRegister } from '@/lib/camera/guardian';
+import { camHardStop, camRegister, camGetCurrent, camGetRefs } from '@/lib/camera/guardian';
+
+// Debug helpers
+function camDump() {
+  const current = camGetCurrent();
+  const refs = camGetRefs();
+  const activeTracks = current?.getTracks().filter(t => t.readyState === 'live') || [];
+  
+  console.group('[CAM][DUMP]');
+  console.log('Current stream:', !!current);
+  console.log('Ref count:', refs);
+  console.log('Active tracks:', activeTracks.map(t => `${t.kind}:${t.readyState}`));
+  console.groupEnd();
+  
+  return {
+    hasStream: !!current,
+    refs,
+    activeTracks: activeTracks.length
+  };
+}
+
+function testCameraGuardian() {
+  const md = navigator.mediaDevices as any;
+  const isWired = md.getUserMedia.__wired === true;
+  const dump = camDump();
+  
+  console.group('[CAM][TEST]');
+  console.log('Guardian wired:', isWired);
+  console.log('Current state:', dump);
+  console.groupEnd();
+  
+  return {
+    wired: isWired,
+    ...dump
+  };
+}
 
 export function installCameraGuardianWire() {
   if (typeof window === 'undefined') return;
@@ -25,6 +60,11 @@ export function installCameraGuardianWire() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') camHardStop('visibilitychange');
   });
+
+  // Dev helpers (always available but logged conditionally)
+  (window as any).__camDump = camDump;
+  (window as any).__testCameraGuardian = testCameraGuardian;
+  (window as any).__camHardStop = camHardStop;
 
   if (process.env.NODE_ENV !== 'production') {
     console.log('[CAM][WIRE] Guardian wire installed - all getUserMedia calls are now tracked');

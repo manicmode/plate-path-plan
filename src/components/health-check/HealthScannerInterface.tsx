@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon } from 'lucide-react';
+import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon, SwitchCamera, ZapOff, Check } from 'lucide-react';
+import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { prepareImageForAnalysis, prepareImageForAnalysisLegacy } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +20,6 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
@@ -117,7 +117,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     // release BEFORE any navigation/unmount
     if (videoRef.current) {
       try { 
-        videoRef.current.srcObject = null; 
+        videoRef.current.srcObject = null;
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
       } catch {}
     }
     
@@ -130,7 +132,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     setStream(null);
   }, [updateStreamRef]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
     mark('[HS] component_mount');
     logPerfOpen('HealthScannerInterface');
@@ -138,6 +140,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      camHardStop('unmount');
       releaseNow();
       logPerfClose('HealthScannerInterface', startTimeRef.current);
       checkForLeaks('HealthScannerInterface');
