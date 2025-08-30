@@ -16,36 +16,72 @@ export interface NutritionPer100g {
 export interface PortionInfo {
   grams: number;
   isEstimated: boolean;
-  source: string;
+  source: 'product' | 'ocr' | 'ocr_declared' | 'ocr_inferred_ratio' | 'db_declared' | 'model_estimate' | 'user_set' | 'estimated';
+  confidence?: number; // 0-2, higher = more reliable
+  display?: string; // Human-readable display like "1 cup", "2 tbsp"
 }
 
 /**
- * Parse portion grams from various sources
- * Returns portion size in grams, with estimation flag
+ * Enhanced portion parsing with multiple detection methods
+ * Precedence: user_set → ocr_declared → db_declared → ocr_inferred_ratio → model_estimate → fallback_default
  */
 export function parsePortionGrams(
   productData?: any,
   ocrText?: string,
+  userPreference?: { grams: number; display?: string },
   defaultGrams = 30
 ): PortionInfo {
-  // Try product data first
+  // 1. User override has highest precedence
+  if (userPreference?.grams && userPreference.grams > 0) {
+    return { 
+      grams: userPreference.grams, 
+      isEstimated: false, 
+      source: 'user_set',
+      confidence: 2,
+      display: userPreference.display
+    };
+  }
+
+  // 2. Try OCR declared serving size
+  if (ocrText) {
+    const ocrDeclared = extractDeclaredPortionFromOCR(ocrText);
+    if (ocrDeclared.grams > 0) {
+      return ocrDeclared;
+    }
+  }
+
+  // 3. Try product data/database
   if (productData?.serving_size) {
     const grams = parseServingSize(productData.serving_size);
     if (grams > 0) {
-      return { grams, isEstimated: false, source: 'product' };
+      return { 
+        grams, 
+        isEstimated: false, 
+        source: 'db_declared',
+        confidence: 2
+      };
     }
   }
 
-  // Try OCR text
-  if (ocrText) {
-    const grams = extractPortionFromOCR(ocrText);
-    if (grams > 0) {
-      return { grams, isEstimated: false, source: 'ocr' };
-    }
+  // 4. Try to infer from nutrition ratio (per100g vs perServing)
+  const inferred = inferPortionFromNutritionRatio(productData);
+  if (inferred.grams > 0) {
+    return inferred;
   }
 
-  // Default estimation
-  return { grams: defaultGrams, isEstimated: true, source: 'estimated' };
+  // 5. Model estimate based on food category
+  const modelEstimate = estimatePortionFromCategory(productData?.productName || productData?.itemName || '');
+  if (modelEstimate.grams > 0) {
+    return modelEstimate;
+  }
+
+  // 6. Default fallback
+  return { 
+    grams: defaultGrams, 
+    isEstimated: true, 
+    source: 'estimated',
+    confidence: 0
+  };
 }
 
 /**
@@ -95,9 +131,9 @@ function parseServingSize(servingStr: string): number {
 }
 
 /**
- * Extract portion size from OCR text
+ * Extract declared portion size from OCR text
  */
-function extractPortionFromOCR(ocrText: string): number {
+function extractDeclaredPortionFromOCR(ocrText: string): PortionInfo {
   const lines = ocrText.split('\n');
   
   for (const line of lines) {
@@ -106,17 +142,138 @@ function extractPortionFromOCR(ocrText: string): number {
     // Look for serving size declarations
     if (lower.includes('serving size') || lower.includes('portion size')) {
       const grams = parseServingSize(line);
-      if (grams > 0) return grams;
+      if (grams > 0) {
+        return { 
+          grams, 
+          isEstimated: false, 
+          source: 'ocr_declared',
+          confidence: 1
+        };
+      }
     }
     
     // Look for "per X" statements
     const perMatch = lower.match(/per\s+(\d+(?:\.\d+)?)\s*g/);
     if (perMatch) {
-      return parseFloat(perMatch[1]);
+      return { 
+        grams: parseFloat(perMatch[1]), 
+        isEstimated: false, 
+        source: 'ocr_declared',
+        confidence: 1
+      };
     }
   }
   
-  return 0;
+  return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
+}
+
+/**
+ * Infer portion size from nutrition ratios (per100g vs perServing)
+ */
+function inferPortionFromNutritionRatio(productData?: any): PortionInfo {
+  if (!productData?.nutritionData) {
+    return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
+  }
+  
+  const per100g = productData.nutritionData;
+  const perServing = productData.perServingNutrition;
+  
+  if (!per100g || !perServing) {
+    return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
+  }
+  
+  // Use calories ratio as primary method
+  if (per100g.calories > 0 && perServing.calories > 0) {
+    const ratio = perServing.calories / per100g.calories;
+    const inferredGrams = Math.round(ratio * 100);
+    
+    // Sanity check: portion should be 5-250g
+    if (inferredGrams >= 5 && inferredGrams <= 250) {
+      return { 
+        grams: Math.round(inferredGrams / 5) * 5, // Round to nearest 5g
+        isEstimated: false, 
+        source: 'ocr_inferred_ratio',
+        confidence: 1
+      };
+    }
+  }
+  
+  // Fallback to protein/carbs/fat median if calories unavailable
+  const ratios: number[] = [];
+  
+  if (per100g.protein > 0 && perServing.protein > 0) {
+    ratios.push(perServing.protein / per100g.protein);
+  }
+  if (per100g.carbs > 0 && perServing.carbs > 0) {
+    ratios.push(perServing.carbs / per100g.carbs);
+  }
+  if (per100g.fat > 0 && perServing.fat > 0) {
+    ratios.push(perServing.fat / per100g.fat);
+  }
+  
+  if (ratios.length > 0) {
+    ratios.sort((a, b) => a - b);
+    const medianRatio = ratios[Math.floor(ratios.length / 2)];
+    const inferredGrams = Math.round(medianRatio * 100);
+    
+    if (inferredGrams >= 5 && inferredGrams <= 250) {
+      return { 
+        grams: Math.round(inferredGrams / 5) * 5,
+        isEstimated: false, 
+        source: 'ocr_inferred_ratio',
+        confidence: 1
+      };
+    }
+  }
+  
+  return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
+}
+
+/**
+ * Estimate portion based on food category
+ */
+function estimatePortionFromCategory(productName: string): PortionInfo {
+  if (!productName) {
+    return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
+  }
+  
+  const name = productName.toLowerCase();
+  
+  // Category-based estimates
+  const categoryMap = {
+    // Beverages
+    'juice|drink|soda|water|milk|tea|coffee': 240,
+    // Cereals
+    'cereal|flakes|granola|muesli|oats': 30,
+    // Yogurt/Dairy
+    'yogurt|yoghurt': 150,
+    // Snacks
+    'chips|crackers|cookies|bar': 25,
+    // Spreads
+    'butter|jam|peanut butter|nutella': 15,
+    // Fruits
+    'apple|banana|orange|fruit': 150,
+    // Nuts
+    'nuts|almonds|walnuts': 30,
+    // Rice/Grains
+    'rice|quinoa|pasta': 100,
+    // Vegetables
+    'vegetables|salad': 80
+  };
+  
+  for (const [pattern, grams] of Object.entries(categoryMap)) {
+    const regex = new RegExp(pattern, 'i');
+    if (regex.test(name)) {
+      return { 
+        grams, 
+        isEstimated: true, 
+        source: 'model_estimate',
+        confidence: 0
+      };
+    }
+  }
+  
+  return { grams: 0, isEstimated: true, source: 'estimated', confidence: 0 };
 }
 
 /**

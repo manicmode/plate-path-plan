@@ -3,7 +3,7 @@
  * Replaces the existing HealthReportPopup with new features
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,8 @@ import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
-import { parsePortionGrams } from '@/lib/nutrition/portionCalculator';
+import { parsePortionGrams, type PortionInfo } from '@/lib/nutrition/portionCalculator';
+import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 
@@ -70,7 +71,7 @@ const SaveCTA: React.FC<{
       // Create enhanced report snapshot with portion info
       const reportSnapshot = {
         ...result,
-        portionGrams,
+        portionGrams: portionGrams || 30,
         portionMode: portionGrams ? 'custom' : 'per100g',
         ocrHash,
         savedAt: new Date().toISOString()
@@ -259,15 +260,46 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   const ingredientsText = result?.ingredientsText || '';
   const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
-  // Parse portion information with safety
-  const portionInfo = useMemo(() => {
+  // Parse portion information with safety and user preferences
+  const portionInfo = useMemo(async () => {
     try {
-      return parsePortionGrams(result, analysisData?.imageUrl);
+      // Try to get user preference first
+      const userPref = await getUserPortionPreference(result);
+      return parsePortionGrams(
+        result, 
+        analysisData?.imageUrl,
+        userPref ? { grams: userPref.portionGrams, display: userPref.portionDisplay } : undefined
+      );
     } catch (error) {
       console.warn('Failed to parse portion grams:', error);
-      return { grams: 30, isEstimated: true, source: 'fallback' };
+      return { grams: 30, isEstimated: true, source: 'estimated' as const, confidence: 0 };
     }
   }, [result, analysisData?.imageUrl]);
+
+  // Since we need async, use state for portion info
+  const [resolvedPortionInfo, setResolvedPortionInfo] = useState<PortionInfo>({ 
+    grams: 30, 
+    isEstimated: true, 
+    source: 'estimated' as const,
+    confidence: 0 
+  });
+
+  useEffect(() => {
+    const resolvePortionInfo = async () => {
+      const resolved = await portionInfo;
+      setResolvedPortionInfo(resolved);
+      
+      // Log telemetry
+      console.info('[REPORT][V2][PORTION]', { 
+        grams: resolved.grams, 
+        source: resolved.source, 
+        confidence: resolved.confidence,
+        from: 'enhanced_report'
+      });
+    };
+    
+    resolvePortionInfo();
+  }, [portionInfo]);
 
   // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {
@@ -414,7 +446,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <TabsContent value="suggestions" className="mt-6">
             <PersonalizedSuggestions
               result={result}
-              portionGrams={portionInfo.grams}
+              portionGrams={resolvedPortionInfo.grams}
               userProfile={{
                 // Mock user profile - replace with real user data
                 goals: user ? ['balanced_nutrition'] : [],
@@ -451,7 +483,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <SaveCTA
             result={result}
             analysisData={analysisData}
-            portionGrams={portionInfo.grams}
+            portionGrams={resolvedPortionInfo.grams}
             ocrHash={ocrHash}
             onSaved={(logId) => {
               toast({
