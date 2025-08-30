@@ -225,7 +225,11 @@ export function ScanHubDebug() {
       {/* Debug Modals */}
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
-        onClose={() => setHealthCheckModalOpen(false)}
+        onClose={() => {
+          setHealthCheckModalOpen(false);
+          // Always navigate to health scan page when closing barcode scanner
+          navigate('/scan');
+        }}
       />
 
       <PhotoCaptureModal

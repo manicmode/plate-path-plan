@@ -251,7 +251,8 @@ const Explore = () => {
           isOpen={isHealthCheckOpen} 
           onClose={() => {
             setIsHealthCheckOpen(false);
-            // Stay on explore page - don't navigate back
+            // Always navigate to health scan page when closing barcode scanner
+            navigate('/scan');
           }} 
         />
       )}

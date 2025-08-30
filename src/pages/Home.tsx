@@ -1931,8 +1931,8 @@ const Home = () => {
         isOpen={isHealthCheckOpen} 
         onClose={() => {
           setIsHealthCheckOpen(false);
-          // Navigate back to previous page
-          navigate(-1);
+          // Always navigate to health scan page when closing barcode scanner
+          navigate('/scan');
         }} 
       />
       
