@@ -19,6 +19,8 @@ import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
+import { detectFlags } from '@/lib/health/flagger';
+import type { NutritionThresholds } from '@/lib/health/flagRules';
 
 
 interface FoodItem {
@@ -175,18 +177,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const getHealthFlags = (food: FoodItem) => {
-    const flags = [];
+    // Use the deterministic flagger system
+    const ingredientsText = (food as any).ingredientsText || food.ingredientsText || '';
+    const nutritionThresholds: NutritionThresholds = {
+      sodium_mg_100g: food.sodium,
+      sugar_g_100g: food.sugar,
+      satfat_g_100g: food.fat * 0.3, // Rough estimate - 30% of total fat as saturated
+      fiber_g_100g: food.fiber,
+      protein_g_100g: food.protein,
+    };
+
+    const flags = detectFlags(ingredientsText, nutritionThresholds);
     
-    if (food.fiber > 5) flags.push({ emoji: '🥦', label: 'High Fiber', positive: true });
-    if (food.sodium > 800) flags.push({ emoji: '🧂', label: 'High Sodium', positive: false });
-    if (food.sugar > 15) flags.push({ emoji: '🍯', label: 'High Sugar', positive: false });
-    if (food.protein > 20) flags.push({ emoji: '🥩', label: 'High Protein', positive: true });
+    console.debug('[FLAGS][INPUT]', {
+      hasIngredients: !!ingredientsText,
+      allergens: (food as any).allergens?.length || 0,
+      additives: (food as any).additives?.length || 0
+    });
     
-    // Mock some additional flags for demo
-    if (food.name.toLowerCase().includes('organic')) flags.push({ emoji: '🌱', label: 'Organic', positive: true });
-    if (food.name.toLowerCase().includes('processed')) flags.push({ emoji: '🥼', label: 'Processed', positive: false });
+    console.debug('[FLAGS][RESULT]', { count: flags?.length || 0 });
     
-    return flags;
+    return flags.map(flag => ({
+      emoji: flag.severity === 'good' ? '✅' : flag.severity === 'warning' ? '⚠️' : '🚫',
+      label: flag.label,
+      positive: flag.severity === 'good',
+      description: flag.description
+    }));
   };
 
   // Meal Quality Evaluation Functions
@@ -804,34 +820,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         </div>
                         
                         {/* Health Flags - Improved Layout */}
-                        <div className="space-y-2">
-                          {healthFlags.length > 0 ? (
-                            healthFlags.map((flag, index) => (
-                              <div 
-                                key={index}
-                                className={`flex items-center space-x-3 p-3 rounded-lg ${
-                                  flag.positive 
-                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
-                                    : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
-                                }`}
-                              >
-                                <span className="text-lg">{flag.emoji}</span>
-                                <span className={`text-sm font-medium ${
-                                  flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
-                                }`}>
-                                  {flag.label}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                              <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                                No specific health flags detected
-                              </span>
-                            </div>
-                          )}
-                        </div>
+        // 🧪 Ingredients section with collapsed view
+        {(currentFoodItem as any)?.ingredientsText && (
+          <div className="mt-4">
+            <details className="group bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900 dark:text-white list-none">
+                <div className="flex items-center justify-between">
+                  <span>View Ingredients</span>
+                  <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                </div>
+              </summary>
+              <div className="p-3 pt-0 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {(currentFoodItem as any).ingredientsText}
+                </p>
+              </div>
+            </details>
+          </div>
+        )}
                         
                         {/* Health Check Button for Barcode Items */}
                         {isFromBarcode && (

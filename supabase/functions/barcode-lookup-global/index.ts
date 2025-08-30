@@ -159,8 +159,11 @@ serve(async (req) => {
                 image: offProduct.image_front_url || offProduct.image_url,
                 source: 'open_food_facts',
                 region: 'International',
-                ingredients_text: offProduct.ingredients_text_en || offProduct.ingredients_text || '',
-                ingredients_available: !!(offProduct.ingredients_text_en || offProduct.ingredients_text)
+                ingredients_text: offProduct.ingredients_text_with_allergens || offProduct.ingredients_text_en || offProduct.ingredients_text || '',
+                ingredients_available: !!(offProduct.ingredients_text_with_allergens || offProduct.ingredients_text_en || offProduct.ingredients_text),
+                allergens_tags: offProduct.allergens_tags || [],
+                additives_tags: offProduct.additives_tags || [],
+                categories_tags: offProduct.categories_tags || []
               };
               console.log('Product found with variant:', variant, product.name);
               break; // Found a valid product, stop trying variants

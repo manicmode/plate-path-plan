@@ -61,6 +61,11 @@ interface RecognizedFood {
   image?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
+  // Additional data for flag detection
+  allergens?: string[];
+  additives?: string[];
+  categories?: string[];
+  _provider?: string;
   voiceContext?: {
     originalText: string;
     itemIndex: number;
@@ -874,6 +879,17 @@ const CameraPage = () => {
       console.log('=== BARCODE LOOKUP START ===');
       console.log('Barcode detected:', barcode);
 
+      // Fire-and-forget health ping for dev logging (ignore failures)
+      try {
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhanced-health-scanner`, {
+          method: 'POST', 
+          mode: 'cors', 
+          credentials: 'omit',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ping: true, source: 'log' })
+        }).catch(() => { /* ignore */ });
+      } catch { /* ignore */ }
+
       // CRITICAL: Complete state reset to prevent contamination
       setRecognizedFoods([]);
       setVisionResults(null);
@@ -1023,19 +1039,33 @@ console.log('Global search enabled:', enableGlobalSearch);
             sodium: mapped.sodium_mg || 0,
             confidence: 95,
             serving: mapped.servingGrams ? `Per serving (${mapped.servingGrams}g)` : 'Per 100g',
-            // Add ingredients data from product data
-            ingredientsText: p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined,
-            ingredientsAvailable: !!(p?.ingredients?.length > 0),
+            // Use mapped ingredients data (now properly extracted from OFF response)
+            ingredientsText: mapped.ingredientsText,
+            ingredientsAvailable: !!mapped.ingredientsText,
             // Store image data for modal
-            image: mapped.imageUrl || p?.imageUrl
+            image: mapped.imageUrl || p?.imageUrl,
+            // Pass through additional flag detection data
+            allergens: mapped.allergens,
+            additives: mapped.additives,
+            categories: mapped.categories,
+            _provider: mapped._provider
           };
+
+          // Add telemetry logging
+          console.debug('[SCAN][NORMALIZE]', { 
+            name: mapped.name, 
+            hasIngredients: !!mapped.ingredientsText,
+            allergens: mapped.allergens?.length || 0,
+            additives: mapped.additives?.length || 0
+          });
 
           // Add forensics logging
           console.log('[LOG] confirm_open', {
             name: mapped.name,
             barcode: cleanBarcode,
-            hasIngredients: p?.ingredients?.length > 0,
-            flags: p?.health?.flags?.map(f => f.id),
+            hasIngredients: !!mapped.ingredientsText,
+            allergens: mapped.allergens?.length || 0,
+            additives: mapped.additives?.length || 0,
             score: p?.health?.score
           });
 

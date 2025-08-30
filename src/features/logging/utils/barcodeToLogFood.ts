@@ -3,6 +3,10 @@ export type LogFood = {
   name: string;
   brand?: string;
   imageUrl?: string;
+  ingredientsText?: string;  // <-- NEW: ingredients for flag detection
+  allergens?: string[];      // <-- NEW: allergen tags from OFF
+  additives?: string[];      // <-- NEW: additive tags from OFF
+  categories?: string[];     // <-- NEW: category tags for additional context
   // grams per serving if we can parse it
   servingGrams?: number;
   // nutrition per serving, with fallback to per100g if needed
@@ -25,6 +29,12 @@ function fromOFF(p: any): Partial<LogFood> & { name: string } {
   const n = pr?.nutriments ?? {};
   const img = pr?.image_front_url || pr?.image_url || pr?.image_small_url;
 
+  // Extract ingredients and allergen/additive data
+  const ingredientsText = pr?.ingredients_text_with_allergens || pr?.ingredients_text_en || pr?.ingredients_text || undefined;
+  const allergens = Array.isArray(pr?.allergens_tags) ? pr.allergens_tags : [];
+  const additives = Array.isArray(pr?.additives_tags) ? pr.additives_tags : [];  
+  const categories = Array.isArray(pr?.categories_tags) ? pr.categories_tags : [];
+
   // serving grams "30 g", "2 tbsp (30g)", etc.
   let servingGrams: number | undefined;
   const ss = pr?.serving_size as string | undefined;
@@ -41,6 +51,10 @@ function fromOFF(p: any): Partial<LogFood> & { name: string } {
     name: pr?.product_name || pr?.generic_name || [pr?.brands, pr?.product_name].filter(Boolean).join(' - ') || 'Unknown Product',
     brand: pr?.brands,
     imageUrl: img,
+    ingredientsText,
+    allergens,
+    additives,
+    categories,
     servingGrams,
     calories: kcal,
     protein_g: num(n.proteins_serving) ?? num(n.proteins_100g),
@@ -68,6 +82,10 @@ export function mapToLogFood(barcode: string, payload: any): LogFood {
     barcode, 
     name, 
     imageUrl,
+    ingredientsText: payload?.ingredients || payload?.ingredientsText,
+    allergens: Array.isArray(payload?.allergens) ? payload.allergens : [],
+    additives: Array.isArray(payload?.additives) ? payload.additives : [],
+    categories: Array.isArray(payload?.categories) ? payload.categories : [],
     calories: num(n.calories) ?? num(n.kcal),
     protein_g: num(n.protein_g), 
     carbs_g: num(n.carbs_g),
