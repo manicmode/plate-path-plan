@@ -22,6 +22,7 @@ import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { logScoreNorm } from '@/lib/health/extractScore';
 import { isFeatureEnabled, isInRollout } from '@/lib/featureFlags';
 import { analyzeProductForQuality, nutriScoreTo10, type AnalyzerResult } from '@/shared/barcode-analyzer';
+import { useE2EPhotoCheck } from '@/hooks/useE2EPhotoCheck';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { logMealAsSet } from '@/utils/mealLogging';
 import { useScanRecents } from '@/hooks/useScanRecents';
@@ -2009,6 +2010,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               setAnalysisData={setAnalysisResult}
               setStep={(step) => setCurrentState(step as ModalState)}
             />
+          )}
+          
+          {/* Dev-only OCR status footer */}
+          {import.meta.env.DEV && (
+            <div style={{ 
+              position: 'absolute', 
+              bottom: 8, 
+              right: 8, 
+              fontSize: 10, 
+              color: '#666', 
+              background: 'rgba(0,0,0,0.1)', 
+              padding: '2px 6px', 
+              borderRadius: 4,
+              fontFamily: 'monospace'
+            }}>
+              last OCR: -ms · status: ready
+            </div>
           )}
         </div>
       </DialogContent>

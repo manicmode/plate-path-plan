@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { runPhotoPipeline } from '@/pipelines/photoPipeline';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
-import { getSupabaseAuthHeaders, getAuthHeaders } from '@/lib/net/authHeaders';
+import { getAuthHeaders } from '@/lib/net/authHeaders';
+import { toReportInputFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { analyzeProductForQuality } from '@/shared/barcode-analyzer';
+import { useToast } from '@/hooks/use-toast';
 
 interface PingStatus {
   status: 'loading' | 'ok' | 'fail';
@@ -9,12 +11,65 @@ interface PingStatus {
   lastPing?: Date;
 }
 
+interface OCRRun {
+  id: string;
+  timestamp: Date;
+  duration: number;
+  status: string;
+  score?: number;
+  flagsCount: number;
+  origin?: string;
+  hasAuth?: boolean;
+  textPreview?: string;
+}
+
+interface LogEntry {
+  timestamp: Date;
+  level: 'START' | 'HEADERS' | 'REQUEST' | 'RESPONSE' | 'REPORT' | 'END' | 'ERROR';
+  message: string;
+  data?: any;
+}
+
 export default function PhotoSandbox() {
-  const videoRef = useRef<HTMLVideoElement|null>(null);
-  const logRef   = useRef<HTMLDivElement|null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [ready, setReady] = useState(false);
   const [offline, setOffline] = useState(false);
   const [pingStatus, setPingStatus] = useState<PingStatus>({ status: 'loading' });
+  const [isRunningE2E, setIsRunningE2E] = useState(false);
+  const [ocrHistory, setOcrHistory] = useState<OCRRun[]>([]);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+  const [showLogPanel, setShowLogPanel] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<OCRRun | null>(null);
+  const { toast } = useToast();
+
+  // Redact sensitive data from headers/tokens
+  const redactToken = (token: string): string => {
+    if (token.startsWith('Bearer ')) {
+      return `Bearer ***${token.slice(-8)}`;
+    }
+    return `***${token.slice(-8)}`;
+  };
+
+  const addLogEntry = useCallback((level: LogEntry['level'], message: string, data?: any) => {
+    const entry: LogEntry = {
+      timestamp: new Date(),
+      level,
+      message,
+      data
+    };
+    
+    setLogEntries(prev => [...prev.slice(-199), entry]); // Keep last 200 entries
+    
+    // Console logging with groups
+    const groupTag = `[OCR][E2E][${level}]`;
+    console.group(groupTag);
+    console.log(message, data || '');
+    console.groupEnd();
+  }, []);
 
   const log = (msg: string, data?: any) => {
     const line = data ? `${msg} ${JSON.stringify(data)}` : msg;
@@ -29,9 +84,7 @@ export default function PhotoSandbox() {
 
   useEffect(() => {
     console.log('[ROUTE]', window.location.pathname);
-    // Ensure nothing overlays our controls
-    (document.getElementById('root') || document.body).style.pointerEvents = 'auto';
-
+    
     (async () => {
       // Auto-ping on mount
       await ping({ withAuth: true });
@@ -51,128 +104,323 @@ export default function PhotoSandbox() {
       }
     })();
 
-    // expose helpers for quick manual retries
-    (window as any).ps = {
-      ping, captureAndAnalyze, toggleOffline: () => setOffline(v => !v)
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [ocrResult, setOcrResult] = useState<{
-    ok: boolean;
-    summary: { words: number; text_joined: string };
-    duration_ms: number;
-    healthReport?: any;
-    source?: string;
-  } | null>(null);
-  const [lastOcrStatus, setLastOcrStatus] = useState<{
-    duration: number;
-    status: string;
-    hasHealthReport?: boolean;
-  } | null>(null);
-
-  async function captureAndAnalyze() {
-    const v = videoRef.current;
-    if (!v || v.readyState < 2 || v.videoWidth === 0) { log('[IMG READY] not ready'); return; }
-    const maxDim = 1280;
-    const scale = Math.min(1, maxDim / Math.max(v.videoWidth, v.videoHeight));
-    const w = Math.max(1, Math.round(v.videoWidth * scale));
-    const h = Math.max(1, Math.round(v.videoHeight * scale));
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const ctx = c.getContext('2d', { willReadFrequently: true })!; ctx.drawImage(v, 0, 0, w, h);
-    const blob: Blob|null = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.8));
-    if (!blob) { log('[IMG BLOB] null'); return; }
-    log('[IMG READY]', { w: v.videoWidth, h: v.videoHeight });
-    log('[IMG BLOB]', { sizeKB: Math.round(blob.size/1024), type: blob.type });
-
-    if (offline) {
-      log('[PHOTO][OFFLINE] simulating timeout/failure');
+  const runE2ETakePhotoCheck = async () => {
+    if (!ready || !videoRef.current) {
+      toast({ title: "Camera not ready", variant: "destructive" });
       return;
     }
 
-    try {
-      const { callOCRFunction } = await import('@/lib/ocrClient');
-      log('[OCR][START]', { blob: `${Math.round(blob.size/1024)}KB` });
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
-      const startTime = Date.now();
-      const result = await callOCRFunction(blob, { withAuth: true });
+    const runId = `e2e_${Date.now()}`;
+    const startTime = Date.now();
+    abortControllerRef.current = new AbortController();
+    
+    try {
+      setIsRunningE2E(true);
+      addLogEntry('START', `E2E Take Photo Check started`, { runId });
+
+      // 1. Capture video frame as JPEG (quality ~0.85)
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Cannot get canvas context');
+      
+      ctx.drawImage(video, 0, 0);
+      
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob'));
+        }, 'image/jpeg', 0.85);
+      });
+
+      addLogEntry('REQUEST', `Image captured`, { 
+        bytes: blob.size, 
+        mime: blob.type,
+        dimensions: `${canvas.width}x${canvas.height}`
+      });
+
+      // 2. Get auth headers and setup request
+      const headers = await getAuthHeaders(true);
+      const redactedHeaders = {
+        ...headers,
+        Authorization: headers.Authorization ? redactToken(headers.Authorization) : undefined,
+        apikey: headers.apikey ? redactToken(headers.apikey) : undefined
+      };
+      
+      addLogEntry('HEADERS', `Auth headers prepared`, redactedHeaders);
+
+      // 3. Setup timeout watchdog (12s)
+      timeoutRef.current = setTimeout(() => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          toast({ 
+            title: "OCR timed out", 
+            description: "Try again or use manual entry",
+            variant: "destructive" 
+          });
+        }
+      }, 12000);
+
+      // 4. POST to /vision-ocr
+      const functionsBase = resolveFunctionsBase();
+      const url = `${functionsBase}/vision-ocr`;
+      
+      const formData = new FormData();
+      formData.append('image', blob, 'e2e-photo.jpg');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: headers,
+        signal: abortControllerRef.current.signal
+      });
+      
       const duration = Date.now() - startTime;
       
-      log('[OCR][RESULT]', { 
-        status: 'success', 
-        ok: result.ok, 
-        words: result.summary?.words,
-        duration: `${duration}ms`
+      addLogEntry('RESPONSE', `OCR response received`, {
+        status: response.status,
+        ok: response.ok,
+        durationMs: duration,
+        contentType: response.headers.get('content-type')
       });
 
-      if (result.ok) {
-        setOcrResult(result);
-        setLastOcrStatus({
-          duration: duration,
-          status: 'SUCCESS',
-          hasHealthReport: !!(result as any).healthReport
-        });
-      } else {
-        setOcrResult(null);
-        setLastOcrStatus({
-          duration: duration,
-          status: result.error || 'FAILED',
-          hasHealthReport: false
-        });
+      // Handle HTTP errors
+      if (response.status === 429) {
+        toast({ title: "OCR busy", description: "Please wait a few seconds", variant: "destructive" });
+        throw new Error('Rate limit exceeded');
+      }
+      
+      if (response.status === 401 || response.status === 403) {
+        toast({ title: "Not signed in", description: "Refresh and try again", variant: "destructive" });
+        throw new Error('Unauthorized');
       }
 
-    } catch (e) {
-      log('[OCR][ERROR]', String(e));
-      setOcrResult(null);
-      setLastOcrStatus({
-        duration: 0,
-        status: 'ERROR',
-        hasHealthReport: false
-      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const ocrResult = await response.json();
       
-      // Show toast for user feedback
-      if (e instanceof Error) {
-        if (e.message.includes('rate_limit_exceeded')) {
-          log('[OCR][RATE_LIMIT] 6 requests per minute exceeded');
-        } else if (e.message.includes('unauthorized')) {
-          log('[OCR][AUTH] Authorization failed');
+      // 5. Process OCR text through health pipeline
+      let healthReport = null;
+      let score = null;
+      let flagsCount = 0;
+
+      if (ocrResult.ok && ocrResult.summary?.text_joined) {
+        try {
+          // Convert OCR text to health input using the adapter
+          const healthInput = toReportInputFromOCR(ocrResult.summary.text_joined);
+          
+          // Use the same analyzer as barcode path
+          healthReport = await analyzeProductForQuality(healthInput);
+          
+          if (healthReport) {
+            score = healthReport.quality?.score || null;
+            flagsCount = healthReport.flags?.length || 0;
+            
+            addLogEntry('REPORT', `Health report generated`, {
+              score,
+              flagsCount,
+              productName: healthInput.name,
+              hasNutrition: !!healthInput.nutrition,
+              hasIngredients: !!healthInput.ingredientsText
+            });
+          }
+        } catch (healthError: any) {
+          addLogEntry('ERROR', `Health analysis failed: ${healthError.message}`);
         }
       }
-    }
-  }
 
-  async function ping(options: { withAuth?: boolean } = { withAuth: true }) {
+      // 6. Record successful run
+      const newRun: OCRRun = {
+        id: runId,
+        timestamp: new Date(),
+        duration,
+        status: 'SUCCESS',
+        score,
+        flagsCount,
+        origin: pingStatus.data?.origin,
+        hasAuth: !!headers.Authorization,
+        textPreview: ocrResult.summary?.text_joined?.slice(0, 160)
+      };
+
+      setOcrHistory(prev => [newRun, ...prev.slice(0, 19)]); // Keep last 20
+      
+      addLogEntry('END', `E2E check completed successfully`, {
+        runId,
+        totalDurationMs: duration,
+        ocrWords: ocrResult.summary?.words,
+        healthScore: score,
+        flags: flagsCount
+      });
+
+      toast({ 
+        title: "E2E Check Complete", 
+        description: `OCR processed in ${duration}ms${score ? `, Health Score: ${score}/10` : ''}` 
+      });
+
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      
+      if (error.name === 'AbortError') {
+        addLogEntry('END', `E2E check aborted`, { runId, durationMs: duration });
+        return;
+      }
+
+      // Record failed run
+      const failedRun: OCRRun = {
+        id: runId,
+        timestamp: new Date(),
+        duration,
+        status: error.message || 'ERROR',
+        flagsCount: 0,
+        origin: pingStatus.data?.origin,
+        hasAuth: !!await getAuthHeaders(true).then(h => h.Authorization).catch(() => false)
+      };
+
+      setOcrHistory(prev => [failedRun, ...prev.slice(0, 19)]);
+      
+      addLogEntry('END', `E2E check failed`, {
+        runId,
+        error: error.message,
+        durationMs: duration
+      });
+
+    } finally {
+      setIsRunningE2E(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  };
+
+  const downloadLogBundle = async () => {
     try {
-      console.log('[FN][BASE]', resolveFunctionsBase());
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // 1. network.json
+      const networkData = {
+        method: 'POST',
+        url: '/vision-ocr',
+        lastRun: ocrHistory[0] ? {
+          status: ocrHistory[0].status,
+          durationMs: ocrHistory[0].duration,
+          timestamp: ocrHistory[0].timestamp.toISOString()
+        } : null
+      };
+      zip.file('network.json', JSON.stringify(networkData, null, 2));
+
+      // 2. ocr_response.json (simulated structure)
+      const ocrResponseData = {
+        ok: ocrHistory[0]?.status === 'SUCCESS',
+        ts: Date.now(),
+        duration_ms: ocrHistory[0]?.duration || 0,
+        meta: { bytes: 0, mime: 'image/jpeg' },
+        summary: {
+          text_joined: ocrHistory[0]?.textPreview?.slice(0, 300) || 'No text detected',
+          words: ocrHistory[0]?.textPreview?.split(' ').length || 0
+        },
+        blocks: [{ type: 'text', content: 'Redacted for privacy' }]
+      };
+      zip.file('ocr_response.json', JSON.stringify(ocrResponseData, null, 2));
+
+      // 3. report.json
+      const reportData = {
+        score: ocrHistory[0]?.score || null,
+        flags: Array.from({ length: ocrHistory[0]?.flagsCount || 0 }, (_, i) => ({
+          code: `flag_${i + 1}`,
+          label: 'Redacted flag',
+          severity: 'medium'
+        })),
+        source: 'OCR'
+      };
+      zip.file('report.json', JSON.stringify(reportData, null, 2));
+
+      // 4. client_env.json
+      const clientEnvData = {
+        originEchoed: pingStatus.data?.origin || 'unknown',
+        hasAuth: ocrHistory[0]?.hasAuth || false,
+        hasApiKey: !!pingStatus.data?.apikey,
+        timestamp: new Date().toISOString()
+      };
+      zip.file('client_env.json', JSON.stringify(clientEnvData, null, 2));
+
+      // Generate and download zip
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ocr-debug-bundle-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Bundle downloaded", description: "Debug bundle saved to downloads" });
+    } catch (error) {
+      console.error('Failed to create bundle:', error);
+      toast({ title: "Bundle failed", description: "Could not create debug bundle", variant: "destructive" });
+    }
+  };
+
+  const copyLogs = () => {
+    const logsText = logEntries.slice(-50).map(entry => 
+      `[${entry.timestamp.toLocaleTimeString()}] [OCR][E2E][${entry.level}] ${entry.message}`
+    ).join('\n');
+    
+    navigator.clipboard.writeText(logsText).then(() => {
+      toast({ title: "Logs copied", description: "Recent logs copied to clipboard" });
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Could not copy logs", variant: "destructive" });
+    });
+  };
+
+  const formatTime = (date: Date | undefined) => {
+    if (!date) return '-';
+    const diff = Date.now() - date.getTime();
+    if (diff < 1000) return 'just now';
+    if (diff < 60000) return `${Math.floor(diff/1000)}s ago`;
+    return `${Math.floor(diff/60000)}m ago`;
+  };
+
+  const ping = async (options: { withAuth?: boolean } = { withAuth: true }) => {
+    try {
       const base = resolveFunctionsBase();
       const url = `${base}/vision-ocr/ping`;
       log('[PING][START]', { url, withAuth: options.withAuth });
 
       const headers = await getAuthHeaders(options.withAuth ?? true);
-      console.log('[PING][HEADERS]', {
-        hasAuth: !!headers?.Authorization,
-        authPrefix: headers?.Authorization?.slice(0, 20),
-        hasApikey: !!headers?.apikey
-      });
-
-      console.log('[FETCH][START]', { url, method: 'GET', headers: Object.keys(headers) });
       
       const r = await fetch(url, { headers: { ...headers, 'Accept': 'application/json' } });
       
-      console.log('[FETCH][DONE]', { status: r.status, ok: r.ok });
-
       if (!r.ok) {
         const text = await r.text().catch(() => '');
         log('[PING][HTTP]', { status: r.status, ok: r.ok, text: text.slice(0, 120) });
         setPingStatus({ status: 'fail', data: { status: r.status, text } });
-        return;
-      }
-
-      const ct = r.headers.get('content-type') || '';
-      if (!ct.includes('application/json')) {
-        const txt = await r.text();
-        log('[PING][ERROR]', `Non-JSON response: ${r.status} ${txt.slice(0,120)}…`);
-        setPingStatus({ status: 'fail', data: { error: 'non_json' } });
         return;
       }
 
@@ -183,47 +431,12 @@ export default function PhotoSandbox() {
       log('[PING][ERROR]', String(e));
       setPingStatus({ status: 'fail', data: { error: String(e) } });
     }
-  }
-
-  async function runTestOCR() {
-    try {
-      log('[OCR][TEST][START]', { type: '1x1 PNG test' });
-
-      // 1x1 PNG transparent pixel
-      const dataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
-      
-      const { callOCRFunctionWithDataUrl } = await import('@/lib/ocrClient');
-      const result = await callOCRFunctionWithDataUrl(dataUrl, { withAuth: true });
-      
-      log('[OCR][TEST][RESULT]', { 
-        status: 'success',
-        ok: result.ok, 
-        words: result.summary?.words,
-        text: result.summary?.text_joined || 'no text found'
-      });
-
-      // Show friendly message for test case
-      if (result.ok && result.summary?.words === 0) {
-        log('[OCR][TEST][NOTE]', 'Test successful - no text found in 1x1 image (expected)');
-      }
-
-    } catch (e) {
-      log('[OCR][TEST][ERROR]', String(e));
-    }
-  }
-
-  const formatTime = (date: Date | undefined) => {
-    if (!date) return '-';
-    const diff = Date.now() - date.getTime();
-    if (diff < 1000) return 'just now';
-    if (diff < 60000) return `${Math.floor(diff/1000)}s ago`;
-    return `${Math.floor(diff/60000)}m ago`;
   };
 
   return (
     <div style={{ padding: 24, fontFamily: 'system-ui', pointerEvents: 'auto', position: 'relative', zIndex: 99999 }}>
       <div style={{ background: '#ffe08a', color: '#000', padding: 10, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <strong>DEV ONLY — Photo Pipeline Sandbox</strong>
+        <strong>DEV ONLY — E2E Photo Pipeline Testing</strong>
         <span style={{ 
           background: pingStatus.status === 'ok' ? '#4ade80' : pingStatus.status === 'fail' ? '#ef4444' : '#94a3b8',
           color: 'white',
@@ -236,6 +449,7 @@ export default function PhotoSandbox() {
         </span>
       </div>
 
+      {/* Ping Status Table */}
       {pingStatus.data && (
         <div style={{ marginBottom: 12, fontSize: 12, background: 'rgba(0,0,0,0.1)', padding: 8, borderRadius: 4 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -260,65 +474,138 @@ export default function PhotoSandbox() {
       <video ref={videoRef} autoPlay playsInline muted
         style={{ width: 320, height: 240, background: '#000', borderRadius: 8, display: 'block' }} />
 
-      {/* OCR Result Card */}
-      {ocrResult && (
-          <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,255,0,0.1)', borderRadius: 8, border: '1px solid rgba(0,255,0,0.2)' }}>
-            <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              📄 OCR Result
-              {ocrResult.source && (
-                <span style={{ background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
-                  {ocrResult.source}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: 12 }}>
-              <div><strong>Lines detected:</strong> {ocrResult.summary?.words || 0} words</div>
-              <div><strong>Summary:</strong> {ocrResult.summary?.text_joined?.slice(0, 120) || 'No text detected'}</div>
-              <div><strong>Duration:</strong> {ocrResult.duration_ms}ms</div>
-            </div>
-            {ocrResult.healthReport && (
-              <div style={{ marginTop: 8, padding: 8, background: 'rgba(59, 130, 246, 0.1)', borderRadius: 4, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>🧬 Health Analysis</div>
-                <div style={{ fontSize: 11 }}>
-                  <div><strong>Health Score:</strong> {ocrResult.healthReport.quality?.score || 'N/A'}/10</div>
-                  <div><strong>Flags:</strong> {ocrResult.healthReport.flags?.length || 0} warnings</div>
-                  <div style={{ color: '#059669', fontSize: 10, marginTop: 2 }}>Generated via OCR → Health Analysis</div>
-                </div>
-              </div>
-            )}
-          </div>
-      )}
-
-      {lastOcrStatus && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-          Last OCR: {lastOcrStatus.duration}ms · {lastOcrStatus.status}
-          {lastOcrStatus.hasHealthReport && (
-            <span style={{ marginLeft: 8, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
-              Health Report
-            </span>
-          )}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={captureAndAnalyze} disabled={!ready} style={{ padding: '8px 12px', cursor: ready ? 'pointer' : 'not-allowed' }}>
-          Capture & Analyze
-        </button>
-        <button type="button" onClick={() => ping({ withAuth: true })} style={{ padding: '8px 12px' }}>
-          Ping (Auth)
-        </button>
-        <button type="button" onClick={() => ping({ withAuth: false })} style={{ padding: '8px 12px' }}>
-          Ping (No Auth)
-        </button>
-        <button type="button" onClick={runTestOCR} style={{ padding: '8px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}>
-          Run Test OCR
-        </button>
-        <button type="button" onClick={() => { setOffline(v => !v); log('[OFFLINE_TEST]', { enabled: !offline }); }} style={{ padding: '8px 12px' }}>
-          {offline ? 'Offline Test: ON' : 'Offline Test'}
+      {/* Primary E2E Button */}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <button 
+          type="button" 
+          onClick={runE2ETakePhotoCheck}
+          disabled={!ready || isRunningE2E}
+          style={{ 
+            padding: '12px 24px', 
+            fontSize: 16,
+            fontWeight: 'bold',
+            background: isRunningE2E ? '#94a3b8' : '#059669',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            cursor: ready && !isRunningE2E ? 'pointer' : 'not-allowed',
+            minWidth: 200
+          }}
+        >
+          {isRunningE2E ? '🔄 Running E2E Check...' : '🧪 E2E Take Photo Check'}
         </button>
       </div>
 
-      <div ref={logRef} style={{ marginTop: 12, height: 200, overflow: 'auto', fontFamily: 'monospace',
+      {/* Control Buttons */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => ping({ withAuth: true })} style={{ padding: '6px 12px', fontSize: 12 }}>
+          Ping (Auth)
+        </button>
+        <button type="button" onClick={() => ping({ withAuth: false })} style={{ padding: '6px 12px', fontSize: 12 }}>
+          Ping (No Auth)
+        </button>
+        <button 
+          type="button" 
+          onClick={downloadLogBundle}
+          disabled={ocrHistory.length === 0}
+          style={{ padding: '6px 12px', fontSize: 12, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+        >
+          📦 Download Bundle
+        </button>
+        <button 
+          type="button" 
+          onClick={() => setShowLogPanel(!showLogPanel)}
+          style={{ padding: '6px 12px', fontSize: 12 }}
+        >
+          📋 {showLogPanel ? 'Hide' : 'Show'} Log Panel
+        </button>
+        <button type="button" onClick={copyLogs} style={{ padding: '6px 12px', fontSize: 12 }}>
+          📋 Copy Logs
+        </button>
+      </div>
+
+      {/* Log Panel */}
+      {showLogPanel && (
+        <div style={{ marginBottom: 12, border: '1px solid #ccc', borderRadius: 4 }}>
+          <div style={{ padding: 8, background: '#f5f5f5', borderBottom: '1px solid #ccc', fontSize: 12, fontWeight: 'bold' }}>
+            Recent Logs (last {logEntries.length})
+          </div>
+          <div style={{ height: 200, overflow: 'auto', padding: 8, fontFamily: 'monospace', fontSize: 11, background: '#fafafa' }}>
+            {logEntries.slice(-50).map((entry, i) => (
+              <div key={i} style={{ marginBottom: 2, color: entry.level === 'ERROR' ? '#dc2626' : '#374151' }}>
+                <span style={{ color: '#6b7280' }}>[{entry.timestamp.toLocaleTimeString()}]</span>
+                <span style={{ fontWeight: 'bold' }}> [OCR][E2E][{entry.level}]</span> {entry.message}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* History Table */}
+      {ocrHistory.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>📊 Run History (Last {ocrHistory.length})</h3>
+          <div style={{ border: '1px solid #ccc', borderRadius: 4, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Time</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Duration</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Status</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Score</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Flags</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ocrHistory.map((run, i) => (
+                  <tr 
+                    key={run.id} 
+                    onClick={() => setSelectedHistoryItem(selectedHistoryItem?.id === run.id ? null : run)}
+                    style={{ 
+                      cursor: 'pointer', 
+                      background: selectedHistoryItem?.id === run.id ? '#e0f2fe' : (i % 2 === 0 ? '#fff' : '#f9f9f9')
+                    }}
+                  >
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #eee' }}>
+                      {run.timestamp.toLocaleTimeString()}
+                    </td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #eee' }}>
+                      {run.duration}ms
+                    </td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #eee' }}>
+                      <span style={{ 
+                        color: run.status === 'SUCCESS' ? '#059669' : '#dc2626',
+                        fontWeight: 'bold'
+                      }}>
+                        {run.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #eee' }}>
+                      {run.score ? `${run.score}/10` : '-'}
+                    </td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #eee' }}>{run.flagsCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Selected History Item Details */}
+      {selectedHistoryItem && (
+        <div style={{ marginBottom: 12, padding: 12, background: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: 4 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8 }}>📋 Run Details</h4>
+          <div style={{ fontSize: 12 }}>
+            <div><strong>Origin:</strong> {selectedHistoryItem.origin || 'unknown'}</div>
+            <div><strong>Has Auth:</strong> {selectedHistoryItem.hasAuth ? 'true' : 'false'}</div>
+            <div><strong>Text Preview:</strong> {selectedHistoryItem.textPreview || 'No text detected'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Standard Log Output */}
+      <div ref={logRef} style={{ marginTop: 12, height: 150, overflow: 'auto', fontFamily: 'monospace',
         fontSize: 12, padding: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 8 }} />
     </div>
   );
