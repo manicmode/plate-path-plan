@@ -26,11 +26,150 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
-import { SaveTab } from './SaveTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
 import { parsePortionGrams } from '@/lib/nutrition/portionCalculator';
+import { supabase } from '@/integrations/supabase/client';
+import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
+// Save CTA Component with sticky positioning
+const SaveCTA: React.FC<{
+  result: HealthAnalysisResult;
+  analysisData?: { source?: string; barcode?: string; imageUrl?: string };
+  portionGrams?: number;
+  ocrHash?: string;
+  onSaved?: (logId: string) => void;
+}> = ({ result, analysisData, portionGrams, ocrHash, onSaved }) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedLogId, setSavedLogId] = useState<string | null>(null);
+
+  const handleSaveReport = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save health scan results.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isSaving || savedLogId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Log V2 CTA telemetry
+      console.info('[REPORT][V2][CTA_SAVE]', { 
+        source: analysisData?.source, 
+        score: result?.healthScore 
+      });
+
+      // Create enhanced report snapshot with portion info
+      const reportSnapshot = {
+        ...result,
+        portionGrams,
+        portionMode: portionGrams ? 'custom' : 'per100g',
+        ocrHash,
+        savedAt: new Date().toISOString()
+      };
+
+      // Map analysis data to nutrition log format
+      const scanData = {
+        ...result,
+        imageUrl: analysisData?.imageUrl,
+        barcode: analysisData?.barcode,
+      };
+
+      const source = analysisData?.source === 'barcode' ? 'barcode' : 
+                     analysisData?.source === 'manual' ? 'manual' : 'photo';
+
+      const sourceMeta = {
+        source,
+        barcode: analysisData?.barcode ?? null,
+        imageUrl: analysisData?.imageUrl ?? null,
+        productName: result.itemName ?? result.productName ?? null,
+        portionGrams: portionGrams ?? null,
+        ocrHash: ocrHash ?? null,
+      };
+
+      const payload = {
+        ...toNutritionLogRow(scanData, source),
+        report_snapshot: reportSnapshot,
+        snapshot_version: 'v2', // Enhanced with portion info
+        source_meta: sourceMeta,
+      };
+      
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .insert(payload as any)
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      const logId = data.id;
+      setSavedLogId(logId);
+      onSaved?.(logId);
+
+      toast({
+        title: "Saved Successfully! 💾",
+        description: `${result.itemName} has been saved to your nutrition logs.`,
+      });
+    } catch (error: any) {
+      console.error('❌ Save failed:', error);
+      toast({
+        title: "Save Failed",
+        description: error?.message ?? 'Unable to save health report. Please try again.',
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (savedLogId) {
+    return (
+      <div className="sticky bottom-[88px] md:bottom-6 z-20 px-4">
+        <div className="p-4 bg-primary/10 border border-primary/30 rounded-2xl text-center shadow-lg">
+          <div className="flex items-center justify-center space-x-2 text-primary font-semibold">
+            <CheckCircle className="w-5 h-5" />
+            <span>Report saved successfully!</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sticky bottom-[88px] md:bottom-6 z-20 px-4">
+      <Button
+        onClick={handleSaveReport}
+        disabled={isSaving || !user?.id}
+        className="w-full rounded-2xl py-4 font-semibold shadow-lg
+                   bg-teal-500 hover:bg-teal-400 active:bg-teal-600
+                   text-slate-900 transition-colors disabled:opacity-50"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Saving report...
+          </>
+        ) : (
+          <>
+            <Save className="w-5 h-5 mr-2" />
+            Save this report
+          </>
+        )}
+      </Button>
+      <p className="mt-2 text-center text-xs text-muted-foreground">
+        Saves score, flags & portion to your log
+      </p>
+    </div>
+  );
+};
 
 // Memoized Circular Progress Component with Animation
 const CircularProgress = React.memo<{ 
@@ -244,7 +383,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
         {/* 📊 2. TABBED CONTENT AREA */}
         <Tabs defaultValue="nutrition" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="flags">
               Flags
@@ -254,7 +393,6 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="save">Save</TabsTrigger>
             <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
           </TabsList>
           
@@ -275,20 +413,6 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             />
           </TabsContent>
           
-          <TabsContent value="save" className="mt-6">
-            <SaveTab
-              result={result}
-              analysisData={analysisData}
-              portionGrams={portionInfo.grams}
-              ocrHash={ocrHash}
-              onSaved={(logId) => {
-                toast({
-                  title: "Successfully Saved!",
-                  description: `Report saved with ID: ${logId.slice(0, 8)}...`,
-                });
-              }}
-            />
-          </TabsContent>
           
           <TabsContent value="suggestions" className="mt-6">
             <PersonalizedSuggestions
@@ -323,6 +447,20 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             </div>
           </CardContent>
         </Card>
+
+        {/* 💾 FULL-WIDTH SAVE CTA */}
+        <SaveCTA
+          result={result}
+          analysisData={analysisData}
+          portionGrams={portionInfo.grams}
+          ocrHash={ocrHash}
+          onSaved={(logId) => {
+            toast({
+              title: "Successfully Saved!",
+              description: `Report saved with ID: ${logId.slice(0, 8)}...`,
+            });
+          }}
+        />
 
         {/* 🎯 4. ACTION BUTTONS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">

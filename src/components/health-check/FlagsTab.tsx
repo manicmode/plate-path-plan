@@ -305,23 +305,23 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="flex items-center justify-end space-x-2 mt-3 pt-3 border-t border-border/30">
+                    <div className="mt-4 flex flex-wrap justify-center gap-3 md:justify-start">
                       <Button
                         onClick={() => setFeedbackModal({ isOpen: true, flag })}
                         size="sm"
-                        variant="outline"
-                        className="text-xs"
+                        variant="secondary"
+                        className="min-w-[150px]"
                       >
-                        <Flag className="w-3 h-3 mr-1" />
+                        <Flag className="w-4 h-4 mr-2" />
                         Looks wrong
                       </Button>
                       <Button
                         onClick={() => handleHideFlag(flag.key)}
                         size="sm"
                         variant="outline"
-                        className="text-xs"
+                        className="min-w-[150px]"
                       >
-                        <EyeOff className="w-3 h-3 mr-1" />
+                        <EyeOff className="w-4 h-4 mr-2" />
                         Hide this flag
                       </Button>
                     </div>
