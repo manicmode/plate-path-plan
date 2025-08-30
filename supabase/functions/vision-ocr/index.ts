@@ -2,30 +2,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWLIST = [
+const ALLOWLIST: (string | RegExp)[] = [
   "http://localhost:5173",
   "http://localhost:5174",
-  /\.?lovable\.dev$/,
-  /\.?sandbox\.lovable\.dev$/,
-  // Optionally add production domains from env:
+  /\.lovable\.dev$/i,        // previews/sandboxes
+  /\.sandbox\.lovable\.dev$/i,
+  /\.lovable\.app$/i,        // ✅ production domains
   Deno.env.get("APP_WEB_ORIGIN") || "",
   Deno.env.get("APP_APP_ORIGIN") || "",
+  // Bonus: comma-separated allowed origins from env
+  ...(Deno.env.get("APP_ALLOWED_ORIGINS")?.split(",").map(s => s.trim()).filter(Boolean) || [])
 ].filter(Boolean);
 
 function isAllowed(origin: string) {
   try {
     const u = new URL(origin);
-    const host = u.host;
-    return ALLOWLIST.some((entry) =>
-      typeof entry === "string"
-        ? origin === entry
-        : entry instanceof RegExp
-          ? entry.test(host)
-          : false
+    const full = u.origin;   // e.g. https://plate-path-plan.lovable.app
+    const host = u.host;     // e.g. plate-path-plan.lovable.app
+    return ALLOWLIST.some((e) =>
+      typeof e === "string" ? (full === e || host === e.replace(/^https?:\/\//, "")) :
+      e instanceof RegExp ? (e.test(full) || e.test(host)) : false
     );
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 function corsHeaders(origin: string | null) {
