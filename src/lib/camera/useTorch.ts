@@ -6,18 +6,16 @@ type TorchSupport = 'unknown' | 'yes' | 'no';
 // Telemetry helper - throttle identical messages per 2s
 const telemetryThrottle = new Map<string, number>();
 function trace(event: string, data?: any) {
-  if (!(window as any).__trace) {
-    (window as any).__trace = (event: string, data?: any) => {
-      const key = event + JSON.stringify(data || {});
-      const now = Date.now();
-      const last = telemetryThrottle.get(key) || 0;
-      if (now - last > 2000) { // 2s throttle
-        telemetryThrottle.set(key, now);
-        console.log(event, data || '');
-      }
-    };
+  // Use the new trace guard system
+  if (typeof window !== 'undefined' && window.__trace_disable) return;
+  
+  const key = event + JSON.stringify(data || {});
+  const now = Date.now();
+  const last = telemetryThrottle.get(key) || 0;
+  if (now - last > 2000) { // 2s throttle
+    telemetryThrottle.set(key, now);
+    console.log(`[${event}]`, data || '');
   }
-  (window as any).__trace(event, data);
 }
 
 export function useTorch(getActiveVideoTrack: () => MediaStreamTrack | null) {
@@ -39,13 +37,13 @@ export function useTorch(getActiveVideoTrack: () => MediaStreamTrack | null) {
       const has = !!(caps as any).torch;
       const settings = track.getSettings?.() || {};
       setSupport(has ? 'yes' : 'no');
-      trace('[CAM][TORCH][PROBE]', { 
+      trace('CAM:TORCH:PROBE', { 
         has, 
         facingMode: settings.facingMode,
         trackId: track.id?.substring(0, 8) + '...' // No PII
       });
     } catch (error) {
-      trace('[CAM][TORCH][PROBE]', { 
+      trace('CAM:TORCH:PROBE:ERROR', { 
         has: false, 
         error: String(error).substring(0, 50) 
       });
@@ -69,24 +67,28 @@ export function useTorch(getActiveVideoTrack: () => MediaStreamTrack | null) {
       await (track as any).applyConstraints?.({ advanced: [{ torch: on }] });
       if (ac.signal.aborted) return;
       setState(on ? 'on' : 'off');
-      trace('[CAM][TORCH][APPLIED]', { on });
+      trace('CAM:TORCH:APPLIED', { on });
     } catch (e) {
-      trace('[CAM][TORCH][ERROR]', { message: String(e).substring(0, 100) });
+      trace('CAM:TORCH:ERROR', { message: String(e).substring(0, 100) });
       // If it fails, mark as unsupported for this track to avoid UI spam
       setSupport('no');
       setState('off');
     }
   }, [getActiveVideoTrack, support]);
 
-  // Re-probe whenever the track identity changes
+  // Re-probe only when track identity changes (not on every render)
   useEffect(() => {
     const t = getActiveVideoTrack();
     if (t !== lastTrack.current) {
+      trace('CAM:TORCH:PROBE', { 
+        oldTrackId: lastTrack.current?.id?.substring(0, 8),
+        newTrackId: t?.id?.substring(0, 8)
+      });
       probe();
       // turn torch off when swapping cameras to avoid dangling torch
       setState('off');
     }
-  });
+  }, [probe]); // Only depend on probe function, not the track itself
 
   // Teardown
   useEffect(() => {

@@ -30,7 +30,7 @@ import { PersonalizedSuggestions } from './PersonalizedSuggestions';
 import { detectPortionSafe, scalePer100ForDisplay } from '@/lib/nutrition/portionDetectionSafe';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
-import { mark } from '@/lib/util/perf';
+import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -62,11 +62,10 @@ const SaveCTA: React.FC<{
     try {
       setIsSaving(true);
       
-      // Log V2 CTA telemetry
-      console.info('[REPORT][V2][CTA_SAVE]', { 
-        source: analysisData?.source, 
-        score: result?.healthScore 
-      });
+        console.info('[REPORT][V2][CTA_SAVE]', { 
+          source: analysisData?.source, 
+          score: result?.healthScore 
+        });
 
       // Create enhanced report snapshot with portion info
       const reportSnapshot = {
@@ -266,48 +265,50 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Feature gate diagnostics
   useEffect(() => {
-    console.info('[PORTION][CHECK] Feature gates:', {
+    trace('PORTION:CHECK:GATES', {
       portion_detection_enabled: (window as any).__flags?.portion_detection_enabled,
       portionOffQP: new URLSearchParams(window.location.search).has('portionOff'),
       emergencyKill: !!(window as any).__emergencyPortionsDisabled,
       location: window.location.search
     });
-    console.info('[PORTION][CHECK] using', detectPortionSafe?.name, 'from src/lib/nutrition/portionDetectionSafe.ts');
   }, []);
 
   // Hard wall: per-serving display computation (local memo only)
   const perServingDisplay = useMemo(() => {
     const grams = portion?.grams ?? 30;
     const per100Raw = result?.nutritionData || {};
-    console.info('[PORTION][DISPLAY] Computing per-serving:', { grams, hasNutrition: !!per100Raw });
+    trace('PORTION:DISPLAY:COMPUTE', { grams, hasNutrition: !!per100Raw });
     return scalePer100ForDisplay(per100Raw, grams);
   }, [portion?.grams, result?.nutritionData]);
+
+  // Generate stable fingerprint for effect dependency
+  const productFingerprint = useMemo(() => {
+    return (result as any)?.id || 
+           (result as any)?.barcode || 
+           result?.itemName || 
+           JSON.stringify(result?.nutritionData || {}).substring(0, 50);
+  }, [(result as any)?.id, (result as any)?.barcode, result?.itemName, result?.nutritionData]);
 
   // Async portion detection (no side effects, local state only)
   useEffect(() => {
     let alive = true;
     
-    const productFingerprint = result?.itemName || 'unknown';
-    const nutrientsFingerprint = JSON.stringify(result?.nutritionData || {}).substring(0, 50);
-    
-    mark('EnhancedHealthReport.portionEffect.start', { productFingerprint, nutrientsFingerprint });
-    console.info('[PORTION][EFFECT] start', { 
+    mark('EnhancedHealthReport.portionEffect.start', { productFingerprint });
+    trace('PORTION:EFFECT:START', { 
       productFingerprint, 
-      nutrientsFingerprint,
       hasResult: !!result,
-      hasAnalysisData: !!analysisData 
+      hasIngredientsText: !!ingredientsText
     });
     
     // Immediately show temporary fallback
     setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
-    console.info('[PORTION][EFFECT] set 30g temp');
     
     const runDetection = async () => {
       try {
         mark('EnhancedHealthReport.portionResolve.start');
-        console.info('[PORTION][EFFECT] calling resolvePortion with:', {
+        trace('PORTION:EFFECT:RESOLVING', {
           result: !!result,
-          ocrText: ingredientsText || 'none',
+          ocrText: ingredientsText ? 'present' : 'none',
           entry: 'enhanced_report'
         });
         
@@ -315,10 +316,10 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         const portionResult = await resolvePortion(result, ingredientsText);
         
         mark('EnhancedHealthReport.portionResolve.complete', { resolved: !!portionResult });
-        console.info('[PORTION][EFFECT] resolved', portionResult);
+        trace('PORTION:EFFECT:RESOLVED', portionResult);
         
         if (!alive) {
-          console.info('[PORTION][EFFECT] component unmounted, ignoring result');
+          trace('PORTION:EFFECT:CANCELLED', { reason: 'component_unmounted' });
           return; // Component unmounted
         }
         
@@ -329,13 +330,13 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           label: portionResult.label
         });
         
-        console.info('[PORTION][EFFECT] setPortion called with:', {
+        trace('PORTION:EFFECT:SET_STATE', {
           grams: portionResult.grams,
           source: portionResult.source,
           label: portionResult.label
         });
       } catch (error) {
-        console.warn('[REPORT][PORTION] Resolution failed, keeping fallback:', error);
+        logWarn('REPORT:PORTION:FAILED', { error: String(error) });
         // Keep the fallback portion
       }
     };
@@ -344,9 +345,9 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     
     return () => { 
       alive = false; 
-      console.info('[PORTION][EFFECT] cleanup, alive = false');
+      trace('PORTION:EFFECT:CLEANUP', { productFingerprint });
     };
-  }, [result, ingredientsText]);
+  }, [productFingerprint, ingredientsText]);
 
   // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {

@@ -1,5 +1,63 @@
 import { parseOCRServing, type OCRServingResult } from './parsers/ocrServing';
-import { mark } from '../util/perf';
+import { mark, trace } from '../util/log';
+
+// LRU Cache for portion resolution results
+interface CachedPortionResult {
+  result: PortionResult;
+  timestamp: number;
+}
+
+class PortionCache {
+  private cache = new Map<string, CachedPortionResult>();
+  private maxSize = 100;
+  private maxAge = 5 * 60 * 1000; // 5 minutes
+
+  private generateKey(productData: any, ocrText?: string): string {
+    const barcode = productData?.barcode || productData?.id;
+    const productName = productData?.name || productData?.productName || '';
+    const ocrHash = ocrText ? btoa(ocrText.slice(0, 100)).slice(0, 8) : '';
+    return `${barcode || productName.slice(0, 20)}_${ocrHash}`;
+  }
+
+  get(productData: any, ocrText?: string): PortionResult | null {
+    const key = this.generateKey(productData, ocrText);
+    const cached = this.cache.get(key);
+    
+    if (!cached) return null;
+    
+    // Check if expired
+    if (Date.now() - cached.timestamp > this.maxAge) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    trace('portionCache:hit', { key });
+    return cached.result;
+  }
+
+  set(productData: any, ocrText: string | undefined, result: PortionResult): void {
+    const key = this.generateKey(productData, ocrText);
+    
+    // LRU eviction
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, {
+      result,
+      timestamp: Date.now()
+    });
+    
+    trace('portionCache:set', { key, size: this.cache.size });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const portionCache = new PortionCache();
 
 export interface PortionCandidate {
   grams: number;
@@ -197,6 +255,13 @@ export async function resolvePortion(
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
   
+  // Check cache first
+  const cached = portionCache.get(productData, ocrText);
+  if (cached) {
+    mark('resolvePortion:cache_hit');
+    return cached;
+  }
+  
   const productName = productData?.name || productData?.productName || '';
   const candidates: PortionCandidate[] = [];
   
@@ -233,18 +298,7 @@ export async function resolvePortion(
   
   const winner = validCandidates[0];
   
-  // Log telemetry
-  console.log('[REPORT][V2][PORTION][RESOLVE]', {
-    productName,
-    selectedSource: winner.source,
-    selectedGrams: winner.grams,
-    candidateCount: validCandidates.length,
-    topScore: winner.score
-  });
-  
-  mark('resolvePortion:end');
-  
-  return {
+  const result: PortionResult = {
     grams: winner.grams,
     label: winner.label,
     source: winner.source,
@@ -257,4 +311,20 @@ export async function resolvePortion(
       details: c.details
     }))
   };
+  
+  // Cache the result
+  portionCache.set(productData, ocrText, result);
+  
+  // Log telemetry (throttled)
+  trace('REPORT:V2:PORTION:RESOLVE', {
+    productName,
+    selectedSource: winner.source,
+    selectedGrams: winner.grams,
+    candidateCount: validCandidates.length,
+    topScore: winner.score
+  });
+  
+  mark('resolvePortion:end');
+  
+  return result;
 }
