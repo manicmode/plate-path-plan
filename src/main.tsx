@@ -17,6 +17,7 @@ import { applySecurityHeaders } from "./lib/securityHeaders";
 import { logActiveCSP, validateSupabaseCSP } from "./lib/cspUtils";
 import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
+import "./scripts/shipV2Globally"; // Load V2 global rollout
 
 // Apply security headers on app initialization
 applySecurityHeaders();

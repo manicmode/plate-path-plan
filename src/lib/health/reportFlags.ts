@@ -10,9 +10,9 @@ interface ReportFlags {
 }
 
 const DEFAULT_FLAGS: ReportFlags = {
-  health_report_v2_enabled: false,
-  health_report_v2_routes: ['standalone'],
-  health_report_v2_rollout_percent: 0
+  health_report_v2_enabled: true,
+  health_report_v2_routes: ['standalone', 'manual', 'voice', 'barcode', 'photo'],
+  health_report_v2_rollout_percent: 100
 };
 
 // In-memory cache with TTL
@@ -195,6 +195,34 @@ export async function shouldUseV2Report(entry: string): Promise<{
  */
 export function clearFlagsCache(): void {
   flagsCache = null;
+}
+
+/**
+ * Clear any device overrides to use production rollout flags
+ */
+export function clearDeviceOverrides(): void {
+  try {
+    localStorage.removeItem('health_report_v2_override');
+    console.info('[REPORT][FLAGS] Device overrides cleared - using production rollout flags');
+  } catch (error) {
+    console.warn('[REPORT][FLAGS] Failed to clear device overrides:', error);
+  }
+}
+
+/**
+ * Ship V2 globally - convenience function to enable global V2 rollout
+ * Clears any local overrides to ensure production flags take effect
+ */
+export function shipV2Globally(): void {
+  console.info('[REPORT][FLAGS] 🚀 Shipping V2 globally');
+  
+  // Clear any device overrides first
+  clearDeviceOverrides();
+  
+  // Clear cache to force refresh
+  clearFlagsCache();
+  
+  console.info('[REPORT][FLAGS] ✅ V2 global rollout active - config: enabled=true, routes=all, rollout=100%');
 }
 
 /**
