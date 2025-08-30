@@ -39,6 +39,11 @@ interface FoodItem {
   ingredientsAvailable?: boolean;
   source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
+  // Additional data for flag detection from health report prefill
+  allergens?: string[];
+  additives?: string[];
+  categories?: string[];
+  _provider?: string;
 }
 
 interface FoodConfirmationCardProps {
@@ -819,26 +824,64 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                           </Badge>
                         </div>
                         
-                        {/* Health Flags - Improved Layout */}
-        // 🧪 Ingredients section with collapsed view
-        {(currentFoodItem as any)?.ingredientsText && (
-          <div className="mt-4">
-            <details className="group bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900 dark:text-white list-none">
-                <div className="flex items-center justify-between">
-                  <span>View Ingredients</span>
-                  <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-                </div>
-              </summary>
-              <div className="p-3 pt-0 border-t border-gray-200 dark:border-gray-600">
-                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {(currentFoodItem as any).ingredientsText}
-                </p>
-              </div>
-            </details>
-          </div>
-        )}
-                        
+                         {/* Health Flags - Improved Layout */}
+                         <div className="space-y-2">
+                           {healthFlags.length > 0 ? (
+                             healthFlags.map((flag, index) => (
+                               <div 
+                                 key={index}
+                                 className={`flex items-center space-x-3 p-3 rounded-lg ${
+                                   flag.positive 
+                                     ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                                     : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                                 }`}
+                               >
+                                 <span className="text-lg">{flag.emoji}</span>
+                                 <div className="flex-1">
+                                   <span className={`text-sm font-medium ${
+                                     flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
+                                   }`}>
+                                     {flag.label}
+                                   </span>
+                                   {flag.description && (
+                                     <p className={`text-xs mt-1 ${
+                                       flag.positive ? 'text-green-700 dark:text-green-300' : 'text-orange-700 dark:text-orange-300'
+                                     }`}>
+                                       {flag.description}
+                                     </p>
+                                   )}
+                                 </div>
+                               </div>
+                             ))
+                           ) : (
+                             <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                               <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                                 No specific health flags detected
+                               </span>
+                             </div>
+                           )}
+                          </div>
+                          
+                         {/* 🧪 Ingredients section with collapsed view */}
+                         {currentFoodItem?.ingredientsText && (
+                           <div className="mt-4">
+                             <details className="group bg-gray-50 dark:bg-gray-700 rounded-lg">
+                               <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900 dark:text-white list-none">
+                                 <div className="flex items-center justify-between">
+                                   <span>View Ingredients</span>
+                                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                                 </div>
+                               </summary>
+                               <div className="p-3 pt-0 border-t border-gray-200 dark:border-gray-600">
+                                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                   {currentFoodItem.ingredientsText}
+                                 </p>
+                               </div>
+                             </details>
+                           </div>
+                         )}
+                         
                         {/* Health Check Button for Barcode Items */}
                         {isFromBarcode && (
                           <div className="mt-4">

@@ -207,6 +207,56 @@ const CameraPage = () => {
     }
   }, [location.search, navigate]);
 
+  // Handle prefill data from Health Report
+  useEffect(() => {
+    const prefill = (location.state as any)?.logPrefill;
+    if (!prefill || prefill.source !== 'health-report') return;
+    
+    console.debug('[CAMERA][PREFILL]', {
+      itemName: prefill.item.itemName,
+      portionGrams: prefill.item.portionGrams,
+      hasIngredients: !!prefill.item.ingredientsText,
+      source: prefill.source
+    });
+    
+    // Map prefill data to RecognizedFood format
+    const prefillFood: RecognizedFood = {
+      name: prefill.item.itemName,
+      calories: prefill.item.nutrientsScaled.calories || 0,
+      protein: prefill.item.nutrientsScaled.protein_g || 0,
+      carbs: prefill.item.nutrientsScaled.carbs_g || 0,
+      fat: prefill.item.nutrientsScaled.fat_g || 0,
+      fiber: prefill.item.nutrientsScaled.fiber_g || 0,
+      sugar: prefill.item.nutrientsScaled.sugar_g || 0,
+      sodium: Math.round(prefill.item.nutrientsScaled.sodium_mg || 0),
+      confidence: 95,
+      serving: `${prefill.item.portionGrams}g`,
+      image: prefill.item.imageUrl,
+      ingredientsText: prefill.item.ingredientsText,
+      ingredientsAvailable: !!prefill.item.ingredientsText,
+      allergens: prefill.item.allergens,
+      additives: prefill.item.additives,
+      categories: prefill.item.categories,
+      _provider: 'health-report'
+    };
+    
+    // Open confirm modal with prefilled data
+    setRecognizedFoods([prefillFood]);
+    setShowConfirmation(true);
+    setInputSource('photo'); // Use photo source for UI display
+    
+    // Clear the router state so back/forward doesn't re-trigger
+    navigate('.', { replace: true, state: null });
+  }, [location.state, navigate]);
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('reset') === 'true') {
+      setActiveTab('main');
+      // Clean up the URL by removing the reset parameter
+      navigate('/camera', { replace: true });
+    }
+  }, [location.search, navigate]);
+
   // Auto-dismiss error when analysis succeeds
   useEffect(() => {
     if (recognizedFoods.length > 0 || reviewItems.length > 0) {

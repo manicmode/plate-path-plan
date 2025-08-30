@@ -19,11 +19,13 @@ import {
   ShieldCheck,
   Zap,
   X,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 import type { HealthAnalysisResult } from './HealthCheckModal';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
+import { useNavigate } from 'react-router-dom';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
@@ -31,6 +33,7 @@ import { detectPortionSafe, scalePer100ForDisplay } from '@/lib/nutrition/portio
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
+import { buildLogPrefill } from '@/lib/health/logPrefill';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -250,6 +253,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   initialIsSaved = false,
   hideCloseButton = false
 }) => {
+  const navigate = useNavigate();
   // PORTION INQUIRY - Route & Product Identification
   useEffect(() => {
     console.info('[PORTION][INQ3][ROUTE]', { route: window.location?.pathname, hash: window.location?.hash });
@@ -578,7 +582,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         </Card>
 
         {/* 🎯 4. ACTION BUTTONS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           {/* 💾 SAVE BUTTON */}
           <SaveCTA
             result={result}
@@ -592,6 +596,49 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               });
             }}
           />
+
+          {/* 🍽️ LOG THIS FOOD BUTTON */}
+          <Button
+            onClick={() => {
+              // Build prefill data from current report
+              const prefill = buildLogPrefill(
+                result.itemName || result.productName || 'Unknown Product',
+                undefined, // brand not available in HealthAnalysisResult
+                analysisData?.imageUrl,
+                result.ingredientsText,
+                result.healthProfile?.allergens,
+                result.healthProfile?.additives,
+                [], // categories - not available in HealthAnalysisResult
+                {
+                  calories: perServingDisplay.calories || nutritionData.calories || 0,
+                  fat_g: perServingDisplay.fat || nutritionData.fat || 0,
+                  sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
+                  carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
+                  sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
+                  fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
+                  protein_g: perServingDisplay.protein || nutritionData.protein || 0,
+                  sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
+                  factor: (portion?.grams ?? 30) / 100, // scaling factor
+                },
+                portion?.grams ?? 30
+              );
+              
+              // Navigate to camera page with prefill data
+              navigate('/camera', { state: { logPrefill: prefill } });
+              
+              console.debug('[HEALTH_REPORT][LOG_FOOD]', {
+                itemName: prefill.item.itemName,
+                portionGrams: prefill.item.portionGrams,
+                hasIngredients: !!prefill.item.ingredientsText
+              });
+            }}
+            variant="outline"
+            className="border-2 border-green-500/50 text-green-600 hover:bg-green-500/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            size="lg"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Log this food
+          </Button>
 
           <Button
             onClick={onScanAnother}
