@@ -9,6 +9,7 @@ import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
+import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -36,6 +37,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onCapture,
   onManualFallback
 }) => {
+  const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -46,9 +48,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   useEffect(() => {
     if (open) {
+      logPerfOpen('PhotoCaptureModal');
+      logOwnerAcquire('PhotoCaptureModal');
       startCamera();
     } else {
       cleanup();
+      logPerfClose('PhotoCaptureModal', startTimeRef.current);
+      checkForLeaks('PhotoCaptureModal');
     }
     
     return cleanup;
@@ -78,6 +84,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
         setStream(mediaStream);
+        
+        // Camera inquiry logging
+        const streamId = (mediaStream as any).__camInqId || 'unknown';
+        logOwnerAttach('PhotoCaptureModal', streamId);
         
         // Ensure torch state after track is ready
         setTimeout(() => {
@@ -109,8 +119,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
     torchOff(track);
 
+    const stoppedKinds: string[] = [];
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach(track => {
+        stoppedKinds.push(track.kind);
+        track.stop();
+      });
+    }
+    
+    // Camera inquiry logging
+    if (stoppedKinds.length > 0) {
+      logOwnerRelease('PhotoCaptureModal', stoppedKinds);
     }
     
     hardDetachVideo(videoRef.current);

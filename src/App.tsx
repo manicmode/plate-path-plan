@@ -11,6 +11,9 @@ import { APP_CONFIG } from '@/config/app';
 import { verifyHubRoutes } from '@/utils/hubRouteCheck';
 import { FF } from '@/featureFlags';
 
+// Import camera diagnostic shim (dev-only, off by default)
+import '@/diagnostics/cameraInq';
+
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));

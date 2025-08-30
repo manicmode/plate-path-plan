@@ -12,6 +12,7 @@ import { useTorch } from '@/lib/camera/useTorch';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
+import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -37,6 +38,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onBarcodeDetected,
   onManualEntry
 }) => {
+  const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -147,9 +149,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   useEffect(() => {
     if (open) {
+      logPerfOpen('LogBarcodeScannerModal');
+      logOwnerAcquire('LogBarcodeScannerModal');
       startCamera();
     } else {
       cleanup();
+      logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
+      checkForLeaks('LogBarcodeScannerModal');
     }
     
     // Enhanced cleanup on unmount when throttle enabled
@@ -221,6 +227,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         trackRef.current = track;
         setStream(mediaStream);
         
+        // Camera inquiry logging
+        const streamId = (mediaStream as any).__camInqId || 'unknown';
+        logOwnerAttach('LogBarcodeScannerModal', streamId);
+        
         // Update the stream reference for existing hook compatibility
         updateStreamRef(mediaStream);
         
@@ -251,11 +261,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     torchOff(track);
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
+    const stoppedKinds: string[] = [];
     if (s) {
       for (const t of s.getTracks()) {
+        stoppedKinds.push(t.kind);
         try { t.stop(); } catch {}
         try { s.removeTrack(t); } catch {}
       }
+    }
+
+    // Camera inquiry logging
+    if (stoppedKinds.length > 0) {
+      logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
     }
 
     hardDetachVideo(videoRef.current);

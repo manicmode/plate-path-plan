@@ -7,6 +7,7 @@ import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
+import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 
 // Removed debug logging - mediaLog function removed
 
@@ -41,6 +42,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   onBarcodeDetected,
   onClose
 }) => {
+  const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -229,10 +231,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   };
 
   useEffect(() => {
+    logPerfOpen('WebBarcodeScanner');
+    logOwnerAcquire('WebBarcodeScanner');
     startCamera();
     warmUpDecoder();
     return () => {
       cleanup();
+      logPerfClose('WebBarcodeScanner', startTimeRef.current);
+      checkForLeaks('WebBarcodeScanner');
     };
   }, []);
 
@@ -276,6 +282,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         videoRef.current.srcObject = mediaStream;
         videoRef.current.style.border = "2px solid red";
         console.log("[CAMERA] srcObject set, playing video");
+        
+        // Camera inquiry logging
+        const streamId = (mediaStream as any).__camInqId || 'unknown';
+        logOwnerAttach('WebBarcodeScanner', streamId);
+        
         setStream(mediaStream);
         setIsScanning(true);
         
@@ -305,11 +316,18 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     torchOff(track);
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
+    const stoppedKinds: string[] = [];
     if (s) {
       for (const t of s.getTracks()) {
+        stoppedKinds.push(t.kind);
         try { t.stop(); } catch {}
         try { s.removeTrack(t); } catch {}
       }
+    }
+
+    // Camera inquiry logging
+    if (stoppedKinds.length > 0) {
+      logOwnerRelease('WebBarcodeScanner', stoppedKinds);
     }
 
     hardDetachVideo(videoRef.current);

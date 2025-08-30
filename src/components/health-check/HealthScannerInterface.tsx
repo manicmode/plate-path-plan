@@ -18,6 +18,7 @@ import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
+import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -73,6 +74,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onAnalysisFail,
   onAnalysisSuccess
 }) => {
+  const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -106,9 +108,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   useEffect(() => {
     if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
     mark('[HS] component_mount');
+    logPerfOpen('HealthScannerInterface');
+    logOwnerAcquire('HealthScannerInterface');
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      logPerfClose('HealthScannerInterface', startTimeRef.current);
+      checkForLeaks('HealthScannerInterface');
     };
   }, []);
 
@@ -150,11 +156,18 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       // 2) Stop all tracks
       const stream = (videoRef.current?.srcObject as MediaStream) || undefined;
+      const stoppedKinds: string[] = [];
       if (stream) {
         for (const t of stream.getTracks()) {
+          stoppedKinds.push(t.kind);
           try { t.stop(); } catch {}
           try { stream.removeTrack(t); } catch {}
         }
+      }
+
+      // Camera inquiry logging
+      if (stoppedKinds.length > 0) {
+        logOwnerRelease('HealthScannerInterface', stoppedKinds);
       }
 
       // 3) Detach video & clear refs
@@ -258,6 +271,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       setStream(mediaStream);
         // Update stream reference
         updateStreamRef(mediaStream);
+
+        // Camera inquiry logging
+        const streamId = (mediaStream as any).__camInqId || 'unknown';
+        logOwnerAttach('HealthScannerInterface', streamId);
 
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
