@@ -267,12 +267,17 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   };
 
   useLayoutEffect(() => {
+    // Phase 1 instrumentation - behind ?camInq=1
+    const isInquiry = window.location.search.includes('camInq=1');
+    if (isInquiry) console.log('[SCAN][MOUNT]');
+    
     logPerfOpen('WebBarcodeScanner');
     logOwnerAcquire('WebBarcodeScanner');
     camOwnerMount(OWNER);
     startCamera();
     warmUpDecoder();
     return () => {
+      if (isInquiry) console.log('[SCAN][UNMOUNT]');
       console.log("[CAMERA] cleanup", { OWNER });
       camOwnerUnmount(OWNER);
       camHardStop('unmount');

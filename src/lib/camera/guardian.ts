@@ -71,8 +71,10 @@ export function camRegister(s: MediaStream, meta?: { ownerHint?: string; constra
 }
 
 export function camHardStop(reason: string) {
+  // Enhanced logging with owner count
+  const ownerCount = owners.size;
   if (process.env.NODE_ENV !== 'production') {
-    console.warn('[CAM][GUARD] HARD STOP', { reason, registrySize: registry.size, currentStream: !!current });
+    console.warn('[CAM][GUARD] HARD STOP', { reason, registrySize: registry.size, currentStream: !!current, owners: ownerCount });
   }
   
   // Stop registry streams (all getUserMedia calls)

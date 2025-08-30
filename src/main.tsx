@@ -19,6 +19,7 @@ import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 import "./scripts/shipV2Globally"; // Load V2 global rollout
 import "./utils/portionKillSwitch"; // Emergency kill switches
+import "./lib/camera/featureFlags"; // Initialize camera feature flags
 import "./lib/camera/cameraGuardian"; // Global camera cleanup
 import { installCameraGuardianWire } from "./lib/camera/guardianWire";
 import "./lib/camera/testGuardian"; // Test utilities

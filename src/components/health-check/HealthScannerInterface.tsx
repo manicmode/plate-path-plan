@@ -133,13 +133,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [updateStreamRef]);
 
   useLayoutEffect(() => {
-    if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
+    // Phase 1 instrumentation - behind ?camInq=1
+    const isInquiry = window.location.search.includes('camInq=1');
+    if (isInquiry) console.log('[HEALTH][MOUNT]', { effectiveMode });
+    if (DEBUG) console.log('[HEALTH][MOUNT]', { effectiveMode });
+    
     mark('[HS] component_mount');
     logPerfOpen('HealthScannerInterface');
     logOwnerAcquire('HealthScannerInterface');
     camOwnerMount(OWNER);
     return () => {
-      if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
+      if (isInquiry) console.log('[HEALTH][UNMOUNT]');
+      if (DEBUG) console.log('[HEALTH][UNMOUNT]');
+      
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       camOwnerUnmount(OWNER);
       camHardStop('unmount');

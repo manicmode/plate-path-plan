@@ -6,9 +6,15 @@ if (typeof window !== 'undefined') {
   let debounceTimer: any = null;
   
   const hardStop = (reason: string) => {
+    // Feature flag to disable legacy guardian
+    if ((window as any).__guardianLegacyOff !== false) {
+      console.log('[CAM][LEGACY] Guardian disabled by flag');
+      return;
+    }
+    
     // Enhanced logging for investigation
     const ownerCount = (window as any).__guardianOwnerCount || 0;
-    console.warn('[CAM][GUARD] HARD STOP', { 
+    console.warn('[CAM][GUARD][LEGACY] HARD STOP', { 
       reason, 
       owners: ownerCount, 
       currentStream: document.querySelectorAll('video[src]').length > 0 
