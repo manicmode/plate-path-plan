@@ -46,6 +46,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -159,10 +160,10 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           toast.info(`[LOG] off_fetch_start: ${result.raw}`);
         }
         onBarcodeDetected(result.raw);
-        cleanup();
+        releaseCamera();
         onClose();
         console.timeEnd('[LOG] analyze_total');
-        return; 
+        return;
       }
 
       // 2) Burst fallback (parallel capture and race)
@@ -181,10 +182,10 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
         console.log('[LOG] off_fetch_start', { code: winner.raw });
         onBarcodeDetected(winner.raw);
-        cleanup();
+        releaseCamera();
         onClose();
         console.timeEnd('[LOG] analyze_total');
-        return; 
+        return;
       }
 
       // 3) No barcode found
@@ -237,13 +238,15 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     startCamera();
     warmUpDecoder();
     return () => {
-      cleanup();
+      releaseCamera();
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
       checkForLeaks('WebBarcodeScanner');
     };
   }, []);
 
   const startCamera = async () => {
+    if (streamRef.current) return streamRef.current;
+    
     try {
       console.log("[VIDEO INIT] videoRef =", videoRef.current);
       if (!videoRef.current) {
@@ -278,6 +281,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
 
+      streamRef.current = mediaStream;
       console.log("[CAMERA] Stream received:", mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -290,13 +294,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         
         setStream(mediaStream);
         setIsScanning(true);
-        
-        // Update stream reference
-        setStream(mediaStream);
-        setIsScanning(true);
       } else {
         console.error("[CAMERA] videoRef.current is null");
       }
+      
+      return mediaStream;
     } catch (err: any) {
       console.warn('[SCANNER] Live video denied, using photo fallback', err?.name || err);
       try {
@@ -312,27 +314,28 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
   };
 
-  const cleanup = () => {
-    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+  const releaseCamera = () => {
+    const s = streamRef.current; 
+    streamRef.current = null;
+    if (!s) return;
+    
+    const track = s.getVideoTracks?.()?.[0];
     torchOff(track);
 
-    const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     const stoppedKinds: string[] = [];
-    if (s) {
-      for (const t of s.getTracks()) {
+    try { 
+      s.getTracks().forEach(t => { 
         stoppedKinds.push(t.kind);
-        try { t.stop(); } catch {}
-        try { s.removeTrack(t); } catch {}
-      }
-    }
+        try { t.stop(); } catch {} 
+      }); 
+    } catch {}
 
     // Camera inquiry logging
     if (stoppedKinds.length > 0) {
       logOwnerRelease('WebBarcodeScanner', stoppedKinds);
     }
 
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
+    try { if (videoRef.current) videoRef.current.srcObject = null; } catch {}
     hardDetachVideo(videoRef.current);
 
     if (scanningIntervalRef.current) {
@@ -340,19 +343,28 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
     
     setIsScanning(false);
+    setStream(null);
   };
 
   const handleClose = () => {
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
-    cleanup();
+    releaseCamera();
     onClose();
   };
 
-  // B) unmount guard
-  useEffect(() => () => {
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
+  // Unmount guard
+  useEffect(() => () => releaseCamera(), []);
+  
+  // Visibility & route guards
+  useEffect(() => {
+    const hardStop = () => releaseCamera();
+    window.addEventListener('pagehide', hardStop);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') hardStop();
+    });
+    return () => {
+      window.removeEventListener('pagehide', hardStop);
+      document.removeEventListener('visibilitychange', hardStop);
+    };
   }, []);
 
   if (error) {

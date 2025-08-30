@@ -41,6 +41,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,15 +54,33 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       logOwnerAcquire('PhotoCaptureModal');
       startCamera();
     } else {
-      cleanup();
+      releaseCamera();
       logPerfClose('PhotoCaptureModal', startTimeRef.current);
       checkForLeaks('PhotoCaptureModal');
     }
     
-    return cleanup;
+    return releaseCamera;
   }, [open]);
 
+  // Unmount guard
+  useEffect(() => () => releaseCamera(), []);
+  
+  // Visibility & route guards
+  useEffect(() => {
+    const hardStop = () => releaseCamera();
+    window.addEventListener('pagehide', hardStop);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') hardStop();
+    });
+    return () => {
+      window.removeEventListener('pagehide', hardStop);
+      document.removeEventListener('visibilitychange', hardStop);
+    };
+  }, []);
+
   const startCamera = async () => {
+    if (streamRef.current) return streamRef.current;
+    
     try {
       console.log("[PHOTO] Requesting camera stream...");
       const constraints = {
@@ -78,6 +97,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
 
+      streamRef.current = mediaStream;
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
@@ -97,6 +117,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         
         setError(null);
       }
+      
+      return mediaStream;
     } catch (err: any) {
       console.warn('[PHOTO] Live video denied, using native capture', err?.name || err);
       try {
@@ -116,25 +138,28 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-  const cleanup = () => {
-    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
+  const releaseCamera = () => {
+    const s = streamRef.current; 
+    streamRef.current = null;
+    if (!s) return;
+    
+    const track = s.getVideoTracks?.()?.[0];
     torchOff(track);
 
     const stoppedKinds: string[] = [];
-    if (stream) {
-      stream.getTracks().forEach(track => {
-        stoppedKinds.push(track.kind);
-        track.stop();
-      });
-    }
-    
+    try { 
+      s.getTracks().forEach(t => { 
+        stoppedKinds.push(t.kind);
+        try { t.stop(); } catch {} 
+      }); 
+    } catch {}
+
     // Camera inquiry logging
     if (stoppedKinds.length > 0) {
       logOwnerRelease('PhotoCaptureModal', stoppedKinds);
     }
-    
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
+
+    try { if (videoRef.current) videoRef.current.srcObject = null; } catch {}
     hardDetachVideo(videoRef.current);
     
     trackRef.current = null;
@@ -245,16 +270,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleExit = () => {
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
+    releaseCamera();
     onOpenChange(false);
   };
-
-  // B) unmount guard for PhotoCaptureModal
-  useEffect(() => () => {
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
-  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

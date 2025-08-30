@@ -80,6 +80,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [currentView, setCurrentView] = useState<'scanner' | 'manual' | 'notRecognized'>('scanner');
@@ -106,6 +107,35 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const THROTTLE_MS = PERF_BUDGET.scannerThrottleMs;
 
   // Scanner mount probe
+  const releaseCamera = () => {
+    const s = streamRef.current; 
+    streamRef.current = null;
+    if (!s) return;
+    
+    const track = s.getVideoTracks?.()?.[0];
+    torchOff(track);
+
+    const stoppedKinds: string[] = [];
+    try { 
+      s.getTracks().forEach(t => { 
+        stoppedKinds.push(t.kind);
+        try { t.stop(); } catch {} 
+      }); 
+    } catch {}
+
+    // Camera inquiry logging
+    if (stoppedKinds.length > 0) {
+      logOwnerRelease('HealthScannerInterface', stoppedKinds);
+    }
+
+    try { if (videoRef.current) videoRef.current.srcObject = null; } catch {}
+    hardDetachVideo(videoRef.current);
+    try { updateStreamRef?.(null); } catch {}
+    
+    trackRef.current = null;
+    setStream(null);
+  };
+
   useEffect(() => {
     if (DEBUG) console.log('[PHOTO][MOUNT]', { effectiveMode }); // Changed to differentiate from barcode
     mark('[HS] component_mount');
@@ -114,17 +144,26 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      stopStream(videoRef.current?.srcObject as MediaStream | null);
-      detachVideo(videoRef.current);
+      releaseCamera();
       logPerfClose('HealthScannerInterface', startTimeRef.current);
       checkForLeaks('HealthScannerInterface');
     };
   }, []);
 
-  // B) unmount guard for HealthScannerInterface
-  useEffect(() => () => {
-    stopStream(videoRef.current?.srcObject as MediaStream | null);
-    detachVideo(videoRef.current);
+  // Unmount guard
+  useEffect(() => () => releaseCamera(), []);
+  
+  // Visibility & route guards
+  useEffect(() => {
+    const hardStop = () => releaseCamera();
+    window.addEventListener('pagehide', hardStop);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') hardStop();
+    });
+    return () => {
+      window.removeEventListener('pagehide', hardStop);
+      document.removeEventListener('visibilitychange', hardStop);
+    };
   }, []);
 
   // Page visibility handling for performance
@@ -159,31 +198,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       warmUpDecoder();
     }
     return () => {
-      // 1) Torch off first
-      const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
-      torchOff(track);
-
-      // 2) Stop all tracks
-      const stream = (videoRef.current?.srcObject as MediaStream) || undefined;
-      const stoppedKinds: string[] = [];
-      if (stream) {
-        for (const t of stream.getTracks()) {
-          stoppedKinds.push(t.kind);
-          try { t.stop(); } catch {}
-          try { stream.removeTrack(t); } catch {}
-        }
-      }
-
-      // Camera inquiry logging
-      if (stoppedKinds.length > 0) {
-        logOwnerRelease('HealthScannerInterface', stoppedKinds);
-      }
-
-      // 3) Use new utilities and detach video & clear refs
-      stopStream(videoRef.current?.srcObject as MediaStream | null);
-      detachVideo(videoRef.current);
-      hardDetachVideo(videoRef.current);
-      try { updateStreamRef?.(null); } catch {}
+      releaseCamera();
     };
   }, [currentView]);
 
@@ -216,6 +231,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [currentView]);
 
   const startCamera = async () => {
+    if (streamRef.current) return streamRef.current;
+    
     // Guard photo capture in barcode-only mode
     if (effectiveMode === 'barcode') {
       console.log('[BARCODE] Skipping photo capture - barcode-only mode');
@@ -264,6 +281,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
 
+      streamRef.current = mediaStream;
       console.log("[VIDEO] Stream received:", mediaStream);
 
       const videoTrack = mediaStream.getVideoTracks()[0];
@@ -280,22 +298,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       trackRef.current = videoTrack;
       setStream(mediaStream);
-        // Update stream reference
-        updateStreamRef(mediaStream);
+      // Update stream reference
+      updateStreamRef(mediaStream);
 
-        // Camera inquiry logging
-        const streamId = (mediaStream as any).__camInqId || 'unknown';
-        logOwnerAttach('HealthScannerInterface', streamId);
+      // Camera inquiry logging
+      const streamId = (mediaStream as any).__camInqId || 'unknown';
+      logOwnerAttach('HealthScannerInterface', streamId);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          await videoRef.current.play();
-          
-          // Ensure torch state after track is ready
-          setTimeout(() => {
-            ensureTorchState();
-          }, 200);
-        }
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        await videoRef.current.play();
+        
+        // Ensure torch state after track is ready
+        setTimeout(() => {
+          ensureTorchState();
+        }, 200);
+      }
       
       // Log torch capabilities (debug only)
       const caps = videoTrack?.getCapabilities?.();
@@ -303,6 +321,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         console.log('[TORCH] caps', caps ? Object.keys(caps) : 'none');
         console.log('[TORCH] supported', !!(caps && 'torch' in caps));
       }
+      
+      return mediaStream;
     } catch (error: any) {
       console.warn('[PHOTO] Live video denied, using native capture', error?.name || error);
       try {

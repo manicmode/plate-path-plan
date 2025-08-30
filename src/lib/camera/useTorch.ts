@@ -84,16 +84,25 @@ export function useTorch(getActiveVideoTrack: () => MediaStreamTrack | null) {
         oldTrackId: lastTrack.current?.id?.substring(0, 8),
         newTrackId: t?.id?.substring(0, 8)
       });
+      
+      // Stop previous track if it exists during camera switch
+      if (lastTrack.current && lastTrack.current !== t) {
+        try { lastTrack.current.stop(); } catch {}
+      }
+      
       probe();
       // turn torch off when swapping cameras to avoid dangling torch
       setState('off');
     }
   }, [probe]); // Only depend on probe function, not the track itself
 
-  // Teardown
+  // Teardown - stop track on unmount
   useEffect(() => {
     return () => {
       pending.current?.abort();
+      if (lastTrack.current) {
+        try { lastTrack.current.stop(); } catch {}
+      }
     };
   }, []);
 
