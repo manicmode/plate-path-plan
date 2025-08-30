@@ -18,6 +18,8 @@ interface NutritionToggleProps {
   productData?: any;
   ocrText?: string;
   className?: string;
+  servingGrams?: number;
+  portionLabel?: string;
 }
 
 type NutritionMode = 'per100g' | 'portion';
@@ -26,7 +28,9 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
   nutrition100g,
   productData,
   ocrText,
-  className
+  className,
+  servingGrams,
+  portionLabel
 }) => {
   // Safe localStorage access with SSR guard
   const [mode, setMode] = useState<NutritionMode>('per100g');
@@ -49,6 +53,8 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
 
   // Load portion information safely
   useEffect(() => {
+    if (typeof servingGrams === 'number') return; // external override in effect
+    
     const loadPortionInfo = async () => {
       try {
         const portionResult = await detectPortionSafe(productData, ocrText, 'nutrition_toggle');
@@ -86,7 +92,7 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
     };
     
     loadPortionInfo();
-  }, [productData, ocrText]);
+  }, [productData, ocrText, servingGrams]);
 
   const handleModeChange = (newMode: NutritionMode) => {
     setMode(newMode);
@@ -102,7 +108,10 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
   };
 
   // Get safe portion info for render
-  const portionInfo: PortionInfo = getPortionInfoSync(currentPortionInfo);
+  const portionInfo: PortionInfo =
+    typeof servingGrams === 'number'
+      ? { grams: servingGrams, isEstimated: false, source: 'external', display: portionLabel ?? `${servingGrams}g` }
+      : getPortionInfoSync(currentPortionInfo);
 
   // Calculate portion nutrition safely
   const portionNutrition = useMemo(() => {

@@ -480,9 +480,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           
           <TabsContent value="nutrition" className="mt-6">
             <NutritionToggle
-              nutrition100g={perServingDisplay}
+              nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
+              servingGrams={portion?.grams ?? 30}
+              portionLabel={portion?.label ?? '30g · est.'}
             />
           </TabsContent>
           

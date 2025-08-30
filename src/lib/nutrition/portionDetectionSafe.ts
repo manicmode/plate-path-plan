@@ -63,15 +63,44 @@ function parseOCRPortion(ocrText: string, category?: string): { grams: number; s
   }
   
   const text = ocrText.toLowerCase();
-  console.info('[PORTION][OCR] Parsing text:', { originalLength: ocrText.length, text: text.substring(0, 100) });
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const nutrientBad = /(calories?|energy|sugars?|protein|total\s*fat|fat\b|fiber|sodium|carb(?:ohydrate)?s?|cholesterol)/i;
+  const dec = (s: string) => parseFloat(s.replace(',', '.'));
   
-  // Pattern 1: Direct grams - (\d+(\.\d+)?)\s*g
-  const gramsMatch = text.match(/(\d+(?:\.\d+)?)\s*g(?:\s|$|[^a-z])/);
-  if (gramsMatch) {
-    const grams = parseFloat(gramsMatch[1]);
-    console.info('[PORTION][OCR] Found grams pattern:', { match: gramsMatch[0], grams });
-    if (grams >= 5 && grams <= 250) {
-      return { grams, source: 'ocr' };
+  console.info('[PORTION][OCR] Parsing text:', { originalLength: ocrText.length, text: text.substring(0, 100) });
+
+  // 1) Strong serving-context patterns (preferred)
+  for (const line of lines) {
+    if (nutrientBad.test(line)) continue;
+    const m1 = line.match(/serving\s*size[^0-9]*?(\d+(?:[.,]\d+)?)\s*g/);
+    if (m1) { 
+      const g = dec(m1[1]); 
+      if (g >= 5 && g <= 250) {
+        console.log('[REPORT][V2][PORTION][OCR_MATCH]', { line, grams: g });
+        return { grams: g, source: 'ocr' }; 
+      }
+    }
+    const m2 = line.match(/(?:cup|tbsp|tablespoon|tsp|teaspoon|ml|fl\s*oz)[^()]{0,32}\((\d+(?:[.,]\d+)?)\s*g\)/);
+    if (m2) { 
+      const g = dec(m2[1]); 
+      if (g >= 5 && g <= 250) {
+        console.log('[REPORT][V2][PORTION][OCR_MATCH]', { line, grams: g });
+        return { grams: g, source: 'ocr' }; 
+      }
+    }
+  }
+
+  // 2) Plain "NN g" only if the line also mentions serving context
+  for (const line of lines) {
+    if (nutrientBad.test(line)) continue;
+    if (!/(serving\s*size|servings?\b|per\s*serving)/i.test(line)) continue;
+    const m = line.match(/(\d+(?:[.,]\d+)?)\s*g/);
+    if (m) { 
+      const g = dec(m[1]); 
+      if (g >= 5 && g <= 250) {
+        console.log('[REPORT][V2][PORTION][OCR_MATCH]', { line, grams: g });
+        return { grams: g, source: 'ocr' }; 
+      }
     }
   }
   
