@@ -2273,12 +2273,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               status={currentState}
               source={currentAnalysisData.source}
               onRetryCamera={() => {
-                console.log('[HC][NAV]', 'Navigating to barcode scan', { source: 'retry_camera' });
-                handleClose();
-                navigate('/scan');
+                console.log('[HC][NAV]', 'Retry camera - resetting to scanner state', { source: 'retry_camera' });
+                setCurrentState('scanner');
+                setAnalysisResult(null);
               }}
               onRetryPhoto={() => {
-                console.log('[HC][NAV]', 'Navigating to photo mode', { source: 'retry_photo' });
+                console.log('[HC][NAV]', 'Retry photo - navigating to photo mode', { source: 'retry_photo' });
                 handleClose();
                 navigate('/scan', { state: { openPhotoModal: true } });
               }}

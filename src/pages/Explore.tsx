@@ -251,8 +251,7 @@ const Explore = () => {
           isOpen={isHealthCheckOpen} 
           onClose={() => {
             setIsHealthCheckOpen(false);
-            // Navigate back to previous page
-            navigate(-1);
+            // Stay on explore page - don't navigate back
           }} 
         />
       )}
