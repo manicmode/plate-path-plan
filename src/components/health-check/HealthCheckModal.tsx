@@ -453,6 +453,19 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if (currentRunId.current !== runId) return; // stale
       
       console.info("[OCR][FALLBACK] Network/processing error");
+      
+      // Navigate to no-detection page for photo mode failures
+      if (analysisData?.source === 'photo') {
+        navigate('/scan/not-found', { 
+          state: { 
+            source: 'photo', 
+            tips: ['Fill the frame with the Ingredients panel', 'Avoid glare; keep the label flat', 'Try Manual or Voice entry'], 
+            retryMode: 'photo' 
+          }
+        });
+        return;
+      }
+      
       setCurrentState('no_detection');
     } finally {
       setIsProcessing(false);
@@ -462,8 +475,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Helper to choose v1/v2 pipeline or OCR-only mode
   const runPhotoAnalysis = async (imgB64: string, options?: { ocrOnly?: boolean }) => {
-    // OCR-only mode bypass all hybrid/barcode scanners
-    if (options?.ocrOnly) {
+    // OCR-only mode: only applies to photo mode from the photo capture modal
+    const isPhotoOcrOnly = options?.ocrOnly && analysisData?.source === 'photo';
+    if (isPhotoOcrOnly) {
       await runOcrPipeline(imgB64);
       return;
     }
@@ -502,10 +516,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     // ensure UI shows loading (not scanner)
     setCurrentState('loading');
 
-    // fire analysis
+    // fire analysis - OCR-only mode for photo source
     runPhotoAnalysis(img, { ocrOnly: true }).catch(err => {
       console.error('[HC][PHOTO][AUTO][ERROR]', err);
-      // fall back gracefully
+      
+      // Navigate to no-detection for photo failures
+      if (analysisData?.source === 'photo') {
+        navigate('/scan/not-found', { 
+          state: { 
+            source: 'photo', 
+            tips: ['Try closer photo', 'Use Manual/Voice'], 
+            retryMode: 'photo' 
+          }
+        });
+        return;
+      }
+      
+      // fall back gracefully for other sources
       setCurrentState('fallback');
     });
   }, [isOpen, analysisData?.source, (analysisData as any)?.imageBase64, analysisData?.captureTs]);
@@ -1012,8 +1039,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       return;
     }
 
-    // OCR-only mode bypass all hybrid/barcode scanners
-    if (options?.ocrOnly) {
+    // OCR-only mode: only applies to photo mode from the photo capture modal
+    const isPhotoOcrOnly = options?.ocrOnly && analysisData?.source === 'photo';
+    if (isPhotoOcrOnly) {
       const imageData = typeof payload === 'string' ? payload : payload.imageBase64;
       return runOcrPipeline(imageData);
     }
@@ -2135,7 +2163,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             FF.PIPELINE_ISOLATION && FF.BARCODE_ISOLATED ? (
               <PipelineRouter mode="barcode">
                 <BarcodeScannerShim 
-        onCapture={(blob) => handleImageCapture(blob, { ocrOnly: true })}
+                  onCapture={(blob) => handleImageCapture(blob)}
                   onManualEntry={() => setCurrentState('fallback')}
                   onManualSearch={handleManualEntry}
                   onCancel={handleClose}
@@ -2143,7 +2171,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               </PipelineRouter>
             ) : (
               <HealthScannerInterface 
-                onCapture={(blob) => handleImageCapture(blob, { ocrOnly: true })}
+                onCapture={(blob) => handleImageCapture(blob)}
                 onManualEntry={() => setCurrentState('fallback')}
                 onManualSearch={handleManualEntry}
                 onCancel={handleClose}
