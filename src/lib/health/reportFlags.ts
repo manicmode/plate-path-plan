@@ -7,12 +7,14 @@ interface ReportFlags {
   health_report_v2_enabled: boolean;
   health_report_v2_routes: string[];
   health_report_v2_rollout_percent: number;
+  portion_detection_enabled: boolean; // NEW: Kill switch for portion detection
 }
 
 const DEFAULT_FLAGS: ReportFlags = {
   health_report_v2_enabled: true,
   health_report_v2_routes: ['standalone', 'manual', 'voice', 'barcode', 'photo'],
-  health_report_v2_rollout_percent: 100
+  health_report_v2_rollout_percent: 100,
+  portion_detection_enabled: true // Default enabled, can be killed via flag
 };
 
 // In-memory cache with TTL
@@ -223,6 +225,70 @@ export function shipV2Globally(): void {
   clearFlagsCache();
   
   console.info('[REPORT][FLAGS] ✅ V2 global rollout active - config: enabled=true, routes=all, rollout=100%');
+}
+
+/**
+ * Check if portion detection is enabled
+ * Checks remote flag + URL override (?portionOff=1)
+ */
+export async function isPortionDetectionEnabled(): Promise<{
+  enabled: boolean;
+  reason: string;
+  urlOverride: boolean;
+}> {
+  // SSR safety guard
+  if (typeof window === 'undefined') {
+    return { enabled: false, reason: 'ssr_context', urlOverride: false };
+  }
+
+  try {
+    // Check URL parameter override first
+    const urlParams = new URLSearchParams(window.location.search);
+    const portionOff = urlParams.get('portionOff');
+    
+    if (portionOff === '1') {
+      return {
+        enabled: false,
+        reason: 'url_force_disabled',
+        urlOverride: true
+      };
+    }
+
+    // Check localStorage developer override
+    const localOverride = localStorage.getItem('portion_detection_enabled');
+    if (localOverride === 'false') {
+      return {
+        enabled: false,
+        reason: 'dev_override_disabled',
+        urlOverride: false
+      };
+    }
+
+    // Get remote flags
+    const flags = await getReportFlags();
+    
+    if (!flags.portion_detection_enabled) {
+      return {
+        enabled: false,
+        reason: 'remotely_disabled',
+        urlOverride: false
+      };
+    }
+
+    return {
+      enabled: true,
+      reason: 'enabled',
+      urlOverride: false
+    };
+  } catch (error) {
+    console.warn('[REPORT][V2][PORTION][ERROR]', { stage: 'flag_check', message: error.message });
+    // Fail safe - disable on error
+    return {
+      enabled: false,
+      reason: 'error_fallback',
+      urlOverride: false
+    };
+  }
 }
 
 /**

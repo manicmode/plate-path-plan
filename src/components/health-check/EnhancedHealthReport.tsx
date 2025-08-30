@@ -27,8 +27,8 @@ import { useAuth } from '@/contexts/auth';
 import { NutritionToggle } from './NutritionToggle';
 import { FlagsTab } from './FlagsTab';
 import { PersonalizedSuggestions } from './PersonalizedSuggestions';
-import { parsePortionGrams, type PortionInfo } from '@/lib/nutrition/portionCalculator';
-import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
+import { detectPortionSafe, getPortionInfoSync } from '@/lib/nutrition/portionDetectionSafe';
+import { type PortionInfo } from '@/lib/nutrition/portionCalculator';
 import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 
@@ -261,45 +261,31 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
   // Parse portion information with safety and user preferences
-  const portionInfo = useMemo(async () => {
-    try {
-      // Try to get user preference first
-      const userPref = await getUserPortionPreference(result);
-      return parsePortionGrams(
-        result, 
-        analysisData?.imageUrl,
-        userPref ? { grams: userPref.portionGrams, display: userPref.portionDisplay } : undefined
-      );
-    } catch (error) {
-      console.warn('Failed to parse portion grams:', error);
-      return { grams: 30, isEstimated: true, source: 'estimated' as const, confidence: 0 };
-    }
-  }, [result, analysisData?.imageUrl]);
-
-  // Since we need async, use state for portion info
+  // Fixed: Remove async useMemo which was causing crashes
   const [resolvedPortionInfo, setResolvedPortionInfo] = useState<PortionInfo>({ 
     grams: 30, 
     isEstimated: true, 
-    source: 'estimated' as const,
+    source: 'fallback_default' as const,
     confidence: 0 
   });
 
+  // Load portion info safely
   useEffect(() => {
     const resolvePortionInfo = async () => {
-      const resolved = await portionInfo;
-      setResolvedPortionInfo(resolved);
-      
-      // Log telemetry
-      console.info('[REPORT][V2][PORTION]', { 
-        grams: resolved.grams, 
-        source: resolved.source, 
-        confidence: resolved.confidence,
-        from: 'enhanced_report'
-      });
+      try {
+        const portionInfo = await detectPortionSafe(result, analysisData?.imageUrl, 'enhanced_report');
+        setResolvedPortionInfo(portionInfo);
+      } catch (error) {
+        console.error('[REPORT][V2][PORTION][ERROR]', { 
+          stage: 'enhanced_report', 
+          message: error.message 
+        });
+        // Keep safe fallback
+      }
     };
     
     resolvePortionInfo();
-  }, [portionInfo]);
+  }, [result, analysisData?.imageUrl]);
 
   // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {
