@@ -262,10 +262,22 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   // Portion detection with zero spillover
   const [portion, setPortion] = useState<{ grams: number; source: string; label: string } | null>(null);
 
+  // Feature gate diagnostics
+  useEffect(() => {
+    console.info('[PORTION][CHECK] Feature gates:', {
+      portion_detection_enabled: (window as any).__flags?.portion_detection_enabled,
+      portionOffQP: new URLSearchParams(window.location.search).has('portionOff'),
+      emergencyKill: !!(window as any).__emergencyPortionsDisabled,
+      location: window.location.search
+    });
+    console.info('[PORTION][CHECK] using', detectPortionSafe?.name, 'from src/lib/nutrition/portionDetectionSafe.ts');
+  }, []);
+
   // Hard wall: per-serving display computation (local memo only)
   const perServingDisplay = useMemo(() => {
     const grams = portion?.grams ?? 30;
     const per100Raw = result?.nutritionData || {};
+    console.info('[PORTION][DISPLAY] Computing per-serving:', { grams, hasNutrition: !!per100Raw });
     return scalePer100ForDisplay(per100Raw, grams);
   }, [portion?.grams, result?.nutritionData]);
 
@@ -273,17 +285,45 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   useEffect(() => {
     let alive = true;
     
+    const productFingerprint = result?.itemName || 'unknown';
+    const nutrientsFingerprint = JSON.stringify(result?.nutritionData || {}).substring(0, 50);
+    
+    console.info('[PORTION][EFFECT] start', { 
+      productFingerprint, 
+      nutrientsFingerprint,
+      hasResult: !!result,
+      hasAnalysisData: !!analysisData 
+    });
+    
     // Immediately show temporary fallback
     setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
+    console.info('[PORTION][EFFECT] set 30g temp');
     
     const runDetection = async () => {
       try {
+        console.info('[PORTION][EFFECT] calling detectPortionSafe with:', {
+          result: !!result,
+          ocrText: analysisData?.imageUrl || 'none',
+          entry: 'enhanced_report'
+        });
+        
         const detectedPortion = await detectPortionSafe(result, analysisData?.imageUrl || '', 'enhanced_report');
         
-        if (!alive) return; // Component unmounted
+        console.info('[PORTION][EFFECT] resolved', detectedPortion);
+        
+        if (!alive) {
+          console.info('[PORTION][EFFECT] component unmounted, ignoring result');
+          return; // Component unmounted
+        }
         
         // Only update local state - no shared state mutation
         setPortion({
+          grams: detectedPortion.grams,
+          source: detectedPortion.source,
+          label: detectedPortion.label
+        });
+        
+        console.info('[PORTION][EFFECT] setPortion called with:', {
           grams: detectedPortion.grams,
           source: detectedPortion.source,
           label: detectedPortion.label
@@ -296,7 +336,10 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     
     runDetection();
     
-    return () => { alive = false; };
+    return () => { 
+      alive = false; 
+      console.info('[PORTION][EFFECT] cleanup, alive = false');
+    };
   }, [result, analysisData?.imageUrl]);
 
   // Generate OCR hash for caching with safety
