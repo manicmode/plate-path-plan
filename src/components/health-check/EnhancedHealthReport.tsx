@@ -487,7 +487,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         </Card>
 
         {/* 📊 2. TABBED CONTENT AREA */}
-        <Tabs defaultValue="nutrition" className="w-full">
+        <Tabs defaultValue={flags.length > 0 ? "flags" : "nutrition"} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="flags">
