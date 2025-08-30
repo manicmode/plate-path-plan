@@ -27,6 +27,7 @@ import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
 import { toast } from 'sonner';
 import { devLog } from '@/lib/camera/devLog';
 import { photoReportFromImage } from '@/features/health/photoReportFromImage';
+import { useLocation } from 'react-router-dom';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -125,8 +126,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
 
-  // Mode detection and logging - PIN to barcode when in barcode modal
-  const effectiveMode = mode === 'barcode' ? 'barcode' : (mode ?? 'mixed');
+  // Mode detection and photo-only guards
+  const { state } = useLocation();
+  const source = state?.source;
+  const entry = state?.entry;
+  const photoOnly = source === 'photo' || entry === 'photo' || mode === 'photo';
+  const effectiveMode = photoOnly ? 'photo_only' : (mode === 'barcode' ? 'barcode' : (mode ?? 'mixed'));
   
   // Feature flags
   const urlParams = new URLSearchParams(window.location.search);
@@ -244,6 +249,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const ZOOM = 1.5;
 
   useEffect(() => {
+    // Block scanner startup in photo-only mode
+    if (effectiveMode === 'photo_only') {
+      devLog('SCAN][BLOCKED', 'reason: photo_only');
+      return;
+    }
+    
     // Stable mount: only start camera once, don't restart on view changes
     if (STICKY) {
       startCamera();
@@ -265,6 +276,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
+    // Skip decoder warmup in photo-only mode
+    if (effectiveMode === 'photo_only') {
+      return;
+    }
+    
     try {
       const scanner = new MultiPassBarcodeScanner();
       
@@ -277,7 +293,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       ctx.fillRect(0, 0, 100, 50);
       
       // Warm decode (will fail but initializes reader)
-      await scanner.scanQuick(warmCanvas).catch(() => null);
+      await scanner.scanQuick(warmCanvas, { enabled: true }).catch(() => null);
       setWarmScanner(scanner);
       devLog('WARM] Decoder warmed up');
     } catch (error) {
@@ -293,6 +309,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const startCamera = async () => {
     if (streamRef.current) return streamRef.current;
+    
+    // Guard camera start in photo-only mode
+    if (effectiveMode === 'photo_only') {
+      devLog('SCAN][BLOCKED', 'photo_only mode - no camera access');
+      return null;
+    }
     
     // Guard photo capture in barcode-only mode
     if (effectiveMode === 'barcode') {
@@ -581,7 +603,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Quick decode on the frozen image (≤ 900ms)
   const enhancedBarcodeDecodeQuick = async (canvas: HTMLCanvasElement): Promise<any> => {
     const scanner = warmScanner || new MultiPassBarcodeScanner();
-    return await scanner.scanQuick(canvas);
+    return await scanner.scanQuick(canvas, { enabled: effectiveMode === 'barcode' });
   };
 
   // Helper functions for canvas manipulation
@@ -1094,16 +1116,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const runQuickBarcodeScan = async (canvas: HTMLCanvasElement): Promise<string | null> => {
-    const QUICK_SCAN_MS = 1000;
-    const QUICK_PASSES = 4;
+  const runQuickBarcodeScan = async (canvas: HTMLCanvasElement, opts?: { enabled?: boolean }): Promise<string | null> => {
+    const QUICK_BUDGET_MS = 800;
     
-    if (!BARCODE_V2) return null;
+    // Guard quick scan in photo-only mode
+    if (!opts?.enabled || effectiveMode === 'photo_only') {
+      devLog('QUICK] Scan disabled or photo_only mode');
+      return null;
+    }
     
-    console.log(`[HS] Quick barcode scan - budget: ${QUICK_SCAN_MS}ms, max passes: ${QUICK_PASSES}`);
+    if (!warmScanner) {
+      devLog('QUICK] No warm scanner available');
+      return null;
+    }
     
     const scanner = warmScanner || new MultiPassBarcodeScanner();
-    const barcodeResult = await scanner.scanQuick(canvas);
+    const barcodeResult = await scanner.scanQuick(canvas, { enabled: effectiveMode === 'barcode' });
     
     if (barcodeResult) {
       console.log("🔍 Quick barcode hit:", {
@@ -1124,7 +1152,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const runExistingFullDecodePipeline = async (canvas: HTMLCanvasElement) => {
     // Run capped quick check only - no more 76 passes!
-    const detectedBarcode = await runQuickBarcodeScan(canvas);
+    const detectedBarcode = await runQuickBarcodeScan(canvas, { enabled: effectiveMode === 'barcode' });
     
     // Convert to base64 using CSP-safe method
     const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -1447,7 +1475,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   // Render all views, use CSS to show/hide when sticky mount is enabled
   // Block barcode scanner mounting in photo unified mode
-  const isBarcodeView = currentView === 'scanner' && effectiveMode !== 'photo';
+  const isBarcodeView = currentView === 'scanner' && effectiveMode !== 'photo_only';
   
   if (STICKY) {
     return (
