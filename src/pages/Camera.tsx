@@ -6,6 +6,7 @@ import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, Fi
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { mapLookupToLoggedFood } from '@/features/logging/utils/loggingNutrition';
 import { useAuth } from '@/contexts/auth';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -999,73 +1000,124 @@ console.log('Global search enabled:', enableGlobalSearch);
           return;
         }
 
-        // Transform LogProduct to RecognizedFood format + add ingredients/health data
-        const p = data.product as LogProduct; // Now has ingredients + health data
+        // Use null-safe mapper to handle varied response shapes
         console.log('=== PROCESSING FOOD DATA ===');
         
         // Log successful OFF result 
         console.log('[LOG] off_result', { status: 200, hit: true });
 
-        // Transform LogProduct to RecognizedFood format
-        const recognizedFood: RecognizedFood = {
-          name: p.productName.trim(),
-          calories: p.nutrition.calories || 0,
-          protein: p.nutrition.protein_g || 0,
-          carbs: p.nutrition.carbs_g || 0,
-          fat: p.nutrition.fat_g || 0,
-          fiber: p.nutrition.fiber_g || 0,
-          sugar: p.nutrition.sugar_g || 0,
-          sodium: p.nutrition.sodium_mg || 0,
-          confidence: 95,
-          serving: 'As labeled',
-          // Add ingredients data for the modal
-          ingredientsText: p.ingredients.length > 0 ? p.ingredients.join(', ') : undefined,
-          ingredientsAvailable: p.ingredients.length > 0,
-          // Store health data for potential future use
-          image: p.imageUrl
-        };
+        try {
+          // Map the response using null-safe nutrition handling
+          const mapped = mapLookupToLoggedFood(data);
+          const p = data.product as LogProduct; // Keep for ingredients/health data
+          
+          // Transform to RecognizedFood format with null-safe nutrition
+          const recognizedFood: RecognizedFood = {
+            name: mapped.name,
+            calories: mapped.nutrition.calories || 0,
+            protein: mapped.nutrition.protein_g || 0,
+            carbs: mapped.nutrition.carbs_g || 0,
+            fat: mapped.nutrition.fat_g || 0,
+            fiber: 0, // Not in mapped nutrition but keep for compatibility
+            sugar: 0, // Not in mapped nutrition but keep for compatibility
+            sodium: mapped.nutrition.sodium_mg || 0,
+            confidence: 95,
+            serving: 'As labeled',
+            // Add ingredients data for the modal if available
+            ingredientsText: p?.ingredients?.length > 0 ? p.ingredients.join(', ') : undefined,
+            ingredientsAvailable: p?.ingredients?.length > 0 || false,
+            // Store health data for potential future use
+            image: p?.imageUrl
+          };
 
-        // Add forensics logging
-        console.log('[LOG] confirm_open', {
-          name: p.productName,
-          barcode: cleanBarcode,
-          hasIngredients: p.ingredients?.length > 0,
-          flags: p.health?.flags?.map(f => f.id),
-          score: p.health?.score
-        });
+          // Add forensics logging
+          console.log('[LOG] confirm_open', {
+            name: mapped.name,
+            barcode: cleanBarcode,
+            hasIngredients: p?.ingredients?.length > 0,
+            flags: p?.health?.flags?.map(f => f.id),
+            score: p?.health?.score
+          });
 
-        console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
-        setRecognizedFoods([recognizedFood]);
-        setShowConfirmation(true);
-        addRecentBarcode({
-          barcode: cleanBarcode,
-          productName: recognizedFood.name,
-          nutrition: {
-            calories: recognizedFood.calories,
-            protein: recognizedFood.protein,
-            carbs: recognizedFood.carbs,
-            fat: recognizedFood.fat,
-            fiber: recognizedFood.fiber,
+          console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
+          setRecognizedFoods([recognizedFood]);
+          setShowConfirmation(true);
+          addRecentBarcode({
+            barcode: cleanBarcode,
+            productName: recognizedFood.name,
+            nutrition: {
+              calories: recognizedFood.calories,
+              protein: recognizedFood.protein,
+              carbs: recognizedFood.carbs,
+              fat: recognizedFood.fat,
+              fiber: recognizedFood.fiber,
+              sugar: recognizedFood.sugar,
+              sodium: recognizedFood.sodium
+            }
+          });
+          addToHistory({
+            barcode: cleanBarcode,
+            productName: mapped.name,
+            brand: mapped.brand || '',
+            source: 'barcode_lookup',
+            nutrition: {
+              calories: recognizedFood.calories,
+              protein: recognizedFood.protein,
+              carbs: recognizedFood.carbs,
+              fat: recognizedFood.fat,
+              fiber: recognizedFood.fiber,
             sugar: recognizedFood.sugar,
             sodium: recognizedFood.sodium
           }
-        });
-        addToHistory({
-          barcode: cleanBarcode,
-          productName: p.productName,
-          brand: '',
-          source: 'barcode_lookup',
-          nutrition: {
-            calories: recognizedFood.calories,
-            protein: recognizedFood.protein,
-            carbs: recognizedFood.carbs,
-            fat: recognizedFood.fat,
-            fiber: recognizedFood.fiber,
-            sugar: recognizedFood.sugar,
-            sodium: recognizedFood.sodium
-          }
-        });
-        
+          });
+          
+        } catch (nutritionProcessingError) {
+          console.error('=== NUTRITION PROCESSING ERROR ===', nutritionProcessingError);
+          
+          // Always try to open confirm modal with fallback data, even on nutrition processing error
+          const mapped = mapLookupToLoggedFood(null);
+          const fallbackFood: RecognizedFood = {
+            name: mapped.name,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            sugar: 0,
+            sodium: 0,
+            confidence: 10,
+            serving: 'Unknown serving',
+            ingredientsText: undefined,
+            ingredientsAvailable: false
+          };
+
+          console.log('[LOG] confirm_open', {
+            name: mapped.name,
+            barcode: cleanBarcode,
+            hasIngredients: false,
+            flags: [],
+            score: 0,
+            fallback: true,
+            processingError: true
+          });
+
+          console.log('=== SETTING FALLBACK RECOGNIZED FOOD (PROCESSING ERROR) ===', fallbackFood);
+          setRecognizedFoods([fallbackFood]);
+          setShowConfirmation(true);
+          addRecentBarcode({
+            barcode: cleanBarcode,
+            productName: fallbackFood.name,
+            nutrition: {
+              calories: fallbackFood.calories,
+              protein: fallbackFood.protein,
+              carbs: fallbackFood.carbs,
+              fat: fallbackFood.fat,
+              fiber: fallbackFood.fiber,
+              sugar: fallbackFood.sugar,
+              sodium: fallbackFood.sodium
+            }
+          });
+        }
       } catch (error: any) {
         if (error.name === 'AbortError') {
           status = 'timeout';
@@ -1090,22 +1142,117 @@ console.log('Global search enabled:', enableGlobalSearch);
         }
         console.error('=== BARCODE LOOKUP ERROR ===', error);
         
-        // Enhanced error messaging with fallback options
-        const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
-        
-        toast.error("Barcode lookup failed", {
-          description: errorMessage,
-          action: {
-            label: "Enter Manually",
-            onClick: () => {
-              setShowBarcodeNotFound(true);
-              setFailedBarcode(cleanBarcode);
+        // Always try to open confirm modal with fallback data, even on error
+        try {
+          const mapped = mapLookupToLoggedFood(null);
+          const fallbackFood: RecognizedFood = {
+            name: mapped.name,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            sugar: 0,
+            sodium: 0,
+            confidence: 10,
+            serving: 'Unknown serving',
+            ingredientsText: undefined,
+            ingredientsAvailable: false
+          };
+
+          console.log('[LOG] confirm_open', {
+            name: mapped.name,
+            barcode: cleanBarcode,
+            hasIngredients: false,
+            flags: [],
+            score: 0,
+            fallback: true
+          });
+
+          console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
+          setRecognizedFoods([fallbackFood]);
+          setShowConfirmation(true);
+          addRecentBarcode({
+            barcode: cleanBarcode,
+            productName: fallbackFood.name,
+            nutrition: {
+              calories: fallbackFood.calories,
+              protein: fallbackFood.protein,
+              carbs: fallbackFood.carbs,
+              fat: fallbackFood.fat,
+              fiber: fallbackFood.fiber,
+              sugar: fallbackFood.sugar,
+              sodium: fallbackFood.sodium
             }
-          }
-        });
-        
-        setShowBarcodeNotFound(true);
-        setFailedBarcode(cleanBarcode);
+          });
+        } catch (fallbackError) {
+          console.error('=== FALLBACK MODAL ERROR ===', fallbackError);
+          toast.error("Barcode lookup failed", {
+            description: "Please enter manually",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+        }
+      }
+      
+      } finally {
+        clearTimeout(timeout);
+        console.log('[LOG] off_result', { status, hit });
+        setIsLoadingBarcode(false);
+      }
+
+          console.log('[LOG] confirm_open', {
+            name: mapped.name,
+            barcode: cleanBarcode,
+            hasIngredients: false,
+            flags: [],
+            score: 0,
+            fallback: true
+          });
+
+          console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
+          setRecognizedFoods([fallbackFood]);
+          setShowConfirmation(true);
+          addRecentBarcode({
+            barcode: cleanBarcode,
+            productName: fallbackFood.name,
+            nutrition: {
+              calories: fallbackFood.calories,
+              protein: fallbackFood.protein,
+              carbs: fallbackFood.carbs,
+              fat: fallbackFood.fat,
+              fiber: fallbackFood.fiber,
+              sugar: fallbackFood.sugar,
+              sodium: fallbackFood.sodium
+            }
+          });
+        } catch (fallbackError) {
+          console.error('=== FALLBACK MODAL ERROR ===', fallbackError);
+          // Enhanced error messaging with fallback options
+          const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
+          
+          toast.error("Barcode lookup failed", {
+            description: errorMessage,
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+        }
         
       } finally {
         clearTimeout(timeout);
