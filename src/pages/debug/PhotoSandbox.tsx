@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { runPhotoPipeline } from '@/pipelines/photoPipeline';
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
+import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
 
 export default function PhotoSandbox() {
   const videoRef = useRef<HTMLVideoElement|null>(null);
@@ -83,13 +84,23 @@ export default function PhotoSandbox() {
       const base = resolveFunctionsBase();
       const url = `${base}/vision-ocr/ping`;
       log('[PING][START]', { url });
-      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+      const headers = await getSupabaseAuthHeaders();
+      const r = await fetch(url, { headers: { ...headers, 'Accept': 'application/json' } });
+
+      if (!r.ok) {
+        const text = await r.text().catch(() => '');
+        log('[PING][HTTP]', { status: r.status, ok: r.ok, text: text.slice(0, 120) });
+        return;
+      }
+
       const ct = r.headers.get('content-type') || '';
       if (!ct.includes('application/json')) {
         const txt = await r.text();
         log('[PING][ERROR]', `Non-JSON response: ${r.status} ${txt.slice(0,120)}…`);
         return;
       }
+
       const j = await r.json();
       log('[PING]', j);
     } catch (e) { log('[PING][ERROR]', String(e)); }

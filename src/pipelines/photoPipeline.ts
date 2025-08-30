@@ -5,6 +5,7 @@
  */
 
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
+import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
 
 export type PipelineResult = { ok: true, report: any } | { ok: false, reason: string };
 
@@ -52,15 +53,22 @@ export async function analyzePhoto(
     const formData = new FormData();
     formData.append('image', input.blob, 'photo.jpg');
 
+    const authHeaders = await getSupabaseAuthHeaders();
+
     const response = await fetch(url, {
       method: 'POST',
       body: formData,
       headers: {
+        ...authHeaders,
         'Accept': 'application/json'
       }
     });
 
     console.log('[PHOTO][FETCH_DONE]', { status: response.status });
+
+    if (response.status === 401) {
+      return { ok: false, reason: 'unauthorized' };
+    }
 
     if (!response.ok) {
       return { ok: false, reason: `http_${response.status}` };
