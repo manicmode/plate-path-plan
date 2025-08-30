@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
-// Helper for json response with CORS headers
+// Helper for json response
 function json200(obj: any) { 
   return new Response(JSON.stringify(obj), { 
     status: 200, 
@@ -10,15 +10,9 @@ function json200(obj: any) {
   }); 
 }
 
-function jsonError(status: number, obj: any) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' }
-  });
-}
-
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders();
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -84,44 +78,14 @@ serve(async (req) => {
       });
     }
 
-    // Handle mode: "scan" - OCR processing for photo pipeline
+    // Handle mode: "scan" - remove placeholder data
     if (mode === 'scan') {
-      if (!imageBase64) {
-        return json200({
-          ok: false,
-          fallback: true,
-          mode: 'scan',
-          error: 'No image provided'
-        });
-      }
-
-      // Mock OCR processing - in real implementation would use OCR service
-      // For now, return structured data that the photo pipeline expects
-      const mockOcrResult = {
-        ok: true,
-        fallback: false,
+      return json200({
+        ok: false,
+        fallback: true,
         mode: 'scan',
-        summary: {
-          text_joined: "Nutrition Facts Serving Size 1 cup (240ml) Calories 150 Total Fat 0g Sodium 125mg Total Carbohydrate 37g Sugars 36g Protein 1g",
-          words: 20
-        },
-        blocks: [
-          {
-            type: "nutrition_facts",
-            content: "Nutrition Facts panel detected"
-          }
-        ],
-        nutritionFields: {
-          calories: 150,
-          fat: 0,
-          sodium: 125,
-          carbs: 37,
-          sugar: 36,
-          protein: 1
-        }
-      };
-
-      return json200(mockOcrResult);
+        error: 'Image analysis not implemented'
+      });
     }
 
     // Handle mode: "barcode" - OFF lookup
@@ -181,10 +145,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[ENHANCED-HEALTH-SCANNER] Error:', error);
-    return jsonError(500, { 
-      ok: false,
-      error: error.message,
-      product: null
-    });
+    return new Response(
+      JSON.stringify({ 
+        ok: false,
+        error: error.message,
+        product: null
+      }), 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });
