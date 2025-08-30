@@ -1789,15 +1789,6 @@ const Home = () => {
           {(() => {
             const exploreTiles = [
               {
-                id: 'health-check',
-                title: 'Health Check',
-                emoji: '❤️',
-                color: 'from-red-500 via-rose-400 to-rose-500',
-                shadowColor: 'shadow-red-500/30',
-                glowColor: 'hover:shadow-red-400/50',
-                animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
-              },
-              {
                 id: 'game-challenge',
                 title: 'Game & Challenge',
                 emoji: '🏆',
@@ -1805,6 +1796,15 @@ const Home = () => {
                 shadowColor: 'shadow-yellow-500/30',
                 glowColor: 'hover:shadow-yellow-400/50',
                 animatedGradient: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600',
+              },
+              {
+                id: 'health-check',
+                title: 'Health Check',
+                emoji: '❤️',
+                color: 'from-red-500 via-rose-400 to-rose-500',
+                shadowColor: 'shadow-red-500/30',
+                glowColor: 'hover:shadow-red-400/50',
+                animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
               },
               {
                 id: 'supplement-hub',
