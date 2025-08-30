@@ -315,16 +315,23 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           category: (result as any)?.category
         });
 
-        // Calculate health score
+        // Calculate health score with V2 canonicalization
         const score = scoreProduct({
           per100g: nutritionData,
           perServing,
           meta: {
             category: (result as any)?.category,
             name: result?.itemName || result?.productName,
-            brand: (result as any)?.brand
+            brand: (result as any)?.brand,
+            portionGrams: portionInfo.grams
           },
           flags: flags.map(f => f.flag)
+        });
+
+        // Log flags telemetry
+        console.info('[REPORT][V2][FLAGS][RUN]', { 
+          count: flags.length, 
+          sources: portionInfo.source 
         });
 
         if (!alive) return;
@@ -389,13 +396,50 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   };
 
   const getStarRating = (score: number) => {
-    // Convert 0-100 score to 0-5 stars with half-star increments
-    const stars = (score / 100) * 5;
+    // Convert 0-100 score to 0-5 stars with proper half-star mapping for V2
+    const stars = (score / 20); // 0-100 -> 0-5 range  
     return Math.round(stars * 2) / 2; // Round to nearest 0.5
   };
 
   const scoreLabel = getScoreLabel(finalHealthScore);
   const starCount = getStarRating(finalHealthScore);
+  
+  // Calculate corrected calories from canonical per-100g data
+  const correctedCalories = useMemo(() => {
+    if (!portionReady || !nutritionData) return null;
+    
+    // Use canonicalization for accurate calorie calculation
+    try {
+      // Import canonicalization dynamically
+      const canonicalizeModule = (() => {
+        try {
+          return require('@/lib/health/canonicalizeNutrients');
+        } catch {
+          return null;
+        }
+      })();
+      
+      if (canonicalizeModule) {
+        const { canonicalizePer100g } = canonicalizeModule;
+        const per100g = canonicalizePer100g(nutritionData);
+        const grams = resolvedPortionInfo.grams || 30;
+        return Math.round(per100g.energy_kcal * grams / 100);
+      }
+    } catch (error) {
+      console.warn('Canonicalization failed, using fallback:', error);
+    }
+    
+    // Fallback to existing calculation with any cast for diverse field names
+    const nutData = nutritionData as any;
+    const kcalPer100 = Number(
+      nutData?.energy_kcal_100g || 
+      nutData?.calories_100g || 
+      nutData?.energy_kcal || 
+      nutData?.calories || 
+      0
+    );
+    return Math.round(kcalPer100 * (resolvedPortionInfo.grams || 30) / 100);
+  }, [portionReady, nutritionData, resolvedPortionInfo.grams]);
   
   // Use analysis flags or fallback to legacy flags  
   const displayFlags = portionReady ? analysisFlags : 

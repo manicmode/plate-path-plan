@@ -20,6 +20,7 @@ export interface ProductMeta {
   name?: string;
   brand?: string;
   isUltraProcessed?: boolean;
+  portionGrams?: number;
 }
 
 export interface ScoringInput {
@@ -206,27 +207,143 @@ export function validateScore(score: number, productName?: string): number {
 }
 
 /**
- * Main scoring entry point with telemetry
+ * V2 Scoring toggle - defaults OFF for safety
  */
-export function scoreProduct(input: ScoringInput): number {
+function isScoreV2Enabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const qp = new URLSearchParams(window.location.search);
+  if (qp.has('scoreV2')) return qp.get('scoreV2') === '1';
+  
+  return Boolean((window as any).__flags?.score_v2_enabled ?? false);
+}
+
+/**
+ * Legacy scoring fallback (existing logic)
+ */
+function legacyScore(perServing: any): number {
+  // Use existing calculateHealthScore but with legacy inputs
+  const input = {
+    per100g: perServing, // Legacy used perServing as per100g
+    perServing,
+    meta: {},
+    flags: []
+  };
+  return Math.max(0, Math.min(100, Math.round(calculateHealthScore(input))));
+}
+
+/**
+ * Safe V2 scorer with canonicalization guards
+ */
+export function safeScoreV2(input: {
+  per100g: any;
+  perServing: any;
+  meta: any;
+  flags?: string[];
+}): number {
   try {
-    const score = calculateHealthScore(input);
-    const validatedScore = validateScore(score, input.meta.name);
+    // Dynamic import for canonicalization to avoid circular deps
+    const { canonicalizePer100g, perServingFromPer100g } = (() => {
+      try {
+        return require('./canonicalizeNutrients');
+      } catch {
+        // Fallback if import fails
+        return {
+          canonicalizePer100g: (raw: any) => raw,
+          perServingFromPer100g: (per100g: any, grams: number) => per100g
+        };
+      }
+    })();
     
-    // Log telemetry
-    console.info('[REPORT][V2][SCORE][VALUE]', {
-      score: validatedScore,
-      productName: input.meta.name,
-      portionGrams: input.perServing.calories ? 
-        Math.round((input.perServing.calories / (input.per100g.calories || 1)) * 100) : null
+    // Canonicalize inputs
+    const per100g = canonicalizePer100g(input.per100g);
+    const grams = input.meta?.portionGrams || 30;
+    const perServing = perServingFromPer100g(per100g, grams);
+    
+    // Check for critical missing fields
+    const missing = [];
+    if (!Number.isFinite(perServing.sugars_g)) missing.push('perServing.sugars_g');
+    if (!Number.isFinite(perServing.saturated_fat_g)) missing.push('perServing.saturated_fat_g');
+    if (!Number.isFinite(perServing.sodium_mg)) missing.push('perServing.sodium_mg');
+    if (!Number.isFinite(per100g.energy_kcal)) missing.push('per100g.energy_kcal');
+    
+    if (missing.length > 0) {
+      console.error('[REPORT][V2][SCORE][DIAG_MISSING]', { missing, meta: input.meta });
+      return legacyScore(input.perServing);
+    }
+    
+    // Log inputs for debugging
+    console.info('[REPORT][V2][SCORE][INPUTS]', { per100g, perServing, grams });
+    
+    // Calculate V2 score using canonical inputs
+    const scoringInput = {
+      per100g: {
+        calories: per100g.energy_kcal,
+        sugar: perServing.sugars_g,
+        saturated_fat: perServing.saturated_fat_g,
+        sodium: perServing.sodium_mg,
+        fiber: perServing.fiber_g,
+        protein: perServing.protein_g
+      },
+      perServing: {
+        calories: perServing.energy_kcal,
+        sugar: perServing.sugars_g,
+        saturated_fat: perServing.saturated_fat_g,
+        sodium: perServing.sodium_mg,
+        fiber: perServing.fiber_g,
+        protein: perServing.protein_g
+      },
+      meta: input.meta,
+      flags: input.flags || []
+    };
+    
+    const score = calculateHealthScore(scoringInput);
+    
+    if (!Number.isFinite(score)) {
+      console.error('[REPORT][V2][SCORE][DIAG_NAN]', { per100g, perServing, meta: input.meta });
+      return legacyScore(input.perServing);
+    }
+    
+    const validatedScore = Math.max(0, Math.min(100, Math.round(score)));
+    
+    console.info('[REPORT][V2][SCORE][VALUE]', { 
+      score: validatedScore, 
+      grams,
+      productName: input.meta?.name 
     });
     
     return validatedScore;
+    
   } catch (error) {
     console.error('[REPORT][V2][SCORE][ERROR]', {
-      stage: 'calculation',
-      message: error.message,
-      productName: input.meta.name
+      stage: 'v2_calculation',
+      message: error?.message,
+      meta: input.meta
+    });
+    return legacyScore(input.perServing);
+  }
+}
+
+/**
+ * Main scoring entry point with V2 toggle
+ */
+export function scoreProduct(input: ScoringInput): number {
+  try {
+    let score: number;
+    
+    if (isScoreV2Enabled()) {
+      score = safeScoreV2(input);
+    } else {
+      score = calculateHealthScore(input);
+      score = validateScore(score, input.meta.name);
+    }
+    
+    return score;
+  } catch (error) {
+    console.error('[REPORT][V2][SCORE][ERROR]', {
+      stage: 'main_entry',
+      message: error?.message,
+      productName: input.meta?.name
     });
     
     // Return neutral score on error
