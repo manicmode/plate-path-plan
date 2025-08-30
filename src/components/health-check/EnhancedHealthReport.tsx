@@ -441,11 +441,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             
             {/* Source Badge */}
             {analysisData?.source && (
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
                 <Badge variant="outline" className="text-xs">
                   Source: {analysisData.source === 'barcode' ? 'Barcode' : 
                           analysisData.source === 'manual' ? 'Manual' : 'Photo'}
                 </Badge>
+                
+                {/* Portion Badge */}
+                <div>
+                  <Badge variant="secondary" className="text-xs">
+                    Portion: {portion?.label ?? '30g · est.'}
+                  </Badge>
+                </div>
               </div>
             )}
           </CardContent>
@@ -468,7 +475,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           
           <TabsContent value="nutrition" className="mt-6">
             <NutritionToggle
-              nutrition100g={nutritionData}
+              nutrition100g={perServingDisplay}
               productData={result}
               ocrText={ingredientsText}
             />
