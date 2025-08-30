@@ -12,6 +12,7 @@ import { HealthReportPopup } from './HealthReportPopup';
 import { NoDetectionFallback } from './NoDetectionFallback';
 import { ManualEntryFallback } from './ManualEntryFallback';
 import { ImprovedManualEntry } from './ImprovedManualEntry';
+import { InconclusiveReport } from './InconclusiveReport';
 import { BrandedCandidatesList } from './BrandedCandidatesList';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { ResultCard } from './ResultCard';
@@ -308,12 +309,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       if (currentRunId.current !== runId) return; // stale
       
       if (!ocrResult.ok || !ocrResult.summary?.text_joined) {
-        toast({
-          title: "No readable text found",
-          description: "Please try taking a clearer photo or use manual entry.",
-          variant: "destructive",
-        });
-        setCurrentState('scanner'); // Keep modal open
+        console.info("[OCR][FALLBACK] No readable text found");
+        setCurrentState('no_detection');
         return;
       }
       
@@ -321,12 +318,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       // Handle low-signal text
       if (text.trim().length < 30) {
-        toast({
-          title: "No readable ingredients/nutrition text found",
-          description: "Please try again with a clearer image or use manual entry.",
-          variant: "destructive",
-        });
-        setCurrentState('scanner'); // Keep modal open
+        console.info("[OCR][FALLBACK] Text too short:", text.trim().length);
+        setCurrentState('no_detection');
         return;
       }
       
@@ -337,22 +330,55 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       if (currentRunId.current !== runId) return; // stale
       
-      if (!healthResult.ok) {
+      // Handle inconclusive results
+      if ('status' in healthResult && healthResult.status === 'inconclusive') {
+        console.info("[OCR][INCONCLUSIVE]", healthResult.reason);
+        
+        // Create inconclusive analysis result
+        const inconclusiveResult: HealthAnalysisResult = {
+          itemName: 'Inconclusive Analysis',
+          productName: 'Inconclusive Analysis',
+          title: 'Inconclusive Analysis',
+          healthScore: 0, // Will be ignored in UI
+          ingredientsText: '',
+          ingredientFlags: [],
+          flags: [],
+          nutritionData: {},
+          healthProfile: {
+            isOrganic: false,
+            isGMO: false,
+            allergens: [],
+            preservatives: [],
+            additives: []
+          },
+          personalizedWarnings: [],
+          suggestions: [],
+          overallRating: 'avoid' // This will be overridden by inconclusive display
+        };
+        
+        // Mark as inconclusive for UI
+        (inconclusiveResult as any).status = 'inconclusive';
+        (inconclusiveResult as any).message = healthResult.message;
+        
+        setAnalysisResult(inconclusiveResult);
+        setCurrentState('report');
+        setCurrentAnalysisData({ 
+          source: 'photo',
+          imageUrl: imageBase64
+        });
+        
+        toast({
+          title: "Inconclusive analysis",
+          description: "We couldn't read enough label text.",
+          variant: "default",
+        });
+        return;
+      }
+      
+      if (!('ok' in healthResult) || !healthResult.ok) {
         const failedResult = healthResult as { ok: false, reason: string };
-        if (failedResult.reason === 'low_confidence') {
-          toast({
-            title: "Unable to analyze text",
-            description: "The extracted text doesn't contain enough nutrition information.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Analysis failed",
-            description: "Please try again or use manual entry.",
-            variant: "destructive",
-          });
-        }
-        setCurrentState('scanner'); // Keep modal open
+        console.info("[OCR][FALLBACK] Parser failed:", failedResult.reason);
+        setCurrentState('no_detection');
         return;
       }
       
@@ -426,12 +452,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.error('[OCR][ERROR]', error);
       if (currentRunId.current !== runId) return; // stale
       
-      toast({
-        title: "Analysis failed",
-        description: "Please try again or use manual entry.",
-        variant: "destructive",
-      });
-      setCurrentState('scanner'); // Keep modal open
+      console.info("[OCR][FALLBACK] Network/processing error");
+      setCurrentState('no_detection');
     } finally {
       setIsProcessing(false);
       console.groupEnd();
@@ -2182,6 +2204,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           {(currentState === 'no_detection' || currentState === 'not_found') && (
             <NoDetectionFallback
               status={currentState}
+              source={currentAnalysisData.source}
               onRetryCamera={() => {
                 console.log('[HC][NAV]', 'Navigating to barcode scan', { source: 'retry_camera' });
                 handleClose();

@@ -7,6 +7,7 @@ import { useState, useRef, useCallback } from 'react';
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getAuthHeaders } from '@/lib/net/authHeaders';
 import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
+import { isSuccessResult, isInconclusiveResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
 import { useToast } from '@/hooks/use-toast';
 
 interface E2EResult {
@@ -70,7 +71,7 @@ export const useE2EPhotoCheck = () => {
       if (ocrResult.ok && ocrResult.summary?.text_joined) {
         try {
           const healthResult = await toReportFromOCR(ocrResult.summary.text_joined);
-          if (healthResult.ok) {
+          if (isSuccessResult(healthResult)) {
             healthReport = healthResult.report;
           }
         } catch (healthError) {

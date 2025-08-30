@@ -6,6 +6,9 @@
  */
 
 import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
+import { shouldReturnInconclusive, type InconclusiveResult } from './inconclusiveAnalyzer';
+
+export type OCRReportResult = { ok: true, report: any } | { ok: false, reason: string } | InconclusiveResult;
 
 export interface OCRHealthInput {
   name: string;
@@ -20,8 +23,6 @@ export interface OCRHealthInput {
     sodium_mg?: number;
   };
 }
-
-export type OCRReportResult = { ok: true, report: any } | { ok: false, reason: string };
 
 /**
  * Robust OCR pre-cleaning
@@ -65,9 +66,10 @@ export async function toReportFromOCR(ocrText: string): Promise<OCRReportResult>
   // Pre-clean the OCR text
   const cleaned = precleanOCR(ocrText);
   
-  // Handle empty or low-signal text
-  if (cleaned.length < 30) {
-    return { ok: false, reason: 'no_text' };
+  // Check for inconclusive cases early
+  const inconclusiveCheck = shouldReturnInconclusive(cleaned);
+  if (inconclusiveCheck) {
+    return inconclusiveCheck;
   }
 
   try {
@@ -75,6 +77,12 @@ export async function toReportFromOCR(ocrText: string): Promise<OCRReportResult>
     const result = await parseFreeTextToReport(cleaned);
     
     if (!result.ok) {
+      // Check if this should be inconclusive instead of error
+      const inconclusiveFromParser = shouldReturnInconclusive(cleaned, result);
+      if (inconclusiveFromParser) {
+        return inconclusiveFromParser;
+      }
+      
       // Type-safe access to reason property
       return { ok: false, reason: (result as { ok: false, reason: string }).reason };
     }

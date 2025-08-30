@@ -10,6 +10,7 @@ interface NoDetectionFallbackProps {
   onVoiceEntry?: () => void;
   onBack: () => void;
   status: 'no_detection' | 'not_found';
+  source?: string; // Add source prop for context-aware tips
 }
 
 export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
@@ -18,9 +19,11 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
   onManualEntry,
   onVoiceEntry,
   onBack,
-  status
+  status,
+  source
 }) => {
   const isNoDetection = status === 'no_detection';
+  const isFromPhoto = source === 'photo';
   
   return (
     <div
@@ -78,10 +81,22 @@ export const NoDetectionFallback: React.FC<NoDetectionFallbackProps> = ({
               </h3>
               <p className="text-orange-200 text-sm">
                 {isNoDetection 
-                  ? "We couldn't identify any food items or barcodes in your image."
+                  ? isFromPhoto
+                    ? "We couldn't read enough label text to analyze this product."
+                    : "We couldn't identify any food items or barcodes in your image."
                   : "This barcode isn't in our database yet."
                 }
               </p>
+              {isFromPhoto && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-orange-100 text-xs font-medium">Tips for better photos:</p>
+                  <ul className="text-orange-200 text-xs space-y-0.5">
+                    <li>• Fill the frame with the ingredients panel</li>
+                    <li>• Avoid glare; keep the label flat</li>
+                    <li>• Try manual or voice entry instead</li>
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
 

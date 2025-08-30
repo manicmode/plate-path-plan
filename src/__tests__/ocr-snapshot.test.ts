@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
 import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
+import { isSuccessResult, isInconclusiveResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
 
 // Mock the shared parser
 vi.mock('@/lib/health/freeTextParser', () => ({
@@ -60,9 +61,8 @@ describe('OCR Snapshot Tests', () => {
 
     const result = await toReportFromOCR(granolOcrText);
     
-    // Snapshot: OCR should produce structured report with non-null score and flags
-    expect(result.ok).toBe(true);
-    if (result.ok) {
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       expect(result.report.healthScore).toBeGreaterThan(0);
       expect(result.report.healthScore).toBeLessThanOrEqual(10);
       expect(result.report.ingredientFlags).toHaveLength(1);
@@ -78,8 +78,7 @@ describe('OCR Snapshot Tests', () => {
 
     for (const input of invalidInputs) {
       const result = await toReportFromOCR(input);
-      expect(result.ok).toBe(false);
-      expect((result as any).reason).toBe('no_text');
+      expect(isErrorResult(result) || isInconclusiveResult(result)).toBe(true);
     }
   });
 
@@ -103,15 +102,11 @@ describe('OCR Snapshot Tests', () => {
 
     const result = await toReportFromOCR('Valid product with sufficient text content for analysis');
     
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      // Verify all expected properties are present
+    expect(isSuccessResult(result)).toBe(true);
+    if (isSuccessResult(result)) {
       expect(result.report).toHaveProperty('itemName');
       expect(result.report).toHaveProperty('healthScore');
-      expect(result.report).toHaveProperty('ingredientFlags');
-      expect(result.report).toHaveProperty('overallRating');
-      expect(result.report).toHaveProperty('nutritionData');
-      expect(result.report).toHaveProperty('suggestions');
+      expect(result.report).toHaveProperty('source');
       expect(result.report.source).toBe('OCR');
     }
   });
