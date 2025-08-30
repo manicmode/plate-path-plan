@@ -168,8 +168,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           toast.info(`[LOG] off_fetch_start: ${result.raw}`);
         }
         onBarcodeDetected(result.raw);
-        camHardStop('modal_close');
-        releaseNow();
+        // Don't call cleanup here - parent handles it
         onClose();
         console.timeEnd('[LOG] analyze_total');
         return;
@@ -191,8 +190,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
         console.log('[LOG] off_fetch_start', { code: winner.raw });
         onBarcodeDetected(winner.raw);
-        camHardStop('modal_close');
-        releaseNow();
+        // Don't call cleanup here - parent handles it  
         onClose();
         console.timeEnd('[LOG] analyze_total');
         return;
@@ -242,11 +240,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   }, []);
 
   const handleClose = useCallback(() => {
-    camHardStop('modal_close');       // Force stop BEFORE anything else
-    releaseNow();                     // Then normal cleanup
-    stopAllVideos();                  // Belt & suspenders
-    onClose();                        // Finally close/navigate
-  }, [releaseNow, onClose]);
+    // Parent handles cleanup now - just call onClose
+    onClose();
+  }, [onClose]);
 
   // Warm-up the decoder on modal open  
   const warmUpDecoder = async () => {
@@ -300,9 +296,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         console.log('[SCAN][DUMP] on unmount', dumpOnUnmount);
       }
       console.log("[CAMERA] cleanup", { OWNER });
-      camOwnerUnmount(OWNER);
-      camHardStop('unmount');
-      releaseNow();
+      // Parent owns cleanup - only cleanup if this is a final close, not view toggle
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
       checkForLeaks('WebBarcodeScanner');
     };
@@ -442,7 +436,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         const file = await openPhotoCapture('image/*','environment');
         const val = await decodeBarcodeFromFile(file);
         if (val) onBarcodeDetected(val);
-        camHardStop('modal_close');
+        // Don't call cleanup here - parent handles it
         onClose();
         return null;
       } catch (fallbackErr) {
@@ -452,8 +446,8 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     }
   };
 
-  // Unmount guard
-  useEffect(() => () => releaseNow(), [releaseNow]);
+  // Remove unmount guard - parent handles cleanup
+  // useEffect(() => () => releaseNow(), [releaseNow]);
 
   if (error) {
     return (

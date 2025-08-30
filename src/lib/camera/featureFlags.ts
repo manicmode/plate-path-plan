@@ -5,7 +5,7 @@ export const getCameraFeatureFlags = () => {
   return {
     // Guardian flags
     guardianLegacyOff: urlParams.get('guardianFix') !== '0', // Default ON, disable with ?guardianFix=0
-    scannerStickyMount: urlParams.get('stickyMount') !== '0', // Default ON
+    scannerStickyMount: urlParams.get('stickyMount') !== '0', // Default ON, disable with ?stickyMount=0  
     scannerVideoFix: urlParams.get('videoFix') === '1', // Default OFF, enable with ?videoFix=1
     
     // Debug flags

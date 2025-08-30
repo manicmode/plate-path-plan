@@ -112,7 +112,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const effectiveMode = mode === 'barcode' ? 'barcode' : (mode ?? 'mixed');
   
   // Feature flags
-  const scannerStickyMount = (window as any).__scannerStickyMount !== false; // Default ON
+  const urlParams = new URLSearchParams(window.location.search);
+  const STICKY = urlParams.get('stickyMount') !== '0' && (window as any).__scannerStickyMount !== false; // Default ON, override with ?stickyMount=0
+  const scannerStickyMount = STICKY;
   
   // Performance throttling
   const lastDecodeTime = useRef<number>(0);
@@ -138,6 +140,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     streamRef.current = null;
     setStream(null);
   }, [updateStreamRef]);
+
+  // Modal close handler - final cleanup
+  const onModalClose = useCallback(() => {
+    camHardStop('modal_close');
+    releaseNow();
+    if (onCancel) onCancel();
+  }, [releaseNow, onCancel]);
 
   useLayoutEffect(() => {
     // Phase 1 instrumentation - behind ?camInq=1
@@ -171,6 +180,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (DEBUG) console.log('[HEALTH][UNMOUNT]');
       
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      // Final cleanup on component unmount
       camOwnerUnmount(OWNER);
       camHardStop('unmount');
       releaseNow();
@@ -179,8 +189,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     };
   }, [releaseNow]);
 
-  // Unmount guard
-  useEffect(() => () => releaseNow(), [releaseNow]);
+  // Unmount guard removed - using onModalClose for cleanup
 
   // Page visibility handling for performance
   useEffect(() => {
@@ -210,10 +219,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   useEffect(() => {
     // Stable mount: only start camera once, don't restart on view changes
-    if (scannerStickyMount) {
+    if (STICKY) {
       startCamera();
       warmUpDecoder();
-      return; // No cleanup on view changes
+      return; // No cleanup on view changes - parent owns cleanup
     }
     
     // Legacy behavior: restart on view changes (causes thrash)
@@ -222,11 +231,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       warmUpDecoder();
     }
     return () => {
-      if (!scannerStickyMount) {
+      if (!STICKY) {
         releaseNow();
       }
     };
-  }, [scannerStickyMount ? undefined : currentView]);
+  }, [STICKY ? undefined : currentView, releaseNow]);
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
@@ -1385,7 +1394,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [currentView]);
 
   // Render all views, use CSS to show/hide when sticky mount is enabled
-  if (scannerStickyMount) {
+  if (STICKY) {
     return (
       <>
         {/* Scanner View - always mounted, hidden when not active */}
@@ -1490,7 +1499,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
           >
             <ScannerActions
               onAnalyze={captureImage}
-              onCancel={onCancel}
+              onCancel={onModalClose}
               onEnterBarcode={handleManualEntry}
               onFlashlight={handleFlashlightToggle}
               isScanning={isScanning}
@@ -1738,7 +1747,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         >
           <ScannerActions
             onAnalyze={captureImage}
-            onCancel={onCancel}
+            onCancel={onModalClose}
             onEnterBarcode={handleManualEntry}
             onFlashlight={handleFlashlightToggle}
             isScanning={isScanning}
