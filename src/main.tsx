@@ -23,12 +23,16 @@ import "./lib/camera/featureFlags"; // Initialize camera feature flags
 // REMOVED: import "./lib/camera/cameraGuardian"; // Legacy guardian disabled
 import { installCameraGuardianWire } from "./lib/camera/guardianWire";
 import "./lib/camera/testGuardian"; // Test utilities
+import { installCamDump } from "./lib/camera/camDump";
 
 // Apply security headers on app initialization
 applySecurityHeaders();
 
 // Install camera guardian wire BEFORE any camera usage
 installCameraGuardianWire();
+
+// Install camera dump utility for investigation
+installCamDump();
 
 // Single-guardian assertion logging
 console.log('[GUARD][LEGACY] disabled:true');
