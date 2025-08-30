@@ -11,6 +11,7 @@ import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfC
 import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
 import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
+import { devLog } from '@/lib/camera/devLog';
 
 // Removed debug logging - mediaLog function removed
 
@@ -30,14 +31,14 @@ interface WebBarcodeScannerProps {
   onClose: () => void;
 }
 
-// PHASE 3: Stream/track forensics helper
+// PHASE 3: Stream/track forensics helper - gated
 function tapStream(s: MediaStream, component: string) {
-  console.warn(`[FLOW][enter] ${component}`, location.pathname + location.search);
-  s.addEventListener?.('inactive', () => console.warn('[STREAM][inactive]', { component }));
+  devLog('FLOW][enter] ${component}', location.pathname + location.search);
+  s.addEventListener?.('inactive', () => devLog('STREAM][inactive', { component }));
   for (const t of s.getTracks()) {
-    t.addEventListener?.('ended', () => console.warn('[TRACK][ended]', { kind: t.kind, component }));
-    t.addEventListener?.('mute', () => console.warn('[TRACK][mute]', { kind: t.kind, component }));
-    t.addEventListener?.('unmute', () => console.warn('[TRACK][unmute]', { kind: t.kind, component }));
+    t.addEventListener?.('ended', () => devLog('TRACK][ended', { kind: t.kind, component }));
+    t.addEventListener?.('mute', () => devLog('TRACK][mute', { kind: t.kind, component }));
+    t.addEventListener?.('unmute', () => devLog('TRACK][unmute', { kind: t.kind, component }));
   }
 }
 
@@ -59,9 +60,16 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const OWNER = 'barcode_scanner';
   
-  // Mount thrash detection
+  // Mount thrash detection + once guards
   const mountSeqRef = useRef(0);
   const mountTimeRef = useRef(0);
+  const onceMountedRef = useRef(false);
+  const onceGumCalledRef = useRef(false);
+  const onceGumOkRef = useRef(false);
+  const onceVideoAttachRef = useRef(false);
+  const onceVideoPlayRef = useRef(false);
+  const probedRef = useRef(false);
+  const probeTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -113,13 +121,19 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const handleAnalyzeNow = async () => {
     if (!videoRef.current) {
-      console.error('[LOG] Video ref not available');
+      devLog('LOG] Video ref not available');
       return;
     }
 
-    console.time('[LOG] analyze_total');
-      setIsScanning(true);
-      setIsFrozen(true);
+    // Rate-limited timing log
+    const lastAnalyze = (window as any).__lastAnalyzeLog || 0;
+    if (Date.now() - lastAnalyze > 1000) {
+      devLog('LOG] analyze_total start');
+      (window as any).__lastAnalyzeLog = Date.now();
+    }
+    
+    setIsScanning(true);
+    setIsFrozen(true);
     
     try {
       const video = videoRef.current;
@@ -143,9 +157,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             await track.applyConstraints({ 
               advanced: [{ zoom: ZOOM } as any] 
             });
-            console.log('[LOG] zoom applied:', ZOOM);
+            devLog('LOG] zoom applied:', ZOOM);
           } catch (zoomError) {
-            console.log('[LOG] zoom not supported:', zoomError);
+            devLog('LOG] zoom not supported:', zoomError);
           }
         }
       }
@@ -160,7 +174,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
       // Return early on any 8/12/13/14-digit hit
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
-        console.log('[LOG] off_fetch_start', { code: result.raw });
+        devLog('LOG] off_fetch_start', { code: result.raw });
         
         // Optional: Add toast for PWA testing
         if (window.location.search.includes('debug=toast')) {
@@ -170,12 +184,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         onBarcodeDetected(result.raw);
         // Don't call cleanup here - parent handles it
         onClose();
-        console.timeEnd('[LOG] analyze_total');
         return;
       }
 
       // 2) Burst fallback (parallel capture and race)
-      console.log('[LOG] burst_start');
+      devLog('LOG] burst_start');
       const burstPromises = Array.from({ length: BURST_COUNT }).map(async (_, i) => {
         await new Promise(r => setTimeout(r, BURST_DELAY_MS * (i + 1)));
         return await snapAndDecode({
@@ -188,26 +201,24 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
       const winner = await Promise.race(burstPromises);
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
-        console.log('[LOG] off_fetch_start', { code: winner.raw });
+        devLog('LOG] off_fetch_start', { code: winner.raw });
         onBarcodeDetected(winner.raw);
         // Don't call cleanup here - parent handles it  
         onClose();
-        console.timeEnd('[LOG] analyze_total');
         return;
       }
 
       // 3) No barcode found
-      console.log('[LOG] no_barcode_found');
+      devLog('LOG] no_barcode_found');
       setError('No barcode detected. Please try again with better lighting.');
       
     } catch (error) {
-      console.error('[LOG] Scan error:', error);
+      devLog('LOG] Scan error:', error);
       setError('Failed to scan barcode. Please try again.');
     } finally {
       // CRITICAL: Always cleanup to prevent hangs
       setIsScanning(false);
       setIsFrozen(false);
-      console.timeEnd('[LOG] analyze_total');
     }
   };
 
@@ -260,9 +271,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       // Warm decode (will fail but initializes reader)
       await scanner.scanQuick(warmCanvas).catch(() => null);
       setWarmScanner(scanner);
-      console.log('[WARM] Decoder warmed up');
+      devLog('WARM] Decoder warmed up');
     } catch (error) {
-      console.warn('[WARM] Decoder warm-up failed:', error);
+      devLog('WARM] Decoder warm-up failed:', error);
     }
   };
 
@@ -306,9 +317,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     if (streamRef.current) return streamRef.current;
     
     try {
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
+      devLog('VIDEO INIT] videoRef =', videoRef.current);
       if (!videoRef.current) {
-        console.error("[VIDEO] videoRef is null — video element not mounted");
+        devLog('VIDEO] videoRef is null — video element not mounted');
         return;
       }
 
@@ -330,39 +341,38 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         };
         const fallback = { video: true };
         
-        // Phase 1 instrumentation - behind ?camInq=1
-        const isInquiry = window.location.search.includes('camInq=1');
-        
-        if (isInquiry) {
-          console.log('[SCAN][GUM][CALL]', { constraints: primary });
+        // Once-only GUM logs
+        if (!onceGumCalledRef.current) {
+          onceGumCalledRef.current = true;
+          devLog('SCAN][GUM][CALL', { constraints: primary });
           // Dump before acquire
           const dumpBefore = (window as any).__camDump?.() || 'no dump available';
-          console.log('[SCAN][DUMP] before acquire', dumpBefore);
+          devLog('SCAN][DUMP] before acquire', dumpBefore);
         }
         
         try { 
           const stream = await camAcquire(OWNER, primary);
           
-          if (isInquiry) {
+          if (!onceGumOkRef.current) {
+            onceGumOkRef.current = true;
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length });
+            devLog('SCAN][GUM][OK', { id: streamId, trackCount: tracks.length });
           }
           
           return stream;
         } catch (e: any) {
-          console.warn('[CAM] primary failed', e?.name);
+          devLog('CAM] primary failed', e?.name);
           
-          if (isInquiry) {
-            console.log('[SCAN][GUM][CALL]', { constraints: fallback, reason: 'primary_failed' });
-          }
+          devLog('SCAN][GUM][CALL', { constraints: fallback, reason: 'primary_failed' });
           
           const stream = await camAcquire(OWNER, fallback);
           
-          if (isInquiry) {
+          if (!onceGumOkRef.current) {
+            onceGumOkRef.current = true;
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length, fallback: true });
+            devLog('SCAN][GUM][OK', { id: streamId, trackCount: tracks.length, fallback: true });
           }
           
           return stream;
@@ -374,10 +384,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       
       if (videoRef.current) {
         const video = videoRef.current;
-        const isInquiry = window.location.search.includes('camInq=1');
         
-        if (isInquiry) {
-          console.log('[SCAN][VIDEO][ATTACH]', { 
+        // Once-only attach logs
+        if (!onceVideoAttachRef.current) {
+          onceVideoAttachRef.current = true;
+          devLog('SCAN][VIDEO][ATTACH', { 
             hasSrc: !!video.srcObject, 
             playsInline: (video as any).playsInline, 
             muted: video.muted, 
@@ -388,34 +399,37 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         try {
           await attachStreamToVideo(video, mediaStream);
           
-          if (isInquiry) {
-            console.log('[SCAN][VIDEO][PLAY][OK]');
+          if (!onceVideoPlayRef.current) {
+            onceVideoPlayRef.current = true;
+            devLog('SCAN][VIDEO][PLAY][OK');
             
-            // Readiness probe - 5 times @ 100ms
-            let probeCount = 0;
-            const probeReady = () => {
-              if (probeCount < 5) {
-                console.log('[SCAN][VIDEO][READY]', { 
-                  readyState: video.readyState, 
-                  w: video.videoWidth, 
-                  h: video.videoHeight 
-                });
-                probeCount++;
-                setTimeout(probeReady, 100);
-              }
-            };
-            probeReady();
-            
-            // Dump after attach to show live tracks
-            const dumpAfter = (window as any).__camDump?.() || 'no dump available';
-            console.log('[SCAN][DUMP] after attach', dumpAfter);
+            // Readiness probe - exactly 5 times @ 100ms, then stop
+            if (!probedRef.current) {
+              probedRef.current = true;
+              let probeCount = 0;
+              const probeReady = () => {
+                if (probeCount < 5) {
+                  devLog('SCAN][VIDEO][READY', { 
+                    readyState: video.readyState, 
+                    w: video.videoWidth, 
+                    h: video.videoHeight 
+                  });
+                  probeCount++;
+                  const timeoutId = setTimeout(probeReady, 100);
+                  probeTimeoutsRef.current.push(timeoutId);
+                }
+              };
+              probeReady();
+              
+              // Dump after attach to show live tracks (once)
+              const dumpAfter = (window as any).__camDump?.() || 'no dump available';
+              devLog('SCAN][DUMP] after attach', dumpAfter);
+            }
           }
           
-          console.log("[CAMERA] Video attached and playing");
+          devLog('CAMERA] Video attached and playing');
         } catch (playError) {
-          if (isInquiry) {
-            console.log('[SCAN][VIDEO][PLAY][ERR]', { err: playError });
-          }
+          devLog('SCAN][VIDEO][PLAY][ERR', { err: playError });
           throw playError;
         }
         
@@ -426,12 +440,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         setStream(mediaStream);
         setIsScanning(true);
       } else {
-        console.error("[CAMERA] videoRef.current is null");
+        devLog('CAMERA] videoRef.current is null');
       }
       
       return mediaStream;
     } catch (err: any) {
-      console.warn('[SCANNER] Live video denied, using photo fallback', err?.name || err);
+      devLog('SCANNER] Live video denied, using photo fallback', err?.name || err);
       try {
         const file = await openPhotoCapture('image/*','environment');
         const val = await decodeBarcodeFromFile(file);
@@ -440,7 +454,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         onClose();
         return null;
       } catch (fallbackErr) {
-        console.error("[CAMERA FAIL] Both live and photo capture failed:", err, fallbackErr);
+        devLog('CAMERA FAIL] Both live and photo capture failed:', err, fallbackErr);
         setError('Unable to access camera. Please check permissions and try again.');
       }
     }

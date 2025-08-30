@@ -1,3 +1,5 @@
+import { devLog } from './devLog';
+
 // Central registry + guaranteed stop regardless of owner timing
 let current: MediaStream | null = null;
 let refs = 0;
@@ -29,7 +31,7 @@ export async function camAcquire(owner: string, constraints: MediaStreamConstrai
   }, 1500);
   
   if (process.env.NODE_ENV !== 'production') {
-    console.info('[CAM][GUARD] acquire', { 
+    devLog('CAM][GUARD] acquire', { 
       owner, 
       refs,
       tracks: current.getTracks().map(t => `${t.kind}:${t.readyState}`) 
@@ -48,20 +50,20 @@ export function camRelease(owner: string) {
   (window as any).__setGuardianAcquiring?.(false);
   
   if (process.env.NODE_ENV !== 'production') {
-    console.info('[CAM][GUARD] release', { owner, refs });
+    devLog('CAM][GUARD] release', { owner, refs });
   }
   if (refs === 0 && current) {
     current.getTracks().forEach(t => { 
       try { 
         t.stop(); 
         if (process.env.NODE_ENV !== 'production') {
-          console.info('[CAM][GUARD] stopped track', { kind: t.kind, readyState: t.readyState });
+          devLog('CAM][GUARD] stopped track', { kind: t.kind, readyState: t.readyState });
         }
       } catch {} 
     });
     current = null;
     if (process.env.NODE_ENV !== 'production') {
-      console.info('[CAM][GUARD] stop_all');
+      devLog('CAM][GUARD] stop_all');
     }
   }
 }
@@ -71,11 +73,9 @@ export function camRegister(s: MediaStream, meta?: { ownerHint?: string; constra
 }
 
 export function camHardStop(reason: string) {
-  // Enhanced logging with owner count
+  // Enhanced logging with owner count - gated
   const ownerCount = owners.size;
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('[CAM][GUARD] HARD STOP', { reason, owners: ownerCount, registrySize: registry.size, currentStream: !!current });
-  }
+  devLog('CAM][GUARD] HARD STOP', { reason, owners: ownerCount, registrySize: registry.size, currentStream: !!current });
   
   // Stop registry streams (all getUserMedia calls)
   registry.forEach(({ s }) => {

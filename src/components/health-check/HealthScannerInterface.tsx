@@ -25,6 +25,7 @@ import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
 import { toast } from 'sonner';
+import { devLog } from '@/lib/camera/devLog';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -101,9 +102,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const OWNER = 'health_scanner';
   
-  // Mount thrash detection
+  // Mount thrash detection + once guards
   const mountSeqRef = useRef(0);
   const mountTimeRef = useRef(0);
+  const onceMountedRef = useRef(false);
+  const onceGumCalledRef = useRef(false);
+  const onceGumOkRef = useRef(false);
+  const onceVideoAttachRef = useRef(false);
+  const onceVideoPlayRef = useRef(false);
+  const probedRef = useRef(false);
+  const probeTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
@@ -149,35 +157,43 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, [releaseNow, onCancel]);
 
   useLayoutEffect(() => {
-    // Phase 1 instrumentation - behind ?camInq=1
-    const isInquiry = window.location.search.includes('camInq=1');
+    // Phase 1 instrumentation - gated and rate-limited
     mountSeqRef.current++;
     mountTimeRef.current = Date.now();
     
-    if (isInquiry) {
-      console.log('[SCAN][MOUNT_SEQ]', mountSeqRef.current, { effectiveMode });
-      // Dump on mount
+    // Once-only mount logs
+    if (!onceMountedRef.current) {
+      onceMountedRef.current = true;
+      devLog('SCAN][MOUNT_SEQ', mountSeqRef.current, { effectiveMode });
+      
+      // Dump on mount (once)
       const dumpOnMount = (window as any).__camDump?.() || 'no dump available';
-      console.log('[SCAN][DUMP] on mount', dumpOnMount);
+      devLog('SCAN][DUMP] on mount', dumpOnMount);
     }
-    if (DEBUG) console.log('[HEALTH][MOUNT]', { effectiveMode });
+    
+    if (DEBUG) devLog('HEALTH][MOUNT', { effectiveMode });
     
     mark('[HS] component_mount');
     logPerfOpen('HealthScannerInterface');
     logOwnerAcquire('HealthScannerInterface');
     camOwnerMount(OWNER);
+    
     return () => {
       const unmountTime = Date.now();
       const mountDuration = unmountTime - mountTimeRef.current;
       const isThrash = mountDuration < 300;
       
-      if (isInquiry) {
-        console.log('[SCAN][UNMOUNT]', { seq: mountSeqRef.current, duration: mountDuration, thrash: isThrash });
-        // Dump on unmount
-        const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
-        console.log('[SCAN][DUMP] on unmount', dumpOnUnmount);
-      }
-      if (DEBUG) console.log('[HEALTH][UNMOUNT]');
+      devLog('SCAN][UNMOUNT', { seq: mountSeqRef.current, duration: mountDuration, thrash: isThrash });
+      
+      // Dump on unmount
+      const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
+      devLog('SCAN][DUMP] on unmount', dumpOnUnmount);
+      
+      if (DEBUG) devLog('HEALTH][UNMOUNT');
+      
+      // Clear any pending probe timeouts
+      probeTimeoutsRef.current.forEach(clearTimeout);
+      probeTimeoutsRef.current = [];
       
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       // Final cleanup on component unmount
@@ -187,7 +203,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       logPerfClose('HealthScannerInterface', startTimeRef.current);
       checkForLeaks('HealthScannerInterface');
     };
-  }, [releaseNow]);
+  }, []);
 
   // Unmount guard removed - using onModalClose for cleanup
 
@@ -195,7 +211,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   useEffect(() => {
     const handleVisibilityChange = () => {
       isVisible.current = !document.hidden;
-      if (DEBUG) console.log('[HS] visibility', { visible: isVisible.current });
+      if (DEBUG) devLog('HS] visibility', { visible: isVisible.current });
       
       // Pause scanning when page is hidden
       if (document.hidden) {
@@ -235,7 +251,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         releaseNow();
       }
     };
-  }, [STICKY ? undefined : currentView, releaseNow]);
+  }, []); // Fixed deps - only run once per mount
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
@@ -253,9 +269,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // Warm decode (will fail but initializes reader)
       await scanner.scanQuick(warmCanvas).catch(() => null);
       setWarmScanner(scanner);
-      console.log('[WARM] Decoder warmed up');
+      devLog('WARM] Decoder warmed up');
     } catch (error) {
-      console.warn('[WARM] Decoder warm-up failed:', error);
+      devLog('WARM] Decoder warm-up failed:', error);
     }
   };
 
@@ -270,16 +286,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     
     // Guard photo capture in barcode-only mode
     if (effectiveMode === 'barcode') {
-      console.log('[BARCODE] Skipping photo capture - barcode-only mode');
+      devLog('BARCODE] Skipping photo capture - barcode-only mode');
     }
     
     // iOS fallback: use photo capture for photo analysis
     if (!scannerLiveCamEnabled()) {
       if (effectiveMode === 'barcode') {
-        console.warn('[BARCODE] iOS: skipping photo capture in barcode-only mode');
+        devLog('BARCODE] iOS: skipping photo capture in barcode-only mode');
         return null;
       }
-      console.warn('[PHOTO] iOS fallback: photo capture (no live stream)');
+      devLog('PHOTO] iOS fallback: photo capture (no live stream)');
       try {
         const file = await openPhotoCapture('image/*','environment');
         // Process the file with existing photo analysis flow
@@ -294,9 +310,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
 
     try {
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
+      devLog('VIDEO INIT] videoRef =', videoRef.current);
       if (!videoRef.current) {
-        console.error("[VIDEO] videoRef is null — video element not mounted");
+        devLog('VIDEO] videoRef is null — video element not mounted');
         return;
       }
 
@@ -318,39 +334,38 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         };
         const fallback = { video: true };
         
-        // Phase 1 instrumentation - behind ?camInq=1
-        const isInquiry = window.location.search.includes('camInq=1');
-        
-        if (isInquiry) {
-          console.log('[SCAN][GUM][CALL]', { constraints: primary });
+        // Once-only GUM logs
+        if (!onceGumCalledRef.current) {
+          onceGumCalledRef.current = true;
+          devLog('SCAN][GUM][CALL', { constraints: primary });
           // Dump before acquire
           const dumpBefore = (window as any).__camDump?.() || 'no dump available';
-          console.log('[SCAN][DUMP] before acquire', dumpBefore);
+          devLog('SCAN][DUMP] before acquire', dumpBefore);
         }
         
         try { 
           const stream = await camAcquire(OWNER, primary);
           
-          if (isInquiry) {
+          if (!onceGumOkRef.current) {
+            onceGumOkRef.current = true;
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length });
+            devLog('SCAN][GUM][OK', { id: streamId, trackCount: tracks.length });
           }
           
           return stream;
         } catch (e: any) {
-          console.warn('[CAM] primary failed', e?.name);
+          devLog('CAM] primary failed', e?.name);
           
-          if (isInquiry) {
-            console.log('[SCAN][GUM][CALL]', { constraints: fallback, reason: 'primary_failed' });
-          }
+          devLog('SCAN][GUM][CALL', { constraints: fallback, reason: 'primary_failed' });
           
           const stream = await camAcquire(OWNER, fallback);
           
-          if (isInquiry) {
+          if (!onceGumOkRef.current) {
+            onceGumOkRef.current = true;
             const streamId = (stream as any).__camInqId || stream.id || 'unknown';
             const tracks = stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState }));
-            console.log('[SCAN][GUM][OK]', { id: streamId, trackCount: tracks.length, fallback: true });
+            devLog('SCAN][GUM][OK', { id: streamId, trackCount: tracks.length, fallback: true });
           }
           
           return stream;
@@ -359,13 +374,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       
       const mediaStream = await getCamera();
       streamRef.current = mediaStream;
-      console.log("[VIDEO] Stream received:", mediaStream);
+      devLog('VIDEO] Stream received:', mediaStream);
 
       const videoTrack = mediaStream.getVideoTracks()[0];
       const settings = videoTrack.getSettings();
       
       if (DEBUG) {
-        console.log('[HS] Stream settings:', {
+        devLog('HS] Stream settings:', {
           width: settings.width,
           height: settings.height,
           facingMode: settings.facingMode,
@@ -384,10 +399,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       if (videoRef.current) {
         const video = videoRef.current;
-        const isInquiry = window.location.search.includes('camInq=1');
         
-        if (isInquiry) {
-          console.log('[SCAN][VIDEO][ATTACH]', { 
+        // Once-only attach logs
+        if (!onceVideoAttachRef.current) {
+          onceVideoAttachRef.current = true;
+          devLog('SCAN][VIDEO][ATTACH', { 
             hasSrc: !!video.srcObject, 
             playsInline: (video as any).playsInline, 
             muted: video.muted, 
@@ -398,33 +414,36 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         try {
           await attachStreamToVideo(video, mediaStream);
           
-          if (isInquiry) {
-            console.log('[SCAN][VIDEO][PLAY][OK]');
+          if (!onceVideoPlayRef.current) {
+            onceVideoPlayRef.current = true;
+            devLog('SCAN][VIDEO][PLAY][OK');
             
-            // Readiness probe - 5 times @ 100ms
-            let probeCount = 0;
-            const probeReady = () => {
-              if (probeCount < 5) {
-                console.log('[SCAN][VIDEO][READY]', { 
-                  readyState: video.readyState, 
-                  w: video.videoWidth, 
-                  h: video.videoHeight 
-                });
-                probeCount++;
-                setTimeout(probeReady, 100);
-              }
-            };
-            probeReady();
-            
-            // Dump after attach to show live tracks
-            const dumpAfter = (window as any).__camDump?.() || 'no dump available';
-            console.log('[SCAN][DUMP] after attach', dumpAfter);
+            // Readiness probe - exactly 5 times @ 100ms, then stop
+            if (!probedRef.current) {
+              probedRef.current = true;
+              let probeCount = 0;
+              const probeReady = () => {
+                if (probeCount < 5) {
+                  devLog('SCAN][VIDEO][READY', { 
+                    readyState: video.readyState, 
+                    w: video.videoWidth, 
+                    h: video.videoHeight 
+                  });
+                  probeCount++;
+                  const timeoutId = setTimeout(probeReady, 100);
+                  probeTimeoutsRef.current.push(timeoutId);
+                }
+              };
+              probeReady();
+              
+              // Dump after attach to show live tracks (once)
+              const dumpAfter = (window as any).__camDump?.() || 'no dump available';
+              devLog('SCAN][DUMP] after attach', dumpAfter);
+            }
           }
           
         } catch (playError) {
-          if (isInquiry) {
-            console.log('[SCAN][VIDEO][PLAY][ERR]', { err: playError });
-          }
+          devLog('SCAN][VIDEO][PLAY][ERR', { err: playError });
           throw playError;
         }
         
@@ -437,13 +456,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       // Log torch capabilities (debug only)
       const caps = videoTrack?.getCapabilities?.();
       if (DEBUG) {
-        console.log('[TORCH] caps', caps ? Object.keys(caps) : 'none');
-        console.log('[TORCH] supported', !!(caps && 'torch' in caps));
+        devLog('TORCH] caps', caps ? Object.keys(caps) : 'none');
+        devLog('TORCH] supported', !!(caps && 'torch' in caps));
       }
       
       return mediaStream;
     } catch (error: any) {
-      console.warn('[PHOTO] Live video denied, using native capture', error?.name || error);
+      devLog('PHOTO] Live video denied, using native capture', error?.name || error);
       try {
         const file = await openPhotoCapture('image/*','environment');
         const reader = new FileReader();
@@ -479,7 +498,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.1);
     } catch (error) {
-      console.log('Camera click sound not available');
+      devLog('Camera click sound not available');
     }
   };
 
