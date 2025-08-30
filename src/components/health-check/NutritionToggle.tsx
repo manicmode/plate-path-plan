@@ -53,7 +53,10 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
 
   // Load portion information safely (skip if external override provided)
   useEffect(() => {
-    if (typeof servingGrams === 'number') return;
+    if (typeof servingGrams === 'number') {
+      console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
+      return; // external override in effect
+    }
     
     const loadPortionInfo = async () => {
       try {

@@ -305,18 +305,32 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     
     const runDetection = async () => {
       try {
+        const route = window.location.pathname;
+        const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+        
         mark('EnhancedHealthReport.portionResolve.start');
         trace('PORTION:EFFECT:RESOLVING', {
           result: !!result,
           ocrText: ingredientsText ? 'present' : 'none',
           entry: 'enhanced_report'
         });
+        console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
         
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(result, ingredientsText);
         
         mark('EnhancedHealthReport.portionResolve.complete', { resolved: !!portionResult });
         trace('PORTION:EFFECT:RESOLVED', portionResult);
+        console.log('[PORTION][INQ][RESOLVE] done', { 
+          chosen: { source: portionResult.source, grams: portionResult.grams },
+          candidates: portionResult.candidates.map(c => ({ 
+            source: c.source, 
+            grams: c.grams, 
+            confidence: c.confidence,
+            penalties: c.details || 'none'
+          })),
+          route 
+        });
         
         if (!alive) {
           trace('PORTION:EFFECT:CANCELLED', { reason: 'component_unmounted' });
@@ -488,6 +502,19 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               servingGrams={portion?.grams ?? 30}
               portionLabel={portion?.label ?? '30g · est.'}
             />
+            {/* FORENSIC PROBE - PORTION INQUIRY */}
+            {(() => {
+              const route = window.location.pathname;
+              const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+              console.log('[PORTION][INQ][CALL]', { 
+                route, 
+                productId, 
+                nutritionPropType: 'per100', 
+                servingGramsProp: portion?.grams ?? 30, 
+                portionLabelProp: portion?.label ?? '30g · est.' 
+              });
+              return null;
+            })()}
           </TabsContent>
           
           <TabsContent value="flags" className="mt-6">
