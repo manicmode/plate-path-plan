@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { HealthScannerInterface } from './HealthScannerInterface';
 import { FF } from '@/featureFlags';
 import { PipelineRouter } from './PipelineRouter';
@@ -241,6 +242,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   }>({ source: 'photo' });
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
   const { onAnalyzeImage } = useHealthCheckV2();
@@ -1975,15 +1977,25 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             <NoDetectionFallback
               status={currentState}
               onRetryCamera={() => {
-                console.log('[HC][STEP]', 'scanner', { source: 'retry_camera' });
-                setCurrentState('scanner');
+                console.log('[HC][NAV]', 'Navigating to barcode scan', { source: 'retry_camera' });
+                handleClose();
+                navigate('/scan');
               }}
               onRetryPhoto={() => {
-                console.log('[HC][STEP]', 'scanner', { source: 'retry_photo' });
-                setCurrentState('scanner');
+                console.log('[HC][NAV]', 'Navigating to photo mode', { source: 'retry_photo' });
+                handleClose();
+                navigate('/scan', { state: { openPhotoModal: true } });
               }}
-              onManualEntry={() => setCurrentState('fallback')}
-              onVoiceEntry={() => setCurrentState('fallback')}
+              onManualEntry={() => {
+                console.log('[HC][NAV]', 'Navigating to manual entry', { source: 'manual_entry' });
+                handleClose();
+                navigate('/scan', { state: { openManualEntry: true } });
+              }}
+              onVoiceEntry={() => {
+                console.log('[HC][NAV]', 'Navigating to voice entry', { source: 'voice_entry' });
+                handleClose();
+                navigate('/scan?modal=voice');
+              }}
               onBack={handleClose}
             />
           )}

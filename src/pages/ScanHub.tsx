@@ -108,6 +108,22 @@ export default function ScanHub() {
   const voiceEnabled = isFeatureEnabled('fallback_voice_enabled');
   const textEnabled = isFeatureEnabled('fallback_text_enabled');
 
+  // Handle navigation state from NoDetectionFallback 
+  useEffect(() => {
+    if (location.state?.openPhotoModal && !photoModalOpen) {
+      console.log('[SCAN] Opening photo modal from navigation state');
+      setPhotoModalOpen(true);
+      // Clear the state to prevent re-opening
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    if (location.state?.openManualEntry && !manualEntryOpen) {
+      console.log('[SCAN] Opening manual entry from navigation state'); 
+      setManualEntryOpen(true);
+      // Clear the state to prevent re-opening
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, photoModalOpen, manualEntryOpen, navigate, location.pathname]);
+
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
       tile, 

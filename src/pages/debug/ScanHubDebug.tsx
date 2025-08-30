@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ScanBarcode, Camera, Keyboard, Mic, Bookmark, History } from 'lucide-react';
+import { ArrowLeft, ScanBarcode, Camera, Keyboard, Mic, Bookmark, History, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEntry';
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
+import { NoDetectionFallback } from '@/components/health-check/NoDetectionFallback';
 import { toast } from 'sonner';
 
 export function ScanHubDebug() {
@@ -18,6 +19,7 @@ export function ScanHubDebug() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [testNoDetectionFallback, setTestNoDetectionFallback] = useState(false);
 
   // Feature flags
   const flags = {
@@ -177,6 +179,30 @@ export function ScanHubDebug() {
           </CardContent>
         </Card>
 
+        {/* Navigation Test */}
+        <Card className="bg-black/40 border-white/20 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5" />
+              <span>No Detection Fallback Test</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-gray-300 text-sm">
+                Test the navigation buttons in the "No Product Detected" screen to ensure they route to the correct pages.
+              </p>
+              <Button
+                onClick={() => setTestNoDetectionFallback(true)}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Test Navigation Buttons
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* QA Checklist */}
         <Card className="bg-black/40 border-white/20 backdrop-blur-sm">
           <CardHeader>
@@ -224,6 +250,42 @@ export function ScanHubDebug() {
         onOpenChange={setVoiceModalOpen}
         onProductSelected={handleProductSelected}
       />
+
+      {/* NoDetectionFallback Test */}
+      {testNoDetectionFallback && (
+        <NoDetectionFallback
+          status="no_detection"
+          onRetryCamera={() => {
+            console.log('[TEST] Retry Camera clicked - should navigate to /scan');
+            toast.success('Retry Scan: Navigating to barcode scanner');
+            setTestNoDetectionFallback(false);
+            navigate('/scan');
+          }}
+          onRetryPhoto={() => {
+            console.log('[TEST] Retry Photo clicked - should navigate to /scan with photo modal');
+            toast.success('Photo Mode: Navigating to photo capture');
+            setTestNoDetectionFallback(false);
+            navigate('/scan', { state: { openPhotoModal: true } });
+          }}
+          onManualEntry={() => {
+            console.log('[TEST] Manual Entry clicked - should navigate to /scan with manual entry');
+            toast.success('Manual Entry: Navigating to manual entry');
+            setTestNoDetectionFallback(false);
+            navigate('/scan', { state: { openManualEntry: true } });
+          }}
+          onVoiceEntry={() => {
+            console.log('[TEST] Voice Entry clicked - should navigate to /scan?modal=voice');
+            toast.success('Voice Entry: Navigating to voice search');
+            setTestNoDetectionFallback(false);
+            navigate('/scan?modal=voice');
+          }}
+          onBack={() => {
+            console.log('[TEST] Back clicked - closing test');
+            toast.info('Back: Closing test');
+            setTestNoDetectionFallback(false);
+          }}
+        />
+      )}
     </div>
   );
 }
