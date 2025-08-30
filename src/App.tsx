@@ -561,11 +561,17 @@ function AppContent() {
                                   <NutritionReport />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/health-report/:reportId" element={
-                                <ProtectedRoute>
-                                  <HealthReportStandalone />
-                                </ProtectedRoute>
-                              } />
+                               <Route path="/health-report/:reportId" element={
+                                 <ProtectedRoute>
+                                   <HealthReportStandalone />
+                                 </ProtectedRoute>
+                               } />
+                               {/* Photo route alias - same component as health-report */}
+                               <Route path="/photo" element={
+                                 <ProtectedRoute>
+                                   <HealthReportStandalone />
+                                 </ProtectedRoute>
+                               } />
                              
                               {/* Legacy health-report redirect to scan hub */}
                               <Route path="/health-report" element={<Navigate to="/scan" replace />} />

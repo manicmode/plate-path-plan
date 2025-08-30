@@ -286,14 +286,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             hasNutrition: !!result.nutritionFields
           });
           
-          // Navigate to report with unified payload
-          navigate(result.route, { 
-            state: { 
-              entry: 'photo',
-              source: 'photo',
-              ...result
-            } 
-          });
+           // Navigate to photo route with sessionStorage boot
+           navigate(result.route, { 
+             state: { 
+               bootKey: 'bootKey' in result ? result.bootKey : undefined,
+               entry: 'photo',
+               source: 'photo'
+             } 
+           });
           
           camHardStop('modal_close');
           onOpenChange(false);
@@ -339,14 +339,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             route: result.route 
           });
           
-          // Navigate to report with unified payload
-          navigate(result.route, { 
-            state: { 
-              entry: 'photo',
-              source: 'photo',
-              ...result
-            } 
-          });
+           // Navigate to photo route with sessionStorage boot  
+           navigate(result.route, { 
+             state: { 
+               bootKey: 'bootKey' in result ? result.bootKey : undefined,
+               entry: 'photo',
+               source: 'photo'
+             } 
+           });
           
           camHardStop('modal_close');
           onOpenChange(false);
