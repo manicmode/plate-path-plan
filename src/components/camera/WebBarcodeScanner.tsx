@@ -283,11 +283,14 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     mountSeqRef.current++;
     mountTimeRef.current = Date.now();
     
-    if (isInquiry) {
-      console.log('[SCAN][MOUNT_SEQ]', mountSeqRef.current);
-      // Dump on mount
+    // Once-only mount logs
+    if (!onceMountedRef.current) {
+      onceMountedRef.current = true;
+      devLog('SCAN][MOUNT_SEQ', mountSeqRef.current);
+      
+      // Dump on mount (once)
       const dumpOnMount = (window as any).__camDump?.() || 'no dump available';
-      console.log('[SCAN][DUMP] on mount', dumpOnMount);
+      devLog('SCAN][DUMP] on mount', dumpOnMount);
     }
     
     logPerfOpen('WebBarcodeScanner');
@@ -300,13 +303,13 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       const mountDuration = unmountTime - mountTimeRef.current;
       const isThrash = mountDuration < 300;
       
-      if (isInquiry) {
-        console.log('[SCAN][UNMOUNT]', { seq: mountSeqRef.current, duration: mountDuration, thrash: isThrash });
-        // Dump on unmount
-        const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
-        console.log('[SCAN][DUMP] on unmount', dumpOnUnmount);
-      }
-      console.log("[CAMERA] cleanup", { OWNER });
+      devLog('SCAN][UNMOUNT', { seq: mountSeqRef.current, duration: mountDuration, thrash: isThrash });
+      
+      // Dump on unmount
+      const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
+      devLog('SCAN][DUMP] on unmount', dumpOnUnmount);
+      
+      devLog('CAMERA] cleanup', { OWNER });
       // Parent owns cleanup - only cleanup if this is a final close, not view toggle
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
       checkForLeaks('WebBarcodeScanner');

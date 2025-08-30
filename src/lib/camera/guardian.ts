@@ -105,9 +105,24 @@ export function camGetRefs(): number {
   return refs;
 }
 
+// Guardian self-test for diagnostics
+export function guardianSelfTest() {
+  return {
+    wired: true,
+    refCount: refs,
+    activeTracks: current ? current.getTracks().length : 0,
+    registrySize: registry.size,
+    ownerCount: owners.size,
+    currentStream: !!current
+  };
+}
+
 // Safety on route/visibility with smart owner-aware stopping
 if (typeof window !== 'undefined' && !(window as any).__cam_guard_installed) {
   (window as any).__cam_guard_installed = true;
+  
+  // Expose self-test function globally
+  (window as any).__testCameraGuardian = guardianSelfTest;
   
   window.addEventListener('pagehide', () => camHardStop('pagehide'));
   

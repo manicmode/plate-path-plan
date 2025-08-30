@@ -34,9 +34,10 @@ installCameraGuardianWire();
 // Install camera dump utility for investigation
 installCamDump();
 
-// Single-guardian assertion logging
-console.log('[GUARD][LEGACY] disabled:true');
-console.log('[GUARD][NEW] wired:true');
+// Single-guardian assertion logging - use devLog for gating
+import { devLog } from './lib/camera/devLog';
+devLog('GUARD][LEGACY] disabled', true);
+devLog('GUARD][NEW] wired', true);
 
 // Log active CSP on app mount (dev helper)
 logActiveCSP('APP_MOUNT');
