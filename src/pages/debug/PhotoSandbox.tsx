@@ -81,12 +81,23 @@ export default function PhotoSandbox() {
 
   async function ping() {
     try {
+      console.log('[FN][BASE]', resolveFunctionsBase());
       const base = resolveFunctionsBase();
       const url = `${base}/vision-ocr/ping`;
       log('[PING][START]', { url });
 
       const headers = await getSupabaseAuthHeaders();
+      console.log('[AUTH][HEADERS]', {
+        hasAuth: !!headers?.Authorization,
+        authPrefix: headers?.Authorization?.slice(0, 20),
+        hasApikey: !!headers?.apikey
+      });
+
+      console.log('[FETCH][START]', { url, method: 'GET', contentType: headers['Content-Type'] ?? null });
+      
       const r = await fetch(url, { headers: { ...headers, 'Accept': 'application/json' } });
+      
+      console.log('[FETCH][DONE]', { status: r.status, ok: r.ok });
 
       if (!r.ok) {
         const text = await r.text().catch(() => '');

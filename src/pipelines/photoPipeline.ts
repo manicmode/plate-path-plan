@@ -45,6 +45,7 @@ export async function analyzePhoto(
   }
 
   try {
+    console.log('[FN][BASE]', resolveFunctionsBase());
     const base = resolveFunctionsBase();
     const url = `${base}/vision-ocr`;
     
@@ -54,6 +55,13 @@ export async function analyzePhoto(
     formData.append('image', input.blob, 'photo.jpg');
 
     const authHeaders = await getSupabaseAuthHeaders();
+    console.log('[AUTH][HEADERS]', {
+      hasAuth: !!authHeaders?.Authorization,
+      authPrefix: authHeaders?.Authorization?.slice(0, 20),
+      hasApikey: !!authHeaders?.apikey
+    });
+
+    console.log('[FETCH][START]', { url, method: 'POST', contentType: authHeaders['Content-Type'] ?? null });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -64,7 +72,7 @@ export async function analyzePhoto(
       }
     });
 
-    console.log('[PHOTO][FETCH_DONE]', { status: response.status });
+    console.log('[FETCH][DONE]', { status: response.status, ok: response.ok });
 
     if (response.status === 401) {
       return { ok: false, reason: 'unauthorized' };
