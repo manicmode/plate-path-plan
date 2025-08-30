@@ -383,7 +383,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         )}
         
         {/* Scanning overlay */}
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-start justify-center pt-12">
           <div className="w-56 h-36 border-2 border-emerald-400 rounded-lg relative">
             <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400"></div>
             <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400"></div>

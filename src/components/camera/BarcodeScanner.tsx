@@ -419,7 +419,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </div>
 
                 {/* Scanner Visualization */}
-                <div className="relative bg-gray-900 rounded-xl overflow-hidden h-64 flex items-center justify-center">
+                <div className="relative bg-gray-900 rounded-xl overflow-hidden h-64 flex items-start justify-center pt-12">
                   {isScanning ? (
                     <>
                       {/* Scanning Frame with improved UI */}
