@@ -131,7 +131,7 @@ const createMinimalData = (): HealthAnalysisResult => ({
 });
 
 export default function StandaloneReportTest() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isReady, setIsReady] = useState(false);
 
@@ -140,16 +140,27 @@ export default function StandaloneReportTest() {
   const testData = useMock ? createMockData() : createMinimalData();
 
   useEffect(() => {
-    // Log route mounting
+    // Harden dev route: ensure forceReport=v2 is always set
+    const forceReport = searchParams.get('forceReport');
+    if (!forceReport) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('forceReport', 'v2');
+      setSearchParams(newParams, { replace: true });
+      return;
+    }
+
+    // Log route mounting with V2 confirmation
     console.log('[STANDALONE][ROUTE] Mounted /standalone-test', { 
       mock: useMock,
-      route: '/standalone-test' 
+      forceReport,
+      route: '/standalone-test',
+      v2Confirmed: forceReport === 'v2'
     });
     
     // Mark as ready after a brief delay to ensure proper mounting
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
-  }, [useMock]);
+  }, [useMock, searchParams, setSearchParams]);
 
   const handleScanAnother = () => {
     console.log('[STANDALONE][ACTION] Scan another clicked');
@@ -192,8 +203,11 @@ export default function StandaloneReportTest() {
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-md font-mono">
                 V2 TEST
               </span>
+              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md font-mono text-xs">
+                Render: V2 ✓
+              </span>
               {useMock && (
-                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md font-mono text-xs">
+                <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-md font-mono text-xs">
                   MOCK DATA
                 </span>
               )}

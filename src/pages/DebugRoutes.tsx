@@ -67,7 +67,7 @@ export default function DebugRoutes() {
           
           {/* V2 Enhanced Health Report Test - Debug Only */}
           <button 
-            onClick={() => navigate('/standalone-test')}
+            onClick={() => navigate('/standalone-test?forceReport=v2')}
             className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30"
           >
             <h3 className="font-semibold">🧪 Test Enhanced Report (V2)</h3>
