@@ -54,13 +54,11 @@ serve(async (req) => {
   const { pathname } = new URL(req.url);
 
   if (pathname.endsWith("/ping")) {
-    console.info(`[vision-ocr] ping from origin: ${origin}`);
-    return new Response(JSON.stringify({ 
-      status: "ok", 
-      ok: true, 
-      ts: Date.now(),
-      origin: origin 
-    }), {
+    const hasAuth = !!req.headers.get("authorization");
+    const apikey = req.headers.get("apikey") ? true : false;
+    console.info(`[vision-ocr] ping from origin: ${origin}, auth: ${hasAuth}, apikey: ${apikey}`);
+    const payload = { status: "ok", ts: Date.now(), origin, hasAuth, apikey };
+    return new Response(JSON.stringify(payload), {
       headers: { "Content-Type": "application/json", ...baseHeaders },
     });
   }
