@@ -320,12 +320,19 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
       // Use ideal constraints with robust fallback
       const getCamera = async () => {
+        // Feature flags
+        const scannerVideoFix = (window as any).__scannerVideoFix === true; // Default OFF
+        
+        const baseConstraints = { 
+          facingMode: { ideal: 'environment' }, 
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 }
+        };
+        
         const primary = { 
-          video: { 
-            facingMode: { ideal: 'environment' }, 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 } 
-          } 
+          video: scannerVideoFix ? 
+            { ...baseConstraints, frameRate: { ideal: 24, max: 30 } } : 
+            baseConstraints
         };
         const fallback = { video: true };
         

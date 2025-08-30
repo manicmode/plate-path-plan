@@ -13,7 +13,7 @@ export const getCameraFeatureFlags = () => {
   };
 };
 
-// Set global flags for legacy guardian
+// Set global flags for legacy guardian and components
 if (typeof window !== 'undefined') {
   const flags = getCameraFeatureFlags();
   (window as any).__guardianLegacyOff = flags.guardianLegacyOff;

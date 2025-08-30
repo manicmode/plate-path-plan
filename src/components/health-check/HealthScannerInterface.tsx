@@ -108,8 +108,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Apply dynamic viewport height fix
   useDynamicViewportVar();
 
-  // Mode detection and logging
-  const effectiveMode = mode ?? 'mixed';
+  // Mode detection and logging - PIN to barcode when in barcode modal
+  const effectiveMode = mode === 'barcode' ? 'barcode' : (mode ?? 'mixed');
+  
+  // Feature flags
+  const scannerStickyMount = (window as any).__scannerStickyMount !== false; // Default ON
   
   // Performance throttling
   const lastDecodeTime = useRef<number>(0);
@@ -206,14 +209,24 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const ZOOM = 1.5;
 
   useEffect(() => {
+    // Stable mount: only start camera once, don't restart on view changes
+    if (scannerStickyMount) {
+      startCamera();
+      warmUpDecoder();
+      return; // No cleanup on view changes
+    }
+    
+    // Legacy behavior: restart on view changes (causes thrash)
     if (currentView === 'scanner') {
       startCamera();
       warmUpDecoder();
     }
     return () => {
-      releaseNow();
+      if (!scannerStickyMount) {
+        releaseNow();
+      }
     };
-  }, [currentView]);
+  }, [scannerStickyMount ? undefined : currentView]);
 
   // Warm-up the decoder on modal open
   const warmUpDecoder = async () => {
@@ -280,13 +293,19 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
       // Use ideal constraints with robust fallback
       const getCamera = async () => {
+        // Feature flags
+        const scannerVideoFix = (window as any).__scannerVideoFix === true; // Default OFF
+        
+        const baseConstraints = { 
+          facingMode: { ideal: 'environment' }, 
+          width: { ideal: 720 }, 
+          height: { ideal: 720 }
+        };
+        
         const primary = { 
-          video: { 
-            facingMode: { ideal: 'environment' }, 
-            width: { ideal: 720 }, 
-            height: { ideal: 720 },
-            frameRate: { ideal: 24, max: 30 }
-          } 
+          video: scannerVideoFix ? 
+            { ...baseConstraints, frameRate: { ideal: 24, max: 30 } } : 
+            baseConstraints
         };
         const fallback = { video: true };
         
@@ -1161,6 +1180,22 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const handleManualEntry = () => {
     setCurrentView('manual');
   };
+  
+  // Handle barcode submission from manual entry
+  const handleSubmitBarcode = useCallback(async () => {
+    if (!barcodeInput.trim()) return;
+    
+    const result = normalizeBarcode(barcodeInput.trim());
+    if (result && typeof result === 'object' && result.normalized) {
+      console.log('[MANUAL] Submitting barcode:', result.normalized);
+      onCapture({ imageBase64: '', detectedBarcode: result.normalized });
+    } else {
+      console.warn('[MANUAL] Invalid barcode format:', barcodeInput);
+      // Use sonner toast for user feedback
+      const { toast } = await import('sonner');
+      toast('Invalid barcode format. Please check and try again.');
+    }
+  }, [barcodeInput, onCapture]);
 
   // Helper function to detect if input is a barcode
   const isBarcode = (input: string): boolean => {
@@ -1349,7 +1384,248 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   }, [currentView]);
 
-  // Scanner View
+  // Render all views, use CSS to show/hide when sticky mount is enabled
+  if (scannerStickyMount) {
+    return (
+      <>
+        {/* Scanner View - always mounted, hidden when not active */}
+        <div 
+          className={`scanner-root ${currentView !== 'scanner' ? 'hidden' : ''}`}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            height: 'var(--app-dvh, 100dvh)',
+            overflow: 'hidden',
+            background: 'black',
+            zIndex: 100,
+            display: currentView !== 'scanner' ? 'none' : 'block'
+          }}
+        >
+          <main className={`scanner-container h-full relative overflow-hidden`}>
+            {/* Live Camera Feed */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: 'translateZ(0)'
+              }}
+              className={`transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
+            />
+            
+            {/* Shutter flash effect */}
+            {isFrozen && (
+              <div className="absolute inset-0 bg-white animate-pulse opacity-20 pointer-events-none"></div>
+            )}
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Scanning Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="relative pointer-events-none">
+                <div className={`w-64 h-64 border-4 border-green-400 rounded-3xl transition-all duration-500 ${
+                  isScanning ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.6)]' : 'shadow-[0_0_30px_rgba(34,197,94,0.4)]'
+                }`}>
+                  <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
+                  <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
+                  <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
+                  
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className={`transition-all duration-300 ${isScanning ? 'animate-pulse' : 'animate-bounce'}`}>
+                      <Target className={`w-16 h-16 transition-colors ${
+                        isScanning ? 'text-red-400' : 'text-green-400'
+                      }`} />
+                    </div>
+                  </div>
+                  
+                  {isScanning && (
+                    <div className="absolute inset-0 overflow-hidden rounded-3xl">
+                      <div className="w-full h-1 bg-red-500 animate-[slide_0.5s_ease-in-out_infinite] shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Header Text */}
+            <div className="absolute top-8 left-4 right-4 text-center">
+              <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-green-400/30">
+                <h2 className="text-white text-lg font-bold mb-2">
+                  🔬 Health Inspector Scanner
+                </h2>
+                <p className="text-green-300 text-sm animate-pulse">
+                  Scan a food barcode to inspect its health profile!
+                </p>
+              </div>
+            </div>
+
+            {/* Grid Overlay */}
+            <div className="absolute inset-0 opacity-20 pointer-events-none">
+              <div className="w-full h-full" style={{
+                backgroundImage: `
+                  linear-gradient(rgba(34,197,94,0.3) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(34,197,94,0.3) 1px, transparent 1px)
+                `,
+                backgroundSize: '30px 30px'
+              }}></div>
+            </div>
+          </main>
+
+          {/* CTA bar */}
+          <div
+            className="scanner-cta"
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+              padding: '0 20px',
+              zIndex: 1010,
+              pointerEvents: 'auto'
+            }}
+          >
+            <ScannerActions
+              onAnalyze={captureImage}
+              onCancel={onCancel}
+              onEnterBarcode={handleManualEntry}
+              onFlashlight={handleFlashlightToggle}
+              isScanning={isScanning}
+              torchEnabled={torchOn}
+              torchSupported={supportsTorch}
+            />
+          </div>
+        </div>
+
+        {/* Manual Entry View - always mounted, hidden when not active */}
+        <div className={currentView !== 'manual' ? 'hidden' : 'w-full h-full bg-background flex flex-col overflow-hidden'}>
+          <div className="p-6 border-b bg-card">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentView('scanner')}
+                className="rounded-full"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h2 className="text-xl font-bold text-foreground">Manual Entry</h2>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                Enter Barcode Manually
+              </h3>
+              <div className="space-y-4">
+                <Input
+                  ref={barcodeInputRef}
+                  type="text"
+                  placeholder="Enter barcode number (e.g., 123456789012)"
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  className="text-center text-lg font-mono"
+                />
+                <Button 
+                  onClick={handleSubmitBarcode}
+                  className="w-full"
+                  disabled={!barcodeInput.trim() || isLoadingSuggestions}
+                >
+                  {isLoadingSuggestions ? 'Processing...' : 'Submit Barcode'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={() => onManualSearch?.('', 'voice')}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Mic className="w-4 h-4 mr-2" />
+                  Voice Search
+                </Button>
+                <span className="text-muted-foreground text-sm">or</span>
+                <Button
+                  onClick={() => onManualSearch?.('', 'text')}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Text Search
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Not Recognized View - always mounted, hidden when not active */}
+        <div className={currentView !== 'notRecognized' ? 'hidden' : 'w-full h-full bg-background flex flex-col overflow-hidden'}>
+          <div className="p-6 border-b bg-card">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentView('scanner')}
+                className="rounded-full"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h2 className="text-xl font-bold text-foreground">Image Not Recognized</h2>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="text-center py-8">
+              <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lightbulb className="w-10 h-10 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                We couldn't identify this image
+              </h3>
+              <p className="text-muted-foreground">
+                Try taking another photo or search manually below
+              </p>
+            </div>
+
+            {showSuggestions && smartSuggestions.length > 0 && (
+              <div>
+                <h4 className="font-medium text-foreground mb-3">💡 Smart Suggestions:</h4>
+                <div className="grid gap-2">
+                  {smartSuggestions.map((suggestion, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className="justify-start text-left h-auto p-3"
+                      onClick={() => onManualSearch?.(suggestion, 'text')}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={() => setCurrentView('scanner')}
+              variant="outline"
+              className="w-full border-green-400 text-green-600 hover:bg-green-50"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              📸 Try Scanning Again
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Legacy behavior: conditional rendering (causes thrash)
   if (currentView === 'scanner') {
     return (
       <div 
@@ -1357,7 +1633,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         style={{
           position: 'fixed',
           inset: 0,
-          height: 'var(--app-dvh, 100dvh)',   // dynamic height
+          height: 'var(--app-dvh, 100dvh)',
           overflow: 'hidden',
           background: 'black',
           zIndex: 1000,
