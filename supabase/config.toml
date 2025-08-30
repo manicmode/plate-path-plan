@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.food-search]
 verify_jwt = false
+
+[functions.vision-ocr]
+verify_jwt = true
