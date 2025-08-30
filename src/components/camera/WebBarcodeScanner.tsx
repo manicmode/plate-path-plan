@@ -58,6 +58,10 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   const { snapAndDecode, setTorch, isTorchSupported: torchSupported, torchEnabled } = useSnapAndDecode();
 
   const OWNER = 'barcode_scanner';
+  
+  // Mount thrash detection
+  const mountSeqRef = useRef(0);
+  const mountTimeRef = useRef(0);
 
   // Tuning constants  
   const QUICK_BUDGET_MS = 900;
@@ -269,8 +273,11 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   useLayoutEffect(() => {
     // Phase 1 instrumentation - behind ?camInq=1
     const isInquiry = window.location.search.includes('camInq=1');
+    mountSeqRef.current++;
+    mountTimeRef.current = Date.now();
+    
     if (isInquiry) {
-      console.log('[SCAN][MOUNT]');
+      console.log('[SCAN][MOUNT_SEQ]', mountSeqRef.current);
       // Dump on mount
       const dumpOnMount = (window as any).__camDump?.() || 'no dump available';
       console.log('[SCAN][DUMP] on mount', dumpOnMount);
@@ -282,8 +289,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
     startCamera();
     warmUpDecoder();
     return () => {
+      const unmountTime = Date.now();
+      const mountDuration = unmountTime - mountTimeRef.current;
+      const isThrash = mountDuration < 300;
+      
       if (isInquiry) {
-        console.log('[SCAN][UNMOUNT]');
+        console.log('[SCAN][UNMOUNT]', { seq: mountSeqRef.current, duration: mountDuration, thrash: isThrash });
         // Dump on unmount
         const dumpOnUnmount = (window as any).__camDump?.() || 'no dump available';
         console.log('[SCAN][DUMP] on unmount', dumpOnUnmount);
@@ -394,9 +405,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
             };
             probeReady();
             
-            // Dump after play to show live tracks
+            // Dump after attach to show live tracks
             const dumpAfter = (window as any).__camDump?.() || 'no dump available';
-            console.log('[SCAN][DUMP] after play', dumpAfter);
+            console.log('[SCAN][DUMP] after attach', dumpAfter);
           }
           
           console.log("[CAMERA] Video attached and playing");
