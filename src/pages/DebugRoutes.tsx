@@ -76,6 +76,44 @@ export default function DebugRoutes() {
               ⚡ entry=standalone • Logs [REPORT][V2][BOOT] to console
             </div>
           </button>
+
+          {/* V2 Rollout Debug Controls */}
+          <div className="p-4 bg-card rounded-lg border border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
+            <h3 className="font-semibold mb-3">🎛️ V2 Rollout Controls</h3>
+            <p className="text-muted-foreground text-sm mb-4">Override V2 behavior for this device (localStorage)</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  localStorage.setItem('health_report_v2_override', 'enabled');
+                  alert('✅ V2 enabled for this device');
+                }}
+                className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+              >
+                Enable V2 for this device
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('health_report_v2_override', 'disabled');
+                  alert('❌ V2 disabled for this device');
+                }}
+                className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+              >
+                Disable V2 for this device
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('health_report_v2_override');
+                  alert('🔄 Reset to rollout flags');
+                }}
+                className="px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+              >
+                Reset Override
+              </button>
+            </div>
+            <div className="mt-3 text-xs text-orange-700 dark:text-orange-300">
+              Current: {localStorage.getItem('health_report_v2_override') || 'No override (uses rollout flags)'}
+            </div>
+          </div>
           
           <button 
             onClick={() => navigate('/debug/image-probe')}
