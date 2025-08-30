@@ -1,0 +1,337 @@
+/**
+ * Enhanced Health Report with Nutrition Toggle, Functional Tabs, and Personalized Suggestions
+ * Replaces the existing HealthReportPopup with new features
+ */
+
+import React, { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Save,
+  Flag,
+  RotateCcw,
+  Star,
+  ShieldCheck,
+  Zap,
+  X,
+  Loader2
+} from 'lucide-react';
+import { HealthAnalysisResult } from './HealthCheckModal';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth';
+import { NutritionToggle } from './NutritionToggle';
+import { FlagsTab } from './FlagsTab';
+import { SaveTab } from './SaveTab';
+import { PersonalizedSuggestions } from './PersonalizedSuggestions';
+import { parsePortionGrams } from '@/lib/nutrition/portionCalculator';
+
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+
+// Memoized Circular Progress Component with Animation
+const CircularProgress = React.memo<{ 
+  percentage: number; 
+  size?: number; 
+  strokeWidth?: number;
+}>(({ percentage, size = 120, strokeWidth = 8 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDasharray = `${circumference} ${circumference}`;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  
+  // Color based on percentage ranges
+  const getColor = (pct: number) => {
+    if (pct >= 80) return '#10B981'; // Green
+    if (pct >= 40) return '#F59E0B'; // Yellow  
+    return '#EF4444'; // Red
+  };
+
+  const color = getColor(percentage);
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <svg
+        className="transform -rotate-90"
+        width={size}
+        height={size}
+      >
+        {/* Background circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          className="text-border"
+        />
+        {/* Progress circle with animation */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out animate-pulse"
+          style={{
+            filter: `drop-shadow(0 0 8px ${color}60)`
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-2xl font-bold text-foreground">{percentage}%</span>
+      </div>
+    </div>
+  );
+});
+
+interface EnhancedHealthReportProps {
+  result: HealthAnalysisResult;
+  onScanAnother: () => void;
+  onClose: () => void;
+  analysisData?: {
+    source?: string;
+    barcode?: string;
+    imageUrl?: string;
+  };
+  initialIsSaved?: boolean;
+  hideCloseButton?: boolean;
+}
+
+export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
+  result,
+  onScanAnother,
+  onClose,
+  analysisData,
+  initialIsSaved = false,
+  hideCloseButton = false
+}) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Parse portion information
+  const portionInfo = useMemo(() => 
+    parsePortionGrams(result, analysisData?.imageUrl), 
+    [result, analysisData?.imageUrl]
+  );
+
+  // Generate OCR hash for caching
+  const ocrHash = useMemo(() => {
+    const text = result.ingredientsText || analysisData?.imageUrl || '';
+    return text.length > 0 ? btoa(text.slice(0, 100)).slice(0, 8) : undefined;
+  }, [result.ingredientsText, analysisData?.imageUrl]);
+
+  // Memoize heavy derived values
+  const healthPercentage = useMemo(() => {
+    // Expect healthScore on a 0..10 scale for barcode or 0..100 for other sources
+    const score10 = Math.max(0, Math.min(10, Number(result?.healthScore) || 0));
+    return Math.round(score10 * 10); // Convert to percentage for display
+  }, [result?.healthScore]);
+
+  // Helper functions for score-based ratings
+  const getScoreLabel = (score: number) => {
+    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
+    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
+    return { label: 'Avoid', icon: '❌', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/30' };
+  };
+
+  const getScoreMessage = (score: number) => {
+    if (score >= 8) return 'Looking good! Healthy choice.';
+    if (score >= 4) return 'Some concerns to keep in mind.';
+    return 'We recommend avoiding this product.';
+  };
+
+  const getStarRating = (score: number) => {
+    // Normalize score to 0-10 range first, then convert to 0-5 stars
+    const score10 = Math.max(0, Math.min(10, Number(score) || 0));
+    return Math.round(score10 / 2); // 0..5 stars
+  };
+
+  const scoreLabel = getScoreLabel(result.healthScore);
+  const starCount = getStarRating(result.healthScore);
+
+  return (
+    <div className="w-full min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        
+        {/* 🧬 Health Report Title */}
+        <div className="relative text-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground flex items-center justify-center">
+            <span className="text-4xl mr-3">🧬</span>
+            Health Report
+          </h1>
+          {/* Close button */}
+          {!hideCloseButton && (
+            <button
+              onClick={onClose}
+              className="absolute top-0 right-0 p-2 hover:bg-muted rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-foreground hover:text-primary" />
+            </button>
+          )}
+        </div>
+        
+        {/* 🔬 1. TOP SECTION — Summary Card */}
+        <Card className={`${scoreLabel.bgColor} border-2 backdrop-blur-sm transition-all duration-300 shadow-xl`}>
+          <CardContent className="p-8 text-center">
+            {/* Product Name */}
+            <h1 className="text-2xl font-bold text-foreground mb-6">{result.itemName}</h1>
+            
+            {/* Health Score Circular Progress */}
+            <div className="mb-4">
+              <CircularProgress percentage={healthPercentage} size={140} strokeWidth={10} />
+            </div>
+            <div className="text-sm text-foreground font-medium mb-6">Health Score</div>
+            
+            {/* Star Rating */}
+            <div className="flex justify-center space-x-1 mb-6">
+              {[...Array(5)].map((_, i) => (
+                  <Star 
+                  key={i} 
+                  className={`w-7 h-7 transition-all duration-200 ${
+                    i < starCount 
+                      ? 'text-yellow-600 dark:text-yellow-400 fill-yellow-600 dark:fill-yellow-400 drop-shadow-lg' 
+                      : 'text-foreground/40'
+                  }`} 
+                />
+              ))}
+            </div>
+            
+            {/* Large Status Label */}
+            <div className={`inline-flex items-center space-x-3 px-8 py-4 rounded-2xl ${scoreLabel.bgColor} border-2 mb-6 shadow-lg`}>
+              <span className="text-3xl">{scoreLabel.icon}</span>
+              <span className={`text-2xl font-bold ${scoreLabel.color}`}>{scoreLabel.label}</span>
+            </div>
+            
+            {/* Friendly Message */}
+            <p className={`text-lg ${scoreLabel.color} font-medium leading-relaxed`}>
+              {getScoreMessage(result.healthScore)}
+            </p>
+            
+            {/* Source Badge */}
+            {analysisData?.source && (
+              <div className="mt-4">
+                <Badge variant="outline" className="text-xs">
+                  Source: {analysisData.source === 'barcode' ? 'Barcode' : 
+                          analysisData.source === 'manual' ? 'Manual' : 'Photo'}
+                </Badge>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 📊 2. TABBED CONTENT AREA */}
+        <Tabs defaultValue="nutrition" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
+            <TabsTrigger value="flags">
+              Flags
+              {(result.flags?.length || result.ingredientFlags?.length || 0) > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  {result.flags?.length || result.ingredientFlags?.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="save">Save</TabsTrigger>
+            <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="nutrition" className="mt-6">
+            <NutritionToggle
+              nutrition100g={result.nutritionData || {}}
+              productData={result}
+              ocrText={result.ingredientsText}
+            />
+          </TabsContent>
+          
+          <TabsContent value="flags" className="mt-6">
+            <FlagsTab
+              ingredientsText={result.ingredientsText || ''}
+              nutrition100g={result.nutritionData || {}}
+              reportId={ocrHash}
+              ocrPreview={result.ingredientsText?.slice(0, 160)}
+            />
+          </TabsContent>
+          
+          <TabsContent value="save" className="mt-6">
+            <SaveTab
+              result={result}
+              analysisData={analysisData}
+              portionGrams={portionInfo.grams}
+              ocrHash={ocrHash}
+              onSaved={(logId) => {
+                toast({
+                  title: "Successfully Saved!",
+                  description: `Report saved with ID: ${logId.slice(0, 8)}...`,
+                });
+              }}
+            />
+          </TabsContent>
+          
+          <TabsContent value="suggestions" className="mt-6">
+            <PersonalizedSuggestions
+              result={result}
+              portionGrams={portionInfo.grams}
+              userProfile={{
+                // Mock user profile - replace with real user data
+                goals: user ? ['balanced_nutrition'] : [],
+                restrictions: [],
+                preferences: []
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* 🧪 3. INGREDIENT LIST */}
+        <Card className="bg-card border-border backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <h3 className="text-xl font-bold text-foreground flex items-center">
+              <div className="text-2xl mr-3">🧪</div>
+              Ingredient List
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-muted/50 border border-border rounded-lg">
+              <p className="text-foreground leading-relaxed">
+                <span className="font-semibold">Ingredients: </span>
+                <span className="text-foreground">
+                  {result.ingredientsText || 'Ingredient list not available from scan data'}
+                </span>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🎯 4. ACTION BUTTONS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+          <Button
+            onClick={onScanAnother}
+            variant="outline"
+            className="border-2 border-primary/50 text-primary hover:bg-primary/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            size="lg"
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            Scan Another
+          </Button>
+
+          <Button
+            onClick={onClose}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
+            size="lg"
+          >
+            <X className="w-5 h-5 mr-2" />
+            Close Report
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
