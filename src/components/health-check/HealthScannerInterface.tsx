@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { devLog } from '@/lib/camera/devLog';
 import { photoReportFromImage } from '@/features/health/photoReportFromImage';
 import { useLocation } from 'react-router-dom';
-import { isOcrFallbackEnabled } from '@/featureFlags';
+import { isOcrFallbackEnabled, isPhotoOcrEnabled } from '@/featureFlags';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -132,7 +132,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const source = state?.source;
   const entry = state?.entry;
   const photoOnly = source === 'photo' || entry === 'photo' || mode === 'photo';
-  const effectiveMode = photoOnly ? 'photo_only' : (mode === 'barcode' ? 'barcode' : (mode ?? 'mixed'));
+  
+  // Force barcode-only on /scan route (with ?hybrid=1 override)
+  const route = location.pathname;
+  const isScanRoute = route.startsWith('/scan');
+  const urlParams = new URLSearchParams(location.search);
+  const barcodeOnly = isScanRoute && (urlParams.get('hybrid') !== '1');
+  
+  const effectiveMode = photoOnly ? 'photo_only' : barcodeOnly ? 'barcode' : (mode === 'barcode' ? 'barcode' : (mode ?? 'mixed'));
   
   // Clear photo payloads on scanner mount to prevent interference
   useEffect(() => {
@@ -140,7 +147,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   }, []);
   
   // Feature flags
-  const urlParams = new URLSearchParams(window.location.search);
   const STICKY = urlParams.get('stickyMount') !== '0' && (window as any).__scannerStickyMount !== false; // Default ON, override with ?stickyMount=0
   const scannerStickyMount = STICKY;
   const PHOTO_UNIFIED = urlParams.get('photoUnified') !== '0' && isFeatureEnabled('photo_unified_pipeline'); // Default ON
@@ -890,7 +896,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
 
       // 2) No barcode found - gate OCR/image analysis behind feature flag
-      if (import.meta.env.VITE_PHOTO_PIPE_V1 === 'true' && isOcrFallbackEnabled()) {
+      if (!barcodeOnly && isPhotoOcrEnabled() && import.meta.env.VITE_PHOTO_PIPE_V1 === 'true' && isOcrFallbackEnabled()) {
         // New OCR pipeline
         try {
           console.log('[PHOTO] Using OCR pipeline...');
@@ -965,8 +971,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       }
 
       // 3) Continue scanning (no automatic OCR fallback unless explicitly enabled)
-      if (!isOcrFallbackEnabled()) {
-        devLog('SCAN][CONTINUE', 'No OCR fallback - continuing barcode scan');
+      if (barcodeOnly || !isOcrFallbackEnabled()) {
+        devLog('[SCAN][GUARD]', 'Photo/OCR blocked on /scan - keep scanning');
         // Keep scanning, don't navigate away
         return;
       }
@@ -1144,7 +1150,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
     
     const scanner = warmScanner || new MultiPassBarcodeScanner();
-    const barcodeResult = await scanner.scanQuick(canvas, { enabled: effectiveMode === 'barcode' });
+    const barcodeResult = await scanner.scanQuick(canvas, { enabled: !barcodeOnly || effectiveMode === 'barcode' });
     
     if (barcodeResult) {
       console.log("🔍 Quick barcode hit:", {
@@ -1165,7 +1171,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const runExistingFullDecodePipeline = async (canvas: HTMLCanvasElement) => {
     // Run capped quick check only - no more 76 passes!
-    const detectedBarcode = await runQuickBarcodeScan(canvas, { enabled: effectiveMode === 'barcode' });
+    const detectedBarcode = await runQuickBarcodeScan(canvas, { enabled: !barcodeOnly || effectiveMode === 'barcode' });
     
     // Convert to base64 using CSP-safe method
     const fullBlob: Blob = await new Promise((resolve, reject) => {
@@ -1230,12 +1236,12 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
     
     // No barcode or barcode lookup failed - proceed with image analysis
-    if (effectiveMode === 'barcode') {
+    if (effectiveMode === 'barcode' || barcodeOnly) {
       console.log('[BARCODE] Skipping photo analysis - barcode-only mode');
       return;
     }
     
-    if (isFeatureEnabled('photo_encoder_v1')) {
+    if (!barcodeOnly && isPhotoOcrEnabled() && isFeatureEnabled('photo_encoder_v1')) {
       try {
         console.log("🖼️ Using optimized photo encoder for analysis");
         const prep = await prepareImageForAnalysis(fullBlob, { 
@@ -1318,6 +1324,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         console.log('[MANUAL][BARCODE] Detected barcode input, using unified pipeline');
         
         try {
+          // Never route to a report from /scan unless a barcode exists
+          if (barcodeOnly && !isBarcode(inputValue)) {
+            devLog('[SCAN][GUARD]', 'No barcode in manual input → keep scanning');
+            toast.error('Please scan a barcode or enable hybrid mode with ?hybrid=1');
+            return;
+          }
+          
           const result = await openHealthReportFromBarcode(inputValue, 'scanner-manual');
           
           if ('error' in result) {
@@ -1443,6 +1456,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       console.log('[SUGGESTION][BARCODE] Processing barcode suggestion:', suggestion);
       
       try {
+        // Never route to a report from /scan unless a barcode exists
+        if (barcodeOnly && !isBarcode(suggestion)) {
+          devLog('[SCAN][GUARD]', 'No barcode in suggestion → keep scanning');
+          toast.error('Please scan a barcode or enable hybrid mode with ?hybrid=1');
+          return;
+        }
+        
         const result = await openHealthReportFromBarcode(suggestion, 'scanner-manual');
         
         if ('error' in result) {

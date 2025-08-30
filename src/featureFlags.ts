@@ -17,3 +17,8 @@ export const isOcrFallbackEnabled = () => {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('ocrfb') === '1';
 };
+
+// Feature flag for photo OCR analysis
+export const isPhotoOcrEnabled = () => {
+  return (import.meta.env.VITE_PHOTO_OCR_ENABLED ?? 'true') === 'true';
+};
