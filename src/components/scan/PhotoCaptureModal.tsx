@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Upload } from 'lucide-react';
-import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
+import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,14 +54,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const releaseNow = useCallback(() => {
     // release BEFORE any navigation/unmount
-    if (videoRef.current) {
-      try { 
-        videoRef.current.srcObject = null;
-        videoRef.current.removeAttribute('src');
-        videoRef.current.load();
-      } catch {}
+    detachVideo(videoRef.current);
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
     }
     
+    camOwnerUnmount(OWNER);
     camRelease(OWNER);
     logOwnerRelease('PhotoCaptureModal', ['video']);
     
@@ -74,8 +74,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     if (open) {
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
+      camOwnerMount(OWNER);
       startCamera();
     } else {
+      camOwnerUnmount(OWNER);
       camHardStop('modal_close');
       releaseNow();
       logPerfClose('PhotoCaptureModal', startTimeRef.current);
@@ -83,6 +85,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
     
     return () => {
+      camOwnerUnmount(OWNER);
       camHardStop('unmount');
       releaseNow();
     };
@@ -90,40 +93,37 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   // Unmount guard
   useEffect(() => () => releaseNow(), [releaseNow]);
-  
-  // Visibility & route guards
-  useEffect(() => {
-    const hardStop = () => releaseNow();
-    window.addEventListener('pagehide', hardStop);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') hardStop();
-    });
-    return () => {
-      window.removeEventListener('pagehide', hardStop);
-      document.removeEventListener('visibilitychange', hardStop);
-    };
-  }, [releaseNow]);
 
   const startCamera = async () => {
     if (streamRef.current) return streamRef.current;
     
     try {
       console.log("[PHOTO] Requesting camera stream...");
-      const constraints = {
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
+      
+      // Use ideal constraints with robust fallback
+      const getCamera = async () => {
+        const primary = { 
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 } 
+          } 
+        };
+        const fallback = { video: true };
+        
+        try { 
+          return await camAcquire(OWNER, primary); 
+        } catch (e: any) {
+          console.warn('[CAM] primary failed', e?.name);
+          return await camAcquire(OWNER, fallback);
+        }
       };
       
-      const mediaStream = await camAcquire(OWNER, constraints);
+      const mediaStream = await getCamera();
       streamRef.current = mediaStream;
       
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        await attachStreamToVideo(videoRef.current, mediaStream);
         
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;

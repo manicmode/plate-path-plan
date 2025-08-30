@@ -6,6 +6,11 @@ let refs = 0;
 type Reg = { s: MediaStream, ownerHint?: string };
 const registry = new Set<Reg>();
 
+// Owner tracking for smart visibilitychange handling
+const owners = new Set<string>();
+export const camOwnerMount = (id: string) => owners.add(id);
+export const camOwnerUnmount = (id: string) => owners.delete(id);
+
 export async function camAcquire(owner: string, constraints: MediaStreamConstraints): Promise<MediaStream> {
   if (!current) {
     current = await navigator.mediaDevices.getUserMedia(constraints);
@@ -79,16 +84,21 @@ export function camGetRefs(): number {
   return refs;
 }
 
-// Safety on route/visibility
+// Safety on route/visibility with smart owner-aware stopping
 if (typeof window !== 'undefined' && !(window as any).__cam_guard_installed) {
   (window as any).__cam_guard_installed = true;
   
   window.addEventListener('pagehide', () => camHardStop('pagehide'));
   
+  // Debounced visibilitychange - only stop if no camera owners are mounted
+  let visTimer: any = null;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') {
-      camHardStop('visibilitychange');
-    }
+    clearTimeout(visTimer);
+    visTimer = setTimeout(() => {
+      if (document.visibilityState !== 'visible' && owners.size === 0) {
+        camHardStop('visibilitychange');
+      }
+    }, 250);
   });
   
   // Additional safety for beforeunload

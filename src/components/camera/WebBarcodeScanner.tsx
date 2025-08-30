@@ -8,7 +8,8 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
-import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
+import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 
 // Removed debug logging - mediaLog function removed
@@ -217,14 +218,13 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const releaseNow = useCallback(() => {
     // release BEFORE any navigation/unmount
-    if (videoRef.current) {
-      try { 
-        videoRef.current.srcObject = null;
-        videoRef.current.removeAttribute('src');
-        videoRef.current.load();
-      } catch {}
+    detachVideo(videoRef.current);
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
     }
     
+    camOwnerUnmount(OWNER);
     camRelease(OWNER);
     logOwnerRelease('WebBarcodeScanner', ['video']);
     
@@ -269,10 +269,12 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
   useLayoutEffect(() => {
     logPerfOpen('WebBarcodeScanner');
     logOwnerAcquire('WebBarcodeScanner');
+    camOwnerMount(OWNER);
     startCamera();
     warmUpDecoder();
     return () => {
       console.log("[CAMERA] cleanup", { OWNER });
+      camOwnerUnmount(OWNER);
       camHardStop('unmount');
       releaseNow();
       logPerfClose('WebBarcodeScanner', startTimeRef.current);
@@ -291,21 +293,32 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       }
 
       console.log("[CAMERA] Requesting camera stream...");
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
+      
+      // Use ideal constraints with robust fallback
+      const getCamera = async () => {
+        const primary = { 
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 } 
+          } 
+        };
+        const fallback = { video: true };
+        
+        try { 
+          return await camAcquire(OWNER, primary); 
+        } catch (e: any) {
+          console.warn('[CAM] primary failed', e?.name);
+          return await camAcquire(OWNER, fallback);
+        }
       };
       
-      const mediaStream = await camAcquire(OWNER, constraints);
+      const mediaStream = await getCamera();
       streamRef.current = mediaStream;
       
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        console.log("[CAMERA] srcObject set, playing video");
+        await attachStreamToVideo(videoRef.current, mediaStream);
+        console.log("[CAMERA] Video attached and playing");
         
         // Camera inquiry logging
         const streamId = (mediaStream as any).__camInqId || 'unknown';
@@ -336,19 +349,6 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   // Unmount guard
   useEffect(() => () => releaseNow(), [releaseNow]);
-  
-  // Visibility & route guards
-  useEffect(() => {
-    const hardStop = () => releaseNow();
-    window.addEventListener('pagehide', hardStop);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') hardStop();
-    });
-    return () => {
-      window.removeEventListener('pagehide', hardStop);
-      document.removeEventListener('visibilitychange', hardStop);
-    };
-  }, [releaseNow]);
 
   if (error) {
     return (

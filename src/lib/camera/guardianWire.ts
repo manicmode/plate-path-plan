@@ -54,12 +54,8 @@ export function installCameraGuardianWire() {
   md.getUserMedia.__orig = orig;
   md.getUserMedia.__wired = true;
 
-  // Route & visibility hard-stops (belt + suspenders)
+  // Route & visibility hard-stops (belt + suspenders) - removed aggressive blur
   window.addEventListener('pagehide', () => camHardStop('pagehide'));
-  window.addEventListener('blur', () => camHardStop('window_blur')); // Desktop tab switches
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') camHardStop('visibilitychange');
-  });
 
   // Dev helpers (always available but logged conditionally)
   (window as any).__camDump = camDump;

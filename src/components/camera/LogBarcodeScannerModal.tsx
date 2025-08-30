@@ -4,7 +4,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
-import { camHardStop } from '@/lib/camera/guardian';
+import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
+import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,10 +61,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
+  // Constants and refs
+  const OWNER = 'log_barcode_scanner';
+
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;
-
-  // Constants for decode parameters (gated throttling)
   const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
   const BUDGET_MS = THROTTLE ? 500 : 900;
   const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
@@ -153,8 +155,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (open) {
       logPerfOpen('LogBarcodeScannerModal');
       logOwnerAcquire('LogBarcodeScannerModal');
+      camOwnerMount(OWNER);
       startCamera();
     } else {
+      camOwnerUnmount(OWNER);
       camHardStop('modal_close');
       cleanup();
       logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
@@ -172,6 +176,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         runningRef.current = false;
         hitsRef.current = [];
       }
+      camOwnerUnmount(OWNER);
       camHardStop('unmount');
       cleanup();
     };
@@ -209,23 +214,34 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       console.log("[LOG] Requesting camera stream...");
       const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
-      const constraints = {
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: THROTTLE ? 640 : 1280 },
-          height: { ideal: THROTTLE ? 480 : 720 }
-        },
-        audio: false
+      
+      // Use ideal constraints with robust fallback
+      const getCamera = async () => {
+        const primary = { 
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: THROTTLE ? 640 : 1280 }, 
+            height: { ideal: THROTTLE ? 480 : 720 } 
+          } 
+        };
+        const fallback = { video: true };
+        
+        try { 
+          return await navigator.mediaDevices.getUserMedia(primary); 
+        } catch (e: any) {
+          console.warn('[CAM] primary failed', e?.name);
+          return await navigator.mediaDevices.getUserMedia(fallback);
+        }
       };
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      const mediaStream = await getCamera();
       
       // Defensive strip: remove any audio tracks that slipped in
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        await attachStreamToVideo(videoRef.current, mediaStream);
         
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
@@ -267,11 +283,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     const stoppedKinds: string[] = [];
     if (s) {
-      for (const t of s.getTracks()) {
-        stoppedKinds.push(t.kind);
-        try { t.stop(); } catch {}
-        try { s.removeTrack(t); } catch {}
-      }
+      stoppedKinds.push(...s.getTracks().map(t => t.kind));
+      s.getTracks().forEach(t => t.stop());
     }
 
     // Camera inquiry logging
@@ -279,11 +292,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
     }
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-      videoRef.current.removeAttribute('src');
-      videoRef.current.load();
-    }
+    detachVideo(videoRef.current);
 
     // tiniest fix because the hook already supports it:
     try { updateStreamRef?.(null); } catch {}

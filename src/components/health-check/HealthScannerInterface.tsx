@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft, FlashlightIcon, SwitchCamera, ZapOff, Check } from 'lucide-react';
-import { camAcquire, camRelease, camHardStop } from '@/lib/camera/guardian';
+import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
+import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { prepareImageForAnalysis, prepareImageForAnalysisLegacy } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -115,14 +116,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   // Scanner mount probe
   const releaseNow = useCallback(() => {
     // release BEFORE any navigation/unmount
-    if (videoRef.current) {
-      try { 
-        videoRef.current.srcObject = null;
-        videoRef.current.removeAttribute('src');
-        videoRef.current.load();
-      } catch {}
+    detachVideo(videoRef.current);
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
     }
     
+    camOwnerUnmount(OWNER);
     camRelease(OWNER);
     logOwnerRelease('HealthScannerInterface', ['video']);
     try { updateStreamRef?.(null); } catch {}
@@ -137,9 +137,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     mark('[HS] component_mount');
     logPerfOpen('HealthScannerInterface');
     logOwnerAcquire('HealthScannerInterface');
+    camOwnerMount(OWNER);
     return () => {
       if (DEBUG) console.log('[PHOTO][UNMOUNT]'); // Changed to differentiate from barcode
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      camOwnerUnmount(OWNER);
       camHardStop('unmount');
       releaseNow();
       logPerfClose('HealthScannerInterface', startTimeRef.current);
@@ -149,19 +151,6 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   // Unmount guard
   useEffect(() => () => releaseNow(), [releaseNow]);
-  
-  // Visibility & route guards
-  useEffect(() => {
-    const hardStop = () => releaseNow();
-    window.addEventListener('pagehide', hardStop);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') hardStop();
-    });
-    return () => {
-      window.removeEventListener('pagehide', hardStop);
-      document.removeEventListener('visibilitychange', hardStop);
-    };
-  }, [releaseNow]);
 
   // Page visibility handling for performance
   useEffect(() => {
@@ -262,18 +251,27 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         return;
       }
 
-      // High-res back camera request with optimized constraints for performance
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 720 },    // Optimized for performance
-          height: { ideal: 720 },   // Keep square aspect ratio
-          frameRate: { ideal: 24, max: 30 } // Cap frame rate for performance
-        },
-        audio: false
+      // Use ideal constraints with robust fallback
+      const getCamera = async () => {
+        const primary = { 
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: 720 }, 
+            height: { ideal: 720 },
+            frameRate: { ideal: 24, max: 30 }
+          } 
+        };
+        const fallback = { video: true };
+        
+        try { 
+          return await camAcquire(OWNER, primary); 
+        } catch (e: any) {
+          console.warn('[CAM] primary failed', e?.name);
+          return await camAcquire(OWNER, fallback);
+        }
       };
       
-      const mediaStream = await camAcquire(OWNER, constraints);
+      const mediaStream = await getCamera();
       streamRef.current = mediaStream;
       console.log("[VIDEO] Stream received:", mediaStream);
 
@@ -299,8 +297,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       logOwnerAttach('HealthScannerInterface', streamId);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        await attachStreamToVideo(videoRef.current, mediaStream);
         
         // Ensure torch state after track is ready
         setTimeout(() => {
