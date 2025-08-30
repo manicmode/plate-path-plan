@@ -54,7 +54,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const runningRef = useRef(false);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   // Feature flag for autoscan (set to true to enable)
   const AUTOSCAN_ENABLED = false;

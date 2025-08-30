@@ -42,7 +42,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   useEffect(() => {
     if (open) {

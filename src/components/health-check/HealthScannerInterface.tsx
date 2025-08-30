@@ -88,7 +88,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   // Apply dynamic viewport height fix
   useDynamicViewportVar();

@@ -13,7 +13,7 @@ export default function CameraDebug() {
   const [capabilities, setCapabilities] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   
-  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(trackRef);
+  const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   const addLog = (message: string) => {
     setLogs(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${message}`]);
