@@ -7,11 +7,12 @@ export interface OCRServingResult {
   extractedText: string;
 }
 
-// Negative filters - reject lines containing these patterns
+// Enhanced negative filters per PR requirements
 const REJECT_PATTERNS = [
   /net\s*wt|net\s*weight|total\s*weight/i,
-  /per\s*container|entire\s*container|whole\s*container/i,
-  /calories?|energy|sugars?|protein|total\s*fat|fat\b|fiber|sodium|carb(?:ohydrate)?s?|cholesterol/i,
+  /per\s*container|entire\s*container|whole\s*container|servings?\s*per\s*container/i,
+  /package|contents/i,
+  /calories?|energy|sugars?|protein|total\s*fat|fat\b|fiber|fibre|sodium|carb(?:ohydrate)?s?|cholesterol/i,
   /vitamin|mineral|calcium|iron|potassium/i,
   /\b\d+\s*(?:cal|kcal)\b/i // calorie values
 ];
@@ -28,24 +29,30 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
   if (!ocrText?.trim()) return null;
   
   const lines = ocrText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  
+  // Locale decimal conversion (55,0 g → 55.0)
   const dec = (s: string) => parseFloat(s.replace(/,/g, '.'));
   
   console.info('[PORTION][OCR] Parsing serving from OCR:', { lines: lines.length });
-  console.info('[PORTION][OCR] Top 3 lines:', lines.slice(0, 3));
+  console.info('[PORTION][OCR] Top 3 lines considered:', lines.slice(0, 3));
   
   // Strategy 1: Explicit "serving size X g" patterns
-  for (const line of lines) {
-    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
-    if (rejected) {
-      console.log('[PORTION][OCR] Rejected line (negative filter):', line);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const rejectedBy = REJECT_PATTERNS.find(pattern => pattern.test(line));
+    
+    if (rejectedBy) {
+      console.log(`[PORTION][OCR] Line ${i+1} rejected by filter:`, { line, filter: rejectedBy.source });
       continue;
     }
     
     const servingSizeMatch = line.match(/serving\s*size[^0-9]*?(\d+(?:[.,]\d+)?)\s*g/i);
     if (servingSizeMatch) {
       const grams = dec(servingSizeMatch[1]);
-      console.log('[PORTION][OCR] Found serving size match:', { line, grams, accepted: grams >= 5 && grams <= 250 });
-      if (grams >= 5 && grams <= 250) {
+      const accepted = grams >= 5 && grams <= 250;
+      console.log(`[PORTION][OCR] Line ${i+1} serving size:`, { line, grams, accepted });
+      
+      if (accepted) {
         return {
           grams,
           confidence: 0.9,
@@ -56,16 +63,20 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
     }
   }
   
-  // Strategy 2: Volume with gram conversion "1 cup (30g)"
-  for (const line of lines) {
-    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
-    if (rejected) continue;
+  // Strategy 2: Volume with gram conversion "2/3 cup (30g)" or "1 cup (30 g)"
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const rejectedBy = REJECT_PATTERNS.find(pattern => pattern.test(line));
+    if (rejectedBy) continue;
     
-    const volumeMatch = line.match(/(?:(\d+(?:[.,]\d+)?)\s*)?(cup|tbsp|tablespoon|tsp|teaspoon|ml|fl\s*oz)[^()]{0,32}\((\d+(?:[.,]\d+)?)\s*g\)/i);
+    // Enhanced volume pattern to catch fractions and various formats
+    const volumeMatch = line.match(/(?:(\d+(?:\/\d+)?(?:[.,]\d+)?)\s*)?(cup|tbsp|tablespoon|tsp|teaspoon|ml|fl\s*oz)[^()]{0,32}\((\d+(?:[.,]\d+)?)\s*g\)/i);
     if (volumeMatch) {
       const grams = dec(volumeMatch[3]);
-      console.log('[PORTION][OCR] Found volume match:', { line, grams, accepted: grams >= 5 && grams <= 250 });
-      if (grams >= 5 && grams <= 250) {
+      const accepted = grams >= 5 && grams <= 250;
+      console.log(`[PORTION][OCR] Line ${i+1} volume conversion:`, { line, grams, accepted });
+      
+      if (accepted) {
         return {
           grams,
           confidence: 0.8,
@@ -76,18 +87,26 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
     }
   }
   
-  // Strategy 3: Plain grams but only in serving context
-  for (const line of lines) {
-    const rejected = REJECT_PATTERNS.some(pattern => pattern.test(line));
+  // Strategy 3: Plain grams but ONLY with serving context
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const rejectedBy = REJECT_PATTERNS.find(pattern => pattern.test(line));
     const hasServingContext = SERVING_CONTEXT.some(pattern => pattern.test(line));
-    if (rejected || !hasServingContext) continue;
+    
+    if (rejectedBy || !hasServingContext) {
+      if (!hasServingContext) {
+        console.log(`[PORTION][OCR] Line ${i+1} lacks serving context:`, line);
+      }
+      continue;
+    }
     
     const gramsMatch = line.match(/(\d+(?:[.,]\d+)?)\s*g(?:\s|$|[^a-z])/i);
     if (gramsMatch) {
       const grams = dec(gramsMatch[1]);
-      console.log('[PORTION][OCR] Found context grams:', { line, grams, accepted: grams >= 10 && grams <= 200 });
-      // More restrictive bounds for plain grams
-      if (grams >= 10 && grams <= 200) {
+      const accepted = grams >= 10 && grams <= 200; // Stricter bounds for context-only
+      console.log(`[PORTION][OCR] Line ${i+1} context grams:`, { line, grams, accepted, hasContext: true });
+      
+      if (accepted) {
         return {
           grams,
           confidence: 0.6,
@@ -98,6 +117,6 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
     }
   }
   
-  console.log('[PORTION][OCR] No serving size found in OCR text');
+  console.log('[PORTION][OCR] No valid serving size found in OCR text');
   return null;
 }

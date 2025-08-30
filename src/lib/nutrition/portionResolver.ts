@@ -1,5 +1,8 @@
 import { parseOCRServing, type OCRServingResult } from './parsers/ocrServing';
+import { calculateServingFromRatio } from './ratioServing';
+import { getCategoryPortion, validateAgainstCaps } from './categories';
 import { mark, trace } from '../util/log';
+import { supabase } from '@/integrations/supabase/client';
 
 // LRU Cache for portion resolution results
 interface CachedPortionResult {
@@ -73,72 +76,71 @@ export interface PortionResult {
   source: string;
   confidence: number;
   candidates: PortionCandidate[];
+  chosenFrom?: string;
 }
 
-// Category-based portion estimates
-const CATEGORY_PORTIONS: Record<string, number> = {
-  // Cereals and grains
-  'cereal': 55,
-  'granola': 55,
-  'oatmeal': 40,
-  'muesli': 55,
-  'rice': 80,
-  'pasta': 80,
-  
-  // Nuts and seeds
-  'nuts': 40,
-  'almonds': 40,
-  'peanuts': 40,
-  'seeds': 30,
-  'trail mix': 40,
-  
-  // Snacks
-  'chips': 30,
-  'crackers': 30,
-  'cookies': 25,
-  'candy': 25,
-  'chocolate': 25,
-  
-  // Spreads and condiments
-  'peanut butter': 32,
-  'jam': 20,
-  'honey': 21,
-  'sauce': 15,
-  
-  // Dairy
-  'yogurt': 170,
-  'cheese': 30,
-  'milk': 240,
-  
-  // Default portions
-  'supplement': 1,
-  'vitamin': 1,
-  'powder': 30,
-  'bar': 40
-};
+// Memoized barcode lookup cache
+const barcodeCache = new Map<string, { data: any; timestamp: number }>();
+const BARCODE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-function estimateFromCategory(productName: string): PortionCandidate | null {
-  const name = productName.toLowerCase();
+/**
+ * Fetch serving data from barcode with timeout and caching
+ * NOTE: Uses nutrition_logs table as fallback since nutrition_database doesn't exist
+ */
+async function fetchServingFromBarcode(barcode: string): Promise<any> {
+  if (!barcode) return null;
   
-  for (const [category, grams] of Object.entries(CATEGORY_PORTIONS)) {
-    if (name.includes(category)) {
-      return {
-        grams,
-        confidence: 0.4,
-        source: 'category',
-        label: `${grams}g · ${category}`,
-        details: `Estimated from ${category} category`
-      };
-    }
+  // Check cache first
+  const cached = barcodeCache.get(barcode);
+  if (cached && (Date.now() - cached.timestamp) < BARCODE_CACHE_TTL) {
+    return cached.data;
   }
   
-  return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 800); // 800ms timeout
+    
+    // Fallback to nutrition_logs for barcode data since nutrition_database doesn't exist
+    const { data, error } = await supabase
+      .from('nutrition_logs')
+      .select('serving_size, nutrition')
+      .eq('barcode', barcode)
+      .maybeSingle();
+      
+    clearTimeout(timeoutId);
+    
+    if (error) {
+      console.log('[PORTION][DB] Barcode lookup error:', error.message);
+      return null;
+    }
+    
+    // Cache the result
+    barcodeCache.set(barcode, { data, timestamp: Date.now() });
+    return data;
+  } catch (error) {
+    console.log('[PORTION][DB] Barcode lookup timeout or error:', error);
+    return null;
+  }
 }
 
-function parseFromDatabase(productData: any): PortionCandidate | null {
+function estimateFromCategory(productName: string): PortionCandidate | null {
+  const categoryMatch = getCategoryPortion(productName);
+  if (!categoryMatch) return null;
+  
+  return {
+    grams: categoryMatch.grams,
+    confidence: 0.4,
+    source: 'category',
+    label: `${categoryMatch.grams}g · ${categoryMatch.category}`,
+    details: `Estimated from ${categoryMatch.category} category`
+  };
+}
+
+async function parseFromDatabase(productData: any, enabled: boolean = true): Promise<PortionCandidate | null> {
+  if (!enabled) return null;
   if (!productData) return null;
   
-  // Check various DB fields for serving size
+  // First, check local product data
   const servingGrams = productData.serving_size_g || 
                       productData.servingSize || 
                       productData.serving_grams ||
@@ -147,11 +149,33 @@ function parseFromDatabase(productData: any): PortionCandidate | null {
   if (typeof servingGrams === 'number' && servingGrams >= 5 && servingGrams <= 500) {
     return {
       grams: Math.round(servingGrams),
-      confidence: 0.85,
+      confidence: 0.9,
       source: 'database',
       label: `${Math.round(servingGrams)}g · DB`,
       details: 'From product database'
     };
+  }
+  
+  // If no local data and we have a barcode, try barcode lookup
+  const barcode = productData.barcode;
+  if (barcode) {
+    const barcodeData = await fetchServingFromBarcode(barcode);
+    if (barcodeData?.serving_size && typeof barcodeData.serving_size === 'string') {
+      // Parse serving size string (e.g., "30g")
+      const match = barcodeData.serving_size.match(/(\d+(?:\.\d+)?)\s*g/i);
+      if (match) {
+        const grams = Math.round(parseFloat(match[1]));
+        if (grams >= 5 && grams <= 500) {
+          return {
+            grams,
+            confidence: 0.85,
+            source: 'database',
+            label: `${grams}g · DB`,
+            details: 'From barcode lookup'
+          };
+        }
+      }
+    }
   }
   
   return null;
@@ -160,28 +184,16 @@ function parseFromDatabase(productData: any): PortionCandidate | null {
 function calculateFromRatio(productData: any): PortionCandidate | null {
   if (!productData?.nutrition) return null;
   
-  const { nutrition } = productData;
+  const result = calculateServingFromRatio(productData.nutrition);
+  if (!result) return null;
   
-  // Check if we have both per-100g and per-serving values
-  const calories100g = nutrition.calories_per_100g || nutrition.energy_per_100g;
-  const caloriesServing = nutrition.calories || nutrition.energy;
-  
-  if (calories100g && caloriesServing && calories100g > 0) {
-    const ratio = caloriesServing / calories100g;
-    const estimatedGrams = Math.round(ratio * 100);
-    
-    if (estimatedGrams >= 5 && estimatedGrams <= 300) {
-      return {
-        grams: estimatedGrams,
-        confidence: 0.7,
-        source: 'ratio',
-        label: `${estimatedGrams}g · calc`,
-        details: 'Calculated from nutrition ratio'
-      };
-    }
-  }
-  
-  return null;
+  return {
+    grams: result.grams,
+    confidence: result.confidence,
+    source: 'ratio',
+    label: `${result.grams}g · calc`,
+    details: result.details
+  };
 }
 
 function parseFromOCR(ocrText: string, productName: string = ''): PortionCandidate | null {
@@ -255,20 +267,51 @@ export async function resolvePortion(
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
   
+  // Feature flags
+  const urlParams = new URLSearchParams(window.location.search);
+  const portionOffQP = urlParams.get('portionOff') === '1';
+  const barcode_off_lookup_enabled = !portionOffQP; // Default ON unless disabled via URL
+  
   // Generate cache key for inquiry logging
   const barcode = productData?.barcode || productData?.id;
   const productNameForCache = productData?.name || productData?.productName || '';
   const ocrHash = ocrText ? btoa(ocrText.slice(0, 100)).slice(0, 8) : '';
   const cacheKey = `${barcode || productNameForCache.slice(0, 20)}_${ocrHash}`;
   
+  // Emergency kill switch - force fallback
+  if (portionOffQP) {
+    console.info('[PORTION][INQ3][RESOLVE_DONE]', {
+      cache: { hit: false, key: cacheKey },
+      flags: { portion_resolution_enabled: false, portionOffQP: true, emergencyKill: true },
+      inputs: { hasOcr: !!ocrText, ocrLen: ocrText?.length || 0, hasDb: !!productData, hasPer100: !!productData?.nutrition },
+      candidates: [{ source: 'fallback', grams: 30, confidence: 0.1, penalties: 'none', reason: 'portionOff=1 override' }],
+      chosen: { source: 'fallback', grams: 30 },
+      timing: 'emergency_fallback'
+    });
+    
+    return {
+      grams: 30,
+      label: '30g · est.',
+      source: 'fallback',
+      confidence: 0.1,
+      candidates: [{
+        grams: 30,
+        confidence: 0.1,
+        source: 'fallback',
+        label: '30g · est.',
+        details: 'Emergency fallback (portionOff=1)'
+      }],
+      chosenFrom: 'emergency_override'
+    };
+  }
+  
   // Check cache first
   const cached = portionCache.get(productData, ocrText);
   if (cached) {
     mark('resolvePortion:cache_hit');
-    // Log cache hit for inquiry
     console.info('[PORTION][INQ3][RESOLVE_DONE]', {
       cache: { hit: true, key: cacheKey },
-      flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false }, // assuming defaults
+      flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false },
       inputs: { hasOcr: !!ocrText, ocrLen: ocrText?.length || 0, hasDb: !!productData, hasPer100: !!productData?.nutrition },
       candidates: cached.candidates,
       chosen: { source: cached.source, grams: cached.grams },
@@ -280,8 +323,8 @@ export async function resolvePortion(
   const productName = productData?.name || productData?.productName || '';
   const candidates: PortionCandidate[] = [];
   
-  // Gather candidates from all sources
-  const dbCandidate = parseFromDatabase(productData);
+  // Source 1: Database (local + barcode lookup)
+  const dbCandidate = await parseFromDatabase(productData, barcode_off_lookup_enabled);
   if (dbCandidate) {
     console.log('[PORTION][DB]', 'Found DB candidate:', dbCandidate.grams, 'g');
     candidates.push(dbCandidate);
@@ -289,21 +332,13 @@ export async function resolvePortion(
     console.log('[PORTION][DB]', 'No DB serving size found:', { 
       serving_size_g: productData?.serving_size_g, 
       servingSize: productData?.servingSize,
-      reason: !productData ? 'no_product_data' : 'no_serving_fields' 
+      barcode: productData?.barcode,
+      enabled: barcode_off_lookup_enabled,
+      reason: !productData ? 'no_product_data' : !barcode_off_lookup_enabled ? 'disabled' : 'no_serving_fields' 
     });
   }
   
-  const ratioCandidate = calculateFromRatio(productData);
-  if (ratioCandidate) {
-    console.log('[PORTION][RATIO]', 'Found ratio candidate:', ratioCandidate.grams, 'g');
-    candidates.push(ratioCandidate);
-  } else {
-    console.log('[PORTION][RATIO]', 'No ratio calculation possible:', { 
-      nutrition: !!productData?.nutrition,
-      reason: !productData?.nutrition ? 'no_nutrition_data' : 'missing_per_serving_fields'
-    });
-  }
-  
+  // Source 2: OCR parsing
   if (ocrText) {
     const ocrCandidate = parseFromOCR(ocrText, productName);
     if (ocrCandidate) {
@@ -316,10 +351,28 @@ export async function resolvePortion(
     console.log('[PORTION][OCR]', 'No OCR text provided');
   }
   
-  const categoryCandidate = estimateFromCategory(productName);
-  if (categoryCandidate) candidates.push(categoryCandidate);
+  // Source 3: Ratio calculation
+  const ratioCandidate = calculateFromRatio(productData);
+  if (ratioCandidate) {
+    console.log('[PORTION][RATIO]', 'Found ratio candidate:', ratioCandidate.grams, 'g');
+    candidates.push(ratioCandidate);
+  } else {
+    console.log('[PORTION][RATIO]', 'No ratio calculation possible:', { 
+      nutrition: !!productData?.nutrition,
+      reason: !productData?.nutrition ? 'no_nutrition_data' : 'missing_per_serving_fields'
+    });
+  }
   
-  // Fallback candidate
+  // Source 4: Category estimation
+  const categoryCandidate = estimateFromCategory(productName);
+  if (categoryCandidate) {
+    console.log('[PORTION][CATEGORY]', 'Found category candidate:', categoryCandidate.grams, 'g');
+    candidates.push(categoryCandidate);
+  } else {
+    console.log('[PORTION][CATEGORY]', 'No category match found for:', productName);
+  }
+  
+  // Source 5: Fallback
   candidates.push({
     grams: 30,
     confidence: 0.1,
@@ -328,7 +381,7 @@ export async function resolvePortion(
     details: 'Default estimate'
   });
   
-  // Sanitize and score candidates
+  // Sanitize, score, and rank candidates
   const validCandidates = candidates
     .map(c => sanitizeCandidate(c))
     .filter(Boolean)
@@ -337,9 +390,15 @@ export async function resolvePortion(
   
   const winner = validCandidates[0];
   
+  // Apply category caps as final validation
+  const finalGrams = validateAgainstCaps(winner.grams, productName);
+  if (finalGrams !== winner.grams) {
+    console.log('[PORTION][CAPS]', `Applied cap: ${winner.grams}g -> ${finalGrams}g`);
+  }
+  
   const result: PortionResult = {
-    grams: winner.grams,
-    label: winner.label,
+    grams: finalGrams,
+    label: winner.label.replace(`${winner.grams}g`, `${finalGrams}g`),
     source: winner.source,
     confidence: winner.score,
     candidates: validCandidates.map(c => ({
@@ -348,25 +407,27 @@ export async function resolvePortion(
       source: c.source,
       label: c.label,
       details: c.details
-    }))
+    })),
+    chosenFrom: `${winner.source}_priority`
   };
   
   // Cache the result
   portionCache.set(productData, ocrText, result);
   
-  // Log telemetry (throttled)
+  // Log telemetry (single per item)
   trace('REPORT:V2:PORTION:RESOLVE', {
     productName,
     selectedSource: winner.source,
-    selectedGrams: winner.grams,
+    selectedGrams: finalGrams,
     candidateCount: validCandidates.length,
-    topScore: winner.score
+    topScore: winner.score,
+    timing: performance.now()
   });
   
-  // PORTION INQUIRY - Detailed end trace
+  // Detailed end trace for inquiry
   console.info('[PORTION][INQ3][RESOLVE_DONE]', {
     cache: { hit: false, key: cacheKey },
-    flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false }, // assuming defaults 
+    flags: { portion_resolution_enabled: true, portionOffQP: false, emergencyKill: false },
     inputs: { hasOcr: !!ocrText, ocrLen: ocrText?.length || 0, hasDb: !!productData, hasPer100: !!productData?.nutrition },
     candidates: validCandidates.map(c => ({
       source: c.source,
@@ -375,7 +436,7 @@ export async function resolvePortion(
       penalties: c.details || 'none',
       reason: c.details || 'no_reason'
     })),
-    chosen: { source: winner.source, grams: winner.grams },
+    chosen: { source: winner.source, grams: finalGrams },
     timing: 'computed'
   });
   

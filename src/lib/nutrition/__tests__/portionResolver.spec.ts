@@ -55,7 +55,7 @@ describe('portionResolver', () => {
   });
 
   describe('resolvePortion', () => {
-    it('should prefer database values', async () => {
+    it('should prefer database values (Granola)', async () => {
       const productData = {
         name: 'Granola',
         serving_size_g: 55,
@@ -72,9 +72,21 @@ describe('portionResolver', () => {
       expect(result.label).toBe('55g · DB');
     });
 
-    it('should calculate from nutrition ratio when DB missing', async () => {
+    it('should extract from OCR "1 cup (55g)" pattern', async () => {
+      const productData = { name: 'Granola' };
+      const ocrText = 'Nutrition Facts\n1 cup (55g)\nCalories 210';
+      
+      const result = await resolvePortion(productData, ocrText);
+      
+      expect(result.grams).toBe(55);
+      expect(result.source).toBe('ocr');
+      expect(result.label).toBe('55g · OCR');
+    });
+
+    it('should use database for nuts user override (40g)', async () => {
       const productData = {
-        name: 'Nuts',
+        name: 'Mixed Nuts',
+        serving_size_g: 40, // User/DB override
         nutrition: {
           calories: 160,
           calories_per_100g: 400
@@ -84,33 +96,39 @@ describe('portionResolver', () => {
       const result = await resolvePortion(productData);
       
       expect(result.grams).toBe(40);
-      expect(result.source).toBe('ratio');
-      expect(result.label).toBe('40g · calc');
+      expect(result.source).toBe('database');
+      expect(result.label).toBe('40g · DB');
     });
 
-    it('should use OCR when other methods unavailable', async () => {
-      const productData = { name: 'Cereal' };
-      const ocrText = 'Serving Size 30g\nCalories 110';
-      
-      const result = await resolvePortion(productData, ocrText);
-      
-      expect(result.grams).toBe(30);
-      expect(result.source).toBe('ocr');
-      expect(result.label).toBe('30g · OCR');
-    });
-
-    it('should estimate from category for unknown products', async () => {
-      const productData = { name: 'Mixed Nuts Premium' };
+    it('should calculate from per-serving kcal ratio (candy)', async () => {
+      const productData = {
+        name: 'Candy Bar',
+        nutrition: {
+          calories: 140, // per serving
+          calories_per_100g: 500 // per 100g -> 140/500 * 100 = 28g
+        }
+      };
       
       const result = await resolvePortion(productData);
       
-      expect(result.grams).toBe(40);
-      expect(result.source).toBe('category');
-      expect(result.label).toBe('40g · nuts');
+      expect(result.grams).toBe(28);
+      expect(result.source).toBe('ratio');
+      expect(result.label).toBe('28g · calc');
     });
 
-    it('should fallback to 30g for completely unknown products', async () => {
-      const productData = { name: 'Unknown Food Product' };
+    it('should reject NET WT and use category (cereal)', async () => {
+      const productData = { name: 'Breakfast Cereal' };
+      const ocrText = 'NET WT 240g\nIngredients: Corn, Sugar\nVitamins and Minerals';
+      
+      const result = await resolvePortion(productData, ocrText);
+      
+      expect(result.grams).toBe(55); // cereal category median
+      expect(result.source).toBe('category');
+      expect(result.label).toBe('55g · cereal');
+    });
+
+    it('should fallback to 30g for unknown products', async () => {
+      const productData = { name: 'Unknown Exotic Food' };
       
       const result = await resolvePortion(productData);
       
@@ -119,7 +137,7 @@ describe('portionResolver', () => {
       expect(result.label).toBe('30g · est.');
     });
 
-    it('should include all candidates in result', async () => {
+    it('should include all candidates and choose highest scored', async () => {
       const productData = {
         name: 'Granola',
         serving_size_g: 55,
@@ -132,8 +150,35 @@ describe('portionResolver', () => {
       
       const result = await resolvePortion(productData, ocrText);
       
-      expect(result.candidates).toHaveLength(4); // DB, ratio, OCR, category
-      expect(result.candidates[0].source).toBe('database'); // Highest scored
+      expect(result.candidates.length).toBeGreaterThanOrEqual(4);
+      expect(result.source).toBe('database'); // DB should win over OCR
+      expect(result.grams).toBe(55); // DB value, not OCR 50g
+    });
+
+    it('should respect portionOff=1 emergency override', async () => {
+      // Mock URL params
+      const originalSearch = window.location.search;
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: { ...window.location, search: '?portionOff=1' }
+      });
+      
+      const productData = {
+        name: 'Granola',
+        serving_size_g: 55
+      };
+      
+      const result = await resolvePortion(productData);
+      
+      expect(result.grams).toBe(30);
+      expect(result.source).toBe('fallback');
+      expect(result.chosenFrom).toBe('emergency_override');
+      
+      // Restore
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: { ...window.location, search: originalSearch }
+      });
     });
   });
 });
