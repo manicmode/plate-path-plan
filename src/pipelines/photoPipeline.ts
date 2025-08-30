@@ -6,8 +6,7 @@
 
 // Enhanced photo pipeline with OCR health report integration
 import { FF } from '@/featureFlags';
-import { toReportInputFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
-import { analyzeProductForQuality, type AnalyzerResult } from '@/shared/barcode-analyzer';
+import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
 
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
@@ -95,27 +94,29 @@ export async function analyzePhoto(
       console.log('[PHOTO][HEALTH] OCR health report enabled, analyzing text');
       
       try {
-        // Convert OCR text to health analysis input
-        const healthInput = toReportInputFromOCR(result.summary.text_joined);
-        console.log('[PHOTO][HEALTH] OCR input converted:', {
-          name: healthInput.name,
-          hasIngredients: !!healthInput.ingredientsText,
-          hasNutrition: !!healthInput.nutrition
-        });
+        // Use the same free-text parser as Manual/Voice
+        const healthResult = await toReportFromOCR(result.summary.text_joined);
         
-        // Use the same analyzer as barcode path
-        const healthReport = await analyzeProductForQuality(healthInput);
-        
-        if (healthReport) {
-          console.log('[PHOTO][HEALTH] Health report generated from OCR');
+        if (healthResult.ok) {
+          const words = result.summary.text_joined.split(/\s+/).length;
+          const score = Math.round(healthResult.report.healthScore * 10); // Convert to 0-100 scale
+          const flags = healthResult.report.ingredientFlags?.length || 0;
+          
+          console.log(`[OCR][PIPELINE] { words:${words}, score:${score}, flags:${flags} }`);
+          
           return { 
             ok: true, 
             report: {
               ...result,
-              healthReport,
+              healthReport: healthResult.report,
               source: 'OCR'
             }
           };
+        } else {
+          console.log('[PHOTO][HEALTH] Health analysis failed:', (healthResult as { reason: string }).reason);
+          if (result.summary.text_joined.length < 30) {
+            return { ok: false, reason: 'no_text' };
+          }
         }
       } catch (healthError: any) {
         console.log('[PHOTO][HEALTH] Health analysis failed:', healthError.message);

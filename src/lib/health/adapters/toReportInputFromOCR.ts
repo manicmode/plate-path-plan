@@ -1,9 +1,11 @@
 /**
  * OCR Text to Health Report Input Adapter
  * 
- * Converts OCR extracted text to the same input shape used by barcode's 
- * analyzeProductForQuality function, ensuring consistent health report generation.
+ * Reuses the same free-text parsing path used by Manual/Voice flows
+ * to ensure consistent health report generation across all text inputs.
  */
+
+import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
 
 export interface OCRHealthInput {
   name: string;
@@ -19,9 +21,81 @@ export interface OCRHealthInput {
   };
 }
 
+export type OCRReportResult = { ok: true, report: any } | { ok: false, reason: string };
+
 /**
- * Convert OCR text to structured health analysis input
- * Parses nutrition labels and ingredient lists from OCR text
+ * Robust OCR pre-cleaning
+ * Normalizes OCR text before feeding to shared parser
+ */
+function precleanOCR(text: string): string {
+  if (!text || text.trim().length < 5) {
+    return '';
+  }
+
+  let cleaned = text
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Replace bullet points with commas for ingredient lists
+    .replace(/[•·•]/g, ',')
+    // Fix common OCR character mistakes (conservative)
+    .replace(/\bln\b/gi, 'In') // "ln" -> "In" for ingredients
+    .replace(/\b0(?=\D)/g, 'O') // "0" -> "O" when followed by letter
+    .replace(/\bO(?=\d)/g, '0'); // "O" -> "0" when followed by digit
+
+  // Extract ingredients section if present, truncate at marketing text
+  const ingredientsMatch = cleaned.match(/ingredients?:([^.]*?)(?:contains:|allergen|warnings?|distributed|$)/i);
+  if (ingredientsMatch) {
+    const beforeIngredients = cleaned.substring(0, cleaned.indexOf(ingredientsMatch[0]));
+    const ingredientsPart = ingredientsMatch[0];
+    const afterIngredients = cleaned.substring(cleaned.indexOf(ingredientsMatch[0]) + ingredientsMatch[0].length);
+    
+    // Keep product name + ingredients + nutrition facts, truncate marketing
+    cleaned = (beforeIngredients + ingredientsPart + afterIngredients.substring(0, 200)).trim();
+  }
+
+  return cleaned;
+}
+
+/**
+ * Convert OCR text to health report using the same pipeline as Manual/Voice
+ * Returns the complete report (not just input) for consistency
+ */
+export async function toReportFromOCR(ocrText: string): Promise<OCRReportResult> {
+  // Pre-clean the OCR text
+  const cleaned = precleanOCR(ocrText);
+  
+  // Handle empty or low-signal text
+  if (cleaned.length < 30) {
+    return { ok: false, reason: 'no_text' };
+  }
+
+  try {
+    // Use the same free-text parser as Manual/Voice
+    const result = await parseFreeTextToReport(cleaned);
+    
+    if (!result.ok) {
+      // Type-safe access to reason property
+      return { ok: false, reason: (result as { ok: false, reason: string }).reason };
+    }
+
+    // Add OCR-specific source tag
+    const report = {
+      ...result.report,
+      source: 'OCR'
+    };
+
+    return { ok: true, report };
+  } catch (error) {
+    console.error('[OCR][ADAPTER][ERROR]', error);
+    return { ok: false, reason: 'analysis_error' };
+  }
+}
+
+/**
+ * Legacy adapter for backward compatibility with existing barcode pipeline
+ * Converts OCR text to the input shape expected by barcode analyzer
+ * @deprecated Use toReportFromOCR for new implementations
  */
 export function toReportInputFromOCR(ocrText: string): OCRHealthInput {
   // Basic parsing - extract product name, ingredients, and nutrition facts

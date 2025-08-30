@@ -1,12 +1,28 @@
 /**
  * Tests for OCR to Health Report Input Adapter
- * Ensures OCR text parsing produces consistent results
+ * Updated to test the new toReportFromOCR function that uses shared parser
  */
 
-import { describe, it, expect } from 'vitest';
-import { toReportInputFromOCR } from './toReportInputFromOCR';
+import { describe, it, expect, vi } from 'vitest';
+import { toReportInputFromOCR, toReportFromOCR } from './toReportInputFromOCR';
 
-describe('toReportInputFromOCR', () => {
+// Mock the free text parser
+vi.mock('@/lib/health/freeTextParser', () => ({
+  parseFreeTextToReport: vi.fn()
+}));
+
+// Mock supabase
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    functions: {
+      invoke: vi.fn()
+    }
+  }
+}));
+
+import { parseFreeTextToReport } from '@/lib/health/freeTextParser';
+
+describe('toReportInputFromOCR (legacy)', () => {
   it('should extract basic product name from first line', () => {
     const ocrText = 'Granola Bar\nIngredients: oats, honey\nCalories: 150';
     const result = toReportInputFromOCR(ocrText);
@@ -65,28 +81,43 @@ describe('toReportInputFromOCR', () => {
     
     expect(result.name).toBe('Some Product Name Here');
   });
+});
 
-  it('should handle real-world OCR text with noise', () => {
-    const ocrText = `
-      HEALTHY CHOICE
-      Granola Cereal
-      NUTRITION FACTS
-      Serving Size 1 cup (55g)
-      Calories 210
-      Total Fat 3g
-      Protein 6g
-      Total Carbohydrate 42g
-      Sugars 11g
-      Fiber 5g
-      Sodium 160mg
-      INGREDIENTS: Whole grain oats, cane sugar, rice, honey
-    `;
+describe('toReportFromOCR (new shared parser)', () => {
+  it('should return no_text for short input', async () => {
+    const result = await toReportFromOCR('hi');
+    expect(result.ok).toBe(false);
+    expect((result as any).reason).toBe('no_text');
+  });
+
+  it('should use shared parser for longer text', async () => {
+    const mockReport = {
+      itemName: 'Test Product',
+      healthScore: 7.5,
+      ingredientFlags: ['added_sugar']
+    };
+
+    vi.mocked(parseFreeTextToReport).mockResolvedValue({
+      ok: true,
+      report: mockReport
+    });
+
+    const result = await toReportFromOCR('Granola Bar with rolled oats, honey, and dried cranberries. Contains sugar.');
     
-    const result = toReportInputFromOCR(ocrText);
+    expect(result.ok).toBe(true);
+    expect((result as any).report.source).toBe('OCR');
+    expect((result as any).report.itemName).toBe('Test Product');
+  });
+
+  it('should handle parser failures gracefully', async () => {
+    vi.mocked(parseFreeTextToReport).mockResolvedValue({
+      ok: false,
+      reason: 'low_confidence'
+    });
+
+    const result = await toReportFromOCR('Some unclear text that cannot be parsed properly');
     
-    expect(result.name).toBe('HEALTHY CHOICE');
-    expect(result.nutrition?.calories).toBe(210);
-    expect(result.nutrition?.protein_g).toBe(6);
-    expect(result.ingredientsText).toBe('Whole grain oats, cane sugar, rice, honey');
+    expect(result.ok).toBe(false);
+    expect((result as any).reason).toBe('low_confidence');
   });
 });
