@@ -412,8 +412,8 @@ export default function ScanHub() {
             sessionStorage.removeItem('scan-original-entry'); // Clear after use
             navigate(originalEntry, { replace: true });
           } else {
-            console.log('[SCAN] Fallback navigation to home');
-            navigate('/', { replace: true });
+            console.log('[SCAN] Staying on health scan page');
+            // Stay on /scan page when canceling barcode scanner
           }
         }}
         initialState={
