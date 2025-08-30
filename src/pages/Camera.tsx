@@ -209,44 +209,78 @@ const CameraPage = () => {
 
   // Handle prefill data from Health Report
   useEffect(() => {
-    const prefill = (location.state as any)?.logPrefill;
-    if (!prefill || prefill.source !== 'health-report') return;
-    
-    console.debug('[CAMERA][PREFILL]', {
-      itemName: prefill.item.itemName,
-      portionGrams: prefill.item.portionGrams,
-      hasIngredients: !!prefill.item.ingredientsText,
-      source: prefill.source
-    });
-    
-    // Map prefill data to RecognizedFood format
-    const prefillFood: RecognizedFood = {
-      name: prefill.item.itemName,
-      calories: prefill.item.nutrientsScaled.calories || 0,
-      protein: prefill.item.nutrientsScaled.protein_g || 0,
-      carbs: prefill.item.nutrientsScaled.carbs_g || 0,
-      fat: prefill.item.nutrientsScaled.fat_g || 0,
-      fiber: prefill.item.nutrientsScaled.fiber_g || 0,
-      sugar: prefill.item.nutrientsScaled.sugar_g || 0,
-      sodium: Math.round(prefill.item.nutrientsScaled.sodium_mg || 0),
-      confidence: 95,
-      serving: `${prefill.item.portionGrams}g`,
-      image: prefill.item.imageUrl,
-      ingredientsText: prefill.item.ingredientsText,
-      ingredientsAvailable: !!prefill.item.ingredientsText,
-      allergens: prefill.item.allergens,
-      additives: prefill.item.additives,
-      categories: prefill.item.categories,
-      _provider: 'health-report'
+    const handlePrefill = async () => {
+      const prefill = (location.state as any)?.logPrefill;
+      if (!prefill || prefill.source !== 'health-report') return;
+      
+      console.debug('[CAMERA][PREFILL]', {
+        itemName: prefill.item.itemName,
+        portionGrams: prefill.item.portionGrams,
+        hasIngredients: !!prefill.item.ingredientsText,
+        source: prefill.source
+      });
+      
+      // Use unified payload system for consistent portion + nutrition calculation
+      const { buildConfirmPayloadFromNormalized } = await import('@/lib/health/confirmPayload');
+      
+      let payload;
+      if (prefill.norm) {
+        // Prefer normalized product + recompute portion
+        payload = buildConfirmPayloadFromNormalized(prefill.norm, { 
+          origin: 'health-report', 
+          raw: prefill.providerRaw, 
+          hint: prefill.item?.portionHint 
+        });
+      } else {
+        // Fallback: use existing prefill data directly
+        payload = {
+          origin: 'health-report' as const,
+          itemName: prefill.item.itemName,
+          brand: prefill.item.brand,
+          imageUrl: prefill.item.imageUrl || prefill.item.image || prefill.item.photoUrl,
+          ingredientsText: prefill.item.ingredientsText || '',
+          allergens: prefill.item.allergens || [],
+          additives: prefill.item.additives || [],
+          categories: prefill.item.categories || [],
+          nutrientsScaled: prefill.item.nutrientsScaled,
+          portionGrams: prefill.item.portionGrams
+        };
+      }
+      
+      console.debug('[CONFIRM][PORTION]', payload.portionGrams);
+      console.debug('[CONFIRM][IMAGE]', !!payload.imageUrl, payload.imageUrl?.slice(0,60));
+      
+      // Map to RecognizedFood format for existing UI
+      const prefillFood: RecognizedFood = {
+        name: payload.itemName,
+        calories: payload.nutrientsScaled.calories || 0,
+        protein: payload.nutrientsScaled.protein_g || 0,
+        carbs: payload.nutrientsScaled.carbs_g || 0,
+        fat: payload.nutrientsScaled.fat_g || 0,
+        fiber: payload.nutrientsScaled.fiber_g || 0,
+        sugar: payload.nutrientsScaled.sugar_g || 0,
+        sodium: Math.round(payload.nutrientsScaled.sodium_mg || 0),
+        confidence: 95,
+        serving: `${payload.portionGrams}g`,
+        image: payload.imageUrl,
+        ingredientsText: payload.ingredientsText,
+        ingredientsAvailable: !!payload.ingredientsText,
+        allergens: payload.allergens,
+        additives: payload.additives,
+        categories: payload.categories,
+        _provider: 'health-report'
+      };
+      
+      // Open confirm modal with prefilled data
+      setRecognizedFoods([prefillFood]);
+      setShowConfirmation(true);
+      setInputSource('photo'); // Use photo source for UI display
+      
+      // Clear the router state so back/forward doesn't re-trigger
+      navigate('.', { replace: true, state: null });
     };
     
-    // Open confirm modal with prefilled data
-    setRecognizedFoods([prefillFood]);
-    setShowConfirmation(true);
-    setInputSource('photo'); // Use photo source for UI display
-    
-    // Clear the router state so back/forward doesn't re-trigger
-    navigate('.', { replace: true, state: null });
+    handlePrefill();
   }, [location.state, navigate]);
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
