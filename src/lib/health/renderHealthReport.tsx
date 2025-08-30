@@ -29,8 +29,8 @@ interface RenderHealthReportOptions {
 }
 
 /**
- * Universal render function for health reports
- * Automatically chooses between Enhanced (V2) and Legacy (V1) based on feature flags
+ * Enhanced render function with route-specific V2 enabling and watchdog fallback
+ * V2 enabled only for 'standalone' route; others use legacy with 10s watchdog
  */
 export function renderHealthReport(options: RenderHealthReportOptions) {
   const {
@@ -47,42 +47,79 @@ export function renderHealthReport(options: RenderHealthReportOptions) {
   const hasPer100g = !!(result as any)?.nutritionDataPer100g;
   const flags = Array.isArray(result?.flags) ? result.flags : Array.isArray(result?.ingredientFlags) ? result.ingredientFlags : [];
   const portionGrams = typeof (result as any)?.portionGrams === 'number' ? (result as any).portionGrams : null;
+  const entry = analysisData?.source || 'unknown';
 
-  // Telemetry component to log boot info safely within React context
-  const ReportBootLog = ({ hasPerServing, hasPer100g, flagsCount, portionGrams, entry }: any) => {
+  // V2 Enhanced Report with Watchdog Component
+  const EnhancedReportWithWatchdog = () => {
+    const [showLegacy, setShowLegacy] = React.useState(false);
+    const [isV2Mounted, setIsV2Mounted] = React.useState(false);
+    const watchdogRef = React.useRef<NodeJS.Timeout>();
+
     React.useEffect(() => {
-      const hasToggle = isFeatureEnabled('nutrition_toggle_enabled');
-      const hasFlagsTab = isFeatureEnabled('flags_tab_enabled');
-      const hasSaveTab = isFeatureEnabled('save_tab_enabled');
-      const hasSuggestions = isFeatureEnabled('smart_suggestions_enabled');
-      
-      console.log('[REPORT][V2][BOOT]', {
-        hasPerServing,
-        hasPer100g, 
-        flagsCount,
-        portionGrams,
-        entry,
-        hasToggle,
-        hasFlagsTab, 
-        hasSaveTab,
-        hasSuggestions
-      });
-    }, [hasPerServing, hasPer100g, flagsCount, portionGrams, entry]);
-    
-    return null;
-  };
+      // Start 10s watchdog timer
+      watchdogRef.current = setTimeout(() => {
+        if (!isV2Mounted) {
+          console.log('[REPORT][V2][WATCHDOG] timeout - falling back to legacy report');
+          setShowLegacy(true);
+          
+          // Show toast notification
+          if (typeof window !== 'undefined' && (window as any).toast) {
+            (window as any).toast({
+              title: "Loading Enhanced Report",
+              description: "Showing classic report while we finish loading."
+            });
+          }
+        }
+      }, 10000);
 
-  // Use Enhanced Health Report if V2 is enabled
-  if (isFeatureEnabled('health_report_v2_enabled')) {
+      return () => {
+        if (watchdogRef.current) {
+          clearTimeout(watchdogRef.current);
+        }
+      };
+    }, [isV2Mounted]);
+
+    // Boot telemetry component
+    const ReportBootLog = React.useCallback(() => {
+      React.useEffect(() => {
+        const activeFlags = {
+          hasToggle: isFeatureEnabled('nutrition_toggle_enabled'),
+          hasFlagsTab: isFeatureEnabled('flags_tab_enabled'),
+          hasSaveTab: isFeatureEnabled('save_tab_enabled'),
+          hasSuggestions: isFeatureEnabled('smart_suggestions_enabled')
+        };
+        
+        console.log('[REPORT][V2][BOOT]', {
+          entry,
+          flags: activeFlags,
+          hasPer100g,
+          hasPerServing,
+          flagsCount: flags.length
+        });
+        
+        setIsV2Mounted(true);
+      }, []);
+      
+      return null;
+    }, []);
+
+    // If watchdog triggered, show legacy
+    if (showLegacy) {
+      return (
+        <HealthReportPopup
+          result={result}
+          onScanAnother={onScanAnother}
+          onClose={onClose}
+          analysisData={analysisData}
+          initialIsSaved={initialIsSaved}
+          hideCloseButton={hideCloseButton}
+        />
+      );
+    }
+
     return (
       <Suspense fallback={null}>
-        <ReportBootLog 
-          hasPerServing={hasPerServing}
-          hasPer100g={hasPer100g}
-          flagsCount={flags.length}
-          portionGrams={portionGrams}
-          entry={analysisData?.source || 'unknown'}
-        />
+        <ReportBootLog />
         <EnhancedHealthReport
           result={result}
           onScanAnother={onScanAnother}
@@ -93,6 +130,13 @@ export function renderHealthReport(options: RenderHealthReportOptions) {
         />
       </Suspense>
     );
+  };
+
+  // Enable V2 only for 'standalone' source
+  const isV2Enabled = isFeatureEnabled('health_report_v2_enabled') && entry === 'standalone';
+  
+  if (isV2Enabled) {
+    return <EnhancedReportWithWatchdog />;
   }
 
   // Fallback to legacy report

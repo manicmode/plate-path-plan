@@ -13,8 +13,8 @@ export const FEATURE_FLAGS = {
   scan_hub_enabled: true, // Enable by default for this demo // Enable the new Scan Hub entry page (default OFF)
   voice_analyze_v2: false, // Enable enhanced voice analysis pipeline (DEFAULT OFF)
   
-  // Enhanced Health Report Features (DISABLED BY DEFAULT FOR SAFETY)
-  health_report_v2_enabled: false, // DISABLED - Enable enhanced health report after phased rollout
+  // Enhanced Health Report Features (STANDALONE ONLY FOR PHASED ROLLOUT)
+  health_report_v2_enabled: true, // ENABLED - V2 active for standalone route only
   nutrition_toggle_enabled: true, // Enable per 100g ↔ per portion toggle
   flags_tab_enabled: true, // Enable flags tab with severity and actions
   save_tab_enabled: true, // Enable save tab to persist reports

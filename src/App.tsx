@@ -123,6 +123,7 @@ const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
 const CamPure = lazy(() => import('@/pages/debug/CamPure'));
 const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
+const StandaloneTest = lazy(() => import('@/pages/StandaloneTest'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 const RecentScans = lazy(() => import('@/pages/RecentScans'));
@@ -296,6 +297,14 @@ function AppContent() {
                           }
                         />
                         <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                        <Route
+                          path="/standalone-test"
+                          element={
+                            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading V2 Test…</div>}>
+                              <StandaloneTest />
+                            </React.Suspense>
+                          }
+                        />
                       </>
                     )}
 
