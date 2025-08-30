@@ -304,17 +304,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     
     const runDetection = async () => {
       try {
-        mark('EnhancedHealthReport.portionDetection.start');
-        console.info('[PORTION][EFFECT] calling detectPortionSafe with:', {
+        mark('EnhancedHealthReport.portionResolve.start');
+        console.info('[PORTION][EFFECT] calling resolvePortion with:', {
           result: !!result,
-          ocrText: analysisData?.imageUrl || 'none',
+          ocrText: ingredientsText || 'none',
           entry: 'enhanced_report'
         });
         
-        const detectedPortion = await detectPortionSafe(result, analysisData?.imageUrl || '', 'enhanced_report');
+        const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
+        const portionResult = await resolvePortion(result, ingredientsText);
         
-        mark('EnhancedHealthReport.portionDetection.complete', { resolved: !!detectedPortion });
-        console.info('[PORTION][EFFECT] resolved', detectedPortion);
+        mark('EnhancedHealthReport.portionResolve.complete', { resolved: !!portionResult });
+        console.info('[PORTION][EFFECT] resolved', portionResult);
         
         if (!alive) {
           console.info('[PORTION][EFFECT] component unmounted, ignoring result');
@@ -323,18 +324,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         
         // Only update local state - no shared state mutation
         setPortion({
-          grams: detectedPortion.grams,
-          source: detectedPortion.source,
-          label: detectedPortion.label
+          grams: portionResult.grams,
+          source: portionResult.source,
+          label: portionResult.label
         });
         
         console.info('[PORTION][EFFECT] setPortion called with:', {
-          grams: detectedPortion.grams,
-          source: detectedPortion.source,
-          label: detectedPortion.label
+          grams: portionResult.grams,
+          source: portionResult.source,
+          label: portionResult.label
         });
       } catch (error) {
-        console.warn('[REPORT][PORTION] Detection failed, keeping fallback:', error);
+        console.warn('[REPORT][PORTION] Resolution failed, keeping fallback:', error);
         // Keep the fallback portion
       }
     };
@@ -345,7 +346,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
       alive = false; 
       console.info('[PORTION][EFFECT] cleanup, alive = false');
     };
-  }, [result, analysisData?.imageUrl]);
+  }, [result, ingredientsText]);
 
   // Generate OCR hash for caching with safety
   const ocrHash = useMemo(() => {

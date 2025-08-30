@@ -51,22 +51,24 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
     }
   }, []);
 
-  // Load portion information safely
+  // Load portion information safely (skip if external override provided)
   useEffect(() => {
     if (typeof servingGrams === 'number') return; // external override in effect
     
     const loadPortionInfo = async () => {
       try {
-        const portionResult = await detectPortionSafe(productData, ocrText, 'nutrition_toggle');
+        const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
+        const portionResult = await resolvePortion(productData, ocrText);
         
         // Convert PortionResult to PortionInfo format for compatibility
         const portionInfo = {
           grams: portionResult.grams,
-          isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category_estimate',
-          source: portionResult.source === 'fallback' ? 'estimated' as const : 'ocr_declared' as const,
-          confidence: portionResult.source === 'ocr' ? 0.9 : 
-                     portionResult.source === 'db' ? 0.8 : 
-                     portionResult.source === 'nutrition_ratio' ? 0.7 : 0.3,
+          isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category',
+          source: portionResult.source === 'fallback' ? 'estimated' as const : 
+                 portionResult.source === 'ocr' ? 'ocr_declared' as const :
+                 portionResult.source === 'database' ? 'db_declared' as const :
+                 portionResult.source === 'ratio' ? 'ocr_inferred_ratio' as const : 'estimated' as const,
+          confidence: portionResult.confidence,
           display: portionResult.label
         };
         
@@ -78,7 +80,7 @@ export const NutritionToggle: React.FC<NutritionToggleProps> = ({
       } catch (error) {
         console.warn('[REPORT][V2][PORTION][ERROR]', { 
           stage: 'nutrition_toggle', 
-          message: error.message 
+          message: error?.message || error 
         });
         // Use safe fallback
         setCurrentPortionInfo({ 
