@@ -12,6 +12,7 @@
 /* Global overflow safety net - Fixed for sticky positioning */
 html, body, #root { 
   max-width: 100vw; 
+  background-color: #0d1116; /* Always maintain app background to prevent flashes */
 }
 /* Only prevent horizontal overflow on body to preserve sticky positioning */
 body { 

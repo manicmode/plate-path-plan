@@ -33,6 +33,7 @@ import { useHealthCheckV2 } from './HealthCheckModalV2';
 import { handleSearchPick, num, score10, pickBrand, displayNameFor } from '@/shared/search-to-analysis';
 import { mark, measure } from '@/lib/perf';
 import { logActiveCSP } from '@/lib/cspUtils';
+import { RouteCrossfade } from '@/components/transition/RouteCrossfade';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -246,6 +247,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     ocrBlocks?: any[];
     nutritionFields?: any;
   }>({ source: 'photo' });
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionStartRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -1805,16 +1808,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
    * Process result and show appropriate report
    */
   const processAndShowResult = async (legacy: any, data: any, captureId: string, type: string) => {
+    // Start transition timing
+    setIsTransitioning(true);
+    transitionStartRef.current = performance.now();
+    
     // Handle different statuses
     if (legacy.status === 'no_detection') {
       console.log(`[HS] No detection from ${type} [${captureId}], showing no detection UI`);
       setCurrentState('no_detection');
+      setIsTransitioning(false);
       return;
     }
     
     if (legacy.status === 'not_found') {
       console.log(`[HS] ${type} not found [${captureId}], showing not found UI`);
       setCurrentState('not_found'); 
+      setIsTransitioning(false);
       return;
     }
     
@@ -1963,6 +1972,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setAnalysisResult(analysisResult);
       setCurrentState('report');
       
+      // Ensure minimum transition time for smooth animation
+      const elapsed = transitionStartRef.current ? performance.now() - transitionStartRef.current : 0;
+      const minDelay = Math.max(0, 700 - elapsed);
+      setTimeout(() => setIsTransitioning(false), minDelay);
+      
       // Trigger daily score calculation
       if (user?.id) {
         triggerDailyScoreCalculation(user.id);
@@ -2072,6 +2086,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     setAnalysisResult(analysisResult);
     setCurrentState('report');
+    
+    // Ensure minimum transition time for smooth animation
+    const elapsed = transitionStartRef.current ? performance.now() - transitionStartRef.current : 0;
+    const minDelay = Math.max(0, 700 - elapsed);
+    setTimeout(() => setIsTransitioning(false), minDelay);
     
     // Trigger daily score calculation
     if (user?.id) {
@@ -2302,14 +2321,16 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             />
           )}
 
-          {currentState === 'report' && analysisResult && 
-            renderHealthReport({
-              result: analysisResult,
-              onScanAnother: handleScanAnother,
-              onClose: handleClose,
-              analysisData: currentAnalysisData
-            })
-          }
+          {currentState === 'report' && analysisResult && (
+            <RouteCrossfade showOverlay={isTransitioning}>
+              {renderHealthReport({
+                result: analysisResult,
+                onScanAnother: handleScanAnother,
+                onClose: handleClose,
+                analysisData: currentAnalysisData
+              })}
+            </RouteCrossfade>
+          )}
 
           {currentState === 'meal_detection' && isInRollout('photo_meal_ui_v1', user?.id) && (
             <MultiAIFoodDetection
