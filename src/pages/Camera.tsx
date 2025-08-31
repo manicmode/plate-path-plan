@@ -178,7 +178,18 @@ const CameraPage = () => {
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
-  const { user } = useAuth();
+  // Import necessary components
+  const { NutritionFactsCapture } = await import('@/components/camera/NutritionFactsCapture');
+  const { useBarcodeCapture } = await import('@/hooks/useBarcodeCapture');
+
+  // Add nutrition facts capture state
+  const { 
+    needsNutritionFacts, 
+    currentProduct, 
+    handleBarcodeSuccess: onBarcodeSuccess, 
+    handleNutritionFactsSuccess, 
+    handleNutritionFactsCancel 
+  } = useBarcodeCapture();
   
   // Add loading timeout hook for global timeout management
   const { hasTimedOut, showRecovery, retry, forceSkip } = useLoadingTimeout(
