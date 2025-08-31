@@ -292,6 +292,7 @@ interface EnhancedHealthReportProps {
     barcode?: string;
     imageUrl?: string;
     nutritionPanelText?: string;
+    nutritionOCRText?: string;
     ocr?: {
       nutrition?: { text?: string };
       textBlocks?: { nutrition?: { raw?: string } };
@@ -416,19 +417,15 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           ocrText: ingredientsText ? 'present' : 'none',
           entry: 'enhanced_report'
         });
-        console.log('[PORTION][TRACE][OCR_SRC]', {
+        console.log('[PORTION][OCR_SRC]', {
           fromResult: !!(result as any)?.nutritionOCRText,
-          fromAnalysisNutrition: !!analysisData?.nutritionPanelText || !!analysisData?.ocr?.nutrition?.text,
-          rawBlocks: !!analysisData?.ocr?.textBlocks,
+          fromAnalysisNutrition: !!analysisData?.nutritionOCRText,
         });
         
         const nutritionOCRText =
           (result as any).nutritionOCRText ||
-          analysisData?.nutritionPanelText ||
-          analysisData?.ocr?.nutrition?.text ||
-          analysisData?.ocr?.textBlocks?.nutrition?.raw ||
-          analysisData?.ocr?.rawNutritionText ||
-          null;
+          analysisData?.nutritionOCRText || // ONLY if labeled as Nutrition Facts
+          null; // do NOT pass ingredients OCR here
         
         console.log('[PORTION][TRACE][REPORT_INPUT_KEYS]', Object.keys(result || {}));
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });

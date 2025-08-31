@@ -19,9 +19,7 @@ function parseServingSizeToG(txt?: string | null): number | null {
 
 function parseServingSizeTextToGrams(txt?: string | null): number | null {
   if (!txt) return null;
-  const m =
-    String(txt).match(/\((\d+(?:[.,]\d+)?)\s*g\)/i) ||
-    String(txt).match(/(\d+(?:[.,]\d+)?)\s*g(?:rams?)?/i);
+  const m = String(txt).match(/(\d+(?:[.,]\d+)?)\s*(?:g|grams?)/i);
   if (!m) return null;
   const n = parseFloat(m[1].replace(',', '.'));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -268,16 +266,26 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
 
     // Map all OFF/legacy variants and parse textual serving_size to grams
-    const servingGFromNumbers =
-      p.serving_size_g ?? p.servingSizeG ??
-      nutr.serving_size_g ?? nutr.servingSizeG ?? null;
+    const rawServingSizeTxt =
+      p?.serving_size ??
+      nutr?.serving_size ??
+      nutr?.['serving-size'] ?? null;
 
-    const servingGText = p.serving_size ?? nutr.serving_size ?? null;
+    const parsedServingG =
+      p?.serving_size_g ??
+      nutr?.serving_size_g ??
+      parseServingSizeTextToGrams(rawServingSizeTxt) ??
+      (p?.serving_quantity && /g/i.test(p?.serving_unit || '')
+        ? Number(p.serving_quantity)
+        : null);
 
-    const normalizedServingG =
-      (typeof servingGFromNumbers === 'number' && servingGFromNumbers > 0)
-        ? servingGFromNumbers
-        : parseServingSizeTextToGrams(servingGText);
+    // Debug raw fields
+    console.log('[ADAPTER][BARCODE.OUT][SERVING_KEYS]', {
+      raw_serving_size: rawServingSizeTxt,
+      serving_size_g: p?.serving_size_g,
+      nutriments_serving_size_g: nutr?.serving_size_g,
+      parsedServingG,
+    });
 
     const legacy = {
       status: 'ok' as const,
@@ -292,13 +300,14 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         per100,
         perServing,
         nutritionPropType: perServing ? 'perServing' : 'per100',
-        serving_size_g: normalizedServingG ?? null,
+        serving_size_g: parsedServingG ?? null,
       },
       // attach for resolver (top-level + nutrition mirror)
-      serving_size_g: normalizedServingG ?? null,
-      serving_size: servingGText ?? null,
+      serving_size_g: parsedServingG ?? null,
+      serving_size: rawServingSizeTxt ?? null,
       nutrition: {
-        serving_size_g: normalizedServingG ?? null,
+        ...mapped,
+        serving_size_g: parsedServingG ?? null,
       },
       // guaranteed per-serving alias for UI
       nutritionDataPerServing: perServing,   // <-- canonical
@@ -318,11 +327,6 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       }))
     };
 
-    console.log('[ADAPTER][BARCODE.OUT][SERVING_KEYS]', {
-      serving_size: legacy.serving_size,
-      serving_size_g: legacy.serving_size_g,
-      nutrition_serving_size_g: legacy.nutrition?.serving_size_g,
-    });
 
     // Debug performance logging
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {

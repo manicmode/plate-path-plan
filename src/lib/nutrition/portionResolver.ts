@@ -193,7 +193,7 @@ async function parseFromDatabase(productData: any, enabled: boolean = true): Pro
       confidence: 0.9,
       source: 'db',
       label: `${Math.round(servingGrams)}g`,
-      details: 'From product database'
+      details: 'From OFF/DB (parsed)'
     };
   } else {
     console.log('[PORTION][DB]', 'No DB serving size found');
