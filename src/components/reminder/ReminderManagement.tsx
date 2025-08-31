@@ -187,7 +187,7 @@ export const ReminderManagement: React.FC = () => {
 
       {/* Create Reminder Dialog */}
       <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
           <ReminderForm
             onSubmit={handleCreateReminder}
             onCancel={() => setShowCreateForm(false)}
@@ -197,7 +197,7 @@ export const ReminderManagement: React.FC = () => {
 
       {/* Edit Reminder Dialog */}
       <Dialog open={!!editingReminder} onOpenChange={() => setEditingReminder(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
           {editingReminder && (
             <ReminderForm
               reminder={editingReminder}
