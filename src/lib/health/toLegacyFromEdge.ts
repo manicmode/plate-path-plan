@@ -66,7 +66,7 @@ const clamp10 = (n: any) => {
 const num = (v: any) => (v === 0 || (typeof v === 'number' && isFinite(v))) ? v : (v ? Number(v) : undefined);
 
 // HTTP-only image helper - only pass HTTP(S) URLs, not base64 or data URLs
-const httpOnly = (u?: string | null) =>
+export const httpOnly = (u?: string | null) =>
   typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined;
 
 // Helper to convert kJ to kcal
@@ -321,9 +321,18 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       p.image_front_url ||
       p.image_url;
 
+    // Map product name with OFF precedence
+    const productName = 
+      p.product_name || 
+      p.generic_name || 
+      (p.brands_tags && p.brands_tags[0]) || 
+      p.brands || 
+      p.product_name_en || 
+      'Unknown item';
+
     const legacy = {
       status: 'ok' as const,
-      productName: p.product_name || p.generic_name || p.brands || 'Unknown item',
+      productName,
       productImageUrl: httpOnly(offImg),
       nutriments: raw,
       nutritionData: {
@@ -365,9 +374,11 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     };
 
 
-    // Debug performance logging
-    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+    // Debug performance logging with structured logs
+    if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.VITE_DEBUG_PERF === 'true') {
       console.info('[ADAPTER][BARCODE.OUT]', {
+        productName: legacy.productName,
+        productImageUrlLen: legacy.productImageUrl?.length || 0,
         healthScore: score10,
         flags_count: flags?.length || 0,
         per100g: { kcal: per100.energyKcal, sugar_g: per100.sugar_g, sodium_mg: per100.sodium_mg },
@@ -396,9 +407,19 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   const extractedName = extractName(envelope);
   const p = envelope?.product || {};
   
+  // Map image with HTTP guard for non-barcode path
+  const imageUrl = 
+    p.image_front_small_url ||
+    p.image_small_url ||
+    p.image_front_url ||
+    p.image_url ||
+    p.image ||
+    envelope?.imageUrl || '';
+
   let legacy = {
     status: 'ok' as 'ok' | 'no_detection' | 'not_found',
     productName: extractedName,
+    productImageUrl: httpOnly(imageUrl),
     healthScore: Number(envelope?.quality?.score || p.health?.score) || 0,
     nutritionData: p.nutriments || {},
     ingredientsText: p.ingredients_text || envelope?.ingredientsText || '',
@@ -420,11 +441,14 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
   }
 
-  console.log('[ADAPTER][OUT]', {
-    name: legacy.productName,
-    score: legacy.healthScore,
-    hasNutr: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length > 0
-  });
+  if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.DEV) {
+    console.log('[ADAPTER][OUT]', {
+      productName: legacy.productName,
+      productImageUrlLen: legacy.productImageUrl?.length || 0,
+      score: legacy.healthScore,
+      hasNutr: !!legacy.nutritionData && Object.keys(legacy.nutritionData).length > 0
+    });
+  }
 
   return legacy;
 }

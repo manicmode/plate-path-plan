@@ -110,6 +110,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
+  // Add mount and image logging
+  React.useEffect(() => {
+    if (currentFoodItem && import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+      const keys = {
+        productName: !!(currentFoodItem as any).productName,
+        productImageUrl: !!(currentFoodItem as any).productImageUrl,  
+        itemName: !!(currentFoodItem as any).itemName
+      };
+      
+      console.log('[CONFIRM][MOUNT]', {
+        name: currentFoodItem.name,
+        imageUrlKind: imgUrl ? 'http' : 'none',
+        grams: currentFoodItem.portionGrams || null,
+        keys
+      });
+    }
+  }, [currentFoodItem, imgUrl]);
+
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
     // Clear current food item first to prevent showing old data
@@ -615,9 +633,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 src={imgUrl ?? '/emoji/plate.png'}
                 alt={currentFoodItem.name}
                 className="w-16 h-16 rounded-2xl object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/emoji/plate.png'; }}
-                loading="eager"
+                referrerPolicy="no-referrer"
                 decoding="async"
+                loading="lazy"
+                onError={(e) => { 
+                  if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+                    console.log('[CONFIRM][IMAGE]', { error: 'onError->fallback' });
+                  }
+                  (e.currentTarget as HTMLImageElement).src = '/emoji/plate.png'; 
+                }}
+                onLoad={() => {
+                  if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+                    console.log('[CONFIRM][IMAGE]', { 
+                      requestedKind: imgUrl ? 'http' : 'none',
+                      final: 'http'
+                    });
+                  }
+                }}
               />
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">

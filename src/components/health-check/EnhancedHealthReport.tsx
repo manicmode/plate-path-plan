@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
+import { httpOnly } from '@/lib/health/toLegacyFromEdge';
 
 // Brand-only title sanitization helper
 function sanitizeTitle(title: string, brand?: string): string {

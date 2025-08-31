@@ -31,6 +31,9 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     if (checked) {
       setShowReminderForm(true);
       onReminderOpen?.();
+      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+        console.log('[REMINDER][MODAL]', { open: true, showDismissX: false });
+      }
     }
   };
 
@@ -43,9 +46,15 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
       setShowReminderForm(false);
       setCreateReminder(false);
       onReminderClose?.();
+      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+        console.log('[REMINDER][MODAL]', { open: false });
+      }
     } catch (error) {
       setCreateReminder(false);
       onReminderClose?.();
+      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+        console.log('[REMINDER][MODAL]', { open: false });
+      }
     }
   };
 
@@ -53,6 +62,9 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     setShowReminderForm(false);
     setCreateReminder(false);
     onReminderClose?.();
+    if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+      console.log('[REMINDER][MODAL]', { open: false });
+    }
   };
 
   return (

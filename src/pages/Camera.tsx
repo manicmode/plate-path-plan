@@ -616,7 +616,7 @@ const CameraPage = () => {
       const prefill = buildLogPrefill(
         name,
         pd.brand,
-        nfImageDataUrl,                 // use the NF image for the confirm card
+        undefined,                      // NEVER pass base64 - removed nfImageDataUrl
         pd.ingredientsText,
         [], [], [],
         {
@@ -626,6 +626,13 @@ const CameraPage = () => {
         grams,
         true  // requiresConfirmation if grams is null
       );
+
+      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
+        console.log('[PREFILL][GUARD]', { 
+          droppedBase64: true, 
+          length: nfImageDataUrl?.length || 0 
+        });
+      }
 
       console.log('[CAMERA][NUTRITION_CAPTURE][PREFILL]', {
         grams,
