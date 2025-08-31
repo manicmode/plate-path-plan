@@ -118,14 +118,27 @@ const Layout = ({ children }: LayoutProps) => {
   }, []);
 
   // [nav-restore-2025-08-11] begin
-  // Show only header for unauthenticated users on non-auth pages
-  const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
+  // Hide navigation on specific fullscreen/camera pages
+  const hideNavPaths = [
+    '/',
+    '/camera',        // Camera/logging page
+    '/scan',          // Scan hub
+    '/body-scan-ai', '/body-scan-side', '/body-scan-back',
+    '/body-scan-results', '/body-scan-result', '/body-scan-compare', '/body-scan-history'
+  ];
+  
+  const shouldHideNavigation = !isAuthenticated || 
+    hideNavPaths.includes(location.pathname) ||
+    location.pathname.startsWith('/scan/');  // All scan sub-pages
+  
+  const shouldShowNavigation = !shouldHideNavigation;
   
   // Debug logging for navigation visibility
   if (import.meta.env.DEV) {
     console.log('[Navigation Debug]', {
       isAuthenticated,
       pathname: location.pathname,
+      shouldHideNavigation,
       shouldShowNavigation,
       isChatModalOpen
     });
