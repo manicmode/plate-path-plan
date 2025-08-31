@@ -17,6 +17,16 @@ function parseServingSizeToG(txt?: string | null): number | null {
   return Number.isFinite(val) && val > 0 ? val : null; // treat ml as grams for snacks
 }
 
+function parseServingSizeTextToGrams(txt?: string | null): number | null {
+  if (!txt) return null;
+  const m =
+    String(txt).match(/\((\d+(?:[.,]\d+)?)\s*g\)/i) ||
+    String(txt).match(/(\d+(?:[.,]\d+)?)\s*g(?:rams?)?/i);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function pickNumber(...vals: Array<number | null | undefined>): number | null {
   for (const v of vals) if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
   return null;
@@ -257,6 +267,18 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
 
 
+    // Map all OFF/legacy variants and parse textual serving_size to grams
+    const servingGFromNumbers =
+      p.serving_size_g ?? p.servingSizeG ??
+      nutr.serving_size_g ?? nutr.servingSizeG ?? null;
+
+    const servingGText = p.serving_size ?? nutr.serving_size ?? null;
+
+    const normalizedServingG =
+      (typeof servingGFromNumbers === 'number' && servingGFromNumbers > 0)
+        ? servingGFromNumbers
+        : parseServingSizeTextToGrams(servingGText);
+
     const legacy = {
       status: 'ok' as const,
       productName: p.product_name || p.generic_name || p.brands || 'Unknown item',
@@ -270,13 +292,17 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         per100,
         perServing,
         nutritionPropType: perServing ? 'perServing' : 'per100',
+        serving_size_g: normalizedServingG ?? null,
       },
-      // Attach to the already-built report/result shape:
-      serving_size_g: serving_size_g,
+      // attach for resolver (top-level + nutrition mirror)
+      serving_size_g: normalizedServingG ?? null,
+      serving_size: servingGText ?? null,
+      nutrition: {
+        serving_size_g: normalizedServingG ?? null,
+      },
       // guaranteed per-serving alias for UI
       nutritionDataPerServing: perServing,   // <-- canonical
       perServing,                           // <-- keep old name as alias, harmless
-      serving_size: servingTxt,
       flags,
       healthScore: score10,                 // 0–10
       _dataSource: 'openfoodfacts/barcode',
@@ -292,10 +318,10 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       }))
     };
 
-    // Debug trace
-    console.log('[ADAPTER|BARCODE.OUT|SERVING_KEYS]', {
-      serving_size_g, serving_size: p.serving_size, servingSizeG: p.servingSizeG,
-      serving_quantity: p.serving_quantity, hasPerServing
+    console.log('[ADAPTER][BARCODE.OUT][SERVING_KEYS]', {
+      serving_size: legacy.serving_size,
+      serving_size_g: legacy.serving_size_g,
+      nutrition_serving_size_g: legacy.nutrition?.serving_size_g,
     });
 
     // Debug performance logging

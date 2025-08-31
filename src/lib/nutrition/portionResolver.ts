@@ -172,25 +172,18 @@ async function parseFromDatabase(productData: any, enabled: boolean = true): Pro
   if (!enabled) return null;
   if (!productData) return null;
   
-  // Map all likely serving fields (DB/OFF)
   const servingGrams =
     productData?.serving_size_g ??
     productData?.servingSizeG ??
     productData?.nutrition?.serving_size_g ??
     productData?.nutrition?.servingSizeG ??
-    productData?.perServing?.grams ??
-    productData?.serving_size ??
-    productData?.servingSize ?? 
-    productData?.serving_grams ??
-    productData?.portion_grams;
+    productData?.perServing?.grams ?? null;
 
   console.log('[PORTION][TRACE][DB_FIELDS]', {
     serving_size_g: productData?.serving_size_g,
-    servingSizeG: productData?.servingSizeG,
     nutrition_serving_size_g: productData?.nutrition?.serving_size_g,
-    nutrition_servingSizeG: productData?.nutrition?.servingSizeG,
     perServing_grams: productData?.perServing?.grams,
-    computed: servingGrams
+    computed: servingGrams,
   });
 
   if (typeof servingGrams === 'number' && servingGrams > 0) {
@@ -199,7 +192,7 @@ async function parseFromDatabase(productData: any, enabled: boolean = true): Pro
       grams: Math.round(servingGrams),
       confidence: 0.9,
       source: 'db',
-      label: `${Math.round(servingGrams)}g · DB`,
+      label: `${Math.round(servingGrams)}g`,
       details: 'From product database'
     };
   } else {
