@@ -18,7 +18,7 @@ interface ExtendedNormalizedProduct extends NormalizedProduct {
   _serving?: { kcal?: number; fat?: number; sat?: number; carb?: number; sugar?: number; fiber?: number; prot?: number; sod?: number };
 }
 
-type PortionHint = { grams: number; source: 'ocr'|'user'|'label'|'estimate'|'fallback' };
+type PortionHint = { grams: number; source: 'ocr'|'user'|'label'|'estimate'|'fallback'|'external' };
 
 export type ConfirmPayload = {
   origin: 'barcode'|'photo'|'health-report';
@@ -72,6 +72,11 @@ function getBestPortionGrams(norm: ExtendedNormalizedProduct, opts?: {
   meta?: { barcode?: string; id?: string };
 }): { grams: number; source: string } {
   if (opts?.flags?.emergencyKill) return { source: 'fallback', grams: 30 };
+
+  // Ignore 30g "external" hints 
+  if (opts?.hint?.source === 'external' && Math.abs(opts.hint.grams - 30) < 0.01) {
+    opts = { ...opts, hint: undefined };
+  }
 
   const allowProvider = opts?.flags?.portionOffQP !== false; // default TRUE
   const cand: Array<{source: string; grams: number; weight: number}> = [];

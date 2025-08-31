@@ -576,30 +576,41 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
-              // Build prefill data from current report
-              const prefill = buildLogPrefill(
-                result.itemName || result.productName || 'Unknown Product',
-                undefined, // brand not available in HealthAnalysisResult
-                analysisData?.imageUrl,
-                result.ingredientsText,
-                result.healthProfile?.allergens,
-                result.healthProfile?.additives,
-                [], // categories - not available in HealthAnalysisResult
-                {
-                  calories: perServingDisplay.calories || nutritionData.calories || 0,
-                  fat_g: perServingDisplay.fat || nutritionData.fat || 0,
-                  sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
-                  carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
-                  sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
-                  fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
-                  protein_g: perServingDisplay.protein || nutritionData.protein || 0,
-                  sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
-                  factor: (portion?.grams ?? 30) / 100, // scaling factor
-                },
-                portion?.grams ?? 30
-              );
+              // Get normalized product from result (if available)
+              const norm = (result as any)?.norm || (result as any)?.normalizedProduct;
+              const offProduct = (result as any)?.offProduct || (result as any)?.providerRaw;
               
-              // Navigate to camera page with prefill data
+              // Create enhanced prefill with norm + providerRaw for canonical payload building
+              const prefill = {
+                source: 'health-report' as const,
+                norm,
+                providerRaw: offProduct,
+                item: {
+                  itemName: result.itemName || result.productName || 'Unknown Product',
+                  brand: undefined, // brand not available in HealthAnalysisResult
+                  imageUrl: analysisData?.imageUrl,
+                  ingredientsText: result.ingredientsText || '',
+                  allergens: result.healthProfile?.allergens || [],
+                  additives: result.healthProfile?.additives || [],
+                  categories: [], // categories - not available in HealthAnalysisResult
+                  nutrientsScaled: {
+                    calories: perServingDisplay.calories || nutritionData.calories || 0,
+                    fat_g: perServingDisplay.fat || nutritionData.fat || 0,
+                    sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
+                    carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
+                    sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
+                    fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
+                    protein_g: perServingDisplay.protein || nutritionData.protein || 0,
+                    sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
+                    factor: (portion?.grams ?? 30) / 100, // scaling factor
+                  },
+                  portionGrams: portion?.grams ?? 30,
+                  portionHint: portion ? { grams: portion.grams, source: portion.source as any } : undefined
+                },
+                ts: Date.now()
+              };
+              
+              // Navigate to camera page with enhanced prefill data
               navigate('/camera', { state: { logPrefill: prefill } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {

@@ -51,9 +51,15 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
     }
   }, []);
 
-  // Load portion information safely (skip if external override provided)
+  // Load portion information safely with 30g tripwire
   useEffect(() => {
-    if (typeof servingGrams === 'number') {
+    // Tripwire: ignore external 30g override to force resolver to run
+    const isExternal30g = typeof servingGrams === 'number' && Math.abs(servingGrams - 30) < 0.01;
+    
+    if (isExternal30g) {
+      console.log('[PORTION][INQ][WIDGET_TRIPWIRE]', { reason: 'ignore_30g_external', servingGrams });
+      // Don't skip - let the resolver run
+    } else if (typeof servingGrams === 'number') {
       console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
       console.info('[PORTION][INQ3][WIDGET_PROPS]', {
         gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null

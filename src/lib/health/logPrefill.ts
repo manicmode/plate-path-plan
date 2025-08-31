@@ -11,6 +11,7 @@ export type LogPrefill = {
   source: 'health-report'|'barcode'|'photo';
   // Keep both the normalized product and the UI-ready item
   norm?: NormalizedProduct;                 // <-- add (lets us recompute portion)
+  providerRaw?: any;                        // <-- add (the OFF product data)
   item: {
     itemName: string;
     brand?: string;

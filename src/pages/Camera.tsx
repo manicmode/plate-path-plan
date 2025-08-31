@@ -216,6 +216,7 @@ const CameraPage = () => {
       // Prevent UI flashing by disabling modal states immediately
       setShowBarcodeNotFound(false);
       setShowReviewScreen(false);
+      setActiveTab('main');
       
       console.debug('[CAMERA][PREFILL]', {
         itemName: prefill.item.itemName,
