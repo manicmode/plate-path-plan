@@ -71,6 +71,21 @@ function computePerPortion(per100: Per100, grams: number | null) {
   };
 }
 
+function scaleFromPer100(per100: any, grams?: number | null) {
+  if (!per100 || !grams || grams <= 0) return null;
+  const f = grams / 100;
+  return {
+    calories: per100.kcal ? Math.round(per100.kcal * f) : undefined,
+    fat: per100.fat ? +(per100.fat * f).toFixed(1) : undefined,
+    sat_fat: per100.sat_fat ? +(per100.sat_fat * f).toFixed(1) : undefined,
+    carbs: per100.carbs ? +(per100.carbs * f).toFixed(1) : undefined,
+    sugar: per100.sugar ? +(per100.sugar * f).toFixed(1) : undefined,
+    fiber: per100.fiber ? +(per100.fiber * f).toFixed(1) : undefined,
+    protein: per100.protein ? +(per100.protein * f).toFixed(1) : undefined,
+    sodium: per100.sodium ? Math.round(per100.sodium * f) : undefined,
+  };
+}
+
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 // Save CTA Component with sticky positioning
@@ -330,8 +345,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     sodium:   nutritionData?.sodium   ?? null,
   };
 
-  const portionGrams = (portion?.grams ?? null);
+  const grams = portion?.grams ?? (result as any)?.serving_size_g ?? (analysisData as any)?.serving_size_g ?? null;
+
+  const perServingDisplay =
+    (result?.nutritionData as any)?.perServing
+      ?? (grams ? scaleFromPer100(nutritionData, grams) : null);
+
+  const portionGrams = grams;
   const perPortion = computePerPortion(per100, portionGrams);
+
+  // Header chips:
+  const portionLabel =
+    grams ? `${grams}g` : 'Unknown serving';
 
   console.log('[PORTION][UI]', {
     portionGrams, canScale: !!perPortion, 

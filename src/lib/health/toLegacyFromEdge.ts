@@ -8,6 +8,20 @@ import { calculateHealthScore, toFinal10 } from '@/score/ScoreEngine';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
+function parseServingSizeToG(txt?: string | null): number | null {
+  if (!txt) return null;
+  const m = String(txt).match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i);
+  if (!m) return null;
+  const val = parseFloat(m[1].replace(',', '.'));
+  const unit = m[2].toLowerCase();
+  return Number.isFinite(val) && val > 0 ? val : null; // treat ml as grams for snacks
+}
+
+function pickNumber(...vals: Array<number | null | undefined>): number | null {
+  for (const v of vals) if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+  return null;
+}
+
 function parseServingToUnit(serving?: string): { value?: number; unit?: 'g'|'ml' } {
   if (!serving || typeof serving !== 'string') return {};
   // Prefer explicit "(30 g)" / "240 ml"
@@ -146,14 +160,38 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     };
     const flags = detectFlags(ingredients_text, flagInputs);
 
+    // OFF raw
+    const nutr = p?.nutriments ?? {};
+
+    // OFF variants that may hold serving grams
+    const offServingG =
+      pickNumber(p.serving_size_g, p.servingSizeG, p.serving_quantity) ??
+      parseServingSizeToG(p.serving_size);
+
+    // Build normalized fields on the outgoing object:
+    const serving_size_g = offServingG;
+
+    // Optional: expose whether OFF has per-serving nutrient fields
+    const hasPerServing = Object.keys(nutr).some(k => k.endsWith('_serving'));
+
     // Parse serving size correctly (units-aware)
     const servingTxt = p.serving_size || raw.serving_size;
     const { value: servingQty, unit: servingUnit } = parseServingToUnit(servingTxt);
-    const serving_g = servingUnit === 'ml' ? undefined : servingQty; // keep simple; can extend later
+    const serving_g = servingUnit === 'ml' ? undefined : (servingQty ?? serving_size_g); // prefer normalized value
 
+    // Keep existing nutrition payload, but make perServing if OFF provides it
     const per100 = mapped; // existing per-100g mapped object
-    const perServing = serving_g
-      ? {
+
+    const perServing = hasPerServing ? {
+      kcal: nutr['energy-kcal_serving'] ?? nutr['energy_serving'],
+      fat: nutr['fat_serving'],
+      sat_fat: nutr['saturated-fat_serving'],
+      carbs: nutr['carbohydrates_serving'],
+      sugar: nutr['sugars_serving'],
+      fiber: nutr['fiber_serving'],
+      protein: nutr['proteins_serving'],
+      sodium: nutr['sodium_serving'],
+    } : (serving_g ? {
           energyKcal: +( (per100.energyKcal ?? 0) * (serving_g/100) ).toFixed(2),
           protein_g:  +( (per100.protein_g  ?? 0) * (serving_g/100) ).toFixed(2),
           carbs_g:    +( (per100.carbs_g    ?? 0) * (serving_g/100) ).toFixed(2),
@@ -162,8 +200,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
           satfat_g:   +( (per100.satfat_g   ?? 0) * (serving_g/100) ).toFixed(2),
           fiber_g:    +( (per100.fiber_g    ?? 0) * (serving_g/100) ).toFixed(2),
           sodium_mg:  +( (per100.sodium_mg  ?? 0) * (serving_g/100) ).toFixed(0),
-        }
-      : undefined;
+        } : null);
 
     // Score: Guard ScoreEngine, no constant default
     const engineOn = import.meta.env.VITE_SCORE_ENGINE_V1 === 'true';
@@ -230,7 +267,12 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         calories: per100.energyKcal, protein: per100.protein_g, carbs: per100.carbs_g,
         sugars_g: per100.sugar_g, fat: per100.fat_g, saturated_fat_g: per100.satfat_g,
         fiber: per100.fiber_g, sodium: per100.sodium_mg,
+        per100,
+        perServing,
+        nutritionPropType: perServing ? 'perServing' : 'per100',
       },
+      // Attach to the already-built report/result shape:
+      serving_size_g: serving_size_g,
       // guaranteed per-serving alias for UI
       nutritionDataPerServing: perServing,   // <-- canonical
       perServing,                           // <-- keep old name as alias, harmless
@@ -250,6 +292,12 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       }))
     };
 
+    // Debug trace
+    console.log('[ADAPTER|BARCODE.OUT|SERVING_KEYS]', {
+      serving_size_g, serving_size: p.serving_size, servingSizeG: p.servingSizeG,
+      serving_quantity: p.serving_quantity, hasPerServing
+    });
+
     // Debug performance logging
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {
       console.info('[ADAPTER][BARCODE.OUT]', {
@@ -261,7 +309,8 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
           sugar_g: perServing?.sugar_g,
           sodium_mg: perServing?.sodium_mg
         },
-        serving_size: servingTxt
+        serving_size: servingTxt,
+        serving_size_g
       });
     }
     
