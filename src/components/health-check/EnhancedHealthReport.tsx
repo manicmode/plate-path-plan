@@ -518,8 +518,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
-              {...(portion?.grams != null ? { servingGrams: portion.grams } : {})}
-              portionLabel={portion?.grams ? `${portion.grams}g` : 'Unknown serving'}
+              servingGrams={typeof portion?.grams === 'number' ? portion.grams : undefined}
+              portionLabel={typeof portion?.grams === 'number' ? `${portion.grams}g` : 'Unknown serving'}
             />
             {/* PORTION INQUIRY - Call Site Logging */}
             {(() => {

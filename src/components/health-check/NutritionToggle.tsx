@@ -13,6 +13,9 @@ import { NutritionPer100g, toPerPortion, type PortionInfo } from '@/lib/nutritio
 import { detectPortionSafe, getPortionInfoSync, formatPortionDisplay } from '@/lib/nutrition/portionDetectionSafe';
 import { PortionSheetLazy } from './PortionSheetLazy';
 
+// Remove all UI 30g fallbacks
+const NO_UI_FALLBACKS = true;
+
 interface NutritionToggleProps {
   nutrition100g: NutritionPer100g;
   productData?: any;
@@ -116,23 +119,37 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
     }
   };
 
-  // Get safe portion info for render
-  const portionInfo: PortionInfo =
-    typeof servingGrams === 'number'
-      ? { grams: servingGrams, isEstimated: false, source: 'external', display: portionLabel ?? `${servingGrams}g` }
-      : getPortionInfoSync(currentPortionInfo);
+  // Get safe portion info for render - NO 30g FALLBACKS
+  const externalGrams = typeof servingGrams === 'number' ? servingGrams : null;
+  const resolvedGrams = typeof currentPortionInfo?.grams === 'number' ? currentPortionInfo.grams : null;
+  
+  const headerGrams = externalGrams ?? resolvedGrams ?? null;
+  const headerSource = 
+    externalGrams != null ? 'external' :
+    resolvedGrams != null ? 'resolver' : 'unknown';
 
-  // PORTION INQUIRY - Header and Chip Logging
-  useEffect(() => {
-    const headerGrams = portionInfo?.grams;
-    const headerSource = portionInfo?.source;
-    const chipLabel = portionInfo?.display;
-    const chipGrams = portionInfo?.grams;
-    const chipSource = portionInfo?.source === 'estimated' && portionInfo?.grams === null ? 'unknown' : portionInfo?.source;
-    
-    console.log('[PORTION][INQ3][HEADER]', { headerGrams, source: headerSource });
-    console.log('[PORTION][INQ3][CHIP]', { chipLabel, chipGrams, chipSource });
-  }, [portionInfo]);
+  if (NO_UI_FALLBACKS && headerGrams === 30) {
+    console.warn('[PORTION][INQ3][GUARD_30_DETECTED]');
+  }
+
+  console.log('[PORTION][INQ3][HEADER]', { headerGrams, source: headerSource });
+
+  const chipGrams = headerGrams;
+  const chipSource = headerSource;
+  const chipLabel = chipGrams == null ? 'Unknown serving' : `${chipGrams}g`;
+
+  console.log('[PORTION][INQ3][CHIP]', { chipLabel, chipGrams, chipSource });
+
+  const usingExternalGrams = typeof servingGrams === 'number';
+  console.log('[PORTION][INQ3][GUARD]', { usingExternalGrams, servingGramsProp: servingGrams });
+  
+  const portionInfo: PortionInfo = {
+    grams: headerGrams,
+    isEstimated: headerSource !== 'external',
+    source: headerSource as any,
+    confidence: headerSource === 'external' ? 1.0 : (headerSource === 'resolver' ? 0.8 : 0),
+    display: chipLabel
+  };
 
   // Calculate portion nutrition safely - memoized
   const portionNutrition = useMemo(() => {
