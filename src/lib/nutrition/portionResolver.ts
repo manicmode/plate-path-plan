@@ -320,7 +320,15 @@ export async function resolvePortion(
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
   
-  const ocrSource = ocrText || productData?.nutritionOCRText || null;
+  // Only use Nutrition Facts OCR, never fall back to ingredients
+  const text = typeof ocrText === 'string' && ocrText.trim().length > 0 ? ocrText : '';
+  const ocrSource = text || (productData?.nutritionOCRText && typeof productData.nutritionOCRText === 'string' && productData.nutritionOCRText.trim().length > 0 ? productData.nutritionOCRText : '');
+  
+  // Guard log to prove we're not parsing ingredients
+  console.log('[PORTION][TRACE][OCR_SRC]', {
+    hasOCR: !!ocrSource,
+    fromAnalysisNutrition: !!ocrSource,
+  });
   
   console.log('[PORTION][TRACE][IN]', {
     hasBarcode: !!productData?.barcode,
@@ -403,8 +411,8 @@ export async function resolvePortion(
     });
   }
   
-  // Source 2: OCR parsing
-  if (ocrSource) {
+  // Source 2: OCR parsing (Nutrition Facts only, no ingredients fallback)
+  if (ocrSource && ocrSource.trim().length > 0) {
     const ocrCandidate = parseFromOCR(ocrSource, productName);
     if (ocrCandidate) {
       console.log('[PORTION][OCR]', 'Found OCR candidate:', ocrCandidate.grams, 'g');

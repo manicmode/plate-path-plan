@@ -1943,12 +1943,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                       (score10 ?? 0) >= 2 ? 'poor' : 'avoid'
       };
 
-      // Add nutritionOCRText for portion resolver
-      (analysisResult as any).nutritionOCRText = 
+      // Map Nutrition Facts OCR text into BOTH locations
+      const nfText =
         data?.ocr?.nutritionText ??
         data?.nutrition?.ocrText ?? 
         legacy?.nutritionOCRText ?? 
         null;
+
+      (analysisResult as any).nutritionOCRText = nfText;
+      
+      // Also ensure analysisData gets it
+      setCurrentAnalysisData(prev => ({
+        ...prev,
+        nutritionOCRText: nfText
+      }));
+      
+      console.log('[ADAPTER][OCR_NF]', { hasNF: !!nfText, len: nfText?.length });
 
       setAnalysisResult(analysisResult);
       setCurrentState('report');
@@ -2043,12 +2053,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                     finalScore10 >= 2 ? 'poor' : 'avoid'
     };
     
-    // Add nutritionOCRText for portion resolver
-    (analysisResult as any).nutritionOCRText = 
+    // Map Nutrition Facts OCR text into BOTH locations
+    const nfText =
       data?.ocr?.nutritionText ??
       data?.nutrition?.ocrText ?? 
       legacy?.nutritionOCRText ?? 
       null;
+
+    (analysisResult as any).nutritionOCRText = nfText;
+    
+    // Also ensure analysisData gets it
+    setCurrentAnalysisData(prev => ({
+      ...prev,
+      nutritionOCRText: nfText
+    }));
+    
+    console.log('[ADAPTER][OCR_NF]', { hasNF: !!nfText, len: nfText?.length });
     
     setAnalysisResult(analysisResult);
     setCurrentState('report');

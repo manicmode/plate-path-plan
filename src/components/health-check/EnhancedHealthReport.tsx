@@ -422,17 +422,19 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           fromAnalysisNutrition: !!analysisData?.nutritionOCRText,
         });
         
-        const nutritionOCRText =
-          (result as any).nutritionOCRText ||
-          analysisData?.nutritionOCRText || // ONLY if labeled as Nutrition Facts
-          null; // do NOT pass ingredients OCR here
+        const nfOCR =
+          analysisData?.nutritionOCRText ??
+          (result as any)?.nutritionOCRText ??
+          undefined; // no other fallback
+        
+        console.log('[PORTION][TRACE][REPORT_OCR]', { length: nfOCR?.length || 0 });
         
         console.log('[PORTION][TRACE][REPORT_INPUT_KEYS]', Object.keys(result || {}));
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
         console.info('[PORTION][INQ3][RESOLVE_START]', { barcode: (result as any)?.barcode, id: (result as any)?.id });
         
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
-        const portionResult = await resolvePortion(result, nutritionOCRText || undefined);
+        const portionResult = await resolvePortion(result, nfOCR);
         
         mark('EnhancedHealthReport.portionResolve.complete', { resolved: !!portionResult });
         trace('PORTION:EFFECT:RESOLVED', portionResult);
