@@ -612,6 +612,16 @@ const WorkoutCompletionProviderSafe: React.FC<React.PropsWithChildren> = ({ chil
 const MysteryBoxSafe: React.FC = () => null;
 
 function App() {
+  // FORENSIC LOGGING - App Boot Evidence
+  useEffect(() => {
+    console.debug('[FORENSIC][BUILD]', {
+      build: '2025-08-30T18:55Z-forensic',
+      sw: navigator.serviceWorker?.controller?.state ?? 'none',
+      chunks: (window as any).__LOADED_CHUNKS__ ?? 'unknown', // if loader hook exists
+      timestamp: new Date().toISOString()
+    });
+  }, []);
+
   return (
     <BrowserRouter>
       <AppErrorBoundary>

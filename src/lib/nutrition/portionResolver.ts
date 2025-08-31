@@ -272,7 +272,15 @@ export async function resolvePortion(
   const portionOffQP = urlParams.get('portionOff') === '1';
   const barcode_off_lookup_enabled = !portionOffQP; // Default ON unless disabled via URL
 
-  // FORENSIC LOGGING - Resolver Input
+  // FORENSIC LOGGING - Resolver Input & Flag Sources
+  const portionOffQP_from = portionOffQP ? 'url-param' : 'default';
+  console.debug('[FORENSIC][RESOLVER][FLAGS]', {
+    portionOffQP,
+    origin: portionOffQP_from,
+    urlParam: urlParams.get('portionOff'),
+    emergencyKill: false
+  });
+
   console.debug('[FORENSIC][RESOLVER][INPUT]', {
     hint: undefined, // Would be passed from opts if available
     flags: { portionOffQP, emergencyKill: false },

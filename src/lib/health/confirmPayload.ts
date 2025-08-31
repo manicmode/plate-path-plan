@@ -155,6 +155,17 @@ function normalizeProduct(raw: any): ExtendedNormalizedProduct {
   const off = raw?.product ?? raw;           // OFF payloads often nest under product
   const nutr = off?.nutriments ?? raw?.nutriments ?? raw?.nutrition ?? {};
 
+  // FORENSIC LOGGING - OFF Data Evidence
+  console.debug('[FORENSIC][OFF]', {
+    barcode: off?.code || raw?.code,
+    serving_size: off?.serving_size,
+    serving_size_g: off?.serving_size_g,
+    serving_quantity: off?.serving_quantity,
+    serving_unit: off?.serving_size_unit,
+    kcal_100g: (nutr?.['energy-kcal_100g'] ?? nutr?.energy_kcal_100g)?.toString().slice(0,10),
+    kcal_serv: (nutr?.['energy-kcal_serving'] ?? nutr?.energy_kcal_serving)?.toString().slice(0,10)
+  });
+
   // OFF per-100g keys
   const kcal_100 = num(nutr['energy-kcal_100g'] ?? nutr['energy_kcal_100g'] ?? nutr.energy_kcal_100g ?? nutr.energy_kcal);
   const fat_100  = num(nutr.fat_100g);

@@ -213,11 +213,19 @@ const CameraPage = () => {
       const prefill = (location.state as any)?.logPrefill;
       if (!prefill || prefill.source !== 'health-report') return;
       
-      // FORENSIC LOGGING - Prefill Detection
+      // FORENSIC LOGGING - Prefill Detection & Assert
       console.debug('[FORENSIC][PREFILL]', {
         hasPrefill: !!prefill,
         hasNorm: !!prefill.norm,
         hasRaw: !!prefill.providerRaw
+      });
+      
+      // FORENSIC ASSERT - Ensure canonical builder data is available
+      console.assert(!!prefill.norm || !!prefill.providerRaw, '[FORENSIC][ASSERT] Missing norm/providerRaw in prefill', {
+        prefill: prefill,
+        hasNorm: !!prefill.norm,
+        hasRaw: !!prefill.providerRaw,
+        source: prefill.source
       });
       
       // Prevent UI flashing by disabling modal states immediately
