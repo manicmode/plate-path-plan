@@ -528,7 +528,19 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           <CardContent>
             {hasValidNutrition(result.nutritionData) ? (
               <>
-                {/* Remove forensic probe console logs */}
+                {/* FORENSIC PROBE - PORTION INQUIRY */}
+                {(() => {
+                  const route = window.location.pathname;
+                  const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+                  console.log('[PORTION][INQ][CALL]', { 
+                    route, 
+                    productId, 
+                    nutritionPropType: 'per100', 
+                    servingGramsProp: portion?.grams ?? 30, 
+                    portionLabelProp: portion?.label ?? '30g · est.' 
+                  });
+                  return null;
+                })()}
                 
                 <h4 className="text-lg font-semibold mb-3">
                   {portion ? `Per portion (${portion.grams}g)` : 'Per 100g'}

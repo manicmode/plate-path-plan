@@ -3,21 +3,12 @@
  * Shared types and utilities for passing report data to confirmation modal
  */
 
-import type { NormalizedProduct } from '@/shared/search-to-analysis';
-
-export type PortionHint = { grams: number; source: 'ocr'|'user'|'label'|'estimate'|'fallback' };
-
 export type LogPrefill = {
-  source: 'health-report'|'barcode'|'photo';
-  // Keep both the normalized product and the UI-ready item
-  norm?: NormalizedProduct;                 // <-- add (lets us recompute portion)
-  providerRaw?: any;                        // <-- add (the OFF product data)
+  source: 'health-report';
   item: {
     itemName: string;
     brand?: string;
-    imageUrl?: string;                      // primary
-    image?: string;                         // fallbacks
-    photoUrl?: string;
+    imageUrl?: string;
     ingredientsText?: string;
     allergens?: string[];
     additives?: string[];
@@ -33,8 +24,7 @@ export type LogPrefill = {
       sodium_mg?: number;
       factor: number;
     };
-    portionGrams: number;                   // what report used
-    portionHint?: PortionHint;              // <-- add (what chip said)
+    portionGrams: number;
   };
   ts?: number; // optional timestamp for the log
 };

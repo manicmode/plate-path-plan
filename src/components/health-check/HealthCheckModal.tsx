@@ -33,7 +33,6 @@ import { useHealthCheckV2 } from './HealthCheckModalV2';
 import { handleSearchPick, num, score10, pickBrand, displayNameFor } from '@/shared/search-to-analysis';
 import { mark, measure } from '@/lib/perf';
 import { logActiveCSP } from '@/lib/cspUtils';
-import { __BUILD_ID__, logBuildInfo } from '@/lib/forensic/buildTag';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -251,13 +250,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { addRecent } = useScanRecents();
-
-  // Forensic logging - V1 Report Mount
-  useEffect(() => {
-    console.debug('[FORENSIC][REPORT][MOUNT]', { file: 'HealthCheckModal.tsx', variant: 'v1', build: __BUILD_ID__ });
-    logBuildInfo('HealthCheckModal', 'v1');
-  }, []);
-
   const currentRunId = useRef<string | null>(null);
   const { onAnalyzeImage } = useHealthCheckV2();
   const processedPhotoKeyRef = useRef<string>('');

@@ -34,8 +34,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
-import { __BUILD_ID__, logBuildInfo } from '@/lib/forensic/buildTag';
-import { ForensicLogOverlay } from '@/components/forensic/ForensicLogOverlay';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -153,9 +151,9 @@ const SaveCTA: React.FC<{
       <Button
         onClick={handleSaveReport}
         disabled={isSaving || !user?.id}
-        variant="outline"
-        className="w-full border-2 border-teal-500/50 text-teal-600 hover:bg-teal-500/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-        size="lg"
+        className="w-full rounded-2xl py-5 font-semibold shadow-lg text-lg
+                   bg-teal-500 hover:bg-teal-400 active:bg-teal-600
+                   text-slate-900 transition-colors disabled:opacity-50"
       >
         {isSaving ? (
           <>
@@ -256,13 +254,6 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   hideCloseButton = false
 }) => {
   const navigate = useNavigate();
-
-  // Forensic logging - V2 Report Mount
-  useEffect(() => {
-    console.debug('[FORENSIC][REPORT][MOUNT]', { file: 'EnhancedHealthReport.tsx', variant: 'v2', build: __BUILD_ID__ });
-    logBuildInfo('EnhancedHealthReport', 'v2');
-  }, []);
-
   // PORTION INQUIRY - Route & Product Identification
   useEffect(() => {
     console.info('[PORTION][INQ3][ROUTE]', { route: window.location?.pathname, hash: window.location?.hash });
@@ -294,7 +285,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Hard wall: per-serving display computation (local memo only)
   const perServingDisplay = useMemo(() => {
-    const grams = portion?.grams ?? 30; // Only fallback if resolver hasn't run yet
+    const grams = portion?.grams ?? 30;
     const per100Raw = result?.nutritionData || {};
     trace('PORTION:DISPLAY:COMPUTE', { grams, hasNutrition: !!per100Raw });
     return scalePer100ForDisplay(per100Raw, grams);
@@ -319,8 +310,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
       hasIngredientsText: !!ingredientsText
     });
     
-    // Let the resolver determine the actual portion instead of external override
-    setPortion(null);
+    // Immediately show temporary fallback
+    setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
     
     const runDetection = async () => {
       try {
@@ -519,7 +510,31 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
+              servingGrams={portion?.grams ?? 30}
+              portionLabel={portion?.label ?? '30g · est.'}
             />
+            {/* PORTION INQUIRY - Call Site Logging */}
+            {(() => {
+              console.info('[PORTION][INQ3][CALL]', {
+                nutritionPropType: 'per100',
+                servingGramsProp: portion?.grams ?? 30,
+                portionLabelProp: portion?.label ?? '30g · est.'
+              });
+              return null;
+            })()}
+            {/* FORENSIC PROBE - PORTION INQUIRY */}
+            {(() => {
+              const route = window.location.pathname;
+              const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
+              console.log('[PORTION][INQ][CALL]', { 
+                route, 
+                productId, 
+                nutritionPropType: 'per100', 
+                servingGramsProp: portion?.grams ?? 30, 
+                portionLabelProp: portion?.label ?? '30g · est.' 
+              });
+              return null;
+            })()}
           </TabsContent>
           
           <TabsContent value="flags" className="mt-6">
@@ -585,41 +600,30 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
-              // Get normalized product from result (if available)
-              const norm = (result as any)?.norm || (result as any)?.normalizedProduct;
-              const offProduct = (result as any)?.offProduct || (result as any)?.providerRaw;
-              
-              // Create enhanced prefill with norm + providerRaw for canonical payload building
-              const prefill = {
-                source: 'health-report' as const,
-                norm,
-                providerRaw: offProduct,
-                item: {
-                  itemName: result.itemName || result.productName || 'Unknown Product',
-                  brand: undefined, // brand not available in HealthAnalysisResult
-                  imageUrl: analysisData?.imageUrl,
-                  ingredientsText: result.ingredientsText || '',
-                  allergens: result.healthProfile?.allergens || [],
-                  additives: result.healthProfile?.additives || [],
-                  categories: [], // categories - not available in HealthAnalysisResult
-                  nutrientsScaled: {
-                    calories: perServingDisplay.calories || nutritionData.calories || 0,
-                    fat_g: perServingDisplay.fat || nutritionData.fat || 0,
-                    sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
-                    carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
-                    sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
-                    fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
-                    protein_g: perServingDisplay.protein || nutritionData.protein || 0,
-                    sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
-                    factor: (portion?.grams ?? 30) / 100, // scaling factor
-                  },
-                  portionGrams: portion?.grams ?? 30,
-                  portionHint: portion ? { grams: portion.grams, source: portion.source as any } : undefined
+              // Build prefill data from current report
+              const prefill = buildLogPrefill(
+                result.itemName || result.productName || 'Unknown Product',
+                undefined, // brand not available in HealthAnalysisResult
+                analysisData?.imageUrl,
+                result.ingredientsText,
+                result.healthProfile?.allergens,
+                result.healthProfile?.additives,
+                [], // categories - not available in HealthAnalysisResult
+                {
+                  calories: perServingDisplay.calories || nutritionData.calories || 0,
+                  fat_g: perServingDisplay.fat || nutritionData.fat || 0,
+                  sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
+                  carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
+                  sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
+                  fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
+                  protein_g: perServingDisplay.protein || nutritionData.protein || 0,
+                  sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
+                  factor: (portion?.grams ?? 30) / 100, // scaling factor
                 },
-                ts: Date.now()
-              };
+                portion?.grams ?? 30
+              );
               
-              // Navigate to camera page with enhanced prefill data
+              // Navigate to camera page with prefill data
               navigate('/camera', { state: { logPrefill: prefill } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {
@@ -656,9 +660,6 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           </Button>
         </div>
       </div>
-      
-      {/* Forensic Log Overlay - Auto-opens on V2 Health Report mount */}
-      <ForensicLogOverlay autoOpen={true} />
     </div>
   );
 };

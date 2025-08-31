@@ -271,28 +271,6 @@ export async function resolvePortion(
   const urlParams = new URLSearchParams(window.location.search);
   const portionOffQP = urlParams.get('portionOff') === '1';
   const barcode_off_lookup_enabled = !portionOffQP; // Default ON unless disabled via URL
-
-  // FORENSIC LOGGING - Resolver Input & Flag Sources
-  const portionOffQP_from = portionOffQP ? 'url-param' : 'default';
-  console.debug('[FORENSIC][RESOLVER][FLAGS]', {
-    portionOffQP,
-    origin: portionOffQP_from,
-    urlParam: urlParams.get('portionOff'),
-    emergencyKill: false
-  });
-
-  console.debug('[FORENSIC][RESOLVER][INPUT]', {
-    hint: undefined, // Would be passed from opts if available
-    flags: { portionOffQP, emergencyKill: false },
-    meta: { barcode: productData?.barcode || productData?.id },
-    norm: {
-      id: productData?.id, 
-      barcode: productData?.barcode,
-      servingGrams: productData?.serving_size_g || productData?.servingSize || productData?.serving_grams,
-      hasPer100: !!productData?.nutrition,
-      hasPerServing: !!productData?.nutrition
-    }
-  });
   
   // Generate cache key for inquiry logging
   const barcode = productData?.barcode || productData?.id;
@@ -462,16 +440,6 @@ export async function resolvePortion(
     timing: 'computed'
   });
   
-  // FORENSIC LOGGING - Resolver Output
-  console.debug('[FORENSIC][RESOLVER][OUTPUT]', {
-    chosen: { source: winner.source, grams: finalGrams },
-    candidates: validCandidates.map(c => ({
-      source: c.source,
-      grams: c.grams,
-      confidence: c.confidence
-    }))
-  });
-
   mark('resolvePortion:end');
   
   return result;

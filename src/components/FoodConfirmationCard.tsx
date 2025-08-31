@@ -557,16 +557,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {/* Image with defensive rendering */}
-              {(currentFoodItem.image || (currentFoodItem as any)?.imageUrl) ? (
+              {currentFoodItem.image ? (
                 <img 
-                  src={currentFoodItem.image || (currentFoodItem as any)?.imageUrl} 
+                  src={currentFoodItem.image} 
                   alt={currentFoodItem.name}
-                  className="w-16 h-16 rounded-xl object-cover"
-                  loading="eager"
+                  className="w-16 h-16 rounded-2xl object-cover"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-muted/40" />
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center">
+                  <span className="text-2xl">🍽️</span>
+                </div>
               )}
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
