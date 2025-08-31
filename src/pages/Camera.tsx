@@ -213,6 +213,13 @@ const CameraPage = () => {
       const prefill = (location.state as any)?.logPrefill;
       if (!prefill || prefill.source !== 'health-report') return;
       
+      // FORENSIC LOGGING - Prefill Detection
+      console.debug('[FORENSIC][PREFILL]', {
+        hasPrefill: !!prefill,
+        hasNorm: !!prefill.norm,
+        hasRaw: !!prefill.providerRaw
+      });
+      
       // Prevent UI flashing by disabling modal states immediately
       setShowBarcodeNotFound(false);
       setShowReviewScreen(false);
@@ -237,6 +244,9 @@ const CameraPage = () => {
           hint: prefill.item?.portionHint 
         });
       } else {
+        // FORENSIC LOGGING - Manual payload path taken (bypasses canonical builder)
+        console.error('[FORENSIC][PREFILL][MANUAL_PAYLOAD_PATH_TAKEN]', new Error().stack);
+        
         // Fallback: use existing prefill data directly
         payload = {
           origin: 'health-report' as const,

@@ -218,6 +218,14 @@ export function buildConfirmPayloadFromNormalized(
   norm: ExtendedNormalizedProduct,
   opts: { origin: ConfirmPayload['origin']; raw?: any; hint?: PortionHint }
 ): ConfirmPayload {
+  // FORENSIC LOGGING - Confirm Payload Input
+  console.debug('[FORENSIC][CONFIRM][INPUT]', {
+    origin: opts.origin,
+    hasNorm: !!norm,
+    hasRaw: !!opts.raw,
+    metaBarcode: norm?.id || opts.raw?.barcode
+  });
+
   const best = getBestPortionGrams(norm, { 
     hint: opts.hint, 
     flags: { portionOffQP: true },
@@ -225,6 +233,16 @@ export function buildConfirmPayloadFromNormalized(
   });
   const grams = best?.grams ?? 30;
   const scaled = scaleNutrientsToPortion(norm, grams);
+
+  const imageUrl = imageFrom(opts.origin, norm, opts.raw);
+
+  // FORENSIC LOGGING - Confirm Payload Output
+  console.debug('[FORENSIC][CONFIRM][OUTPUT]', {
+    portionGrams: grams,
+    source: best?.source || 'fallback',
+    imageKind: imageUrl?.startsWith('data:') ? 'data' : (imageUrl ? 'url' : 'none'),
+    imagePreview: imageUrl ? imageUrl.slice(0,60) : null
+  });
 
   // Extract additional data from raw
   const allergens = opts.raw?.allergens || [];
@@ -237,7 +255,7 @@ export function buildConfirmPayloadFromNormalized(
     origin: opts.origin,
     itemName: norm.name,
     brand: norm.brand || undefined,
-    imageUrl: imageFrom(opts.origin, norm, opts.raw),
+    imageUrl: imageUrl,
     ingredientsText: ingredientsText || '',
     allergens,
     additives,

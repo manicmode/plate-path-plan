@@ -53,6 +53,13 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
 
   // Load portion information safely with 30g tripwire
   useEffect(() => {
+    // FORENSIC LOGGING - Always log widget props first
+    console.debug('[FORENSIC][INQ3][PROPS]', {
+      nutritionPropType: undefined, // not using this prop currently
+      servingGrams: servingGrams,
+      portionLabel: portionLabel
+    });
+
     // Tripwire: ignore external 30g override to force resolver to run
     const isExternal30g = typeof servingGrams === 'number' && Math.abs(servingGrams - 30) < 0.01;
     
@@ -60,6 +67,11 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
       console.log('[PORTION][INQ][WIDGET_TRIPWIRE]', { reason: 'ignore_30g_external', servingGrams });
       // Don't skip - let the resolver run
     } else if (typeof servingGrams === 'number') {
+      // FORENSIC LOGGING - If we skip because of external override, log with stack
+      console.error('[FORENSIC][INQ3][WIDGET_SKIP_OVERRIDE]', {
+        servingGrams: servingGrams,
+        stack: new Error().stack
+      });
       console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
       console.info('[PORTION][INQ3][WIDGET_PROPS]', {
         gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null

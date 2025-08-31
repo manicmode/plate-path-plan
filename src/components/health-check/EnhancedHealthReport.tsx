@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
+import { __BUILD_ID__, logBuildInfo } from '@/lib/forensic/buildTag';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -254,6 +255,13 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   hideCloseButton = false
 }) => {
   const navigate = useNavigate();
+
+  // Forensic logging - V2 Report Mount
+  useEffect(() => {
+    console.debug('[FORENSIC][REPORT][MOUNT]', { file: 'EnhancedHealthReport.tsx', variant: 'v2', build: __BUILD_ID__ });
+    logBuildInfo('EnhancedHealthReport', 'v2');
+  }, []);
+
   // PORTION INQUIRY - Route & Product Identification
   useEffect(() => {
     console.info('[PORTION][INQ3][ROUTE]', { route: window.location?.pathname, hash: window.location?.hash });
