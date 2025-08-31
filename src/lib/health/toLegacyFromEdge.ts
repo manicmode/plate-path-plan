@@ -157,7 +157,7 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
   });
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   console.log('[ADAPTER][IN]', {
@@ -338,6 +338,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       status: 'ok' as const,
       productName,
       productImageUrl: offImage,
+      imageUrl: offImage, // ✅ emit HTTP image under both fields
       nutriments: raw,
       nutritionData: {
         ...per100,
@@ -379,11 +380,11 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
 
     // Debug performance logging with structured logs
-    console.log('[ADAPTER][BARCODE.OUT]', { 
-      rev: CONFIRM_FIX_REV, 
-      productName: legacy.productName, 
-      imgKind: offImage ? 'http' : 'none', 
-      urlLen: offImage?.length ?? 0 
+    console.log('[ADAPTER][BARCODE.OUT]', {
+      rev: "2025-08-31T13:36Z-r7",
+      productName: legacy.productName,
+      imgKind: legacy.productImageUrl ? "http" : "none",
+      urlLen: legacy.productImageUrl?.length ?? 0,
     });
     
     if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.VITE_DEBUG_PERF === 'true') {
@@ -432,12 +433,12 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     status: 'ok' as 'ok' | 'no_detection' | 'not_found',
     productName: extractedName,
     productImageUrl: offImage,
+    imageUrl: offImage, // ✅ emit HTTP image under both fields
     healthScore: Number(envelope?.quality?.score || p.health?.score) || 0,
     nutritionData: p.nutriments || {},
     ingredientsText: p.ingredients_text || envelope?.ingredientsText || '',
     barcode: p.code || envelope?.barcode || '',
     brands: p.brands || '',
-    imageUrl: p.image_url || '',
     healthFlags: coerceFlags(envelope?.healthFlags || envelope?.flags),
     recommendation: null,
   };

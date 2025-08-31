@@ -229,17 +229,20 @@ const CameraPage = () => {
     }
   }, [location.search, navigate]);
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Handle prefill data from Health Report
   useEffect(() => {
     const prefill = (location.state as any)?.logPrefill;
     if (!prefill || prefill.source !== 'health-report') return;
     
+    const rawImg = prefill?.item?.image ?? prefill?.item?.imageUrl ?? "";
+    const imageKind = /^https?:\/\//i.test(rawImg) ? "http" : "none";
     console.log("[PREFILL][ARRIVE]", {
       rev: CONFIRM_FIX_REV,
       keys: Object.keys(prefill?.item || {}),
-      imageKind: /^https?:\/\//i.test(prefill?.item?.image || prefill?.item?.imageUrl || "") ? "http" : "none"
+      imageKind,
+      url: rawImg?.slice(0, 120) || "none",
     });
     
     if (prefill.item.imageUrl) {
@@ -261,8 +264,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
     
     console.log('[CAMERA][PREFILL]', { hasImage: !!prefill.item.imageUrl, len: prefill.item.imageUrl?.length ?? 0 });
     
-    // Accept either; EnhancedHealthReport now sends `image`
-    const img = prefill.item.image ?? prefill.item.imageUrl ?? null;
+    const img = imageKind === "http" ? rawImg : null;
 
     const base100 = prefill.item.nutrientsPer100 ?? null;
     const scaled = prefill.item.nutrientsScaled;
@@ -284,10 +286,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
       factor,                    // grams/100 for 100% slider
       confidence: 95,
       serving: serving,
-      // ✅ canonical key used everywhere
-      imageUrl: img,
-      // (optional legacy compatibility; safe to remove later)
-      image: img,
+      image: img,       // primary
+      imageUrl: img,    // compatibility for any reader
       ingredientsText: prefill.item.ingredientsText,
       ingredientsAvailable: !!prefill.item.ingredientsText,
       allergens: prefill.item.allergens,

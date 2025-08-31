@@ -88,6 +88,7 @@ function scaleFromPer100(per100: any, grams?: number | null) {
 }
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
 // Save CTA Component with sticky positioning
 const SaveCTA: React.FC<{
@@ -741,28 +742,24 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 return;
               }
 
-              // Prefer an OFF product image; fall back to the captured frame; else null
-              // HTTP-only helper for prefill
               const httpOnly = (u?: string | null) =>
-                typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined;
+                typeof u === "string" && /^https?:\/\//i.test(u) ? u : undefined;
 
-              const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
-
-              // Name precedence
-              const nameCand =
-                result?.productName ?? result?.title ?? 
-                "Food item";
+              const itemName =
+                result?.productName ?? result?.itemName ?? "Food item";
               // Image precedence (NOTE: prefer productImageUrl)
               const imgCand =
-                (result as any)?.productImageUrl ?? 
-                analysisData?.imageUrl;
-              const imageUrl = /^https?:\/\//i.test(imgCand || "") ? imgCand : undefined;
+                (result as any)?.productImageUrl ?? (result as any)?.imageUrl ??
+                (analysisData as any)?.productImageUrl ?? analysisData?.imageUrl;
+              const imageHttp = httpOnly(imgCand);
+
               if (import.meta.env.VITE_DEBUG_CONFIRM === "true") {
-                console.log("[PREFILL][BUILD]", { rev: CONFIRM_FIX_REV, itemName: nameCand, imageUrlKind: imageUrl ? "http" : "none", portionGrams: portion?.grams });
-                console.log("[PREFILL][GUARD]", {
+                console.log("[PREFILL][BUILD]", {
                   rev: CONFIRM_FIX_REV,
-                  originalKind: !imgCand ? "none" : (imgCand.startsWith("https://") ? "https" : imgCand.startsWith("http://") ? "http" : imgCand.startsWith("data:") ? "data" : imgCand.startsWith("blob:") ? "blob" : "other"),
-                  allowed: !!imageUrl
+                  itemName,
+                  imageUrlKind: imageHttp ? "http" : "none",
+                  portionGrams: portion?.grams,
+                  originalImg: imgCand?.slice(0, 120) || "none",
                 });
               }
 
@@ -778,11 +775,10 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
               const pg = portion?.grams ?? null;
 
-              // IMPORTANT: put the URL under `image` so Confirm reads it
               const prefill = buildLogPrefill(
-                nameCand,
+                itemName,
                 undefined, // brand not available in HealthAnalysisResult
-                imageUrl,               // HTTP-only image
+                imageHttp,               // HTTP-only image
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
@@ -792,6 +788,12 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 portion?.requiresConfirmation || false
               );
 
+              // CRITICAL: stamp both keys so every downstream consumer succeeds
+              if (prefill?.item) {
+                (prefill.item as any).image = imageHttp ?? null;
+                (prefill.item as any).imageUrl = imageHttp ?? null;
+              }
+              (prefill as any).source = "health-report";
               navigate("/camera", { state: { logPrefill: prefill, __rev: CONFIRM_FIX_REV } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {

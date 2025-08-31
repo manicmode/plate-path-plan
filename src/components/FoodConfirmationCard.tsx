@@ -22,6 +22,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 
+// Fallback emoji component
+const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
+  <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}>
+    <span className="text-2xl">🍽️</span>
+  </div>
+);
+
 
 interface FoodItem {
   id?: string;
@@ -73,7 +80,7 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
@@ -110,20 +117,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
   
   const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
+  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
-  // Add mount and image logging
   useEffect(() => {
     const url = imgUrl ?? '';
     const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
-      imageUrlKind,
-      imgUrl: url.slice(0, 120),
+      imageUrlKind: validImg ? "http" : "none",
+      url: (imgUrl || "").slice(0, 120),
     });
   }, [imgUrl, displayName]);
 
@@ -629,28 +636,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              <img
-                src={imgUrl ?? '/emoji/plate.png'}
-                alt={displayName}
-                className="w-16 h-16 rounded-2xl object-cover"
-                referrerPolicy="no-referrer"
-                decoding="async"
-                loading="lazy"
-                onError={(e) => { 
-                  if (!imageError) {
-                    console.log('[CONFIRM][IMAGE]', { rev: CONFIRM_FIX_REV, error: 'onError->fallback' });
-                    setImageError(true);
-                  }
-                  (e.currentTarget as HTMLImageElement).src = '/emoji/plate.png'; 
-                }}
-                onLoad={() => {
-                  console.log('[CONFIRM][IMAGE]', { 
-                    rev: CONFIRM_FIX_REV,
-                    requestedKind: imgUrl ? 'http' : 'none',
-                    final: imgUrl ? 'http' : 'fallback'
-                  });
-                }}
-              />
+              {validImg ? (
+                <img
+                  key={imgUrl}             // force refresh when URL changes
+                  src={imgUrl}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                  onLoad={() => console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, event: "load" })}
+                  onError={(e) => { console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, error: "onError->fallback", src: (e.target as HTMLImageElement)?.src }); setImageError(true); }}
+                  className="h-16 w-16 rounded-xl object-cover"
+                />
+              ) : (
+                <FallbackEmoji className="h-16 w-16 rounded-xl" />
+              )}
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                   {displayName}
