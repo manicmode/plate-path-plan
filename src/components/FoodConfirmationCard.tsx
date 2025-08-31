@@ -95,39 +95,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [imgOk, setImgOk] = React.useState(true);
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
-  useEffect(() => {
-    const raw = currentFoodItem?.image;
-    if (!raw) { setImgUrl(null); return; }
-
-    // If OFF/http/https URL → use as is
-    if (/^https?:\/\//i.test(raw)) {
-      setImgUrl(raw);
-      return;
-    }
-    // If data URL → convert to blob here so lifetime matches the screen
-    if (raw.startsWith('data:image/')) {
-      try {
-        const [meta, b64] = raw.split(',');
-        const mime = meta.match(/data:(.*?);base64/)?.[1] ?? 'image/jpeg';
-        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
-        setImgUrl(url);
-        return () => URL.revokeObjectURL(url);
-      } catch {
-        setImgUrl(null);
-      }
-      return;
-    }
-    // Anything else → try directly
-    setImgUrl(raw);
-  }, [currentFoodItem?.image]);
+  const imgUrl = typeof currentFoodItem?.image === 'string' && /^https?:\/\//i.test(currentFoodItem.image)
+    ? currentFoodItem.image
+    : null;
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
@@ -374,7 +349,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       // Add 10-second timeout wrapper around onConfirm
       const confirmPromise = new Promise<void>((resolve, reject) => {
         try {
-          onConfirm(adjustedFood);
+          // Persist only HTTP(S) image URLs; anything else becomes undefined.
+          const payload = {
+            ...adjustedFood,
+            image: typeof adjustedFood.image === 'string' && /^https?:\/\//i.test(adjustedFood.image)
+              ? adjustedFood.image
+              : undefined,
+          };
+          onConfirm(payload);
           resolve();
         } catch (error) {
           reject(error);

@@ -747,7 +747,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 (result as any)?.image_url ||
                 (result as any)?.images?.front?.thumb ||
                 null;
-              const imageForConfirm = offImage ?? analysisData?.imageUrl ?? null;
+              // CRITICAL: only pass HTTP(S) images in navigation state.
+              const httpImage = typeof offImage === 'string' && /^https?:\/\//i.test(offImage) ? offImage : null;
               
               const sanitizedTitle = sanitizeTitle(name, undefined);
               
@@ -766,7 +767,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               const prefill = buildLogPrefill(
                 sanitizedTitle,
                 undefined, // brand not available in HealthAnalysisResult
-                imageForConfirm,               // keep image
+                httpImage,               // never pass base64
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
