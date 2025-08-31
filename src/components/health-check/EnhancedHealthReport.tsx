@@ -518,15 +518,15 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
-              servingGrams={portion?.grams || 30} // Keep 30 for display only
-              portionLabel={portion?.label ?? '30g · est.'}
+              {...(portion?.grams != null ? { servingGrams: portion.grams } : {})}
+              portionLabel={portion?.grams ? `${portion.grams}g` : 'Unknown serving'}
             />
             {/* PORTION INQUIRY - Call Site Logging */}
             {(() => {
               console.info('[PORTION][INQ3][CALL]', {
                 nutritionPropType: 'per100',
-                servingGramsProp: portion?.grams || 30, // Keep 30 for display only
-                portionLabelProp: portion?.label ?? '30g · est.'
+                servingGramsProp: portion?.grams ?? null,
+                portionLabelProp: portion?.grams ? `${portion.grams}g` : 'Unknown serving'
               });
               return null;
             })()}
@@ -538,8 +538,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 route, 
                 productId, 
                 nutritionPropType: 'per100', 
-                servingGramsProp: portion?.grams || 30, // Keep 30 for display only
-                portionLabelProp: portion?.label ?? '30g · est.' 
+                servingGramsProp: portion?.grams ?? null,
+                portionLabelProp: portion?.grams ? `${portion.grams}g` : 'Unknown serving'
               });
               return null;
             })()}

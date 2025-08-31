@@ -51,43 +51,50 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
     }
   }, []);
 
-  // Load portion information safely (skip if external override provided)
+  // Load portion information safely (only skip if external grams provided)
   useEffect(() => {
-    if (typeof servingGrams === 'number') {
+    const hasExternalGrams = typeof servingGrams === 'number';
+    
+    console.info('[PORTION][INQ3][WIDGET_PROPS]', {
+      gotServingGrams: servingGrams ?? null
+    });
+    
+    if (hasExternalGrams) {
+      console.info('[PORTION][INQ3][HEADER]', { headerGrams: servingGrams, source: 'external' });
       console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
-      console.info('[PORTION][INQ3][WIDGET_PROPS]', {
-        gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null
-      });
       return; // external override in effect
+    } else {
+      console.info('[PORTION][INQ3][HEADER]', { headerGrams: null, source: 'resolver' });
     }
     
     const loadPortionInfo = async () => {
       try {
-        console.info('[PORTION][INQ3][WIDGET_PROPS]', {
-          gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null
-        });
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(productData, ocrText);
         
         const portionInfo = {
           grams: portionResult.grams,
-          isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category',
+          isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category' || portionResult.source === 'unknown',
           source: portionResult.source === 'fallback' ? 'estimated' as const : 
                  portionResult.source === 'ocr' ? 'ocr_declared' as const :
                  portionResult.source === 'database' ? 'db_declared' as const :
-                 portionResult.source === 'ratio' ? 'ocr_inferred_ratio' as const : 'estimated' as const,
+                 portionResult.source === 'ratio' ? 'ocr_inferred_ratio' as const :
+                 portionResult.source === 'category' ? 'estimated' as const :
+                 portionResult.source === 'unknown' ? 'estimated' as const : 'estimated' as const,
           confidence: portionResult.confidence,
           display: portionResult.label
         };
         
         setCurrentPortionInfo(portionInfo);
-        setPortionDetectionEnabled(portionResult.source !== 'fallback');
+        setPortionDetectionEnabled(portionResult.source !== 'fallback' && portionResult.source !== 'unknown');
       } catch (error) {
+        // Fallback to null/unknown instead of 30g
         setCurrentPortionInfo({ 
-          grams: 30, 
+          grams: null, 
           isEstimated: true, 
           source: 'estimated' as const, 
-          confidence: 0 
+          confidence: 0,
+          display: 'Unknown serving'
         });
         setPortionDetectionEnabled(false);
       }
@@ -126,7 +133,11 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
   // Calculate portion nutrition safely - memoized
   const portionNutrition = useMemo(() => {
     try {
-      return toPerPortion(nutrition100g, portionInfo.grams);
+      // Only calculate if we have valid grams
+      if (portionInfo.grams && portionInfo.grams > 0) {
+        return toPerPortion(nutrition100g, portionInfo.grams);
+      }
+      return nutrition100g;
     } catch (error) {
       return nutrition100g;
     }
@@ -251,7 +262,9 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
         <div className="space-y-4">
           <div className="text-center">
             <h4 className="text-lg font-semibold mb-3">
-              {mode === 'per100g' ? 'Per 100g' : `Per portion (${portionInfo.grams}g)`}
+              {mode === 'per100g' ? 'Per 100g' : 
+               portionInfo.grams ? `Per portion (${portionInfo.grams}g)` : 
+               'Per portion (unknown size)'}
             </h4>
           </div>
           
