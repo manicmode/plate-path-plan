@@ -743,27 +743,30 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               // Known grams path: build prefill and open confirm like today
               const sanitizedTitle = sanitizeTitle(name, undefined);
               const imageForConfirm = analysisData?.imageUrl;
+              
+              const per100 = {
+                calories: nutritionData.calories || 0,
+                protein_g: nutritionData.protein || 0,
+                carbs_g: nutritionData.carbs || 0,
+                fat_g: nutritionData.fat || 0,
+                fiber_g: nutritionData.fiber || 0,
+                sugar_g: nutritionData.sugar || 0,
+                sodium_mg: nutritionData.sodium || 0,
+              };
+
+              const pg = portion?.grams ?? null;
+
               const prefill = buildLogPrefill(
                 sanitizedTitle,
                 undefined, // brand not available in HealthAnalysisResult
-                imageForConfirm,
+                imageForConfirm,               // keep image
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
-                [], // categories - not available in HealthAnalysisResult
-                {
-                  calories: per100.calories ?? 0,
-                  fat_g:    per100.fat      ?? 0,
-                  sat_fat_g: 0, // Not available in nutritionData
-                  carbs_g:  per100.carbs    ?? 0,
-                  sugar_g:  per100.sugar    ?? 0,
-                  fiber_g:  per100.fiber    ?? 0,
-                  protein_g: per100.protein ?? 0,
-                  sodium_mg: per100.sodium  ?? 0,
-                  factor: (portionGrams && portionGrams > 0) ? portionGrams / 100 : 1.0, // only real when grams known
-                },
-                portionGrams,
-                !portionGrams // requiresConfirmation if unknown
+                [],
+                per100,                               // <-- baseline per-100g
+                pg,                                   // <-- grams (null if unknown)
+                portion?.requiresConfirmation || false
               );
 
               navigate('/camera', { state: { logPrefill: prefill } });

@@ -76,6 +76,18 @@ interface RecognizedFood {
     isVoiceInput: boolean;
   };
   requiresPortionConfirmation?: boolean;
+  // Portion scaling context
+  basePer100?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    sugar_g: number;
+    sodium_mg: number;
+  } | null;
+  portionGrams?: number | null;
+  factor?: number;
 }
 
 interface VisionApiResponse {
@@ -220,6 +232,13 @@ const CameraPage = () => {
     const prefill = (location.state as any)?.logPrefill;
     if (!prefill || prefill.source !== 'health-report') return;
     
+    if (prefill.item.imageUrl) {
+      console.log('[CAMERA][PREFILL][image]', { 
+        length: prefill.item.imageUrl.length, 
+        head: prefill.item.imageUrl.slice(0, 60) + '...' 
+      });
+    }
+    
     console.debug('[CAMERA][PREFILL]', {
       itemName: prefill.item.itemName,
       portionGrams: prefill.item.portionGrams,
@@ -230,18 +249,28 @@ const CameraPage = () => {
     // Map prefill data to RecognizedFood format
     const serving = prefill.item.portionGrams ? `${prefill.item.portionGrams}g` : 'Unknown serving';
     
+    const base100 = prefill.item.nutrientsPer100 ?? null;
+    const scaled = prefill.item.nutrientsScaled;
+    const factor = scaled.factor ?? (prefill.item.portionGrams ? prefill.item.portionGrams / 100 : 1);
+
     const prefillFood: RecognizedFood = {
       name: prefill.item.itemName,
-      calories: prefill.item.nutrientsScaled.calories || 0,
-      protein: prefill.item.nutrientsScaled.protein_g || 0,
-      carbs: prefill.item.nutrientsScaled.carbs_g || 0,
-      fat: prefill.item.nutrientsScaled.fat_g || 0,
-      fiber: prefill.item.nutrientsScaled.fiber_g || 0,
-      sugar: prefill.item.nutrientsScaled.sugar_g || 0,
-      sodium: Math.round(prefill.item.nutrientsScaled.sodium_mg || 0),
+      // Show per-portion numbers for full slider:
+      calories: scaled.calories,
+      protein: scaled.protein_g,
+      carbs: scaled.carbs_g,
+      fat: scaled.fat_g,
+      fiber: scaled.fiber_g,
+      sugar: scaled.sugar_g,
+      sodium: scaled.sodium_mg,
+      // slider/scaling context:
+      basePer100: base100,       // used to scale when slider moves
+      portionGrams: prefill.item.portionGrams,
+      factor,                    // grams/100 for 100% slider
       confidence: 95,
       serving: serving,
-      image: prefill.item.imageUrl,
+      // image with fallback:
+      image: prefill.item.imageUrl || null,
       ingredientsText: prefill.item.ingredientsText,
       ingredientsAvailable: !!prefill.item.ingredientsText,
       allergens: prefill.item.allergens,
@@ -586,9 +615,8 @@ const CameraPage = () => {
         pd.ingredientsText,
         [], [], [],
         {
-          calories: 0, fat_g: 0, sat_fat_g: 0, carbs_g: 0,
+          calories: 0, fat_g: 0, carbs_g: 0,
           sugar_g: 0, fiber_g: 0, protein_g: 0, sodium_mg: 0,
-          factor: grams ? (grams / 100) : 1.0,
         },
         grams,
         true  // requiresConfirmation if grams is null

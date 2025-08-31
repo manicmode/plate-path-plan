@@ -44,6 +44,18 @@ interface FoodItem {
   additives?: string[];
   categories?: string[];
   _provider?: string;
+  // Portion scaling context
+  basePer100?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    sugar_g: number;
+    sodium_mg: number;
+  } | null;
+  portionGrams?: number | null;
+  factor?: number;
 }
 
 interface FoodConfirmationCardProps {
@@ -147,15 +159,38 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const portionMultiplier = portionPercentage[0] / 100;
   
+  // Helper for scaling
+  function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
+
+  // Calculate effective nutrients using basePer100 * factor * sliderFraction if available
+  const base = currentFoodItem.basePer100; // per-100g baseline
+  const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
+  const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
+
+  const effective = base
+    ? {
+        calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
+        protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
+        carbs:   scale(base.carbs_g   || 0, gramsFactor * sliderFraction),
+        fat:     scale(base.fat_g     || 0, gramsFactor * sliderFraction),
+        fiber:   scale(base.fiber_g   || 0, gramsFactor * sliderFraction),
+        sugar:   scale(base.sugar_g   || 0, gramsFactor * sliderFraction),
+        sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
+      }
+    : {
+        // fallback: if no basePer100 was provided, keep existing behavior
+        calories: Math.round(currentFoodItem.calories * portionMultiplier),
+        protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
+        carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
+        fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
+        fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
+      };
+
   const adjustedFood = {
     ...currentFoodItem,
-    calories: Math.round(currentFoodItem.calories * portionMultiplier),
-    protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
-    carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
-    fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
-    fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
-    sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
-    sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
+    ...effective,
   };
 
   const getHealthScore = (food: FoodItem) => {
@@ -582,7 +617,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Portion Size
+                  {currentFoodItem.portionGrams ? `Per portion (${currentFoodItem.portionGrams}g)` : 'Per portion (unknown size)'}
                 </label>
                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                   {getPortionLabel(portionPercentage[0])}
