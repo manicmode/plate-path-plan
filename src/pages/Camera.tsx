@@ -26,6 +26,7 @@ import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
+import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -61,7 +62,7 @@ interface RecognizedFood {
   sodium: number;
   confidence: number;
   serving?: string;
-  image?: string;
+  image?: string | null;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
   // Additional data for flag detection
@@ -249,6 +250,12 @@ const CameraPage = () => {
     // Map prefill data to RecognizedFood format
     const serving = prefill.item.portionGrams ? `${prefill.item.portionGrams}g` : 'Unknown serving';
     
+    if (prefill.item.imageUrl) {
+      console.log('[CAMERA][PREFILL][image]', { len: prefill.item.imageUrl.length, head: prefill.item.imageUrl.slice(0, 60) + '...' });
+    }
+    
+    const img = toDisplayableImageUrl(prefill.item.imageUrl);
+
     const base100 = prefill.item.nutrientsPer100 ?? null;
     const scaled = prefill.item.nutrientsScaled;
     const factor = scaled.factor ?? (prefill.item.portionGrams ? prefill.item.portionGrams / 100 : 1);
@@ -270,7 +277,7 @@ const CameraPage = () => {
       confidence: 95,
       serving: serving,
       // image with fallback:
-      image: prefill.item.imageUrl || null,
+      image: img || null,
       ingredientsText: prefill.item.ingredientsText,
       ingredientsAvailable: !!prefill.item.ingredientsText,
       allergens: prefill.item.allergens,

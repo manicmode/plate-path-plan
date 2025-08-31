@@ -95,6 +95,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
+  const [imgOk, setImgOk] = React.useState(true);
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
@@ -592,11 +593,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {currentFoodItem.image ? (
+              {currentFoodItem.image && imgOk ? (
                 <img 
                   src={currentFoodItem.image} 
                   alt={currentFoodItem.name}
                   className="w-16 h-16 rounded-2xl object-cover"
+                  onError={() => setImgOk(false)}
+                  loading="eager"
+                  decoding="async"
                 />
               ) : (
                 <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center">
