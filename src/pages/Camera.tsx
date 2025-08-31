@@ -229,7 +229,7 @@ const CameraPage = () => {
     }
   }, [location.search, navigate]);
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
 
   // Handle prefill data from Health Report
   useEffect(() => {
@@ -237,10 +237,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
     if (!prefill || prefill.source !== 'health-report') return;
     
     console.log("[PREFILL][ARRIVE]", {
-      rev: CONFIRM_FIX_REV, 
-      itemName: prefill?.item?.itemName, 
-      imageUrlKind: /^https?:\/\//i.test(prefill?.item?.imageUrl ?? '') ? 'http' : 'none', 
-      url: prefill?.item?.imageUrl?.slice(0,120)
+      rev: CONFIRM_FIX_REV,
+      keys: Object.keys(prefill?.item || {}),
+      imageKind: /^https?:\/\//i.test(prefill?.item?.image || prefill?.item?.imageUrl || "") ? "http" : "none"
     });
     
     if (prefill.item.imageUrl) {
@@ -262,7 +261,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
     
     console.log('[CAMERA][PREFILL]', { hasImage: !!prefill.item.imageUrl, len: prefill.item.imageUrl?.length ?? 0 });
     
-    const img = toDisplayableImageUrl(prefill.item.imageUrl);
+    // Accept either; EnhancedHealthReport now sends `image`
+    const img = prefill.item.image ?? prefill.item.imageUrl ?? null;
 
     const base100 = prefill.item.nutrientsPer100 ?? null;
     const scaled = prefill.item.nutrientsScaled;

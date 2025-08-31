@@ -746,22 +746,26 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               const httpOnly = (u?: string | null) =>
                 typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined;
 
-              // Use mapped fields from the adapter when available
-              const itemName =
-                result?.productName ||
-                result?.itemName ||
-                analysisData?.barcode ||
-                'Food item';
+              const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
 
-              const imageUrl = httpOnly(
-                (result as any)?.productImageUrl ||
-                analysisData?.imageUrl
-              );
-              
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
+              // Name precedence
+              const nameCand =
+                result?.productName ?? result?.title ?? 
+                "Food item";
+              // Image precedence (NOTE: prefer productImageUrl)
+              const imgCand =
+                (result as any)?.productImageUrl ?? 
+                analysisData?.imageUrl;
+              const imageUrl = /^https?:\/\//i.test(imgCand || "") ? imgCand : undefined;
+              if (import.meta.env.VITE_DEBUG_CONFIRM === "true") {
+                console.log("[PREFILL][BUILD]", { rev: CONFIRM_FIX_REV, itemName: nameCand, imageUrlKind: imageUrl ? "http" : "none", portionGrams: portion?.grams });
+                console.log("[PREFILL][GUARD]", {
+                  rev: CONFIRM_FIX_REV,
+                  originalKind: !imgCand ? "none" : (imgCand.startsWith("https://") ? "https" : imgCand.startsWith("http://") ? "http" : imgCand.startsWith("data:") ? "data" : imgCand.startsWith("blob:") ? "blob" : "other"),
+                  allowed: !!imageUrl
+                });
+              }
 
-              const sanitizedTitle = sanitizeTitle(itemName, undefined);
-              
               const per100 = {
                 calories: nutritionData.calories || 0,
                 protein_g: nutritionData.protein || 0,
@@ -774,22 +778,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
               const pg = portion?.grams ?? null;
 
-              // Build prefill with proper precedence  
-              const nameCand = result?.productName ?? result?.itemName ?? analysisData?.barcode ?? 'Food item';
-              const imgCand  = (result as any)?.productImageUrl ?? analysisData?.imageUrl;
-              const imageUrlFinal = /^https?:\/\//i.test(imgCand ?? '') ? imgCand : undefined;
-              
-              console.log('[PREFILL][BUILD]', { 
-                rev: CONFIRM_FIX_REV, 
-                nameCand, 
-                imageUrlKind: imageUrlFinal ? 'http' : 'none' 
-              });
-
-              // IMPORTANT: never persist base64; imageUrl must be http(s) or undefined.
+              // IMPORTANT: put the URL under `image` so Confirm reads it
               const prefill = buildLogPrefill(
                 nameCand,
                 undefined, // brand not available in HealthAnalysisResult
-                imageUrlFinal,               // never pass base64
+                imageUrl,               // HTTP-only image
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
@@ -799,7 +792,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
                 portion?.requiresConfirmation || false
               );
 
-              navigate('/camera', { state: { logPrefill: prefill } });
+              navigate("/camera", { state: { logPrefill: prefill, __rev: CONFIRM_FIX_REV } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {
                 itemName: prefill.item.itemName,

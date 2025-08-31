@@ -1486,12 +1486,8 @@ body {
 }
 
 /* Dialog Close Button Safety Net for Confirm Food Log */
-/* Parent Confirm should never show a close control */
-[data-dialog-root="confirm-food-log"] [aria-label="Close"] {
+/* Never show a parent close inside the Confirm while the Reminder is open */
+[data-dialog-root="confirm-food-log"] > [aria-label="Close"][hidden],
+[data-dialog-root="confirm-food-log"][data-child-open="true"] [aria-label="Close"] {
   display: none !important;
-}
-
-/* Reminder modal is allowed to show its close */
-[data-dialog-root="reminder-modal"] [aria-label="Close"] {
-  display: inline-flex !important;
 }

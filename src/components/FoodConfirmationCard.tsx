@@ -34,6 +34,7 @@ interface FoodItem {
   sugar: number;
   sodium: number;
   image?: string;
+  imageUrl?: string; // Add imageUrl property
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -72,7 +73,7 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r6";
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
@@ -108,30 +109,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive display values with broad fallback
   const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
   
-  // ✅ tolerate both while we finish the migration
-  const imgUrl =
-    (currentFoodItem as any)?.imageUrl ?? (currentFoodItem as any)?.image ?? undefined;
-  
-  const displayImage = /^https?:\/\//i.test(imgUrl ?? '') ? imgUrl : undefined;
+  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
   // Add mount and image logging
-  React.useEffect(() => {
-    if (currentFoodItem) {
-      const prefillKeys = Object.keys((currentFoodItem as any)||{});
-      
-      console.log('[CONFIRM][MOUNT]', {
-        rev: CONFIRM_FIX_REV, 
-        name: displayName, 
-        imageUrlKind: displayImage ? 'http' : 'none', 
-        imgUrl: displayImage?.slice(0,120), 
-        prefillKeys
-      });
-    }
-  }, [currentFoodItem, displayName, displayImage]);
+  useEffect(() => {
+    const url = imgUrl ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    console.log('[CONFIRM][MOUNT]', {
+      rev: CONFIRM_FIX_REV,
+      name: displayName,
+      imageUrlKind,
+      imgUrl: url.slice(0, 120),
+    });
+  }, [imgUrl, displayName]);
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -636,7 +630,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <img
-                src={displayImage ?? '/emoji/plate.png'}
+                src={imgUrl ?? '/emoji/plate.png'}
                 alt={displayName}
                 className="w-16 h-16 rounded-2xl object-cover"
                 referrerPolicy="no-referrer"
@@ -652,8 +646,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 onLoad={() => {
                   console.log('[CONFIRM][IMAGE]', { 
                     rev: CONFIRM_FIX_REV,
-                    requestedKind: displayImage ? 'http' : 'none',
-                    final: displayImage ? 'http' : 'fallback'
+                    requestedKind: imgUrl ? 'http' : 'none',
+                    final: imgUrl ? 'http' : 'fallback'
                   });
                 }}
               />

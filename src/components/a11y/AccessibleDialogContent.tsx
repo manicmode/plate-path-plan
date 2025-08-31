@@ -5,20 +5,19 @@ import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/c
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Props = {
-  title: string;          // required
-  description: string;    // required
+type Props = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  title: string;
+  description?: string;
+  showCloseButton?: boolean; // default: true
   children: React.ReactNode;
-  className?: string;
-  showCloseButton?: boolean;
-} & React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>;
+};
 
 export default function AccessibleDialogContent({ 
   title, 
   description, 
-  children, 
   className, 
-  showCloseButton = true,
+  showCloseButton = true, 
+  children, 
   ...rest 
 }: Props) {
   const titleId = useId();
@@ -51,12 +50,12 @@ export default function AccessibleDialogContent({
         <DialogTitle id={titleId}>{title}</DialogTitle>
         <DialogDescription id={descId}>{description}</DialogDescription>
       </DialogHeader>
-      {showCloseButton && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      {showCloseButton ? (
+        <DialogPrimitive.Close aria-label="Close" className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
-      )}
+      ) : null}
       {children}
     </DialogPrimitive.Content>
   );
