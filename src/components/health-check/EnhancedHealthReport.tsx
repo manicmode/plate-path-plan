@@ -42,6 +42,35 @@ function sanitizeTitle(title: string, brand?: string): string {
   return brandOnly.some(p => p.test(t)) ? 'Food item' : t;
 }
 
+// --- Per-portion helpers (no fake scaling) ---
+const round0 = (n: number) => Math.round(n);
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+type Per100 = {
+  calories?: number;
+  carbs?: number;
+  fat?: number;
+  protein?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+};
+
+function computePerPortion(per100: Per100, grams: number | null) {
+  if (grams == null || grams <= 0) return null; // unknown -> no scaling
+  const f = grams / 100;
+  return {
+    calories: per100.calories != null ? round0(per100.calories * f) : null,
+    carbs:    per100.carbs    != null ? round1(per100.carbs    * f) : null,
+    fat:      per100.fat      != null ? round1(per100.fat      * f) : null,
+    protein:  per100.protein  != null ? round1(per100.protein  * f) : null,
+    fiber:    per100.fiber    != null ? round1(per100.fiber    * f) : null,
+    sugar:    per100.sugar    != null ? round1(per100.sugar    * f) : null,
+    sodium:   per100.sodium   != null ? Math.round(per100.sodium * f) : null,
+    factor: f
+  };
+}
+
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 // Save CTA Component with sticky positioning
@@ -290,21 +319,32 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     });
   }, []);
 
-  // Hard wall: per-serving display computation (local memo only) - NO 30g FALLBACKS
-  const perServingDisplay = useMemo(() => {
-    const portionGrams = portion?.grams ?? null;
-    const scaleFactor = portionGrams ? (portionGrams / 100) : 1.0; // don't fake-scale when unknown
-    const per100Raw = result?.nutritionData || {};
-    trace('PORTION:DISPLAY:COMPUTE', { 
-      portionGrams, 
-      scaleFactor, 
-      hasNutrition: !!per100Raw,
-      unknownServing: portionGrams === null 
-    });
-    
-    // When grams are unknown, show per-100g values (scaleFactor = 1.0)
-    return scalePer100ForDisplay(per100Raw, portionGrams || 100);
-  }, [portion?.grams, result?.nutritionData]);
+  // per100 must remain the raw per-100g values coming from nutritionData
+  const per100 = {
+    calories: nutritionData?.calories ?? null,
+    carbs:    nutritionData?.carbs    ?? null,
+    fat:      nutritionData?.fat      ?? null,
+    protein:  nutritionData?.protein  ?? null,
+    fiber:    nutritionData?.fiber    ?? null,
+    sugar:    nutritionData?.sugar    ?? null,
+    sodium:   nutritionData?.sodium   ?? null,
+  };
+
+  const portionGrams = (portion?.grams ?? null);
+  const perPortion = computePerPortion(per100, portionGrams);
+
+  console.log('[PORTION][UI]', {
+    portionGrams, canScale: !!perPortion, 
+    factor: perPortion?.factor ?? null,
+    per100_cal: per100.calories, render_cal: perPortion?.calories ?? null
+  });
+
+  console.log('[ADAPTER][BARCODE.OUT][SERVING_KEYS]', {
+    serving_size_gram: (result as any)?.nutrition?.serving_size_gram ?? null,
+    serving_size_g: (result as any)?.nutrition?.serving_size_g ?? null,
+    serving_g: (result as any)?.nutrition?.serving_g ?? null,
+    perServing_kcal: (result as any)?.nutrition?.perServing_kcal ?? null,
+  });
 
   // Generate stable fingerprint for effect dependency
   const productFingerprint = useMemo(() => {
@@ -509,7 +549,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 {/* Portion Badge */}
                 <div>
                   <Badge variant="secondary" className="text-xs">
-                    Portion: {portion?.label ?? '30g · est.'}
+                    Portion: {portion?.label ?? 'Unknown serving'}
                   </Badge>
                 </div>
               </div>
@@ -577,7 +617,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <TabsContent value="suggestions" className="mt-6">
             <PersonalizedSuggestions
               result={result}
-              portionGrams={portion?.grams || 30} // Keep 30 for display only
+              portionGrams={portion?.grams || null} // No 30g fallback for suggestions
               userProfile={{
                 // Mock user profile - replace with real user data
                 goals: user ? ['balanced_nutrition'] : [],
@@ -610,6 +650,20 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
         {/* 🎯 4. ACTION BUTTONS */}
         <div className="flex flex-col gap-3 pt-6">
+          {/* 💾 SAVE BUTTON */}
+          <SaveCTA
+            result={result}
+            analysisData={analysisData}
+            portionGrams={portion?.grams ?? null} // No 30g fallback
+            ocrHash={ocrHash}
+            onSaved={(logId) => {
+              toast({
+                title: "Successfully Saved!",
+                description: `Report saved with ID: ${logId.slice(0, 8)}...`,
+              });
+            }}
+          />
+
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
@@ -646,18 +700,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 result.healthProfile?.additives,
                 [], // categories - not available in HealthAnalysisResult
                 {
-                  calories: perServingDisplay.calories || nutritionData.calories || 0,
-                  fat_g: perServingDisplay.fat || nutritionData.fat || 0,
-                  sat_fat_g: perServingDisplay.sat_fat || 0,
-                  carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
-                  sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
-                  fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
-                  protein_g: perServingDisplay.protein || nutritionData.protein || 0,
-                  sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
-                  factor: (portion.grams / 100),
+                  calories: per100.calories ?? 0,
+                  fat_g:    per100.fat      ?? 0,
+                  sat_fat_g: 0, // Not available in nutritionData
+                  carbs_g:  per100.carbs    ?? 0,
+                  sugar_g:  per100.sugar    ?? 0,
+                  fiber_g:  per100.fiber    ?? 0,
+                  protein_g: per100.protein ?? 0,
+                  sodium_mg: per100.sodium  ?? 0,
+                  factor: (portionGrams && portionGrams > 0) ? portionGrams / 100 : 1.0, // only real when grams known
                 },
-                portion.grams,
-                false
+                portionGrams,
+                !portionGrams // requiresConfirmation if unknown
               );
 
               navigate('/camera', { state: { logPrefill: prefill } });
@@ -675,20 +729,6 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
             <Plus className="w-5 h-5 mr-2" />
             Log this food
           </Button>
-
-          {/* 💾 SAVE BUTTON */}
-          <SaveCTA
-            result={result}
-            analysisData={analysisData}
-            portionGrams={portion?.grams ?? null} // No 30g fallback
-            ocrHash={ocrHash}
-            onSaved={(logId) => {
-              toast({
-                title: "Successfully Saved!",
-                description: `Report saved with ID: ${logId.slice(0, 8)}...`,
-              });
-            }}
-          />
 
           <Button
             onClick={onScanAnother}

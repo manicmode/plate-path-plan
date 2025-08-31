@@ -142,6 +142,7 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
 
   const usingExternalGrams = typeof servingGrams === 'number';
   console.log('[PORTION][INQ3][GUARD]', { usingExternalGrams, servingGramsProp: servingGrams });
+  console.log('[PORTION][INQ3][UI]', { servingGrams: servingGrams ?? null });
   
   const portionInfo: PortionInfo = {
     grams: headerGrams,
@@ -289,26 +290,32 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
             </h4>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(displayNutrition).map(([key, value]) => {
-              if (value === undefined || value === null || value === 0) return null;
+          {mode === 'portion' && !portionInfo.grams ? (
+            <div className="text-sm text-muted-foreground">
+              Serving size unknown. Capture Nutrition Facts to calculate per-portion values.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(displayNutrition).map(([key, value]) => {
+                if (value === undefined || value === null || value === 0) return null;
 
-              const info = nutrientInfo[key as keyof typeof nutrientInfo];
-              if (!info) return null;
+                const info = nutrientInfo[key as keyof typeof nutrientInfo];
+                if (!info) return null;
 
-              return (
-                <div key={key} className="bg-muted/30 p-3 rounded-lg">
-                  <div className="text-sm text-muted-foreground">{info.label}</div>
-                  <div className="text-lg font-semibold text-foreground">
-                    {typeof value === 'number' ? 
-                      (info.unit === 'mg' ? Math.round(value) : value.toFixed(1)) : 
-                      value
-                    } {info.unit}
+                return (
+                  <div key={key} className="bg-muted/30 p-3 rounded-lg">
+                    <div className="text-sm text-muted-foreground">{info.label}</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {typeof value === 'number' ? 
+                        (info.unit === 'mg' ? Math.round(value) : value.toFixed(1)) : 
+                        value
+                      } {info.unit}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
