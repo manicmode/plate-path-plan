@@ -72,6 +72,7 @@ interface RecognizedFood {
     totalItems: number;
     isVoiceInput: boolean;
   };
+  requiresPortionConfirmation?: boolean;
 }
 
 interface VisionApiResponse {
@@ -220,6 +221,8 @@ const CameraPage = () => {
     });
     
     // Map prefill data to RecognizedFood format
+    const serving = prefill.item.portionGrams ? `${prefill.item.portionGrams}g` : 'Unknown serving';
+    
     const prefillFood: RecognizedFood = {
       name: prefill.item.itemName,
       calories: prefill.item.nutrientsScaled.calories || 0,
@@ -230,14 +233,16 @@ const CameraPage = () => {
       sugar: prefill.item.nutrientsScaled.sugar_g || 0,
       sodium: Math.round(prefill.item.nutrientsScaled.sodium_mg || 0),
       confidence: 95,
-      serving: `${prefill.item.portionGrams}g`,
+      serving: serving,
       image: prefill.item.imageUrl,
       ingredientsText: prefill.item.ingredientsText,
       ingredientsAvailable: !!prefill.item.ingredientsText,
       allergens: prefill.item.allergens,
       additives: prefill.item.additives,
       categories: prefill.item.categories,
-      _provider: 'health-report'
+      _provider: 'health-report',
+      // Pass the flag the UI can use
+      requiresPortionConfirmation: prefill.item.requiresConfirmation
     };
     
     // Open confirm modal with prefilled data

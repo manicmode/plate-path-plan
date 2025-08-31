@@ -24,7 +24,8 @@ export type LogPrefill = {
       sodium_mg?: number;
       factor: number;
     };
-    portionGrams: number;
+    portionGrams: number | null;
+    requiresConfirmation: boolean;
   };
   ts?: number; // optional timestamp for the log
 };
@@ -49,7 +50,8 @@ export function buildLogPrefill(
     sodium_mg?: number;
     factor: number;
   },
-  portionGrams: number
+  portionGrams: number | null,
+  requiresConfirmation: boolean
 ): LogPrefill {
   return {
     source: 'health-report',
@@ -63,6 +65,7 @@ export function buildLogPrefill(
       categories: categories || [],
       nutrientsScaled,
       portionGrams,
+      requiresConfirmation,
     },
     ts: Date.now(),
   };

@@ -12,8 +12,8 @@ const REJECT_PATTERNS = [
   /net\s*wt|net\s*weight|total\s*weight/i,
   /per\s*container|entire\s*container|whole\s*container|servings?\s*per\s*container/i,
   /package|contents/i,
-  /calories?|energy|sugars?|protein|total\s*fat|fat\b|fiber|fibre|sodium|carb(?:ohydrate)?s?|cholesterol/i,
-  /vitamin|mineral|calcium|iron|potassium/i,
+  /^(calories|energy|sugars|protein|total\s*fat|fiber|sodium|carb|cholesterol)\s*[:]/i,
+  /^(vitamin|calcium|iron|potassium)\s*[:]/i,
   /\b\d+\s*(?:cal|kcal)\b/i // calorie values
 ];
 
@@ -45,6 +45,8 @@ export function parseOCRServing(ocrText: string, productName: string = ''): OCRS
       console.log(`[PORTION][OCR] Line ${i+1} rejected by filter:`, { line, filter: rejectedBy.source });
       continue;
     }
+    
+    console.log(`[PORTION][OCR] Line ${i+1} accepted for parsing:`, line);
     
     const servingSizeMatch = line.match(/serving\s*size[^0-9]*?(\d+(?:[.,]\d+)?)\s*g/i);
     if (servingSizeMatch) {

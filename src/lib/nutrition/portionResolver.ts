@@ -63,20 +63,22 @@ class PortionCache {
 const portionCache = new PortionCache();
 
 export interface PortionCandidate {
-  grams: number;
+  grams: number | null;
   confidence: number;
-  source: 'ocr' | 'database' | 'ratio' | 'category' | 'fallback';
+  source: 'ocr' | 'database' | 'ratio' | 'category' | 'fallback' | 'unknown';
   label: string;
   details?: string;
+  requiresConfirmation?: boolean;
 }
 
 export interface PortionResult {
-  grams: number;
+  grams: number | null;
   label: string;
   source: string;
   confidence: number;
   candidates: PortionCandidate[];
   chosenFrom?: string;
+  requiresConfirmation?: boolean;
 }
 
 // Memoized barcode lookup cache
@@ -121,6 +123,36 @@ async function fetchServingFromBarcode(barcode: string): Promise<any> {
     console.log('[PORTION][DB] Barcode lookup timeout or error:', error);
     return null;
   }
+}
+
+// Brand detection helper
+function isBrand(title?: string): boolean {
+  if (!title) return false;
+  const brandOnly = [/^trader joe'?s?$/i, /^kirkland$/i, /^great value$/i, /^365$/i];
+  const t = title.trim();
+  return brandOnly.some(p => p.test(t));
+}
+
+// Category portion inference with brand guarding
+function inferCategoryPortion(productData: any): PortionCandidate | null {
+  const productName = productData?.name || productData?.productName || '';
+  const brand = productData?.brand;
+  
+  // Guard against brand-only titles
+  if (isBrand(productName)) {
+    return null;
+  }
+  
+  const categoryMatch = getCategoryPortion(productName);
+  if (!categoryMatch) return null;
+  
+  return {
+    grams: categoryMatch.grams,
+    confidence: Math.min(0.6, 0.4 + (categoryMatch.category.length > 5 ? 0.1 : 0)), // Cap at 0.6
+    source: 'category',
+    label: `${categoryMatch.grams}g · ${categoryMatch.category}`,
+    details: `Estimated from ${categoryMatch.category} category`
+  };
 }
 
 function estimateFromCategory(productName: string): PortionCandidate | null {
@@ -210,8 +242,11 @@ function parseFromOCR(ocrText: string, productName: string = ''): PortionCandida
 }
 
 function sanitizeCandidate(candidate: PortionCandidate): PortionCandidate | null {
-  // Bounds checking
-  if (candidate.grams < 1 || candidate.grams > 500) return null;
+  // Allow null grams for unknown candidates
+  if (candidate.grams === null && candidate.source === 'unknown') return candidate;
+  
+  // Bounds checking for non-null grams
+  if (candidate.grams === null || candidate.grams < 1 || candidate.grams > 500) return null;
   
   // Source-specific validation
   switch (candidate.source) {
@@ -235,26 +270,33 @@ function sanitizeCandidate(candidate: PortionCandidate): PortionCandidate | null
 function scoreCandidate(candidate: PortionCandidate, productName: string): number {
   let score = candidate.confidence;
   
+  // Handle unknown candidates
+  if (candidate.grams === null) {
+    return candidate.confidence; // Keep original confidence (0 for unknown)
+  }
+  
   // Boost score based on source reliability
   const sourceBoosts = {
     'database': 0.1,
     'ratio': 0.05,
     'ocr': 0.0,
     'category': -0.1,
-    'fallback': -0.2
+    'unknown': -0.3
   };
   
   score += sourceBoosts[candidate.source] || 0;
   
-  // Penalize extreme values
-  if (candidate.grams < 10 || candidate.grams > 200) {
+  // Penalize extreme values (only for non-null grams)
+  if (candidate.grams && (candidate.grams < 10 || candidate.grams > 200)) {
     score -= 0.1;
   }
   
-  // Boost common portion sizes
-  const commonSizes = [15, 20, 25, 30, 40, 50, 55, 80, 100];
-  if (commonSizes.includes(candidate.grams)) {
-    score += 0.05;
+  // Boost common portion sizes (only for non-null grams)
+  if (candidate.grams) {
+    const commonSizes = [15, 20, 25, 30, 40, 50, 55, 80, 100];
+    if (commonSizes.includes(candidate.grams)) {
+      score += 0.05;
+    }
   }
   
   return Math.max(0, Math.min(1, score));
@@ -363,8 +405,8 @@ export async function resolvePortion(
     });
   }
   
-  // Source 4: Category estimation
-  const categoryCandidate = estimateFromCategory(productName);
+  // Source 4: Category estimation (brand-guarded)
+  const categoryCandidate = inferCategoryPortion(productData);
   if (categoryCandidate) {
     console.log('[PORTION][CATEGORY]', 'Found category candidate:', categoryCandidate.grams, 'g');
     candidates.push(categoryCandidate);
@@ -372,14 +414,19 @@ export async function resolvePortion(
     console.log('[PORTION][CATEGORY]', 'No category match found for:', productName);
   }
   
-  // Source 5: Fallback
-  candidates.push({
-    grams: 30,
-    confidence: 0.1,
-    source: 'fallback',
-    label: '30g · est.',
-    details: 'Default estimate'
-  });
+  // Source 5: Unknown candidate if no reliable candidates
+  const hasReliableCandidate = candidates.some(c => c.confidence >= 0.5);
+  if (!hasReliableCandidate) {
+    console.log('[PORTION][UNKNOWN]', 'No reliable candidates found, marking as unknown');
+    candidates.push({
+      grams: null,
+      confidence: 0,
+      source: 'unknown',
+      label: 'Unknown serving',
+      details: 'Serving size could not be determined',
+      requiresConfirmation: true
+    });
+  }
   
   // Sanitize, score, and rank candidates
   const validCandidates = candidates
@@ -390,15 +437,17 @@ export async function resolvePortion(
   
   const winner = validCandidates[0];
   
-  // Apply category caps as final validation
-  const finalGrams = validateAgainstCaps(winner.grams, productName);
-  if (finalGrams !== winner.grams) {
+  // Apply category caps as final validation (only for non-null grams)
+  const finalGrams = winner.grams !== null ? validateAgainstCaps(winner.grams, productName) : null;
+  if (finalGrams !== null && winner.grams !== null && finalGrams !== winner.grams) {
     console.log('[PORTION][CAPS]', `Applied cap: ${winner.grams}g -> ${finalGrams}g`);
   }
   
   const result: PortionResult = {
     grams: finalGrams,
-    label: winner.label.replace(`${winner.grams}g`, `${finalGrams}g`),
+    label: finalGrams !== null && winner.grams !== null 
+      ? winner.label.replace(`${winner.grams}g`, `${finalGrams}g`)
+      : winner.label,
     source: winner.source,
     confidence: winner.score,
     candidates: validCandidates.map(c => ({
@@ -406,9 +455,11 @@ export async function resolvePortion(
       confidence: c.score,
       source: c.source,
       label: c.label,
-      details: c.details
+      details: c.details,
+      requiresConfirmation: c.requiresConfirmation
     })),
-    chosenFrom: `${winner.source}_priority`
+    chosenFrom: `${winner.source}_priority`,
+    requiresConfirmation: winner.requiresConfirmation || false
   };
   
   // Cache the result

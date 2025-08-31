@@ -35,6 +35,13 @@ import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 
+// Brand-only title sanitization helper
+function sanitizeTitle(title: string, brand?: string): string {
+  const brandOnly = [/^trader joe'?s?$/i, /^kirkland$/i, /^great value$/i, /^365$/i];
+  const t = (title || '').trim();
+  return brandOnly.some(p => p.test(t)) ? 'Food item' : t;
+}
+
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
 // Save CTA Component with sticky positioning
@@ -271,7 +278,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
   const healthScore = typeof result?.healthScore === 'number' ? result.healthScore : 0;
 
   // Portion detection with zero spillover
-  const [portion, setPortion] = useState<{ grams: number; source: string; label: string } | null>(null);
+  const [portion, setPortion] = useState<{ grams: number | null; source: string; label: string; requiresConfirmation?: boolean } | null>(null);
 
   // Feature gate diagnostics
   useEffect(() => {
@@ -285,7 +292,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Hard wall: per-serving display computation (local memo only)
   const perServingDisplay = useMemo(() => {
-    const grams = portion?.grams ?? 30;
+    const grams = portion?.grams || 30; // Keep 30 for display calculation only
     const per100Raw = result?.nutritionData || {};
     trace('PORTION:DISPLAY:COMPUTE', { grams, hasNutrition: !!per100Raw });
     return scalePer100ForDisplay(per100Raw, grams);
@@ -352,7 +359,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         setPortion({
           grams: portionResult.grams,
           source: portionResult.source,
-          label: portionResult.label
+          label: portionResult.label,
+          requiresConfirmation: portionResult.requiresConfirmation
         });
         
         trace('PORTION:EFFECT:SET_STATE', {
@@ -510,14 +518,14 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
-              servingGrams={portion?.grams ?? 30}
+              servingGrams={portion?.grams || 30} // Keep 30 for display only
               portionLabel={portion?.label ?? '30g · est.'}
             />
             {/* PORTION INQUIRY - Call Site Logging */}
             {(() => {
               console.info('[PORTION][INQ3][CALL]', {
                 nutritionPropType: 'per100',
-                servingGramsProp: portion?.grams ?? 30,
+                servingGramsProp: portion?.grams || 30, // Keep 30 for display only
                 portionLabelProp: portion?.label ?? '30g · est.'
               });
               return null;
@@ -530,7 +538,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 route, 
                 productId, 
                 nutritionPropType: 'per100', 
-                servingGramsProp: portion?.grams ?? 30, 
+                servingGramsProp: portion?.grams || 30, // Keep 30 for display only
                 portionLabelProp: portion?.label ?? '30g · est.' 
               });
               return null;
@@ -550,7 +558,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <TabsContent value="suggestions" className="mt-6">
             <PersonalizedSuggestions
               result={result}
-              portionGrams={portion?.grams ?? 30}
+              portionGrams={portion?.grams || 30} // Keep 30 for display only
               userProfile={{
                 // Mock user profile - replace with real user data
                 goals: user ? ['balanced_nutrition'] : [],
@@ -587,7 +595,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <SaveCTA
             result={result}
             analysisData={analysisData}
-            portionGrams={portion?.grams ?? 30}
+            portionGrams={portion?.grams || 30} // Keep 30 for display only
             ocrHash={ocrHash}
             onSaved={(logId) => {
               toast({
@@ -600,9 +608,12 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
+              // Sanitize brand-only titles
+              const sanitizedTitle = sanitizeTitle(result.itemName || result.productName || 'Unknown Product', undefined);
+              
               // Build prefill data from current report
               const prefill = buildLogPrefill(
-                result.itemName || result.productName || 'Unknown Product',
+                sanitizedTitle,
                 undefined, // brand not available in HealthAnalysisResult
                 analysisData?.imageUrl,
                 result.ingredientsText,
@@ -618,9 +629,10 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                   fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
                   protein_g: perServingDisplay.protein || nutritionData.protein || 0,
                   sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
-                  factor: (portion?.grams ?? 30) / 100, // scaling factor
+                  factor: portion?.grams ? portion.grams / 100 : 1.0, // scaling factor
                 },
-                portion?.grams ?? 30
+                portion?.grams, // no ?? 30
+                portion?.requiresConfirmation || false
               );
               
               // Navigate to camera page with prefill data
