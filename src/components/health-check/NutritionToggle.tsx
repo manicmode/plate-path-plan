@@ -60,29 +60,36 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
     
     console.log('[PORTION][INQ3][GUARD]', { usingExternalGrams: hasExternalGrams, servingGramsProp: servingGrams });
     
-    console.info('[PORTION][INQ3][WIDGET_PROPS]', {
-      gotServingGrams: servingGrams ?? null
+    console.log('[PORTION][INQ3][WIDGET_PROPS]', {
+      gotServingGrams: typeof servingGrams === 'number' ? servingGrams : null
     });
-    
-    if (hasExternalGrams) {
-      console.info('[PORTION][INQ3][HEADER]', { headerGrams: servingGrams, source: 'external' });
-      console.log('[PORTION][INQ3][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
-      return; // external override in effect
-    } else {
-      console.info('[PORTION][INQ3][HEADER]', { headerGrams: null, source: 'resolver' });
+
+    if (typeof servingGrams === 'number' && servingGrams > 0) {
+      console.log('[PORTION][WIDGET][BYPASS]', 'Using provided servingGrams:', servingGrams);
+      setCurrentPortionInfo({
+        grams: servingGrams,
+        isEstimated: false,
+        source: 'user_set',
+        confidence: 1.0,
+        display: `${servingGrams}g`
+      });
+      return;
     }
     
     const loadPortionInfo = async () => {
       try {
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
         const portionResult = await resolvePortion(productData, ocrText);
+        console.log('[PORTION][WIDGET][RESOLVED]', {
+          grams: portionResult.grams, source: portionResult.source, confidence: portionResult.confidence
+        });
         
         const portionInfo = {
           grams: portionResult.grams,
           isEstimated: portionResult.source === 'fallback' || portionResult.source === 'category' || portionResult.source === 'unknown',
           source: portionResult.source === 'fallback' ? 'estimated' as const : 
                  portionResult.source === 'ocr' ? 'ocr_declared' as const :
-                 portionResult.source === 'database' ? 'db_declared' as const :
+                 portionResult.source === 'db' ? 'db_declared' as const :
                  portionResult.source === 'ratio' ? 'ocr_inferred_ratio' as const :
                  portionResult.source === 'category' ? 'estimated' as const :
                  portionResult.source === 'unknown' ? 'estimated' as const : 'estimated' as const,

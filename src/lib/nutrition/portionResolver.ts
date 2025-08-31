@@ -65,7 +65,7 @@ const portionCache = new PortionCache();
 export interface PortionCandidate {
   grams: number | null;
   confidence: number;
-  source: 'ocr' | 'database' | 'ratio' | 'category' | 'fallback' | 'unknown';
+  source: 'db' | 'ocr' | 'ratio' | 'category' | 'fallback' | 'unknown';
   label: string;
   details?: string;
   requiresConfirmation?: boolean;
@@ -74,10 +74,10 @@ export interface PortionCandidate {
 export interface PortionResult {
   grams: number | null;
   label: string;
-  source: string;
+  source: 'db' | 'ocr' | 'ratio' | 'category' | 'fallback' | 'unknown';
   confidence: number;
   candidates: PortionCandidate[];
-  chosenFrom?: string;
+  chosenFrom: string;
   requiresConfirmation?: boolean;
 }
 
@@ -172,20 +172,38 @@ async function parseFromDatabase(productData: any, enabled: boolean = true): Pro
   if (!enabled) return null;
   if (!productData) return null;
   
-  // First, check local product data
-  const servingGrams = productData.serving_size_g || 
-                      productData.servingSize || 
-                      productData.serving_grams ||
-                      productData.portion_grams;
-  
-  if (typeof servingGrams === 'number' && servingGrams >= 5 && servingGrams <= 500) {
+  // Map all likely serving fields (DB/OFF)
+  const servingGrams =
+    productData?.serving_size_g ??
+    productData?.servingSizeG ??
+    productData?.nutrition?.serving_size_g ??
+    productData?.nutrition?.servingSizeG ??
+    productData?.perServing?.grams ??
+    productData?.serving_size ??
+    productData?.servingSize ?? 
+    productData?.serving_grams ??
+    productData?.portion_grams;
+
+  console.log('[PORTION][TRACE][DB_FIELDS]', {
+    serving_size_g: productData?.serving_size_g,
+    servingSizeG: productData?.servingSizeG,
+    nutrition_serving_size_g: productData?.nutrition?.serving_size_g,
+    nutrition_servingSizeG: productData?.nutrition?.servingSizeG,
+    perServing_grams: productData?.perServing?.grams,
+    computed: servingGrams
+  });
+
+  if (typeof servingGrams === 'number' && servingGrams > 0) {
+    console.log('[PORTION][DB]', 'Found DB serving size:', servingGrams, 'g');
     return {
       grams: Math.round(servingGrams),
       confidence: 0.9,
-      source: 'database',
+      source: 'db',
       label: `${Math.round(servingGrams)}g · DB`,
       details: 'From product database'
     };
+  } else {
+    console.log('[PORTION][DB]', 'No DB serving size found');
   }
   
   // If no local data and we have a barcode, try barcode lookup
@@ -198,13 +216,13 @@ async function parseFromDatabase(productData: any, enabled: boolean = true): Pro
       if (match) {
         const grams = Math.round(parseFloat(match[1]));
         if (grams >= 5 && grams <= 500) {
-          return {
-            grams,
-            confidence: 0.85,
-            source: 'database',
-            label: `${grams}g · DB`,
-            details: 'From barcode lookup'
-          };
+            return {
+              grams,
+              confidence: 0.85,
+              source: 'db',
+              label: `${grams}g · DB`,
+              details: 'From barcode lookup'
+            };
         }
       }
     }
@@ -254,7 +272,7 @@ function sanitizeCandidate(candidate: PortionCandidate): PortionCandidate | null
       // More restrictive for OCR due to parsing errors
       if (candidate.grams < 5 || candidate.grams > 250) return null;
       break;
-    case 'database':
+    case 'db':
       // DB values can be more flexible
       if (candidate.grams < 1 || candidate.grams > 500) return null;
       break;
@@ -277,7 +295,7 @@ function scoreCandidate(candidate: PortionCandidate, productName: string): numbe
   
   // Boost score based on source reliability
   const sourceBoosts = {
-    'database': 0.1,
+    'db': 0.1,
     'ratio': 0.05,
     'ocr': 0.0,
     'category': -0.1,
@@ -308,6 +326,16 @@ export async function resolvePortion(
   userId?: string
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
+  
+  console.log('[PORTION][TRACE][IN]', {
+    hasBarcode: !!productData?.barcode,
+    hasNutrition: !!productData?.nutrition,
+    hasServingSize: !!productData?.serving_size,
+    hasServingSizeG: !!productData?.serving_size_g,
+    servingKeys: productData ? Object.keys(productData).filter(k => k.includes('serv')) : [],
+    nutritionKeys: productData?.nutrition ? Object.keys(productData.nutrition).filter(k => k.includes('serv')) : [],
+    ocrTextLength: ocrText?.length || 0
+  });
   
   // Feature flags
   const urlParams = new URLSearchParams(window.location.search);
@@ -414,27 +442,35 @@ export async function resolvePortion(
     console.log('[PORTION][CATEGORY]', 'No category match found for:', productName);
   }
   
-  // Source 5: Unknown candidate if no reliable candidates
-  const hasReliableCandidate = candidates.some(c => c.confidence >= 0.5);
-  if (!hasReliableCandidate) {
-    console.log('[PORTION][UNKNOWN]', 'No reliable candidates found, marking as unknown');
-    candidates.push({
-      grams: null,
-      confidence: 0,
-      source: 'unknown',
-      label: 'Unknown serving',
-      details: 'Serving size could not be determined',
-      requiresConfirmation: true
-    });
-  }
-  
+  console.log('[PORTION][TRACE][CANDIDATES]', candidates.map(c => ({
+    src: c.source, g: c.grams, conf: c.confidence, label: c.label
+  })));
+
   // Sanitize, score, and rank candidates
   const validCandidates = candidates
     .map(c => sanitizeCandidate(c))
     .filter(Boolean)
     .map(c => ({ ...c!, score: scoreCandidate(c!, productName) }))
     .sort((a, b) => b.score - a.score);
-  
+
+  const bestCandidate = validCandidates.reduce((best, current) =>
+    (current.score || 0) > (best.score || 0) ? current : best,
+    validCandidates[0] || { grams: null, confidence: 0, source: 'unknown', label: 'Unknown serving', score: 0 }
+  );
+
+  if (validCandidates.length === 0) {
+    console.log('[PORTION][TRACE][UNKNOWN]', 'No candidates found at all');
+    validCandidates.push({
+      grams: null,
+      confidence: 0,
+      source: 'unknown',
+      label: 'Unknown serving',
+      details: 'No serving size candidates found',
+      requiresConfirmation: true,
+      score: 0
+    });
+  }
+
   const winner = validCandidates[0];
   
   // Apply category caps as final validation (only for non-null grams)
@@ -448,19 +484,23 @@ export async function resolvePortion(
     label: finalGrams !== null && winner.grams !== null 
       ? winner.label.replace(`${winner.grams}g`, `${finalGrams}g`)
       : winner.label,
-    source: winner.source,
-    confidence: winner.score,
+    source: winner.source as PortionResult['source'],
+    confidence: winner.score || 0,
     candidates: validCandidates.map(c => ({
       grams: c.grams,
-      confidence: c.score,
+      confidence: c.score || 0,
       source: c.source,
       label: c.label,
       details: c.details,
       requiresConfirmation: c.requiresConfirmation
     })),
-    chosenFrom: `${winner.source}_priority`,
+    chosenFrom: 'best_confidence',
     requiresConfirmation: winner.requiresConfirmation || false
   };
+
+  console.log('[PORTION][TRACE][OUT]', {
+    grams: result.grams, source: result.source, confidence: result.confidence, requiresConfirmation: result.requiresConfirmation
+  });
   
   // Cache the result
   portionCache.set(productData, ocrText, result);
