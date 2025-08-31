@@ -468,8 +468,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       };
       
       // Only set nutritionOCRText if this is specifically from Nutrition Facts OCR
-      // General OCR text should not be assumed to be nutrition facts
-      console.log('[PORTION][TRACE][PIPE_OUT]', { hasGeneralOCRText: !!text, skipNutritionOCRText: true });
+      // This path is for general OCR, not nutrition facts, so we don't set nutritionOCRText
+      // The nutrition facts OCR path is handled elsewhere in the barcode scanning flow
+      console.log('[PORTION][TRACE][PIPE_OUT]', { hasGeneralOCRText: !!text, isNutritionFactsOCR: false });
       
       // Add to recents
       addRecent({
