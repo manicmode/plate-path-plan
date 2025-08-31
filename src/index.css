@@ -1492,6 +1492,12 @@ body {
   display: none !important;
 }
 
+/* Hide any auto-rendered close buttons inside Reminder modal,
+   but keep our explicit header close (tagged with data-keep-close="true"). */
+[data-dialog-root="reminder-modal"] button[aria-label="Close"]:not([data-keep-close="true"]) {
+  display: none !important;
+}
+
 /* r7: hide any parent Close inside Confirm; Reminder keeps its own */
 [data-dialog-root="confirm-food-log"] [aria-label="Close"] { display: none !important; }
 [data-dialog-root="reminder-modal"] [aria-label="Close"] { display: inline-flex !important; }

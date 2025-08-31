@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Bell, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Bell, Clock, X } from 'lucide-react';
 import { ReminderForm } from './ReminderForm';
 import { useReminders } from '@/hooks/useReminders';
 
@@ -61,6 +61,18 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
   };
 
+  // Log close button counts when modal opens
+  useEffect(() => {
+    if (!showReminderForm) return;
+    const confirmCount = document.querySelectorAll(
+      '[data-dialog-root="confirm-food-log"] button[aria-label="Close"]'
+    ).length;
+    const reminderCount = document.querySelectorAll(
+      '[data-dialog-root="reminder-modal"] button[aria-label="Close"]'
+    ).length;
+    console.log('[A11Y][CLOSE-COUNT]', { confirm: confirmCount, reminder: reminderCount });
+  }, [showReminderForm]);
+
   return (
     <>
       <div className={`flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 ${className}`}>
@@ -89,9 +101,22 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
           onReminderClose?.();
         }
       }}>
-        <DialogContent className="sm:max-w-md" showCloseButton={true} data-dialog-root="reminder-modal">
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={false}
+          data-dialog-root="reminder-modal"
+        >
           <DialogHeader>
-            <DialogTitle>Create Reminder</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              Create Reminder
+              <DialogClose
+                aria-label="Close"
+                data-keep-close="true"
+                className="opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <X className="h-4 w-4" />
+              </DialogClose>
+            </DialogTitle>
           </DialogHeader>
           <ReminderForm
             prefilledData={{
