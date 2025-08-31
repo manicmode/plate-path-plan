@@ -16,6 +16,7 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
+import { ScanOverlay } from '@/components/camera/ScanOverlay';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -27,6 +28,10 @@ function hardDetachVideo(video?: HTMLVideoElement | null) {
   try { (video as any).srcObject = null; } catch {}
   try { video.removeAttribute('src'); video.load?.(); } catch {}
 }
+
+const SCAN_OVERLAY_REV = "2025-08-31T15:50Z-r1";
+
+type ScanPhase = 'scanning' | 'captured' | 'analyzing' | 'presenting';
 
 interface LogBarcodeScannerModalProps {
   open: boolean;
@@ -46,7 +51,21 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isDecoding, setIsDecoding] = useState(false);
-  const [isFrozen, setIsFrozen] = useState(false);
+  const [phase, setPhase] = useState<ScanPhase>('scanning');
+  
+  // One overlay flag derived from phase
+  const overlayWanted = phase !== 'scanning';
+  
+  // Hysteresis: ensure overlay doesn't flicker if phase bounces quickly
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  useEffect(() => {
+    if (overlayWanted) {
+      setOverlayVisible(true);
+    } else {
+      const t = setTimeout(() => setOverlayVisible(false), 160);
+      return () => clearTimeout(t);
+    }
+  }, [overlayWanted]);
   const [error, setError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
@@ -117,7 +136,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           
           if (count >= 3) {
             console.log('[LOG] stable_lock', { code: last });
-            setIsFrozen(true);
+            setPhase('captured');
             stopAutoscan();
             
             const lookupResult = await handleOffLookup(last);
@@ -125,7 +144,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               onBarcodeDetected(last);
               onOpenChange(false);
             } else {
-              setIsFrozen(false);
+              setPhase('scanning');
               startAutoscan(); // Resume if no match
             }
             return;
@@ -301,7 +320,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     trackRef.current = null;
     setStream(null);
     setIsDecoding(false);
-    setIsFrozen(false);
+    setPhase('scanning');
     setIsLookingUp(false);
   };
 
@@ -393,7 +412,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     
     console.time('[LOG] analyze_total');
     setIsDecoding(true);
-    setIsFrozen(true);
+    setPhase('captured');
     setError(null);
     setLastAttempt(now);
     
@@ -429,7 +448,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     } finally {
       setTimeout(() => {
         setIsDecoding(false);
-        setIsFrozen(false);
+        setPhase('scanning');
         // Resume autoscan if it was running
         if (wasRunning && AUTOSCAN_ENABLED) {
           startAutoscan();
@@ -470,13 +489,16 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             muted
             className="w-full h-full object-cover"
             style={{
-              filter: isFrozen ? 'brightness(0.3)' : 'none',
+              filter: phase !== 'scanning' ? 'brightness(0.3)' : 'none',
               transition: 'filter 0.2s ease'
             }}
           />
 
+          {/* Unified Scan Overlay */}
+          <ScanOverlay show={overlayVisible} />
+
           {/* Frozen Overlay */}
-          {isFrozen && (
+          {phase !== 'scanning' && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="animate-pulse text-lg">Processing...</div>

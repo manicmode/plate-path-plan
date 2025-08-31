@@ -8,6 +8,7 @@ import { isFeatureEnabled } from '@/lib/featureFlags';
 import { prepareImageForAnalysis, prepareImageForAnalysisLegacy } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { ScanOverlay } from '@/components/camera/ScanOverlay';
 import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 import { normalizeHealthScanImage } from '@/utils/imageNormalization';
 import { MultiPassBarcodeScanner } from '@/utils/barcodeScan';
@@ -103,11 +104,28 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isFrozen, setIsFrozen] = useState(false);
+  
+  type ScanPhase = 'scanning' | 'captured' | 'analyzing' | 'presenting';
+  const [phase, setPhase] = useState<ScanPhase>('scanning');
+  
   const [warmScanner, setWarmScanner] = useState<MultiPassBarcodeScanner | null>(null);
   const { user } = useAuth();
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
+
+  // One overlay flag derived from phase
+  const overlayWanted = phase !== 'scanning';
+  
+  // Hysteresis: ensure overlay doesn't flicker if phase bounces quickly
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  useEffect(() => {
+    if (overlayWanted) {
+      setOverlayVisible(true);
+    } else {
+      const t = setTimeout(() => setOverlayVisible(false), 160); // 120–180ms is good
+      return () => clearTimeout(t);
+    }
+  }, [overlayWanted]);
 
   const OWNER = 'health_scanner';
   
@@ -746,7 +764,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
     if (DEBUG) console.log('[SCANNER][CAPTURE] freeze');
     mark('[HS] analyze_start');
-    setIsFrozen(true);
+    setPhase('captured');
     playCameraClickSound();
     setIsScanning(true);
     
@@ -759,12 +777,14 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         const track = stream.getVideoTracks()[0];
         if (track) {
           try {
-            await track.applyConstraints({ 
-              advanced: [{ zoom: ZOOM } as any] 
-            });
-            console.log('[HS] zoom applied:', ZOOM);
-          } catch (zoomError) {
-            console.log('[HS] zoom not supported:', zoomError);
+            const capabilities = track.getCapabilities() as any;
+            if (capabilities.zoom && capabilities.zoom.max > 1) {
+              await track.applyConstraints({
+                advanced: [{ zoom: Math.min(2, capabilities.zoom.max) } as any]
+              });
+            }
+          } catch (e) {
+            if (DEBUG) console.warn('[HS] zoom constraint failed:', e);
           }
         }
       }
@@ -1086,7 +1106,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       if (videoRef.current) {
         unfreezeVideo(videoRef.current);
       }
-      setIsFrozen(false); // Ensure this always runs for success, error, or timeout
+      setPhase('scanning'); // Reset to scanning phase(false); // Ensure this always runs for success, error, or timeout
+      setPhase('scanning'); // Reset to scanning phase
       mark('[HS] analyze_end');
       measure('[HS] analyze_total', '[HS] analyze_start');
       const analyzeTime = performance.now() - (performance.getEntriesByName('[HS] analyze_start')[0]?.startTime || 0);
@@ -1479,14 +1500,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
                 objectFit: 'cover',
                 transform: 'translateZ(0)'
               }}
-              className={`transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
+              className={`transition-opacity duration-300 translate-z-0 ${phase !== 'scanning' ? 'opacity-50' : 'opacity-100'}`}
             />
             
             {/* Shutter flash effect */}
-            {isFrozen && (
+            {phase !== 'scanning' && (
               <div className="absolute inset-0 bg-white animate-pulse opacity-20 pointer-events-none"></div>
             )}
             <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Unified Scan Overlay */}
+            <ScanOverlay show={overlayVisible} />
             
             {/* Scanning Overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1726,11 +1750,11 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               objectFit: 'cover',
               transform: 'translateZ(0)'     // prevent black frames on iOS
             }}
-            className={`transition-opacity duration-300 ${isFrozen ? 'opacity-50' : 'opacity-100'}`}
+            className={`transition-opacity duration-300 translate-z-0 ${phase !== 'scanning' ? 'opacity-50' : 'opacity-100'}`}
           />
           
           {/* Shutter flash effect */}
-          {isFrozen && (
+          {phase !== 'scanning' && (
             <div className="absolute inset-0 bg-white animate-pulse opacity-20 pointer-events-none"></div>
           )}
           <canvas ref={canvasRef} className="hidden" />
