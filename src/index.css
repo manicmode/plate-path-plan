@@ -1552,3 +1552,9 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
 /* r7: hide any parent Close inside Confirm; Reminder keeps its own */
 [data-dialog-root="confirm-food-log"] [aria-label="Close"] { display: none !important; }
 [data-dialog-root="reminder-modal"] [aria-label="Close"] { display: inline-flex !important; }
+
+/* Hero ticker baseline to prevent layout jump and flicker */
+.hero-ticker {
+  min-height: 1.5rem; /* matches text line-height */
+  will-change: opacity;
+}

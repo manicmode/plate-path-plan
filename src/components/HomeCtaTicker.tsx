@@ -5,10 +5,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 import { SoundGate } from '@/lib/soundGate';
+import { nlog, HERO_REV } from '@/lib/debugNudge';
+import clsx from 'clsx';
 
 type Cta = { key: string; text: string; checkTrigger?: (ctx: any) => boolean };
 
-const ROTATE_MS = 11000; // 11 seconds rotation
+const ROTATE_MS = 11000;
 
 // Enhanced CTA pool with more dynamic messages
 const ALL_CTAS: Cta[] = [
@@ -61,9 +63,110 @@ const ALL_CTAS: Cta[] = [
     key: 'consistency-wins',
     text: '📈 Consistency creates lasting change — one day at a time.',
     checkTrigger: () => true // Always eligible
+  },
+  {
+    key: 'progress-celebration',
+    text: '🎉 Take a moment to celebrate your progress — you\'re doing great!',
+    checkTrigger: () => true // Always eligible
+  },
+  {
+    key: 'healthy-habits',
+    text: '🌱 Small healthy habits create big transformations.',
+    checkTrigger: () => true // Always eligible
   }
 ];
 
+// Main hero text rotator component implementing the robust rotator
+function HeroTextRotator({
+  context,
+  allCtas,
+  className,
+}: { context: any; allCtas: Cta[]; className?: string }) {
+  // Build candidates once per input change
+  const candidates = useMemo(() => {
+    const list = (allCtas || []).filter(c => (c.checkTrigger ? c.checkTrigger(context) : true));
+    nlog("HERO][CANDIDATES", { rev: HERO_REV, total: allCtas?.length || 0, filtered: list.length, keys: list.map(c => c.key) });
+    return list;
+  }, [allCtas, context]);
+
+  // Load last key once (don't thrash state during SSR/hydration)
+  const lastKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    try { lastKeyRef.current = localStorage.getItem("hero:lastKey"); } catch {}
+  }, []);
+
+  const [current, setCurrent] = useState<Cta | null>(null);
+  const [fade, setFade] = useState(false);
+  const intervalRef = useRef<number | null>(null);
+  const visibleRef = useRef<boolean>(true);
+
+  const pickNext = () => {
+    let pool = candidates;
+    if (!pool.length) {
+      nlog("HERO][FALLBACK", { rev: HERO_REV });
+      setCurrent({ key: "default", text: "Your intelligent wellness companion is ready." });
+      return;
+    }
+    if (pool.length > 1 && lastKeyRef.current) {
+      const filtered = pool.filter(c => c.key !== lastKeyRef.current);
+      if (filtered.length) pool = filtered;
+    }
+    const next = pool[Math.floor(Math.random() * pool.length)];
+    lastKeyRef.current = next.key;
+    try { localStorage.setItem("hero:lastKey", next.key); } catch {}
+    nlog("HERO][PICK", { rev: HERO_REV, key: next.key, total: pool.length });
+    // Fade out then in to avoid flash
+    setFade(true);
+    window.setTimeout(() => {
+      setCurrent(next);
+      setFade(false);
+      nlog("HERO][RENDER", { rev: HERO_REV, key: next.key });
+    }, 160);
+  };
+
+  // Single interval with StrictMode safety
+  useEffect(() => {
+    const start = () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      intervalRef.current = window.setInterval(() => {
+        if (visibleRef.current) pickNext();
+      }, ROTATE_MS) as unknown as number;
+    };
+    pickNext();
+    start();
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates]); // only when candidate pool changes
+
+  // Pause/resume on tab visibility change
+  useEffect(() => {
+    const onVis = () => {
+      visibleRef.current = document.visibilityState === "visible";
+      nlog(visibleRef.current ? "HERO][RESUME" : "HERO][PAUSE", { rev: HERO_REV, state: document.visibilityState });
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  return (
+    <div className={clsx("hero-ticker relative", className)} aria-live="polite">
+      <div
+        className={clsx(
+          "transition-opacity duration-200 ease-out",
+          fade ? "opacity-0" : "opacity-100"
+        )}
+        style={{ minHeight: "1.5rem" }} // prevent layout jump
+      >
+        {current?.text ?? ""}
+      </div>
+    </div>
+  );
+}
+
+// Wrapper component that builds context and passes to robust rotator
 interface HomeCtaTickerProps {
   className?: string;
 }
@@ -103,75 +206,6 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
       hoursInactive
     };
   }, [user, progress, currentDay, userProfile]);
-
-  // Build candidates with proper filtering and logging
-  const candidates = useMemo(() => {
-    const list = ALL_CTAS.filter(cta => (cta.checkTrigger ? cta.checkTrigger(context) : true));
-    
-    // Debug logging
-    const logCandidates = async () => {
-      const { nlog } = await import('@/lib/debugNudge');
-      nlog("HERO][CANDIDATES", { 
-        total: ALL_CTAS.length, 
-        filtered: list.length, 
-        keys: list.map(c => c.key) 
-      });
-    };
-    logCandidates();
-    
-    return list;
-  }, [context]);
-
-  // Pick & rotate with last-key dedupe
-  const [current, setCurrent] = useState<Cta | null>(null);
-  const lastKeyRef = useRef<string | null>(localStorage.getItem("hero:lastKey") || null);
-
-  useEffect(() => {
-    if (!candidates.length) {
-      const logFallback = async () => {
-        const { nlog } = await import('@/lib/debugNudge');
-        nlog("HERO][FALLBACK", {});
-      };
-      logFallback();
-      setCurrent({ key: "default", text: "Your intelligent wellness companion is ready." });
-      return;
-    }
-
-    const pickNext = () => {
-      let pool = candidates;
-      if (pool.length > 1 && lastKeyRef.current) {
-        pool = pool.filter(c => c.key !== lastKeyRef.current);
-        if (!pool.length) pool = candidates; // edge: all same key
-      }
-      
-      const next = pool[Math.floor(Math.random() * pool.length)];
-      lastKeyRef.current = next.key;
-      localStorage.setItem("hero:lastKey", next.key);
-      
-      const logPick = async () => {
-        const { nlog } = await import('@/lib/debugNudge');
-        nlog("HERO][PICK", { key: next.key, dedupeOk: true });
-      };
-      logPick();
-      
-      setCurrent(next);
-    };
-
-    pickNext();
-    const t = setInterval(pickNext, ROTATE_MS);
-    return () => clearInterval(t);
-  }, [candidates]);
-
-  // Log render
-  useEffect(() => {
-    if (current) {
-      const logRender = async () => {
-        const { nlog } = await import('@/lib/debugNudge');
-        nlog("HERO][RENDER", { key: current.key });
-      };
-      logRender();
-    }
-  }, [current]);
 
   // Load user profile data
   useEffect(() => {
@@ -225,9 +259,5 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     playAIThought();
   }, [lastCoachCtaEnqueueId, playAIThought]);
 
-  return (
-    <div className={`text-balance ${className}`}>
-      {current?.text}
-    </div>
-  );
+  return <HeroTextRotator context={context} allCtas={ALL_CTAS} className={className} />;
 };

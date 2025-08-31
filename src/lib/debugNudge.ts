@@ -1,13 +1,14 @@
-const REV = "2025-08-31T16:45Z-r1";
+const REV = "2025-08-31T16:55Z-r2";
 
 export const DEBUG_NUDGE = import.meta.env.VITE_DEBUG_NUDGE === "1";
 
-export function nlog(tag: string, payload: Record<string, unknown>) {
+export function nlog(tag: string, payload: Record<string, unknown> = {}) {
   if (!DEBUG_NUDGE) return;
-  // Always include rev + minimal time context.
   const now = new Date();
-  console.log(`[${tag}]`, { rev: REV, nowUTC: now.toISOString(), nowLocal: now.toString(), ...payload });
+  console.log(`[${tag}]`, { rev: REV, utc: now.toISOString(), local: now.toString(), ...payload });
 }
+
+export const HERO_REV = "2025-08-31T16:55Z-r2";
 
 // Dev-only QA helpers
 if (DEBUG_NUDGE && typeof window !== 'undefined') {
