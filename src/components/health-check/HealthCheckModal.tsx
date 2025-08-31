@@ -1943,6 +1943,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                       (score10 ?? 0) >= 2 ? 'poor' : 'avoid'
       };
 
+      // Add nutritionOCRText for portion resolver
+      (analysisResult as any).nutritionOCRText = 
+        data?.ocr?.nutritionText ??
+        data?.nutrition?.ocrText ?? 
+        legacy?.nutritionOCRText ?? 
+        null;
+
       setAnalysisResult(analysisResult);
       setCurrentState('report');
       
@@ -2035,6 +2042,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                     finalScore10 >= 4 ? 'fair' : 
                     finalScore10 >= 2 ? 'poor' : 'avoid'
     };
+    
+    // Add nutritionOCRText for portion resolver
+    (analysisResult as any).nutritionOCRText = 
+      data?.ocr?.nutritionText ??
+      data?.nutrition?.ocrText ?? 
+      legacy?.nutritionOCRText ?? 
+      null;
     
     setAnalysisResult(analysisResult);
     setCurrentState('report');

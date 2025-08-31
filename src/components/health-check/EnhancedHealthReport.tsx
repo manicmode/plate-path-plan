@@ -354,6 +354,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   const grams = portion?.grams ?? (result as any)?.serving_size_g ?? (analysisData as any)?.serving_size_g ?? null;
 
+  // Header serving candidate for display
+  const headerServingG =
+    (result as any)?.serving_size_g ??
+    (result as any)?.nutrition?.serving_size_g ?? null;
+
   const perServingDisplay =
     (result?.nutritionData as any)?.perServing
       ?? (grams ? scaleFromPer100(nutritionData, grams) : null);
@@ -425,6 +430,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           analysisData?.ocr?.rawNutritionText ||
           null;
         
+        console.log('[PORTION][TRACE][REPORT_INPUT_KEYS]', Object.keys(result || {}));
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
         console.info('[PORTION][INQ3][RESOLVE_START]', { barcode: (result as any)?.barcode, id: (result as any)?.id });
         
@@ -623,7 +629,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
-              servingGrams={typeof portion?.grams === 'number' ? portion.grams : undefined}
+              servingGrams={typeof portion?.grams === 'number' ? portion.grams : 
+                          typeof headerServingG === 'number' ? headerServingG : undefined}
               portionLabel={typeof portion?.grams === 'number' ? `${portion.grams}g` : 'Unknown serving'}
             />
             {/* PORTION INQUIRY - Call Site Logging */}
