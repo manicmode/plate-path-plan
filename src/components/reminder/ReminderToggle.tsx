@@ -61,16 +61,19 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
   };
 
-  // Log close button counts when modal opens
+  // DOM close button census when modal opens
   useEffect(() => {
     if (!showReminderForm) return;
-    const confirmCount = document.querySelectorAll(
-      '[data-dialog-root="confirm-food-log"] button[aria-label="Close"]'
-    ).length;
-    const reminderCount = document.querySelectorAll(
-      '[data-dialog-root="reminder-modal"] button[aria-label="Close"]'
-    ).length;
-    console.log('[A11Y][CLOSE-COUNT]', { confirm: confirmCount, reminder: reminderCount });
+    const list = Array.from(document.querySelectorAll('button[aria-label="Close"]')).map(b => ({
+      inConfirm: !!b.closest('[data-dialog-root="confirm-food-log"]'),
+      inReminder: !!b.closest('[data-dialog-root="reminder-modal"]'),
+      keep: b.hasAttribute('data-keep-close'),
+    }));
+    console.log('[A11Y][CLOSE-COUNT]', {
+      confirm: list.filter(x => x.inConfirm).length,
+      reminder: list.filter(x => x.inReminder).length,
+      detail: list
+    });
   }, [showReminderForm]);
 
   return (
