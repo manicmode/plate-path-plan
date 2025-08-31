@@ -740,9 +740,16 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 return;
               }
 
-              // Known grams path: build prefill and open confirm like today
+              // Prefer an OFF product image; fall back to the captured frame; else null
+              const offImage =
+                (result as any)?.images?.front?.small ||
+                (result as any)?.image_small_url ||
+                (result as any)?.image_url ||
+                (result as any)?.images?.front?.thumb ||
+                null;
+              const imageForConfirm = offImage ?? analysisData?.imageUrl ?? null;
+              
               const sanitizedTitle = sanitizeTitle(name, undefined);
-              const imageForConfirm = analysisData?.imageUrl;
               
               const per100 = {
                 calories: nutritionData.calories || 0,

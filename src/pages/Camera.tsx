@@ -250,9 +250,7 @@ const CameraPage = () => {
     // Map prefill data to RecognizedFood format
     const serving = prefill.item.portionGrams ? `${prefill.item.portionGrams}g` : 'Unknown serving';
     
-    if (prefill.item.imageUrl) {
-      console.log('[CAMERA][PREFILL][image]', { len: prefill.item.imageUrl.length, head: prefill.item.imageUrl.slice(0, 60) + '...' });
-    }
+    console.log('[CAMERA][PREFILL]', { hasImage: !!prefill.item.imageUrl, len: prefill.item.imageUrl?.length ?? 0 });
     
     const img = toDisplayableImageUrl(prefill.item.imageUrl);
 

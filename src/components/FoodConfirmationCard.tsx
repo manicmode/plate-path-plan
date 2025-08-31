@@ -95,11 +95,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgOk, setImgOk] = React.useState(true);
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
+
+  useEffect(() => {
+    const raw = currentFoodItem?.image;
+    if (!raw) { setImgUrl(null); return; }
+
+    // If OFF/http/https URL → use as is
+    if (/^https?:\/\//i.test(raw)) {
+      setImgUrl(raw);
+      return;
+    }
+    // If data URL → convert to blob here so lifetime matches the screen
+    if (raw.startsWith('data:image/')) {
+      try {
+        const [meta, b64] = raw.split(',');
+        const mime = meta.match(/data:(.*?);base64/)?.[1] ?? 'image/jpeg';
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+        setImgUrl(url);
+        return () => URL.revokeObjectURL(url);
+      } catch {
+        setImgUrl(null);
+      }
+      return;
+    }
+    // Anything else → try directly
+    setImgUrl(raw);
+  }, [currentFoodItem?.image]);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
@@ -593,20 +621,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {currentFoodItem.image && imgOk ? (
-                <img 
-                  src={currentFoodItem.image} 
-                  alt={currentFoodItem.name}
-                  className="w-16 h-16 rounded-2xl object-cover"
-                  onError={() => setImgOk(false)}
-                  loading="eager"
-                  decoding="async"
-                />
-              ) : (
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center">
-                  <span className="text-2xl">🍽️</span>
-                </div>
-              )}
+              <img
+                src={imgUrl ?? '/emoji/plate.png'}
+                alt={currentFoodItem.name}
+                className="w-16 h-16 rounded-2xl object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/emoji/plate.png'; }}
+                loading="eager"
+                decoding="async"
+              />
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                   {currentFoodItem.name}
