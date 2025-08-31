@@ -195,6 +195,27 @@ body {
   }
 }
 
+/* Prevent background scrolling when any modal is open */
+body[data-modal-open="true"] {
+  overflow: hidden !important;
+  height: 100vh; /* iOS Safari */
+}
+
+/* Make sure app shell doesn't absorb pointer events under overlay */
+body[data-modal-open="true"] #app-shell {
+  pointer-events: none;
+}
+
+/* When reminder is open, hide confirm dialog close buttons */
+body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[aria-label="Close"] {
+  display: none !important;
+}
+
+/* Always allow the inner, kept close inside the reminder modal */
+[data-dialog-root="reminder-modal"] [data-keep-close="true"][aria-label="Close"] {
+  display: inline-flex !important;
+}
+
 /* Use dynamic viewport units on iOS so the footer never slides under the home indicator */
 @supports (height: 100dvh) {
   .min-h-dvh { min-height: 100dvh; }

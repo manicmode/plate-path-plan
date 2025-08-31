@@ -16,7 +16,7 @@ interface ReminderToggleProps {
   onReminderClose?: () => void;
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T15:35Z-r10";
+const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
@@ -28,6 +28,12 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   const [createReminder, setCreateReminder] = useState(false);
   const [showReminderForm, setShowReminderForm] = useState(false);
   const { createReminder: saveReminder } = useReminders();
+
+  // Lock body scroll when reminder modal is open
+  useEffect(() => {
+    if (showReminderForm) document.body.dataset.modalOpen = "true";
+    console.log("[SCROLL][LOCK]", { rev: CONFIRM_FIX_REV, modal: "reminder", open: showReminderForm });
+  }, [showReminderForm]);
 
   const handleToggleChange = (checked: boolean) => {
     setCreateReminder(checked);

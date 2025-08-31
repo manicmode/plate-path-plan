@@ -80,7 +80,7 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
+const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
@@ -122,6 +122,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
     return () => document.body.removeAttribute('data-reminder-open');
   }, [reminderOpen]);
+
+  // Lock body scroll when confirm dialog is open
+  useEffect(() => {
+    document.body.dataset.modalOpen = isOpen ? "true" : "false";
+    console.log("[SCROLL][LOCK]", { rev: CONFIRM_FIX_REV, modal: "confirm", isOpen });
+    return () => { delete document.body.dataset.modalOpen; };
+  }, [isOpen]);
 
   // Derive display values with broad fallback
   const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
