@@ -11,12 +11,16 @@ interface ReminderToggleProps {
   foodName: string;
   foodData?: any;
   className?: string;
+  onReminderOpen?: () => void;
+  onReminderClose?: () => void;
 }
 
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
   foodData,
-  className = ''
+  className = '',
+  onReminderOpen,
+  onReminderClose
 }) => {
   const [createReminder, setCreateReminder] = useState(false);
   const [showReminderForm, setShowReminderForm] = useState(false);
@@ -26,6 +30,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     setCreateReminder(checked);
     if (checked) {
       setShowReminderForm(true);
+      onReminderOpen?.();
     }
   };
 
@@ -37,14 +42,17 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
       });
       setShowReminderForm(false);
       setCreateReminder(false);
+      onReminderClose?.();
     } catch (error) {
       setCreateReminder(false);
+      onReminderClose?.();
     }
   };
 
   const handleFormCancel = () => {
     setShowReminderForm(false);
     setCreateReminder(false);
+    onReminderClose?.();
   };
 
   return (
@@ -69,8 +77,16 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
         />
       </div>
 
-      <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showReminderForm} onOpenChange={(open) => {
+        setShowReminderForm(open);
+        if (!open) {
+          onReminderClose?.();
+        }
+      }}>
+        <DialogContent className="sm:max-w-md" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle>Create Reminder</DialogTitle>
+          </DialogHeader>
           <ReminderForm
             prefilledData={{
               label: `Take ${foodName}`,

@@ -100,6 +100,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
+  const [reminderOpen, setReminderOpen] = useState(false);
+
   const imgUrl = typeof currentFoodItem?.image === 'string' && /^https?:\/\//i.test(currentFoodItem.image)
     ? currentFoodItem.image
     : null;
@@ -520,12 +522,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-         <AccessibleDialogContent 
-           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-           title="Confirm Food Log"
-           description="We'll save these items to your log."
-         >
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        // Prevent closing parent when reminder is open
+        if (reminderOpen && !open) return;
+        if (totalItems && totalItems > 1) return;
+        onClose();
+      }}>
+        <AccessibleDialogContent 
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          title="Confirm Food Log"
+          description="We'll save these items to your log."
+          showCloseButton={!reminderOpen}
+        >
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
@@ -1043,6 +1051,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 sodium: adjustedFood.sodium,
               }}
               className="mb-4"
+              onReminderOpen={() => setReminderOpen(true)}
+              onReminderClose={() => setReminderOpen(false)}
             />
 
             {/* Bottom Action Buttons - New Clean Layout */}

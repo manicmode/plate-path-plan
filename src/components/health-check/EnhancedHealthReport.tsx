@@ -741,16 +741,23 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               }
 
               // Prefer an OFF product image; fall back to the captured frame; else null
-              const offImage =
-                (result as any)?.images?.front?.small ||
-                (result as any)?.image_small_url ||
-                (result as any)?.image_url ||
-                (result as any)?.images?.front?.thumb ||
-                null;
-              // CRITICAL: only pass HTTP(S) images in navigation state.
-              const httpImage = typeof offImage === 'string' && /^https?:\/\//i.test(offImage) ? offImage : null;
+              // HTTP-only helper for prefill
+              const httpOnly = (u?: string | null) =>
+                typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined;
+
+              // Use mapped fields from the adapter when available
+              const itemName =
+                result?.productName ||
+                result?.itemName ||
+                analysisData?.barcode ||
+                'Food item';
+
+              const imageUrl = httpOnly(
+                (result as any)?.productImageUrl ||
+                analysisData?.imageUrl
+              );
               
-              const sanitizedTitle = sanitizeTitle(name, undefined);
+              const sanitizedTitle = sanitizeTitle(itemName, undefined);
               
               const per100 = {
                 calories: nutritionData.calories || 0,
@@ -764,10 +771,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
               const pg = portion?.grams ?? null;
 
+              // IMPORTANT: never persist base64; imageUrl must be http(s) or undefined.
               const prefill = buildLogPrefill(
                 sanitizedTitle,
                 undefined, // brand not available in HealthAnalysisResult
-                httpImage,               // never pass base64
+                imageUrl,               // never pass base64
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,

@@ -65,6 +65,10 @@ const clamp10 = (n: any) => {
 // Helper to safely convert to number
 const num = (v: any) => (v === 0 || (typeof v === 'number' && isFinite(v))) ? v : (v ? Number(v) : undefined);
 
+// HTTP-only image helper - only pass HTTP(S) URLs, not base64 or data URLs
+const httpOnly = (u?: string | null) =>
+  typeof u === 'string' && /^https?:\/\//i.test(u) ? u : undefined;
+
 // Helper to convert kJ to kcal
 const kjToKcal = (v?: number) => (v && isFinite(v)) ? v * 0.239006 : undefined;
 
@@ -310,9 +314,17 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       nutriments_energy_kcal_serving: nutr['energy-kcal_serving']
     });
 
+    // Map product name and HTTP image from OFF data
+    const offImg =
+      p.image_front_small_url ||
+      p.image_small_url ||
+      p.image_front_url ||
+      p.image_url;
+
     const legacy = {
       status: 'ok' as const,
       productName: p.product_name || p.generic_name || p.brands || 'Unknown item',
+      productImageUrl: httpOnly(offImg),
       nutriments: raw,
       nutritionData: {
         ...per100,
