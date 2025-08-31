@@ -19,10 +19,17 @@ function parseServingSizeToG(txt?: string | null): number | null {
 
 function parseServingSizeTextToGrams(txt?: string | null): number | null {
   if (!txt) return null;
-  const m = String(txt).match(/(\d+(?:[.,]\d+)?)\s*(?:g|grams?)/i);
-  if (!m) return null;
-  const n = parseFloat(m[1].replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? n : null;
+  
+  // Try parentheses first (e.g., "2/3 cup (55g)", "(55 g)")
+  const mParen = String(txt).match(/\((\d+(?:[.,]\d+)?)\s*[^\S\r\n]*g(?:rams?)?\)/i);
+  // Then try inline pattern (e.g., "55g", "55 grams") 
+  const mInline = String(txt).match(/(\d+(?:[.,]\d+)?)\s*[^\S\r\n]*g(?:rams?)?\b/i);
+  
+  const n = mParen ? mParen[1] : mInline?.[1];
+  if (!n) return null;
+  
+  const parsed = parseFloat(n.replace(',', '.'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function pickNumber(...vals: Array<number | null | undefined>): number | null {
