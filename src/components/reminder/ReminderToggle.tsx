@@ -113,7 +113,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
         }
       }}>
         <DialogContent
-          className="sm:max-w-md"
+          className="sm:max-w-md z-[130]"
           showCloseButton={false}
           data-dialog-root="reminder-modal"
           aria-labelledby="reminder-title"

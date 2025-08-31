@@ -216,12 +216,13 @@ body[data-modal-open="true"] #app-shell {
   -webkit-transform: translateZ(0); 
 }
 
-/* iOS Safari camera overlay fix - remove backdrop filter over video */
-@supports (-webkit-touch-callout: none) {
-  [data-camera-overlay] { 
-    backdrop-filter: none !important; 
-    -webkit-backdrop-filter: none !important; 
-  }
+/* Reminder modal should appear above confirm food log */
+[data-dialog-root="reminder-modal"] {
+  z-index: 130 !important;
+}
+
+[data-dialog-root="reminder-modal"] ~ .fixed.inset-0 {
+  z-index: 125 !important;
 }
 
 /* When reminder is open, hide confirm dialog close buttons */
