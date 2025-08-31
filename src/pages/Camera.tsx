@@ -23,6 +23,8 @@ import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useMealScoring } from '@/hooks/useMealScoring';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { NutritionFactsCapture } from '@/components/camera/NutritionFactsCapture';
+import { useBarcodeCapture } from '@/hooks/useBarcodeCapture';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -106,6 +108,7 @@ interface VoiceApiResponse {
 const CameraPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -178,9 +181,6 @@ const CameraPage = () => {
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
-  // Import necessary components
-  const { NutritionFactsCapture } = await import('@/components/camera/NutritionFactsCapture');
-  const { useBarcodeCapture } = await import('@/hooks/useBarcodeCapture');
 
   // Add nutrition facts capture state
   const { 
