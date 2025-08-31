@@ -23,6 +23,9 @@ import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useMealScoring } from '@/hooks/useMealScoring';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
+import { buildLogPrefill } from '@/lib/health/logPrefill';
+import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -174,6 +177,10 @@ const CameraPage = () => {
   // Processing state moved from duplicate declaration below
   const [isProcessingFood, setIsProcessingFood] = useState(false);
   
+  // Nutrition capture states
+  const [currentMode, setCurrentMode] = useState<'photo' | 'voice' | 'manual' | 'barcode' | 'nutrition-capture' | 'confirm'>('photo');
+  const [nutritionCaptureData, setNutritionCaptureData] = useState<any>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
@@ -253,6 +260,18 @@ const CameraPage = () => {
     // Clear the router state so back/forward doesn't re-trigger
     navigate('.', { replace: true, state: null });
   }, [location.state, navigate]);
+
+  // Detect "nutrition-capture" mode on entry
+  useEffect(() => {
+    const mode = (location.state as any)?.mode;
+    const productData = (location.state as any)?.productData;
+
+    if (mode === 'nutrition-capture' && productData) {
+      console.log('[CAMERA][NUTRITION_CAPTURE]', 'Starting NF capture flow');
+      setCurrentMode('nutrition-capture');
+      setNutritionCaptureData(productData);
+    }
+  }, [location.state]);
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('reset') === 'true') {
@@ -532,11 +551,83 @@ const CameraPage = () => {
     }
   };
 
+  // Nutrition capture completion handler
+  const completeNutritionCapture = async (nfImageDataUrl: string) => {
+    try {
+      setIsAnalyzing(true);
+      setProcessingStep('Extracting nutrition facts...');
+
+      console.log('[CAMERA][NUTRITION_CAPTURE][START]', 'OCR processing nutrition facts image');
+
+      // Extract text from nutrition facts image using OCR
+      const ocrResult = await callOCRFunctionWithDataUrl(nfImageDataUrl);
+      const ocrText = ocrResult.summary?.text_joined || '';
+
+      console.log('[CAMERA][NUTRITION_CAPTURE][OCR_TEXT]', { textLength: ocrText.length });
+
+      // Parse serving grams from OCR text
+      const ocr = parseOCRServing(ocrText);
+      const grams = ocr?.grams ?? null;
+
+      console.log('[CAMERA][NUTRITION_CAPTURE][OCR]', { 
+        grams, 
+        confidence: ocr?.confidence,
+        source: ocr?.source,
+        extractedText: ocr?.extractedText 
+      });
+
+      const pd = nutritionCaptureData || {};
+      const name = pd.name || 'Unknown Product';
+
+      const prefill = buildLogPrefill(
+        name,
+        pd.brand,
+        nfImageDataUrl,                 // use the NF image for the confirm card
+        pd.ingredientsText,
+        [], [], [],
+        {
+          calories: 0, fat_g: 0, sat_fat_g: 0, carbs_g: 0,
+          sugar_g: 0, fiber_g: 0, protein_g: 0, sodium_mg: 0,
+          factor: grams ? (grams / 100) : 1.0,
+        },
+        grams,
+        true  // requiresConfirmation if grams is null
+      );
+
+      console.log('[CAMERA][NUTRITION_CAPTURE][PREFILL]', {
+        grams,
+        requiresConfirmation: prefill.item.requiresConfirmation,
+        hasImage: !!nfImageDataUrl
+      });
+
+      // Reuse existing confirm flow by passing logPrefill back into this route
+      navigate('.', { replace: true, state: { logPrefill: prefill } });
+
+      // Reset mode state
+      setCurrentMode('photo');
+      setNutritionCaptureData(null);
+      setSelectedImage(null);
+
+    } catch (e) {
+      console.error('[CAMERA][NUTRITION_CAPTURE][ERROR]', e);
+      toast.error('Failed to process nutrition facts. Please try again or enter manually.');
+      // Keep user in capture mode; they can retake the photo
+    } finally {
+      setIsAnalyzing(false);
+      setProcessingStep('');
+    }
+  };
+
   const analyzeImage = async () => {
     if (!selectedImage) {
       console.error('No selected image to analyze');
       toast.error('No image selected');
       return;
+    }
+
+    // Handle nutrition-capture mode separately
+    if (currentMode === 'nutrition-capture') {
+      return completeNutritionCapture(selectedImage);
     }
 
     console.log('=== Starting image analysis ===');
@@ -721,7 +812,7 @@ const CameraPage = () => {
       finalConfidence: 0,
       errors: [] as string[],
       success: false
-    };
+  };
 
     console.log('🍎 === NUTRITION ESTIMATION DEBUG START ===');
     console.log('📊 Initial parameters:', { foodName, hasOcrText: !!ocrText, hasBarcode: !!barcode, barcode });
@@ -2872,20 +2963,30 @@ console.log('Global search enabled:', enableGlobalSearch);
         </Card>
       )}
 
-      {/* Photo Analysis Card - Only show for food images, not barcodes */}
+      {/* Photo Analysis Card - Handle nutrition capture mode */}
       {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && !showMultiAIDetection && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
-            <CardTitle>Analyze Your Meal</CardTitle>
+            <CardTitle>
+              {currentMode === 'nutrition-capture' ? 'Nutrition Facts Capture' : 'Analyze Your Meal'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
               <img
                 src={selectedImage}
-                alt="Selected meal"
+                alt={currentMode === 'nutrition-capture' ? 'Nutrition Facts Label' : 'Selected meal'}
                 className="w-full h-64 object-cover rounded-lg"
               />
             </div>
+            
+            {currentMode === 'nutrition-capture' && (
+              <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  📊 We'll scan this nutrition facts label to extract serving size information for: <strong>{nutritionCaptureData?.name}</strong>
+                </p>
+              </div>
+            )}
             
             {/* Top row: Cancel and Try Photo Again */}
             <div className="flex space-x-3">
@@ -2910,7 +3011,7 @@ console.log('Global search enabled:', enableGlobalSearch);
               </Button>
             </div>
 
-            {/* Bottom row: Analyze Food (full width) */}
+            {/* Bottom row: Analyze Food/Extract Nutrition (full width) */}
             <Button
               onClick={analyzeImage}
               disabled={isAnalyzing}
@@ -2924,7 +3025,7 @@ console.log('Global search enabled:', enableGlobalSearch);
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Analyze Food
+                  {currentMode === 'nutrition-capture' ? 'Extract Nutrition Facts' : 'Analyze Food'}
                 </>
               )}
             </Button>

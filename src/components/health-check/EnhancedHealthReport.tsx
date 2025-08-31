@@ -290,12 +290,20 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     });
   }, []);
 
-  // Hard wall: per-serving display computation (local memo only)
+  // Hard wall: per-serving display computation (local memo only) - NO 30g FALLBACKS
   const perServingDisplay = useMemo(() => {
-    const grams = portion?.grams || 30; // Keep 30 for display calculation only
+    const portionGrams = portion?.grams ?? null;
+    const scaleFactor = portionGrams ? (portionGrams / 100) : 1.0; // don't fake-scale when unknown
     const per100Raw = result?.nutritionData || {};
-    trace('PORTION:DISPLAY:COMPUTE', { grams, hasNutrition: !!per100Raw });
-    return scalePer100ForDisplay(per100Raw, grams);
+    trace('PORTION:DISPLAY:COMPUTE', { 
+      portionGrams, 
+      scaleFactor, 
+      hasNutrition: !!per100Raw,
+      unknownServing: portionGrams === null 
+    });
+    
+    // When grams are unknown, show per-100g values (scaleFactor = 1.0)
+    return scalePer100ForDisplay(per100Raw, portionGrams || 100);
   }, [portion?.grams, result?.nutritionData]);
 
   // Generate stable fingerprint for effect dependency
@@ -317,8 +325,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
       hasIngredientsText: !!ingredientsText
     });
     
-    // Immediately show temporary fallback
-    setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
+    // Start with no portion - let resolver determine
+    setPortion({ grams: null, source: 'unknown', label: 'Unknown serving' });
     
     const runDetection = async () => {
       try {
@@ -361,6 +369,17 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           source: portionResult.source,
           label: portionResult.label,
           requiresConfirmation: portionResult.requiresConfirmation
+        });
+        
+        // Add structured trace logging after portion resolution
+        console.log('[PORTION][TRACE]', {
+          upc: analysisData?.barcode,
+          productName: result.itemName || result.productName,
+          hasPerServingFromDB: Boolean((result as any)?.nutrition?.perServing_kcal || (result as any)?.nutrition?.serving_size_gram || (result as any)?.nutrition?.serving_size_g || (result as any)?.nutrition?.serving_g),
+          ocrAttempted: Boolean((portionResult as any)?.debug?.ocrAttempted),
+          ocrFoundGrams: (portionResult as any)?.debug?.ocrGrams ?? null,
+          finalServingGrams: portionResult.grams ?? null,
+          source: portionResult.source,
         });
         
         trace('PORTION:EFFECT:SET_STATE', {
@@ -595,7 +614,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           <SaveCTA
             result={result}
             analysisData={analysisData}
-            portionGrams={portion?.grams || 30} // Keep 30 for display only
+            portionGrams={portion?.grams ?? null} // No 30g fallback
             ocrHash={ocrHash}
             onSaved={(logId) => {
               toast({
@@ -608,10 +627,29 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
-              // Sanitize brand-only titles
-              const sanitizedTitle = sanitizeTitle(result.itemName || result.productName || 'Unknown Product', undefined);
-              
-              // Build prefill data from current report
+              const name = result.itemName || result.productName || 'Unknown Product';
+
+              if (!portion?.grams) {
+                console.log('[HEALTH][LOG_FOOD]', 'Routing to nutrition-capture (serving unknown)');
+
+                navigate('/camera', {
+                  state: {
+                    mode: 'nutrition-capture',
+                    productData: {
+                      upc: analysisData?.barcode,
+                      name,
+                      brand: (result as any).brand || undefined,
+                      imageUrl: analysisData?.imageUrl, // keep the scan image if we have one
+                      ingredientsText: result.ingredientsText,
+                      // send what we have; Camera will OCR the NF image to get grams
+                    }
+                  }
+                });
+                return;
+              }
+
+              // Known grams path: build prefill and open confirm like today
+              const sanitizedTitle = sanitizeTitle(name, undefined);
               const imageForConfirm = analysisData?.imageUrl;
               const prefill = buildLogPrefill(
                 sanitizedTitle,
@@ -624,19 +662,18 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 {
                   calories: perServingDisplay.calories || nutritionData.calories || 0,
                   fat_g: perServingDisplay.fat || nutritionData.fat || 0,
-                  sat_fat_g: perServingDisplay.sat_fat || 0, // estimate from total fat
+                  sat_fat_g: perServingDisplay.sat_fat || 0,
                   carbs_g: perServingDisplay.carbs || nutritionData.carbs || 0,
                   sugar_g: perServingDisplay.sugar || nutritionData.sugar || 0,
                   fiber_g: perServingDisplay.fiber || nutritionData.fiber || 0,
                   protein_g: perServingDisplay.protein || nutritionData.protein || 0,
                   sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
-                  factor: portion?.grams ? portion.grams / 100 : 1.0, // scaling factor
+                  factor: (portion.grams / 100),
                 },
-                portion?.grams ?? null,
-                portion?.requiresConfirmation || false
+                portion.grams,
+                false
               );
-              
-              // Navigate to camera page with prefill data
+
               navigate('/camera', { state: { logPrefill: prefill } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {
