@@ -557,9 +557,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {currentFoodItem.image ? (
+              {/* Image with defensive rendering */}
+              {(currentFoodItem.image || (currentFoodItem as any)?.imageUrl) ? (
                 <img 
-                  src={currentFoodItem.image} 
+                  src={currentFoodItem.image || (currentFoodItem as any)?.imageUrl} 
                   alt={currentFoodItem.name}
                   className="w-16 h-16 rounded-xl object-cover"
                   loading="eager"

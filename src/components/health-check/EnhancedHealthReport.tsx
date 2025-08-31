@@ -285,7 +285,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Hard wall: per-serving display computation (local memo only)
   const perServingDisplay = useMemo(() => {
-    const grams = portion?.grams ?? 30;
+    const grams = portion?.grams ?? 30; // Only fallback if resolver hasn't run yet
     const per100Raw = result?.nutritionData || {};
     trace('PORTION:DISPLAY:COMPUTE', { grams, hasNutrition: !!per100Raw });
     return scalePer100ForDisplay(per100Raw, grams);
@@ -310,8 +310,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
       hasIngredientsText: !!ingredientsText
     });
     
-    // Immediately show temporary fallback
-    setPortion({ grams: 30, source: 'fallback', label: '30g · est.' });
+    // Let the resolver determine the actual portion instead of external override
+    setPortion(null);
     
     const runDetection = async () => {
       try {
