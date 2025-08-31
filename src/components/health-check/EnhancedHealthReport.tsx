@@ -612,10 +612,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               const sanitizedTitle = sanitizeTitle(result.itemName || result.productName || 'Unknown Product', undefined);
               
               // Build prefill data from current report
+              const imageForConfirm = analysisData?.imageUrl;
               const prefill = buildLogPrefill(
                 sanitizedTitle,
                 undefined, // brand not available in HealthAnalysisResult
-                analysisData?.imageUrl,
+                imageForConfirm,
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
@@ -631,7 +632,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                   sodium_mg: perServingDisplay.sodium || nutritionData.sodium || 0,
                   factor: portion?.grams ? portion.grams / 100 : 1.0, // scaling factor
                 },
-                portion?.grams, // no ?? 30
+                portion?.grams ?? null,
                 portion?.requiresConfirmation || false
               );
               
