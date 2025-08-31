@@ -247,7 +247,7 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
           )}
         </div>
         
-        <div className="mt-3 mb-2 flex items-center justify-center gap-2">
+        <div className="mt-5 mb-2 flex items-center justify-center gap-2">
           <div className="flex bg-muted rounded-lg p-1 whitespace-nowrap">
             <button
               onClick={() => handleModeChange('per100g')}
