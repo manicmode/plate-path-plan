@@ -6,8 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DialogClose } from '@/components/ui/dialog';
 import { X, Clock, Calendar, Repeat } from 'lucide-react';
 import { Reminder } from '@/hooks/useReminders';
+
+const CONFIRM_FIX_REV = "2025-08-31T15:35Z-r10";
 
 interface ReminderFormProps {
   reminder?: Reminder;
@@ -93,9 +96,17 @@ export const ReminderForm: React.FC<ReminderFormProps> = ({
         <CardTitle className="text-xl font-bold">
           {reminder ? 'Edit Reminder' : 'Create Reminder'}
         </CardTitle>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <X className="h-4 w-4" />
-        </Button>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            aria-label="Close"
+            data-keep-close="true"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </DialogClose>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">

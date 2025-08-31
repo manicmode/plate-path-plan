@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Bell, Clock, X } from 'lucide-react';
 import { ReminderForm } from './ReminderForm';
@@ -16,7 +16,7 @@ interface ReminderToggleProps {
   onReminderClose?: () => void;
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r9";
+const CONFIRM_FIX_REV = "2025-08-31T15:35Z-r10";
 
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
@@ -71,6 +71,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
       keep: b.hasAttribute('data-keep-close'),
     }));
     console.log('[A11Y][CLOSE-COUNT]', {
+      rev: CONFIRM_FIX_REV,
       confirm: list.filter(x => x.inConfirm).length,
       reminder: list.filter(x => x.inReminder).length,
       detail: list
@@ -115,14 +116,6 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
           <VisuallyHidden>
             <DialogTitle id="reminder-title">Create Reminder</DialogTitle>
           </VisuallyHidden>
-
-          {/* ✅ The only visible header + the only visible close */}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Create Reminder</h2>
-            <DialogClose aria-label="Close" data-keep-close="true" className="opacity-70 hover:opacity-100">
-              <X className="h-4 w-4" />
-            </DialogClose>
-          </div>
           <ReminderForm
             prefilledData={{
               label: `Take ${foodName}`,
