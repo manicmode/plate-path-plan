@@ -424,7 +424,7 @@ export async function resolvePortion(
     console.log('[PORTION][OCR]', 'No OCR text provided');
   }
   
-  // Source 3: Ratio calculation
+  // Source 3: Ratio calculation (legacy method)
   const ratioCandidate = calculateFromRatio(productData);
   if (ratioCandidate) {
     console.log('[PORTION][RATIO]', 'Found ratio candidate:', ratioCandidate.grams, 'g');
@@ -433,6 +433,30 @@ export async function resolvePortion(
     console.log('[PORTION][RATIO]', 'No ratio calculation possible:', { 
       nutrition: !!productData?.nutrition,
       reason: !productData?.nutrition ? 'no_nutrition_data' : 'missing_per_serving_fields'
+    });
+  }
+
+  // Source 3b: Enhanced ratio calculation from calories
+  const per100Kcal = productData?.nutritionData?.per100?.calories;
+  const perServKcal = productData?.nutritionData?.perServing?.calories;
+  if (isFinite(per100Kcal) && per100Kcal! > 0 && isFinite(perServKcal) && perServKcal! > 0) {
+    const grams = Math.round(100 * (perServKcal! / per100Kcal!));
+    if (grams >= 5 && grams <= 300) {
+      candidates.push({
+        grams,
+        confidence: 0.65,
+        source: 'ratio',
+        label: `${grams}g (from calories ratio)`,
+        details: 'Computed from energy-kcal_serving vs energy-kcal_100g'
+      });
+      console.log('[PORTION][RATIO][CANDIDATE]', { per100Kcal, perServKcal, grams });
+    } else {
+      console.log('[PORTION][RATIO][REJECT_RANGE]', { per100Kcal, perServKcal, grams });
+    }
+  } else {
+    console.log('[PORTION][RATIO]', 'No ratio calculation possible', {
+      hasPer100: isFinite(per100Kcal),
+      hasPerServ: isFinite(perServKcal)
     });
   }
   

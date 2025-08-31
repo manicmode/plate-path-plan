@@ -63,7 +63,10 @@ const clamp10 = (n: any) => {
 };
 
 // Helper to safely convert to number
-const num = (v: any) => (v == null ? 0 : Number(v)) || 0;
+const num = (v: any) => (v === 0 || (typeof v === 'number' && isFinite(v))) ? v : (v ? Number(v) : undefined);
+
+// Helper to convert kJ to kcal
+const kjToKcal = (v?: number) => (v && isFinite(v)) ? v * 0.239006 : undefined;
 
 // Convert OFF nutriments to clean macro object
 const macrosFromNutriments = (n: any = {}) => ({
@@ -286,12 +289,25 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         ? Number(p.serving_quantity)
         : null);
 
+    // Extract calories for ratio calculation
+    const kcal100 =
+      num(nutr['energy-kcal_100g']) ??
+      kjToKcal(num(nutr['energy_100g'])) ??      // some OFF datasets use kJ under `energy_100g`
+      kjToKcal(num(nutr['energy-kj_100g']));
+
+    const kcalServing =
+      num(nutr['energy-kcal_serving']) ??
+      kjToKcal(num(nutr['energy_serving'])) ??   // kJ per serving
+      kjToKcal(num(nutr['energy-kj_serving']));
+
     // Debug raw fields
     console.log('[ADAPTER][BARCODE.OUT][SERVING_KEYS]', {
       raw_serving_size: rawServingSizeTxt,
       serving_size_g: p?.serving_size_g,
       nutriments_serving_size_g: nutr?.serving_size_g,
       parsedServingG,
+      nutriments_energy_kcal_100g: nutr['energy-kcal_100g'],
+      nutriments_energy_kcal_serving: nutr['energy-kcal_serving']
     });
 
     const legacy = {
@@ -304,8 +320,10 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
         calories: per100.energyKcal, protein: per100.protein_g, carbs: per100.carbs_g,
         sugars_g: per100.sugar_g, fat: per100.fat_g, saturated_fat_g: per100.satfat_g,
         fiber: per100.fiber_g, sodium: per100.sodium_mg,
-        per100,
-        perServing,
+        per100: { ...(per100 || {}), calories: kcal100 },
+        perServing: kcalServing !== undefined 
+          ? { ...(perServing || {}), calories: kcalServing }
+          : perServing,
         nutritionPropType: perServing ? 'perServing' : 'per100',
         serving_size_g: parsedServingG ?? null,
       },
