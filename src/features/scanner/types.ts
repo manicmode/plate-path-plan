@@ -1,3 +1,4 @@
 export type CaptureMode = 'barcode' | 'nutrition';
 
-export default {};
+const _default = {};
+export default _default;

@@ -351,32 +351,17 @@ const CameraPage = () => {
   }, [lastUPCData, setServing]);
 
   // Simplified barcode handler for demo
-  const handleBarcodeDetected = useCallback(async (barcode: string) => {
-    console.log('Barcode detected:', barcode);
-    
-    // Simulate UPC lookup
-    const mockUPCData = {
-      name: 'Test Product',
-      title: 'Test Product Title',
-      servingGrams: null, // This will trigger nutrition facts capture
-      ingredientsText: 'Ingredients list...'
-    };
-    
-    // Check if we have serving grams from the barcode lookup
-    if (!mockUPCData.servingGrams) {
-      console.log('[PORTION][BARCODE] No serving grams found, requesting nutrition facts capture');
-      setLastUPCData({
-        ...mockUPCData,
-        barcode: barcode
-      });
-      setCaptureMode('nutrition');
-      setNutritionOverlay('Photograph the Nutrition Facts panel. Make sure "Serving size" is visible.');
+  const handleBarcodeResolved = useCallback(async (upcMeta?: { title?: string; ingredients?: string; servingGrams?: number | null }) => {
+    if (upcMeta?.servingGrams && upcMeta.servingGrams > 0) {
+      console.log('[PORTION][RESOLVE] Using existing serving grams:', upcMeta.servingGrams);
+      setServing(upcMeta.servingGrams);
       return;
     }
-    
-    // Handle normal barcode processing if serving grams exist
-    console.log('Processing barcode with serving grams:', mockUPCData.servingGrams);
-  }, []);
+    console.log('[PORTION][BARCODE] No serving grams found, requesting nutrition facts capture');
+    setLastUPCData(upcMeta);
+    setCaptureMode('nutrition');
+    setNutritionOverlay('Photograph the Nutrition Facts panel. Make sure "Serving size" is visible.');
+  }, [setServing]);
 
   // Render nutrition facts capture overlay
   const renderNutritionCaptureOverlay = () => {
@@ -433,10 +418,13 @@ const CameraPage = () => {
         {renderNutritionCaptureOverlay()}
       </div>
 
-      {/* Test button for barcode detection */}
-      <div className="p-4">
-        <Button onClick={() => handleBarcodeDetected('123456789012')}>
-          Test Barcode Detection
+      {/* Test buttons for barcode detection */}
+      <div className="p-4 space-y-2">
+        <Button onClick={() => handleBarcodeResolved({ title: 'Test Product', servingGrams: null })}>
+          Test: No Serving Grams (Nutrition Needed)
+        </Button>
+        <Button onClick={() => handleBarcodeResolved({ title: 'Test Product', servingGrams: 55 })}>
+          Test: Has Serving Grams (55g)
         </Button>
       </div>
 
@@ -448,4 +436,5 @@ const CameraPage = () => {
   );
 };
 
+export { CameraPage };
 export default CameraPage;
