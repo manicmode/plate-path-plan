@@ -591,22 +591,11 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               {getScoreMessage(healthScore)}
             </p>
             
-            {/* Source Badge */}
-            {analysisData?.source && (
-              <div className="mt-4 space-y-2">
-                <Badge variant="outline" className="text-xs">
-                  Source: {analysisData.source === 'barcode' ? 'Barcode' : 
-                          analysisData.source === 'manual' ? 'Manual' : 'Photo'}
-                </Badge>
-                
-                {/* Portion Badge */}
-                <div>
-                  <Badge variant="secondary" className="text-xs">
-                    Portion: {portion?.label ?? 'Unknown serving'}
-                  </Badge>
-                </div>
-              </div>
-            )}
+            {/* Meta chips removed per requirements */}
+            {import.meta.env.VITE_DEBUG_CONFIRM === 'true' && (() => {
+              console.log('[HEALTH_CARD][META_CHIPS]', { rendered: false });
+              return null;
+            })()}
           </CardContent>
         </Card>
 
