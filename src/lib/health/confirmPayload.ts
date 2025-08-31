@@ -43,23 +43,37 @@ export type ConfirmPayload = {
   portionGrams: number;
 };
 
-function imageFrom(norm?: ExtendedNormalizedProduct, raw?: any): string | undefined {
-  const img = (
-    norm?.imageUrl ||
+function imageFrom(origin: 'barcode'|'photo'|'health-report', norm?: ExtendedNormalizedProduct, raw?: any): string | undefined {
+  // Prefer provider/product images first
+  const provider = norm?.imageUrl ||
     raw?.image_front_url ||
     raw?.image_url ||
-    raw?.images?.[0]?.url ||
     raw?.selected_images?.front?.display?.en ||
     raw?.selected_images?.front?.display?.en_GB ||
+    raw?.images?.[0]?.url ||
     raw?.photo?.url ||
-    raw?.photos?.[0]?.url ||
-    undefined
-  );
-  return sanitizeImageUrl(img);
+    raw?.photos?.[0]?.url;
+
+  if (provider) return provider;
+
+  // Only fall back to camera data-URL for real photo scans with no provider image
+  if (origin === 'photo') {
+    return sanitizeImageUrl(
+      raw?.imageBase64 || raw?.photoDataUrl || raw?.image_base64 || raw?.image
+    );
+  }
+  return undefined;
 }
 
 // Enhanced portion calculation with provider/ratio candidates
-function getBestPortionGrams(norm: ExtendedNormalizedProduct, opts?: { hint?: PortionHint; flags?: any }): { grams: number; source: string } {
+function getBestPortionGrams(norm: ExtendedNormalizedProduct, opts?: { 
+  hint?: PortionHint; 
+  flags?: { portionOffQP?: boolean; emergencyKill?: boolean };
+  meta?: { barcode?: string; id?: string };
+}): { grams: number; source: string } {
+  if (opts?.flags?.emergencyKill) return { source: 'fallback', grams: 30 };
+
+  const allowProvider = opts?.flags?.portionOffQP !== false; // default TRUE
   const cand: Array<{source: string; grams: number; weight: number}> = [];
 
   // 1) user/OCR hints - highest priority
@@ -67,38 +81,28 @@ function getBestPortionGrams(norm: ExtendedNormalizedProduct, opts?: { hint?: Po
     cand.push({ source: opts.hint.source, grams: opts.hint.grams, weight: 95 });
   }
 
-  // 2) Provider serving (OFF) — ENABLED by default
-  if (opts?.flags?.portionOffQP !== false) {
-    if (norm.servingGrams && norm.servingGrams > 0) {
-      cand.push({ source: 'label', grams: norm.servingGrams, weight: 88 });
-    }
+  // 2) DB by barcode (placeholder for future implementation)
+  const barcode = opts?.meta?.barcode || opts?.meta?.id || norm.id;
+  // const db = tryResolveFromDB(barcode); // TODO: implement
+  // if (db?.grams) cand.push({ source: 'db', grams: db.grams, weight: 92 });
+
+  // 3) Provider serving (OFF) — ENABLED by default
+  if (allowProvider && norm.servingGrams && norm.servingGrams > 0) {
+    cand.push({ source: 'label', grams: norm.servingGrams, weight: 88 });
   }
 
-  // 3) Ratio fallback if both per100 & perServing exist on OFF
+  // 4) Ratio fallback if both per100 & perServing exist
   const c100 = norm._per100g?.kcal, cS = norm._serving?.kcal;
-  if (c100 && cS && c100 > 0) {
-    const est = Math.round((100 * cS) / c100);      // grams ≈ 100 * kcal_serv / kcal_100g
-    if (est > 0 && est <= 1000) { // sanity check
-      cand.push({ source: 'ratio', grams: est, weight: 80 });
-    }
+  if (allowProvider && c100 && cS) {
+    const est = Math.round((100 * cS) / c100);
+    if (est > 0) cand.push({ source: 'ratio', grams: est, weight: 80 });
   }
 
-  // 4) Try to extract grams from serving string
-  const servingStr = norm.serving || '';
-  const match = servingStr.match(/(\d+)\s*g/i);
-  if (match) {
-    const grams = parseInt(match[1], 10);
-    if (grams > 0) {
-      cand.push({ source: 'parsed', grams, weight: 75 });
-    }
-  }
+  // 5) Fallback to 30g if no candidates
+  if (!cand.length) return { source: 'fallback', grams: 30 };
 
-  // Default fallback
-  if (!cand.length) return { grams: 30, source: 'fallback' };
-
-  // pick best (highest weight)
-  const best = cand.sort((a,b) => b.weight - a.weight)[0];
-  return { grams: best.grams, source: best.source };
+  // Pick best (highest weight)
+  return cand.sort((a,b)=>b.weight-a.weight)[0];
 }
 
 // Simplified nutrition scaling
@@ -135,7 +139,7 @@ function sanitizeImageUrl(u?: string) {
   if (!u) return undefined;
   if (u.startsWith('data:')) return u;
   // Raw base64 (often starts with /9j/… for JPEG)
-  if (/^[A-Za-z0-9+/=]+$/.test(u.replace(/\s+/g,'')) || u.startsWith('/9j/')) {
+  if (/^[A-Za-z0-9+/=\s]+$/.test(u.replace(/\s+/g,'')) || u.startsWith('/9j/')) {
     return `data:image/jpeg;base64,${u.replace(/^data:image\/\w+;base64,/, '')}`;
   }
   return u;
@@ -209,7 +213,11 @@ export function buildConfirmPayloadFromNormalized(
   norm: ExtendedNormalizedProduct,
   opts: { origin: ConfirmPayload['origin']; raw?: any; hint?: PortionHint }
 ): ConfirmPayload {
-  const best = getBestPortionGrams(norm, { hint: opts.hint, flags: { portionOffQP: true } });
+  const best = getBestPortionGrams(norm, { 
+    hint: opts.hint, 
+    flags: { portionOffQP: true },
+    meta: { barcode: norm.id || opts.raw?.barcode }
+  });
   const grams = best?.grams ?? 30;
   const scaled = scaleNutrientsToPortion(norm, grams);
 
@@ -224,7 +232,7 @@ export function buildConfirmPayloadFromNormalized(
     origin: opts.origin,
     itemName: norm.name,
     brand: norm.brand || undefined,
-    imageUrl: imageFrom(norm, opts.raw),
+    imageUrl: imageFrom(opts.origin, norm, opts.raw),
     ingredientsText: ingredientsText || '',
     allergens,
     additives,

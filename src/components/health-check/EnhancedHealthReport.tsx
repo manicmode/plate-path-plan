@@ -510,31 +510,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               productData={result}
               ocrText={ingredientsText}
-              servingGrams={portion?.grams ?? 30}
-              portionLabel={portion?.label ?? '30g · est.'}
             />
-            {/* PORTION INQUIRY - Call Site Logging */}
-            {(() => {
-              console.info('[PORTION][INQ3][CALL]', {
-                nutritionPropType: 'per100',
-                servingGramsProp: portion?.grams ?? 30,
-                portionLabelProp: portion?.label ?? '30g · est.'
-              });
-              return null;
-            })()}
-            {/* FORENSIC PROBE - PORTION INQUIRY */}
-            {(() => {
-              const route = window.location.pathname;
-              const productId = (result as any)?.id || (result as any)?.barcode || result?.itemName;
-              console.log('[PORTION][INQ][CALL]', { 
-                route, 
-                productId, 
-                nutritionPropType: 'per100', 
-                servingGramsProp: portion?.grams ?? 30, 
-                portionLabelProp: portion?.label ?? '30g · est.' 
-              });
-              return null;
-            })()}
           </TabsContent>
           
           <TabsContent value="flags" className="mt-6">

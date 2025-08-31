@@ -213,6 +213,10 @@ const CameraPage = () => {
       const prefill = (location.state as any)?.logPrefill;
       if (!prefill || prefill.source !== 'health-report') return;
       
+      // Prevent UI flashing by disabling modal states immediately
+      setShowBarcodeNotFound(false);
+      setShowReviewScreen(false);
+      
       console.debug('[CAMERA][PREFILL]', {
         itemName: prefill.item.itemName,
         portionGrams: prefill.item.portionGrams,
@@ -248,7 +252,7 @@ const CameraPage = () => {
       }
       
       console.debug('[CONFIRM][PORTION]', payload.portionGrams);
-      console.debug('[CONFIRM][IMAGE]', !!payload.imageUrl, payload.imageUrl?.slice(0,60));
+      console.debug('[CONFIRM][IMAGE]', !!payload.imageUrl, payload.imageUrl ? payload.imageUrl.slice(0, 64) + '…' : null);
       
       // Map to RecognizedFood format for existing UI
       const prefillFood: RecognizedFood = {
