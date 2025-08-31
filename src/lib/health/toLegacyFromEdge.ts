@@ -157,6 +157,8 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
   });
 }
 
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   console.log('[ADAPTER][IN]', {
     top: Object.keys(envelope||{}).slice(0,10),
@@ -375,6 +377,12 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
 
     // Debug performance logging with structured logs
+    console.log("[ADAPTER][BARCODE.OUT]", {
+      rev: CONFIRM_FIX_REV, 
+      productName: legacy.productName, 
+      productImageUrlLen: (legacy.productImageUrl||"").length
+    });
+    
     if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.VITE_DEBUG_PERF === 'true') {
       console.info('[ADAPTER][BARCODE.OUT]', {
         productName: legacy.productName,
@@ -441,6 +449,12 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
   }
 
+  console.log("[ADAPTER][OUT]", {
+    rev: CONFIRM_FIX_REV, 
+    productName: legacy.productName, 
+    hasImg: !!legacy.productImageUrl
+  });
+  
   if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.DEV) {
     console.log('[ADAPTER][OUT]', {
       productName: legacy.productName,

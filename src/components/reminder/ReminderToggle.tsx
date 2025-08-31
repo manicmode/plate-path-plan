@@ -15,6 +15,8 @@ interface ReminderToggleProps {
   onReminderClose?: () => void;
 }
 
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
   foodData,
@@ -31,9 +33,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     if (checked) {
       setShowReminderForm(true);
       onReminderOpen?.();
-      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-        console.log('[REMINDER][MODAL]', { open: true, showDismissX: false });
-      }
+      console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: true });
     }
   };
 
@@ -46,15 +46,11 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
       setShowReminderForm(false);
       setCreateReminder(false);
       onReminderClose?.();
-      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-        console.log('[REMINDER][MODAL]', { open: false });
-      }
+      console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
     } catch (error) {
       setCreateReminder(false);
       onReminderClose?.();
-      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-        console.log('[REMINDER][MODAL]', { open: false });
-      }
+      console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
     }
   };
 
@@ -62,9 +58,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     setShowReminderForm(false);
     setCreateReminder(false);
     onReminderClose?.();
-    if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-      console.log('[REMINDER][MODAL]', { open: false });
-    }
+      console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
   };
 
   return (

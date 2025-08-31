@@ -72,6 +72,8 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
   onClose,
@@ -101,10 +103,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { playFoodLogConfirm } = useSound();
 
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  const imgUrl = typeof currentFoodItem?.image === 'string' && /^https?:\/\//i.test(currentFoodItem.image)
-    ? currentFoodItem.image
-    : null;
+  // Derive display values with broad fallback
+  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
+  
+  const displayImage = (typeof (currentFoodItem as any)?.imageUrl === "string" && /^https?:\/\//i.test((currentFoodItem as any)?.imageUrl||""))
+    ? (currentFoodItem as any)?.imageUrl
+    : (typeof (currentFoodItem as any)?.productImageUrl === "string" && /^https?:\/\//i.test((currentFoodItem as any)?.productImageUrl||""))
+      ? (currentFoodItem as any)?.productImageUrl
+      : undefined;
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
@@ -112,21 +120,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Add mount and image logging
   React.useEffect(() => {
-    if (currentFoodItem && import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-      const keys = {
-        productName: !!(currentFoodItem as any).productName,
-        productImageUrl: !!(currentFoodItem as any).productImageUrl,  
-        itemName: !!(currentFoodItem as any).itemName
-      };
+    if (currentFoodItem) {
+      const prefillKeys = Object.keys((currentFoodItem as any)||{});
       
       console.log('[CONFIRM][MOUNT]', {
-        name: currentFoodItem.name,
-        imageUrlKind: imgUrl ? 'http' : 'none',
-        grams: currentFoodItem.portionGrams || null,
-        keys
+        rev: CONFIRM_FIX_REV, 
+        name: displayName, 
+        imageUrlKind: displayImage?'http':'none', 
+        grams: (currentFoodItem as any)?.portionGrams ?? null, 
+        prefillKeys
       });
     }
-  }, [currentFoodItem, imgUrl]);
+  }, [currentFoodItem, displayName, displayImage]);
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -630,30 +635,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <img
-                src={imgUrl ?? '/emoji/plate.png'}
-                alt={currentFoodItem.name}
+                src={displayImage ?? '/emoji/plate.png'}
+                alt={displayName}
                 className="w-16 h-16 rounded-2xl object-cover"
                 referrerPolicy="no-referrer"
                 decoding="async"
                 loading="lazy"
                 onError={(e) => { 
-                  if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-                    console.log('[CONFIRM][IMAGE]', { error: 'onError->fallback' });
+                  if (!imageError) {
+                    console.log('[CONFIRM][IMAGE]', { rev: CONFIRM_FIX_REV, error: 'onError->fallback' });
+                    setImageError(true);
                   }
                   (e.currentTarget as HTMLImageElement).src = '/emoji/plate.png'; 
                 }}
                 onLoad={() => {
-                  if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-                    console.log('[CONFIRM][IMAGE]', { 
-                      requestedKind: imgUrl ? 'http' : 'none',
-                      final: 'http'
-                    });
-                  }
+                  console.log('[CONFIRM][IMAGE]', { 
+                    rev: CONFIRM_FIX_REV,
+                    requestedKind: displayImage ? 'http' : 'none',
+                    final: displayImage ? 'http' : 'fallback'
+                  });
                 }}
               />
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {currentFoodItem.name}
+                  {displayName}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {adjustedFood.calories} calories
@@ -1071,9 +1076,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Reminder Toggle */}
             <ReminderToggle
-              foodName={currentFoodItem.name}
+              foodName={displayName}
               foodData={{
-                food_name: currentFoodItem.name,
+                food_name: displayName,
                 calories: adjustedFood.calories,
                 protein: adjustedFood.protein,
                 carbs: adjustedFood.carbs,

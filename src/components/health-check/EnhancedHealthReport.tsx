@@ -758,6 +758,8 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 analysisData?.imageUrl
               );
               
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+
               const sanitizedTitle = sanitizeTitle(itemName, undefined);
               
               const per100 = {
@@ -772,11 +774,30 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
               const pg = portion?.grams ?? null;
 
+              // Build prefill with proper precedence
+              const nameCand = result?.productName ?? result?.itemName ?? (result as any)?.title ?? "Food item";
+              const imgCand = (result as any)?.productImageUrl ?? analysisData?.imageUrl;
+              const imageUrlProcessed = /^https?:\/\//i.test(imgCand||"") ? imgCand : undefined;
+              
+              console.log("[PREFILL][BUILD]", {
+                rev: CONFIRM_FIX_REV, 
+                nameCand, 
+                hasImg: !!imgCand, 
+                imageUrlKind: imageUrlProcessed?'http':'none', 
+                portionGrams: pg
+              });
+              
+              console.log("[PREFILL][GUARD]", {
+                rev: CONFIRM_FIX_REV, 
+                originalKind: imgCand ? (imgCand.startsWith("https://")?'https':imgCand.startsWith("http://")?'http':imgCand.startsWith("data:")?'data':imgCand.startsWith("blob:")?'blob':'other') : 'none', 
+                allowed: !!imageUrlProcessed
+              });
+
               // IMPORTANT: never persist base64; imageUrl must be http(s) or undefined.
               const prefill = buildLogPrefill(
-                sanitizedTitle,
+                nameCand,
                 undefined, // brand not available in HealthAnalysisResult
-                imageUrl,               // never pass base64
+                imageUrlProcessed,               // never pass base64
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
@@ -786,7 +807,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 portion?.requiresConfirmation || false
               );
 
-              navigate('/camera', { state: { logPrefill: prefill } });
+              navigate('/camera', { state: { logPrefill: prefill, __rev: CONFIRM_FIX_REV } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {
                 itemName: prefill.item.itemName,

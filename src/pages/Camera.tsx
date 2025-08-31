@@ -228,10 +228,19 @@ const CameraPage = () => {
     }
   }, [location.search, navigate]);
 
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+
   // Handle prefill data from Health Report
   useEffect(() => {
     const prefill = (location.state as any)?.logPrefill;
     if (!prefill || prefill.source !== 'health-report') return;
+    
+    console.log("[PREFILL][ARRIVE]", {
+      rev: CONFIRM_FIX_REV, 
+      keys: Object.keys(prefill?.item||{}), 
+      itemName: prefill?.item?.itemName, 
+      imageUrlKind: /^https?:\/\//i.test(prefill?.item?.imageUrl||"")?'http':'none'
+    });
     
     if (prefill.item.imageUrl) {
       console.log('[CAMERA][PREFILL][image]', { 
@@ -627,12 +636,11 @@ const CameraPage = () => {
         true  // requiresConfirmation if grams is null
       );
 
-      if (import.meta.env.VITE_DEBUG_CONFIRM === 'true') {
-        console.log('[PREFILL][GUARD]', { 
-          droppedBase64: true, 
-          length: nfImageDataUrl?.length || 0 
-        });
-      }
+      console.log('[PREFILL][GUARD]', {
+        rev: CONFIRM_FIX_REV, 
+        droppedBase64: true, 
+        length: nfImageDataUrl?.length || 0 
+      });
 
       console.log('[CAMERA][NUTRITION_CAPTURE][PREFILL]', {
         grams,
