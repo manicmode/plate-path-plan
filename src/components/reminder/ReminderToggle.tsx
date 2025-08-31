@@ -3,6 +3,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Bell, Clock, X } from 'lucide-react';
 import { ReminderForm } from './ReminderForm';
 import { useReminders } from '@/hooks/useReminders';
@@ -15,7 +16,7 @@ interface ReminderToggleProps {
   onReminderClose?: () => void;
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r9";
 
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
@@ -108,19 +109,20 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
           className="sm:max-w-md"
           showCloseButton={false}
           data-dialog-root="reminder-modal"
+          aria-labelledby="reminder-title"
         >
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              Create Reminder
-              <DialogClose
-                aria-label="Close"
-                data-keep-close="true"
-                className="opacity-70 hover:opacity-100 transition-opacity"
-              >
-                <X className="h-4 w-4" />
-              </DialogClose>
-            </DialogTitle>
-          </DialogHeader>
+          {/* A11y-only title to satisfy Radix without adding a visible header */}
+          <VisuallyHidden>
+            <DialogTitle id="reminder-title">Create Reminder</DialogTitle>
+          </VisuallyHidden>
+
+          {/* ✅ The only visible header + the only visible close */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Create Reminder</h2>
+            <DialogClose aria-label="Close" data-keep-close="true" className="opacity-70 hover:opacity-100">
+              <X className="h-4 w-4" />
+            </DialogClose>
+          </div>
           <ReminderForm
             prefilledData={{
               label: `Take ${foodName}`,

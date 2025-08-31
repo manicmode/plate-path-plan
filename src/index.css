@@ -1492,12 +1492,12 @@ body {
   display: none !important;
 }
 
-/* Hide ANY Confirm dialog close buttons while the Reminder is open (portal-safe) */
+/* While Reminder is open, hide ANY Confirm close buttons (even if they live in a portal) */
 body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[aria-label="Close"] {
   display: none !important;
 }
 
-/* Keep the Reminder header close visible (the one we explicitly render) */
+/* Always keep the Reminder header close visible */
 [data-dialog-root="reminder-modal"] [data-keep-close="true"][aria-label="Close"] {
   display: inline-flex !important;
 }

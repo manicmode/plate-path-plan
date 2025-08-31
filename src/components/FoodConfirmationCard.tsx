@@ -123,16 +123,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => document.body.removeAttribute('data-reminder-open');
   }, [reminderOpen]);
 
-  // Set body flag when reminder is open for CSS portal handling
-  useEffect(() => {
-    if (reminderOpen) {
-      document.body.setAttribute('data-reminder-open', 'true');
-    } else {
-      document.body.removeAttribute('data-reminder-open');
-    }
-    return () => document.body.removeAttribute('data-reminder-open');
-  }, [reminderOpen]);
-
   // Derive display values with broad fallback
   const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
   
