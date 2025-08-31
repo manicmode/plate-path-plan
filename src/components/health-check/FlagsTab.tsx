@@ -262,7 +262,7 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive rounded-lg">
               <div className="flex items-center">
                 <AlertTriangle className="w-5 h-5 text-destructive mr-2" />
-                <p className="text-destructive-foreground font-semibold">
+                <p className="text-destructive font-semibold">
                   {visibleFlags.length} ingredient{visibleFlags.length > 1 ? 's or nutrition values' : ' or nutrition value'} 
                   {' '}flagged for your attention.
                 </p>
