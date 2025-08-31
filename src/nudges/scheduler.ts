@@ -172,6 +172,13 @@ export async function selectNudgesForUser(
           pass: flagEnabled,
           detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (QA mode)' : '')
         });
+
+        // Log feature flag decisions
+        const logFlag = async () => {
+          const { nlog } = await import('@/lib/debugNudge');
+          nlog("NUDGE][FLAG", { key: definition.enabledFlag, enabled: flagEnabled });
+        };
+        logFlag();
         
         if (!flagEnabled) {
           allowed = false;
@@ -231,9 +238,9 @@ export async function selectNudgesForUser(
         // Use synthetic history
         todayCount = qaMock.qaHistory.shownToday?.[definition.id] || 0;
       } else {
-        // Query real database
-        const todayStart = new Date(now);
-        todayStart.setHours(0, 0, 0, 0);
+        // Query real database using local day bounds
+        const { getLocalDayBounds } = await import('@/lib/time/localDay');
+        const { startIsoUtc, endIsoUtc } = getLocalDayBounds(now);
         
         const { data: todayShownCount } = await supabase
           .from('nudge_events')
@@ -241,7 +248,8 @@ export async function selectNudgesForUser(
           .eq('user_id', userId)
           .eq('nudge_id', definition.id)
           .eq('event', 'shown')
-          .gte('ts', todayStart.toISOString());
+          .gte('ts', startIsoUtc)
+          .lt('ts', endIsoUtc);
 
         todayCount = todayShownCount?.length || 0;
       }
@@ -335,7 +343,11 @@ export async function selectNudgesForUser(
 }
 
 async function buildUserContext(userId: string, currentTime: Date): Promise<UserNudgeContext> {
-  const today = currentTime.toISOString().split('T')[0];
+  const { getLocalDayBounds, getLocalDateKey } = await import('@/lib/time/localDay');
+  const { nlog } = await import('@/lib/debugNudge');
+  
+  const { startIsoUtc, endIsoUtc } = getLocalDayBounds(currentTime);
+  const today = getLocalDateKey(currentTime); // Use local date key instead of UTC
   const twoDaysAgo = new Date(currentTime.getTime() - 2 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(currentTime.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -350,22 +362,23 @@ async function buildUserContext(userId: string, currentTime: Date): Promise<User
       .limit(1)
       .maybeSingle();
 
-    // Get last mood log
+    // Get last mood log using local day bounds
     const { data: moodLogs } = await supabase
       .from('mood_logs')
       .select('created_at')
       .eq('user_id', userId)
-      .eq('date', today)
+      .gte('created_at', startIsoUtc)
+      .lt('created_at', endIsoUtc)
       .limit(1)
       .maybeSingle();
 
-    // Get today's water logs count
+    // Get today's water logs count using local day bounds
     const { data: waterLogs } = await supabase
       .from('hydration_logs')
       .select('id', { count: 'exact' })
       .eq('user_id', userId)
-      .gte('created_at', today + 'T00:00:00Z')
-      .lt('created_at', today + 'T23:59:59Z');
+      .gte('created_at', startIsoUtc)
+      .lt('created_at', endIsoUtc);
 
     // Get recent activity
     const { data: recentActivity } = await supabase
@@ -391,7 +404,7 @@ async function buildUserContext(userId: string, currentTime: Date): Promise<User
       .eq('category', 'breathing')
       .gte('completed_at', sevenDaysAgo.toISOString());
 
-    return {
+    const context = {
       userId,
       currentTime,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -404,6 +417,15 @@ async function buildUserContext(userId: string, currentTime: Date): Promise<User
       stressTagsLast48h: (stressMoods?.length || 0) > 0,
       breathingSessionsLast7d: recentBreathingSessions?.length || 0
     };
+
+    nlog("NUDGE][CANDIDATES", {
+      tzOffsetMin: currentTime.getTimezoneOffset(),
+      waterLogsToday: context.waterLogsToday,
+      lastMoodLog: context.lastMoodLog ? context.lastMoodLog.toISOString() : null,
+      localDay: today,
+    });
+
+    return context;
   } catch (error) {
     console.error('Error building user context:', error);
     // Return safe defaults

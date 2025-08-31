@@ -8,6 +8,18 @@ export function useNudgeScheduler() {
   const { user } = useAuth();
   const [selectedNudges, setSelectedNudges] = useState<SelectedNudge[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Debug logging on boot
+  useEffect(() => {
+    const logBoot = async () => {
+      const { nlog } = await import('@/lib/debugNudge');
+      nlog("NUDGE][BOOT", {
+        tzOffsetMin: new Date().getTimezoneOffset(),
+        flags: { NUDGE_SCHEDULER_ENABLED: true },
+      });
+    };
+    logBoot();
+  }, []);
 
   const loadNudges = async () => {
     if (!user?.id) {
@@ -30,6 +42,14 @@ export function useNudgeScheduler() {
       const nudges = await selectNudgesForUser(user.id, 2) as SelectedNudge[];
       setSelectedNudges(nudges);
 
+      // Log nudge selection
+      const { nlog } = await import('@/lib/debugNudge');
+      if (nudges.length > 0) {
+        for (const nudge of nudges) {
+          nlog("NUDGE][PICK", { id: nudge.id, reason: nudge.reason, window: nudge.definition.window });
+        }
+      }
+
       // Log 'shown' events for selected nudges
       for (const nudge of nudges) {
         if ('runId' in nudge && 'reason' in nudge) {
@@ -39,6 +59,7 @@ export function useNudgeScheduler() {
             reason: nudge.reason,
             runId: nudge.runId
           });
+          nlog("NUDGE][RENDER", { id: nudge.id });
         }
       }
     } catch (error) {
@@ -57,6 +78,9 @@ export function useNudgeScheduler() {
         reason: 'user_dismissed',
         runId: nudge.runId
       });
+      
+      const { nlog } = await import('@/lib/debugNudge');
+      nlog("NUDGE][SEEN", { id: nudge.id, action: 'dismissed' });
       
       // Remove from local state
       setSelectedNudges(prev => prev.filter(n => n.runId !== nudge.runId));

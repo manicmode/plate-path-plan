@@ -46,12 +46,29 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     cooldownDays: 1,
     dailyCap: 1,
     maxPer7d: 7,
-    window: { startHour: 6, endHour: 12 }, // 06:00-11:59 with end-exclusive
+    window: { startHour: 19, endHour: 22 }, // 19:00-22:00 (7-10pm local time)
     isEligible: async (ctx: UserNudgeContext) => {
-      // Check if user hasn't done mood log today
-      const today = new Date().toISOString().split('T')[0];
-      const lastLogDate = ctx.lastMoodLog?.toISOString().split('T')[0];
-      return lastLogDate !== today;
+      // Use local date comparison instead of UTC
+      const { getLocalDateKey } = await import('@/lib/time/localDay');
+      const { nlog } = await import('@/lib/debugNudge');
+      
+      const now = new Date();
+      const hour = now.getHours();
+      const inWindow = hour >= 19 && hour < 22;
+
+      const lastLogKey = ctx.lastMoodLog ? getLocalDateKey(ctx.lastMoodLog) : null;
+      const todayKey = getLocalDateKey(now);
+      const alreadyLoggedToday = lastLogKey === todayKey;
+
+      nlog("NUDGE][DAILY_CHECKIN", {
+        window: "19:00-22:00",
+        inWindow,
+        lastLogKey,
+        todayKey,
+        alreadyLoggedToday,
+      });
+
+      return inWindow && !alreadyLoggedToday;
     },
     render: (props: NudgeRenderProps) => React.createElement(DailyCheckInNudgeWrapper, props)
   },
