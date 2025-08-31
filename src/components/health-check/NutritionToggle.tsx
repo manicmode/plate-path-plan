@@ -7,8 +7,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Info, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { NutritionPer100g, toPerPortion, type PortionInfo } from '@/lib/nutrition/portionCalculator';
 import { detectPortionSafe, getPortionInfoSync, formatPortionDisplay } from '@/lib/nutrition/portionDetectionSafe';
 import { PortionSheetLazy } from './PortionSheetLazy';
@@ -229,20 +228,27 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
             NUTRITION FACTS
           </h3>
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="w-4 h-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Score uses standardized 100g for fairness</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {mode === 'portion' && (
+            <PortionSheetLazy
+              currentGrams={portionInfo.grams}
+              currentDisplay={portionInfo.display}
+              isEstimated={portionInfo.isEstimated}
+              source={portionInfo.source}
+              productData={productData}
+              nutrition100g={nutrition100g}
+              onPortionChange={handlePortionChange}
+              enabled={portionDetectionEnabled}
+            >
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs" aria-label="Edit portion">
+                {formatPortionDisplay(portionInfo)}
+                <Settings className="w-3 h-3 ml-1" />
+              </Button>
+            </PortionSheetLazy>
+          )}
         </div>
         
-        <div className="flex items-center justify-between mt-4">
-          <div className="flex bg-muted rounded-lg p-1">
+        <div className="mt-3 mb-2 flex items-center justify-center gap-2">
+          <div className="flex bg-muted rounded-lg p-1 whitespace-nowrap">
             <button
               onClick={() => handleModeChange('per100g')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -264,26 +270,6 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
               Per portion
             </button>
           </div>
-          
-          {mode === 'portion' && (
-            <div className="flex items-center space-x-2">
-              <PortionSheetLazy
-                currentGrams={portionInfo.grams}
-                currentDisplay={portionInfo.display}
-                isEstimated={portionInfo.isEstimated}
-                source={portionInfo.source}
-                productData={productData}
-                nutrition100g={nutrition100g}
-                onPortionChange={handlePortionChange}
-                enabled={portionDetectionEnabled}
-              >
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
-                  {formatPortionDisplay(portionInfo)}
-                  <Settings className="w-3 h-3 ml-1" />
-                </Button>
-              </PortionSheetLazy>
-            </div>
-          )}
         </div>
       </CardHeader>
       

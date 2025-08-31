@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Lightbulb, ChevronDown, ChevronUp, Target, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { getCachedSuggestions, type Suggestion, type UserProfile, type SuggestionContext } from '@/lib/suggestions/suggestionEngine';
+import { reasonsForTriggers } from '@/lib/health/suggestionCopy';
 import type { HealthAnalysisResult } from './HealthCheckModal';
 
 interface PersonalizedSuggestionsProps {
@@ -89,23 +90,35 @@ export const PersonalizedSuggestions: React.FC<PersonalizedSuggestionsProps> = (
     }
   };
 
-  // Extract key facts used for suggestions
-  const keyFacts = useMemo(() => {
-    const facts = suggestions.flatMap(s => s.facts || []).slice(0, 5);
-    const factLabels: Record<string, string> = {
-      very_high_sugar: 'Very high sugar content',
-      high_sugar_daily_pct: 'High % of daily sugar',
-      very_high_sodium: 'Very high sodium levels',
-      high_sodium_balance: 'High sodium needs balance',
-      high_fiber_positive: 'Good fiber content',
-      ultra_processed: 'Multiple processed additives',
-      user_restriction_sweeteners: 'User avoids artificial sweeteners',
-      sugar_protein_pairing: 'Benefits from protein pairing',
-      weight_loss_calories: 'High calories for weight loss goal'
+  // Generate user-friendly reasons from suggestion triggers
+  const reasonsList = useMemo(() => {
+    const allTriggers = suggestions.flatMap(s => s.facts || []);
+    
+    // Build context from product data
+    const ctx = {
+      ingredientCount: result?.ingredientsText?.split(',').length || 0,
+      sugarPerPortion: portionGrams && result?.nutritionData?.sugar 
+        ? Math.round((result.nutritionData.sugar * portionGrams) / 100 * 10) / 10 
+        : undefined,
+      sodiumPerPortion: portionGrams && result?.nutritionData?.sodium 
+        ? Math.round((result.nutritionData.sodium * portionGrams) / 100) 
+        : undefined,
+      satFatPerPortion: portionGrams && result?.nutritionData?.fat 
+        ? Math.round((result.nutritionData.fat * portionGrams) / 100 * 10) / 10 
+        : undefined,
+      fiberPerPortion: portionGrams && result?.nutritionData?.fiber 
+        ? Math.round((result.nutritionData.fiber * portionGrams) / 100 * 10) / 10 
+        : undefined,
+      proteinPerPortion: portionGrams && result?.nutritionData?.protein 
+        ? Math.round((result.nutritionData.protein * portionGrams) / 100 * 10) / 10 
+        : undefined,
+      additives: result?.flags?.filter(f => typeof f === 'object' && f.flag?.includes('additive')).map(f => f.flag) || [],
+      allergens: result?.flags?.filter(f => typeof f === 'object' && f.flag?.includes('allergen')).map(f => f.flag) || [],
+      user: userProfile
     };
     
-    return facts.map(f => factLabels[f] || f).filter(Boolean);
-  }, [suggestions]);
+    return reasonsForTriggers(allTriggers, ctx, 2);
+  }, [suggestions, result, portionGrams, userProfile]);
 
   if (isLoading) {
     return (
@@ -180,11 +193,11 @@ export const PersonalizedSuggestions: React.FC<PersonalizedSuggestionsProps> = (
             </div>
 
             {/* Why These Suggestions? */}
-            {keyFacts.length > 0 && (
+            {reasonsList.length > 0 && (
               <Collapsible open={isFactsOpen} onOpenChange={setIsFactsOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between text-sm p-2">
-                    <span>Why these suggestions?</span>
+                    <span>Why this tip?</span>
                     {isFactsOpen ? (
                       <ChevronUp className="w-4 h-4" />
                     ) : (
@@ -194,14 +207,10 @@ export const PersonalizedSuggestions: React.FC<PersonalizedSuggestionsProps> = (
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-2">
                   <div className="p-3 bg-muted/50 rounded-lg">
-                    <h4 className="text-sm font-medium text-foreground mb-2">
-                      Based on these key factors:
-                    </h4>
-                    <ul className="space-y-1">
-                      {keyFacts.map((fact, idx) => (
-                        <li key={idx} className="text-xs text-muted-foreground flex items-center">
-                          <span className="w-1 h-1 bg-primary rounded-full mr-2 flex-shrink-0"></span>
-                          {fact}
+                    <ul className="list-disc pl-5 space-y-1">
+                      {reasonsList.map((reason, idx) => (
+                        <li key={idx} className="text-sm text-foreground">
+                          {reason}
                         </li>
                       ))}
                     </ul>
