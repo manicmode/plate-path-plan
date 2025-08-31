@@ -18,7 +18,7 @@ interface NutritionToggleProps {
   productData?: any;
   ocrText?: string;
   className?: string;
-  servingGrams?: number;
+  servingGrams?: number | null | undefined;
   portionLabel?: string;
 }
 
@@ -55,13 +55,15 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
   useEffect(() => {
     const hasExternalGrams = typeof servingGrams === 'number';
     
+    console.log('[PORTION][INQ3][GUARD]', { usingExternalGrams: hasExternalGrams, servingGramsProp: servingGrams });
+    
     console.info('[PORTION][INQ3][WIDGET_PROPS]', {
       gotServingGrams: servingGrams ?? null
     });
     
     if (hasExternalGrams) {
       console.info('[PORTION][INQ3][HEADER]', { headerGrams: servingGrams, source: 'external' });
-      console.log('[PORTION][INQ][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
+      console.log('[PORTION][INQ3][WIDGET_SKIP]', { reason: 'external_override', servingGrams });
       return; // external override in effect
     } else {
       console.info('[PORTION][INQ3][HEADER]', { headerGrams: null, source: 'resolver' });
@@ -122,12 +124,14 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
 
   // PORTION INQUIRY - Header and Chip Logging
   useEffect(() => {
-    console.info('[PORTION][INQ3][HEADER]', {
-      headerGrams: portionInfo?.grams, source: portionInfo?.source
-    });
-    console.info('[PORTION][INQ3][CHIP]', {
-      chipLabel: portionInfo?.display, chipGrams: portionInfo?.grams, chipSource: portionInfo?.source
-    });
+    const headerGrams = portionInfo?.grams;
+    const headerSource = portionInfo?.source;
+    const chipLabel = portionInfo?.display;
+    const chipGrams = portionInfo?.grams;
+    const chipSource = portionInfo?.source === 'estimated' && portionInfo?.grams === null ? 'unknown' : portionInfo?.source;
+    
+    console.log('[PORTION][INQ3][HEADER]', { headerGrams, source: headerSource });
+    console.log('[PORTION][INQ3][CHIP]', { chipLabel, chipGrams, chipSource });
   }, [portionInfo]);
 
   // Calculate portion nutrition safely - memoized
