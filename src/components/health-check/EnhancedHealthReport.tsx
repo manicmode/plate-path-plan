@@ -609,21 +609,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
         </Card>
 
         {/* 🎯 4. ACTION BUTTONS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-          {/* 💾 SAVE BUTTON */}
-          <SaveCTA
-            result={result}
-            analysisData={analysisData}
-            portionGrams={portion?.grams ?? null} // No 30g fallback
-            ocrHash={ocrHash}
-            onSaved={(logId) => {
-              toast({
-                title: "Successfully Saved!",
-                description: `Report saved with ID: ${logId.slice(0, 8)}...`,
-              });
-            }}
-          />
-
+        <div className="flex flex-col gap-3 pt-6">
           {/* 🍽️ LOG THIS FOOD BUTTON */}
           <Button
             onClick={() => {
@@ -683,17 +669,31 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               });
             }}
             variant="outline"
-            className="border-2 border-green-500/50 text-green-600 hover:bg-green-500/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full border-2 border-green-500/50 text-green-600 hover:bg-green-500/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             size="lg"
           >
             <Plus className="w-5 h-5 mr-2" />
             Log this food
           </Button>
 
+          {/* 💾 SAVE BUTTON */}
+          <SaveCTA
+            result={result}
+            analysisData={analysisData}
+            portionGrams={portion?.grams ?? null} // No 30g fallback
+            ocrHash={ocrHash}
+            onSaved={(logId) => {
+              toast({
+                title: "Successfully Saved!",
+                description: `Report saved with ID: ${logId.slice(0, 8)}...`,
+              });
+            }}
+          />
+
           <Button
             onClick={onScanAnother}
             variant="outline"
-            className="border-2 border-primary/50 text-primary hover:bg-primary/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full border-2 border-primary/50 text-primary hover:bg-primary/10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             size="lg"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
@@ -702,7 +702,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
           <Button
             onClick={onClose}
-            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
+            className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
             size="lg"
           >
             <X className="w-5 h-5 mr-2" />
