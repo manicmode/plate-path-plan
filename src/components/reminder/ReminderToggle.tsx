@@ -15,7 +15,7 @@ interface ReminderToggleProps {
   onReminderClose?: () => void;
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
 export const ReminderToggle: React.FC<ReminderToggleProps> = ({
   foodName,
@@ -58,7 +58,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
     setShowReminderForm(false);
     setCreateReminder(false);
     onReminderClose?.();
-      console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
+    console.log('[REMINDER][MODAL]', { rev: CONFIRM_FIX_REV, open: false });
   };
 
   return (
@@ -89,7 +89,7 @@ export const ReminderToggle: React.FC<ReminderToggleProps> = ({
           onReminderClose?.();
         }
       }}>
-        <DialogContent className="sm:max-w-md" showCloseButton={true}>
+        <DialogContent className="sm:max-w-md" showCloseButton={true} data-dialog-root="reminder-modal">
           <DialogHeader>
             <DialogTitle>Create Reminder</DialogTitle>
           </DialogHeader>

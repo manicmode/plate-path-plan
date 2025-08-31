@@ -157,7 +157,7 @@ function coerceFlags(raw: any): LegacyHealthFlag[] {
   });
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
 export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   console.log('[ADAPTER][IN]', {
@@ -316,12 +316,14 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       nutriments_energy_kcal_serving: nutr['energy-kcal_serving']
     });
 
-    // Map product name and HTTP image from OFF data
-    const offImg =
-      p.image_front_small_url ||
-      p.image_small_url ||
-      p.image_front_url ||
-      p.image_url;
+    // Map product name and HTTP image from OFF data with httpOnly guard
+    const offImage = httpOnly(
+      p?.image_front_small_url ??
+      p?.image_front_url ??
+      p?.image_url ??
+      p?.selected_images?.front?.display?.en ??
+      p?.selected_images?.front?.display?.en_GB
+    );
 
     // Map product name with OFF precedence
     const productName = 
@@ -335,7 +337,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     const legacy = {
       status: 'ok' as const,
       productName,
-      productImageUrl: httpOnly(offImg),
+      productImageUrl: offImage,
       nutriments: raw,
       nutritionData: {
         ...per100,
@@ -377,10 +379,11 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
 
 
     // Debug performance logging with structured logs
-    console.log("[ADAPTER][BARCODE.OUT]", {
+    console.log('[ADAPTER][BARCODE.OUT]', { 
       rev: CONFIRM_FIX_REV, 
       productName: legacy.productName, 
-      productImageUrlLen: (legacy.productImageUrl||"").length
+      imgKind: offImage ? 'http' : 'none', 
+      urlLen: offImage?.length ?? 0 
     });
     
     if (import.meta.env.VITE_DEBUG_CONFIRM === 'true' || import.meta.env.VITE_DEBUG_PERF === 'true') {
@@ -416,18 +419,19 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   const p = envelope?.product || {};
   
   // Map image with HTTP guard for non-barcode path
-  const imageUrl = 
+  const offImage = httpOnly(
     p.image_front_small_url ||
     p.image_small_url ||
     p.image_front_url ||
     p.image_url ||
     p.image ||
-    envelope?.imageUrl || '';
+    envelope?.imageUrl
+  );
 
   let legacy = {
     status: 'ok' as 'ok' | 'no_detection' | 'not_found',
     productName: extractedName,
-    productImageUrl: httpOnly(imageUrl),
+    productImageUrl: offImage,
     healthScore: Number(envelope?.quality?.score || p.health?.score) || 0,
     nutritionData: p.nutriments || {},
     ingredientsText: p.ingredients_text || envelope?.ingredientsText || '',

@@ -758,7 +758,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
                 analysisData?.imageUrl
               );
               
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
               const sanitizedTitle = sanitizeTitle(itemName, undefined);
               
@@ -774,30 +774,22 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
 
               const pg = portion?.grams ?? null;
 
-              // Build prefill with proper precedence
-              const nameCand = result?.productName ?? result?.itemName ?? (result as any)?.title ?? "Food item";
-              const imgCand = (result as any)?.productImageUrl ?? analysisData?.imageUrl;
-              const imageUrlProcessed = /^https?:\/\//i.test(imgCand||"") ? imgCand : undefined;
+              // Build prefill with proper precedence  
+              const nameCand = result?.productName ?? result?.itemName ?? analysisData?.barcode ?? 'Food item';
+              const imgCand  = (result as any)?.productImageUrl ?? analysisData?.imageUrl;
+              const imageUrlFinal = /^https?:\/\//i.test(imgCand ?? '') ? imgCand : undefined;
               
-              console.log("[PREFILL][BUILD]", {
+              console.log('[PREFILL][BUILD]', { 
                 rev: CONFIRM_FIX_REV, 
                 nameCand, 
-                hasImg: !!imgCand, 
-                imageUrlKind: imageUrlProcessed?'http':'none', 
-                portionGrams: pg
-              });
-              
-              console.log("[PREFILL][GUARD]", {
-                rev: CONFIRM_FIX_REV, 
-                originalKind: imgCand ? (imgCand.startsWith("https://")?'https':imgCand.startsWith("http://")?'http':imgCand.startsWith("data:")?'data':imgCand.startsWith("blob:")?'blob':'other') : 'none', 
-                allowed: !!imageUrlProcessed
+                imageUrlKind: imageUrlFinal ? 'http' : 'none' 
               });
 
               // IMPORTANT: never persist base64; imageUrl must be http(s) or undefined.
               const prefill = buildLogPrefill(
                 nameCand,
                 undefined, // brand not available in HealthAnalysisResult
-                imageUrlProcessed,               // never pass base64
+                imageUrlFinal,               // never pass base64
                 result.ingredientsText,
                 result.healthProfile?.allergens,
                 result.healthProfile?.additives,
@@ -807,7 +799,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
                 portion?.requiresConfirmation || false
               );
 
-              navigate('/camera', { state: { logPrefill: prefill, __rev: CONFIRM_FIX_REV } });
+              navigate('/camera', { state: { logPrefill: prefill } });
               
               console.debug('[HEALTH_REPORT][LOG_FOOD]', {
                 itemName: prefill.item.itemName,

@@ -228,7 +228,7 @@ const CameraPage = () => {
     }
   }, [location.search, navigate]);
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
   // Handle prefill data from Health Report
   useEffect(() => {
@@ -237,9 +237,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
     
     console.log("[PREFILL][ARRIVE]", {
       rev: CONFIRM_FIX_REV, 
-      keys: Object.keys(prefill?.item||{}), 
       itemName: prefill?.item?.itemName, 
-      imageUrlKind: /^https?:\/\//i.test(prefill?.item?.imageUrl||"")?'http':'none'
+      imageUrlKind: /^https?:\/\//i.test(prefill?.item?.imageUrl ?? '') ? 'http' : 'none', 
+      url: prefill?.item?.imageUrl?.slice(0,120)
     });
     
     if (prefill.item.imageUrl) {
@@ -601,6 +601,13 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
       setProcessingStep('Extracting nutrition facts...');
 
       console.log('[CAMERA][NUTRITION_CAPTURE][START]', 'OCR processing nutrition facts image');
+      
+      // Ensure we DO NOT pass nfImageDataUrl into prefill - log once
+      console.log('[PREFILL][GUARD]', {
+        rev: CONFIRM_FIX_REV, 
+        droppedBase64: true, 
+        length: nfImageDataUrl?.length || 0
+      });
 
       // Extract text from nutrition facts image using OCR
       const ocrResult = await callOCRFunctionWithDataUrl(nfImageDataUrl);

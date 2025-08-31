@@ -72,7 +72,7 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r4";
+const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
@@ -126,8 +126,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       console.log('[CONFIRM][MOUNT]', {
         rev: CONFIRM_FIX_REV, 
         name: displayName, 
-        imageUrlKind: displayImage?'http':'none', 
-        grams: (currentFoodItem as any)?.portionGrams ?? null, 
+        imageUrlKind: displayImage ? 'http' : 'none', 
+        imgUrl: displayImage?.slice(0,120), 
         prefillKeys
       });
     }
@@ -556,6 +556,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           title="Confirm Food Log"
           description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
+          data-dialog-root="confirm-food-log"
         >
           <div className="p-6">
             {/* Unknown Product Alert */}
@@ -1088,7 +1089,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 sodium: adjustedFood.sodium,
               }}
               className="mb-4"
-              onReminderOpen={() => setReminderOpen(true)}
+              onReminderOpen={() => {
+                setReminderOpen(true);
+                // Assert close button counts when reminder opens
+                setTimeout(() => {
+                  const confirmCount = document.querySelectorAll('[data-dialog-root="confirm-food-log"] button[aria-label="Close"]').length;
+                  const reminderCount = document.querySelectorAll('[data-dialog-root="reminder-modal"] button[aria-label="Close"]').length;
+                  console.log('[A11Y][CLOSE-COUNT]', { rev: CONFIRM_FIX_REV, confirm: confirmCount, reminder: reminderCount });
+                }, 100);
+              }}
               onReminderClose={() => setReminderOpen(false)}
             />
 
