@@ -108,11 +108,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive display values with broad fallback
   const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
   
-  const displayImage = (typeof (currentFoodItem as any)?.imageUrl === "string" && /^https?:\/\//i.test((currentFoodItem as any)?.imageUrl||""))
-    ? (currentFoodItem as any)?.imageUrl
-    : (typeof (currentFoodItem as any)?.productImageUrl === "string" && /^https?:\/\//i.test((currentFoodItem as any)?.productImageUrl||""))
-      ? (currentFoodItem as any)?.productImageUrl
-      : undefined;
+  // ✅ tolerate both while we finish the migration
+  const imgUrl =
+    (currentFoodItem as any)?.imageUrl ?? (currentFoodItem as any)?.image ?? undefined;
+  
+  const displayImage = /^https?:\/\//i.test(imgUrl ?? '') ? imgUrl : undefined;
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;

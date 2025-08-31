@@ -63,6 +63,7 @@ interface RecognizedFood {
   confidence: number;
   serving?: string;
   image?: string | null;
+  imageUrl?: string | null; // ✅ canonical image property
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
   // Additional data for flag detection
@@ -283,8 +284,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r5";
       factor,                    // grams/100 for 100% slider
       confidence: 95,
       serving: serving,
-      // image with fallback:
-      image: img || null,
+      // ✅ canonical key used everywhere
+      imageUrl: img,
+      // (optional legacy compatibility; safe to remove later)
+      image: img,
       ingredientsText: prefill.item.ingredientsText,
       ingredientsAvailable: !!prefill.item.ingredientsText,
       allergens: prefill.item.allergens,

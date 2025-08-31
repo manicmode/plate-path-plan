@@ -1484,3 +1484,14 @@ body {
   opacity: 0 !important; 
   pointer-events: none !important; 
 }
+
+/* Dialog Close Button Safety Net for Confirm Food Log */
+/* Parent Confirm should never show a close control */
+[data-dialog-root="confirm-food-log"] [aria-label="Close"] {
+  display: none !important;
+}
+
+/* Reminder modal is allowed to show its close */
+[data-dialog-root="reminder-modal"] [aria-label="Close"] {
+  display: inline-flex !important;
+}
