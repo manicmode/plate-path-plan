@@ -327,6 +327,8 @@ export async function resolvePortion(
 ): Promise<PortionResult> {
   mark('resolvePortion:start');
   
+  const ocrSource = ocrText || productData?.nutritionOCRText || null;
+  
   console.log('[PORTION][TRACE][IN]', {
     hasBarcode: !!productData?.barcode,
     hasNutrition: !!productData?.nutrition,
@@ -409,8 +411,8 @@ export async function resolvePortion(
   }
   
   // Source 2: OCR parsing
-  if (ocrText) {
-    const ocrCandidate = parseFromOCR(ocrText, productName);
+  if (ocrSource) {
+    const ocrCandidate = parseFromOCR(ocrSource, productName);
     if (ocrCandidate) {
       console.log('[PORTION][OCR]', 'Found OCR candidate:', ocrCandidate.grams, 'g');
       candidates.push(ocrCandidate);

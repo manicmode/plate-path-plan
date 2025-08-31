@@ -467,6 +467,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                       report.healthScore >= 2 ? 'poor' : 'avoid'
       };
       
+      // Add nutritionOCRText for portion resolver
+      (analysisResult as any).nutritionOCRText = text;
+      
+      console.log('[PORTION][TRACE][PIPE_OUT]', { hasNutritionOCRText: !!text });
+      
       // Add to recents
       addRecent({
         mode: 'photo',

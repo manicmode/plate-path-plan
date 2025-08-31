@@ -291,6 +291,13 @@ interface EnhancedHealthReportProps {
     source?: string;
     barcode?: string;
     imageUrl?: string;
+    nutritionPanelText?: string;
+    ocr?: {
+      nutrition?: { text?: string };
+      textBlocks?: { nutrition?: { raw?: string } };
+      rawNutritionText?: string;
+    };
+    serving_size_g?: number;
   };
   initialIsSaved?: boolean;
   hideCloseButton?: boolean;
@@ -404,11 +411,25 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           ocrText: ingredientsText ? 'present' : 'none',
           entry: 'enhanced_report'
         });
+        console.log('[PORTION][TRACE][OCR_SRC]', {
+          fromResult: !!(result as any)?.nutritionOCRText,
+          fromAnalysisNutrition: !!analysisData?.nutritionPanelText || !!analysisData?.ocr?.nutrition?.text,
+          rawBlocks: !!analysisData?.ocr?.textBlocks,
+        });
+        
+        const nutritionOCRText =
+          (result as any).nutritionOCRText ||
+          analysisData?.nutritionPanelText ||
+          analysisData?.ocr?.nutrition?.text ||
+          analysisData?.ocr?.textBlocks?.nutrition?.raw ||
+          analysisData?.ocr?.rawNutritionText ||
+          null;
+        
         console.log('[PORTION][INQ][RESOLVE] start', { productId, route });
         console.info('[PORTION][INQ3][RESOLVE_START]', { barcode: (result as any)?.barcode, id: (result as any)?.id });
         
         const { resolvePortion } = await import('@/lib/nutrition/portionResolver');
-        const portionResult = await resolvePortion(result, ingredientsText);
+        const portionResult = await resolvePortion(result, nutritionOCRText || undefined);
         
         mark('EnhancedHealthReport.portionResolve.complete', { resolved: !!portionResult });
         trace('PORTION:EFFECT:RESOLVED', portionResult);
