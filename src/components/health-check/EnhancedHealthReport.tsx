@@ -35,6 +35,7 @@ import { toNutritionLogRow } from '@/adapters/nutritionLogs';
 import { mark, trace, logInfo, logWarn, logError } from '@/lib/util/log';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { __BUILD_ID__, logBuildInfo } from '@/lib/forensic/buildTag';
+import { ForensicLogOverlay } from '@/components/forensic/ForensicLogOverlay';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERF === 'true';
 
@@ -655,6 +656,9 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
           </Button>
         </div>
       </div>
+      
+      {/* Forensic Log Overlay - Auto-opens on V2 Health Report mount */}
+      <ForensicLogOverlay autoOpen={true} />
     </div>
   );
 };
