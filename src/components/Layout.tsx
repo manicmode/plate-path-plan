@@ -121,8 +121,7 @@ const Layout = ({ children }: LayoutProps) => {
   // Hide navigation on specific fullscreen/camera pages
   const hideNavPaths = [
     '/',
-    '/camera',        // Camera/logging page
-    '/scan',          // Scan hub
+    '/scan',          // Scan hub  
     '/body-scan-ai', '/body-scan-side', '/body-scan-back',
     '/body-scan-results', '/body-scan-result', '/body-scan-compare', '/body-scan-history'
   ];
