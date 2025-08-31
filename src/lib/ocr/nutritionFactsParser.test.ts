@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import extractServingGramsFromText from '../lib/ocr/nutritionFactsParser';
+import extractServingGramsFromText from './nutritionFactsParser';
 
 describe('extractServingGramsFromText', () => {
   // Test cases per spec requirements
