@@ -167,9 +167,39 @@ export const MealCaptureFlow: React.FC<MealCaptureFlowProps> = ({
 
       {step === 'reports' && (
         <MealReportStack
-          items={selectedItems}
+          reports={selectedItems.map(item => ({
+            id: item.id,
+            itemName: item.label,
+            analysis: {
+              itemName: item.label,
+              healthScore: 50,
+              nutritionData: {
+                calories: item.gramsEstimate || 100,
+                protein_g: 0,
+                carbs_g: 0,
+                fat_g: 0,
+                fiber_g: 0,
+                sugar_g: 0,
+                sodium_mg: 0
+              },
+              healthProfile: {},
+              personalizedWarnings: [],
+              suggestions: [],
+              overallRating: 'moderate',
+              analysisData: {
+                source: 'meal-capture'
+              }
+            },
+            cropUrl: item.cropUrl
+          }))}
+          onHandOffToConfirm={(prefill) => {
+            // Handle log prefill confirmation
+            console.log('Meal item logged:', prefill);
+          }}
+          onRemoveReport={(id) => {
+            setSelectedItems(items => items.filter(item => item.id !== id));
+          }}
           onExit={onExit}
-          onBack={() => setStep('review')}
         />
       )}
     </div>
