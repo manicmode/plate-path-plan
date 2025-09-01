@@ -49,7 +49,7 @@ import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalizat
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 import { MealCaptureFlow } from '@/components/meal-capture/MealCaptureFlow';
-import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, mealCaptureEnabled, mealCaptureEnabledFromSearch } from '@/lib/featureFlags';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -225,6 +225,11 @@ const CameraPage = () => {
 
   // Effect to handle reset from navigation
   useEffect(() => {
+    // Guard against meal capture mode
+    const qs = new URLSearchParams(location.search);
+    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
+    if (isMealCapture) return; // 🚫 block non-meal paths
+    
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('reset') === 'true') {
       setActiveTab('main');
@@ -237,6 +242,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Handle prefill data from Health Report
   useEffect(() => {
+    // Guard against meal capture mode
+    const qs = new URLSearchParams(location.search);
+    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
+    if (isMealCapture) return; // 🚫 block non-meal paths
+    
     const prefill = (location.state as any)?.logPrefill;
     if (!prefill || prefill.source !== 'health-report') return;
     
@@ -317,12 +327,12 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     const stateMode = state?.mode;
     const params = new URLSearchParams(location.search);
     const urlMode = params.get('mode');
-    const mealOn = mealCaptureEnabled();
+    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && urlMode === 'meal-capture';
     
     // Check for meal-capture mode from URL first, then state
     if (urlMode === 'meal-capture') {
-      console.log('[MEAL][CAMERA][ENTER]', { mode: urlMode, mealOn });
-      if (mealOn) {
+      console.log('[MEAL][CAMERA][ENTER]', { mode: urlMode, enabled: isMealCapture });
+      if (isMealCapture) {
         setCurrentMode('meal-capture');
         // For URL-based meal capture, we might not have imageUrl immediately
         const imageUrl = state?.imageUrl;
@@ -342,7 +352,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     } else if (stateMode === 'meal-capture') {
       // Legacy state-based meal capture support
       const imageUrl = state?.imageUrl;
-      if (imageUrl && mealOn) {
+      if (imageUrl && mealCaptureEnabledFromSearch(location.search)) {
         console.log('[CAMERA][MEAL_CAPTURE]', 'Processing meal capture with image');
         setCurrentMode('meal-capture');
         setMealCaptureImageUrl(imageUrl);
@@ -359,6 +369,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Auto-dismiss error when analysis succeeds
   useEffect(() => {
+    // Guard against meal capture mode
+    const qs = new URLSearchParams(location.search);
+    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
+    if (isMealCapture) return; // 🚫 block non-meal paths
+    
     if (recognizedFoods.length > 0 || reviewItems.length > 0) {
       setShowError(false);
     }
@@ -2639,6 +2654,55 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Hard-gate: If meal capture mode is enabled, short-circuit to meal wizard */}
+      {(() => {
+        const qs = new URLSearchParams(location.search);
+        const mode = qs.get('mode');
+        const isMealCapture = mealCaptureEnabledFromSearch(location.search) && mode === 'meal-capture';
+        
+        if (isMealCapture) {
+          console.log('[MEAL][CAMERA][ENTER]', { mode, enabled: true });
+          return (
+            <div className="space-y-6 animate-fade-in">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Meal Capture</h1>
+              </div>
+              {mealCaptureImageUrl ? (
+                <MealCaptureFlow
+                  imageUrl={mealCaptureImageUrl}
+                  onExit={() => {
+                    setCurrentMode('photo');
+                    setMealCaptureImageUrl(null);
+                    navigate('/scan');
+                  }}
+                />
+              ) : (
+                <PhotoCaptureModal
+                  open={true}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setCurrentMode('photo');
+                      navigate('/scan');
+                    }
+                  }}
+                  onCapture={(imageData) => {
+                    // Convert base64 to blob URL for meal processing
+                    const blob = dataURLtoBlob(imageData);
+                    const imageUrl = URL.createObjectURL(blob);
+                    setMealCaptureImageUrl(imageUrl);
+                  }}
+                  onManualFallback={() => {
+                    setCurrentMode('photo');
+                    navigate('/scan');
+                  }}
+                  mode="meal-capture"
+                />
+              )}
+            </div>
+          );
+        }
+      })()}
+
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
       </div>

@@ -48,6 +48,21 @@ export function mealCaptureEnabled(): boolean {
   return enabled;
 }
 
+// Enhanced meal capture flag that treats mode=meal-capture as sufficient
+export function mealCaptureEnabledFromSearch(search = window.location.search): boolean {
+  const qs = new URLSearchParams(search);
+  const raw = (qs.get('meal') || '').toLowerCase();
+
+  const explicitOn =
+    raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes' || qs.has('meal+1');
+
+  const modeOn = (qs.get('mode') || '') === 'meal-capture';
+  const envOn = (import.meta.env.VITE_MEAL_CAPTURE || '') === '1';
+
+  // 🔒 Make mode=meal-capture sufficient to enable the sandbox on Camera
+  return explicitOn || modeOn || envOn;
+}
+
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
   // Environment-specific overrides
   if (flag === 'image_analyzer_v1') {
