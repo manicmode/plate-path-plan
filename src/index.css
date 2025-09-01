@@ -97,22 +97,6 @@ body {
   }
 
   .dark {
-    --background: 220 13% 9%;
-    --foreground: 0 0% 95%;
-
-    --card: 220 13% 12%;
-    --card-foreground: 0 0% 95%;
-
-    --popover: 220 13% 12%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 174 100% 50%;
-    --primary-foreground: 0 0% 0%;  /* Black text for better contrast on bright green */
-
-    --secondary: 220 13% 15%;
-    --secondary-foreground: 0 0% 90%;
-
-  .dark {
     --background: 220 20% 8%;
     --foreground: 174 30% 96%;
 
@@ -335,7 +319,7 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
       0 8px 20px rgba(255, 87, 34, 0.15),
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 154, 0, 0.4);
-}
+  }
 
 /* Podium animations */
 @keyframes podiumSlideUp {
