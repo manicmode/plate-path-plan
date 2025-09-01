@@ -9,7 +9,7 @@ import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
+import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
@@ -248,33 +248,29 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleCapturedBlob = async (blob: Blob) => {
-    const mealOn = mealCaptureEnabledFromSearch("?" + searchParams.toString());
-    console.log("[MEAL][GATEWAY][CAPTURED]", { mealOn, size: blob?.size ?? 0 });
+    // Try meal capture gateway first
+    const photoUrl = URL.createObjectURL(blob);
+    const handedOff = await handoffFromPhotoCapture(
+      photoUrl, 
+      "?" + searchParams.toString()
+    );
 
-    if (mealOn && blob && blob.size > 0) {
-      // Prevent double-fires with inflight lock
-      if (sessionStorage.getItem("mc:inflight") === "1") return;
-      sessionStorage.setItem("mc:inflight", "1");
-
-      const url = URL.createObjectURL(blob);
-      const nonce = crypto.randomUUID();
-      sessionStorage.setItem("mc:photoUrl", url);
-      sessionStorage.setItem("mc:entry", "photo");
-      sessionStorage.setItem("mc:ts", String(Date.now()));
-      sessionStorage.setItem("mc:n", nonce);
-
-      // Close modal + stop tracks before route change
-      onOpenChange(false);
+    if (handedOff) {
+      // Stop camera and close modal
       await stopTracksSafely(streamRef.current);
-
+      onOpenChange(false);
+      
       // Defer navigation to next tick so modal fully unmounts
       setTimeout(() => {
-        console.log("[MEAL][GATEWAY][HANDOFF]", { to: `/meal-capture?entry=photo&n=${nonce}` });
+        const nonce = sessionStorage.getItem("mc:n") || "";
         navigate(`/meal-capture?entry=photo&n=${nonce}`, { replace: true });
       }, 0);
-
+      
       return;
     }
+
+    // Clean up object URL if not used
+    URL.revokeObjectURL(photoUrl);
 
     // Legacy path (unchanged) - convert blob to base64
     const reader = new FileReader();
@@ -356,10 +352,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
+        aria-labelledby="photo-title"
       >
-        <VisuallyHidden>
-          <DialogTitle>Take Photo</DialogTitle>
-        </VisuallyHidden>
+        <DialogTitle id="photo-title" className="sr-only">Take Photo</DialogTitle>
         <div className="relative w-full h-full bg-black overflow-hidden">
           {/* Video Element */}
           <video

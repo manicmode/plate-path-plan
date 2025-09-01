@@ -32,19 +32,27 @@ export default function ScanHub() {
 
   // Rescue mechanism for meal capture handoff - consume once, short TTL, never loop
   useEffect(() => {
-    const mealOn = mealCaptureEnabledFromSearch(location.search);
-    if (!mealOn) return;
+    // Guard: only run if meal capture is enabled
+    if (!mealCaptureEnabledFromSearch(location.search)) return;
+
+    const n = sessionStorage.getItem('mc:n');
+    if (!n) return; // No nonce = no valid handoff
 
     const url = sessionStorage.getItem("mc:photoUrl");
     const ts = Number(sessionStorage.getItem("mc:ts") || 0);
     const used = sessionStorage.getItem("mc:used") === "1";
     const within = Date.now() - ts < 8000;
 
-    if (!url || used || !within) return;
+    if (!url || used || !within) {
+      // Invalid/expired - clean up and do nothing
+      ["mc:photoUrl","mc:entry","mc:ts","mc:n","mc:inflight","mc:used"]
+        .forEach(k => sessionStorage.removeItem(k));
+      return;
+    }
+    
     if (location.pathname === "/meal-capture") return;
 
     sessionStorage.setItem("mc:used", "1"); // consume rescue
-    const n = sessionStorage.getItem("mc:n") || "";
     console.log("[MEAL][GATEWAY][RESCUE_NAV]", { within, n });
     navigate(`/meal-capture?entry=photo&n=${n}`, { replace: true });
   }, [location.pathname, location.search, navigate]);
