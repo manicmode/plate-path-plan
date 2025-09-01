@@ -83,7 +83,7 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
     
     console.log('[PHOTO][MEAL] detector response:', data);
     const debug = data?._debug || {};
-    console.log(`[PHOTO][MEAL][_debug] from=${debug.from} labels=${debug.labels?.length} web=${debug.web?.length} bestGuess=${debug.bestGuess?.length}`);
+    console.log(`[PHOTO][MEAL][_debug] from=${debug.from} objects=${debug.objects || 0} labels=${debug.labels || 0}`);
     
     const items = data?.items || [];
     const rawNames = items.map((i: any) => i.name);
@@ -116,34 +116,9 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
 }
 
 export async function routePhoto(b64: string, abort?: AbortSignal): Promise<PhotoRoute> {
-  console.log('[PHOTO][ROUTE] Starting photo analysis...');
+  console.log('[PHOTO][ROUTE] Starting photo analysis (meal-only)...');
   
-  // Try OCR first; if it throws, fall back to meal (don't redirect)
-  try {
-    const ocr = await supabase.functions.invoke('vision-ocr', { 
-      body: { image_base64: b64 }
-    });
-    
-    // @ts-ignore
-    if (ocr.error) throw ocr.error;
-    
-    const data = ocr.data;
-    const text = data?.text || '';
-    const labels = data?.labels || [];
-    const debug = data?._debug || {};
-    
-    console.log(`[PHOTO][OCR] text_len=${debug.text_len || text.length}, labels=${debug.labels_count || labels.length}`);
-    
-    if (looksLikeNutritionLabel(text, labels)) {
-      console.log('[PHOTO][ROUTE] kind=label');
-      return { kind: 'label', data };
-    }
-  } catch (e: any) {
-    console.error('[PHOTO][OCR] failed:', e?.message || e);
-    // continue to meal detection
-  }
-
-  // Try meal detection with nutrition mapping
+  // MEAL ONLY: Skip OCR entirely and go straight to meal detection
   const mealResult = await analyzeMealBase64(b64, abort);
   const items = mealResult.items || [];
   
