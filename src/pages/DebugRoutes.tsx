@@ -40,6 +40,15 @@ export default function DebugRoutes() {
       </Suspense>
     );
   }
+
+  if (currentPath === '/debug/photo-e2e') {
+    const PhotoE2E = lazy(() => import('./debug/PhotoE2E'));
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+        <PhotoE2E />
+      </Suspense>
+    );
+  }
   
   // If on /debug, show menu
   if (currentPath === '/debug' || currentPath === '/debug/') {
@@ -142,6 +151,17 @@ export default function DebugRoutes() {
           >
             <h3 className="font-semibold">Camera & Torch Debug</h3>
             <p className="text-muted-foreground">Test camera capabilities and flashlight functionality</p>
+          </button>
+          
+          <button 
+            onClick={() => navigate('/debug/photo-e2e')}
+            className="block w-full text-left p-4 bg-card rounded-lg border hover:bg-muted bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30"
+          >
+            <h3 className="font-semibold">📸 Photo Flow V2 - E2E</h3>
+            <p className="text-muted-foreground">Dry-run test of complete V2 pipeline with detailed logging</p>
+            <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+              ⚡ Stages: OCR → Portion → Nutrition → Flags → Score → Assembly
+            </div>
           </button>
         </div>
       </div>

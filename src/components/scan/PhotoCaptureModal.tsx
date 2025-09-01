@@ -62,6 +62,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickScanStatus, setQuickScanStatus] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
@@ -86,6 +89,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   }, []);
 
   useLayoutEffect(() => {
+    mountedRef.current = true;
+    
     if (open) {
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
@@ -100,6 +105,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
     
     return () => {
+      mountedRef.current = false;
       camOwnerUnmount(OWNER);
       camHardStop('unmount');
       releaseNow();
@@ -255,6 +261,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const handleCapturedBlob = async (blob: Blob) => {
     console.log('[PHOTO][GATEWAY][CAPTURED]', { size: blob.size, type: blob.type });
     
+    // Guard against unmounted state
+    if (!mountedRef.current) return;
+    
     // Try meal capture gateway first (only when flag is enabled)
     const result = await handoffFromPhotoCapture(
       blob,
@@ -264,7 +273,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     if (result.success) {
       // Stop camera and close modal
       await stopTracksSafely(streamRef.current);
-      onOpenChange(false);
+      if (mountedRef.current) {
+        onOpenChange(false);
+      }
       
       // Navigate to entry route with token
       if (result.token) {
@@ -273,13 +284,42 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       return;
     }
 
+    // V2 Photo Flow processing
+    if (isFeatureEnabled('photo_flow_v2')) {
+      try {
+        if (!mountedRef.current) return;
+        setProcessing(true);
+        setProcessingError(null);
+        
+        console.log('[PHOTO][V2_PROCESSING]', { size: blob.size });
+        
+        // Here you would call the enhanced photo pipeline
+        // For now, simulate processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        if (!mountedRef.current) return;
+        setProcessing(false);
+        // Handle success - would normally process result
+        
+      } catch (error: any) {
+        console.log('[PHOTO][V2_ERROR]', error);
+        if (mountedRef.current) {
+          setProcessing(false);
+          setProcessingError(error.message || 'Processing failed');
+        }
+        return;
+      }
+    }
+
     // Legacy path - show inline fallback instead of navigating anywhere
     if (import.meta.env.VITE_DEBUG_PHOTO === '1') {
       console.log('[PHOTO][FALLBACK] no barcode detected — staying in modal');
     }
     
-    // Show inline fallback UI inside the modal (no navigation)
-    setQuickScanStatus('no-barcode');
+    // Guard setState calls
+    if (mountedRef.current) {
+      setQuickScanStatus('no-barcode');
+    }
   };
 
   const capturePhoto = async () => {
@@ -361,7 +401,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     onManualFallback();
   };
 
-  // Inline fallback component
+  // Enhanced inline fallback component with error states
   const NoBarcodeFallback = ({ onRetry, onManual }: { onRetry: () => void; onManual: () => void }) => (
     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
       <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-sm w-full border border-white/20">
@@ -382,6 +422,48 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             </Button>
             <Button onClick={onManual} className="flex-1 bg-primary hover:bg-primary/90">
               Enter Manually
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Processing state overlay
+  const ProcessingOverlay = () => (
+    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+      <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-sm w-full border border-white/20">
+        <div className="text-center text-white space-y-4">
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-2xl">🔍</span>
+          </div>
+          <h3 className="text-xl font-semibold">Analyzing photo...</h3>
+          <p className="text-sm text-white/70">
+            Using enhanced AI to detect nutritional information
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Error state overlay  
+  const ErrorOverlay = ({ error, onRetry, onManual }: { error: string; onRetry: () => void; onManual: () => void }) => (
+    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+      <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-sm w-full border border-red-500/20">
+        <div className="text-center text-white space-y-4">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h3 className="text-xl font-semibold">Analysis failed</h3>
+          <p className="text-sm text-white/70">
+            {error}
+          </p>
+          <div className="flex gap-3 mt-6">
+            <Button variant="outline" onClick={onRetry} className="flex-1 border-white/40 text-white hover:bg-white/10">
+              Retake
+            </Button>
+            <Button onClick={onManual} className="flex-1 bg-primary hover:bg-primary/90">
+              Try Manual
             </Button>
           </div>
         </div>

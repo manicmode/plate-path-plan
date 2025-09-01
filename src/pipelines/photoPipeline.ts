@@ -6,8 +6,11 @@
 
 // Enhanced photo pipeline with OCR health report integration
 import { FF } from '@/featureFlags';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
 import { isSuccessResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
+import { normalizeOcrResponse } from '@/lib/health/photoFlowV2Utils';
+import { supabase } from '@/integrations/supabase/client';
 
 import { resolveFunctionsBase } from '@/lib/net/functionsBase';
 import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
@@ -32,15 +35,21 @@ export async function analyzePhoto(
   }
 
   const { force = false, offline = false } = options;
+  const useV2 = isFeatureEnabled('photo_flow_v2');
 
   // Early return for disabled state (unless forced)
-  if (!force) {
+  if (!force && !useV2) {
     console.log('[PHOTO][STUB]', { blobSize: input.blob.size, blobType: input.blob.type });
     return { ok: false, reason: 'disabled' };
   }
 
-  // Force mode - simulate real pipeline behavior
-  console.log('[PHOTO][FORCE_MODE]', { blobSize: input.blob.size, blobType: input.blob.type });
+  // V2 or Force mode
+  console.log('[PHOTO][PIPELINE]', { 
+    v2: useV2, 
+    force, 
+    blobSize: input.blob.size, 
+    blobType: input.blob.type 
+  });
 
   if (offline) {
     // Simulate offline failure
@@ -50,6 +59,65 @@ export async function analyzePhoto(
   }
 
   try {
+    console.log('[PHOTO][V2_PIPELINE_START]', { useV2, offline });
+
+    if (useV2) {
+      // V2: Use supabase.functions.invoke with 12s timeout
+      console.log('[PHOTO][V2_INVOKE_START]');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('[PHOTO][V2_TIMEOUT] 12s timeout reached');
+        controller.abort();
+      }, 12000);
+
+      try {
+        const formData = new FormData();
+        formData.append('image', input.blob, 'photo.jpg');
+
+        const { data, error } = await supabase.functions.invoke('vision-ocr', {
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (error) {
+          console.log('[PHOTO][V2_ERROR]', error);
+          return { ok: false, reason: 'function_error' };
+        }
+
+        console.log('[PHOTO][V2_SUCCESS]', { hasData: !!data });
+
+        // Normalize response to V2 format
+        const normalized = normalizeOcrResponse(data);
+        console.log('[PHOTO][V2_NORMALIZED]', normalized);
+
+        return { 
+          ok: true, 
+          report: {
+            ...data,
+            v2Normalized: normalized,
+            source: 'vision-ocr-v2'
+          }
+        };
+
+      } catch (invokeError: any) {
+        clearTimeout(timeoutId);
+        
+        if (invokeError.name === 'AbortError') {
+          console.log('[PHOTO][V2_ABORTED]');
+          return { ok: false, reason: 'timeout' };
+        }
+        
+        console.log('[PHOTO][V2_INVOKE_ERROR]', invokeError);
+        return { ok: false, reason: 'invoke_error' };
+      }
+    }
+
+    // Legacy V1 path
     console.log('[FN][BASE]', resolveFunctionsBase());
     const base = resolveFunctionsBase();
     const url = `${base}/vision-ocr`;

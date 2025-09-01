@@ -1,6 +1,13 @@
 import { mapNutriments } from '@/lib/health/mapNutrimentsToNutritionData';
 import { detectFlags } from '@/lib/health/flagger';
 import { calculateHealthScore, toFinal10 } from '@/score/ScoreEngine';
+import { 
+  computeScore, 
+  computeFlags, 
+  toServingNutrition,
+  parsePortionToGrams 
+} from '@/lib/health/photoFlowV2Utils';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 /* Maps the enhanced-health-scanner response into the legacy shape
  * the existing Health/Confirm modals already consume.
@@ -93,7 +100,7 @@ const pickName = (...vals: Array<unknown>) =>
 function extractName(edge: any): string | undefined {
   const p = edge?.product ?? edge;
 
-  // Try all common OFF + normalized fields + itemName fallback (including envelope.itemName)
+  // Enhanced name extraction with better fallbacks
   const name = pickName(
     p?.displayName,
     p?.name,
@@ -103,18 +110,43 @@ function extractName(edge: any): string | undefined {
     p?.product_name,
     p?.generic_name_en,
     p?.generic_name,
-    edge?.productName, // some functions return this top-level
+    edge?.productName,      // some functions return this top-level
     edge?.name,
     p?.itemName,            // new-schema fallback
-    edge?.itemName          // envelope.itemName as final fallback
+    edge?.itemName,         // envelope.itemName as final fallback
+    edge?.item?.name,       // nested item name
+    edge?.data?.name        // nested data name
   ) ?? (
-    // brand + product_name fallback
+    // Enhanced brand + product_name fallback with better formatting
     p?.brands && p?.product_name
-      ? `${String(p.brands).split(',')[0].trim()} ${String(p.product_name).trim()}`
-      : undefined
+      ? `${String(p.brands).split(/[,;]/)[0].trim()} ${String(p.product_name).trim()}`
+      : p?.brands 
+        ? String(p.brands).split(/[,;]/)[0].trim()
+        : undefined
   );
 
-  return name?.replace(/\s+/g, ' ').trim();
+  // Clean up name formatting
+  return name?.replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, '');
+}
+
+function extractImageUrl(edge: any): string | undefined {
+  const p = edge?.product ?? edge;
+  
+  // Enhanced image URL extraction with httpOnly guard
+  return httpOnly(
+    p?.image_front_small_url ||
+    p?.image_small_url ||
+    p?.image_front_url ||
+    p?.image_url ||
+    p?.image ||
+    edge?.imageUrl ||
+    edge?.image_url ||
+    edge?.productImageUrl ||
+    p?.selected_images?.front?.display?.en ||
+    p?.selected_images?.front?.display?.en_GB ||
+    p?.images?.['1']?.sizes?.['200']?.url ||
+    p?.images?.['1']?.sizes?.['400']?.url
+  );
 }
 
 export type LegacyHealthFlag = {
@@ -174,15 +206,24 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     const mapped = mapNutriments(raw);
     const ingredients_text = p.ingredients_text || '';
 
-    // Generate deterministic flags with correct per-100g keys
-    const flagInputs = {
-      sugar_g_100g: raw.sugars_100g ?? mapped.sugar_g,
-      satfat_g_100g: raw['saturated-fat_100g'] ?? mapped.satfat_g,
-      fiber_g_100g: raw.fiber_100g ?? mapped.fiber_g,
-      sodium_mg_100g: mapped.sodium_mg, // already mg/100g
-      protein_g_100g: mapped.protein_g,
-    };
-    const flags = detectFlags(ingredients_text, flagInputs);
+    // V2: Enhanced flag computation with ingredients and additives
+    let flags;
+    if (isFeatureEnabled('photo_flow_v2')) {
+      // Use new computeFlags with enhanced detection
+      const additives = p?.additives_tags || [];
+      flags = computeFlags(ingredients_text, additives);
+      console.log('[PHOTO][V2_FLAGS]', { count: flags.length, ingredients_length: ingredients_text.length });
+    } else {
+      // Legacy flag detection
+      const flagInputs = {
+        sugar_g_100g: raw.sugars_100g ?? mapped.sugar_g,
+        satfat_g_100g: raw['saturated-fat_100g'] ?? mapped.satfat_g,
+        fiber_g_100g: raw.fiber_100g ?? mapped.fiber_g,
+        sodium_mg_100g: mapped.sodium_mg, // already mg/100g
+        protein_g_100g: mapped.protein_g,
+      };
+      flags = detectFlags(ingredients_text, flagInputs);
+    }
 
     // OFF raw
     const nutr = p?.nutriments ?? {};
@@ -226,52 +267,90 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
           sodium_mg:  +( (per100.sodium_mg  ?? 0) * (serving_g/100) ).toFixed(0),
         } : null);
 
-    // Score: Guard ScoreEngine, no constant default
-    const engineOn = import.meta.env.VITE_SCORE_ENGINE_V1 === 'true';
-    const engineFixes = import.meta.env.VITE_ENGINE_V1_FIXES === 'true';
+    // Enhanced serving size parsing with V2 features (moved up before scoring)
+    const rawServingSizeTxt =
+      p?.serving_size ??
+      nutr?.serving_size ??
+      nutr?.['serving-size'] ?? null;
 
-    const hasAny = ['energyKcal','sugar_g','sodium_mg','satfat_g','fiber_g','protein_g']
-      .some(k => per100?.[k] != null && !Number.isNaN(+(per100?.[k] || 0)));
-    
-    if (import.meta.env.VITE_DEBUG_PERF === 'true') {
-      console.info('[ADAPTER][BARCODE.ENGINE_INPUT]', {
-        engine_flag: engineOn,
-        hasAny,
-        inputs: {
-          energy_kcal_100g: mapped.energyKcal,
-          sugar_g_100g:     mapped.sugar_g,
-          sodium_mg_100g:   mapped.sodium_mg,
-          satfat_g_100g:    mapped.satfat_g,
-          fiber_g_100g:     mapped.fiber_g,
-          protein_g_100g:   mapped.protein_g,
+    let parsedServingG =
+      p?.serving_size_g ??
+      nutr?.serving_size_g ??
+      parseServingSizeTextToGrams(rawServingSizeTxt) ??
+      (p?.serving_quantity && /g/i.test(p?.serving_unit || '')
+        ? Number(p.serving_quantity)
+        : null);
+
+    // V2: Apply portion precedence and enhanced parsing
+    if (isFeatureEnabled('photo_flow_v2') && envelope?.v2Normalized) {
+      const ocrPortion = envelope.v2Normalized.portion;
+      if (ocrPortion) {
+        const ocrGrams = parsePortionToGrams(ocrPortion);
+        if (ocrGrams > 0) {
+          parsedServingG = ocrGrams;
+          console.log('[PHOTO][V2_PORTION]', { ocr: ocrPortion, grams: ocrGrams });
         }
-      });
+      }
     }
 
+    // V2: Enhanced scoring with serving-scaled nutrition
     let score10: number | undefined = undefined;
-
-    if (engineOn && hasAny) {
-      const res = calculateHealthScore({
-        name: p.product_name || p.generic_name || '',
-        nutrition: {
-          calories: per100.energyKcal,
-          protein_g: per100.protein_g,
-          carbs_g: per100.carbs_g,
-          fat_g: per100.fat_g,
-          sugar_g: per100.sugar_g,
-          fiber_g: per100.fiber_g,
-          sodium_mg: per100.sodium_mg,
-          saturated_fat_g: per100.satfat_g,
-        },
-        ingredientsText: ingredients_text,
-        novaGroup: p.nova_group,
-        engineFixes       // pass through to engine
+    
+    if (isFeatureEnabled('photo_flow_v2') && parsedServingG) {
+      // Scale nutrition to serving before scoring
+      const servingNutrition = toServingNutrition(mapped, parsedServingG);
+      score10 = computeScore(servingNutrition, flags, ingredients_text) / 10; // Convert to 0-10 scale
+      console.log('[PHOTO][V2_SCORE]', { 
+        serving_g: parsedServingG, 
+        score: score10 * 10, 
+        flags: flags.length 
       });
-      score10 = toFinal10(res.final ?? res.score);
     } else {
-      // No invented constants. If a legit numeric legacy exists, normalize once; else leave undefined.
-      const legacy = (p as any)?.health?.score;
-      score10 = typeof legacy === 'number' ? (legacy <= 10 ? legacy : Math.round(legacy/10)) : undefined;
+      // Legacy scoring path
+      const engineOn = import.meta.env.VITE_SCORE_ENGINE_V1 === 'true';
+      const engineFixes = import.meta.env.VITE_ENGINE_V1_FIXES === 'true';
+
+      const hasAny = ['energyKcal','sugar_g','sodium_mg','satfat_g','fiber_g','protein_g']
+        .some(k => per100?.[k] != null && !Number.isNaN(+(per100?.[k] || 0)));
+      
+      if (import.meta.env.VITE_DEBUG_PERF === 'true') {
+        console.info('[ADAPTER][BARCODE.ENGINE_INPUT]', {
+          engine_flag: engineOn,
+          hasAny,
+          inputs: {
+            energy_kcal_100g: mapped.energyKcal,
+            sugar_g_100g:     mapped.sugar_g,
+            sodium_mg_100g:   mapped.sodium_mg,
+            satfat_g_100g:    mapped.satfat_g,
+            fiber_g_100g:     mapped.fiber_g,
+            protein_g_100g:   mapped.protein_g,
+          }
+        });
+      }
+
+      if (engineOn && hasAny) {
+        const res = calculateHealthScore({
+          name: p.product_name || p.generic_name || '',
+          nutrition: {
+            calories: per100.energyKcal,
+            protein_g: per100.protein_g,
+            carbs_g: per100.carbs_g,
+            fat_g: per100.fat_g,
+            sugar_g: per100.sugar_g,
+            fiber_g: per100.fiber_g,
+            sodium_mg: per100.sodium_mg,
+            saturated_fat_g: per100.satfat_g,
+          },
+          ingredientsText: ingredients_text,
+          novaGroup: p.nova_group,
+          engineFixes       // pass through to engine
+        });
+        score10 = toFinal10(res.final ?? res.score);
+      } else {
+        // No invented constants. If a legit numeric legacy exists, normalize once; else leave undefined.
+        const legacy = (p as any)?.health?.score;
+        score10 = typeof legacy === 'number' ? (legacy <= 10 ? legacy : Math.round(legacy/10)) : undefined;
+      }
     }
 
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {
@@ -281,21 +360,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
 
 
-    // Map all OFF/legacy variants and parse textual serving_size to grams
-    const rawServingSizeTxt =
-      p?.serving_size ??
-      nutr?.serving_size ??
-      nutr?.['serving-size'] ?? null;
-
-    const parsedServingG =
-      p?.serving_size_g ??
-      nutr?.serving_size_g ??
-      parseServingSizeTextToGrams(rawServingSizeTxt) ??
-      (p?.serving_quantity && /g/i.test(p?.serving_unit || '')
-        ? Number(p.serving_quantity)
-        : null);
-
-    // Extract calories for ratio calculation
+    // Extract calories for ratio calculation (moved after parsedServingG declaration)
     const kcal100 =
       num(nutr['energy-kcal_100g']) ??
       kjToKcal(num(nutr['energy_100g'])) ??      // some OFF datasets use kJ under `energy_100g`
@@ -316,14 +381,8 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       nutriments_energy_kcal_serving: nutr['energy-kcal_serving']
     });
 
-    // Map product name and HTTP image from OFF data with httpOnly guard
-    const offImage = httpOnly(
-      p?.image_front_small_url ??
-      p?.image_front_url ??
-      p?.image_url ??
-      p?.selected_images?.front?.display?.en ??
-      p?.selected_images?.front?.display?.en_GB
-    );
+    // Enhanced image extraction using extractImageUrl
+    const offImage = extractImageUrl(envelope);
 
     // Map product name with OFF precedence
     const productName = 
@@ -419,15 +478,8 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
   const extractedName = extractName(envelope);
   const p = envelope?.product || {};
   
-  // Map image with HTTP guard for non-barcode path
-  const offImage = httpOnly(
-    p.image_front_small_url ||
-    p.image_small_url ||
-    p.image_front_url ||
-    p.image_url ||
-    p.image ||
-    envelope?.imageUrl
-  );
+  // Enhanced image extraction for non-barcode path
+  const offImage = extractImageUrl(envelope);
 
   let legacy = {
     status: 'ok' as 'ok' | 'no_detection' | 'not_found',

@@ -20,6 +20,9 @@ export const FEATURE_FLAGS = {
   flags_tab_enabled: true, // Enable flags tab with severity and actions
   save_tab_enabled: true, // Enable save tab to persist reports
   smart_suggestions_enabled: true, // Enable personalized suggestions
+  
+  // Photo Flow V2 Features (GATED ROLLOUT)
+  photo_flow_v2: false, // Enable enhanced photo pipeline with OCR normalization and improved scoring
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
