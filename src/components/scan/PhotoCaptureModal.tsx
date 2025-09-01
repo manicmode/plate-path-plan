@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRouteToHealthAnalyzerV2 } from '@/lib/health/photoFlowV2Utils';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -46,6 +47,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const routeToAnalyzer = useRouteToHealthAnalyzerV2();
   
   // Stable IDs for accessibility
   const titleId = useId();
@@ -298,8 +300,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         if (!mountedRef.current) return;
+        
+        // Mock successful result for testing
+        const mockResult = {
+          itemName: 'Test Food Item',
+          healthScore: 75,
+          nutritionData: { calories: 150, protein: 8, carbs: 20, fat: 5 }
+        };
+        
+        // Route via ephemeral store - do NOT close modal manually
+        console.log('[PHOTO][V2_ROUTING] to health analyzer');
+        routeToAnalyzer(mockResult);
         setProcessing(false);
-        // Handle success - would normally process result
         
       } catch (error: any) {
         console.log('[PHOTO][V2_ERROR]', error);
@@ -479,7 +491,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         aria-describedby={descId}
       >
         <VisuallyHidden asChild>
-          <DialogTitle id={titleId}>Take Photo</DialogTitle>
+          <DialogTitle id={titleId}>Take a Photo</DialogTitle>
         </VisuallyHidden>
         
         <VisuallyHidden asChild>
@@ -598,6 +610,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </div>
             </footer>
           </div>
+
+          {/* Processing overlay */}
+          {processing && <ProcessingOverlay />}
+          
+          {/* Error overlay */}
+          {processingError && (
+            <ErrorOverlay 
+              error={processingError} 
+              onRetry={handleRetry} 
+              onManual={handleManualEntry} 
+            />
+          )}
 
           {/* No Barcode Fallback */}
           {quickScanStatus === 'no-barcode' && (

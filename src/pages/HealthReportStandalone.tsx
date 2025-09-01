@@ -8,6 +8,8 @@ import { HealthAnalysisResult } from '@/components/health-check/HealthCheckModal
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { extractScore } from '@/lib/health/extractScore';
+import { get as getPhoto, del as delPhoto } from '@/lib/stores/photoFlowStore';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 interface NutritionLogData {
   id: string;
@@ -49,15 +51,35 @@ export default function HealthReportStandalone() {
   const [directPayload, setDirectPayload] = useState<any>(null);
 
   useEffect(() => {
+    const rid = searchParams.get('rid');
+    const source = searchParams.get('src');
+    
     console.log('[REPORT][BOOT]', { 
       reportId, 
+      rid,
+      source,
       hasLocationState: !!location.state,
       barcode: searchParams.get('barcode'),
-      source: searchParams.get('source'),
       mode: searchParams.get('mode')
     });
 
-    // Check for direct barcode payload from unified pipeline
+    // V2 Photo Flow: Check ephemeral store first
+    if (isFeatureEnabled('photo_flow_v2') && rid && source === 'photo') {
+      console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=checking');
+      const data = getPhoto(rid);
+      if (data) {
+        console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=true');
+        setDirectPayload(data);
+        setLoading(false);
+        // Clean up after consumption
+        delPhoto(rid);
+        return;
+      } else {
+        console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=false');
+      }
+    }
+
+    // Check for direct barcode payload from unified pipeline (legacy support)
     if (location.state && (searchParams.get('mode') === 'barcode' || searchParams.get('barcode'))) {
       console.log('[REPORT][DIRECT] Using location state payload');
       setDirectPayload(location.state);
@@ -67,17 +89,25 @@ export default function HealthReportStandalone() {
 
     // Check for barcode parameter and fetch via enhanced-health-scanner
     const barcode = searchParams.get('barcode');
-    const source = searchParams.get('source') || 'unknown';
+    const barcodeSource = searchParams.get('source') || 'unknown';
     if (barcode && !reportId) {
-      console.log('[REPORT][BARCODE] Fetching barcode data', { barcode, source });
-      fetchBarcodeData(barcode, source);
+      console.log('[REPORT][BARCODE] Fetching barcode data', { barcode, source: barcodeSource });
+      fetchBarcodeData(barcode, barcodeSource);
       return;
     }
 
     // Fallback to reportId lookup
     if (reportId) {
       fetchReportData(reportId);
-    } else {
+    } else if (!rid || source !== 'photo') {
+      // Only redirect if we don't have a valid rid from photo flow
+      // Show friendly error with retry button for invalid rid
+      if (rid && source === 'photo') {
+        console.log('[PHOTO][ROUTE] Invalid or expired rid, showing retry');
+        setDirectPayload(null);
+        setLoading(false);
+        return;
+      }
       // No valid params, redirect to scan
       navigate('/scan');
     }
@@ -331,7 +361,25 @@ export default function HealthReportStandalone() {
     );
   }
 
-  if (!reportData) {
+  // Handle case where rid was invalid/expired but we're in photo flow
+  const rid = searchParams.get('rid');
+  const source = searchParams.get('src');
+  
+  if (!reportData && !directPayload && rid && source === 'photo') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Session Expired</h2>
+          <p className="text-foreground/60 mb-4">Your photo analysis session has expired. Please retake your photo.</p>
+          <Button onClick={() => navigate('/scan')}>
+            Retake Photo
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reportData && !directPayload) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

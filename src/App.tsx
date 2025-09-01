@@ -575,11 +575,16 @@ function AppContent() {
                                   <NutritionReport />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/health-report/:reportId" element={
-                                <ProtectedRoute>
-                                  <HealthReportStandalone />
-                                </ProtectedRoute>
-                              } />
+                               <Route path="/health-report/:reportId" element={
+                                 <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                                   <HealthReportStandalone />
+                                 </Suspense>
+                               } />
+                               <Route path="/health-report/analyze" element={
+                                 <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                                   <HealthReportStandalone />
+                                 </Suspense>
+                               } />
                              
                                {/* Legacy health-report redirect to scan hub */}
                                <Route path="/health-report" element={<Navigate to="/scan" replace />} />
@@ -587,7 +592,7 @@ function AppContent() {
                 {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
                 <Route path="/scan/not-found" element={
                   <>
-                    {import.meta.env.DEV && console.debug('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}
+                     {import.meta.env.DEV && console.debug('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}
                     <Navigate to="/scan" replace />
                   </>
                 } />

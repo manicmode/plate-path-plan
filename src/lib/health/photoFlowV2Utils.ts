@@ -302,3 +302,20 @@ export function parsePortionToGrams(portion: string): number {
       return value;
   }
 }
+
+/**
+ * Hook for routing to Health Analyzer V2 via ephemeral store
+ * Replaces location.state with TTL-based in-memory storage
+ */
+import { useNavigate } from 'react-router-dom';
+import { put as putPhoto } from '@/lib/stores/photoFlowStore';
+
+export function useRouteToHealthAnalyzerV2() {
+  const navigate = useNavigate();
+  
+  return (res: any) => {
+    console.log('[PHOTO][ROUTE] storing result for analyzer');
+    const id = putPhoto(res);
+    navigate(`/health-report/analyze?src=photo&rid=${id}`, { replace: false });
+  };
+}
