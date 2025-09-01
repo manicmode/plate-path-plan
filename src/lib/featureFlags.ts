@@ -22,7 +22,7 @@ export const FEATURE_FLAGS = {
   smart_suggestions_enabled: true, // Enable personalized suggestions
   
   // Photo Flow V2 Features (GATED ROLLOUT)
-  photo_flow_v2: false, // Enable enhanced photo pipeline with OCR normalization and improved scoring
+  photo_flow_v2: true, // Enable enhanced photo pipeline with OCR normalization and improved scoring
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

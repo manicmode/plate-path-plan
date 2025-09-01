@@ -171,7 +171,7 @@ export default function PhotoE2E() {
     const stage7Start = Date.now();
     const finalPayload = {
       productName: "Mock Chocolate Milk",
-      healthScore: healthScore / 10, // Convert to 0-10 scale
+      healthScore: healthScore, // Keep as 0-100 scale
       nutritionData: servingNutrition,
       flags,
       portion: `${portionGrams}g · ${portionResult.source}`,
@@ -186,7 +186,7 @@ export default function PhotoE2E() {
       success: true,
       logs: [
         `[PHOTO][ASSEMBLY] complete`,
-        `[PHOTO][ASSEMBLY] score_0_10=${finalPayload.healthScore}`,
+        `[PHOTO][ASSEMBLY] score_0_100=${finalPayload.healthScore}`,
         `[PHOTO][ASSEMBLY] portion_display=${finalPayload.portion}`
       ]
     });

@@ -294,15 +294,15 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
     }
 
     // V2: Enhanced scoring with serving-scaled nutrition
-    let score10: number | undefined = undefined;
+    let healthScore100: number | undefined = undefined;
     
     if (isFeatureEnabled('photo_flow_v2') && parsedServingG) {
       // Scale nutrition to serving before scoring
       const servingNutrition = toServingNutrition(mapped, parsedServingG);
-      score10 = computeScore(servingNutrition, flags, ingredients_text) / 10; // Convert to 0-10 scale
+      healthScore100 = computeScore(servingNutrition, flags, ingredients_text); // Keep as 0-100 scale
       console.log('[PHOTO][V2_SCORE]', { 
         serving_g: parsedServingG, 
-        score: score10 * 10, 
+        score: healthScore100, 
         flags: flags.length 
       });
     } else {
@@ -345,17 +345,17 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
           novaGroup: p.nova_group,
           engineFixes       // pass through to engine
         });
-        score10 = toFinal10(res.final ?? res.score);
+        healthScore100 = res.final ?? res.score; // Keep as 0-100 scale
       } else {
-        // No invented constants. If a legit numeric legacy exists, normalize once; else leave undefined.
+        // No invented constants. If a legit numeric legacy exists, use it; else leave undefined.
         const legacy = (p as any)?.health?.score;
-        score10 = typeof legacy === 'number' ? (legacy <= 10 ? legacy : Math.round(legacy/10)) : undefined;
+        healthScore100 = typeof legacy === 'number' ? (legacy <= 10 ? legacy * 10 : legacy) : undefined;
       }
     }
 
     if (import.meta.env.VITE_DEBUG_PERF === 'true') {
       console.info('[ADAPTER][BARCODE.SCORE_OUT]', {
-        score10, used_legacy_score: p?.health?.score != null
+        healthScore100, used_legacy_score: p?.health?.score != null
       });
     }
 
@@ -423,7 +423,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       nutritionDataPerServing: perServing,   // <-- canonical
       perServing,                           // <-- keep old name as alias, harmless
       flags,
-      healthScore: score10,                 // 0–10
+      healthScore: healthScore100,          // 0–100
       _dataSource: 'openfoodfacts/barcode',
       ingredientsText: ingredients_text,
       barcode: p.code || envelope.barcode || '',
@@ -450,7 +450,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       console.info('[ADAPTER][BARCODE.OUT]', {
         productName: legacy.productName,
         productImageUrlLen: legacy.productImageUrl?.length || 0,
-        healthScore: score10,
+        healthScore: healthScore100,
         flags_count: flags?.length || 0,
         per100g: { kcal: per100.energyKcal, sugar_g: per100.sugar_g, sodium_mg: per100.sodium_mg },
         perServing: {
@@ -463,7 +463,7 @@ export function toLegacyFromEdge(envelope: any): LegacyRecognized {
       });
     }
     
-    console.log('[ADAPTER][BARCODE]', { name: legacy.productName, score10: legacy.healthScore, flagCount: flags.length });
+    console.log('[ADAPTER][BARCODE]', { name: legacy.productName, healthScore: legacy.healthScore, flagCount: flags.length });
     return legacy;
   }
   

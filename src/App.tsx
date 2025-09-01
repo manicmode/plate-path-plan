@@ -584,13 +584,13 @@ function AppContent() {
                                {/* Legacy health-report redirect to scan hub */}
                                <Route path="/health-report" element={<Navigate to="/scan" replace />} />
                                
-                               {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
-                               <Route path="/scan/not-found" element={
-                                 <>
-                                   {console.warn('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}
-                                   <Navigate to="/scan" replace />
-                                 </>
-                               } />
+                {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
+                <Route path="/scan/not-found" element={
+                  <>
+                    {import.meta.env.DEV && console.debug('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}
+                    <Navigate to="/scan" replace />
+                  </>
+                } />
                               
                               {/* V2 Enhanced Health Report Test - Dev Only */}
                               <Route path="/standalone-test" element={
