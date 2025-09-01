@@ -11,6 +11,7 @@ import { DetectStep } from './steps/DetectStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { AnalyzeStep } from './steps/AnalyzeStep';
 import { ReportStack } from './ReportStack';
+import { MealReportStack } from './MealReportStack';
 import { debugLog } from '../debug';
 
 interface MealCaptureWizardProps {
@@ -24,6 +25,7 @@ interface MealCaptureWizardProps {
 export function MealCaptureWizard({ currentStep, onStepChange, onExit, initialData }: MealCaptureWizardProps) {
   const [wizardData, setWizardData] = useState<MealCaptureData>(initialData || {});
   const [showReportStack, setShowReportStack] = useState(false);
+  const [showMealReportStack, setShowMealReportStack] = useState(false);
   
   // Memory cleanup for object URLs
   React.useEffect(() => {
@@ -40,8 +42,13 @@ export function MealCaptureWizard({ currentStep, onStepChange, onExit, initialDa
   };
   
   const handleComplete = () => {
-    debugLog('Wizard completed, showing report stack');
-    setShowReportStack(true);
+    debugLog('Wizard completed, showing reports');
+    // Check if we have health reports (multi-select flow) or single analysis result
+    if (wizardData.healthReports && wizardData.healthReports.length > 0) {
+      setShowMealReportStack(true);
+    } else {
+      setShowReportStack(true);
+    }
   };
   
   const renderCurrentStep = () => {
@@ -87,6 +94,17 @@ export function MealCaptureWizard({ currentStep, onStepChange, onExit, initialDa
           data={wizardData}
           onClose={() => {
             setShowReportStack(false);
+            onExit();
+          }}
+        />
+      )}
+      
+      {/* Meal report stack modal */}
+      {showMealReportStack && (
+        <MealReportStack
+          data={wizardData}
+          onClose={() => {
+            setShowMealReportStack(false);
             onExit();
           }}
         />

@@ -17,7 +17,9 @@ export interface MealCaptureData {
   imageBlob?: Blob;
   detectedItems?: any[];
   selectedItem?: any;
+  selectedItems?: any[];
   analysisResult?: any;
+  healthReports?: any[];
 }
 
 export default function MealCapturePage() {

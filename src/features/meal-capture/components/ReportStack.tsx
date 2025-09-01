@@ -3,8 +3,9 @@
  * Revision tag: 2025-08-31T21:45Z-r1
  */
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import React, { useState, useId } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { ReminderToggle } from '@/components/reminder/ReminderToggle';
 import type { MealCaptureData } from './MealCapturePage';
@@ -17,6 +18,9 @@ interface ReportStackProps {
 }
 
 export function ReportStack({ data, onClose }: ReportStackProps) {
+  const titleId = useId();
+  const descId = useId();
+  
   const [showConfirm, setShowConfirm] = useState(true);
   const [showReminder, setShowReminder] = useState(false);
   const [confirmData, setConfirmData] = useState<any>(null);
@@ -82,7 +86,18 @@ export function ReportStack({ data, onClose }: ReportStackProps) {
       {/* Reminder Modal */}
       {showReminder && (
         <Dialog open={showReminder} onOpenChange={setShowReminder}>
-          <DialogContent className="mc-reminder-dialog">
+          <DialogContent 
+            className="mc-reminder-dialog"
+            aria-labelledby={titleId}
+            aria-describedby={descId}
+          >
+            <VisuallyHidden>
+              <DialogTitle id={titleId}>Set Reminder</DialogTitle>
+              <DialogDescription id={descId}>
+                Configure meal reminder settings
+              </DialogDescription>
+            </VisuallyHidden>
+            
             <ReminderToggle
               foodName={confirmData?.name || 'Meal'}
               onReminderClose={() => {

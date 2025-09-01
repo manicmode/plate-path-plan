@@ -1,11 +1,13 @@
 /**
- * Detect Step - Food item detection and selection
- * Revision tag: 2025-08-31T21:45Z-r1
+ * Detect Step - Food item detection and multi-selection
+ * Revision tag: 2025-09-01T22:00Z-r1
  */
 
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { MealCaptureData, WizardStep } from '../MealCapturePage';
 import { debugLog } from '../../debug';
 
@@ -17,17 +19,24 @@ interface DetectStepProps {
 }
 
 export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepProps) {
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const handleItemSelect = (item: any) => {
-    debugLog('Item selected', { item });
-    setSelectedItem(item);
-    onUpdateData({ selectedItem: item });
+  const toggle = (id: string) => {
+    setSelectedIds(prev => {
+      const newSelection = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      console.log('[MEAL][SELECT]', { count: newSelection.length, ids: newSelection });
+      
+      // Update the selected items in data
+      const selectedItems = data.detectedItems?.filter(item => newSelection.includes(item.id)) || [];
+      onUpdateData({ selectedItems });
+      
+      return newSelection;
+    });
   };
   
   const handleContinue = () => {
-    if (selectedItem) {
-      onNext('review');
+    if (selectedIds.length >= 1) {
+      onNext('analyze'); // Skip review, go directly to analyze
     }
   };
   
@@ -62,24 +71,24 @@ export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepPro
           {/* Detection overlays - mock bounding boxes */}
           <div className="mc-overlays absolute inset-0">
             {data.detectedItems?.map((item, index) => (
-              <div
-                key={item.id}
-                className={`mc-detection-box absolute border-2 rounded cursor-pointer transition-all ${
-                  selectedItem?.id === item.id 
-                    ? 'border-green-400 bg-green-400/20' 
-                    : 'border-white/60 hover:border-white'
-                }`}
-                style={{
-                  left: `${item.boundingBox.x * 100}%`,
-                  top: `${item.boundingBox.y * 100}%`,
-                  width: `${item.boundingBox.width * 100}%`,
-                  height: `${item.boundingBox.height * 100}%`,
-                }}
-                onClick={() => handleItemSelect(item)}
-              >
-                {selectedItem?.id === item.id && (
-                  <CheckCircle2 className="mc-check-icon absolute -top-2 -right-2 h-6 w-6 text-green-400 bg-white rounded-full" />
-                )}
+            <div
+              key={item.id}
+              className={`mc-detection-box absolute border-2 rounded cursor-pointer transition-all ${
+                selectedIds.includes(item.id) 
+                  ? 'border-green-400 bg-green-400/20' 
+                  : 'border-white/60 hover:border-white'
+              }`}
+              style={{
+                left: `${item.boundingBox.x * 100}%`,
+                top: `${item.boundingBox.y * 100}%`,
+                width: `${item.boundingBox.width * 100}%`,
+                height: `${item.boundingBox.height * 100}%`,
+              }}
+              onClick={() => toggle(item.id)}
+            >
+              {selectedIds.includes(item.id) && (
+                <CheckCircle2 className="mc-check-icon absolute -top-2 -right-2 h-6 w-6 text-green-400 bg-white rounded-full" />
+              )}
               </div>
             ))}
           </div>
@@ -95,11 +104,11 @@ export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepPro
             <div
               key={item.id}
               className={`mc-detection-item p-4 rounded-lg cursor-pointer transition-all ${
-                selectedItem?.id === item.id 
+                selectedIds.includes(item.id) 
                   ? 'bg-green-500/20 border-2 border-green-400' 
                   : 'bg-white/10 hover:bg-white/20'
               }`}
-              onClick={() => handleItemSelect(item)}
+              onClick={() => toggle(item.id)}
             >
               <div className="mc-item-content flex items-center justify-between">
                 <div className="mc-item-info">
@@ -109,7 +118,7 @@ export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepPro
                   </p>
                 </div>
                 
-                {selectedItem?.id === item.id && (
+                {selectedIds.includes(item.id) && (
                   <CheckCircle2 className="mc-selected-icon h-6 w-6 text-green-400" />
                 )}
               </div>
@@ -122,10 +131,10 @@ export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepPro
       <div className="mc-actions p-4">
         <Button
           onClick={handleContinue}
-          disabled={!selectedItem}
+          disabled={selectedIds.length === 0}
           className="mc-continue-btn w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:opacity-50 text-white"
         >
-          Continue with {selectedItem?.name || 'Selected Item'}
+          Show health reports ({selectedIds.length})
         </Button>
       </div>
     </div>
