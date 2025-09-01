@@ -145,7 +145,7 @@ export default function HealthReportStandalone() {
             console.log('[PHOTO][MEAL] items_detected=', items.length);
             
             if (items.length === 0) {
-              setError("Couldn't confidently detect foods. Retake photo (clear, good lighting) or Try Manual Entry.");
+              setError("Couldn't detect foods. Retake with better lighting, or Try Manual Entry.");
               setLoading(false);
               delPhoto(rid);
               return;
@@ -195,7 +195,7 @@ export default function HealthReportStandalone() {
                 sodium_mg: Math.round(estimatedCalories * 2),
               },
               flags: [],
-              healthScore: Math.min(85, Math.max(45, 70 - (estimatedCalories > 600 ? 15 : 0))), // realistic score
+              healthScore: Math.min(85, Math.max(45, 70 - (estimatedCalories > 600 ? 15 : 0))), // realistic score based on calories
               portion: `Photo · ${topItems.length} items`,
               source: 'photo_flow_v2_meal',
               detectedItems: topItems, // Include detected items for display

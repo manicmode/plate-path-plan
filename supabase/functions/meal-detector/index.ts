@@ -8,29 +8,31 @@ const corsHeaders = {
 
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-const FOOD_MAP: Record<string, number> = {
-  salmon: 140, fish: 140, "fish fillet": 140,
-  asparagus: 85, tomato: 50, "cherry tomato": 30, lemon: 20,
-  pasta: 140, spaghetti: 140, noodles: 140,
-  rice: 150, "fried rice": 150,
-  salad: 120, lettuce: 30, greens: 50,
-  chicken: 120, "chicken breast": 120,
-  beef: 150, steak: 150,
-  fries: 90, "french fries": 90, chips: 90,
-  burger: 180, sandwich: 170,
-  egg: 100, omelet: 100, omelette: 100,
-  pancake: 150, pancakes: 150, waffle: 150,
-  sushi: 140, soup: 300, bread: 60, toast: 60,
-  pizza: 200, carrot: 60, broccoli: 90,
-  potato: 150, cheese: 30, yogurt: 170
+// canonical foods + aliases + default grams
+const FOOD: Record<string, { aliases: string[]; defaultGrams: number }> = {
+  salmon:     { aliases: ["salmon","fish","salmon steak","grilled salmon","fish fillet"], defaultGrams: 140 },
+  asparagus:  { aliases: ["asparagus"], defaultGrams: 85 },
+  tomato:     { aliases: ["tomato","cherry tomato"], defaultGrams: 50 },
+  lemon:      { aliases: ["lemon","lemon slice"], defaultGrams: 20 },
+  pasta:      { aliases: ["pasta","spaghetti","noodles"], defaultGrams: 140 },
+  rice:       { aliases: ["rice","fried rice","pilaf"], defaultGrams: 150 },
+  salad:      { aliases: ["salad","lettuce","greens"], defaultGrams: 120 },
+  chicken:    { aliases: ["chicken","chicken breast"], defaultGrams: 120 },
+  beef:       { aliases: ["beef","steak"], defaultGrams: 150 },
+  fries:      { aliases: ["fries","french fries","chips"], defaultGrams: 90 },
+  burger:     { aliases: ["burger"], defaultGrams: 180 },
+  sandwich:   { aliases: ["sandwich"], defaultGrams: 170 },
+  eggs:       { aliases: ["egg","eggs","omelet","omelette"], defaultGrams: 100 },
+  pancakes:   { aliases: ["pancake","pancakes","waffle"], defaultGrams: 150 },
+  sushi:      { aliases: ["sushi"], defaultGrams: 140 },
+  soup:       { aliases: ["soup"], defaultGrams: 300 },
+  bread:      { aliases: ["bread","toast","bun"], defaultGrams: 60 },
 };
 
-function getFoodInfo(label: string): { name: string; grams: number } | null {
-  const lower = label.toLowerCase();
-  for (const [food, grams] of Object.entries(FOOD_MAP)) {
-    if (lower.includes(food)) {
-      return { name: food, grams };
-    }
+function toCanonical(s: string): string | null {
+  const t = s.toLowerCase();
+  for (const k of Object.keys(FOOD)) {
+    if (FOOD[k].aliases.some(a => t.includes(a))) return k;
   }
   return null;
 }
@@ -42,94 +44,104 @@ serve(async (req) => {
 
   try {
     const { image_base64 } = await req.json();
-    const apiKey = Deno.env.get("GOOGLE_VISION_API_KEY");
+    const key = Deno.env.get("GOOGLE_VISION_API_KEY");
     
-    if (!apiKey) {
-      console.log("[meal-detector] Missing API key");
-      return new Response(JSON.stringify({ items: [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!key) {
+      throw new Error("Missing GOOGLE_VISION_API_KEY");
     }
-
-    const content = (image_base64 || "").split(",").pop();
     
-    const requestBody = {
+    const content = (image_base64 || "").split(",").pop();
+
+    const body = {
       requests: [{
         image: { content },
         features: [
-          { type: "OBJECT_LOCALIZATION", maxResults: 15 },
-          { type: "LABEL_DETECTION", maxResults: 10 }
-        ]
-      }]
+          { type: "OBJECT_LOCALIZATION", maxResults: 20 },
+          { type: "LABEL_DETECTION",     maxResults: 15 },
+        ],
+      }],
     };
 
-    const response = await fetch(`${VISION_URL}?key=${apiKey}`, {
+    const r = await fetch(`${VISION_URL}?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(body),
     });
+    
+    const text = await r.text();
+    if (!r.ok) {
+      throw new Error(`Vision error ${r.status}: ${text}`);
+    }
+    
+    const json = JSON.parse(text);
+    const resp = json?.responses?.[0] ?? {};
+    const objs = resp?.localizedObjectAnnotations ?? [];
+    const labels = (resp?.labelAnnotations ?? []).map((x: any) => (x.description || "").toLowerCase());
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[meal-detector] Vision API error ${response.status}: ${errorText}`);
-      return new Response(JSON.stringify({ items: [] }), {
+    // candidate boxes → foods
+    const boxes = objs.map((o: any) => {
+      const vs = o.boundingPoly?.normalizedVertices ?? [];
+      const xs = vs.map((v: any) => v.x ?? 0);
+      const ys = vs.map((v: any) => v.y ?? 0);
+      const x = Math.max(0, Math.min(...xs));
+      const y = Math.max(0, Math.min(...ys));
+      const w = Math.max(0, Math.max(...xs) - x);
+      const h = Math.max(0, Math.max(...ys) - y);
+      const raw = (o.name || "").toLowerCase();
+      
+      let name = toCanonical(raw);
+      if (!name) {
+        const guess = labels.map(toCanonical).find(Boolean);
+        if (guess) name = guess;
+      }
+      return { name, score: o.score || 0, x, y, w, h, area: Math.max(w*h, 0) };
+    }).filter(c => c.name && c.score >= 0.55);
+
+    let items: any[] = [];
+    if (boxes.length) {
+      const areaSum = boxes.reduce((s,c) => s + c.area, 0) || 1;
+      items = boxes
+        .sort((a,b) => b.score - a.score)
+        .slice(0, 4)
+        .map(c => {
+          const ratio = c.area / areaSum;
+          const base = FOOD[c.name!].defaultGrams;
+          const grams = Math.max(20, Math.round(base * (ratio / 0.6))); // normalize main item ~60%
+          return {
+            name: c.name,
+            confidence: c.score,
+            box: { x:c.x, y:c.y, w:c.w, h:c.h },
+            areaRatio: Number(ratio.toFixed(3)),
+            grams
+          };
+        });
+    }
+
+    // Fallback: if no boxes mapped to foods, use global labels
+    if (!items.length) {
+      const labelFoods = labels
+        .map(toCanonical)
+        .filter(Boolean)
+        .slice(0, 3)
+        .map((name: string, i: number) => ({
+          name,
+          confidence: 0.6 - i * 0.05,
+          box: null,
+          areaRatio: 1 / Math.max(1, i + 1),
+          grams: Math.round(FOOD[name!].defaultGrams * (i === 0 ? 1 : 0.6)),
+        }));
+      
+      return new Response(JSON.stringify({ items: labelFoods }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
-    const result = data?.responses?.[0] || {};
-    
-    const objects = result?.localizedObjectAnnotations || [];
-    const labels = (result?.labelAnnotations || []).map((l: any) => l.description || "");
-    
-    const detectedItems: any[] = [];
-    
-    // Process objects first
-    for (const obj of objects) {
-      const foodInfo = getFoodInfo(obj.name || "");
-      if (foodInfo && obj.score >= 0.6) {
-        detectedItems.push({
-          name: foodInfo.name,
-          confidence: obj.score,
-          grams: foodInfo.grams,
-          source: "object"
-        });
-      }
-    }
-    
-    // If no objects found, try labels
-    if (detectedItems.length === 0) {
-      for (const label of labels) {
-        const foodInfo = getFoodInfo(label);
-        if (foodInfo) {
-          detectedItems.push({
-            name: foodInfo.name,
-            confidence: 0.7,
-            grams: foodInfo.grams,
-            source: "label"
-          });
-        }
-      }
-    }
-
-    // Remove duplicates and take top 3
-    const uniqueItems = detectedItems
-      .filter((item, index, self) => 
-        index === self.findIndex(t => t.name === item.name)
-      )
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 3);
-
-    console.log(`[meal-detector] Detected ${uniqueItems.length} food items:`, uniqueItems.map(i => i.name));
-
-    return new Response(JSON.stringify({ items: uniqueItems }), {
+    return new Response(JSON.stringify({ items }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-  } catch (error) {
-    console.error("[meal-detector] Error:", error);
-    return new Response(JSON.stringify({ error: String(error), items: [] }), {
+  } catch (e) {
+    // fail soft (client shows retry UI)
+    return new Response(JSON.stringify({ error: String(e), items: [] }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

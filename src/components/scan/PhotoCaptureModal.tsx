@@ -233,9 +233,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-  const playCameraClickSound = () => {
-    Sound.play('shutter');
-  };
 
   const stopTracksSafely = async (stream?: MediaStream | null) => {
     try { 
@@ -578,7 +575,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
                 {/* Capture Button - Center, larger */}
                 <Button
-                  onPointerDown={() => Sound.play('shutter')}
+                  onPointerDown={() => { 
+                    Sound.play('shutter'); 
+                    try { (navigator as any).vibrate?.(40); } catch {} 
+                  }}
                   onClick={capturePhoto}
                   disabled={isCapturing || !stream}
                   size="lg"

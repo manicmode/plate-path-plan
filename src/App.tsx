@@ -184,6 +184,18 @@ function AppContent() {
       PHOTO_SANDBOX_ALLOW_PROD: (import.meta.env.VITE_PHOTO_SANDBOX_ALLOW_PROD ?? 'false') === 'true'
     });
     
+    // Bootstrap sound system - ensure unlock on first user gesture
+    const unlockSound = () => {
+      import('@/lib/sound/soundManager').then(({ Sound }) => {
+        Sound.ensureUnlocked();
+      });
+    };
+    
+    // Listen for first user interaction to unlock audio
+    window.addEventListener('pointerdown', unlockSound, { once: true, passive: true });
+    window.addEventListener('click', unlockSound, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockSound, { once: true, passive: true });
+    
     // Defer heavy work behind initial paint
     requestIdle(() => {
       // Move version check to idle callback to not block initial render
@@ -193,6 +205,12 @@ function AppContent() {
         console.warn('Version check failed:', error);
       }
     });
+    
+    return () => {
+      window.removeEventListener('pointerdown', unlockSound);
+      window.removeEventListener('click', unlockSound);
+      window.removeEventListener('touchstart', unlockSound);
+    };
   }, []);
 
   // Prefetch critical components after app has loaded

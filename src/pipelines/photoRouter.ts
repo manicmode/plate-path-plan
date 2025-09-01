@@ -45,53 +45,38 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
 export async function routePhoto(b64: string, abort?: AbortSignal): Promise<PhotoRoute> {
   console.log('[PHOTO][ROUTE] Starting photo analysis...');
   
+  // Try OCR first; if it throws, fall back to meal (don't redirect)
   try {
-    // Convert base64 to blob for OCR analysis
-    const base64Data = b64.includes(',') ? b64.split(',')[1] : b64;
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: 'image/jpeg' });
+    const ocr = await supabase.functions.invoke('vision-ocr', { 
+      body: { image_base64: b64 }
+    });
     
-    const ocrResult = await ocrAnalyze({ blob }, { force: false, offline: false });
+    // @ts-ignore
+    if (ocr.error) throw ocr.error;
     
-    if (ocrResult.ok) {
-      const ocr = ocrResult.report; // returns { text, labels, portion, servings, imageUrl }
-      const text = ocr?.text || '';
-      const labels = ocr?.labels || [];
-      
-      console.log('[PHOTO][ROUTE]', { 
-        ocr_len: text.length, 
-        labels_count: labels.length 
-      });
-      
-      if (looksLikeNutritionLabel(text, labels)) {
-        console.log('[PHOTO][ROUTE] kind=label, ocr_len=', text.length, ', labels_count=', labels.length);
-        return { kind: 'label', data: ocr };
-      }
-      
-      // Continue to meal analysis with OCR data
-      const meal = await analyzeMealBase64(b64, abort);
-      const mealWithImage = { 
-        ...meal, 
-        imageUrl: ocr?.imageUrl 
-      };
-      
-      console.log('[PHOTO][ROUTE] kind=meal, ocr_len=', text.length, ', labels_count=', labels.length);
-      console.log('[PHOTO][MEAL] items_detected=', meal.items.length);
-      
-      return { kind: 'meal', data: mealWithImage };
-    } else {
-      throw new Error('OCR analysis failed');
+    const data = ocr.data;
+    const text = data?.text || '';
+    const labels = data?.labels || [];
+    
+    console.log('[PHOTO][OCR] success, text_len=', text.length, 'labels=', labels.length);
+    
+    if (looksLikeNutritionLabel(text, labels)) {
+      console.log('[PHOTO][ROUTE] kind=label');
+      return { kind: 'label', data };
     }
-  } catch (e) {
-    console.debug('[PHOTO][ROUTE] OCR failed, falling back to meal:', e?.message || e);
-    // Fallback to meal analysis without OCR data
-    const meal = await analyzeMealBase64(b64, abort);
-    console.log('[PHOTO][ROUTE] kind=meal (fallback)');
-    console.log('[PHOTO][MEAL] items_detected=', meal.items.length);
-    return { kind: 'meal', data: meal };
+  } catch (e: any) {
+    console.error('[PHOTO][OCR] invoke_failed', e?.message || e);
+    // continue to meal detection
   }
+
+  // Try meal detection
+  const meal = await supabase.functions.invoke('meal-detector', { 
+    body: { image_base64: b64 }
+  });
+  
+  // @ts-ignore
+  const items = meal?.data?.items || [];
+  console.debug('[PHOTO][MEAL] items_detected=', items.length);
+  
+  return { kind: 'meal', data: { items } };
 }
