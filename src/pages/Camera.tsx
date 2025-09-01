@@ -50,6 +50,9 @@ import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 import { MealCaptureFlow } from '@/components/meal-capture/MealCaptureFlow';
 import { isFeatureEnabled, mealCaptureEnabled, mealCaptureEnabledFromSearch } from '@/lib/featureFlags';
+import { isMealCaptureMode, debugLog } from '@/features/meal-capture/isMealCaptureMode';
+import { MealCaptureWizard } from '@/features/meal-capture/MealCaptureWizard';
+import { LogPrefill } from '@/lib/health/logPrefill';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -198,6 +201,7 @@ const CameraPage = () => {
   const [currentMode, setCurrentMode] = useState<'photo' | 'voice' | 'manual' | 'barcode' | 'nutrition-capture' | 'meal-capture' | 'confirm'>('photo');
   const [nutritionCaptureData, setNutritionCaptureData] = useState<any>(null);
   const [mealCaptureImageUrl, setMealCaptureImageUrl] = useState<string | null>(null);
+  const [inlineConfirmPrefill, setInlineConfirmPrefill] = useState<LogPrefill | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -223,12 +227,12 @@ const CameraPage = () => {
     }
   );
 
+  const mealMode = isMealCaptureMode(location.search);
+
   // Effect to handle reset from navigation
   useEffect(() => {
     // Guard against meal capture mode
-    const qs = new URLSearchParams(location.search);
-    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
-    if (isMealCapture) return; // 🚫 block non-meal paths
+    if (mealMode) return; // 🚫 block non-meal paths
     
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('reset') === 'true') {
@@ -243,9 +247,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
   // Handle prefill data from Health Report
   useEffect(() => {
     // Guard against meal capture mode
-    const qs = new URLSearchParams(location.search);
-    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
-    if (isMealCapture) return; // 🚫 block non-meal paths
+    if (mealMode) return; // 🚫 block non-meal paths
     
     const prefill = (location.state as any)?.logPrefill;
     if (!prefill || prefill.source !== 'health-report') return;
@@ -323,11 +325,13 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Handle meal capture mode on arrival (URL params + state)
   useEffect(() => {
+    // Skip if not meal mode
+    if (!mealMode) return;
+    
+    debugLog('ROUTE][ENTER', { page: 'camera', mode: 'meal-capture' });
+    
     const state = location.state as any;
-    const stateMode = state?.mode;
-    const params = new URLSearchParams(location.search);
-    const urlMode = params.get('mode');
-    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && urlMode === 'meal-capture';
+    const imageUrl = state?.imageUrl;
     
     // Check for meal-capture mode from URL first, then state
     if (urlMode === 'meal-capture') {
@@ -343,22 +347,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         console.warn('[MEAL][GUARD] Meal capture accessed but flag disabled');
       }
     } else if (stateMode === 'nutrition-capture') {
-      const productData = state?.productData;
-      if (productData) {
-        console.log('[CAMERA][NUTRITION_CAPTURE]', 'Starting NF capture flow');
-        setCurrentMode('nutrition-capture');
-        setNutritionCaptureData(productData);
-      }
-    } else if (stateMode === 'meal-capture') {
-      // Legacy state-based meal capture support
-      const imageUrl = state?.imageUrl;
-      if (imageUrl && mealCaptureEnabledFromSearch(location.search)) {
-        console.log('[CAMERA][MEAL_CAPTURE]', 'Processing meal capture with image');
-        setCurrentMode('meal-capture');
-        setMealCaptureImageUrl(imageUrl);
-      }
+    if (imageUrl) {
+      setMealCaptureImageUrl(imageUrl);
     }
-  }, [location.state, location.search]);
+  }, [mealMode, location.state]);
+  
   // Defensive guard against meal-capture mode reaching logging
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -370,9 +363,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
   // Auto-dismiss error when analysis succeeds
   useEffect(() => {
     // Guard against meal capture mode
-    const qs = new URLSearchParams(location.search);
-    const isMealCapture = mealCaptureEnabledFromSearch(location.search) && qs.get('mode') === 'meal-capture';
-    if (isMealCapture) return; // 🚫 block non-meal paths
+    if (mealMode) return; // 🚫 block non-meal paths
     
     if (recognizedFoods.length > 0 || reviewItems.length > 0) {
       setShowError(false);
@@ -2655,62 +2646,35 @@ console.log('Global search enabled:', enableGlobalSearch);
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Hard-gate: If meal capture mode is enabled, short-circuit to meal wizard */}
-      {(() => {
-        const qs = new URLSearchParams(location.search);
-        const mode = qs.get('mode');
-        const isMealCapture = mealCaptureEnabledFromSearch(location.search) && mode === 'meal-capture';
-        
-        if (isMealCapture) {
-          console.log('[MEAL][CAMERA][ENTER]', { mode, enabled: true });
-          return (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Meal Capture</h1>
-              </div>
-              {mealCaptureImageUrl ? (
-                <MealCaptureFlow
-                  imageUrl={mealCaptureImageUrl}
-                  onExit={() => {
-                    setCurrentMode('photo');
-                    setMealCaptureImageUrl(null);
-                    navigate('/scan');
-                  }}
-                />
-              ) : (
-                <PhotoCaptureModal
-                  open={true}
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setCurrentMode('photo');
-                      navigate('/scan');
-                    }
-                  }}
-                  onCapture={(imageData) => {
-                    // Convert base64 to blob URL for meal processing
-                    const blob = dataURLtoBlob(imageData);
-                    const imageUrl = URL.createObjectURL(blob);
-                    setMealCaptureImageUrl(imageUrl);
-                  }}
-                  onManualFallback={() => {
-                    setCurrentMode('photo');
-                    navigate('/scan');
-                  }}
-                  mode="meal-capture"
-                />
-              )}
-            </div>
-          );
-        }
-      })()}
+      {mealMode ? (
+        <MealCaptureWizard
+          onExit={() => navigate('/scan', { replace: true })}
+          onHandOffToConfirm={(prefill) => setInlineConfirmPrefill(prefill)}
+        />
+      ) : (
+        <>
+      )}
 
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
-      </div>
+      {/* Inline Confirm hand-off (only in meal mode) */}
+      {mealMode && inlineConfirmPrefill && (
+        <FoodConfirmationCard
+          isOpen
+          onClose={() => setInlineConfirmPrefill(null)}
+          foodItem={{
+            name: inlineConfirmPrefill.item.itemName,
+            calories: inlineConfirmPrefill.item.nutrientsScaled?.calories || 0,
+            protein: inlineConfirmPrefill.item.nutrientsScaled?.protein_g || 0,
+            carbs: inlineConfirmPrefill.item.nutrientsScaled?.carbs_g || 0,
+            fat: inlineConfirmPrefill.item.nutrientsScaled?.fat_g || 0,
+            image: inlineConfirmPrefill.item.imageUrl
+          }}
+        />
+      )}
 
-      {/* Processing Status */}
-      <ProcessingStatus 
-        isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
-        processingStep={processingStep}
+          {/* Processing Status */}
+          <ProcessingStatus 
+            isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+            processingStep={processingStep}
         showTimeout={isAnalyzing}
       />
 
@@ -3357,7 +3321,8 @@ console.log('Global search enabled:', enableGlobalSearch);
       <div className="mt-8">
         <ActivityLoggingSection />
       </div>
-      
+        </>
+      )}
     </div>
   );
 };

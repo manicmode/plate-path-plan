@@ -1,171 +1,159 @@
 /**
- * Stacked Health Reports for Meal Items
- * REV: MEAL_REV_SBX=2025-08-31T17:55Z-r2
+ * Meal Report Stack - Stacked Health Reports
+ * Shows analysis results for each detected meal item
  */
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, CheckCircle, ArrowLeft } from 'lucide-react';
-import { MealItem } from './types';
-import { renderHealthReport } from '@/lib/health/renderHealthReport';
-import { toast } from 'sonner';
+import { X, ArrowRight } from 'lucide-react';
+import { debugLog } from './isMealCaptureMode';
+import { buildLogPrefillFromMeal, HealthAnalysisResult } from './buildLogPrefillFromMeal';
+import { LogPrefill } from '@/lib/health/logPrefill';
 
-const MEAL_REV_SBX = "2025-08-31T17:55Z-r2";
-
-interface MealReportStackProps {
-  items: MealItem[];
-  onExit: () => void;
-  onBack: () => void;
+export interface MealReport {
+  id: string;
+  itemName: string;
+  analysis: HealthAnalysisResult;
+  cropUrl?: string;
 }
 
-export const MealReportStack: React.FC<MealReportStackProps> = ({
-  items: initialItems,
-  onExit,
-  onBack
-}) => {
-  const [remainingItems, setRemainingItems] = useState<MealItem[]>(initialItems);
+interface MealReportStackProps {
+  reports: MealReport[];
+  onHandOffToConfirm: (prefill: LogPrefill) => void;
+  onRemoveReport: (id: string) => void;
+  onExit: () => void;
+}
 
-  useEffect(() => {
-    if (import.meta.env.VITE_DEBUG_MEAL === '1') {
-      console.log('[MEAL][STACK][SHOW]', { count: initialItems.length });
-    }
-  }, [initialItems.length]);
-
-  const handleItemLogged = (itemId: string, itemLabel: string) => {
-    if (import.meta.env.VITE_DEBUG_MEAL === '1') {
-      console.log('[MEAL][STACK][LOG]', { 
-        label: itemLabel, 
-        grams: remainingItems.find(i => i.id === itemId)?.gramsEstimate 
-      });
-    }
-
-    // Remove the logged item from the stack
-    setRemainingItems(prev => prev.filter(item => item.id !== itemId));
+export function MealReportStack({ 
+  reports, 
+  onHandOffToConfirm, 
+  onRemoveReport, 
+  onExit 
+}: MealReportStackProps) {
+  const handleLogItem = (report: MealReport) => {
+    debugLog('HANDOFF][CONFIRM', { name: report.itemName });
     
-    toast.success(`${itemLabel} logged successfully!`);
+    const prefill = buildLogPrefillFromMeal(
+      report.analysis,
+      report.cropUrl
+    );
+    
+    onHandOffToConfirm(prefill);
   };
 
-  // Close the entire stack when no items remain
-  useEffect(() => {
-    if (remainingItems.length === 0) {
-      if (import.meta.env.VITE_DEBUG_MEAL === '1') {
-        console.log('[MEAL][STACK][EMPTY]', { close: true });
-      }
-      toast.success('All items logged!');
-      onExit();
-    }
-  }, [remainingItems.length, onExit]);
-
-  const handleScanAnother = () => {
-    // For meal reports, we don't want to scan another - instead go back to selection
-    onBack();
+  const handleRemoveReport = (id: string) => {
+    debugLog('STACK][POP', { id, remaining: reports.length - 1 });
+    onRemoveReport(id);
   };
+
+  if (reports.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background overflow-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b p-4 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold">Health Reports</h1>
-              <p className="text-sm text-muted-foreground">
-                {remainingItems.length} item{remainingItems.length !== 1 ? 's' : ''} remaining
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onExit}
-            className="text-destructive hover:text-destructive"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Meal Analysis ({reports.length} items)</h2>
+        <Button variant="outline" onClick={onExit}>
+          Done
+        </Button>
       </div>
 
-      {/* Stacked Reports */}
-      <div className="p-4 space-y-6 max-w-4xl mx-auto">
-        {remainingItems.map((item, index) => (
-          <Card key={item.id} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                {item.cropUrl && (
-                  <img
-                    src={item.cropUrl}
-                    alt={item.label}
-                    className="w-12 h-12 rounded-lg object-cover bg-muted"
-                  />
+      {reports.map((report, index) => (
+        <Card key={report.id} className="relative">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  {report.itemName}
+                  <Badge variant="secondary" className="text-xs">
+                    Score: {report.analysis.healthScore}/10
+                  </Badge>
+                </CardTitle>
+                {report.analysis.overallRating && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {report.analysis.overallRating}
+                  </p>
                 )}
-                <div className="flex-1">
-                  <CardTitle className="text-xl capitalize">{item.label}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    {item.gramsEstimate && (
-                      <Badge variant="secondary">
-                        ~{item.gramsEstimate}g portion
-                      </Badge>
-                    )}
-                    <Badge variant="outline">
-                      Item {index + 1} of {remainingItems.length}
-                    </Badge>
-                  </div>
-                </div>
               </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              <div className="border rounded-lg">
-                {renderHealthReport({
-                  result: {
-                    itemName: item.label,
-                    productName: item.label, // alias
-                    healthScore: 75, // Mock health score
-                    ingredientFlags: [], // No flags for meal components
-                    nutritionData: {
-                      calories: Math.round((item.gramsEstimate ?? 100) * 2.5),
-                      protein: Math.round((item.gramsEstimate ?? 100) * 0.15),
-                      carbs: Math.round((item.gramsEstimate ?? 100) * 0.25),
-                      fat: Math.round((item.gramsEstimate ?? 100) * 0.1),
-                      fiber: Math.round((item.gramsEstimate ?? 100) * 0.05),
-                      sugar: Math.round((item.gramsEstimate ?? 100) * 0.08),
-                      sodium: Math.round((item.gramsEstimate ?? 100) * 3)
-                    },
-                    healthProfile: {
-                      isOrganic: false,
-                      isGMO: false,
-                      allergens: [],
-                      preservatives: [],
-                      additives: []
-                    },
-                    personalizedWarnings: [], // No warnings for meal components
-                    suggestions: [`Great choice! ${item.label} provides essential nutrients.`],
-                    overallRating: 'good' as const // Mock rating for meal components
-                  },
-                  onScanAnother: handleScanAnother,
-                  onClose: () => handleItemLogged(item.id, item.label),
-                  hideCloseButton: false,
-                  analysisData: {
-                    source: 'meal-capture',
-                    barcode: null
-                  }
-                })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveReport(report.id)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Image */}
+            {report.cropUrl && (
+              <div className="w-full h-32 rounded-lg overflow-hidden bg-muted">
+                <img 
+                  src={report.cropUrl} 
+                  alt={report.itemName}
+                  className="w-full h-full object-cover"
+                />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            )}
+
+            {/* Nutrition Summary */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="font-medium">Calories:</span> {report.analysis.nutritionData.calories}
+              </div>
+              <div>
+                <span className="font-medium">Protein:</span> {report.analysis.nutritionData.protein_g}g
+              </div>
+              <div>
+                <span className="font-medium">Carbs:</span> {report.analysis.nutritionData.carbs_g}g
+              </div>
+              <div>
+                <span className="font-medium">Fat:</span> {report.analysis.nutritionData.fat_g}g
+              </div>
+            </div>
+
+            {/* Warnings */}
+            {report.analysis.personalizedWarnings.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm text-orange-700 dark:text-orange-300">
+                  Health Flags:
+                </h4>
+                {report.analysis.personalizedWarnings.slice(0, 2).map((warning, i) => (
+                  <p key={i} className="text-xs text-orange-600 dark:text-orange-400">
+                    • {warning}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Suggestions */}
+            {report.analysis.suggestions.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm text-green-700 dark:text-green-300">
+                  Suggestions:
+                </h4>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  • {report.analysis.suggestions[0]}
+                </p>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <Button 
+              onClick={() => handleLogItem(report)} 
+              className="w-full"
+              size="sm"
+            >
+              Log this item
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
-};
+}

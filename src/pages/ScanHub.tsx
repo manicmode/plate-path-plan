@@ -147,26 +147,13 @@ export default function ScanHub() {
   };
 
   const handleTakePhoto = () => {
-    const qs = new URLSearchParams(location.search);
-    // keep the flag if present; otherwise env can enable it
-    if (!qs.has('meal') && (import.meta.env.VITE_MEAL_CAPTURE || '') === '1') {
-      qs.set('meal', '1');
-    }
-    qs.set('mode', 'meal-capture');
-    const mealOn = mealCaptureEnabled();
-    console.log('[MEAL][ROUTE][CLICK]', { page: 'health-scan', mealOn, outgoing: `?${qs.toString()}` });
-    
     logTileClick('photo');
     if (!imageAnalyzerEnabled) {
       toast('Photo analysis is in beta; try manual or voice for now.');
       setManualEntryOpen(true);
-    } else if (mealOn) {
-      // Use the sandboxed flow. Keep it on Camera with a clear mode.
-      navigate({ pathname: '/camera', search: `?${qs.toString()}` });
-      return;
     } else {
-      // Legacy: open the in-page modal
-      setPhotoModalOpen(true);
+      // Navigate to meal capture mode 
+      navigate('/camera?mode=meal-capture');
     }
   };
 
