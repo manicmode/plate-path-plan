@@ -152,7 +152,14 @@ export default function ScanHub() {
       toast('Photo analysis is in beta; try manual or voice for now.');
       setManualEntryOpen(true);
     } else {
-      setPhotoModalOpen(true);
+      // Check if meal capture is enabled
+      const mealCaptureEnabled = isFeatureEnabled('meal_capture_enabled');
+      if (mealCaptureEnabled) {
+        // Navigate to camera with meal-capture mode
+        navigate('/camera', { state: { mode: 'meal-capture' } });
+      } else {
+        setPhotoModalOpen(true);
+      }
     }
   };
 

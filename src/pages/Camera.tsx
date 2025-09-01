@@ -47,6 +47,8 @@ import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
+import { MealCaptureFlow } from '@/components/meal-capture/MealCaptureFlow';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -192,8 +194,9 @@ const CameraPage = () => {
   const [isProcessingFood, setIsProcessingFood] = useState(false);
   
   // Nutrition capture states
-  const [currentMode, setCurrentMode] = useState<'photo' | 'voice' | 'manual' | 'barcode' | 'nutrition-capture' | 'confirm'>('photo');
+  const [currentMode, setCurrentMode] = useState<'photo' | 'voice' | 'manual' | 'barcode' | 'nutrition-capture' | 'meal-capture' | 'confirm'>('photo');
   const [nutritionCaptureData, setNutritionCaptureData] = useState<any>(null);
+  const [mealCaptureImageUrl, setMealCaptureImageUrl] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -307,15 +310,25 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     navigate('.', { replace: true, state: null });
   }, [location.state, navigate]);
 
-  // Detect "nutrition-capture" mode on entry
+  // Handle meal capture mode on arrival
   useEffect(() => {
-    const mode = (location.state as any)?.mode;
-    const productData = (location.state as any)?.productData;
-
-    if (mode === 'nutrition-capture' && productData) {
-      console.log('[CAMERA][NUTRITION_CAPTURE]', 'Starting NF capture flow');
-      setCurrentMode('nutrition-capture');
-      setNutritionCaptureData(productData);
+    const state = location.state as any;
+    const mode = state?.mode;
+    
+    if (mode === 'nutrition-capture') {
+      const productData = state?.productData;
+      if (productData) {
+        console.log('[CAMERA][NUTRITION_CAPTURE]', 'Starting NF capture flow');
+        setCurrentMode('nutrition-capture');
+        setNutritionCaptureData(productData);
+      }
+    } else if (mode === 'meal-capture') {
+      const imageUrl = state?.imageUrl;
+      if (imageUrl && isFeatureEnabled('meal_capture_enabled')) {
+        console.log('[CAMERA][MEAL_CAPTURE]', 'Processing meal capture with image');
+        setCurrentMode('meal-capture');
+        setMealCaptureImageUrl(imageUrl);
+      }
     }
   }, [location.state]);
   useEffect(() => {
@@ -3204,6 +3217,18 @@ console.log('Global search enabled:', enableGlobalSearch);
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
       />
+
+      {/* Meal Capture Flow */}
+      {currentMode === 'meal-capture' && mealCaptureImageUrl && (
+        <MealCaptureFlow
+          imageUrl={mealCaptureImageUrl}
+          onExit={() => {
+            setCurrentMode('photo');
+            setMealCaptureImageUrl(null);
+            navigate('/scan');
+          }}
+        />
+      )}
 
       {/* Debug Panel - Dev only */}
       <DebugPanel 

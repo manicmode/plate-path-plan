@@ -14,6 +14,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { useAutoImmersive } from '@/lib/uiChrome';
+import { useNavigate } from 'react-router-dom';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -32,6 +33,7 @@ interface PhotoCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onCapture: (imageData: string) => void;
   onManualFallback: () => void;
+  mode?: 'standard' | 'meal-capture';
 }
 
 
@@ -39,8 +41,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
   onCapture,
-  onManualFallback
+  onManualFallback,
+  mode = 'standard'
 }) => {
+  const navigate = useNavigate();
   // Enable immersive mode (hide bottom nav) when modal is open
   useAutoImmersive(open);
   
@@ -241,6 +245,40 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     playCameraClickSound();
 
     try {
+      // Handle meal capture mode
+      if (mode === 'meal-capture') {
+        console.log('[PHOTO] Meal capture mode - navigating to meal flow');
+        
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to blob for meal processing (avoid base64 in navigation)
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const imageUrl = URL.createObjectURL(blob);
+            camHardStop('modal_close');
+            onOpenChange(false);
+            
+            // Navigate to camera with meal-capture state
+            navigate('/camera', {
+              state: {
+                mode: 'meal-capture',
+                imageUrl: imageUrl,
+                captureTs: Date.now()
+              }
+            });
+          }
+        }, 'image/jpeg', 0.85);
+        
+        return;
+      }
+
+      // Standard photo capture mode
       // Check if analyzer is enabled
       if (!isFeatureEnabled('image_analyzer_v1')) {
         console.log('[PHOTO] Analyzer disabled, redirecting to manual');
@@ -336,7 +374,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                   </h2>
                 </div>
                 <p className="text-green-300 text-sm animate-pulse text-center">
-                  Take a photo of brand product or a meal for health report!
+                  {mode === 'meal-capture' 
+                    ? 'Take a photo of your meal for multi-item analysis!'
+                    : 'Take a photo of brand product or a meal for health report!'
+                  }
                 </p>
               </div>
             </div>

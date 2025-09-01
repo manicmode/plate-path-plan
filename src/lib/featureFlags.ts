@@ -20,6 +20,9 @@ export const FEATURE_FLAGS = {
   flags_tab_enabled: true, // Enable flags tab with severity and actions
   save_tab_enabled: true, // Enable save tab to persist reports
   smart_suggestions_enabled: true, // Enable personalized suggestions
+  
+  // Meal Capture Feature (SANDBOX MODE)
+  meal_capture_enabled: false, // Enable meal-only photo capture with multi-item detection
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -36,6 +39,23 @@ export function isFeatureEnabled(flag: FeatureFlag): boolean {
   // Environment-specific overrides
   if (flag === 'image_analyzer_v1') {
     return isStaging() ? ROLLOUT_CONFIG.image_analyzer_staging : ROLLOUT_CONFIG.image_analyzer_production;
+  }
+  
+  // Meal capture feature - controlled by env var or URL query
+  if (flag === 'meal_capture_enabled') {
+    // Check URL query param first
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('meal') === '1') {
+      return true;
+    }
+    
+    // Check environment variable
+    const envFlag = import.meta.env.VITE_MEAL_CAPTURE_ENABLED;
+    if (envFlag === '1' || envFlag === 'true') {
+      return true;
+    }
+    
+    return FEATURE_FLAGS[flag];
   }
   
   return FEATURE_FLAGS[flag];
