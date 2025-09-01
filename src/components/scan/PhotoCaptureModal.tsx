@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useId } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Upload } from 'lucide-react';
@@ -46,6 +46,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Stable IDs for accessibility
+  const titleId = useId();
+  const descId = useId();
   
   // Enable immersive mode (hide bottom nav) when modal is open
   useAutoImmersive(open);
@@ -352,9 +356,18 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
-        aria-labelledby="photo-title"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
       >
-        <DialogTitle id="photo-title" className="sr-only">Take Photo</DialogTitle>
+        <VisuallyHidden asChild>
+          <DialogTitle id={titleId}>Take Photo</DialogTitle>
+        </VisuallyHidden>
+        
+        <VisuallyHidden asChild>
+          <DialogDescription id={descId}>
+            Use your camera to take a picture.
+          </DialogDescription>
+        </VisuallyHidden>
         <div className="relative w-full h-full bg-black overflow-hidden">
           {/* Video Element */}
           <video
