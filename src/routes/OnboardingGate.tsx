@@ -27,9 +27,22 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!loading && !ready) setReady(true);
-    if (loading || !isAuthenticated || decidedRef.current) return;
+    
+    // Diagnostic log
+    if (import.meta.env.VITE_DEBUG_BOOT === '1') {
+      console.info('[ROUTER][GUARD]', {
+        ready: !loading,
+        isAuthenticated,
+        path: loc.pathname
+      });
+    }
+    
+    if (loading || decidedRef.current) return;
 
-    // STEP 2: Forensics - log route guard decisions
+    // Don't block on authentication - let routes render when ready
+    if (!isAuthenticated) return;
+
+    // Only guard on onboarding for authenticated users
     console.log('[router] guard decision:', {
       pathname: loc.pathname,
       effectiveComplete,

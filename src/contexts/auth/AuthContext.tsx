@@ -1,7 +1,7 @@
 
 import React, { createContext, useEffect, useState } from 'react';
 import * as ReactModule from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, resendEmailConfirmation, signOutUser, setSignOutNavigationCallback } from './authService';
 import { createExtendedUser, updateUserTrackers, loadUserProfile } from './userService';
@@ -123,16 +123,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const g = globalThis as any;
     
-    // Guard against multiple inits
-    if (g.__authInit) {
-      g.__authInit.then(() => {
+    // Guard against multiple inits - join existing init
+    if (g.__voyageAuthInit) {
+      g.__voyageAuthInit.then(() => {
+        if (import.meta.env.VITE_DEBUG_BOOT === '1') {
+          console.info('[AUTH][READY true]', { timestamp: new Date().toISOString() });
+        }
+        setLoading(false);
+      }).catch(() => {
+        console.warn('[AUTH][TIMEOUT] continuing unauthenticated');
         setLoading(false);
       });
       return;
     }
 
     // Diagnostic log
-    if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+    if (import.meta.env.VITE_DEBUG_BOOT === '1') {
       console.info('[AUTH][INIT][START]', { timestamp: new Date().toISOString() });
     }
 
@@ -203,18 +209,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ]);
     };
 
-    // Start auth init with global guard
-    g.__authInit = withTimeout(initAuth(), 10000).then((subscription) => {
+    // Start auth init with global singleton guard
+    g.__voyageAuthInit = withTimeout(initAuth(), 10000).then((subscription) => {
       clearTimeout(timeoutId);
-      if (import.meta.env.VITE_DEBUG_MEAL === '1') {
-        console.info('[AUTH][INIT][END]', { timestamp: new Date().toISOString() });
+      if (import.meta.env.VITE_DEBUG_BOOT === '1') {
+        console.info('[AUTH][READY true]', { timestamp: new Date().toISOString() });
+      }
+      if (isMounted) {
+        setLoading(false);
       }
       return subscription;
     }).catch((error) => {
       clearTimeout(timeoutId);
       console.warn('[AUTH][TIMEOUT] continuing unauthenticated', error);
-      if (import.meta.env.VITE_DEBUG_MEAL === '1') {
-        console.info('[AUTH][INIT][TIMEOUT]', { timestamp: new Date().toISOString() });
+      if (import.meta.env.VITE_DEBUG_BOOT === '1') {
+        console.info('[AUTH][READY true]', { timestamp: new Date().toISOString() });
       }
       if (isMounted) {
         setSession(null);

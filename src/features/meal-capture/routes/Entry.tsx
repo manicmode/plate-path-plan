@@ -10,7 +10,7 @@ import type { MealCaptureData, WizardStep } from '../components/MealCapturePage'
 import { takeMealPhoto } from '../photoStore';
 
 // Diagnostic log (temporary)
-if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+if (import.meta.env.VITE_DEBUG_BOOT === '1') {
   console.info('[MEAL][IMPORT] entry route loaded');
 }
 

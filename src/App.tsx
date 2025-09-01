@@ -3,7 +3,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import AppErrorBoundary from '@/components/system/AppErrorBoundary';
 import { requestIdle } from '@/utils/safeIdle';
 import { ROUTES } from '@/routes/constants';
