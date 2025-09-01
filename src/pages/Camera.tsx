@@ -48,11 +48,6 @@ import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
-import { MealCaptureFlow } from '@/components/meal-capture/MealCaptureFlow';
-import { isFeatureEnabled, mealCaptureEnabled, mealCaptureEnabledFromSearch } from '@/lib/featureFlags';
-import { isMealCaptureMode, debugLog } from '@/features/meal-capture/isMealCaptureMode';
-import { MealCaptureWizard } from '@/features/meal-capture/MealCaptureWizard';
-import { LogPrefill } from '@/lib/health/logPrefill';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -227,25 +222,31 @@ const CameraPage = () => {
     }
   );
 
-  const mealMode = isMealCaptureMode(location.search);
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
+      </div>
+
+      <ProcessingStatus 
+        isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+        processingStep={processingStep}
+        showTimeout={isAnalyzing}
+      />
 
   // Effect to handle reset from navigation
   useEffect(() => {
-    // Guard against meal capture mode
-    if (mealMode) return; // 🚫 block non-meal paths
-    
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('reset') === 'true') {
       setActiveTab('main');
-      // Clean up the URL by removing the reset parameter
       navigate('/camera', { replace: true });
     }
   }, [location.search, navigate]);
 
-const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
-
   // Handle prefill data from Health Report
   useEffect(() => {
+    const prefill = (location.state as any)?.logPrefill;
+    if (!prefill || prefill.source !== 'health-report') return;
     // Guard against meal capture mode
     if (mealMode) return; // 🚫 block non-meal paths
     
@@ -3324,8 +3325,8 @@ console.log('Global search enabled:', enableGlobalSearch);
 
       {/* Activity Logging Section - Exercise, Recovery, Habits */}
       <div className="mt-8">
-          <ActivityLoggingSection />
-        </div>
+        <ActivityLoggingSection />
+      </div>
         </>
       )}
     </div>

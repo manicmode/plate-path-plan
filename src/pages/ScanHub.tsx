@@ -153,7 +153,7 @@ export default function ScanHub() {
       setManualEntryOpen(true);
     } else {
       // Navigate to meal capture mode 
-      navigate('/camera?mode=meal-capture');
+      navigate('/meal-capture');
     }
   };
 
