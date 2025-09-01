@@ -129,12 +129,30 @@ export const MealReportStack: React.FC<MealReportStackProps> = ({
               <div className="border rounded-lg">
                 {renderHealthReport({
                   result: {
-                    productName: item.label,
-                    categories: ['meal-component'],
-                    allergens: [],
-                    additives: []
+                    itemName: item.label,
+                    productName: item.label, // alias
+                    healthScore: 75, // Mock health score
+                    ingredientFlags: [], // No flags for meal components
+                    nutritionData: {
+                      calories: Math.round((item.gramsEstimate ?? 100) * 2.5),
+                      protein: Math.round((item.gramsEstimate ?? 100) * 0.15),
+                      carbs: Math.round((item.gramsEstimate ?? 100) * 0.25),
+                      fat: Math.round((item.gramsEstimate ?? 100) * 0.1),
+                      fiber: Math.round((item.gramsEstimate ?? 100) * 0.05),
+                      sugar: Math.round((item.gramsEstimate ?? 100) * 0.08),
+                      sodium: Math.round((item.gramsEstimate ?? 100) * 3)
+                    },
+                    healthProfile: {
+                      isOrganic: false,
+                      isGMO: false,
+                      allergens: [],
+                      preservatives: [],
+                      additives: []
+                    },
+                    personalizedWarnings: [], // No warnings for meal components
+                    suggestions: [`Great choice! ${item.label} provides essential nutrients.`],
+                    overallRating: 'good' as const // Mock rating for meal components
                   },
-                  source: 'meal-capture',
                   onScanAnother: handleScanAnother,
                   onClose: () => handleItemLogged(item.id, item.label),
                   hideCloseButton: false,
