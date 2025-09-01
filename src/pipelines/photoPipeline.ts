@@ -55,7 +55,7 @@ export async function analyzePhoto(
   try {
     console.log('[PHOTO][MEAL_ONLY_PIPELINE_START]', { useV2, offline });
 
-    // Convert blob to base64 for meal detector
+    // Convert blob to base64 for meal detector with high quality
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     const img = new Image();
@@ -73,7 +73,7 @@ export async function analyzePhoto(
     ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(imgUrl);
     
-    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
     // ✅ MEAL ONLY: Call meal-detector directly (no OCR)
     const { data: meal, error } = await supabase.functions.invoke('meal-detector', {

@@ -125,13 +125,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     try {
       console.log("[PHOTO] Requesting camera stream...");
       
-      // Use ideal constraints with robust fallback
+      // Use enhanced constraints for better capture quality
       const getCamera = async () => {
         const primary = { 
           video: { 
-            facingMode: { ideal: 'environment' }, 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 } 
+            facingMode: { exact: 'environment' },
+            width: { ideal: 1920 }, 
+            height: { ideal: 1080 }
           } 
         };
         const fallback = { video: true };
@@ -343,20 +343,35 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       
       const video = videoRef.current;
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      
+      // Enhanced capture with optional center-crop
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      // Optional: center-crop to square for better object detection
+      const cropSize = Math.min(videoWidth, videoHeight) * 0.8; // 80% of smaller dimension
+      const cropX = (videoWidth - cropSize) / 2;
+      const cropY = (videoHeight - cropSize) / 2;
+      
+      canvas.width = cropSize;
+      canvas.height = cropSize;
       
       const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert to blob for new gateway system
+      // Fix EXIF orientation if needed (basic implementation)
+      ctx.save();
+      ctx.scale(1, 1); // No rotation for now - could add EXIF handling here
+      ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
+      ctx.restore();
+      
+      // Convert to blob with high quality JPEG
       canvas.toBlob(async (blob) => {
         if (blob) {
           await handleCapturedBlob(blob);
           camHardStop('modal_close');
           onOpenChange(false);
         }
-      }, 'image/jpeg', 0.85);
+      }, 'image/jpeg', 0.95); // High quality export
       
     } catch (error) {
       console.error('[PHOTO] Capture failed:', error);

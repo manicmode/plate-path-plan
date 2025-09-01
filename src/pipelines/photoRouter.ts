@@ -1,62 +1,85 @@
-// photoRouter.ts
-import { analyzePhoto as ocrAnalyze } from '@/pipelines/photoPipeline';
+// photoRouter.ts - Enhanced Photo Flow V2 with robust mapping and portion estimation
 import { supabase } from '@/integrations/supabase/client';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
+import { PER_GRAM_DEFAULTS, defaultKeyFor, calculateSizeMultiplier } from '@/lib/nutrition/portionDefaults';
 
 export type PhotoRoute =
   | { kind: 'label'; data: any }
-  | { kind: 'meal';  data: any };
+  | { kind: 'meal'; data: any };
 
-function looksLikeNutritionLabel(text: string, labels: string[] = []) {
-  const t = (text || '').toLowerCase();
-  const tokens = ['nutrition facts','serving size','calories','total fat','sodium','dietary fiber','sugars'];
-  const hitText = tokens.some(k => t.includes(k));
-  const hitLabel = (labels || []).some(l =>
-    (l || '').toLowerCase().includes('nutrition label')
-    || (l || '').toLowerCase().includes('nutrition facts')
-  );
-  return hitText || hitLabel;
+// Negative regex for filtering junk (defense in depth)
+const NEGATIVE_PATTERN = /\b(microsoft|software|logo|screen|monitor|pack|sleeve|kit|brand|message|create|cookie|package|wrapper|container|box|label|sign|text|word|letter|number)\b/i;
+
+function looksFoodish(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length > 2 && !NEGATIVE_PATTERN.test(trimmed);
 }
 
-// Fuzzy mapping from Vision names to nutrition using existing search
-async function mapVisionNameToNutrition(name: string): Promise<CanonicalSearchResult | null> {
+// Normalize text for similarity comparison
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Calculate similarity between two strings using token overlap
+function calculateSimilarity(a: string, b: string): number {
+  const setA = new Set(normalize(a).split(' '));
+  const setB = new Set(normalize(b).split(' '));
+  
+  let hits = 0;
+  setA.forEach(token => {
+    if (setB.has(token)) hits++;
+  });
+  
+  return hits / Math.max(1, Math.max(setA.size, setB.size));
+}
+
+// Enhanced fuzzy mapping with similarity threshold
+async function mapVisionNameToFood(name: string): Promise<CanonicalSearchResult | null> {
   try {
-    // First try direct search
+    // Direct search with similarity scoring
     const results = await searchFoodByName(name, { maxResults: 3 });
     if (results.length > 0) {
-      // Check for good similarity match
-      const bestMatch = results[0];
-      const nameTokens = name.toLowerCase().split(/\s+/);
-      const matchTokens = bestMatch.name.toLowerCase().split(/\s+/);
-      const overlap = nameTokens.filter(t => matchTokens.some(m => m.includes(t) || t.includes(m)));
+      // Sort by similarity and take best match if above threshold
+      const scored = results.map(result => ({
+        ...result,
+        similarity: calculateSimilarity(name, result.name)
+      }));
       
-      if (overlap.length > 0) {
-        return bestMatch;
+      scored.sort((a, b) => b.similarity - a.similarity);
+      
+      if (scored[0].similarity >= 0.45) {
+        console.debug(`[PHOTO][MAP] "${name}" -> "${scored[0].name}" (sim: ${scored[0].similarity.toFixed(2)})`);
+        return scored[0];
       }
     }
     
-    // Fallback to generic category mapping
-    const categoryMap: Record<string, string> = {
+    // Helper mapping for common Vision API terms
+    const normalized = normalize(name);
+    const helpers: Record<string, string> = {
+      salmon: 'salmon cooked',
       fish: 'salmon cooked',
-      salmon: 'salmon cooked', 
-      chicken: 'chicken breast cooked',
-      beef: 'beef sirloin cooked',
-      steak: 'beef sirloin cooked',
-      asparagus: 'asparagus cooked',
+      asparagus: 'asparagus cooked', 
       tomato: 'tomato raw',
       rice: 'rice cooked',
       pasta: 'pasta cooked',
+      noodle: 'pasta cooked',
       bread: 'bread whole wheat',
       egg: 'eggs scrambled',
       lettuce: 'lettuce raw',
-      salad: 'mixed greens raw'
+      salad: 'mixed greens raw',
+      chicken: 'chicken breast cooked',
+      beef: 'beef sirloin cooked',
+      steak: 'beef sirloin cooked',
+      shrimp: 'shrimp cooked',
+      prawn: 'shrimp cooked',
+      tofu: 'tofu firm'
     };
     
-    const lowerName = name.toLowerCase();
-    for (const [key, fallback] of Object.entries(categoryMap)) {
-      if (lowerName.includes(key)) {
+    for (const [key, fallback] of Object.entries(helpers)) {
+      if (normalized.includes(key)) {
         const fallbackResults = await searchFoodByName(fallback, { maxResults: 1 });
         if (fallbackResults.length > 0) {
+          console.debug(`[PHOTO][MAP] "${name}" -> "${fallbackResults[0].name}" (helper: ${key})`);
           return fallbackResults[0];
         }
       }
@@ -69,8 +92,17 @@ async function mapVisionNameToNutrition(name: string): Promise<CanonicalSearchRe
   }
 }
 
+// Count instances of similar objects using bounding boxes  
+function countInstances(targetName: string, allObjects: any[]): number {
+  const targetNorm = normalize(targetName);
+  const matches = allObjects.filter(obj => 
+    obj.source === 'object' && 
+    normalize(obj.name).includes(targetNorm)
+  );
+  return Math.max(1, matches.length);
+}
+
 async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
-  // Use new meal-detector with object localization
   console.debug('[PHOTO][MEAL] invoke=function=meal-detector');
   try {
     const { data, error } = await supabase.functions.invoke('meal-detector', {
@@ -85,32 +117,60 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
     const debug = data?._debug || {};
     console.log(`[PHOTO][MEAL][_debug] from=${debug.from} count=${debug.count || 0}`);
     
-    // Filter to objects only
-    const allItems = data?.items || [];
-    const items = allItems.filter((i: any) => i.source === "object");
-    const rawNames = items.map((i: any) => i.name);
-    console.log(`[PHOTO][MEAL] objects_detected=${items.length} raw_names=[${rawNames.join(',')}]`);
+    // Enhanced Photo Flow V2: Filter, rank, and map candidates
+    const sourceWeight = { object: 2, label: 1 };
+    const allCandidates = (data?.items || [])
+      .sort((a, b) => (sourceWeight[b.source || 'label'] - sourceWeight[a.source || 'label']) || (b.confidence - a.confidence));
+
+    console.log(`[PHOTO][MEAL] total_candidates=${allCandidates.length}`);
+
+    // Filter foodish candidates (defense in depth)
+    const foodishCandidates = allCandidates.filter(c => looksFoodish(c.name));
+    const rawNames = foodishCandidates.map((i: any) => i.name);
+    console.log(`[PHOTO][MEAL] foodish_candidates=${foodishCandidates.length} names=[${rawNames.join(',')}]`);
     
-    // Map Vision names to nutrition
+    // Map to nutrition database
     const mappedItems = [];
     const skippedNames = [];
     
-    for (const item of items) {
-      const nutrition = await mapVisionNameToNutrition(item.name);
+    for (const candidate of foodishCandidates) {
+      const nutrition = await mapVisionNameToFood(candidate.name);
       if (nutrition) {
         mappedItems.push({
-          ...item,
+          ...candidate,
           nutritionData: nutrition
         });
       } else {
-        skippedNames.push(item.name);
+        skippedNames.push(candidate.name);
       }
     }
     
-    const mappedNames = mappedItems.map(i => i.nutritionData.name);
-    console.log(`[PHOTO][MEAL] names=${rawNames.join(',')} -> mapped=${mappedNames.join(',')} skipped=[${skippedNames.join(',')}]`);
+    // Portion estimation for mapped items
+    const objectsOnly = allCandidates.filter(i => i.source === 'object');
+    const plateCandidate = objectsOnly.find(o => /(plate|dish|bowl)/i.test(o.name));
     
-    return { items: mappedItems, skippedCount: skippedNames.length };
+    const mealPortions = mappedItems.map(m => {
+      const key = defaultKeyFor(m.nutritionData.name);
+      const portionDef = PER_GRAM_DEFAULTS[key] || PER_GRAM_DEFAULTS.generic;
+      
+      const count = portionDef.unit === 'piece' ? countInstances(m.name, objectsOnly) : 1;
+      const sizeMult = calculateSizeMultiplier(m.box, plateCandidate?.box);
+      const grams = Math.round(portionDef.grams * count * sizeMult);
+      
+      return {
+        name: m.nutritionData.name,
+        grams,
+        source: m.source,
+        vision: m.name,
+        nutritionData: m.nutritionData
+      };
+    });
+    
+    const mappedSummary = mealPortions.map(m => ({ vision: m.vision, to: m.name, source: m.source }));
+    console.debug('[PHOTO][MEAL][MAP]', { mapped: mappedSummary, skipped: skippedNames, debug });
+    console.debug('[PHOTO][PORTION]', mealPortions.map(p => ({ name: p.name, grams: p.grams, source: p.source })));
+    
+    return { items: mealPortions, skippedCount: skippedNames.length };
   } catch (e) {
     console.debug('[PHOTO][MEAL] analyzer unavailable', e);
     return { items: [], skippedCount: 0 };
