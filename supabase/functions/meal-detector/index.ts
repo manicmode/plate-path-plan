@@ -77,11 +77,27 @@ serve(async (req) => {
     // Fallback to labels/web if no boxes mapped
     if (!items.length) {
       const merged = [...labels, ...web];
-      const uniq = Array.from(new Set(merged));
-      items = uniq.map(toCanonical).filter(Boolean).slice(0,3).map((n:string,i:number)=>({
-        name: n, confidence: Number((0.6 - i*0.05).toFixed(3)), box: null
+      const uniq = Array.from(new Set(merged)).filter(s => s && s.length > 2); // basic filter
+      const bestGuessLabels = resp?.webDetection?.bestGuessLabels ?? [];
+      const bestGuess = bestGuessLabels.map((g:any) => (g.label||"").toLowerCase()).filter(Boolean);
+      
+      const allCandidates = [...uniq, ...bestGuess];
+      const finalUniq = Array.from(new Set(allCandidates)).slice(0,10);
+      
+      items = finalUniq.map((name:string,i:number)=>({
+        name, confidence: Number((0.7 - i*0.05).toFixed(3)), box: null
       }));
-      return new Response(JSON.stringify({ items, _debug:{from:"labels/web", labels: labels.slice(0,10), web: web.slice(0,10)} }), {
+      
+      return new Response(JSON.stringify({ 
+        items, 
+        _debug:{
+          from:"labels/web/bestGuess", 
+          labels: labels.slice(0,15), 
+          web: web.slice(0,15),
+          bestGuess: bestGuess.slice(0,10),
+          finalCandidates: finalUniq
+        } 
+      }), {
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
