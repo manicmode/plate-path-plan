@@ -60,6 +60,10 @@ body {
 
     --radius: 1rem;
 
+    /* Navigation defaults - prevent first-paint overlap */
+    --bottom-nav-h: 76px;
+    --safe-bottom: env(safe-area-inset-bottom);
+
     /* Enhanced Futuristic Color System - Light Mode */
     --emerald: 174 100% 50%;
     --electric-blue: 218 100% 59%;
@@ -108,24 +112,44 @@ body {
     --secondary: 220 13% 15%;
     --secondary-foreground: 0 0% 90%;
 
-    --muted: 220 13% 15%;
-    --muted-foreground: 220 5% 65%;
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 174 30% 96%;
 
-    --accent: 220 13% 15%;
-    --accent-foreground: 174 100% 50%;
+    --card: 220 20% 10%;
+    --card-foreground: 174 30% 96%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 174 30% 96%;
 
-    --border: 220 13% 18%;
-    --input: 220 13% 18%;
+    --primary: 174 100% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 174 30% 80%;
+
+    --muted: 220 20% 12%;
+    --muted-foreground: 220 15% 65%;
+
+    --accent: 220 20% 14%;
+    --accent-foreground: 174 50% 80%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 85% 97%;
+
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
     --ring: 174 100% 50%;
 
     /* Enhanced tab contrast tokens - dark mode */
     --tab-active: 174 100% 50%;
     --tab-active-foreground: 0 0% 0%;
-    --tab-inactive: 220 13% 18%;
-    --tab-inactive-foreground: 220 5% 65%;
+    --tab-inactive: 220 20% 18%;
+    --tab-inactive-foreground: 220 15% 65%;
+    
+    /* Navigation defaults - same for dark mode */
+    --bottom-nav-h: 76px;
+    --safe-bottom: env(safe-area-inset-bottom);
 
     /* Enhanced Dark Gradients */
     --gradient-main: 
@@ -1559,22 +1583,25 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
   --bottom-nav-h: 72px;
 }
 
+/* App content lifts exactly by measured nav height (which already includes safe-area) */
 .app-content { 
-  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom)); 
+  padding-bottom: var(--bottom-nav-h) !important;
 }
 
+/* When immersive (scanner / photo modal), only respect safe-area */
 body[data-immersive="true"] .app-content { 
-  padding-bottom: var(--safe-bottom); 
+  padding-bottom: var(--safe-bottom) !important;
 }
 
+/* Bottom navigation styles - NO fixed height, NO extra padding except safe-area */
 .bottom-nav { 
   position: fixed; 
   left: 0; 
   right: 0; 
   bottom: 0; 
-  height: var(--bottom-nav-h); 
-  padding: 12px 12px var(--safe-bottom) 12px;
-  z-index: 30; 
+  z-index: 30; /* modals should be higher (>=50) */
+  padding-bottom: var(--safe-bottom); /* only here, not elsewhere */
+  height: auto;
 }
 
 /* Modal & sheets above nav */

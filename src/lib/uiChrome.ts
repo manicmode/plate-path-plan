@@ -9,12 +9,12 @@
  * - Call setImmersive(false) on unmount to restore navigation
  * - Layout components use useImmersive() to conditionally render UI chrome
  * 
- * Rev: NAV_REV=2025-08-31T16:55Z
+ * Rev: NAV_REV=2025-08-31T17:35Z-r2
  */
 
 import { useState, useEffect, useCallback } from 'react';
 
-const NAV_REV = "2025-08-31T16:55Z";
+const NAV_REV = "2025-08-31T17:35Z-r2";
 const DEBUG_NAV = import.meta.env.VITE_DEBUG_NAV === "1";
 
 function nlog(tag: string, payload: Record<string, unknown> = {}) {

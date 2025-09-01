@@ -22,10 +22,40 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   if (import.meta.env.DEV) console.log("[hooks-order-ok] Layout");
   
+  const navRef = useRef<HTMLDivElement>(null);
+  
   // CSS custom properties for bottom nav
   useEffect(() => {
     document.documentElement.style.setProperty('--tabbar-height', '72px');
   }, []);
+
+  // Dynamic nav height measurement
+  useEffect(() => {
+    const set = () => {
+      const h = navRef.current?.offsetHeight ?? 76;
+      document.documentElement.style.setProperty('--bottom-nav-h', `${h}px`);
+      if (import.meta.env.VITE_DEBUG_NAV === '1') {
+        console.log('[NAV][MEASURE]', { rev: '2025-08-31T17:35Z-r2', h });
+      }
+    };
+
+    set();
+
+    const ro = new ResizeObserver(() => requestAnimationFrame(set));
+    if (navRef.current) ro.observe(navRef.current);
+
+    const onVis = () => requestAnimationFrame(set);
+    const onOrient = () => requestAnimationFrame(set);
+    window.addEventListener('visibilitychange', onVis);
+    window.addEventListener('orientationchange', onOrient);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('orientationchange', onOrient);
+    };
+  }, []);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -290,10 +320,11 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Enhanced Bottom Navigation - Always visible for authenticated users */}
       {shouldShowNavigation && (
         <nav 
-          className="bottom-nav"
+          ref={navRef}
+          className={`bottom-nav ${isMobile ? 'p-3' : 'pb-6 px-6'}`}
           data-bottom-nav="true"
         >
-          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-3xl mx-3' : 'rounded-3xl max-w-md mx-auto mx-6'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60 md:max-w-[620px] md:mx-auto`}>
+          <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60 md:max-w-[620px] md:mx-auto`}>
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
                 const isActive = location.pathname === path;
