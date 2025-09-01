@@ -1,84 +1,83 @@
-// soundManager.ts - Lightweight sound system for capture/scan interactions
-class SoundManager {
-  private audioContext: AudioContext | null = null;
-  private sounds: Map<string, AudioBuffer> = new Map();
-  private unlocked = false;
+// soundManager.ts - iOS-safe sound system with oscillator fallback
+export const Sound = (() => {
+  let ctx: AudioContext | null = null;
+  let unlocked = false;
+  let buffers: Record<string, AudioBuffer | null> = { shutter: null, beep: null };
 
-  constructor() {
-    this.initializeSounds();
+  function hasUserActivation() {
+    // iOS Safari gate
+    return (navigator as any).userActivation?.isActive ?? true;
   }
 
-  private async initializeSounds() {
-    // Create synthetic sounds to avoid external dependencies
+  async function ensureUnlocked() {
+    if (unlocked) return;
     try {
-      await this.createSyntheticSounds();
-    } catch (error) {
-      console.warn('[SOUND] Failed to initialize sounds:', error);
-    }
-  }
-
-  private async createSyntheticSounds() {
-    if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-
-    // Create shutter sound (quick click)
-    const shutterBuffer = this.audioContext.createBuffer(1, 4410, 44100); // 0.1s
-    const shutterData = shutterBuffer.getChannelData(0);
-    for (let i = 0; i < shutterData.length; i++) {
-      shutterData[i] = Math.sin(2 * Math.PI * 800 * i / 44100) * Math.exp(-i / 2205) * 0.3;
-    }
-    this.sounds.set('shutter', shutterBuffer);
-
-    // Create beep sound (success tone)
-    const beepBuffer = this.audioContext.createBuffer(1, 8820, 44100); // 0.2s
-    const beepData = beepBuffer.getChannelData(0);
-    for (let i = 0; i < beepData.length; i++) {
-      const t = i / 44100;
-      beepData[i] = Math.sin(2 * Math.PI * 1200 * t) * Math.exp(-t * 3) * 0.2;
-    }
-    this.sounds.set('beep', beepBuffer);
-
-    console.log('[SOUND] Synthetic sounds created');
-  }
-
-  async ensureUnlocked(): Promise<void> {
-    if (this.unlocked || !this.audioContext) return;
-
-    try {
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-      this.unlocked = true;
-      console.log('[SOUND] Audio context unlocked');
+      // @ts-ignore
+      ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (ctx.state === "suspended") await ctx.resume();
+      unlocked = true;
+      console.debug("[SOUND] unlocked");
+      
+      // Try load assets (non-fatal)
+      try { buffers.shutter = await load("/sounds/shutter.mp3"); } catch {}
+      try { buffers.beep = await load("/sounds/beep.mp3"); } catch {}
     } catch (error) {
       console.warn('[SOUND] Failed to unlock audio:', error);
     }
   }
 
-  async play(soundKey: string): Promise<void> {
-    if (!this.audioContext || !this.unlocked) {
-      console.warn('[SOUND] Audio not ready for:', soundKey);
-      return;
-    }
-
-    const buffer = this.sounds.get(soundKey);
-    if (!buffer) {
-      console.warn('[SOUND] Sound not found:', soundKey);
-      return;
-    }
-
+  async function load(url: string) {
+    if (!ctx) return null;
     try {
-      const source = this.audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(this.audioContext.destination);
-      source.start();
-      console.log(`[SOUND] played ${soundKey}`);
-    } catch (error) {
-      console.warn(`[SOUND] Failed to play ${soundKey}:`, error);
+      const res = await fetch(url);
+      const arr = await res.arrayBuffer();
+      return await ctx.decodeAudioData(arr);
+    } catch {
+      return null;
     }
   }
-}
 
-// Export singleton instance
-export const Sound = new SoundManager();
+  function oscBeep(ms = 120, freq = 1100) {
+    if (!ctx) return;
+    try {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = freq;
+      o.connect(g); 
+      g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.01);
+      o.start();
+      o.stop(ctx.currentTime + ms / 1000);
+    } catch (error) {
+      console.warn('[SOUND] Oscillator failed:', error);
+    }
+  }
+
+  async function play(name: "shutter" | "beep") {
+    if (!ctx || !unlocked || !hasUserActivation()) {
+      console.debug(`[SOUND] Cannot play ${name}: ctx=${!!ctx}, unlocked=${unlocked}, userActivation=${hasUserActivation()}`);
+      return;
+    }
+    
+    try {
+      if (ctx.state === "suspended") await ctx.resume();
+      
+      const buf = buffers[name];
+      if (buf) {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      } else {
+        // Fallback tone if asset missing
+        oscBeep(name === "shutter" ? 90 : 140, name === "shutter" ? 800 : 1200);
+      }
+      console.debug("[SOUND] played", name);
+    } catch (error) {
+      console.warn(`[SOUND] Failed to play ${name}:`, error);
+    }
+  }
+
+  return { ensureUnlocked, play };
+})();

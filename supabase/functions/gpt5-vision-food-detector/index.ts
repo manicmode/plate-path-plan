@@ -5,12 +5,13 @@ import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -18,10 +19,10 @@ serve(async (req) => {
 
     if (!imageBase64) {
       console.error('Missing imageBase64');
-      return new Response(
-        JSON.stringify({ error: 'imageBase64 is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+        return new Response(
+          JSON.stringify({ error: 'imageBase64 is required' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
     }
 
     console.log('Calling GPT-5 Vision API...');

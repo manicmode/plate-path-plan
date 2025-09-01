@@ -1,41 +1,14 @@
-// supabase/functions/vision-ocr/index.ts
+// supabase/functions/vision-ocr/index.ts - Real Google Vision OCR
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWLIST: (string | RegExp)[] = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  /\.lovable\.dev$/i,        // previews/sandboxes
-  /\.sandbox\.lovable\.dev$/i,
-  /\.lovable\.app$/i,        // ✅ production domains
-  Deno.env.get("APP_WEB_ORIGIN") || "",
-  Deno.env.get("APP_APP_ORIGIN") || "",
-  // Bonus: comma-separated allowed origins from env
-  ...(Deno.env.get("APP_ALLOWED_ORIGINS")?.split(",").map(s => s.trim()).filter(Boolean) || [])
-].filter(Boolean);
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
-function isAllowed(origin: string) {
-  try {
-    const u = new URL(origin);
-    const full = u.origin;   // e.g. https://plate-path-plan.lovable.app
-    const host = u.host;     // e.g. plate-path-plan.lovable.app
-    return ALLOWLIST.some((e) =>
-      typeof e === "string" ? (full === e || host === e.replace(/^https?:\/\//, "")) :
-      e instanceof RegExp ? (e.test(full) || e.test(host)) : false
-    );
-  } catch { return false; }
-}
-
-function corsHeaders(origin: string | null) {
-  const o = origin && isAllowed(origin) ? origin : "http://localhost:5173";
-  return {
-    "Access-Control-Allow-Origin": o,
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Vary": "Origin",
-  };
-}
+const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
 // Rate limiting store (in-memory, resets on function restart)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -68,33 +41,18 @@ function redactToken(token?: string): string {
 serve(async (req) => {
   const startTime = Date.now();
   const origin = req.headers.get("origin");
-  const baseHeaders = corsHeaders(origin);
 
-  // Log origin for forensics (next 24h)
   console.info(`[vision-ocr] request from origin: ${origin || 'none'}`);
 
   if (req.method === "OPTIONS") {  
     console.info(`[vision-ocr] OPTIONS preflight for origin: ${origin}`);
-    return new Response("ok", { headers: baseHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  const { pathname } = new URL(req.url);
-
-  if (pathname.endsWith("/ping")) {
-    const hasAuth = !!req.headers.get("authorization");
-    const apikey = req.headers.get("apikey") ? true : false;
-    console.info(`[vision-ocr] ping from origin: ${origin}, auth: ${hasAuth}, apikey: ${apikey}`);
-    const payload = { status: "ok", ts: Date.now(), origin, hasAuth, apikey };
-    return new Response(JSON.stringify(payload), {
-      headers: { "Content-Type": "application/json", ...baseHeaders },
-    });
-  }
-
-  // Main OCR endpoint
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, error: "method_not_allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json", ...baseHeaders },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 
@@ -106,7 +64,7 @@ serve(async (req) => {
     if (!authHeader || !apikey) {
       return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
         status: 401,
-        headers: { "Content-Type": "application/json", ...baseHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
@@ -132,55 +90,18 @@ serve(async (req) => {
         message: "Maximum 6 OCR requests per minute exceeded"
       }), {
         status: 429,
-        headers: { "Content-Type": "application/json", ...baseHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     console.info(`[vision-ocr] OCR request from origin: ${origin}, user: ${userId}, auth: ${redactToken(authHeader)}`);
 
-    let imageData: Uint8Array;
-    let mimeType: string;
-    let bytes: number;
-
-    // Handle both multipart/form-data and JSON payloads
-    const contentType = req.headers.get('content-type') || '';
+    const body = await req.json();
+    const { dataUrl, image_base64 } = body;
     
-    if (contentType.includes('multipart/form-data')) {
-      // Handle multipart/form-data with file
-      const formData = await req.formData();
-      const imageFile = formData.get('image') as File;
-      
-      if (!imageFile) {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          error: "missing_image",
-          message: "No image file provided in form data"
-        }), {
-          status: 400,
-          headers: { "Content-Type": "application/json", ...baseHeaders },
-        });
-      }
-
-      imageData = new Uint8Array(await imageFile.arrayBuffer());
-      mimeType = imageFile.type;
-      bytes = imageFile.size;
-    } else {
-      // Handle JSON with dataUrl
-      const body = await req.json();
-      const dataUrl = body.dataUrl;
-      
-      if (!dataUrl || typeof dataUrl !== 'string') {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          error: "missing_data_url",
-          message: "No dataUrl provided in JSON body"
-        }), {
-          status: 400,
-          headers: { "Content-Type": "application/json", ...baseHeaders },
-        });
-      }
-
-      // Parse data URL
+    // Handle both dataUrl and image_base64 formats
+    let base64Data: string;
+    if (dataUrl) {
       const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
       if (!match) {
         return new Response(JSON.stringify({ 
@@ -189,57 +110,75 @@ serve(async (req) => {
           message: "Invalid data URL format"
         }), {
           status: 400,
-          headers: { "Content-Type": "application/json", ...baseHeaders },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
+      base64Data = match[2];
+    } else if (image_base64) {
+      base64Data = image_base64;
+    } else {
+      return new Response(JSON.stringify({ 
+        ok: false, 
+        error: "missing_image",
+        message: "No image data provided"
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
-      mimeType = match[1];
-      const base64Data = match[2];
+    const apiKey = Deno.env.get("GOOGLE_VISION_API_KEY");
+    if (!apiKey) {
+      console.error("[vision-ocr] Missing GOOGLE_VISION_API_KEY");
+      // Fallback to mock for development
+      const mockText = base64Data.length < 100 ? "" : "Sample OCR text - API key not configured";
+      const duration = Date.now() - startTime;
       
-      try {
-        imageData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        bytes = imageData.length;
-      } catch (decodeError) {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          error: "invalid_base64",
-          message: "Failed to decode base64 data"
-        }), {
-          status: 400,
-          headers: { "Content-Type": "application/json", ...baseHeaders },
-        });
-      }
-    }
-
-    // Validate image
-    if (bytes > 8 * 1024 * 1024) { // 8MB limit
-      return new Response(JSON.stringify({ 
-        ok: false, 
-        error: "file_too_large",
-        message: "Image must be smaller than 8MB"
+      return new Response(JSON.stringify({
+        ok: true,
+        ts: Date.now(),
+        duration_ms: duration,
+        origin,
+        summary: {
+          text_joined: mockText,
+          words: mockText.split(/\s+/).filter(w => w.length > 0).length
+        },
+        blocks: mockText ? [{ type: "text", content: mockText }] : [],
+        meta: { api_key_missing: true }
       }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...baseHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(mimeType)) {
-      return new Response(JSON.stringify({ 
-        ok: false, 
-        error: "invalid_mime_type",
-        message: "Only PNG, JPEG, and WebP images are supported"
-      }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...baseHeaders },
-      });
+    // Real Google Vision API call
+    const visionBody = {
+      requests: [{
+        image: { content: base64Data },
+        features: [
+          { type: "TEXT_DETECTION" },
+          { type: "LABEL_DETECTION", maxResults: 10 }
+        ],
+      }],
+    };
+
+    const visionResponse = await fetch(`${VISION_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(visionBody),
+    });
+
+    if (!visionResponse.ok) {
+      console.error(`[vision-ocr] Google Vision API error: ${visionResponse.status}`);
+      throw new Error(`Vision API error: ${visionResponse.statusText}`);
     }
+
+    const visionData = await visionResponse.json();
+    const response = visionData?.responses?.[0] ?? {};
+    const text = response?.fullTextAnnotation?.text ?? "";
+    const labels = (response?.labelAnnotations ?? []).map((x: any) => x.description);
 
     const duration = Date.now() - startTime;
-    console.info(`[vision-ocr] processing image: ${bytes} bytes, ${mimeType}, user: ${userId}, duration: ${duration}ms`);
-
-    // Mock OCR processing (replace with actual OCR logic)
-    const mockText = bytes < 100 ? "" : "Sample OCR text - function is working";
-    const words = mockText.split(/\s+/).filter(w => w.length > 0).length;
+    console.info(`[vision-ocr] processing image: ${base64Data.length} chars base64, user: ${userId}, duration: ${duration}ms`);
 
     const result = {
       ok: true,
@@ -247,20 +186,19 @@ serve(async (req) => {
       duration_ms: duration,
       origin,
       summary: {
-        text_joined: mockText,
-        words
+        text_joined: text,
+        words: text.split(/\s+/).filter(w => w.length > 0).length
       },
-      blocks: mockText ? [
-        { type: "text", content: mockText }
-      ] : [],
+      blocks: text ? [{ type: "text", content: text }] : [],
+      labels: labels,
       meta: {
-        bytes,
-        mime: mimeType
+        base64_length: base64Data.length,
+        labels_count: labels.length
       }
     };
 
     return new Response(JSON.stringify(result), {
-      headers: { "Content-Type": "application/json", ...baseHeaders },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
 
   } catch (err) {
@@ -272,7 +210,7 @@ serve(async (req) => {
       message: err instanceof Error ? err.message : "Unknown error"
     }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...baseHeaders },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 });

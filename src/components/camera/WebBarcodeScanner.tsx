@@ -12,6 +12,7 @@ import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } f
 import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { devLog } from '@/lib/camera/devLog';
+import { Sound } from '@/lib/sound/soundManager';
 
 // Removed debug logging - mediaLog function removed
 
@@ -181,6 +182,7 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
           const { toast } = await import('sonner');
           toast.info(`[LOG] off_fetch_start: ${result.raw}`);
         }
+        Sound.play('beep');
         onBarcodeDetected(result.raw);
         // Don't call cleanup here - parent handles it
         onClose();
@@ -202,8 +204,9 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
       const winner = await Promise.race(burstPromises);
       if (winner.ok && winner.raw && /^\d{8,14}$/.test(winner.raw)) {
         devLog('LOG] off_fetch_start', { code: winner.raw });
+        Sound.play('beep');
         onBarcodeDetected(winner.raw);
-        // Don't call cleanup here - parent handles it  
+        // Don't call cleanup here - parent handles it
         onClose();
         return;
       }

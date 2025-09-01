@@ -17,6 +17,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { ScanOverlay } from '@/components/camera/ScanOverlay';
+import { Sound } from '@/lib/sound/soundManager';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -140,9 +141,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             stopAutoscan();
             
             const lookupResult = await handleOffLookup(last);
-            if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-              onBarcodeDetected(last);
-              onOpenChange(false);
+        if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
+          Sound.play('beep');
+          onBarcodeDetected(last);
+          onOpenChange(false);
             } else {
               setPhase('scanning');
               startAutoscan(); // Resume if no match
@@ -430,9 +432,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         const lookupResult = await handleOffLookup(result.raw);
         
-        if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-          onBarcodeDetected(result.raw);
-          onOpenChange(false);
+      if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
+        Sound.play('beep');
+        onBarcodeDetected(result.raw);
+        onOpenChange(false);
         } else if (lookupResult.data && !lookupResult.data.ok) {
           const reason = lookupResult.data.reason || 'unknown';
           const msg = reason === 'off_miss' && /^\d{8}$/.test(result.raw)

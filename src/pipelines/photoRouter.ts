@@ -19,14 +19,20 @@ function looksLikeNutritionLabel(text: string, labels: string[] = []) {
 
 async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
   // Use existing gpt5-vision-food-detector for meal detection
+  console.log('[PHOTO][MEAL] invoke=function=gpt5-vision-food-detector');
   try {
     const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
       body: { imageBase64: b64 },
-      headers: { 'x-client': 'voyage-photo-v2' },
+      // Temporarily remove x-client header to avoid CORS issues
+      // headers: { 'x-client': 'voyage-photo-v2' },
     });
-    if (error) throw error;
+    if (error) {
+      console.log('[PHOTO][MEAL] error:', error);
+      throw error;
+    }
     
     console.log('[PHOTO][MEAL] detector response:', data);
+    console.log('[PHOTO][MEAL] preflight_ok=true');
     
     // Convert to expected format: { items: [{name, confidence, portion?, grams?, imageUrl?}, ...] }
     const items = (data?.foodItems || []).map((name: string, index: number) => ({
