@@ -28,8 +28,9 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
   
-  // Enable immersive mode (hide bottom nav) for scanner interface
-  useAutoImmersive(true);
+  // Do NOT hide bottom nav on the main Health Scan page
+  // Only hide it when entering actual scanner interfaces
+  // useAutoImmersive(true); // <- REMOVED: Health Scan page should show nav
   
   // Track original entry point to avoid going back to saved/recent scans
   const originalEntryRef = useRef<string | null>(null);
