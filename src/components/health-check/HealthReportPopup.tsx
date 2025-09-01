@@ -338,14 +338,20 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
-    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
-    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
+    // Convert to 0-10 scale for consistent thresholds
+    const normalizedScore = score > 10 ? score / 10 : score;
+    
+    if (normalizedScore >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
+    if (normalizedScore >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
     return { label: 'Avoid', icon: '❌', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/30' };
   };
 
   const getScoreMessage = (score: number) => {
-    if (score >= 8) return 'Looking good! Healthy choice.';
-    if (score >= 4) return 'Some concerns to keep in mind.';
+    // Convert to 0-10 scale for consistent thresholds
+    const normalizedScore = score > 10 ? score / 10 : score;
+    
+    if (normalizedScore >= 8) return 'Looking good! Healthy choice.';
+    if (normalizedScore >= 4) return 'Some concerns to keep in mind.';
     return 'We recommend avoiding this product.';
   };
 

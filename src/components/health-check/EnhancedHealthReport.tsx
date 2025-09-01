@@ -507,20 +507,38 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
 
   // Memoize health percentage with safety
   const healthPercentage = useMemo(() => {
-    const score10 = Math.max(0, Math.min(10, Number(healthScore) || 0));
-    return Math.round(score10 * 10); // Convert to percentage for display
-  }, [healthScore]);
+    const rawScore = Number(healthScore) || 0;
+    
+    // Detect if score is on 0-100 scale (Photo Flow V2) or 0-10 scale (legacy)
+    // Photo Flow V2 scores are typically > 10, legacy scores are <= 10
+    const isV2Score = rawScore > 10 || (rawScore <= 10 && analysisData?.source === 'photo_flow_v2');
+    
+    if (isV2Score) {
+      // Score is already on 0-100 scale
+      return Math.max(0, Math.min(100, Math.round(rawScore)));
+    } else {
+      // Legacy 0-10 scale, convert to percentage
+      const score10 = Math.max(0, Math.min(10, rawScore));
+      return Math.round(score10 * 10);
+    }
+  }, [healthScore, analysisData?.source]);
 
   // Helper functions for score-based ratings
   const getScoreLabel = (score: number) => {
-    if (score >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
-    if (score >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
+    // Convert to 0-10 scale for consistent thresholds
+    const normalizedScore = score > 10 ? score / 10 : score;
+    
+    if (normalizedScore >= 8) return { label: 'Healthy', icon: '✅', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/30' };
+    if (normalizedScore >= 4) return { label: 'Caution', icon: '⚠️', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' };
     return { label: 'Avoid', icon: '❌', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/30' };
   };
 
   const getScoreMessage = (score: number) => {
-    if (score >= 8) return 'Looking good! Healthy choice.';
-    if (score >= 4) return 'Some concerns to keep in mind.';
+    // Convert to 0-10 scale for consistent thresholds
+    const normalizedScore = score > 10 ? score / 10 : score;
+    
+    if (normalizedScore >= 8) return 'Looking good! Healthy choice.';
+    if (normalizedScore >= 4) return 'Some concerns to keep in mind.';
     return 'We recommend avoiding this product.';
   };
 

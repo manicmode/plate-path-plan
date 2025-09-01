@@ -304,6 +304,64 @@ export function parsePortionToGrams(portion: string): number {
 }
 
 /**
+ * Parse serving size from OCR text
+ */
+export function parseServingFromOcr(text: string): { amount: number; unit: string } | null {
+  const m = text.match(/serving\s*size.*?(\d+(?:\.\d+)?)\s*(g|ml)/i);
+  return m ? { amount: parseFloat(m[1]), unit: m[2].toLowerCase() } : null;
+}
+
+/**
+ * Parse nutrition data from OCR text
+ */
+export function parseNutritionFromOcr(text: string): any {
+  const get = (re: RegExp) => {
+    const m = text.match(re);
+    return m ? parseFloat(m[1]) : undefined;
+  };
+  return {
+    basis: 'per_serving',
+    calories:   get(/calories\s*:?\s*(\d+)/i),
+    carbs_g:    get(/total\s*carb[^0-9]*?(\d+(?:\.\d+)?)\s*g/i),
+    sugar_g:    get(/sugars?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i),
+    protein_g:  get(/protein\s*:?\s*(\d+(?:\.\d+)?)\s*g/i),
+    fat_g:      get(/total\s*fat\s*:?\s*(\d+(?:\.\d+)?)\s*g/i),
+    fiber_g:    get(/dietary\s*fiber\s*:?\s*(\d+(?:\.\d+)?)\s*g/i),
+    sodium_mg:  get(/sodium\s*:?\s*(\d+(?:\.\d+)?)\s*mg/i),
+  };
+}
+
+/**
+ * Extract ingredients from OCR text
+ */
+export function extractIngredients(text: string): string {
+  const match = text.match(/ingredients?[:\s]+(.*?)(?:\n|$)/i);
+  return match ? match[1].trim() : '';
+}
+
+/**
+ * Extract product name from OCR text
+ */
+export function extractNameFromOcr(text: string): string | null {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  
+  // Skip nutrition facts and ingredients lines
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    if (lower.includes('nutrition') || lower.includes('ingredients')) {
+      continue;
+    }
+    
+    // Must have letters and be reasonable length
+    if (/[a-zA-Z]/.test(line) && line.length >= 3 && line.length <= 50) {
+      return line;
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Hook for routing to Health Analyzer V2 via ephemeral store
  * Replaces location.state with TTL-based in-memory storage
  */

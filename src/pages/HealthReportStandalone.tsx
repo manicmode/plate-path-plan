@@ -10,6 +10,17 @@ import { useToast } from '@/hooks/use-toast';
 import { extractScore } from '@/lib/health/extractScore';
 import { get as getPhoto, del as delPhoto } from '@/lib/stores/photoFlowStore';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { 
+  parseServingFromOcr,
+  parseNutritionFromOcr,
+  extractIngredients,
+  extractNameFromOcr,
+  computeFlags,
+  computeScore,
+  toServingNutrition,
+  parsePortionToGrams,
+  determinePortionPrecedence
+} from '@/lib/health/photoFlowV2Utils';
 
 interface NutritionLogData {
   id: string;
@@ -69,7 +80,10 @@ export default function HealthReportStandalone() {
       const data = getPhoto(rid);
       if (data) {
         console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=true');
-        setDirectPayload(data);
+        
+        // Process real OCR payload for V2
+        const processedPayload = processPhotoFlowV2Data(data);
+        setDirectPayload(processedPayload);
         setLoading(false);
         // Clean up after consumption
         delPhoto(rid);
@@ -283,6 +297,119 @@ export default function HealthReportStandalone() {
     return 'low';
   };
 
+  /**
+   * Process Photo Flow V2 data from ephemeral store
+   */
+  const processPhotoFlowV2Data = (data: any) => {
+    console.log('[PHOTO][ANALYZE] Processing V2 data', { 
+      hasText: !!data?.text, 
+      textLength: data?.text?.length || 0 
+    });
+
+    const ocrText = data?.text ?? data?.ocrText ?? '';
+    const ocrImageUrl = data?.imageUrl ?? null;
+    const ocrPortion = data?.portion ?? null;
+    const ocrServings = data?.servings ?? null;
+
+    console.log('[PHOTO][ANALYZE] ocr_len=', ocrText.length, 'hasParsedNutrition=checking');
+
+    // Parse serving size from OCR
+    const servingFromOcr = ocrPortion ?? parseServingFromOcr(ocrText);
+    
+    // Parse nutrition from OCR or use provided nutrition
+    const nutritionRaw = data?.nutrition ?? parseNutritionFromOcr(ocrText);
+    const hasParsedNutrition = !!(nutritionRaw.calories || nutritionRaw.protein_g || nutritionRaw.carbs_g);
+    
+    console.log('[PHOTO][ANALYZE] ocr_len=', ocrText.length, 'hasParsedNutrition=', hasParsedNutrition);
+
+    // Determine portion using precedence
+    const portionResult = determinePortionPrecedence(
+      servingFromOcr ? `${servingFromOcr.amount}${servingFromOcr.unit}` : null,
+      null, // user preference
+      servingFromOcr ? `${servingFromOcr.amount}${servingFromOcr.unit}` : null,
+      null  // estimate
+    );
+    
+    const portionGrams = parsePortionToGrams(portionResult.portion);
+    console.log('[PHOTO][ANALYZE] portionChosen=', portionResult.portion, 'grams=', portionGrams);
+
+    // Scale nutrition to serving
+    const nutritionPerServing = hasParsedNutrition 
+      ? toServingNutrition(nutritionRaw, portionGrams)
+      : {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0
+        };
+
+    // Extract ingredients and compute flags
+    const ingredientsText = extractIngredients(ocrText);
+    const flags = computeFlags(ingredientsText, []);
+
+    // Compute score (0-100 scale)
+    const score = hasParsedNutrition 
+      ? computeScore(nutritionPerServing, flags, ingredientsText)
+      : 0;
+    
+    console.log('[PHOTO][ANALYZE] final_score=', score, 'flag_count=', flags.length);
+
+    // Extract product name
+    const productName = extractNameFromOcr(ocrText) ?? 'Unknown item';
+
+    // If we can't parse anything meaningful, return error state
+    if (!hasParsedNutrition && !ingredientsText && productName === 'Unknown item') {
+      return {
+        error: true,
+        message: "Couldn't read nutrition panel. Retake photo of the nutrition label or try Manual Entry."
+      };
+    }
+
+    return {
+      productName,
+      itemName: productName,
+      title: productName,
+      imageUrl: ocrImageUrl,
+      nutritionData: nutritionPerServing,
+      nutritionDataPerServing: nutritionPerServing,
+      flags: flags.map(f => ({
+        ingredient: f.label,
+        flag: f.key,
+        severity: f.severity === 'high' ? 'high' : f.severity === 'medium' ? 'medium' : 'low',
+        reason: f.description || f.label
+      })),
+      ingredientFlags: flags.map(f => ({
+        ingredient: f.label,
+        flag: f.key,
+        severity: f.severity === 'high' ? 'high' : f.severity === 'medium' ? 'medium' : 'low',
+        reason: f.description || f.label
+      })),
+      healthFlags: flags.map(f => ({
+        key: f.key,
+        label: f.label,
+        severity: f.severity === 'high' ? 'danger' : f.severity === 'medium' ? 'warning' : 'good',
+        description: f.description || null
+      })),
+      healthScore: score, // 0-100 scale
+      overallRating: score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'fair' : score >= 20 ? 'poor' : 'avoid',
+      ingredientsText,
+      healthProfile: {
+        isOrganic: /organic/i.test(ingredientsText),
+        isGMO: false,
+        allergens: [],
+        preservatives: [],
+        additives: []
+      },
+      personalizedWarnings: [],
+      suggestions: score < 50 ? ['Consider choosing a healthier alternative'] : [],
+      portion: `${portionResult.portion} · ${portionResult.source}`,
+      source: 'photo_flow_v2'
+    };
+  };
+
   const extractIngredientsText = (ingredientAnalysis: any): string => {
     if (!ingredientAnalysis) return '';
     
@@ -331,6 +458,26 @@ export default function HealthReportStandalone() {
   if (directPayload) {
     console.log('[REPORT][RENDER] Rendering direct payload from unified pipeline');
     
+    // Handle V2 photo error state
+    if (directPayload.error) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center max-w-md px-4">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Analysis Failed</h2>
+            <p className="text-foreground/60 mb-6">{directPayload.message}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => navigate('/scan')} variant="default">
+                Retake Photo
+              </Button>
+              <Button onClick={() => navigate('/scan/manual')} variant="outline">
+                Try Manual Entry
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
@@ -351,8 +498,9 @@ export default function HealthReportStandalone() {
           onScanAnother: handleScanAnother,
           onClose: handleClose,
           analysisData: {
-            source: searchParams.get('source') || 'barcode',
-            barcode: searchParams.get('barcode') || undefined
+            source: searchParams.get('source') || (directPayload.source === 'photo_flow_v2' ? 'photo' : 'barcode'),
+            barcode: searchParams.get('barcode') || undefined,
+            imageUrl: directPayload.imageUrl
           },
           initialIsSaved: false,
           hideCloseButton: true
