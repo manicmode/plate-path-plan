@@ -42,6 +42,8 @@ import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
+import { detectFoodVisionV1, filterFoodish } from '@/detect/vision_v1';
+import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
@@ -344,25 +346,33 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     });
   };
 
-  // Helper function to compress image if needed
+  // Helper function to compress image with quality guard
   const compressImageIfNeeded = async (file: File): Promise<string> => {
     const fileSizeMB = file.size / (1024 * 1024);
     
     console.log('Original image size:', fileSizeMB.toFixed(2), 'MB');
     
-    if (fileSizeMB <= 1) {
-      // Image is already under 1MB, convert directly to base64
-      console.log('Image is under 1MB, no compression needed');
+    // Get image dimensions for orientation handling
+    const dimensions = await getImageDimensions(file);
+    console.log('Original dimensions:', dimensions);
+    
+    const longestSide = Math.max(dimensions.width, dimensions.height);
+    
+    if (fileSizeMB <= 1 && longestSide >= 1280 && longestSide <= 1600) {
+      // Image is already optimal, convert directly to base64
+      console.log('Image is optimal, no compression needed');
       return await fileToBase64(file);
     }
 
-    console.log('Compressing image from', fileSizeMB.toFixed(2), 'MB to under 1MB...');
+    console.log('Compressing image with quality guard...');
     
     try {
       const options = {
         maxSizeMB: 1,
-        maxWidthOrHeight: 1024,
+        maxWidthOrHeight: longestSide < 1280 ? 1280 : Math.min(longestSide, 1600),
+        initialQuality: 0.85, // Use 0.80-0.85 quality range
         useWebWorker: true,
+        preserveExif: true, // Preserve orientation
       };
 
       const compressedFile = await imageCompression(file, options);
@@ -758,11 +768,29 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.log('Calling LYF v1 food detection...');
           setProcessingStep('Detecting food items...');
           
-          // Call the LYF v1 detection system
-          const { mapped, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
+          // Call the shared Vision v1 detection system
+          const { items, _debug } = await detectFoodVisionV1(supabase, imageBase64);
+          console.log('[DETECTOR] vision_v1', { from: _debug?.from, count: items.length });
+          
+          const specific = filterFoodish(items);
+          let mapped: any[] = [];
+          
+          if (specific.length === 0) {
+            // Last-resort mapping from ALL label words
+            const allMapped = await Promise.all(items.map(async (item) => {
+              const hit = await mapVisionNameToFood(item);
+              return hit ? { vision: item, hit, source: 'fallback' } : null;
+            }));
+            mapped = allMapped.filter(Boolean);
+          } else {
+            const specificMapped = await Promise.all(specific.map(async (item) => {
+              const hit = await mapVisionNameToFood(item);
+              return hit ? { vision: item, hit, source: 'specific' } : null;
+            }));
+            mapped = specificMapped.filter(Boolean);
+          }
           
           console.log('LYF v1 detection results:', mapped);
-          
           // Convert mapped results to MultiAI format
           const enhancedResults = mapped.map((item) => ({
             name: item.hit.name,

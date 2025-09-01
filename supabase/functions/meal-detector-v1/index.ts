@@ -7,12 +7,42 @@ const cors = {
 };
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-// obvious non-food junk we always drop
-const NEGATIVE = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray)\b/i;
-// "generic" terms that aren't specific foods (should NOT block labels fallback)
-const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
-const keep = (s: string) => !NEGATIVE.test(s);
-const isGeneric = (s: string) => GENERIC.test(s);
+// Food dictionary for label extraction
+const FOOD_DICTIONARY = new Set([
+  'salmon', 'asparagus', 'chicken', 'beef', 'pork', 'tuna', 'shrimp', 'egg', 'eggs',
+  'bread', 'bun', 'baguette', 'tortilla', 'pasta', 'noodles', 'rice', 'quinoa',
+  'potato', 'potatoes', 'tomato', 'tomatoes', 'lettuce', 'spinach', 'kale', 'broccoli',
+  'carrot', 'carrots', 'onion', 'onions', 'pepper', 'peppers', 'apple', 'apples',
+  'banana', 'bananas', 'orange', 'oranges', 'lemon', 'lemons', 'lime', 'limes',
+  'grape', 'grapes', 'strawberry', 'strawberries', 'blueberry', 'blueberries',
+  'yogurt', 'cheese', 'butter', 'oil', 'donut', 'donuts', 'muffin', 'muffins',
+  'cookie', 'cookies', 'cake', 'cakes', 'sandwich', 'sandwiches', 'burger', 'burgers',
+  'pizza', 'soup', 'curry', 'stew', 'hummus', 'falafel', 'kebab', 'tofu', 'tempeh',
+  'sushi', 'sashimi', 'udon', 'ramen', 'pho', 'naan', 'pita', 'couscous', 'avocado',
+  'mushroom', 'mushrooms', 'corn', 'beans', 'lentils', 'chickpeas', 'nuts', 'almonds',
+  'walnuts', 'cashews', 'peanuts', 'seeds', 'sunflower', 'chia', 'flax', 'oats',
+  'cereal', 'milk', 'cream', 'fish', 'lobster', 'crab', 'scallops', 'mussels',
+  'clams', 'oysters', 'turkey', 'duck', 'lamb', 'bacon', 'ham', 'sausage', 'salami'
+]);
+
+// Generic terms that indicate food but aren't specific (for fallback detection)
+const GENERIC_FOOD_TERMS = /\b(plate|dishware|utensil|cutlery|table|recipe|cooking|cuisine|kitchen|food|dish|meal|produce|ingredient|logo|brand|text)\b/i;
+
+const extractFoodNouns = (labels: string[]): string[] => {
+  const foodNouns: string[] = [];
+  
+  for (const label of labels) {
+    const words = label.toLowerCase().split(/\s+/);
+    for (const word of words) {
+      const cleanWord = word.replace(/[^a-z]/g, '');
+      if (FOOD_DICTIONARY.has(cleanWord)) {
+        foodNouns.push(cleanWord);
+      }
+    }
+  }
+  
+  return [...new Set(foodNouns)]; // dedupe
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -51,35 +81,36 @@ serve(async (req) => {
     const json = JSON.parse(rawResponse);
     const resp = json?.responses?.[0] ?? {};
     
-    // Parse objects and labels
+    // Parse objects with minScore filtering
     const rawObjects = resp?.localizedObjectAnnotations ?? [];
-    const objects = rawObjects.map((o: any) => (o.name || "").toLowerCase().trim()).filter(s => s);
+    const objects = rawObjects
+      .filter((o: any) => (o.score || 0) >= 0.55) // Apply minScore filter
+      .map((o: any) => (o.name || "").toLowerCase().trim())
+      .filter(s => s);
     
     const rawLabels = resp?.labelAnnotations ?? [];
     const labels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim()).filter(s => s);
     
-    // Build four arrays
-    const objectsKept = objects.filter(keep);
-    const objectsSpecific = objectsKept.filter(s => !isGeneric(s));
-    const labelsKept = labels.filter(keep);
-    const labelsSpecific = labelsKept.filter(s => !isGeneric(s));
+    // Check if objects contain only generic terms
+    const hasSpecificObjects = objects.some(obj => !GENERIC_FOOD_TERMS.test(obj));
     
-    // Choosing logic (this is the fix)
     let chosen: string[];
     let chosenFrom: string;
     
-    if (objectsSpecific.length > 0) {
-      chosen = objectsSpecific;
+    if (hasSpecificObjects) {
+      // Use objects if they contain specific food items
+      chosen = objects.filter(obj => !GENERIC_FOOD_TERMS.test(obj));
       chosenFrom = 'objects';
-    } else if (labelsSpecific.length > 0) {
-      chosen = labelsSpecific;
-      chosenFrom = 'labels';
-    } else if (labelsKept.length > 0) {
-      chosen = labelsKept;
-      chosenFrom = 'labels_generic';
     } else {
-      chosen = [];
-      chosenFrom = 'none';
+      // Fallback to label food extraction
+      const extractedFoods = extractFoodNouns(labels);
+      if (extractedFoods.length > 0) {
+        chosen = extractedFoods;
+        chosenFrom = 'labels';
+      } else {
+        chosen = [];
+        chosenFrom = 'none';
+      }
     }
     
     // Add info log
@@ -93,14 +124,8 @@ serve(async (req) => {
       items: chosen.slice(0, 8),
       _debug: {
         from: chosenFrom,
-        rawObjectsCount: objects.length,
-        rawLabelsCount: labels.length,
-        keptObjectsCount: objectsKept.length,
-        keptLabelsCount: labelsKept.length,
-        specificObjectsCount: objectsSpecific.length,
-        specificLabelsCount: labelsSpecific.length,
-        sampleObjects: objects.slice(0,6),
-        sampleLabels: labels.slice(0,6)
+        objCount: objects.length,
+        labelCount: labels.length
       }
     }), { headers: { ...cors, "Content-Type": "application/json" }});
 
