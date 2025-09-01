@@ -7,8 +7,8 @@ const cors = {
 };
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-// Foodish regex for label fallback filtering
-const FOODISH = /salmon|fish|asparagus|vegetable|veggie|tomato|potato|chicken|beef|pork|meat|egg|rice|noodle|pasta|bread|sandwich|soup|salad|fruit|berry|shrimp|prawn|tuna|sardine|broccoli|cauliflower|yogurt|cheese|bean|lentil|tofu|oat|cereal|corn|spinach|lettuce|carrot|onion|garlic|apple|banana|orange|avocado|nuts|olive|mushroom/;
+// NEGATIVE terms to drop - less aggressive filtering (only obvious non-foods)
+const NEGATIVE = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat)\b/i;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -22,85 +22,70 @@ serve(async (req) => {
     const content = (image_base64 || "").split(",").pop();
     if (!content) throw new Error("Invalid image data");
 
-    console.log("[MEAL-DETECTOR-V1] Starting object detection...");
+    console.log("[MEAL-V1] Starting detection...");
 
-    // First attempt: OBJECT_LOCALIZATION only
-    const objectBody = {
+    // Single Vision API call with both features
+    const requestBody = {
       requests: [{
         image: { content },
-        features: [{ type: "OBJECT_LOCALIZATION", maxResults: 20 }],
+        features: [
+          { type: "OBJECT_LOCALIZATION", maxResults: 50 },
+          { type: "LABEL_DETECTION", maxResults: 50 }
+        ],
       }],
     };
 
-    const objectResponse = await fetch(`${VISION_URL}?key=${key}`, {
+    const response = await fetch(`${VISION_URL}?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(objectBody),
+      body: JSON.stringify(requestBody),
     });
 
-    const objectRaw = await objectResponse.text();
-    if (!objectResponse.ok) throw new Error(`Vision Objects ${objectResponse.status}: ${objectRaw}`);
+    const rawResponse = await response.text();
+    if (!response.ok) throw new Error(`Vision ${response.status}: ${rawResponse}`);
     
-    const objectJson = JSON.parse(objectRaw);
-    const objectResp = objectJson?.responses?.[0] ?? {};
-    const objs = objectResp?.localizedObjectAnnotations ?? [];
-
-    console.log(`[MEAL-DETECTOR-V1] Found ${objs.length} objects`);
-
-    // If we found objects, return them
-    if (objs.length > 0) {
-      const items = objs.map((o: any) => ({
-        name: (o.name || "").toLowerCase(),
-        confidence: o.score || 0,
-        source: "object",
-        box: o.boundingPoly?.normalizedVertices ?? null,
-      }));
-
-      console.log(`[MEAL-DETECTOR-V1] Returning ${items.length} objects`);
-      return new Response(JSON.stringify({
-        items,
-        _debug: { from: "objects", count: items.length }
-      }), { headers: { ...cors, "Content-Type": "application/json" }});
-    }
-
-    // Fallback: LABEL_DETECTION with foodish filtering
-    console.log("[MEAL-DETECTOR-V1] No objects found, trying labels fallback...");
+    const json = JSON.parse(rawResponse);
+    const resp = json?.responses?.[0] ?? {};
     
-    const labelBody = {
-      requests: [{
-        image: { content },
-        features: [{ type: "LABEL_DETECTION", maxResults: 15 }],
-      }],
+    // Parse objects
+    const rawObjects = resp?.localizedObjectAnnotations ?? [];
+    const normalizedObjects = rawObjects.map((o: any) => (o.name || "").toLowerCase().trim());
+    const keptObjects = normalizedObjects.filter((name: string) => name && !NEGATIVE.test(name));
+    
+    // Parse labels
+    const rawLabels = resp?.labelAnnotations ?? [];
+    const normalizedLabels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim());
+    const keptLabels = normalizedLabels.filter((name: string) => name && !NEGATIVE.test(name));
+    
+    // Decide which to use: objects first, fallback to labels
+    const useObjects = keptObjects.length > 0;
+    const chosenItems = useObjects ? keptObjects : keptLabels;
+    const chosenSource = useObjects ? "objects" : "labels";
+    
+    // Build result items
+    const items = chosenItems.map(name => ({
+      name,
+      confidence: 0.8,
+      source: chosenSource,
+      box: null
+    }));
+
+    // Debug info
+    const debugInfo = {
+      from: chosenSource,
+      rawObjectsCount: rawObjects.length,
+      rawLabelsCount: rawLabels.length,
+      keptObjectsCount: keptObjects.length,
+      keptLabelsCount: keptLabels.length,
+      sampleObjects: normalizedObjects.slice(0, 5),
+      sampleLabels: normalizedLabels.slice(0, 5)
     };
 
-    const labelResponse = await fetch(`${VISION_URL}?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(labelBody),
-    });
-
-    const labelRaw = await labelResponse.text();
-    if (!labelResponse.ok) throw new Error(`Vision Labels ${labelResponse.status}: ${labelRaw}`);
-    
-    const labelJson = JSON.parse(labelRaw);
-    const labelResp = labelJson?.responses?.[0] ?? {};
-    const rawLabels = labelResp?.labelAnnotations ?? [];
-
-    // Filter to foodish terms only
-    const foodLabels = rawLabels
-      .map((x: any) => ({
-        name: (x.description || "").toLowerCase(),
-        confidence: x.score || 0,
-        source: "label",
-        box: null
-      }))
-      .filter((x: any) => FOODISH.test(x.name));
-
-    console.log(`[MEAL-DETECTOR-V1] Found ${rawLabels.length} labels, ${foodLabels.length} foodish`);
+    console.log(`[MEAL-V1] rawObjects=${rawObjects.length} rawLabels=${rawLabels.length} keptObjects=${keptObjects.length} keptLabels=${keptLabels.length} chosen=${chosenSource} samples=${chosenItems.slice(0, 5).join(',')}`);
 
     return new Response(JSON.stringify({
-      items: foodLabels,
-      _debug: { from: "labels_fallback", count: foodLabels.length }
+      items,
+      _debug: debugInfo
     }), { headers: { ...cors, "Content-Type": "application/json" }});
 
   } catch (e) {
