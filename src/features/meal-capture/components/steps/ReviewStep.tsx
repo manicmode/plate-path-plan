@@ -18,6 +18,8 @@ interface ReviewStepProps {
 
 export function ReviewStep({ data, onUpdateData, onNext, onExit }: ReviewStepProps) {
   const handleConfirm = () => {
+    const selectedCount = data.selectedItems?.length || 0;
+    console.log('[MEAL][REVIEW]', { selected: selectedCount });
     debugLog('Review confirmed', { selectedItem: data.selectedItem });
     onNext('analyze');
   };

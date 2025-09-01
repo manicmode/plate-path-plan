@@ -253,6 +253,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleCapturedBlob = async (blob: Blob) => {
+    console.log('[PHOTO][GATEWAY][CAPTURED]', { size: blob.size, type: blob.type });
+    
     // Try meal capture gateway first (only when flag is enabled)
     const result = await handoffFromPhotoCapture(
       blob,
@@ -369,14 +371,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           </div>
           <h3 className="text-xl font-semibold">No barcode detected</h3>
           <p className="text-sm text-white/70">
-            Try again or pick another option below.
+            Try again with the barcode centered and in focus, or use Scan Barcode / Enter Manually.
           </p>
           <div className="flex gap-3 mt-6">
             <Button variant="outline" onClick={onRetry} className="flex-1 border-white/40 text-white hover:bg-white/10">
-              Try again
+              Retry
+            </Button>
+            <Button variant="outline" onClick={onRetry} className="flex-1 border-white/40 text-white hover:bg-white/10">
+              Scan Barcode
             </Button>
             <Button onClick={onManual} className="flex-1 bg-primary hover:bg-primary/90">
-              Manual entry
+              Enter Manually
             </Button>
           </div>
         </div>

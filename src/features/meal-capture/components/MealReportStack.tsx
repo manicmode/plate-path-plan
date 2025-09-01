@@ -55,6 +55,8 @@ export function MealReportStack({ data, onClose }: MealReportStackProps) {
   const handleConfirmSuccess = () => {
     // Remove this report from the stack
     const reportId = confirmData?.id;
+    console.log('[MEAL][LOG][DONE]', { itemKey: reportId });
+    
     setReports(prev => prev.filter(r => r.id !== reportId));
     setShowConfirm(false);
     setConfirmData(null);

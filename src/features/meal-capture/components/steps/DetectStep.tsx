@@ -36,6 +36,7 @@ export function DetectStep({ data, onUpdateData, onNext, onExit }: DetectStepPro
   
   const handleContinue = () => {
     if (selectedIds.length >= 1) {
+      console.log('[MEAL][DETECT]', { count: selectedIds.length });
       onNext('analyze'); // Skip review, go directly to analyze
     }
   };
