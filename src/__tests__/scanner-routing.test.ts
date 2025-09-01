@@ -54,41 +54,31 @@ describe('Scanner Routing Invariants', () => {
   });
 
   describe('Photo OCR Fallback Routing', () => {
-    it('should navigate to /scan/not-found on OCR failure from photo mode', () => {
+    it('should show inline fallback on OCR failure from photo mode', () => {
+      const mockSetState = vi.fn();
       const handleOcrFailure = (source: string, reason: string) => {
         if (source === 'photo') {
-          mockNavigate('/scan/not-found', { 
-            state: { 
-              source: 'photo', 
-              tips: ['Try closer photo', 'Use Manual/Voice'], 
-              retryMode: 'photo' 
-            }
-          });
+          mockSetState('no_detection');
         }
       };
 
       handleOcrFailure('photo', 'low_confidence');
 
-      expect(mockNavigate).toHaveBeenCalledWith('/scan/not-found', {
-        state: {
-          source: 'photo',
-          tips: ['Try closer photo', 'Use Manual/Voice'],
-          retryMode: 'photo'
-        }
-      });
+      expect(mockSetState).toHaveBeenCalledWith('no_detection');
     });
 
-    it('should NOT navigate to /scan/not-found from barcode mode', () => {
+    it('should NOT show fallback navigation from barcode mode', () => {
+      const mockSetState = vi.fn();
       const handleBarcodeFailure = (source: string, reason: string) => {
         if (source === 'barcode') {
-          // Keep existing behavior - do not route to not-found
+          // Keep existing behavior - do not show inline fallback
           console.log('Barcode failed, keeping existing fallback behavior');
         }
       };
 
       handleBarcodeFailure('barcode', 'no_detection');
 
-      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockSetState).not.toHaveBeenCalled();
     });
   });
 
@@ -122,20 +112,20 @@ describe('Scanner Routing Invariants', () => {
 });
 
 describe('Contract Tests', () => {
-  it('should never reach /scan/not-found during barcode mode', () => {
+  it('should use inline fallback for photo mode, no fallback for barcode mode', () => {
     const routingLogic = (mode: string, detectionResult: string | null) => {
       if (mode === 'photo' && !detectionResult) {
-        return '/scan/not-found';
+        return 'inline_fallback';
       }
       if (mode === 'barcode' && !detectionResult) {
-        return null; // Keep existing behavior, don't route to not-found
+        return null; // Keep existing behavior, no fallback needed
       }
       return null;
     };
 
     expect(routingLogic('barcode', null)).toBeNull();
     expect(routingLogic('barcode', 'failed')).toBeNull();
-    expect(routingLogic('photo', null)).toBe('/scan/not-found');
+    expect(routingLogic('photo', null)).toBe('inline_fallback');
   });
 
   it('should maintain separation between scanner modes', () => {

@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 
 describe('Photo OCR Flow Tests', () => {
   describe('OCR Pipeline Routing', () => {
-    it('should route to not-found when OCR returns no text for photo mode', () => {
-      const mockNavigate = vi.fn();
+    it('should show inline fallback when OCR returns no text for photo mode', () => {
+      const mockSetState = vi.fn();
       
       // Mock scenario: OCR returns no text for photo mode
       const ocrResult = {
@@ -13,18 +13,14 @@ describe('Photo OCR Flow Tests', () => {
       
       const analysisData = { source: 'photo' };
       
-      // Simulate the routing logic from HealthCheckModal
+      // Simulate the inline fallback logic from HealthCheckModal
       if (!ocrResult.ok || !ocrResult.summary?.text_joined) {
         if (analysisData?.source === 'photo') {
-          mockNavigate('/scan/not-found', { 
-            state: { status: 'no_detection', source: 'photo' } 
-          });
+          mockSetState('no_detection');
         }
       }
       
-      expect(mockNavigate).toHaveBeenCalledWith('/scan/not-found', {
-        state: { status: 'no_detection', source: 'photo' }
-      });
+      expect(mockSetState).toHaveBeenCalledWith('no_detection');
     });
 
     it('should show retake options for inconclusive photo OCR results', () => {

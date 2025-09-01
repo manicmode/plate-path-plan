@@ -330,14 +330,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           words: 0, 
           hasLabelData: false, 
           reason: "no_text", 
-          nextAction: "route_to_not_found" 
+          nextAction: "show_inline_fallback" 
         });
         
-        // Route to not-found for photo OCR failures
-        navigate('/scan/not-found', { 
-          state: { status: 'no_detection', source: 'photo' } 
-        });
-        onClose();
+        // Show inline no-detection state instead of navigating
+        setCurrentState('no_detection');
         return;
       }
       
@@ -509,15 +506,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       console.info("[OCR][FALLBACK] Network/processing error");
       
-      // Navigate to no-detection page for photo mode failures
+      // Show inline no-detection state for photo mode failures
       if (analysisData?.source === 'photo') {
-        navigate('/scan/not-found', { 
-          state: { 
-            source: 'photo', 
-            tips: ['Fill the frame with the Ingredients panel', 'Avoid glare; keep the label flat', 'Try Manual or Voice entry'], 
-            retryMode: 'photo' 
-          }
-        });
+        setCurrentState('no_detection');
         return;
       }
       
@@ -575,15 +566,9 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     runPhotoAnalysis(img, { ocrOnly: true }).catch(err => {
       console.error('[HC][PHOTO][AUTO][ERROR]', err);
       
-      // Navigate to no-detection for photo failures
+      // Show inline no-detection state for photo failures
       if (analysisData?.source === 'photo') {
-        navigate('/scan/not-found', { 
-          state: { 
-            source: 'photo', 
-            tips: ['Try closer photo', 'Use Manual/Voice'], 
-            retryMode: 'photo' 
-          }
-        });
+        setCurrentState('no_detection');
         return;
       }
       

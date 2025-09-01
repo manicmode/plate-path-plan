@@ -61,6 +61,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quickScanStatus, setQuickScanStatus] = useState<string | null>(null);
 
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
@@ -270,13 +271,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       return;
     }
 
-    // Legacy path (unchanged) - convert blob to base64
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageBase64 = e.target?.result as string;
-      onCapture(imageBase64);
-    };
-    reader.readAsDataURL(blob);
+    // Legacy path - check if we should try quick barcode scan or show inline fallback
+    console.log('[PHOTO][OCR_ONLY] no barcode found (keeping modal open)');
+    
+    // Show inline fallback UI instead of navigating
+    setQuickScanStatus('no-barcode');
   };
 
   const capturePhoto = async () => {
@@ -345,6 +344,43 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     stopAllVideos();                  // Belt & suspenders
     onOpenChange(false);              // Finally close/navigate
   }, [releaseNow, onOpenChange]);
+
+  const handleRetry = () => {
+    setQuickScanStatus(null);
+    setError(null);
+    startCamera();
+  };
+
+  const handleManualEntry = () => {
+    camHardStop('modal_close');
+    onOpenChange(false);
+    onManualFallback();
+  };
+
+  // Inline fallback component
+  const NoBarcodeFallback = ({ onRetry, onManual }: { onRetry: () => void; onManual: () => void }) => (
+    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+      <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-sm w-full border border-white/20">
+        <div className="text-center text-white space-y-4">
+          <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">📋</span>
+          </div>
+          <h3 className="text-xl font-semibold">No barcode detected</h3>
+          <p className="text-sm text-white/70">
+            We couldn't find a barcode in this photo. You can try again or enter details manually.
+          </p>
+          <div className="flex gap-3 mt-6">
+            <Button variant="outline" onClick={onRetry} className="flex-1 border-white/40 text-white hover:bg-white/10">
+              Retake
+            </Button>
+            <Button onClick={onManual} className="flex-1 bg-primary hover:bg-primary/90">
+              Enter manually
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -473,6 +509,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               </div>
             </footer>
           </div>
+
+          {/* No Barcode Fallback */}
+          {quickScanStatus === 'no-barcode' && (
+            <NoBarcodeFallback onRetry={handleRetry} onManual={handleManualEntry} />
+          )}
 
           {/* Error State */}
           {error && (
