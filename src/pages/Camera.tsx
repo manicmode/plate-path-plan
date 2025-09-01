@@ -41,7 +41,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
-import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
+import { analyzePhotoForLyfV1 } from '@/lyf_v1';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
@@ -743,62 +743,46 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           }
         }
         
-        // STEP 2: Only reach here if NOT a barcode - proceed with multi-AI food detection
-        console.log('=== GPT FOOD DETECTION PATH ===');
-        console.log('Image does not appear to be a barcode, proceeding with GPT food detection...');
+        // STEP 2: Only reach here if NOT a barcode - proceed with LYF v1 food detection
+        console.log('=== LYF V1 FOOD DETECTION PATH ===');
+        console.log('Image does not appear to be a barcode, proceeding with LYF v1 food detection...');
         
-        // If not a barcode, proceed with multi-AI food recognition
+        // If not a barcode, proceed with LYF v1 food recognition
         const imageBase64 = convertToBase64(selectedImage);
         
-        setProcessingStep('Initializing GPT food vision...');
+        setProcessingStep('Analyzing food with LYF v1...');
         setIsMultiAILoading(true);
         setShowMultiAIDetection(true);
         
         try {
-          console.log('Calling GPT food detection...');
-          setProcessingStep('Analyzing with GPT Vision...');
+          console.log('Calling LYF v1 food detection...');
+          setProcessingStep('Detecting food items...');
           
-          // Call the new multi-AI detection system with abort signal
-          const detectionResults = await detectFoodsFromAllSources(imageBase64, abortControllerRef.current?.signal);
+          // Call the LYF v1 detection system
+          const { mapped, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
           
-          console.log('GPT detection results:', detectionResults);
+          console.log('LYF v1 detection results:', mapped);
           
-          // Enhance results with calorie estimates
-          setProcessingStep('Estimating nutrition...');
-          const enhancedResults = await Promise.all(
-            detectionResults.map(async (item) => {
-              try {
-                // Get nutrition estimate for each food item
-                const nutrition = await estimateNutritionFromLabel(item.name);
-                
-                return {
-                  ...item,
-                  calories: nutrition?.calories || 100, // Fallback to 100 kcal
-                  portion: '1 serving', // Default portion
-                  isEstimate: !nutrition?.isBranded || nutrition?.calories === undefined
-                };
-              } catch (error) {
-                console.error(`Failed to get nutrition for ${item.name}:`, error);
-                return {
-                  ...item,
-                  calories: 100, // Fallback
-                  portion: '1 serving',
-                  isEstimate: true
-                };
-              }
-            })
-          );
+          // Convert mapped results to MultiAI format
+          const enhancedResults = mapped.map((item) => ({
+            name: item.hit.name,
+            confidence: 85, // Default confidence for v1 mapped items
+            sources: [item.source],
+            calories: item.hit.calories || 100,
+            portion: '1 serving',
+            isEstimate: false
+          }));
           
           setMultiAIResults(enhancedResults);
           
           if (enhancedResults.length > 0) {
-            toast.success(`Found ${enhancedResults.length} food item(s) with GPT Vision!`);
+            toast.success(`Found ${enhancedResults.length} food item(s) with LYF v1!`);
           } else {
             toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
           }
           
         } catch (error) {
-          console.error('GPT food detection failed:', error);
+          console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
           setShowMultiAIDetection(false);
         } finally {
