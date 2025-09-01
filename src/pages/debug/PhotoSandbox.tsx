@@ -6,6 +6,7 @@ import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
 import { isSuccessResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
 import { FF } from '@/featureFlags';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PingStatus {
   status: 'loading' | 'ok' | 'fail';
@@ -28,7 +29,7 @@ interface OCRRun {
 
 interface LogEntry {
   timestamp: Date;
-  level: 'START' | 'HEADERS' | 'REQUEST' | 'RESPONSE' | 'REPORT' | 'END' | 'ERROR' | 'HEALTH' | 'WARN';
+  level: 'START' | 'HEADERS' | 'REQUEST' | 'RESPONSE' | 'REPORT' | 'END' | 'ERROR' | 'HEALTH' | 'WARN' | 'MEAL';
   message: string;
   data?: any;
 }
@@ -186,82 +187,47 @@ export default function PhotoSandbox() {
         }
       }, 12000);
 
-      // 4. POST to /vision-ocr
-      const functionsBase = resolveFunctionsBase();
-      const url = `${functionsBase}/vision-ocr`;
-      
-      const formData = new FormData();
-      formData.append('image', blob, 'e2e-photo.jpg');
-
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: headers,
-        signal: abortControllerRef.current.signal
+      // 4. Convert blob to base64 for meal-detector
+      const base64Image = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result);
+        };
+        reader.readAsDataURL(blob);
       });
+
+      // 5. Call meal-detector only (OCR OFF)
+      const { data: meal, error } = await supabase.functions.invoke('meal-detector', {
+        body: { image_base64: base64Image }
+      });
+
+      if (error) {
+        throw new Error(`Meal detection failed: ${error.message}`);
+      }
+
+      const items = meal?.items ?? [];
+      console.log('[PHOTO][MEAL] items_detected=', items.length, meal?._debug || null);
       
       const duration = Date.now() - startTime;
       
-      addLogEntry('RESPONSE', `OCR response received`, {
-        status: response.status,
-        ok: response.ok,
-        durationMs: duration,
-        contentType: response.headers.get('content-type')
+      addLogEntry('RESPONSE', `Meal detection response received`, {
+        itemsDetected: items.length,
+        debug: meal?._debug,
+        durationMs: duration
       });
 
-      // Handle HTTP errors
-      if (response.status === 429) {
-        toast({ title: "OCR busy", description: "Please wait a few seconds", variant: "destructive" });
-        throw new Error('Rate limit exceeded');
-      }
+      const result = meal;
       
-      if (response.status === 401 || response.status === 403) {
-        toast({ title: "Not signed in", description: "Refresh and try again", variant: "destructive" });
-        throw new Error('Unauthorized');
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const ocrResult = await response.json();
-      
-      // 5. Process OCR text through health pipeline using shared parser
+      // 6. Process meal detection results (no health processing for meal-only mode)
       let healthReport = null;
       let score = null;
       let flagsCount = 0;
 
-      if (ocrResult.ok && ocrResult.summary?.text_joined && FF.OCR_HEALTH_REPORT_ENABLED) {
-        try {
-          addLogEntry('HEALTH', 'Processing OCR text through shared parser');
-          
-          // Use the same parser as Manual/Voice flows
-          const healthResult = await toReportFromOCR(ocrResult.summary.text_joined);
-          
-          if (isSuccessResult(healthResult)) {
-            healthReport = healthResult.report;
-            score = Math.round((healthResult.report.healthScore || 0) * 10); // Convert to 0-100 scale
-            flagsCount = healthResult.report.ingredientFlags?.length || 0;
-            
-            // Required logging output
-            const words = ocrResult.summary.text_joined.split(/\s+/).length;
-            console.info('[OCR][PIPELINE]', { words, score, flags: flagsCount });
-            
-            addLogEntry('REPORT', `Health report generated via shared parser`, {
-              score,
-              flagsCount,
-              productName: healthResult.report.itemName,
-              source: 'OCR'
-            });
-          } else if (isErrorResult(healthResult)) {
-            addLogEntry('WARN', `Health parsing failed: ${healthResult.reason}`);
-          }
-        } catch (healthError: any) {
-          addLogEntry('ERROR', `Health analysis failed: ${healthError.message}`);
-        }
-      }
+      // Skip OCR health processing - this is meal-only mode
+      addLogEntry('MEAL', 'Meal detection completed - no health processing in meal-only mode');
 
-      // 6. Record successful run
+      // 7. Record successful run
       const newRun: OCRRun = {
         id: runId,
         timestamp: new Date(),
@@ -270,24 +236,23 @@ export default function PhotoSandbox() {
         score,
         flagsCount,
         origin: pingStatus.data?.origin,
-        hasAuth: !!headers.Authorization,
-        textPreview: ocrResult.summary?.text_joined?.slice(0, 160),
-        healthReport // Store the full health report
+        hasAuth: true, // Supabase functions always use auth
+        textPreview: `Detected ${items.length} items`,
+        healthReport // null for meal-only mode
       };
 
       setOcrHistory(prev => [newRun, ...prev.slice(0, 19)]); // Keep last 20
       
-      addLogEntry('END', `E2E check completed successfully`, {
+      addLogEntry('END', `E2E meal check completed successfully`, {
         runId,
         totalDurationMs: duration,
-        ocrWords: ocrResult.summary?.words,
-        healthScore: score,
-        flags: flagsCount
+        itemsDetected: items.length,
+        mealDebug: meal?._debug
       });
 
       toast({ 
-        title: "E2E Check Complete", 
-        description: `OCR processed in ${duration}ms${score ? `, Health Score: ${score}/10` : ''}` 
+        title: "E2E Meal Check Complete", 
+        description: `Meal detection processed in ${duration}ms, found ${items.length} items` 
       });
 
     } catch (error: any) {
@@ -311,7 +276,7 @@ export default function PhotoSandbox() {
 
       setOcrHistory(prev => [failedRun, ...prev.slice(0, 19)]);
       
-      addLogEntry('END', `E2E check failed`, {
+      addLogEntry('END', `E2E meal check failed`, {
         runId,
         error: error.message,
         durationMs: duration
@@ -334,7 +299,7 @@ export default function PhotoSandbox() {
       // 1. network.json
       const networkData = {
         method: 'POST',
-        url: '/vision-ocr',
+        url: '/meal-detector',
         lastRun: ocrHistory[0] ? {
           status: ocrHistory[0].status,
           durationMs: ocrHistory[0].duration,
@@ -429,27 +394,23 @@ export default function PhotoSandbox() {
 
   const ping = async (options: { withAuth?: boolean } = { withAuth: true }) => {
     try {
-      const base = resolveFunctionsBase();
-      const url = `${base}/vision-ocr/ping`;
+      const { data, error } = await supabase.functions.invoke('meal-detector', {
+        body: { image_base64: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAA==' } // minimal test image
+      });
+      
+      const url = 'meal-detector';
       log('[PING][START]', { url, withAuth: options.withAuth });
 
-      const headers = await getAuthHeaders(options.withAuth ?? true);
-      
-      const r = await fetch(url, { headers: { ...headers, 'Accept': 'application/json' } });
-      
-      if (!r.ok) {
-        const text = await r.text().catch(() => '');
-        log('[PING][HTTP]', { status: r.status, ok: r.ok, text: text.slice(0, 120) });
-        setPingStatus({ status: 'fail', data: { status: r.status, text } });
-        return;
+      if (error) {
+        throw new Error(error.message);
       }
 
-      const j = await r.json();
-      log('[PING][RESULT]', j);
-      setPingStatus({ status: j.status === 'ok' ? 'ok' : 'fail', data: j, lastPing: new Date() });
-    } catch (e) { 
-      log('[PING][ERROR]', String(e));
-      setPingStatus({ status: 'fail', data: { error: String(e) } });
+      log('[PING][SUCCESS]', { status: 'ok', data: !!data });
+      setPingStatus({ status: 'ok', data: { status: 'ok', items: data?.items || [] }, lastPing: new Date() });
+      return { ok: true, status: 'ok', data };
+    } catch (error: any) {
+      log('[PING][ERROR]', String(error));
+      setPingStatus({ status: 'fail', data: { error: String(error) } });
     }
   };
 

@@ -1,19 +1,11 @@
 // eslint-disable-next-line: no-cross-pipeline-imports
 /**
- * Isolated Photo Pipeline
+ * Photo Pipeline - Meal-Only Detection (OCR OFF)
  * Enhanced with force option for sandbox testing
  */
 
-// Enhanced photo pipeline with OCR health report integration
-import { FF } from '@/featureFlags';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { toReportFromOCR } from '@/lib/health/adapters/toReportInputFromOCR';
-import { isSuccessResult, isErrorResult } from '@/lib/health/adapters/ocrResultHelpers';
-import { normalizeOcrResponse } from '@/lib/health/photoFlowV2Utils';
 import { supabase } from '@/integrations/supabase/client';
-
-import { resolveFunctionsBase } from '@/lib/net/functionsBase';
-import { getSupabaseAuthHeaders } from '@/lib/net/authHeaders';
 
 export type PipelineResult = { ok: true, report: any } | { ok: false, reason: string };
 
@@ -36,6 +28,7 @@ export async function analyzePhoto(
 
   const { force = false, offline = false } = options;
   const useV2 = isFeatureEnabled('photo_flow_v2');
+  const MEAL_ONLY = true; // Force meal-only mode (OCR OFF)
 
   // Early return for disabled state (unless forced)
   if (!force && !useV2) {
@@ -43,10 +36,11 @@ export async function analyzePhoto(
     return { ok: false, reason: 'disabled' };
   }
 
-  // V2 or Force mode
+  // V2 Meal-Only mode
   console.log('[PHOTO][PIPELINE]', { 
     v2: useV2, 
     force, 
+    mealOnly: MEAL_ONLY,
     blobSize: input.blob.size, 
     blobType: input.blob.type 
   });
@@ -59,141 +53,50 @@ export async function analyzePhoto(
   }
 
   try {
-    console.log('[PHOTO][V2_PIPELINE_START]', { useV2, offline });
+    console.log('[PHOTO][MEAL_ONLY_PIPELINE_START]', { useV2, offline });
 
-    if (useV2) {
-      // V2: Use supabase.functions.invoke with 12s timeout
-      console.log('[PHOTO][V2_INVOKE_START]');
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log('[PHOTO][V2_TIMEOUT] 12s timeout reached');
-        controller.abort();
-      }, 12000);
-
-      try {
-        const formData = new FormData();
-        formData.append('image', input.blob, 'photo.jpg');
-
-        const { data, error } = await supabase.functions.invoke('vision-ocr', {
-          body: formData,
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-
-        clearTimeout(timeoutId);
-
-        if (error) {
-          console.log('[PHOTO][V2_ERROR]', error);
-          return { ok: false, reason: 'function_error' };
-        }
-
-        console.log('[PHOTO][V2_SUCCESS]', { hasData: !!data });
-
-        // Normalize response to V2 format
-        const normalized = normalizeOcrResponse(data);
-        console.log('[PHOTO][V2_NORMALIZED]', normalized);
-
-        return { 
-          ok: true, 
-          report: {
-            ...data,
-            v2Normalized: normalized,
-            source: 'vision-ocr-v2'
-          }
-        };
-
-      } catch (invokeError: any) {
-        clearTimeout(timeoutId);
-        
-        if (invokeError.name === 'AbortError') {
-          console.log('[PHOTO][V2_ABORTED]');
-          return { ok: false, reason: 'timeout' };
-        }
-        
-        console.log('[PHOTO][V2_INVOKE_ERROR]', invokeError);
-        return { ok: false, reason: 'invoke_error' };
-      }
-    }
-
-    // Legacy V1 path
-    console.log('[FN][BASE]', resolveFunctionsBase());
-    const base = resolveFunctionsBase();
-    const url = `${base}/vision-ocr`;
+    // Convert blob to base64 for meal detector
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
     
-    console.log('[PHOTO][FETCH_START]', { url });
+    // Load image from blob
+    const imgUrl = URL.createObjectURL(input.blob);
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imgUrl;
+    });
+    
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(imgUrl);
+    
+    const base64 = canvas.toDataURL('image/jpeg', 0.8);
 
-    const formData = new FormData();
-    formData.append('image', input.blob, 'photo.jpg');
-
-    const authHeaders = await getSupabaseAuthHeaders();
-    console.log('[AUTH][HEADERS]', {
-      hasAuth: !!authHeaders?.Authorization,
-      authPrefix: authHeaders?.Authorization?.slice(0, 20),
-      hasApikey: !!authHeaders?.apikey
+    // ✅ MEAL ONLY: Call meal-detector directly (no OCR)
+    const { data: meal, error } = await supabase.functions.invoke('meal-detector', {
+      body: { image_base64: base64 }
     });
 
-    console.log('[FETCH][START]', { url, method: 'POST', contentType: authHeaders['Content-Type'] ?? null });
+    if (error) {
+      console.log('[PHOTO][MEAL_ERROR]', error);
+      return { ok: false, reason: 'meal_detection_error' };
+    }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        ...authHeaders,
-        'Accept': 'application/json'
+    const items = meal?.items ?? [];
+    console.log('[PHOTO][MEAL] items_detected=', items.length, meal?._debug || null);
+
+    return { 
+      ok: true, 
+      report: {
+        ...meal,
+        items,
+        source: 'meal-detector'
       }
-    });
+    };
 
-    console.log('[FETCH][DONE]', { status: response.status, ok: response.ok });
-
-    if (response.status === 401) {
-      return { ok: false, reason: 'unauthorized' };
-    }
-
-    if (!response.ok) {
-      return { ok: false, reason: `http_${response.status}` };
-    }
-
-    const result = await response.json();
-    console.log('[PHOTO][OCR][RESP]', result);
-
-    // NEW: OCR Health Report Integration
-    if (FF.OCR_HEALTH_REPORT_ENABLED && result.ok && result.summary?.text_joined) {
-      console.log('[PHOTO][HEALTH] OCR health report enabled, analyzing text');
-      
-      try {
-        // Use the same free-text parser as Manual/Voice
-        const healthResult = await toReportFromOCR(result.summary.text_joined);
-        
-        if (isSuccessResult(healthResult)) {
-          const words = result.summary.text_joined.split(/\s+/).length;
-          const score = Math.round(healthResult.report.healthScore * 10); // Convert to 0-100 scale
-          const flags = healthResult.report.ingredientFlags?.length || 0;
-          
-          console.log(`[OCR][PIPELINE] { words:${words}, score:${score}, flags:${flags} }`);
-          
-          return { 
-            ok: true, 
-            report: {
-              ...result,
-              healthReport: healthResult.report,
-              source: 'OCR'
-            }
-          };
-        } else if (isErrorResult(healthResult)) {
-          console.log('[PHOTO][HEALTH] Health analysis failed:', healthResult.reason);
-          if (result.summary.text_joined.length < 30) {
-            return { ok: false, reason: 'no_text' };
-          }
-        }
-      } catch (healthError: any) {
-        console.log('[PHOTO][HEALTH] Health analysis failed:', healthError.message);
-        // Continue with OCR-only result
-      }
-    }
-
-    return { ok: true, report: result };
   } catch (error) {
     console.log('[PHOTO][ERROR]', String(error));
     return { ok: false, reason: 'fetch_error' };
