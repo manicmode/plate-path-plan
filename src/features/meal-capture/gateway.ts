@@ -4,47 +4,45 @@
  */
 
 import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
+import { putMealPhoto } from './photoStore';
 
 /**
  * Handle meal capture handoff from PhotoCaptureModal
  * Returns true if handoff succeeded, false if should continue legacy path
  */
 export async function handoffFromPhotoCapture(
-  photoUrl: string,
+  blob: Blob,
   searchParams?: string
-): Promise<boolean> {
+): Promise<{ success: boolean; token?: string }> {
   // Early exit if feature is disabled - completely inert
   if (!mealCaptureEnabledFromSearch(searchParams || window.location.search)) {
-    return false;
+    return { success: false };
   }
 
   // Prevent double-fires with inflight lock
   if (sessionStorage.getItem("mc:handoff:inflight") === "1") {
-    return true; // Already handled
+    return { success: true }; // Already handled
   }
 
   try {
     // Feature is enabled - proceed with handoff
     sessionStorage.setItem("mc:handoff:inflight", "1");
 
-    const nonce = crypto.randomUUID();
-    const blob = await fetch(photoUrl).then(r => r.blob());
-    const payload = {
-      nonce,
-      mime: blob.type || 'image/jpeg', 
-      size: blob.size,
-      blobUrl: photoUrl
-    };
-
-    sessionStorage.setItem(`mc:entry:${nonce}`, JSON.stringify(payload));
+    const token = crypto.randomUUID();
+    
+    // Store blob in memory instead of using blob URLs
+    putMealPhoto(token, blob);
+    
+    // Store token for entry route
+    sessionStorage.setItem('mc:token', token);
     
     // Debug logging behind feature flag
     if (import.meta.env.VITE_DEBUG_MEAL === '1') {
       console.log("[MEAL][GATEWAY][CAPTURED]", { size: blob.size, mime: blob.type });
-      console.log("[MEAL][GATEWAY][HANDOFF]", { url: `/meal-capture/entry?photoToken=${nonce}` });
+      console.log("[MEAL][GATEWAY][HANDOFF]", { token });
     }
 
-    return true;
+    return { success: true, token };
   } finally {
     // Always remove inflight lock
     sessionStorage.removeItem("mc:handoff:inflight");

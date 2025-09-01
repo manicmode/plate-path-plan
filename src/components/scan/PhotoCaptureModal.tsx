@@ -253,30 +253,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   const handleCapturedBlob = async (blob: Blob) => {
     // Try meal capture gateway first
-    const photoUrl = URL.createObjectURL(blob);
-    const handedOff = await handoffFromPhotoCapture(
-      photoUrl, 
+    const result = await handoffFromPhotoCapture(
+      blob,
       "?" + searchParams.toString()
     );
 
-    if (handedOff) {
+    if (result.success) {
       // Stop camera and close modal
       await stopTracksSafely(streamRef.current);
       onOpenChange(false);
       
       // Navigate to entry route with token
-      setTimeout(() => {
-        // Find the token by looking for mc:entry: keys
-        const keys = Object.keys(sessionStorage).filter(k => k.startsWith('mc:entry:'));
-        const token = keys.length > 0 ? keys[0].replace('mc:entry:', '') : '';
-        navigate(`/meal-capture/entry?photoToken=${token}`, { replace: true });
-      }, 0);
-      
+      if (result.token) {
+        navigate(`/meal-capture/entry?token=${result.token}`, { replace: true });
+      }
       return;
     }
-
-    // Clean up object URL if not used
-    URL.revokeObjectURL(photoUrl);
 
     // Legacy path (unchanged) - convert blob to base64
     const reader = new FileReader();

@@ -30,29 +30,38 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
 
-  // Rescue mechanism for meal capture handoff - disabled when flag is off
+  // Guard: only run when meal capture flag is enabled
   useEffect(() => {
-    // Guard: only run if meal capture is enabled
     if (!mealCaptureEnabledFromSearch(location.search)) return;
 
-    // Look for entry tokens instead of old session keys
-    const entryKeys = Object.keys(sessionStorage).filter(k => k.startsWith('mc:entry:'));
-    if (entryKeys.length === 0) return;
+    const token = sessionStorage.getItem('mc:token');
+    if (!token) return;
 
-    const token = entryKeys[0].replace('mc:entry:', '');
-    const payload = sessionStorage.getItem(entryKeys[0]);
-    
-    if (!payload) {
-      // Clear invalid token
-      sessionStorage.removeItem(entryKeys[0]);
-      return;
-    }
+    // Check if we've already handled this token
+    const handledKey = `mc:handled:${token}`;
+    if (sessionStorage.getItem(handledKey)) return;
 
     // Don't navigate if already on meal capture routes
     if (location.pathname.startsWith("/meal-capture")) return;
 
-    console.log("[MEAL][GATEWAY][RESCUE_NAV]", { token });
-    navigate(`/meal-capture/entry?photoToken=${token}`, { replace: true });
+    try {
+      // Mark as handled immediately
+      sessionStorage.setItem(handledKey, '1');
+      
+      // Navigate to meal capture entry with the token
+      console.log("[MEAL][RESCUE]", { token });
+      navigate(`/meal-capture/entry?token=${token}`, { replace: true });
+      
+      // Cleanup after successful navigation
+      sessionStorage.removeItem('mc:token');
+      sessionStorage.removeItem(handledKey);
+      
+    } catch (error) {
+      console.error("[MEAL][RESCUE][ERROR]", error);
+      // Clean up on error
+      sessionStorage.removeItem('mc:token');
+      sessionStorage.removeItem(handledKey);
+    }
   }, [location.pathname, location.search, navigate]);
   
   // Do NOT hide bottom nav on the main Health Scan page
@@ -179,7 +188,7 @@ export default function ScanHub() {
     // Don't auto-open photo modal while meal tokens exist
     const mealActive = mealCaptureEnabledFromSearch(location.search);
     const inflight = sessionStorage.getItem("mc:handoff:inflight") === "1";
-    const hasToken = Object.keys(sessionStorage).some(k => k.startsWith('mc:entry:'));
+    const hasToken = sessionStorage.getItem('mc:token') !== null;
     if (mealActive && (inflight || hasToken)) {
       return; // skip any "auto-open photo modal" effects
     }

@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { MealCaptureWizard } from '../components/MealCaptureWizard';
 import type { MealCaptureData, WizardStep } from '../components/MealCapturePage';
+import { takeMealPhoto } from '../photoStore';
 
 export default function MealCaptureEntry() {
   const navigate = useNavigate(); 
@@ -21,7 +22,8 @@ export default function MealCaptureEntry() {
     if (ranRef.current) return;
     ranRef.current = true;
 
-    const photoToken = searchParams.get('photoToken');
+    // Try query param first, then sessionStorage
+    const photoToken = searchParams.get('token') || sessionStorage.getItem('mc:token');
     
     if (!photoToken) {
       console.log("[MEAL][ENTRY][MISSING_TOKEN]");
@@ -30,10 +32,10 @@ export default function MealCaptureEntry() {
       return;
     }
 
-    const tokenKey = `mc:entry:${photoToken}`;
-    const payloadStr = sessionStorage.getItem(tokenKey);
+    // Try to get blob from memory store
+    const blob = takeMealPhoto(photoToken);
     
-    if (!payloadStr) {
+    if (!blob) {
       console.log("[MEAL][ENTRY][MISSING_TOKEN]");
       toast.error("Photo expired. Please retake.");
       navigate("/scan", { replace: true });
@@ -41,32 +43,33 @@ export default function MealCaptureEntry() {
     }
 
     try {
-      const payload = JSON.parse(payloadStr);
-      
-      // Immediately consume the token
-      sessionStorage.removeItem(tokenKey);
+      // Clear the session storage token
+      sessionStorage.removeItem('mc:token');
       
       // Revoke any previous blob URL if we had one
       if (wizardData.imageUrl) {
         URL.revokeObjectURL(wizardData.imageUrl);
       }
       
+      // Create object URL for the wizard
+      const imageUrl = URL.createObjectURL(blob);
+      
       // Start the wizard with the image
       setWizardData({ 
-        imageUrl: payload.blobUrl,
-        imageBlob: null // Will be fetched when needed
+        imageUrl,
+        imageBlob: blob
       });
       setCurrentStep('classify');
       
       console.log("[MEAL][ENTRY][START]", { 
         token: photoToken, 
-        size: payload.size, 
-        mime: payload.mime 
+        source: "memory",
+        size: blob.size, 
+        mime: blob.type 
       });
       
     } catch (error) {
       console.error("[MEAL][ENTRY][PARSE_ERROR]", error);
-      sessionStorage.removeItem(tokenKey);
       toast.error("Photo expired. Please retake.");
       navigate("/scan", { replace: true });
     }
