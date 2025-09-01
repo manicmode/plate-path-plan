@@ -22,6 +22,7 @@ import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 import { goToHealthAnalysis } from '@/lib/nav';
 import { camHardStop } from '@/lib/camera/guardian';
 import { useAutoImmersive } from '@/lib/uiChrome';
+import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
 
 
 export default function ScanHub() {
@@ -29,15 +30,24 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
 
-  // Rescue mechanism for meal capture handoff
+  // Rescue mechanism for meal capture handoff - consume once, short TTL, never loop
   useEffect(() => {
+    const mealOn = mealCaptureEnabledFromSearch(location.search);
+    if (!mealOn) return;
+
     const url = sessionStorage.getItem("mc:photoUrl");
-    const entry = sessionStorage.getItem("mc:entry");
-    if (location.pathname === "/scan" && url && entry === "photo") {
-      console.log("[MEAL][GATEWAY][RESCUE_SCAN]");
-      navigate("/meal-capture?entry=photo");
-    }
-  }, [location.pathname, navigate]);
+    const ts = Number(sessionStorage.getItem("mc:ts") || 0);
+    const used = sessionStorage.getItem("mc:used") === "1";
+    const within = Date.now() - ts < 8000;
+
+    if (!url || used || !within) return;
+    if (location.pathname === "/meal-capture") return;
+
+    sessionStorage.setItem("mc:used", "1"); // consume rescue
+    const n = sessionStorage.getItem("mc:n") || "";
+    console.log("[MEAL][GATEWAY][RESCUE_NAV]", { within, n });
+    navigate(`/meal-capture?entry=photo&n=${n}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
   
   // Do NOT hide bottom nav on the main Health Scan page
   // Only hide it when entering actual scanner interfaces
@@ -159,6 +169,14 @@ export default function ScanHub() {
 
   const handleTakePhoto = () => {
     logTileClick('photo');
+    
+    // Don't auto-open photo modal while meal tokens exist
+    const mealActive = mealCaptureEnabledFromSearch(location.search);
+    const inflight = sessionStorage.getItem("mc:inflight") === "1";
+    const hasToken = !!sessionStorage.getItem("mc:photoUrl");
+    if (mealActive && (inflight || hasToken)) {
+      return; // skip any "auto-open photo modal" effects
+    }
     
     if (!imageAnalyzerEnabled) {
       toast('Photo analysis is in beta; try manual or voice for now.');

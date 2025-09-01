@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Upload } from 'lucide-react';
 import { camAcquire, camRelease, camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
@@ -239,31 +240,38 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
+  const stopTracksSafely = async (stream?: MediaStream | null) => {
+    try { 
+      stream?.getTracks().forEach(t => t.stop()); 
+    } catch {}
+    await new Promise(r => setTimeout(r, 40)); // small settle for iOS
+  };
+
   const handleCapturedBlob = async (blob: Blob) => {
     const mealOn = mealCaptureEnabledFromSearch("?" + searchParams.toString());
     console.log("[MEAL][GATEWAY][CAPTURED]", { mealOn, size: blob?.size ?? 0 });
 
     if (mealOn && blob && blob.size > 0) {
-      const url = URL.createObjectURL(blob); // blob://  (not base64)
+      // Prevent double-fires with inflight lock
+      if (sessionStorage.getItem("mc:inflight") === "1") return;
+      sessionStorage.setItem("mc:inflight", "1");
+
+      const url = URL.createObjectURL(blob);
+      const nonce = crypto.randomUUID();
       sessionStorage.setItem("mc:photoUrl", url);
       sessionStorage.setItem("mc:entry", "photo");
       sessionStorage.setItem("mc:ts", String(Date.now()));
+      sessionStorage.setItem("mc:n", nonce);
 
-      console.log("[MEAL][GATEWAY][HANDOFF]", { to: "/meal-capture?entry=photo" });
+      // Close modal + stop tracks before route change
+      onOpenChange(false);
+      await stopTracksSafely(streamRef.current);
 
-      // Close the modal first…
-      onOpenChange?.(false);
-
-      // …then schedule navigation on the next frame (+ a timed rescue)
-      requestAnimationFrame(() => {
-        navigate("/meal-capture?entry=photo");
-      });
+      // Defer navigation to next tick so modal fully unmounts
       setTimeout(() => {
-        if (location.pathname === "/scan") {
-          console.log("[MEAL][GATEWAY][RESCUE_NAV]");
-          navigate("/meal-capture?entry=photo");
-        }
-      }, 300);
+        console.log("[MEAL][GATEWAY][HANDOFF]", { to: `/meal-capture?entry=photo&n=${nonce}` });
+        navigate(`/meal-capture?entry=photo&n=${nonce}`, { replace: true });
+      }, 0);
 
       return;
     }
@@ -349,6 +357,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
       >
+        <VisuallyHidden>
+          <DialogTitle>Take Photo</DialogTitle>
+        </VisuallyHidden>
         <div className="relative w-full h-full bg-black overflow-hidden">
           {/* Video Element */}
           <video

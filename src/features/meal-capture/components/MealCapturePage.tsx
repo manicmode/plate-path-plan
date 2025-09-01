@@ -30,6 +30,13 @@ export default function MealCapturePage() {
   // Check if feature is enabled
   const isEnabled = mealCaptureEnabled();
   
+  const cleanupMealTokens = useCallback(() => {
+    const u = sessionStorage.getItem("mc:photoUrl");
+    if (u) URL.revokeObjectURL(u);
+    ["mc:photoUrl","mc:entry","mc:ts","mc:n","mc:inflight","mc:used"]
+      .forEach(k => sessionStorage.removeItem(k));
+  }, []);
+
   React.useEffect(() => {
     logFeatureInit();
     
@@ -39,44 +46,37 @@ export default function MealCapturePage() {
       return;
     }
     
-    // Handle transfer from modal gateway
-    const params = new URLSearchParams(location.search);
-    const entry = params.get('entry');
-    
-    if (entry === 'photo') {
-      const url = sessionStorage.getItem("mc:photoUrl");
-      const ts = sessionStorage.getItem("mc:ts");
+    // Handle transfer from modal gateway - verify nonce, then clean up on exit
+    const qs = new URLSearchParams(location.search);
+    const entry = qs.get("entry");
+    const n = qs.get("n");
+    const nStore = sessionStorage.getItem("mc:n");
+    const url = sessionStorage.getItem("mc:photoUrl");
+
+    if (entry === "photo" && n && n === nStore && url) {
+      // Valid handoff — clear only the inflight/rescue bits now
+      sessionStorage.removeItem("mc:inflight");
+      sessionStorage.removeItem("mc:used");
       
-      console.log('[MEAL][ENTRY]', { entry, hasUrl: !!url, ts });
-      
-      if (url) {
-        setTransferData({ imageUrl: url });
-        setCurrentStep('classify');
-      } else {
-        console.warn('[MEAL][ENTRY] Transfer URL not found, starting at capture');
-        setCurrentStep('capture');
-      }
-      
-      // Cleanup on unmount
-      return () => {
-        if (url) {
-          try {
-            URL.revokeObjectURL(url);
-            sessionStorage.removeItem("mc:photoUrl");
-            sessionStorage.removeItem("mc:entry");
-            sessionStorage.removeItem("mc:ts");
-          } catch (e) {
-            console.warn('[MEAL][CLEANUP] Error revoking URL:', e);
-          }
-        }
-      };
+      console.log('[MEAL][ENTRY]', { entry, hasUrl: !!url, nonce: n });
+      setTransferData({ imageUrl: url });
+      setCurrentStep('classify');
+    } else if (entry === "photo") {
+      // Invalid/expired handoff — full cleanup and exit
+      console.warn('[MEAL][ENTRY] Invalid handoff, redirecting to /scan');
+      cleanupMealTokens();
+      navigate("/scan", { replace: true });
+      return;
     } else {
       // Default to capture step
       setCurrentStep('capture');
     }
     
     debugLog('Page mounted', { step: currentStep });
-  }, [isEnabled, navigate, currentStep, location.search]);
+    
+    // Cleanup tokens on unmount
+    return cleanupMealTokens;
+  }, [isEnabled, navigate, currentStep, location.search, cleanupMealTokens]);
   
   const handleStepChange = useCallback((newStep: WizardStep) => {
     logStepTransition(currentStep, newStep);
