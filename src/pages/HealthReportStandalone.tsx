@@ -60,36 +60,142 @@ export default function HealthReportStandalone() {
   const [reportData, setReportData] = useState<NutritionLogData | null>(null);
   const [originalData, setOriginalData] = useState<any>(null);
   const [directPayload, setDirectPayload] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const rid = searchParams.get('rid');
-    const source = searchParams.get('src');
+    const src = searchParams.get('src');
+    const isPhotoFlowV2Enabled = isFeatureEnabled('photo_flow_v2');
     
     console.log('[REPORT][BOOT]', { 
       reportId, 
       rid,
-      source,
+      source: src,
       hasLocationState: !!location.state,
       barcode: searchParams.get('barcode'),
       mode: searchParams.get('mode')
     });
 
-    // V2 Photo Flow: Check ephemeral store first
-    if (isFeatureEnabled('photo_flow_v2') && rid && source === 'photo') {
-      console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=checking');
-      const data = getPhoto(rid);
-      if (data) {
-        console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=true');
-        
-        // Process real OCR payload for V2
-        const processedPayload = processPhotoFlowV2Data(data);
-        setDirectPayload(processedPayload);
-        setLoading(false);
-        // Clean up after consumption
-        delPhoto(rid);
-        return;
-      } else {
-        console.log('[PHOTO][ROUTE] rid=', rid, 'found_in_store=false');
+    // V2 Photo Flow: Get data from ephemeral store
+    if (src === 'photo' && isPhotoFlowV2Enabled && rid) {
+      const rec = getPhoto(rid);
+      console.log('[PHOTO][ANALYZE] Retrieved from store:', { rid, hasData: !!rec });
+      
+      if (rec) {
+        try {
+          if (rec.kind === 'label') {
+            console.log('[PHOTO][ANALYZE] Processing nutrition label...');
+            const data = rec.data;
+            const text = data?.text ?? data?.ocrText ?? '';
+            const ocrImageUrl = data?.imageUrl ?? null;
+            const ocrPortion = data?.portion ?? null;
+
+            console.log('[PHOTO][ANALYZE]', { 
+              ocr_len: text.length, 
+              hasParsedNutrition: !!data?.nutrition 
+            });
+
+            // Parse serving and nutrition from OCR
+            const servingFromOcr = ocrPortion ?? parseServingFromOcr(text);
+            const nutritionRaw = data?.nutrition ?? parseNutritionFromOcr(text);
+            
+            // Determine portion precedence and normalize nutrition
+            const portionChosen = determinePortionPrecedence(
+              servingFromOcr ? `${servingFromOcr.amount}${servingFromOcr.unit}` : null,
+              null, // user preference
+              servingFromOcr ? `${servingFromOcr.amount}${servingFromOcr.unit}` : null,
+              null  // estimate
+            );
+
+            console.log('[PHOTO][ANALYZE]', { 
+              portionChosen, 
+              grams: parsePortionToGrams(portionChosen.portion)
+            });
+
+            const nutritionPerServing = toServingNutrition(nutritionRaw, parsePortionToGrams(portionChosen.portion));
+            
+            // Extract ingredients and compute flags/score
+            const ingredients = extractIngredients(text);
+            const flags = computeFlags(ingredients, []);
+            const score = computeScore(nutritionPerServing); // 0–100 (do NOT divide)
+            const productName = extractNameFromOcr(text) ?? 'Unknown item';
+
+            console.log('[PHOTO][ANALYZE]', { 
+              final_score: score, 
+              flag_count: flags.length 
+            });
+
+            const finalPayload = {
+              productName,
+              imageUrl: ocrImageUrl,
+              nutritionData: nutritionPerServing,
+              flags,
+              healthScore: score,
+              portion: `${portionChosen?.portion ?? ''} · OCR`,
+              source: 'photo_flow_v2',
+            };
+
+            setDirectPayload(finalPayload);
+            setLoading(false);
+          } else if (rec.kind === 'meal') {
+            console.log('[PHOTO][ANALYZE] Processing detected meal...');
+            const data = rec.data;
+            const items = data?.items || [];
+            
+            console.log('[PHOTO][MEAL] items_detected=', items.length);
+            
+            if (items.length === 0) {
+              setError("Couldn't confidently detect foods. Retake photo (clear, good lighting) or Try Manual Entry.");
+              setLoading(false);
+              delPhoto(rid);
+              return;
+            }
+
+            // Choose top 3 items by confidence
+            const topItems = items
+              .sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0))
+              .slice(0, 3);
+
+            // For now, create a simplified meal report
+            // TODO: Implement proper nutrition lookup for detected foods
+            const productName = topItems.length === 1 
+              ? topItems[0].name 
+              : 'Detected meal';
+
+            const finalPayload = {
+              productName,
+              imageUrl: data?.imageUrl ?? null,
+              nutritionData: {
+                basis: 'per_serving',
+                calories: 0, // TODO: Sum from nutrition lookup
+                protein_g: 0,
+                carbs_g: 0,  
+                fat_g: 0,
+                fiber_g: 0,
+                sugar_g: 0,
+                sodium_mg: 0,
+              },
+              flags: [], // TODO: Generate from combined ingredients
+              healthScore: 50, // TODO: Compute from summed nutrition
+              portion: `Photo · Ingredients`,
+              source: 'photo_flow_v2_meal',
+              detectedItems: topItems, // Include detected items for display
+            };
+
+            setDirectPayload(finalPayload);
+            setLoading(false);
+          }
+          
+          // Clean up store
+          delPhoto(rid);
+          return;
+        } catch (error) {
+          console.error('[PHOTO][ANALYZE] Processing failed:', error);
+          setError('Failed to process photo analysis');
+          setLoading(false);
+          delPhoto(rid);
+          return;
+        }
       }
     }
 
@@ -113,10 +219,10 @@ export default function HealthReportStandalone() {
     // Fallback to reportId lookup
     if (reportId) {
       fetchReportData(reportId);
-    } else if (!rid || source !== 'photo') {
+    } else if (!rid || src !== 'photo') {
       // Only redirect if we don't have a valid rid from photo flow
       // Show friendly error with retry button for invalid rid
-      if (rid && source === 'photo') {
+      if (rid && src === 'photo') {
         console.log('[PHOTO][ROUTE] Invalid or expired rid, showing retry');
         setDirectPayload(null);
         setLoading(false);
@@ -509,11 +615,10 @@ export default function HealthReportStandalone() {
     );
   }
 
-  // Handle case where rid was invalid/expired but we're in photo flow
+  const src = searchParams.get('src');
   const rid = searchParams.get('rid');
-  const source = searchParams.get('src');
   
-  if (!reportData && !directPayload && rid && source === 'photo') {
+  if (!reportData && !directPayload && rid && src === 'photo') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

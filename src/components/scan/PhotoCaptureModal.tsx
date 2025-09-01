@@ -12,6 +12,7 @@ import { isFeatureEnabled } from '@/lib/featureFlags';
 import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRouteToHealthAnalyzerV2 } from '@/lib/health/photoFlowV2Utils';
+import { routePhoto } from '@/pipelines/photoRouter';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -301,23 +302,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         
         if (!mountedRef.current) return;
         
-        // Mock successful result for testing
-        const mockResult = {
-          itemName: 'Test Food Item',
-          healthScore: 75,
-          nutritionData: { calories: 150, protein: 8, carbs: 20, fat: 5 }
-        };
+        setProcessing(true);
+        
+        // Convert blob to base64 for router
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        canvas.width = 640;
+        canvas.height = 480;
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Route photo through new router system
+        const routed = await routePhoto(base64);
         
         // Route via ephemeral store - do NOT close modal manually
-        console.log('[PHOTO][V2_ROUTING] to health analyzer');
-        routeToAnalyzer(mockResult);
+        console.log('[PHOTO][V2_ROUTING] to health analyzer, kind=', routed.kind);
+        routeToAnalyzer(routed);
         setProcessing(false);
         
       } catch (error: any) {
-        console.log('[PHOTO][V2_ERROR]', error);
+        console.log('[PHOTO][FAIL] reason=', error?.message || 'unknown');
         if (mountedRef.current) {
           setProcessing(false);
-          setProcessingError(error.message || 'Processing failed');
+          setProcessingError(error.message || 'Could not analyze photo');
         }
         return;
       }
