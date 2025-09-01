@@ -7,7 +7,7 @@ import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -80,6 +80,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   useLayoutEffect(() => {
     if (open) {
+      console.log('[MEAL][MODAL]', { mountedFrom: 'health-scan', mealEnabled: mealCaptureEnabled() });
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
       camOwnerMount(OWNER);
@@ -245,38 +246,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     playCameraClickSound();
 
     try {
-      // Handle meal capture mode
-      if (mode === 'meal-capture') {
-        console.log('[PHOTO] Meal capture mode - navigating to meal flow');
-        
-        const video = videoRef.current;
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Convert to blob for meal processing (avoid base64 in navigation)
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const imageUrl = URL.createObjectURL(blob);
-            camHardStop('modal_close');
-            onOpenChange(false);
-            
-            // Navigate to camera with meal-capture state
-            navigate('/camera', {
-              state: {
-                mode: 'meal-capture',
-                imageUrl: imageUrl,
-                captureTs: Date.now()
-              }
-            });
-          }
-        }, 'image/jpeg', 0.85);
-        
-        return;
-      }
+      // Remove meal capture logic - handled by navigation routing
 
       // Standard photo capture mode
       // Check if analyzer is enabled

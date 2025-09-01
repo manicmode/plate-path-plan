@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
@@ -147,19 +147,20 @@ export default function ScanHub() {
   };
 
   const handleTakePhoto = () => {
+    const mealOn = mealCaptureEnabled();
+    console.log('[MEAL][ROUTE][CLICK]', { page: 'health-scan', mealOn });
+    
     logTileClick('photo');
     if (!imageAnalyzerEnabled) {
       toast('Photo analysis is in beta; try manual or voice for now.');
       setManualEntryOpen(true);
+    } else if (mealOn) {
+      // Use the sandboxed flow. Keep it on Camera with a clear mode.
+      navigate('/camera?mode=meal-capture', { replace: false });
+      return;
     } else {
-      // Check if meal capture is enabled
-      const mealCaptureEnabled = isFeatureEnabled('meal_capture_enabled');
-      if (mealCaptureEnabled) {
-        // Navigate to camera with meal-capture mode
-        navigate('/camera', { state: { mode: 'meal-capture' } });
-      } else {
-        setPhotoModalOpen(true);
-      }
+      // Legacy: open the in-page modal
+      setPhotoModalOpen(true);
     }
   };
 

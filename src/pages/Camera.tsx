@@ -27,6 +27,7 @@ import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
+import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -48,7 +49,7 @@ import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalizat
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 import { MealCaptureFlow } from '@/components/meal-capture/MealCaptureFlow';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -310,35 +311,51 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     navigate('.', { replace: true, state: null });
   }, [location.state, navigate]);
 
-  // Handle meal capture mode on arrival
+  // Handle meal capture mode on arrival (URL params + state)
   useEffect(() => {
     const state = location.state as any;
-    const mode = state?.mode;
+    const stateMode = state?.mode;
+    const params = new URLSearchParams(location.search);
+    const urlMode = params.get('mode');
+    const mealOn = mealCaptureEnabled();
     
-    if (mode === 'nutrition-capture') {
+    // Check for meal-capture mode from URL first, then state
+    if (urlMode === 'meal-capture') {
+      console.log('[MEAL][CAMERA][ENTER]', { mode: urlMode, mealOn });
+      if (mealOn) {
+        setCurrentMode('meal-capture');
+        // For URL-based meal capture, we might not have imageUrl immediately
+        const imageUrl = state?.imageUrl;
+        if (imageUrl) {
+          setMealCaptureImageUrl(imageUrl);
+        }
+      } else {
+        console.warn('[MEAL][GUARD] Meal capture accessed but flag disabled');
+      }
+    } else if (stateMode === 'nutrition-capture') {
       const productData = state?.productData;
       if (productData) {
         console.log('[CAMERA][NUTRITION_CAPTURE]', 'Starting NF capture flow');
         setCurrentMode('nutrition-capture');
         setNutritionCaptureData(productData);
       }
-    } else if (mode === 'meal-capture') {
+    } else if (stateMode === 'meal-capture') {
+      // Legacy state-based meal capture support
       const imageUrl = state?.imageUrl;
-      if (imageUrl && isFeatureEnabled('meal_capture_enabled')) {
+      if (imageUrl && mealOn) {
         console.log('[CAMERA][MEAL_CAPTURE]', 'Processing meal capture with image');
         setCurrentMode('meal-capture');
         setMealCaptureImageUrl(imageUrl);
       }
     }
-  }, [location.state]);
+  }, [location.state, location.search]);
+  // Defensive guard against meal-capture mode reaching logging
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.get('reset') === 'true') {
-      setActiveTab('main');
-      // Clean up the URL by removing the reset parameter
-      navigate('/camera', { replace: true });
+    const params = new URLSearchParams(location.search);
+    if (params.get('mode') === 'meal-capture') {
+      console.warn('[MEAL][GUARD] Unexpected arrival on camera page with mode=meal-capture but wrong flow');
     }
-  }, [location.search, navigate]);
+  }, [location.search]);
 
   // Auto-dismiss error when analysis succeeds
   useEffect(() => {
@@ -346,6 +363,19 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       setShowError(false);
     }
   }, [recognizedFoods.length, reviewItems.length]);
+
+  // Helper function to convert data URL to blob
+  const dataURLtoBlob = (dataURL: string): Blob => {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
 
   // Helper function to convert File to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -3219,15 +3249,38 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
       {/* Meal Capture Flow */}
-      {currentMode === 'meal-capture' && mealCaptureImageUrl && (
-        <MealCaptureFlow
-          imageUrl={mealCaptureImageUrl}
-          onExit={() => {
-            setCurrentMode('photo');
-            setMealCaptureImageUrl(null);
-            navigate('/scan');
-          }}
-        />
+      {currentMode === 'meal-capture' && (
+        mealCaptureImageUrl ? (
+          <MealCaptureFlow
+            imageUrl={mealCaptureImageUrl}
+            onExit={() => {
+              setCurrentMode('photo');
+              setMealCaptureImageUrl(null);
+              navigate('/scan');
+            }}
+          />
+        ) : (
+          <PhotoCaptureModal
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) {
+                setCurrentMode('photo');
+                navigate('/scan');
+              }
+            }}
+            onCapture={(imageData) => {
+              // Convert base64 to blob URL for meal processing
+              const blob = dataURLtoBlob(imageData);
+              const imageUrl = URL.createObjectURL(blob);
+              setMealCaptureImageUrl(imageUrl);
+            }}
+            onManualFallback={() => {
+              setCurrentMode('photo');
+              navigate('/scan');
+            }}
+            mode="meal-capture"
+          />
+        )
       )}
 
       {/* Debug Panel - Dev only */}

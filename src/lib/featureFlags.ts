@@ -35,27 +35,28 @@ function isStaging(): boolean {
          process.env.NODE_ENV === 'development';
 }
 
+// Robust meal capture flag parser
+export function mealCaptureEnabled(): boolean {
+  const env = (import.meta.env?.MEAL_CAPTURE_ENABLED ?? '').toString().toLowerCase();
+  if (env === '1' || env === 'true' || env === 'on') return true;
+
+  const raw = window.location.search || '';
+  // robust: match ?meal, ?meal=1, ?meal=true, ?meal=on, and tolerate '?meal+1'
+  const enabled = /(?:\?|&)meal(?:=(?:1|true|on))?(?:[&]|$)/i.test(raw) || /(?:\?|&)meal\+1(?:[&]|$)/i.test(raw);
+
+  if (enabled) console.log('[MEAL][FLAG]', { source: 'query', raw });
+  return enabled;
+}
+
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
   // Environment-specific overrides
   if (flag === 'image_analyzer_v1') {
     return isStaging() ? ROLLOUT_CONFIG.image_analyzer_staging : ROLLOUT_CONFIG.image_analyzer_production;
   }
   
-  // Meal capture feature - controlled by env var or URL query
+  // Meal capture feature - use robust parser
   if (flag === 'meal_capture_enabled') {
-    // Check URL query param first
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('meal') === '1') {
-      return true;
-    }
-    
-    // Check environment variable
-    const envFlag = import.meta.env.VITE_MEAL_CAPTURE_ENABLED;
-    if (envFlag === '1' || envFlag === 'true') {
-      return true;
-    }
-    
-    return FEATURE_FLAGS[flag];
+    return mealCaptureEnabled();
   }
   
   return FEATURE_FLAGS[flag];
