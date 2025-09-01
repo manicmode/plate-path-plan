@@ -15,6 +15,7 @@ import { FF } from '@/featureFlags';
 import '@/diagnostics/cameraInq';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
 
@@ -598,11 +599,25 @@ function AppContent() {
                                    <HealthReportStandalone />
                                  </Suspense>
                                } />
-                               <Route path="/health-report/analyze" element={
-                                 <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                                   <HealthReportStandalone />
-                                 </Suspense>
-                               } />
+                                <Route path="/health-report/analyze" element={
+                                  FF.FEATURE_PHOTO_FLOW_V2 ? (
+                                    <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                                      <HealthReportStandalone />
+                                    </Suspense>
+                                  ) : (
+                                    <div className="min-h-screen flex items-center justify-center bg-background">
+                                      <div className="text-center p-8">
+                                        <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
+                                        <p className="text-muted-foreground mb-6">
+                                          Health-Scan V2 photo analysis is not currently available.
+                                        </p>
+                                        <Button onClick={() => window.history.back()}>
+                                          Go Back
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )
+                                } />
                              
                                {/* Legacy health-report redirect to scan hub */}
                                <Route path="/health-report" element={<Navigate to="/scan" replace />} />

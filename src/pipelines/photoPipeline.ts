@@ -75,8 +75,9 @@ export async function analyzePhoto(
     
     const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    // ✅ MEAL ONLY: Call meal-detector directly (no OCR)
-    const { data: meal, error } = await supabase.functions.invoke('meal-detector', {
+    // ✅ LYF V1: Call meal-detector-v1 for Log Your Food
+    console.log('[LYF] endpoint: meal-detector-v1');
+    const { data: meal, error } = await supabase.functions.invoke('meal-detector-v1', {
       body: { image_base64: base64 }
     });
 
@@ -86,6 +87,7 @@ export async function analyzePhoto(
     }
 
     const items = meal?.items ?? [];
+    console.log('[LYF] items detected:', items.map(i => i.name));
     console.log('[PHOTO][MEAL] items_detected=', items.length, meal?._debug || null);
 
     return { 

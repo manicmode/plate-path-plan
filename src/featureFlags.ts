@@ -10,4 +10,5 @@ export const FF = {
   MANUAL_ISOLATED: (import.meta.env.VITE_MANUAL_ISOLATED ?? 'false') === 'true',
   PHOTO_SANDBOX_ALLOW_PROD: (import.meta.env.VITE_PHOTO_SANDBOX_ALLOW_PROD ?? 'false') === 'true',
   OCR_HEALTH_REPORT_ENABLED: (import.meta.env.VITE_OCR_HEALTH_REPORT_ENABLED ?? 'true') === 'true',
+  FEATURE_PHOTO_FLOW_V2: (import.meta.env.VITE_FEATURE_PHOTO_FLOW_V2 ?? 'false') === 'true',
 } as const;

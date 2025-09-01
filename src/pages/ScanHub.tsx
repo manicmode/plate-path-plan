@@ -13,6 +13,7 @@ import {
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { FF } from '@/featureFlags';
 import { toast } from 'sonner';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
@@ -390,14 +391,16 @@ export default function ScanHub() {
             enableSound={true}
           />
 
-          <ScanTile
-            icon={Camera}
-            title="Take a Photo"
-            subtitle="AI-powered ingredient analysis"
-            onClick={handleTakePhoto}
-            disabled={!imageAnalyzerEnabled}
-            enableSound={true}
-          />
+          {FF.FEATURE_PHOTO_FLOW_V2 && (
+            <ScanTile
+              icon={Camera}
+              title="Take a Photo"
+              subtitle="AI-powered ingredient analysis"
+              onClick={handleTakePhoto}
+              disabled={!imageAnalyzerEnabled}
+              enableSound={true}
+            />
+          )}
 
           <ScanTile
             icon={Keyboard}
