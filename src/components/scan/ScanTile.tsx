@@ -1,5 +1,6 @@
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Sound } from '@/lib/sound/soundManager';
 
 interface ScanTileProps {
   icon: LucideIcon;
@@ -8,6 +9,7 @@ interface ScanTileProps {
   onClick: () => void;
   disabled?: boolean;
   className?: string;
+  enableSound?: boolean;
 }
 
 export function ScanTile({ 
@@ -16,11 +18,19 @@ export function ScanTile({
   subtitle, 
   onClick, 
   disabled = false,
-  className 
+  className,
+  enableSound = false
 }: ScanTileProps) {
+  
+  const handlePointerDown = () => {
+    if (enableSound && !disabled) {
+      Sound.ensureUnlocked();
+    }
+  };
   return (
     <button
       onClick={onClick}
+      onPointerDown={handlePointerDown}
       disabled={disabled}
       className={cn(
         "group relative overflow-hidden rounded-xl p-6 text-left transition-all duration-200",

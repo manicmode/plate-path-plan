@@ -387,6 +387,7 @@ export default function ScanHub() {
             title="Scan Barcode"
             subtitle="Quick scan for packaged foods"
             onClick={handleScanBarcode}
+            enableSound={true}
           />
 
           <ScanTile
@@ -395,6 +396,7 @@ export default function ScanHub() {
             subtitle="AI-powered ingredient analysis"
             onClick={handleTakePhoto}
             disabled={!imageAnalyzerEnabled}
+            enableSound={true}
           />
 
           <ScanTile

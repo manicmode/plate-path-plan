@@ -13,6 +13,7 @@ import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRouteToHealthAnalyzerV2 } from '@/lib/health/photoFlowV2Utils';
 import { routePhoto } from '@/pipelines/photoRouter';
+import { Sound } from '@/lib/sound/soundManager';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -233,25 +234,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const playCameraClickSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-      console.log('Camera click sound not available');
-    }
+    Sound.play('shutter');
   };
 
   const stopTracksSafely = async (stream?: MediaStream | null) => {
@@ -596,6 +579,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 {/* Capture Button - Center, larger */}
                 <Button
                   onClick={capturePhoto}
+                  onPointerDown={() => Sound.ensureUnlocked()}
                   disabled={isCapturing || !stream}
                   size="lg"
                   className="bg-white text-black hover:bg-gray-200 rounded-full w-20 h-20 p-0 disabled:opacity-50"

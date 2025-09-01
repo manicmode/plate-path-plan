@@ -18,6 +18,7 @@ import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { useTorch } from '@/lib/camera/useTorch';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
+import { Sound } from '@/lib/sound/soundManager';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
@@ -1199,6 +1200,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         if (!error && data && !data.fallback) {
           console.log("✅ Barcode path success:", data);
+          Sound.play('beep');
           onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
           return;
         } else {
