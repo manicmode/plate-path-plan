@@ -575,11 +575,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
                 {/* Capture Button - Center, larger */}
                 <Button
-                  onPointerDown={() => { 
+                  onClick={() => { 
                     Sound.play('shutter'); 
-                    try { (navigator as any).vibrate?.(40); } catch {} 
+                    capturePhoto(); 
                   }}
-                  onClick={capturePhoto}
                   disabled={isCapturing || !stream}
                   size="lg"
                   className="bg-white text-black hover:bg-gray-200 rounded-full w-20 h-20 p-0 disabled:opacity-50"

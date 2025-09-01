@@ -17,7 +17,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { ScanOverlay } from '@/components/camera/ScanOverlay';
-import { Sound } from '@/lib/sound/soundManager';
+import { playBeep } from '@/lib/sound/soundManager';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -142,7 +142,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             
             const lookupResult = await handleOffLookup(last);
         if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-          Sound.play('beep');
+          playBeep();
           onBarcodeDetected(last);
           onOpenChange(false);
             } else {
@@ -433,7 +433,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         const lookupResult = await handleOffLookup(result.raw);
         
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        Sound.play('beep');
+        playBeep();
         onBarcodeDetected(result.raw);
         onOpenChange(false);
         } else if (lookupResult.data && !lookupResult.data.ok) {

@@ -57,15 +57,16 @@ export async function routePhoto(b64: string, abort?: AbortSignal): Promise<Phot
     const data = ocr.data;
     const text = data?.text || '';
     const labels = data?.labels || [];
+    const debug = data?._debug || {};
     
-    console.log('[PHOTO][OCR] success, text_len=', text.length, 'labels=', labels.length);
+    console.log(`[PHOTO][OCR] text_len=${debug.text_len || text.length}, labels=${debug.labels_count || labels.length}`);
     
     if (looksLikeNutritionLabel(text, labels)) {
       console.log('[PHOTO][ROUTE] kind=label');
       return { kind: 'label', data };
     }
   } catch (e: any) {
-    console.error('[PHOTO][OCR] invoke_failed', e?.message || e);
+    console.error('[PHOTO][OCR] failed:', e?.message || e);
     // continue to meal detection
   }
 
@@ -76,7 +77,10 @@ export async function routePhoto(b64: string, abort?: AbortSignal): Promise<Phot
   
   // @ts-ignore
   const items = meal?.data?.items || [];
-  console.debug('[PHOTO][MEAL] items_detected=', items.length);
+  const debug = meal?.data?._debug || {};
+  const names = items.map((i: any) => i.name);
+  
+  console.debug(`[PHOTO][MEAL] items_detected=${items.length} from=${debug.from || 'unknown'} names=[${names.join(',')}]`);
   
   return { kind: 'meal', data: { items } };
 }

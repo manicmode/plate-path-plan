@@ -7,7 +7,7 @@ import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat, LensFacing } from '
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { WebBarcodeScanner } from './WebBarcodeScanner';
-import { Sound } from '@/lib/sound/soundManager';
+import { playBeep } from '@/lib/sound/soundManager';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -338,7 +338,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           ) : showWebScanner ? (
             <WebBarcodeScanner
               onBarcodeDetected={(barcode) => {
-                Sound.play('beep');
+                playBeep();
                 onBarcodeDetected(barcode);
                 onClose();
               }}

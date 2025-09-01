@@ -1,9 +1,39 @@
-// soundManager.ts - iOS-safe sound system with guaranteed unlock and louder fallback
-export const Sound = (() => {
+// soundManager.ts - Legacy sound system with HTMLAudio first, WebAudio fallback
+const shutterAudio = new Audio("/sounds/shutter.mp3");
+const beepAudio = new Audio("/sounds/beep.mp3");
+
+// Preload audio files
+shutterAudio.preload = 'auto';
+beepAudio.preload = 'auto';
+
+// Legacy API functions
+export function playShutter() { 
+  try { 
+    shutterAudio.currentTime = 0; 
+    shutterAudio.play(); 
+    console.debug("[SOUND] shutter click");
+  } catch (error) {
+    console.warn('[SOUND] HTMLAudio shutter failed, using WebAudio fallback:', error);
+    WebAudioFallback.play('shutter');
+  }
+}
+
+export function playBeep() { 
+  try { 
+    beepAudio.currentTime = 0; 
+    beepAudio.play(); 
+    console.debug("[SOUND] barcode analyze click");
+  } catch (error) {
+    console.warn('[SOUND] HTMLAudio beep failed, using WebAudio fallback:', error);
+    WebAudioFallback.play('beep');
+  }
+}
+
+// WebAudio fallback system for when HTMLAudio fails
+const WebAudioFallback = (() => {
   let ctx: AudioContext | null = null;
   let unlocked = false;
   let lastAt = 0;
-  const buffers: Record<string, AudioBuffer | null> = { shutter: null, beep: null };
 
   async function ensureUnlocked() {
     if (unlocked) return;
@@ -12,25 +42,9 @@ export const Sound = (() => {
       ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       if (ctx.state === "suspended") await ctx.resume();
       unlocked = true;
-      
-      // Try preload (non-fatal)
-      try { buffers.shutter = await load("/sounds/shutter.mp3"); } catch {}
-      try { buffers.beep = await load("/sounds/beep.mp3"); } catch {}
-      
-      console.debug("[SOUND] unlocked");
+      console.debug("[SOUND] WebAudio unlocked");
     } catch (error) {
-      console.warn('[SOUND] Failed to unlock audio:', error);
-    }
-  }
-
-  async function load(url: string) {
-    if (!ctx) return null;
-    try {
-      const res = await fetch(url);
-      const arr = await res.arrayBuffer();
-      return await ctx.decodeAudioData(arr);
-    } catch {
-      return null;
+      console.warn('[SOUND] Failed to unlock WebAudio:', error);
     }
   }
 
@@ -55,36 +69,33 @@ export const Sound = (() => {
       o.start(); 
       o.stop(ctx.currentTime + ms/1000);
     } catch (error) {
-      console.warn('[SOUND] Oscillator failed:', error);
+      console.warn('[SOUND] WebAudio oscillator failed:', error);
     }
   }
 
   async function play(name: "shutter" | "beep") {
-    if (!ctx || !unlocked || !throttle()) return;
+    if (!throttle()) return;
     
     try {
+      await ensureUnlocked();
+      if (!ctx || !unlocked) return;
+      
       if (ctx.state === "suspended") await ctx.resume();
-      
-      const buf = buffers[name];
-      if (buf) { 
-        const src = ctx.createBufferSource(); 
-        src.buffer = buf; 
-        src.connect(ctx.destination); 
-        src.start(0); 
-      } else { 
-        osc(name === "shutter" ? 180 : 220, name === "shutter" ? 900 : 1250); 
-      }
-      
-      // Add haptic feedback backup
-      try { 
-        (navigator as any).vibrate?.(40); 
-      } catch {}
-      
-      console.debug("[SOUND] played", name);
+      osc(name === "shutter" ? 180 : 220, name === "shutter" ? 900 : 1250);
+      console.debug("[SOUND] WebAudio fallback played", name);
     } catch (error) {
-      console.warn(`[SOUND] Failed to play ${name}:`, error);
+      console.warn(`[SOUND] WebAudio fallback failed for ${name}:`, error);
     }
   }
 
-  return { ensureUnlocked, play };
+  return { play, ensureUnlocked };
 })();
+
+// Maintain compatibility with existing Sound.play() interface
+export const Sound = {
+  play: (name: "shutter" | "beep") => {
+    if (name === "shutter") playShutter();
+    else if (name === "beep") playBeep();
+  },
+  ensureUnlocked: WebAudioFallback.ensureUnlocked
+};
