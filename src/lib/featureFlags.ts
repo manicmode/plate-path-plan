@@ -87,6 +87,20 @@ function simpleHash(str: string): number {
   return Math.abs(hash);
 }
 
+/**
+ * Check if meal capture feature is enabled
+ * Order of precedence: query -> env -> localStorage (for QA)
+ */
+export function mealCaptureEnabled(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const q = (params.get('meal') ?? params.get('mc') ?? '').toLowerCase();
+  const byQuery = q === '1' || q === 'true' || q === 'on';
+  const byMode = params.get('mode')?.toLowerCase() === 'meal-capture';
+  const byEnv = import.meta.env.VITE_MEAL_CAPTURE === '1';
+  const byLS = localStorage.getItem('meal_capture') === '1';
+  return !!(byQuery || byMode || byEnv || byLS);
+}
+
 // Legacy exports for compatibility
 export const ARENA_DEBUG_CONTROLS = true;
 export const BARCODE_V2 = true;

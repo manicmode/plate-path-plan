@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mealCaptureEnabled } from '../flags';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { mealCaptureEnabled } from '@/lib/featureFlags';
+import { takeMealPhoto } from '../transfer';
 import { debugLog, logFeatureInit, logStepTransition } from '../debug';
 import { MealCaptureWizard } from './MealCaptureWizard';
 
@@ -14,6 +15,7 @@ export type WizardStep = 'capture' | 'classify' | 'detect' | 'review' | 'analyze
 export interface MealCaptureData {
   imageBase64?: string;
   imageUrl?: string;
+  imageBlob?: Blob;
   detectedItems?: any[];
   selectedItem?: any;
   analysisResult?: any;
@@ -21,10 +23,12 @@ export interface MealCaptureData {
 
 export default function MealCapturePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState<WizardStep>('capture');
+  const [transferData, setTransferData] = useState<MealCaptureData>({});
   
   // Check if feature is enabled
-  const isEnabled = mealCaptureEnabled(window.location.search, import.meta.env);
+  const isEnabled = mealCaptureEnabled();
   
   React.useEffect(() => {
     logFeatureInit();
@@ -35,8 +39,29 @@ export default function MealCapturePage() {
       return;
     }
     
+    // Handle transfer from modal gateway
+    const params = new URLSearchParams(location.search);
+    const from = params.get('from');
+    const id = params.get('id');
+    
+    console.log('[MEAL][ENTRY]', { from, id, hasBlob: false });
+    
+    if (from === 'modal' && id) {
+      const blob = takeMealPhoto(id);
+      if (blob) {
+        // Convert blob to object URL for preview
+        const imageUrl = URL.createObjectURL(blob);
+        setTransferData({ imageUrl, imageBlob: blob });
+        setCurrentStep('classify');
+        console.log('[MEAL][ENTRY]', { from, id, hasBlob: !!blob });
+      } else {
+        console.warn('[MEAL][ENTRY] Transfer blob not found, starting at capture');
+        setCurrentStep('capture');
+      }
+    }
+    
     debugLog('Page mounted', { step: currentStep });
-  }, [isEnabled, navigate, currentStep]);
+  }, [isEnabled, navigate, currentStep, location.search]);
   
   const handleStepChange = useCallback((newStep: WizardStep) => {
     logStepTransition(currentStep, newStep);
@@ -58,6 +83,7 @@ export default function MealCapturePage() {
         currentStep={currentStep}
         onStepChange={handleStepChange}
         onExit={handleExit}
+        initialData={transferData}
       />
     </div>
   );

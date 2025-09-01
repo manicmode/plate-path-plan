@@ -17,12 +17,22 @@ interface MealCaptureWizardProps {
   currentStep: WizardStep;
   onStepChange: (step: WizardStep) => void;
   onExit: () => void;
+  initialData?: MealCaptureData;
 }
 
 
-export function MealCaptureWizard({ currentStep, onStepChange, onExit }: MealCaptureWizardProps) {
-  const [wizardData, setWizardData] = useState<MealCaptureData>({});
+export function MealCaptureWizard({ currentStep, onStepChange, onExit, initialData }: MealCaptureWizardProps) {
+  const [wizardData, setWizardData] = useState<MealCaptureData>(initialData || {});
   const [showReportStack, setShowReportStack] = useState(false);
+  
+  // Memory cleanup for object URLs
+  React.useEffect(() => {
+    return () => {
+      if (wizardData.imageUrl && wizardData.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(wizardData.imageUrl);
+      }
+    };
+  }, [wizardData.imageUrl]);
   
   const updateData = (newData: Partial<MealCaptureData>) => {
     debugLog('Updating wizard data', { step: currentStep, newData });

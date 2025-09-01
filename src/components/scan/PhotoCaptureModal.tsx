@@ -7,7 +7,9 @@ import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
+import { putMealPhoto } from '@/features/meal-capture/transfer';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -41,6 +43,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onCapture,
   onManualFallback
 }) => {
+  const navigate = useNavigate();
+  
   // Enable immersive mode (hide bottom nav) when modal is open
   useAutoImmersive(open);
   
@@ -266,6 +270,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       
       console.log('[PHOTO] Photo captured, processing...');
       
+      // Check meal capture flag for gateway handoff
+      if (mealCaptureEnabled()) {
+        // Convert to blob for memory-safe transfer
+        const dataUri = canvas.toDataURL('image/jpeg', 0.85);
+        const byteString = atob(dataUri.split(',')[1]);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+          uint8Array[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+        
+        // Store for transfer and navigate
+        const id = crypto.randomUUID();
+        putMealPhoto(id, blob);
+        
+        console.log('[MEAL][GATEWAY] handoff', { from: 'modal', id, size: blob.size });
+        
+        camHardStop('modal_close');
+        onOpenChange(false);
+        navigate(`/meal-capture?from=modal&id=${id}`, { replace: false });
+        return;
+      }
+      
       // Process with existing analyzer flow
       onCapture(imageBase64);
       camHardStop('modal_close');
@@ -290,6 +318,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         reader.onload = (e) => {
           const imageBase64 = e.target?.result as string;
           console.log('[PHOTO] Image uploaded, processing...');
+          
+          // Check meal capture flag for gateway handoff
+          if (mealCaptureEnabled()) {
+            // Convert to blob for memory-safe transfer
+            const byteString = atob(imageBase64.split(',')[1]);
+            const arrayBuffer = new ArrayBuffer(byteString.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < byteString.length; i++) {
+              uint8Array[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+            
+            // Store for transfer and navigate
+            const id = crypto.randomUUID();
+            putMealPhoto(id, blob);
+            
+            console.log('[MEAL][GATEWAY] handoff', { from: 'modal', id, size: blob.size });
+            
+            camHardStop('modal_close');
+            onOpenChange(false);
+            navigate(`/meal-capture?from=modal&id=${id}`, { replace: false });
+            return;
+          }
+          
           onCapture(imageBase64);
           camHardStop('modal_close');
           onOpenChange(false);
