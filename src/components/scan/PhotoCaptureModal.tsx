@@ -264,10 +264,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       await stopTracksSafely(streamRef.current);
       onOpenChange(false);
       
-      // Defer navigation to next tick so modal fully unmounts
+      // Navigate to entry route with token
       setTimeout(() => {
-        const nonce = sessionStorage.getItem("mc:n") || "";
-        navigate(`/meal-capture?entry=photo&n=${nonce}`, { replace: true });
+        // Find the token by looking for mc:entry: keys
+        const keys = Object.keys(sessionStorage).filter(k => k.startsWith('mc:entry:'));
+        const token = keys.length > 0 ? keys[0].replace('mc:entry:', '') : '';
+        navigate(`/meal-capture/entry?photoToken=${token}`, { replace: true });
       }, 0);
       
       return;

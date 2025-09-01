@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Camera, X, Keyboard, Mic, Zap, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -252,6 +253,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Stable IDs for accessibility
+  const titleId = React.useId();
+  const descId = React.useId();
   const { addRecent } = useScanRecents();
   const currentRunId = useRef<string | null>(null);
   const { onAnalyzeImage } = useHealthCheckV2();
@@ -2291,7 +2296,18 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
         }`}
         showCloseButton={false}
+        aria-labelledby={titleId}
+        aria-describedby={descId}
       >
+        <VisuallyHidden asChild>
+          <DialogTitle id={titleId}>Health Scanner</DialogTitle>
+        </VisuallyHidden>
+        
+        <VisuallyHidden asChild>
+          <DialogDescription id={descId}>
+            Health scanner for analyzing food and generating reports.
+          </DialogDescription>
+        </VisuallyHidden>
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (

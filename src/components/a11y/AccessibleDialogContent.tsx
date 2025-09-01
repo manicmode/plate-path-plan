@@ -53,8 +53,8 @@ export default function AccessibleDialogContent({
         data-testid="dialog-content"
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
+        aria-labelledby={rest["aria-labelledby"] || titleId}
+        aria-describedby={rest["aria-describedby"] || descId}
         className={cn(
           "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
           "w-[92vw] sm:w-full sm:max-w-md rounded-xl border bg-background shadow-xl",

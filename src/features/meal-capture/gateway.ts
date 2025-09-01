@@ -19,23 +19,34 @@ export async function handoffFromPhotoCapture(
   }
 
   // Prevent double-fires with inflight lock
-  if (sessionStorage.getItem("mc:inflight") === "1") {
+  if (sessionStorage.getItem("mc:handoff:inflight") === "1") {
     return true; // Already handled
   }
 
-  // Feature is enabled - proceed with handoff
-  sessionStorage.setItem("mc:inflight", "1");
+  try {
+    // Feature is enabled - proceed with handoff
+    sessionStorage.setItem("mc:handoff:inflight", "1");
 
-  const nonce = crypto.randomUUID();
-  sessionStorage.setItem("mc:photoUrl", photoUrl);
-  sessionStorage.setItem("mc:entry", "photo");
-  sessionStorage.setItem("mc:ts", String(Date.now()));
-  sessionStorage.setItem("mc:n", nonce);
+    const nonce = crypto.randomUUID();
+    const blob = await fetch(photoUrl).then(r => r.blob());
+    const payload = {
+      nonce,
+      mime: blob.type || 'image/jpeg', 
+      size: blob.size,
+      blobUrl: photoUrl
+    };
 
-  console.log("[MEAL][GATEWAY][HANDOFF]", { 
-    to: `/meal-capture?entry=photo&n=${nonce}`,
-    size: photoUrl.length 
-  });
+    sessionStorage.setItem(`mc:entry:${nonce}`, JSON.stringify(payload));
+    
+    // Debug logging behind feature flag
+    if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+      console.log("[MEAL][GATEWAY][CAPTURED]", { size: blob.size, mime: blob.type });
+      console.log("[MEAL][GATEWAY][HANDOFF]", { url: `/meal-capture/entry?photoToken=${nonce}` });
+    }
 
-  return true;
+    return true;
+  } finally {
+    // Always remove inflight lock
+    sessionStorage.removeItem("mc:handoff:inflight");
+  }
 }

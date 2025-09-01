@@ -4,9 +4,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { mealCaptureEnabled } from '@/lib/featureFlags';
-import { takeMealPhoto } from '../transfer';
 import { debugLog, logFeatureInit, logStepTransition } from '../debug';
 import { MealCaptureWizard } from './MealCaptureWizard';
 
@@ -23,20 +22,12 @@ export interface MealCaptureData {
 
 export default function MealCapturePage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [currentStep, setCurrentStep] = useState<WizardStep>('capture');
   const [transferData, setTransferData] = useState<MealCaptureData>({});
   
   // Check if feature is enabled
   const isEnabled = mealCaptureEnabled();
   
-  const cleanupMealTokens = useCallback(() => {
-    const u = sessionStorage.getItem("mc:photoUrl");
-    if (u) URL.revokeObjectURL(u);
-    ["mc:photoUrl","mc:entry","mc:ts","mc:n","mc:inflight","mc:used"]
-      .forEach(k => sessionStorage.removeItem(k));
-  }, []);
-
   React.useEffect(() => {
     logFeatureInit();
     
@@ -46,37 +37,10 @@ export default function MealCapturePage() {
       return;
     }
     
-    // Handle transfer from modal gateway - verify nonce, then clean up on exit
-    const qs = new URLSearchParams(location.search);
-    const entry = qs.get("entry");
-    const n = qs.get("n");
-    const nStore = sessionStorage.getItem("mc:n");
-    const url = sessionStorage.getItem("mc:photoUrl");
-
-    if (entry === "photo" && n && n === nStore && url) {
-      // Valid handoff — clear only the inflight/rescue bits now
-      sessionStorage.removeItem("mc:inflight");
-      sessionStorage.removeItem("mc:used");
-      
-      console.log('[MEAL][ENTRY]', { entry, hasUrl: !!url, nonce: n });
-      setTransferData({ imageUrl: url });
-      setCurrentStep('classify');
-    } else if (entry === "photo") {
-      // Invalid/expired handoff — full cleanup and exit
-      console.warn('[MEAL][ENTRY] Invalid handoff, redirecting to /scan');
-      cleanupMealTokens();
-      navigate("/scan", { replace: true });
-      return;
-    } else {
-      // Default to capture step
-      setCurrentStep('capture');
-    }
-    
+    // Start at capture step for direct access to main page
+    setCurrentStep('capture');
     debugLog('Page mounted', { step: currentStep });
-    
-    // Cleanup tokens on unmount
-    return cleanupMealTokens;
-  }, [isEnabled, navigate, currentStep, location.search, cleanupMealTokens]);
+  }, [isEnabled, navigate, currentStep]);
   
   const handleStepChange = useCallback((newStep: WizardStep) => {
     logStepTransition(currentStep, newStep);

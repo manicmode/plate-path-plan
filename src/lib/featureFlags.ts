@@ -98,7 +98,21 @@ export function mealCaptureEnabled(): boolean {
   const byMode = params.get('mode')?.toLowerCase() === 'meal-capture';
   const byEnv = import.meta.env.VITE_MEAL_CAPTURE === '1';
   const byLS = localStorage.getItem('meal_capture') === '1';
-  return !!(byQuery || byMode || byEnv || byLS);
+  const enabled = !!(byQuery || byMode || byEnv || byLS);
+  
+  let reason = 'default_off';
+  if (enabled) {
+    if (byQuery) reason = 'url_meal_param';
+    else if (byMode) reason = 'url_mode_param';
+    else if (byEnv) reason = 'env_variable';
+    else if (byLS) reason = 'local_storage';
+  }
+  
+  if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+    console.log("[MEAL][FLAG]", { enabled, reason });
+  }
+  
+  return enabled;
 }
 
 // Legacy exports for compatibility

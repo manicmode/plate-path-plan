@@ -129,6 +129,7 @@ const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const StandaloneTest = lazy(() => import('@/pages/StandaloneTest'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
 const MealCapturePage = lazy(() => import('@/features/meal-capture/components/MealCapturePage'));
+const MealCaptureEntry = lazy(() => import('@/features/meal-capture/routes/Entry'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 const RecentScans = lazy(() => import('@/pages/RecentScans'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
@@ -545,6 +546,13 @@ function AppContent() {
                               <Route path="/meal-capture" element={
                                 <ProtectedRoute>
                                   <MealCapturePage />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/meal-capture/entry" element={
+                                <ProtectedRoute>
+                                  <React.Suspense fallback={<div>Loading...</div>}>
+                                    <MealCaptureEntry />
+                                  </React.Suspense>
                                 </ProtectedRoute>
                               } />
                               <Route path="/scan/recents" element={

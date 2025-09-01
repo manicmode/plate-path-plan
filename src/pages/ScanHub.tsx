@@ -30,31 +30,29 @@ export default function ScanHub() {
   const location = useLocation();
   const { addRecent } = useScanRecents();
 
-  // Rescue mechanism for meal capture handoff - consume once, short TTL, never loop
+  // Rescue mechanism for meal capture handoff - disabled when flag is off
   useEffect(() => {
     // Guard: only run if meal capture is enabled
     if (!mealCaptureEnabledFromSearch(location.search)) return;
 
-    const n = sessionStorage.getItem('mc:n');
-    if (!n) return; // No nonce = no valid handoff
+    // Look for entry tokens instead of old session keys
+    const entryKeys = Object.keys(sessionStorage).filter(k => k.startsWith('mc:entry:'));
+    if (entryKeys.length === 0) return;
 
-    const url = sessionStorage.getItem("mc:photoUrl");
-    const ts = Number(sessionStorage.getItem("mc:ts") || 0);
-    const used = sessionStorage.getItem("mc:used") === "1";
-    const within = Date.now() - ts < 8000;
-
-    if (!url || used || !within) {
-      // Invalid/expired - clean up and do nothing
-      ["mc:photoUrl","mc:entry","mc:ts","mc:n","mc:inflight","mc:used"]
-        .forEach(k => sessionStorage.removeItem(k));
+    const token = entryKeys[0].replace('mc:entry:', '');
+    const payload = sessionStorage.getItem(entryKeys[0]);
+    
+    if (!payload) {
+      // Clear invalid token
+      sessionStorage.removeItem(entryKeys[0]);
       return;
     }
-    
-    if (location.pathname === "/meal-capture") return;
 
-    sessionStorage.setItem("mc:used", "1"); // consume rescue
-    console.log("[MEAL][GATEWAY][RESCUE_NAV]", { within, n });
-    navigate(`/meal-capture?entry=photo&n=${n}`, { replace: true });
+    // Don't navigate if already on meal capture routes
+    if (location.pathname.startsWith("/meal-capture")) return;
+
+    console.log("[MEAL][GATEWAY][RESCUE_NAV]", { token });
+    navigate(`/meal-capture/entry?photoToken=${token}`, { replace: true });
   }, [location.pathname, location.search, navigate]);
   
   // Do NOT hide bottom nav on the main Health Scan page
@@ -180,8 +178,8 @@ export default function ScanHub() {
     
     // Don't auto-open photo modal while meal tokens exist
     const mealActive = mealCaptureEnabledFromSearch(location.search);
-    const inflight = sessionStorage.getItem("mc:inflight") === "1";
-    const hasToken = !!sessionStorage.getItem("mc:photoUrl");
+    const inflight = sessionStorage.getItem("mc:handoff:inflight") === "1";
+    const hasToken = Object.keys(sessionStorage).some(k => k.startsWith('mc:entry:'));
     if (mealActive && (inflight || hasToken)) {
       return; // skip any "auto-open photo modal" effects
     }

@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { AlertTriangle, CheckCircle, XCircle, Flag, EyeOff, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { detectFlags } from '@/lib/health/flagger';
@@ -34,6 +35,10 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
   const [feedback, setFeedback] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Stable IDs for accessibility
+  const titleId = React.useId();
+  const descId = React.useId();
 
   const handleSubmit = async () => {
     if (!feedback.trim()) return;
@@ -51,7 +56,17 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" aria-labelledby={titleId} aria-describedby={descId}>
+        <VisuallyHidden asChild>
+          <DialogTitle id={titleId}>Report Issue: {flagLabel}</DialogTitle>
+        </VisuallyHidden>
+        
+        <VisuallyHidden asChild>
+          <DialogDescription id={descId}>
+            Report an issue with flag detection for this product.
+          </DialogDescription>
+        </VisuallyHidden>
+        
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Flag className="w-5 h-5 text-destructive" />
