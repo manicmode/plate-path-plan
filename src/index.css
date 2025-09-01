@@ -1553,8 +1553,38 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
 [data-dialog-root="confirm-food-log"] [aria-label="Close"] { display: none !important; }
 [data-dialog-root="reminder-modal"] [aria-label="Close"] { display: inline-flex !important; }
 
-/* Hero ticker baseline to prevent layout jump and flicker */
-.hero-ticker {
-  min-height: 1.5rem; /* matches text line-height */
-  will-change: opacity;
+/* Ensure single line, no wrap, and no layout jump */
+.hero-train {
+  min-height: 1.6rem;          /* lock height to one line */
+  line-height: 1.6rem;
+  will-change: transform, opacity;
+}
+.hero-line {
+  display: inline-block;
+  white-space: nowrap;          /* never wrap */
+  pointer-events: none;
+}
+
+/* Train animation: enter from right, move fully left */
+@keyframes hero-train-slide {
+  0%   { transform: translateX(100%);   opacity: 1; }
+  5%   { transform: translateX(95%);    opacity: 1; } /* slight ease-in */
+  100% { transform: translateX(-110%);  opacity: 1; }
+}
+.hero-train__runner {
+  animation-name: hero-train-slide;
+  animation-duration: var(--hero-train-duration, 10s);
+  animation-timing-function: linear;
+  animation-iteration-count: 2;     /* exactly two passes */
+  animation-fill-mode: forwards;
+}
+
+/* Default message: quick "jump in" then hold */
+@keyframes hero-default-jump {
+  0%   { transform: translateY(8px); opacity: 0; }
+  60%  { transform: translateY(0);   opacity: 1; }
+  100% { transform: translateY(0);   opacity: 1; }
+}
+.hero-default__jump {
+  animation: hero-default-jump 260ms ease-out 1;
 }

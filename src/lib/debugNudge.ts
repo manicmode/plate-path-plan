@@ -1,4 +1,4 @@
-const REV = "2025-08-31T16:55Z-r2";
+const REV = "2025-08-31T17:05Z-r3";
 
 export const DEBUG_NUDGE = import.meta.env.VITE_DEBUG_NUDGE === "1";
 
@@ -8,7 +8,7 @@ export function nlog(tag: string, payload: Record<string, unknown> = {}) {
   console.log(`[${tag}]`, { rev: REV, utc: now.toISOString(), local: now.toString(), ...payload });
 }
 
-export const HERO_REV = "2025-08-31T16:55Z-r2";
+export const HERO_REV = "2025-08-31T17:05Z-r3";
 
 // Dev-only QA helpers
 if (DEBUG_NUDGE && typeof window !== 'undefined') {
