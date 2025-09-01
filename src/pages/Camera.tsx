@@ -332,21 +332,16 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     
     const state = location.state as any;
     const imageUrl = state?.imageUrl;
+  // Handle meal capture mode on arrival (URL params + state)
+  useEffect(() => {
+    // Skip if not meal mode
+    if (!mealMode) return;
     
-    // Check for meal-capture mode from URL first, then state
-    if (urlMode === 'meal-capture') {
-      console.log('[MEAL][CAMERA][ENTER]', { mode: urlMode, enabled: isMealCapture });
-      if (isMealCapture) {
-        setCurrentMode('meal-capture');
-        // For URL-based meal capture, we might not have imageUrl immediately
-        const imageUrl = state?.imageUrl;
-        if (imageUrl) {
-          setMealCaptureImageUrl(imageUrl);
-        }
-      } else {
-        console.warn('[MEAL][GUARD] Meal capture accessed but flag disabled');
-      }
-    } else if (stateMode === 'nutrition-capture') {
+    debugLog('ROUTE][ENTER', { page: 'camera', mode: 'meal-capture' });
+    
+    const state = location.state as any;
+    const imageUrl = state?.imageUrl;
+    
     if (imageUrl) {
       setMealCaptureImageUrl(imageUrl);
     }
@@ -2653,7 +2648,15 @@ console.log('Global search enabled:', enableGlobalSearch);
         />
       ) : (
         <>
-      )}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
+          </div>
+
+          <ProcessingStatus 
+            isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+            processingStep={processingStep}
+            showTimeout={isAnalyzing}
+          />
 
       {/* Inline Confirm hand-off (only in meal mode) */}
       {mealMode && inlineConfirmPrefill && (
@@ -2664,17 +2667,19 @@ console.log('Global search enabled:', enableGlobalSearch);
             name: inlineConfirmPrefill.item.itemName,
             calories: inlineConfirmPrefill.item.nutrientsScaled?.calories || 0,
             protein: inlineConfirmPrefill.item.nutrientsScaled?.protein_g || 0,
-            carbs: inlineConfirmPrefill.item.nutrientsScaled?.carbs_g || 0,
+            carbs: inlineConfirmPrefill.item.nutrientsScaled?.carb_g || 0,
             fat: inlineConfirmPrefill.item.nutrientsScaled?.fat_g || 0,
             image: inlineConfirmPrefill.item.imageUrl
           }}
         />
       )}
+        </>
+      )}
 
-          {/* Processing Status */}
-          <ProcessingStatus 
-            isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
-            processingStep={processingStep}
+      {/* Processing Status */}
+      <ProcessingStatus 
+        isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+        processingStep={processingStep}
         showTimeout={isAnalyzing}
       />
 
@@ -3325,6 +3330,5 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
     </div>
   );
-};
 
 export default CameraPage;
