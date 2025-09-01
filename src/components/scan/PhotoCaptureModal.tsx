@@ -13,7 +13,7 @@ import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRouteToHealthAnalyzerV2 } from '@/lib/health/photoFlowV2Utils';
 import { routePhoto } from '@/pipelines/photoRouter';
-import { Sound } from '@/lib/sound/soundManager';
+import { Sound, bindSoundUnlockOnce } from '@/lib/sound/soundManager';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -100,6 +100,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       logOwnerAcquire('PhotoCaptureModal');
       camOwnerMount(OWNER);
       startCamera();
+      
+      // Bind sound unlock to the modal container for iOS compatibility
+      const modalContainer = document.querySelector('[role="dialog"]') as HTMLElement;
+      bindSoundUnlockOnce(modalContainer);
     } else {
       camOwnerUnmount(OWNER);
       camHardStop('modal_close');
@@ -326,7 +330,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     if (!videoRef.current || !stream) return;
 
     setIsCapturing(true);
-    // Sound is already played by onPointerDown - don't double-fire
+    // Sound already played by onPointerDown - prevent double-firing
 
     try {
       // Check if analyzer is enabled
@@ -590,10 +594,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
                 {/* Capture Button - Center, larger */}
                 <Button
-                  onClick={() => { 
+                  id="capture-btn"
+                  onPointerDown={() => { 
+                    Sound.ensureUnlocked(); 
                     Sound.play('shutter'); 
-                    capturePhoto(); 
                   }}
+                  onClick={capturePhoto}
                   disabled={isCapturing || !stream}
                   size="lg"
                   className="bg-white text-black hover:bg-gray-200 rounded-full w-20 h-20 p-0 disabled:opacity-50"
