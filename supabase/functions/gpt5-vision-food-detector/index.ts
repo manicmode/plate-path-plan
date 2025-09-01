@@ -5,7 +5,7 @@ import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client, content-type',
+  'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, x-client, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 

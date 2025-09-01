@@ -3,6 +3,14 @@ export const Sound = (() => {
   let ctx: AudioContext | null = null;
   let unlocked = false;
   let buffers: Record<string, AudioBuffer | null> = { shutter: null, beep: null };
+  let lastAt = 0;
+
+  function shouldFire() {
+    const now = Date.now();
+    if (now - lastAt < 200) return false; // 200ms guard
+    lastAt = now; 
+    return true;
+  }
 
   function hasUserActivation() {
     // iOS Safari gate
@@ -55,8 +63,8 @@ export const Sound = (() => {
   }
 
   async function play(name: "shutter" | "beep") {
-    if (!ctx || !unlocked || !hasUserActivation()) {
-      console.debug(`[SOUND] Cannot play ${name}: ctx=${!!ctx}, unlocked=${unlocked}, userActivation=${hasUserActivation()}`);
+    if (!ctx || !unlocked || !hasUserActivation() || !shouldFire()) {
+      console.debug(`[SOUND] Cannot play ${name}: ctx=${!!ctx}, unlocked=${unlocked}, userActivation=${hasUserActivation()}, shouldFire=${shouldFire()}`);
       return;
     }
     
@@ -70,8 +78,8 @@ export const Sound = (() => {
         src.connect(ctx.destination);
         src.start(0);
       } else {
-        // Fallback tone if asset missing
-        oscBeep(name === "shutter" ? 90 : 140, name === "shutter" ? 800 : 1200);
+        // longer, louder fallback so it's clearly audible
+        oscBeep(name === "shutter" ? 160 : 200, name === "shutter" ? 850 : 1200);
       }
       console.debug("[SOUND] played", name);
     } catch (error) {
