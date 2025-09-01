@@ -7,14 +7,13 @@ import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
-import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { useAutoImmersive } from '@/lib/uiChrome';
-import { useNavigate } from 'react-router-dom';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -33,7 +32,6 @@ interface PhotoCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onCapture: (imageData: string) => void;
   onManualFallback: () => void;
-  mode?: 'standard' | 'meal-capture';
 }
 
 
@@ -41,10 +39,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
   onCapture,
-  onManualFallback,
-  mode = 'standard'
+  onManualFallback
 }) => {
-  const navigate = useNavigate();
   // Enable immersive mode (hide bottom nav) when modal is open
   useAutoImmersive(open);
   
@@ -80,7 +76,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   useLayoutEffect(() => {
     if (open) {
-      console.log('[MEAL][MODAL]', { mountedFrom: 'health-scan', mealEnabled: mealCaptureEnabled() });
       logPerfOpen('PhotoCaptureModal');
       logOwnerAcquire('PhotoCaptureModal');
       camOwnerMount(OWNER);
@@ -246,9 +241,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     playCameraClickSound();
 
     try {
-      // Remove meal capture logic - handled by navigation routing
-
-      // Standard photo capture mode
       // Check if analyzer is enabled
       if (!isFeatureEnabled('image_analyzer_v1')) {
         console.log('[PHOTO] Analyzer disabled, redirecting to manual');
@@ -344,10 +336,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                   </h2>
                 </div>
                 <p className="text-green-300 text-sm animate-pulse text-center">
-                  {mode === 'meal-capture' 
-                    ? 'Take a photo of your meal for multi-item analysis!'
-                    : 'Take a photo of brand product or a meal for health report!'
-                  }
+                  Take a photo of brand product or a meal for health report!
                 </p>
               </div>
             </div>

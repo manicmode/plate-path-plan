@@ -20,9 +20,6 @@ export const FEATURE_FLAGS = {
   flags_tab_enabled: true, // Enable flags tab with severity and actions
   save_tab_enabled: true, // Enable save tab to persist reports
   smart_suggestions_enabled: true, // Enable personalized suggestions
-  
-  // Meal Capture Feature (SANDBOX MODE)
-  meal_capture_enabled: false, // Enable meal-only photo capture with multi-item detection
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -35,43 +32,10 @@ function isStaging(): boolean {
          process.env.NODE_ENV === 'development';
 }
 
-// Robust meal capture flag parser
-export function mealCaptureEnabled(): boolean {
-  const env = (import.meta.env?.MEAL_CAPTURE_ENABLED ?? '').toString().toLowerCase();
-  if (env === '1' || env === 'true' || env === 'on') return true;
-
-  const raw = window.location.search || '';
-  // robust: match ?meal, ?meal=1, ?meal=true, ?meal=on, and tolerate '?meal+1'
-  const enabled = /(?:\?|&)meal(?:=(?:1|true|on))?(?:[&]|$)/i.test(raw) || /(?:\?|&)meal\+1(?:[&]|$)/i.test(raw);
-
-  if (enabled) console.log('[MEAL][FLAG]', { source: 'query', raw });
-  return enabled;
-}
-
-// Enhanced meal capture flag that treats mode=meal-capture as sufficient
-export function mealCaptureEnabledFromSearch(search = window.location.search): boolean {
-  const qs = new URLSearchParams(search);
-  const raw = (qs.get('meal') || '').toLowerCase();
-
-  const explicitOn =
-    raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes' || qs.has('meal+1');
-
-  const modeOn = (qs.get('mode') || '') === 'meal-capture';
-  const envOn = (import.meta.env.VITE_MEAL_CAPTURE || '') === '1';
-
-  // 🔒 Make mode=meal-capture sufficient to enable the sandbox on Camera
-  return explicitOn || modeOn || envOn;
-}
-
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
   // Environment-specific overrides
   if (flag === 'image_analyzer_v1') {
     return isStaging() ? ROLLOUT_CONFIG.image_analyzer_staging : ROLLOUT_CONFIG.image_analyzer_production;
-  }
-  
-  // Meal capture feature - use robust parser
-  if (flag === 'meal_capture_enabled') {
-    return mealCaptureEnabled();
   }
   
   return FEATURE_FLAGS[flag];

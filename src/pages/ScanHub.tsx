@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ScanTile } from '@/components/scan/ScanTile';
 import { Button } from '@/components/ui/button';
-import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 import { useScanRecents } from '@/hooks/useScanRecents';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
@@ -152,8 +152,7 @@ export default function ScanHub() {
       toast('Photo analysis is in beta; try manual or voice for now.');
       setManualEntryOpen(true);
     } else {
-      // Navigate to meal capture mode 
-      navigate('/meal-capture');
+      setPhotoModalOpen(true);
     }
   };
 

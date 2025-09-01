@@ -56,7 +56,6 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const Index = lazy(() => import('@/pages/Index'));
 const Camera = lazy(() => import('@/pages/Camera'));
-const MealCapture = lazy(() => import('@/pages/MealCapture'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Friends = lazy(() => import('@/pages/Friends'));
 const CoachMain = lazy(() => import('@/pages/CoachMain'));
@@ -267,11 +266,6 @@ function AppContent() {
                     <Route path="/camera" element={
                       <ProtectedRoute>
                         <Camera />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/meal-capture" element={
-                      <ProtectedRoute>
-                        <MealCapture />
                       </ProtectedRoute>
                     } />
                     <Route path="/analytics" element={

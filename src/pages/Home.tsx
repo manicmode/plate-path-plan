@@ -983,7 +983,7 @@ const Home = () => {
   }
 
   return (
-    <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-20">
+    <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-32">
       {/* Scheduled Nudges */}
       {!nudgesLoading && selectedNudges.map((nudge) => {
         const Component = nudge.definition.render;
