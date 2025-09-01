@@ -3324,8 +3324,8 @@ console.log('Global search enabled:', enableGlobalSearch);
 
       {/* Activity Logging Section - Exercise, Recovery, Habits */}
       <div className="mt-8">
-        <ActivityLoggingSection />
-      </div>
+          <ActivityLoggingSection />
+        </div>
         </>
       )}
     </div>
