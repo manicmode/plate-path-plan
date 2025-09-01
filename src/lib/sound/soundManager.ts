@@ -64,8 +64,8 @@ export const Sound = (() => {
   }
 
   async function play(name: "shutter" | "beep") {
-    if (!ctx || !unlocked || !hasUserActivation() || !shouldFire()) {
-      console.debug(`[SOUND] Cannot play ${name}: ctx=${!!ctx}, unlocked=${unlocked}, userActivation=${hasUserActivation()}, shouldFire=${shouldFire()}`);
+    if (!ctx || !unlocked || !shouldFire()) {
+      console.debug(`[SOUND] Cannot play ${name}: ctx=${!!ctx}, unlocked=${unlocked}, shouldFire=${shouldFire()}`);
       return;
     }
     
@@ -82,6 +82,12 @@ export const Sound = (() => {
         // longer, louder fallback so it's clearly audible
         oscBeep(name === "shutter" ? 180 : 220, name === "shutter" ? 900 : 1250);
       }
+      
+      // Add haptic feedback backup for iOS
+      try { 
+        (navigator as any).vibrate?.(40); 
+      } catch {}
+      
       console.debug("[SOUND] played", name);
     } catch (error) {
       console.warn(`[SOUND] Failed to play ${name}:`, error);

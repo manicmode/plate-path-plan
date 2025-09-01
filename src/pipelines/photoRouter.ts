@@ -18,10 +18,10 @@ function looksLikeNutritionLabel(text: string, labels: string[] = []) {
 }
 
 async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
-  // Use existing gpt5-vision-food-detector for meal detection
-  console.debug('[PHOTO][MEAL] invoke=function=gpt5-vision-food-detector');
+  // Use new meal-detector with object localization
+  console.debug('[PHOTO][MEAL] invoke=function=meal-detector');
   try {
-    const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
+    const { data, error } = await supabase.functions.invoke('meal-detector', {
       body: { image_base64: b64 },
     });
     if (error) {
@@ -32,14 +32,8 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
     console.log('[PHOTO][MEAL] detector response:', data);
     console.log('[PHOTO][MEAL] preflight_ok=true');
     
-    // Convert to expected format: { items: [{name, confidence, portion?, grams?, imageUrl?}, ...] }
-    const items = (data?.items || data?.foodItems || []).map((item: any) => ({
-      name: typeof item === 'string' ? item : item.name,
-      confidence: typeof item === 'string' ? 0.85 : (item.confidence || 0.85),
-      portion: null, // No portion data from detector
-      grams: null, // No grams data from detector
-      imageUrl: null // Will be added from OCR
-    }));
+    const items = data?.items || [];
+    console.log('[PHOTO][MEAL] items_detected=', items.length);
     
     return { items };
   } catch (e) {
