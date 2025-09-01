@@ -7,8 +7,12 @@ const cors = {
 };
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-// NEGATIVE terms to drop - less aggressive filtering (only obvious non-foods)
-const NEGATIVE = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat)\b/i;
+// obvious non-food junk we always drop
+const NEGATIVE = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray)\b/i;
+// "generic" terms that aren't specific foods (should NOT block labels fallback)
+const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
+const keep = (s: string) => !NEGATIVE.test(s);
+const isGeneric = (s: string) => GENERIC.test(s);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -47,45 +51,57 @@ serve(async (req) => {
     const json = JSON.parse(rawResponse);
     const resp = json?.responses?.[0] ?? {};
     
-    // Parse objects
+    // Parse objects and labels
     const rawObjects = resp?.localizedObjectAnnotations ?? [];
-    const normalizedObjects = rawObjects.map((o: any) => (o.name || "").toLowerCase().trim());
-    const keptObjects = normalizedObjects.filter((name: string) => name && !NEGATIVE.test(name));
+    const objects = rawObjects.map((o: any) => (o.name || "").toLowerCase().trim()).filter(s => s);
     
-    // Parse labels
     const rawLabels = resp?.labelAnnotations ?? [];
-    const normalizedLabels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim());
-    const keptLabels = normalizedLabels.filter((name: string) => name && !NEGATIVE.test(name));
+    const labels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim()).filter(s => s);
     
-    // Decide which to use: objects first, fallback to labels
-    const useObjects = keptObjects.length > 0;
-    const chosenItems = useObjects ? keptObjects : keptLabels;
-    const chosenSource = useObjects ? "objects" : "labels";
+    // Build four arrays
+    const objectsKept = objects.filter(keep);
+    const objectsSpecific = objectsKept.filter(s => !isGeneric(s));
+    const labelsKept = labels.filter(keep);
+    const labelsSpecific = labelsKept.filter(s => !isGeneric(s));
     
-    // Build result items
-    const items = chosenItems.map(name => ({
-      name,
-      confidence: 0.8,
-      source: chosenSource,
-      box: null
+    // Choosing logic (this is the fix)
+    let chosen: string[];
+    let chosenFrom: string;
+    
+    if (objectsSpecific.length > 0) {
+      chosen = objectsSpecific;
+      chosenFrom = 'objects';
+    } else if (labelsSpecific.length > 0) {
+      chosen = labelsSpecific;
+      chosenFrom = 'labels';
+    } else if (labelsKept.length > 0) {
+      chosen = labelsKept;
+      chosenFrom = 'labels_generic';
+    } else {
+      chosen = [];
+      chosenFrom = 'none';
+    }
+    
+    // Add info log
+    console.info('[MEAL-V1]', JSON.stringify({
+      chosen: chosenFrom,
+      objects: objects.slice(0,5),
+      labels: labels.slice(0,5)
     }));
 
-    // Debug info
-    const debugInfo = {
-      from: chosenSource,
-      rawObjectsCount: rawObjects.length,
-      rawLabelsCount: rawLabels.length,
-      keptObjectsCount: keptObjects.length,
-      keptLabelsCount: keptLabels.length,
-      sampleObjects: normalizedObjects.slice(0, 5),
-      sampleLabels: normalizedLabels.slice(0, 5)
-    };
-
-    console.log(`[MEAL-V1] rawObjects=${rawObjects.length} rawLabels=${rawLabels.length} keptObjects=${keptObjects.length} keptLabels=${keptLabels.length} chosen=${chosenSource} samples=${chosenItems.slice(0, 5).join(',')}`);
-
     return new Response(JSON.stringify({
-      items,
-      _debug: debugInfo
+      items: chosen.slice(0, 8),
+      _debug: {
+        from: chosenFrom,
+        rawObjectsCount: objects.length,
+        rawLabelsCount: labels.length,
+        keptObjectsCount: objectsKept.length,
+        keptLabelsCount: labelsKept.length,
+        specificObjectsCount: objectsSpecific.length,
+        specificLabelsCount: labelsSpecific.length,
+        sampleObjects: objects.slice(0,6),
+        sampleLabels: labels.slice(0,6)
+      }
     }), { headers: { ...cors, "Content-Type": "application/json" }});
 
   } catch (e) {

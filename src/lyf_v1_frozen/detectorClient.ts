@@ -12,13 +12,15 @@ export async function analyzeLyfV1(supabase: any, image_base64: string) {
   const items = Array.isArray(data?.items) ? data.items : [];
   
   // Enhanced logging (even in prod for now)
-  console.info('[LYF][v1] resp', { 
-    from: data._debug?.from, 
-    rawObjects: data._debug?.rawObjectsCount, 
-    rawLabels: data._debug?.rawLabelsCount, 
-    keptObjects: data._debug?.keptObjectsCount, 
-    keptLabels: data._debug?.keptLabelsCount, 
-    items: data.items?.map((i: any) => i.name) || [] 
+  console.info('[LYF][v1] resp', {
+    from: data?._debug?.from,
+    rawObjects: data?._debug?.rawObjectsCount,
+    rawLabels: data?._debug?.rawLabelsCount,
+    keptObjects: data?._debug?.keptObjectsCount,
+    keptLabels: data?._debug?.keptLabelsCount,
+    specificObjects: data?._debug?.specificObjectsCount,
+    specificLabels: data?._debug?.specificLabelsCount,
+    items: data?.items
   });
   
   return { items, _debug: data?._debug };
