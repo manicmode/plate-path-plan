@@ -83,11 +83,13 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
     
     console.log('[PHOTO][MEAL] detector response:', data);
     const debug = data?._debug || {};
-    console.log(`[PHOTO][MEAL][_debug] from=${debug.from} objects=${debug.objects || 0} labels=${debug.labels || 0}`);
+    console.log(`[PHOTO][MEAL][_debug] from=${debug.from} count=${debug.count || 0}`);
     
-    const items = data?.items || [];
+    // Filter to objects only
+    const allItems = data?.items || [];
+    const items = allItems.filter((i: any) => i.source === "object");
     const rawNames = items.map((i: any) => i.name);
-    console.log(`[PHOTO][MEAL] items_detected=${items.length} raw_names=[${rawNames.join(',')}]`);
+    console.log(`[PHOTO][MEAL] objects_detected=${items.length} raw_names=[${rawNames.join(',')}]`);
     
     // Map Vision names to nutrition
     const mappedItems = [];

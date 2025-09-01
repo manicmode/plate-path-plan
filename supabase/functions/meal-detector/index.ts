@@ -15,13 +15,12 @@ serve(async (req) => {
 
     const content = (image_base64 || "").split(",").pop();
 
-    // ✅ MEAL ONLY: object + labels (helpful), no text, no web
+    // ✅ OBJECTS ONLY: no labels, no text, no web
     const body = {
       requests: [{
         image: { content },
         features: [
-          { type: "OBJECT_LOCALIZATION", maxResults: 20 },
-          { type: "LABEL_DETECTION",     maxResults: 12 },
+          { type: "OBJECT_LOCALIZATION", maxResults: 20 }
         ],
       }],
     };
@@ -37,28 +36,19 @@ serve(async (req) => {
     const json = JSON.parse(raw);
     const resp = json?.responses?.[0] ?? {};
 
-    // Objects first
+    // Objects only
     const objs = resp?.localizedObjectAnnotations ?? [];
-    const objectItems = objs.map((o:any) => ({
+    const items = objs.map((o:any) => ({
       name: (o.name || "").toLowerCase(),
       confidence: o.score || 0,
       source: "object",
       box: o.boundingPoly?.normalizedVertices ?? null,
     }));
 
-    // Labels as secondary candidates
-    const labels = (resp?.labelAnnotations ?? []).map((x:any) => ({
-      name: (x.description || "").toLowerCase(),
-      confidence: x.score || 0,
-      source: "label",
-      box: null
-    }));
-
-    // Return both (client will gate & map to nutrition DB)
-    const items = [...objectItems, ...labels];
+    // Return objects only
     return new Response(JSON.stringify({
       items,
-      _debug: { from: "object+label", objects: objectItems.length, labels: labels.length }
+      _debug: { from: "objects", count: items.length }
     }), { headers: { ...cors, "Content-Type": "application/json" }});
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e), items: [] }), {
