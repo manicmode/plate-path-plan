@@ -7,7 +7,7 @@ export const Sound = (() => {
 
   function shouldFire() {
     const now = Date.now();
-    if (now - lastAt < 200) return false; // 200ms guard
+    if (now - lastAt < 250) return false; // 250ms guard
     lastAt = now; 
     return true;
   }
@@ -50,11 +50,12 @@ export const Sound = (() => {
     try {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
+      o.type = "square";
       o.frequency.value = freq;
       o.connect(g); 
       g.connect(ctx.destination);
       g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.7, ctx.currentTime + 0.02); // louder
       o.start();
       o.stop(ctx.currentTime + ms / 1000);
     } catch (error) {
@@ -79,7 +80,7 @@ export const Sound = (() => {
         src.start(0);
       } else {
         // longer, louder fallback so it's clearly audible
-        oscBeep(name === "shutter" ? 160 : 200, name === "shutter" ? 850 : 1200);
+        oscBeep(name === "shutter" ? 180 : 220, name === "shutter" ? 900 : 1250);
       }
       console.debug("[SOUND] played", name);
     } catch (error) {

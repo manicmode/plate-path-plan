@@ -27,24 +27,10 @@ export function ScanTile({
       Sound.ensureUnlocked();
     }
   };
-  
-  const handleTouchStart = () => {
-    if (enableSound && !disabled) {
-      Sound.ensureUnlocked();
-    }
-  };
-  
-  const handleMouseDown = () => {
-    if (enableSound && !disabled) {
-      Sound.ensureUnlocked();
-    }
-  };
   return (
     <button
       onClick={onClick}
       onPointerDown={handlePointerDown}
-      onTouchStart={handleTouchStart}
-      onMouseDown={handleMouseDown}
       disabled={disabled}
       className={cn(
         "group relative overflow-hidden rounded-xl p-6 text-left transition-all duration-200",

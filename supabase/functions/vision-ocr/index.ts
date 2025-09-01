@@ -99,7 +99,7 @@ serve(async (req) => {
     const body = await req.json();
     const { dataUrl, image_base64 } = body;
     
-    // Handle both dataUrl and image_base64 formats
+    // Handle both dataUrl and image_base64 formats - sanitize base64
     let base64Data: string;
     if (dataUrl) {
       const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -115,7 +115,8 @@ serve(async (req) => {
       }
       base64Data = match[2];
     } else if (image_base64) {
-      base64Data = image_base64;
+      // Strip any data URL prefix and sanitize
+      base64Data = (image_base64 || "").split(",").pop() || "";
     } else {
       return new Response(JSON.stringify({ 
         ok: false, 
@@ -167,12 +168,13 @@ serve(async (req) => {
       body: JSON.stringify(visionBody),
     });
 
+    const responseText = await visionResponse.text();
     if (!visionResponse.ok) {
-      console.error(`[vision-ocr] Google Vision API error: ${visionResponse.status}`);
-      throw new Error(`Vision API error: ${visionResponse.statusText}`);
+      console.error(`[vision-ocr] Google Vision API error: ${visionResponse.status}: ${responseText}`);
+      throw new Error(`Vision error ${visionResponse.status}: ${responseText}`);
     }
 
-    const visionData = await visionResponse.json();
+    const visionData = JSON.parse(responseText);
     const response = visionData?.responses?.[0] ?? {};
     const text = response?.fullTextAnnotation?.text ?? "";
     const labels = (response?.labelAnnotations ?? []).map((x: any) => x.description);

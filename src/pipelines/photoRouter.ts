@@ -19,12 +19,10 @@ function looksLikeNutritionLabel(text: string, labels: string[] = []) {
 
 async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
   // Use existing gpt5-vision-food-detector for meal detection
-  console.log('[PHOTO][MEAL] invoke=function=gpt5-vision-food-detector');
+  console.debug('[PHOTO][MEAL] invoke=function=gpt5-vision-food-detector');
   try {
     const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
-      body: { imageBase64: b64 },
-      // Temporarily remove x-client header to avoid CORS issues
-      // headers: { 'x-client': 'voyage-photo-v2' },
+      body: { image_base64: b64 },
     });
     if (error) {
       console.log('[PHOTO][MEAL] error:', error);
@@ -35,9 +33,9 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
     console.log('[PHOTO][MEAL] preflight_ok=true');
     
     // Convert to expected format: { items: [{name, confidence, portion?, grams?, imageUrl?}, ...] }
-    const items = (data?.foodItems || []).map((name: string, index: number) => ({
-      name,
-      confidence: 0.85, // Default confidence from GPT-5 vision
+    const items = (data?.items || data?.foodItems || []).map((item: any) => ({
+      name: typeof item === 'string' ? item : item.name,
+      confidence: typeof item === 'string' ? 0.85 : (item.confidence || 0.85),
       portion: null, // No portion data from detector
       grams: null, // No grams data from detector
       imageUrl: null // Will be added from OCR
