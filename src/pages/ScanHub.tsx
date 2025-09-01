@@ -22,6 +22,7 @@ import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 import { goToHealthAnalysis } from '@/lib/nav';
 import { camHardStop } from '@/lib/camera/guardian';
 import { useAutoImmersive } from '@/lib/uiChrome';
+import { mealCaptureEnabled } from '@/features/meal-capture/flags';
 
 export default function ScanHub() {
   const navigate = useNavigate();
@@ -148,6 +149,13 @@ export default function ScanHub() {
 
   const handleTakePhoto = () => {
     logTileClick('photo');
+    
+    // Check meal capture flag and redirect if enabled
+    if (mealCaptureEnabled(location.search, import.meta.env)) {
+      navigate('/meal-capture');
+      return;
+    }
+    
     if (!imageAnalyzerEnabled) {
       toast('Photo analysis is in beta; try manual or voice for now.');
       setManualEntryOpen(true);

@@ -128,6 +128,7 @@ const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
 const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
 const StandaloneTest = lazy(() => import('@/pages/StandaloneTest'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
+const MealCapturePage = lazy(() => import('@/features/meal-capture/components/MealCapturePage'));
 const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 const RecentScans = lazy(() => import('@/pages/RecentScans'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
@@ -535,13 +536,18 @@ function AppContent() {
                              </ProtectedRoute>
                            } />
                              
-                             {/* Scan Hub Routes */}
-                              <Route path="/scan" element={
-                               <ProtectedRoute>
-                                 <ScanHub />
-                               </ProtectedRoute>
-                             } />
-                             <Route path="/scan/recents" element={
+                              {/* Scan Hub Routes */}
+                               <Route path="/scan" element={
+                                <ProtectedRoute>
+                                  <ScanHub />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/meal-capture" element={
+                                <ProtectedRoute>
+                                  <MealCapturePage />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/scan/recents" element={
                                <ProtectedRoute>
                                  <ScanRecents />
                                </ProtectedRoute>
