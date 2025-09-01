@@ -13,6 +13,7 @@ import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
+import { useAutoImmersive } from '@/lib/uiChrome';
 
 
 function torchOff(track?: MediaStreamTrack) {
@@ -40,6 +41,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onCapture,
   onManualFallback
 }) => {
+  // Enable immersive mode (hide bottom nav) when modal is open
+  useAutoImmersive(open);
+  
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);

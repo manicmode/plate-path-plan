@@ -23,6 +23,7 @@ import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
+import { useAutoImmersive } from '@/lib/uiChrome';
 import { openHealthReportFromBarcode } from '@/features/health/openHealthReport';
 import { normalizeBarcode } from '@/lib/barcode/normalizeBarcode';
 import { toast } from 'sonner';
@@ -91,6 +92,9 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onAnalysisFail,
   onAnalysisSuccess
 }) => {
+  // Enable immersive mode (hide bottom nav) when scanner is active
+  useAutoImmersive(true);
+  
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

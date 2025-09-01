@@ -9,7 +9,14 @@ const Dialog = DialogPrimitive.Root
 
 const DialogTrigger = DialogPrimitive.Trigger
 
-const DialogPortal = DialogPrimitive.Portal
+const DialogPortal = ({ children, ...props }: DialogPrimitive.DialogPortalProps) => (
+  <DialogPrimitive.Portal {...props}>
+    <div className="modal-portal">
+      {children}
+    </div>
+  </DialogPrimitive.Portal>
+)
+DialogPortal.displayName = DialogPrimitive.Portal.displayName
 
 const DialogClose = DialogPrimitive.Close
 

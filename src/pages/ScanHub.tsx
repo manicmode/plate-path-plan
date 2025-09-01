@@ -21,11 +21,15 @@ import { ImprovedManualEntry } from '@/components/health-check/ImprovedManualEnt
 import { VoiceSearchModal } from '@/components/scan/VoiceSearchModal';
 import { goToHealthAnalysis } from '@/lib/nav';
 import { camHardStop } from '@/lib/camera/guardian';
+import { useAutoImmersive } from '@/lib/uiChrome';
 
 export default function ScanHub() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addRecent } = useScanRecents();
+  
+  // Enable immersive mode (hide bottom nav) for scanner interface
+  useAutoImmersive(true);
   
   // Track original entry point to avoid going back to saved/recent scans
   const originalEntryRef = useRef<string | null>(null);

@@ -1553,6 +1553,38 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
 [data-dialog-root="confirm-food-log"] [aria-label="Close"] { display: none !important; }
 [data-dialog-root="reminder-modal"] [aria-label="Close"] { display: inline-flex !important; }
 
+/* Safe-area & stacking system for bottom nav and immersive mode */
+:root { 
+  --safe-bottom: env(safe-area-inset-bottom); 
+  --bottom-nav-h: 72px; 
+}
+
+.app-content { 
+  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom)); 
+}
+
+body[data-immersive="true"] .app-content { 
+  padding-bottom: var(--safe-bottom); 
+}
+
+.bottom-nav { 
+  position: fixed; 
+  left: 0; 
+  right: 0; 
+  bottom: 0; 
+  height: var(--bottom-nav-h); 
+  z-index: 30; 
+}
+
+/* Modal & sheets above nav */
+.modal-portal { 
+  z-index: 60; 
+}
+
+.scanner-bottom-sheet { 
+  z-index: 61; 
+}
+
 /* Ensure single line, no wrap, and no layout jump */
 .hero-train {
   min-height: 1.6rem;          /* lock height to one line */

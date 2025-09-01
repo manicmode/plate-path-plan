@@ -12,6 +12,7 @@ import { useChatModal } from '@/contexts/ChatModalContext';
 import { useVoiceCoachAllowed } from '@/features/voicecoach/flags';
 import { useDueHabitsCount } from '@/hooks/useDueHabitsCount';
 import ReminderBell from '@/components/ReminderBell';
+import { useImmersive } from '@/lib/uiChrome';
 
 
 interface LayoutProps {
@@ -35,6 +36,7 @@ const Layout = ({ children }: LayoutProps) => {
   const headerRef = useRef<HTMLDivElement>(null);
   const voiceCoachAllowed = useVoiceCoachAllowed();
   const dueHabitsCount = useDueHabitsCount();
+  const immersive = useImmersive();
 
   // [nav-restore-2025-08-11] begin
   const navItems = [
@@ -117,8 +119,8 @@ const Layout = ({ children }: LayoutProps) => {
     return () => window.removeEventListener("resize", setVar);
   }, []);
 
-  // [nav-restore-2025-08-11] begin
-  // Hide navigation on specific fullscreen/camera pages
+  // [nav-restore-2025-08-31] begin - Updated with immersive controller
+  // Hide navigation on specific fullscreen/camera pages OR when immersive mode is active
   const hideNavPaths = [
     '/',
     '/body-scan-ai', '/body-scan-side', '/body-scan-back',
@@ -127,21 +129,24 @@ const Layout = ({ children }: LayoutProps) => {
   
   const shouldHideNavigation = !isAuthenticated || 
     hideNavPaths.includes(location.pathname) ||
-    location.pathname.startsWith('/scan/');  // All scan sub-pages
+    location.pathname.startsWith('/scan/') ||  // All scan sub-pages
+    immersive;  // Global immersive state from uiChrome controller
   
   const shouldShowNavigation = !shouldHideNavigation;
   
-  // Debug logging for navigation visibility
-  if (import.meta.env.DEV) {
-    console.log('[Navigation Debug]', {
+  // Debug logging for navigation visibility with immersive state
+  if (import.meta.env.VITE_DEBUG_NAV === "1") {
+    console.log('[NAV][RENDER]', {
+      rev: "2025-08-31T16:55Z",
       isAuthenticated,
       pathname: location.pathname,
+      immersive,
       shouldHideNavigation,
       shouldShowNavigation,
       isChatModalOpen
     });
   }
-  // [nav-restore-2025-08-11] end
+  // [nav-restore-2025-08-31] end
 
   // Special handling for explore page to prevent scrolling
   const isExplorePage = location.pathname === '/explore';
@@ -278,25 +283,16 @@ const Layout = ({ children }: LayoutProps) => {
         )}
 
       {/* Main Content with safe area padding for bottom nav */}
-      <main
-        className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-          shouldShowNavigation ? (
-            isExplorePage 
-              ? 'pb-20' // Reduced padding for explore page
-              : 'pb-[max(env(safe-area-inset-bottom),var(--tabbar-height))]'
-          ) : 'pb-8'
-        } ${
-          isExplorePage 
-            ? 'h-[calc(100vh-160px)] md:min-h-[calc(100vh-140px)] md:h-auto' // Fixed height only on mobile; allow natural height on desktop
-            : 'min-h-[calc(100vh-140px)]'
-        } md:pb-[120px]`}
-      >
+      <main className="app-content max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {children}
       </main>
 
       {/* Enhanced Bottom Navigation - Always visible for authenticated users */}
       {shouldShowNavigation && (
-        <nav className={`fixed bottom-0 left-0 right-0 z-[80] ${isMobile ? 'p-3' : 'pb-6 px-6'}`}>
+        <nav 
+          className={`bottom-nav fixed bottom-0 left-0 right-0 z-30 ${isMobile ? 'p-3' : 'pb-6 px-6'}`}
+          data-bottom-nav="true"
+        >
           <div className={`bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl ${isMobile ? 'rounded-3xl mx-0' : 'rounded-3xl max-w-md mx-auto'} px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60 md:max-w-[620px] md:mx-auto`}>
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
