@@ -41,7 +41,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
-import { analyzePhotoForLyfV1 } from '@/lyf_v1';
+import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
