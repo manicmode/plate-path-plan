@@ -30,3 +30,11 @@ export function mealCaptureEnabled(search: string, env: ImportMetaEnv): boolean 
   
   return false;
 }
+
+/**
+ * Check if meal capture is enabled from search params string
+ * Used by PhotoCaptureModal for gateway logic
+ */
+export function mealCaptureEnabledFromSearch(search: string): boolean {
+  return mealCaptureEnabled(search, import.meta.env);
+}

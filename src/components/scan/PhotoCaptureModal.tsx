@@ -7,9 +7,9 @@ import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useTorch } from '@/lib/camera/useTorch';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { supabase } from '@/integrations/supabase/client';
-import { isFeatureEnabled, mealCaptureEnabled } from '@/lib/featureFlags';
-import { putMealPhoto } from '@/features/meal-capture/transfer';
-import { useNavigate } from 'react-router-dom';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
@@ -44,6 +44,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onManualFallback
 }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   // Enable immersive mode (hide bottom nav) when modal is open
   useAutoImmersive(open);
@@ -238,6 +239,44 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
+  const handleCapturedBlob = async (blob: Blob) => {
+    const mealOn = mealCaptureEnabledFromSearch("?" + searchParams.toString());
+    console.log("[MEAL][GATEWAY][CAPTURED]", { mealOn, size: blob?.size ?? 0 });
+
+    if (mealOn && blob && blob.size > 0) {
+      const url = URL.createObjectURL(blob); // blob://  (not base64)
+      sessionStorage.setItem("mc:photoUrl", url);
+      sessionStorage.setItem("mc:entry", "photo");
+      sessionStorage.setItem("mc:ts", String(Date.now()));
+
+      console.log("[MEAL][GATEWAY][HANDOFF]", { to: "/meal-capture?entry=photo" });
+
+      // Close the modal first…
+      onOpenChange?.(false);
+
+      // …then schedule navigation on the next frame (+ a timed rescue)
+      requestAnimationFrame(() => {
+        navigate("/meal-capture?entry=photo");
+      });
+      setTimeout(() => {
+        if (location.pathname === "/scan") {
+          console.log("[MEAL][GATEWAY][RESCUE_NAV]");
+          navigate("/meal-capture?entry=photo");
+        }
+      }, 300);
+
+      return;
+    }
+
+    // Legacy path (unchanged) - convert blob to base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageBase64 = e.target?.result as string;
+      onCapture(imageBase64);
+    };
+    reader.readAsDataURL(blob);
+  };
+
   const capturePhoto = async () => {
     if (!videoRef.current || !stream) return;
 
@@ -265,39 +304,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert to base64
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-      
-      console.log('[PHOTO] Photo captured, processing...');
-      
-      // Check meal capture flag for gateway handoff
-      if (mealCaptureEnabled()) {
-        // Convert to blob for memory-safe transfer
-        const dataUri = canvas.toDataURL('image/jpeg', 0.85);
-        const byteString = atob(dataUri.split(',')[1]);
-        const arrayBuffer = new ArrayBuffer(byteString.length);
-        const uint8Array = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < byteString.length; i++) {
-          uint8Array[i] = byteString.charCodeAt(i);
+      // Convert to blob for new gateway system
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          await handleCapturedBlob(blob);
+          camHardStop('modal_close');
+          onOpenChange(false);
         }
-        const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-        
-        // Store for transfer and navigate
-        const id = crypto.randomUUID();
-        putMealPhoto(id, blob);
-        
-        console.log('[MEAL][GATEWAY] handoff', { from: 'modal', id, size: blob.size });
-        
-        camHardStop('modal_close');
-        onOpenChange(false);
-        navigate(`/meal-capture?from=modal&id=${id}`, { replace: false });
-        return;
-      }
-      
-      // Process with existing analyzer flow
-      onCapture(imageBase64);
-      camHardStop('modal_close');
-      onOpenChange(false);
+      }, 'image/jpeg', 0.85);
       
     } catch (error) {
       console.error('[PHOTO] Capture failed:', error);
@@ -311,42 +325,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imageBase64 = e.target?.result as string;
-          console.log('[PHOTO] Image uploaded, processing...');
-          
-          // Check meal capture flag for gateway handoff
-          if (mealCaptureEnabled()) {
-            // Convert to blob for memory-safe transfer
-            const byteString = atob(imageBase64.split(',')[1]);
-            const arrayBuffer = new ArrayBuffer(byteString.length);
-            const uint8Array = new Uint8Array(arrayBuffer);
-            for (let i = 0; i < byteString.length; i++) {
-              uint8Array[i] = byteString.charCodeAt(i);
-            }
-            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-            
-            // Store for transfer and navigate
-            const id = crypto.randomUUID();
-            putMealPhoto(id, blob);
-            
-            console.log('[MEAL][GATEWAY] handoff', { from: 'modal', id, size: blob.size });
-            
-            camHardStop('modal_close');
-            onOpenChange(false);
-            navigate(`/meal-capture?from=modal&id=${id}`, { replace: false });
-            return;
-          }
-          
-          onCapture(imageBase64);
-          camHardStop('modal_close');
-          onOpenChange(false);
-        };
-        reader.readAsDataURL(file);
+        console.log('[PHOTO] Image uploaded, processing...');
+        await handleCapturedBlob(file);
+        camHardStop('modal_close');
+        onOpenChange(false);
       }
     };
     input.click();

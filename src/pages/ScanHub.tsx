@@ -28,6 +28,16 @@ export default function ScanHub() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addRecent } = useScanRecents();
+
+  // Rescue mechanism for meal capture handoff
+  useEffect(() => {
+    const url = sessionStorage.getItem("mc:photoUrl");
+    const entry = sessionStorage.getItem("mc:entry");
+    if (location.pathname === "/scan" && url && entry === "photo") {
+      console.log("[MEAL][GATEWAY][RESCUE_SCAN]");
+      navigate("/meal-capture?entry=photo");
+    }
+  }, [location.pathname, navigate]);
   
   // Do NOT hide bottom nav on the main Health Scan page
   // Only hide it when entering actual scanner interfaces

@@ -41,23 +41,38 @@ export default function MealCapturePage() {
     
     // Handle transfer from modal gateway
     const params = new URLSearchParams(location.search);
-    const from = params.get('from');
-    const id = params.get('id');
+    const entry = params.get('entry');
     
-    console.log('[MEAL][ENTRY]', { from, id, hasBlob: false });
-    
-    if (from === 'modal' && id) {
-      const blob = takeMealPhoto(id);
-      if (blob) {
-        // Convert blob to object URL for preview
-        const imageUrl = URL.createObjectURL(blob);
-        setTransferData({ imageUrl, imageBlob: blob });
+    if (entry === 'photo') {
+      const url = sessionStorage.getItem("mc:photoUrl");
+      const ts = sessionStorage.getItem("mc:ts");
+      
+      console.log('[MEAL][ENTRY]', { entry, hasUrl: !!url, ts });
+      
+      if (url) {
+        setTransferData({ imageUrl: url });
         setCurrentStep('classify');
-        console.log('[MEAL][ENTRY]', { from, id, hasBlob: !!blob });
       } else {
-        console.warn('[MEAL][ENTRY] Transfer blob not found, starting at capture');
+        console.warn('[MEAL][ENTRY] Transfer URL not found, starting at capture');
         setCurrentStep('capture');
       }
+      
+      // Cleanup on unmount
+      return () => {
+        if (url) {
+          try {
+            URL.revokeObjectURL(url);
+            sessionStorage.removeItem("mc:photoUrl");
+            sessionStorage.removeItem("mc:entry");
+            sessionStorage.removeItem("mc:ts");
+          } catch (e) {
+            console.warn('[MEAL][CLEANUP] Error revoking URL:', e);
+          }
+        }
+      };
+    } else {
+      // Default to capture step
+      setCurrentStep('capture');
     }
     
     debugLog('Page mounted', { step: currentStep });
