@@ -1556,11 +1556,12 @@ body[data-reminder-open="true"] [data-dialog-root="confirm-food-log"] button[ari
 /* Safe-area & stacking system for bottom nav and immersive mode */
 :root { 
   --safe-bottom: env(safe-area-inset-bottom); 
-  --bottom-nav-h: 72px; 
+  --bottom-nav-h: 72px;
+  --bottom-nav-total-h: calc(var(--bottom-nav-h) + var(--safe-bottom));
 }
 
 .app-content { 
-  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom)); 
+  padding-bottom: var(--bottom-nav-total-h); 
 }
 
 body[data-immersive="true"] .app-content { 
@@ -1572,7 +1573,8 @@ body[data-immersive="true"] .app-content {
   left: 0; 
   right: 0; 
   bottom: 0; 
-  height: var(--bottom-nav-h); 
+  height: var(--bottom-nav-total-h); 
+  padding-bottom: var(--safe-bottom);
   z-index: 30; 
 }
 
