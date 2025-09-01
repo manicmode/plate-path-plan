@@ -329,7 +329,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     if (!videoRef.current || !stream) return;
 
     setIsCapturing(true);
-    playCameraClickSound();
+    // Sound is already played by onPointerDown - don't double-fire
 
     try {
       // Check if analyzer is enabled
