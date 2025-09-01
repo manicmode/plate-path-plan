@@ -253,7 +253,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleCapturedBlob = async (blob: Blob) => {
-    // Try meal capture gateway first
+    // Try meal capture gateway first (only when flag is enabled)
     const result = await handoffFromPhotoCapture(
       blob,
       "?" + searchParams.toString()
@@ -271,10 +271,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       return;
     }
 
-    // Legacy path - check if we should try quick barcode scan or show inline fallback
-    console.log('[PHOTO][OCR_ONLY] no barcode found (keeping modal open)');
+    // Legacy path - show inline fallback instead of navigating anywhere
+    if (import.meta.env.VITE_DEBUG_PHOTO === '1') {
+      console.log('[PHOTO][FALLBACK] no barcode detected — staying in modal');
+    }
     
-    // Show inline fallback UI instead of navigating
+    // Show inline fallback UI inside the modal (no navigation)
     setQuickScanStatus('no-barcode');
   };
 
@@ -367,14 +369,14 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           </div>
           <h3 className="text-xl font-semibold">No barcode detected</h3>
           <p className="text-sm text-white/70">
-            We couldn't find a barcode in this photo. You can try again or enter details manually.
+            Try again or pick another option below.
           </p>
           <div className="flex gap-3 mt-6">
             <Button variant="outline" onClick={onRetry} className="flex-1 border-white/40 text-white hover:bg-white/10">
-              Retake
+              Try again
             </Button>
             <Button onClick={onManual} className="flex-1 bg-primary hover:bg-primary/90">
-              Enter manually
+              Manual entry
             </Button>
           </div>
         </div>
