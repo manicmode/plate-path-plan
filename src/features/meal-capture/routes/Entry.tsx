@@ -9,6 +9,11 @@ import { MealCaptureWizard } from '../components/MealCaptureWizard';
 import type { MealCaptureData, WizardStep } from '../components/MealCapturePage';
 import { takeMealPhoto } from '../photoStore';
 
+// Diagnostic log (temporary)
+if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+  console.info('[MEAL][IMPORT] entry route loaded');
+}
+
 export default function MealCaptureEntry() {
   const navigate = useNavigate(); 
   const [searchParams] = useSearchParams();

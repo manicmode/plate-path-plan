@@ -121,193 +121,112 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Aggressive cleanup of all auth-related storage
-    const clearAllAuthTokens = () => {
-      try {
-        // Clear all localStorage items that could contain auth tokens
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('sb-') || 
-              key.includes('supabase') || 
-              key.includes('auth') || 
-              key.includes('session')) {
-            localStorage.removeItem(key);
-          }
-        });
-        
-        // Clear sessionStorage too
-        Object.keys(sessionStorage).forEach(key => {
-          if (key.startsWith('sb-') || 
-              key.includes('supabase') || 
-              key.includes('auth') || 
-              key.includes('session')) {
-            sessionStorage.removeItem(key);
-          }
-        });
-        
-        // Force sign out to clear any server-side sessions
-        supabase.auth.signOut({ scope: 'global' }).catch(() => {
-          // Ignore errors during cleanup
-        });
-        
-      } catch (error) {
-        console.warn('Error during auth cleanup:', error);
-      }
-    };
+    const g = globalThis as any;
     
-    // Cleanup corrupted auth tokens
-    const hasCorruptedAuth = () => {
-      try {
-        const keys = Object.keys(localStorage);
-        return keys.some(key => {
-          if (key.includes('supabase') || key.startsWith('sb-')) {
-            const value = localStorage.getItem(key);
-            return value && (value.includes('403') || value.includes('invalid_claim'));
-          }
-          return false;
-        });
-      } catch {
-        return true; // If we can't check, assume corruption
-      }
-    };
-    
-    if (hasCorruptedAuth()) {
-      clearAllAuthTokens();
-      // Force page reload after cleanup to ensure fresh start
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+    // Guard against multiple inits
+    if (g.__authInit) {
+      g.__authInit.then(() => {
+        setLoading(false);
+      });
       return;
     }
 
+    // Diagnostic log
+    if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+      console.info('[AUTH][INIT][START]', { timestamp: new Date().toISOString() });
+    }
+
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
-    console.log('🔐 Initializing auth state...', { 
-      isMobile, 
-      timestamp: new Date().toISOString() 
-    });
-    
-    // Initialize auth session check and state listener with timeout protection
-    const initializeAuth = async () => {
-      let timeoutId: NodeJS.Timeout;
-      
+    // Initialize auth with timeout fallback
+    const initAuth = async () => {
       try {
-        // Add timeout protection for auth initialization
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => {
-            reject(new Error('Auth initialization timeout after 10 seconds'));
-          }, 10000);
-        });
+        // Set up auth state listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!isMounted) return;
 
-        console.log('🔄 Starting auth initialization...', { isMobile });
+            console.log('🔐 Auth state change:', { event, hasSession: !!session });
 
-        // Race between auth operations and timeout
-        const result = await Promise.race([
-          Promise.all([
-            supabase.auth.getSession(),
-            Promise.resolve(supabase.auth.onAuthStateChange(
-              async (event, session) => {
-                if (!isMounted) return;
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
 
-                console.log('🔐 Auth state change:', { event, hasSession: !!session, hasUser: !!session?.user });
-
-                try {
-                  if (event === 'PASSWORD_RECOVERY') {
-                    setSession(session);
-                    setUser(session?.user ?? null);
-                    setLoading(false);
-                    return;
-                  }
-
-                  if (event === 'TOKEN_REFRESHED' && session) {
-                    setSession(session);
-                    setUser(session?.user ?? null);
-                    setLoading(false);
-                    return;
-                  }
-
-                  setSession(session);
-                  setUser(session?.user ?? null);
-                  setLoading(false);
-
-                  // Load extended profile for signed-in users (not during recovery)
-                  if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
-                    setTimeout(() => {
-                      if (isMounted) {
-                        loadExtendedProfile(session.user).catch(error => {
-                          console.error('🚨 Profile loading failed in auth state change:', error);
-                        });
-                      }
-                    }, 100); // Small delay to prevent blocking
-                  }
-                } catch (error) {
-                  console.error('🚨 Error in auth state change handler:', error);
-                  // Don't crash the app - just log the error
-                  setLoading(false);
+            // Load extended profile for signed-in users
+            if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+              setTimeout(() => {
+                if (isMounted) {
+                  loadExtendedProfile(session.user).catch(error => {
+                    console.error('Profile loading failed:', error);
+                  });
                 }
-              }
-            ))
-          ]),
-          timeoutPromise
-        ]);
+              }, 0);
+            }
+          }
+        );
 
-        clearTimeout(timeoutId);
-
-        if (!isMounted) return;
-
-        const [sessionResponse, authListener] = result as any;
-
-        // Set initial session state
-        const { data: { session }, error: sessionError } = sessionResponse;
+        // Then check for existing session
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error('🚨 Session error:', sessionError);
-          throw sessionError;
+        if (error) {
+          console.warn('Session error:', error);
         }
 
-        console.log('✅ Auth initialization complete', { 
-          hasSession: !!session, 
-          hasUser: !!session?.user,
-          isMobile,
-          timestamp: new Date().toISOString() 
-        });
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        return authListener.data.subscription;
-      } catch (error) {
-        clearTimeout(timeoutId!);
-        console.error('🚨 Critical auth initialization error:', error, { 
-          isMobile, 
-          timestamp: new Date().toISOString(),
-          stack: error instanceof Error ? error.stack : 'No stack trace'
-        });
-        
         if (isMounted) {
-          // Set safe fallback state
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+
+        return subscription;
+      } catch (error) {
+        console.error('Auth init error:', error);
+        if (isMounted) {
           setSession(null);
           setUser(null);
           setLoading(false);
-          setProfileError('Authentication initialization failed');
         }
         return null;
       }
     };
 
-    // Start auth initialization
-    initializeAuth().then((subscription) => {
-      if (subscription && isMounted) {
-        // Store subscription for cleanup
-        return () => {
-          isMounted = false;
-          subscription.unsubscribe();
-        };
+    // Timeout fallback
+    const withTimeout = async (promise: Promise<any>, timeout: number) => {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`Auth timeout after ${timeout}ms`));
+          }, timeout);
+        })
+      ]);
+    };
+
+    // Start auth init with global guard
+    g.__authInit = withTimeout(initAuth(), 10000).then((subscription) => {
+      clearTimeout(timeoutId);
+      if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+        console.info('[AUTH][INIT][END]', { timestamp: new Date().toISOString() });
       }
+      return subscription;
+    }).catch((error) => {
+      clearTimeout(timeoutId);
+      console.warn('[AUTH][TIMEOUT] continuing unauthenticated', error);
+      if (import.meta.env.VITE_DEBUG_MEAL === '1') {
+        console.info('[AUTH][INIT][TIMEOUT]', { timestamp: new Date().toISOString() });
+      }
+      if (isMounted) {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      }
+      return null;
     });
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
     };
   }, []);
 
