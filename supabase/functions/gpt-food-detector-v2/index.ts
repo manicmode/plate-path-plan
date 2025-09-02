@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { image_base64, system_prompt, user_prompt } = await req.json();
+    const { image_base64, system_prompt, user_prompt, attempt } = await req.json();
     
     if (!image_base64) {
       throw new Error('image_base64 is required');
@@ -22,6 +22,46 @@ serve(async (req) => {
     if (!openaiApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
+
+    // Normalize and validate image
+    let normalizedBase64 = image_base64;
+    let hasPrefix = false;
+    let imageBytes = 0;
+    let imageDims = 'unknown';
+    let mimeType = 'unknown';
+
+    try {
+      // Check if it already has data: prefix
+      hasPrefix = normalizedBase64.startsWith('data:');
+      
+      // Extract base64 data and analyze
+      const base64Data = hasPrefix 
+        ? normalizedBase64.split(',')[1] 
+        : normalizedBase64;
+      
+      imageBytes = Math.floor(base64Data.length * 0.75); // Rough byte estimate
+      
+      // Add prefix if missing
+      if (!hasPrefix) {
+        normalizedBase64 = `data:image/jpeg;base64,${base64Data}`;
+        hasPrefix = true;
+      }
+      
+      // Extract MIME type if present
+      if (hasPrefix) {
+        const mimeMatch = normalizedBase64.match(/data:([^;]+)/);
+        mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      }
+      
+      // Try to get dimensions (rough estimate from data length)
+      const pixelEstimate = Math.sqrt(imageBytes / 3); // Rough RGB estimate
+      imageDims = `~${Math.round(pixelEstimate)}x${Math.round(pixelEstimate)}`;
+      
+    } catch (e) {
+      console.warn('[GPT][req] Image normalization failed:', e.message);
+    }
+
+    console.log(`[GPT][req] has_prefix=${hasPrefix} bytes=${imageBytes} dims=${imageDims} mime=${mimeType}`);
 
     console.log('[GPT-V2] Starting food detection with structured output...');
 
@@ -67,6 +107,22 @@ Example for salmon plate:
 
     const userPrompt = user_prompt || "Return strict JSON with detected food items:";
 
+    // Determine attempt type from client
+    const attemptType = attempt || 'strict';
+    
+    // Adjust parameters based on attempt type
+    const modelParams = attemptType === 'relaxed' ? {
+      model: 'gpt-4o',
+      temperature: 0,
+      max_tokens: 300, // More tokens for relaxed mode
+      top_p: 1
+    } : {
+      model: 'gpt-4o',
+      temperature: 0,
+      max_tokens: 200,
+      top_p: 1
+    };
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -74,7 +130,7 @@ Example for salmon plate:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        ...modelParams,
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -84,22 +140,19 @@ Example for salmon plate:
               {
                 type: 'image_url',
                 image_url: {
-                  url: image_base64.startsWith('data:') ? image_base64 : `data:image/jpeg;base64,${image_base64}`,
+                  url: normalizedBase64,
                   detail: 'high'
                 }
               }
             ]
           }
-        ],
-        temperature: 0,
-        max_tokens: 200,
-        top_p: 1
+        ]
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[GPT-V2] OpenAI API error:', response.status, errorText);
+      console.error(`[GPT][error] status=${response.status} message="${errorText.slice(0, 100)}"`);
       throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
     }
 
@@ -141,6 +194,7 @@ Example for salmon plate:
       portion_hint: item.portion_hint || item.portionHint || null
     }));
     
+    console.log(`[GPT][raw_count]=${normalizedItems.length} attempt=${attemptType}`);
     console.log(`[GPT-V2] Detected ${normalizedItems.length} items:`, normalizedItems.map(i => i.name));
 
     return new Response(JSON.stringify({

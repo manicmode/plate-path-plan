@@ -52,13 +52,21 @@ export function filterDetectedItems(items: DetectedItem[]): DetectedItem[] {
   });
 }
 
-export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]> {
+export async function detectWithGpt(imageBase64: string, context?: { mode?: string }): Promise<DetectedItem[]> {
   const { buildMealPrompt } = await import('@/lib/detect/gptPrompt');
   const { processGptItems } = await import('@/lib/detect/canonicalize');
   const { estimatePortionWithDefaults } = await import('@/lib/portion/estimate');
   const { supabase } = await import('@/integrations/supabase/client');
   
   console.info('[DETECT][GPT] Starting GPT detection...');
+  
+  // Check diagnostic flags
+  const strictOnly = getBoolean(import.meta.env.VITE_DETECT_DIAG_STRICT_ONLY);
+  const relaxOnly = getBoolean(import.meta.env.VITE_DETECT_DIAG_RELAX_ONLY);
+  
+  let attemptType = 'strict';
+  if (relaxOnly) attemptType = 'relaxed';
+  else if (strictOnly) attemptType = 'strict';
   
   try {
     // Get prompt
@@ -69,7 +77,8 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
       body: { 
         image_base64: imageBase64,
         system_prompt: system,
-        user_prompt: user
+        user_prompt: user,
+        attempt: attemptType
       }
     });
 
@@ -81,7 +90,10 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
     const rawItems = data?.items || [];
     console.info('[ROUTER][gpt:raw]', `count=${rawItems.length}`);
     
-    if (!rawItems.length) {
+    const isEmpty = !rawItems.length;
+    console.info('[ROUTER][gpt_empty]', isEmpty);
+    
+    if (isEmpty) {
       console.warn('[DETECT][GPT] No items detected');
       return [];
     }
@@ -168,14 +180,14 @@ function scoreResults(items: DetectedItem[]): number {
   return proteinScore + countScore + confidenceScore;
 }
 
-async function runBestOf(imageBase64: string): Promise<DetectedItem[]> {
+async function runBestOf(imageBase64: string, context?: { mode?: string }): Promise<DetectedItem[]> {
   const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
   
   // Always get GPT results
   let gptItems: DetectedItem[] = [];
   let gptScore = 0;
   try {
-    gptItems = await detectWithGpt(imageBase64);
+    gptItems = await detectWithGpt(imageBase64, context);
     gptScore = scoreResults(gptItems);
   } catch (error) {
     console.error('[BESTOF] GPT failed:', error);
@@ -205,26 +217,32 @@ async function runBestOf(imageBase64: string): Promise<DetectedItem[]> {
 }
 
 export async function run(imageBase64: string, context?: { mode?: string }): Promise<DetectedItem[]> {
-  console.info('[ROUTER][start]');
-  
   const mode = getDetectMode(context);
-  console.info('[ROUTER][mode]', mode);
+  console.info('[ROUTER][start] mode=', mode);
   
   const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
   
   // Use best-of when SAFE_DETECT enabled, otherwise follow mode routing
   if (safeDet) {
-    return await runBestOf(imageBase64);
+    return await runBestOf(imageBase64, context);
   }
   
   // Original mode-based routing
   switch (mode) {
     case DetectMode.GPT_ONLY:
-      return await detectWithGpt(imageBase64);
+      const gptResult = await detectWithGpt(imageBase64, context);
+      if (!gptResult.length) {
+        console.info('[ROUTER][fallback]=NONE (GPT_ONLY mode)');
+      }
+      return gptResult;
       
     case DetectMode.VISION_ONLY:
     default:
-      return await detectWithLyfV1Vision(imageBase64);
+      const visionResult = await detectWithLyfV1Vision(imageBase64);
+      if (!visionResult.length) {
+        console.info('[ROUTER][fallback]=NONE (VISION_ONLY mode)');
+      }
+      return visionResult;
   }
 }
 
