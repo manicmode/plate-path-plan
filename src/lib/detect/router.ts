@@ -9,12 +9,12 @@ function getBoolean(value: string | undefined): boolean {
 }
 
 export function getDetectMode(): DetectMode {
-  const only = getBoolean(import.meta.env.VITE_FEATURE_USE_GPT_ONLY);
+  const visionOnly = getBoolean(import.meta.env.VITE_FEATURE_USE_VISION_ONLY);
   const first = getBoolean(import.meta.env.VITE_FEATURE_USE_GPT_FIRST);
   
-  if (only) return 'GPT_ONLY';
+  if (visionOnly) return 'VISION_ONLY';
   if (first) return 'GPT_FIRST';
-  return 'VISION_ONLY';
+  return 'GPT_ONLY'; // Default to GPT_ONLY
 }
 
 export interface DetectedItem {
@@ -67,7 +67,7 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
     }
 
     const rawItems = data?.items || [];
-    console.info('[GPT][raw]', `count=${rawItems.length}`);
+    console.info('[ROUTER][gpt:raw]', `count=${rawItems.length}`);
     
     if (!rawItems.length) {
       console.warn('[DETECT][GPT] No items detected');
@@ -76,6 +76,7 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
 
     // Process through canonicalization pipeline
     const processedItems = processGptItems(rawItems);
+    console.info('[ROUTER][gpt:canonical]', `count=${processedItems.length}`, `names=[${processedItems.map(i => i.name).join(', ')}]`);
     
     // Apply portion estimation
     const itemsWithPortions = await Promise.all(
@@ -203,8 +204,10 @@ async function runBestOf(imageBase64: string): Promise<DetectedItem[]> {
 }
 
 export async function run(imageBase64: string): Promise<DetectedItem[]> {
+  console.info('[ROUTER][start]');
+  
   const mode = getDetectMode();
-  console.info('[DETECT][mode]', mode);
+  console.info('[ROUTER][mode]', mode);
   
   const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
   

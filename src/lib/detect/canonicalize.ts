@@ -16,8 +16,38 @@ const REJECT = new Set([
   'knife', 'spoon', 'cup', 'glass', 'napkin', 'placemat',
   'packaging', 'label', 'can', 'jar', 'bottle', 'packet', 'wrapper',
   'syrup', 'curd', 'ketchup', 'cookie', 'snack bar', 'cereal bar', 'candy',
-  'container', 'bar', 'snack'
+  'container', 'bar', 'snack', 'haze', 'mist', 'text', 'brand', 'logo'
 ]);
+
+// Canonicalization mappings
+const CANON_MAP: Record<string, string> = {
+  // citrus
+  'meyer lemon': 'lemon',
+  'sweet lemon': 'lemon', 
+  'key lime': 'lime',
+  'persian lime': 'lime',
+  'lime wedge': 'lime',
+  'lemon wedge': 'lemon',
+  // greens
+  'greens': 'salad',
+  'mixed greens': 'salad',
+  'spring mix': 'salad',
+  // asparagus
+  'asparagus spears': 'asparagus',
+  'asparagus tips': 'asparagus',
+  'spears': 'asparagus',
+  // tomato
+  'cherry tomatoes': 'tomato',
+  'tomato slices': 'tomato',
+  // salad variants
+  'side salad': 'salad',
+  'green salad': 'salad',
+  'mixed salad': 'salad',
+  'garden salad': 'salad',
+};
+
+// Citrus deduplication - never both lemon and lime
+const MAX_ONE_KEYS = new Set(['lemon', 'lime']);
 
 // Non-food terms vocabulary
 export const NON_FOOD_TERMS = new Set([
@@ -64,48 +94,24 @@ export function toCanonicalName(name: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   
-  // Map variants to canonical names
-  const mappings: Record<string, string> = {
-    // Salmon variants
-    'salmon fillet': 'salmon',
-    'salmon filet': 'salmon',
-    'grilled salmon': 'salmon',
-    'baked salmon': 'salmon',
-    
-    // Citrus variants (keep lemon wedge, reject curd/syrup)
-    'lime': 'lemon',
-    'meyer lemon': 'lemon',
-    'lime wedge': 'lemon',
-    
-    // Salad variants
-    'side salad': 'salad',
-    'green salad': 'salad',
-    'mixed salad': 'salad',
-    'garden salad': 'salad',
-    
-    // Asparagus synonyms
-    'asparagus spears': 'asparagus',
-    'asparagus tips': 'asparagus',
-    'spears': 'asparagus', // when context is clear
-    
-    // Tomato synonyms
-    'cherry tomatoes': 'tomato',
-    'tomato slices': 'tomato',
-    
-    // Common proteins
-    'chicken breast': 'chicken',
-    'chicken fillet': 'chicken',
-    'beef steak': 'beef',
-    'pork chop': 'pork',
-    
-    // Reject mappings (return empty to filter out)
-    'lemon curd': '',
-    'lemon syrup': '',
-    // Special case: keep asparagus from risotto if no grain detected
-    'asparagus risotto': 'asparagus'
-  };
+  // Apply canonical mappings
+  const canonical = CANON_MAP[cleaned] || cleaned;
   
-  return mappings[cleaned] || cleaned;
+  // Reject mappings (return empty to filter out)
+  if (canonical === 'lemon curd' || canonical === 'lemon syrup') return '';
+  
+  return canonical;
+}
+
+// Score items for ranking (protein first, asparagus boost, citrus penalty)
+export function scoreItem(item: GptItem): number {
+  let score = item.confidence ?? 0.5;
+  
+  if (item.name === 'salmon') score += 0.35;
+  if (item.name === 'asparagus') score += 0.20;
+  if (item.name === 'lemon' || item.name === 'lime') score -= 0.10; // prevent citrus dominating
+  
+  return score;
 }
 
 export function dedupe(items: GptItem[]): GptItem[] {
@@ -114,7 +120,10 @@ export function dedupe(items: GptItem[]): GptItem[] {
   
   for (const item of items) {
     const canonical = toCanonicalName(item.name);
-    if (!canonical) continue; // Skip rejected items
+    if (!canonical) {
+      console.info('[ROUTER][drop:reason]', 'empty-canonical', `name=${item.name}`);
+      continue; // Skip rejected items
+    }
     
     // Special case: keep both "salad" AND "tomato" if tomato has confidence ≥0.65
     if (canonical === 'tomato' && hasSalad && item.confidence >= 0.65) {
@@ -131,6 +140,23 @@ export function dedupe(items: GptItem[]): GptItem[] {
           [existing.portion_hint, item.portion_hint].filter(Boolean).join(' + ') : 
           item.portion_hint
       });
+    }
+  }
+  
+  // Handle citrus deduplication - never both lemon and lime
+  const citrusItems = Array.from(canonicalMap.entries()).filter(([name]) => MAX_ONE_KEYS.has(name));
+  if (citrusItems.length > 1) {
+    // Keep the one with higher confidence
+    const bestCitrus = citrusItems.reduce((best, current) => 
+      current[1].confidence > best[1].confidence ? current : best
+    );
+    
+    // Remove all other citrus items
+    for (const [name, item] of citrusItems) {
+      if (name !== bestCitrus[0]) {
+        canonicalMap.delete(name);
+        console.info('[ROUTER][drop:reason]', 'citrus-collision', `name=${name}`);
+      }
     }
   }
   
@@ -186,11 +212,33 @@ export function processGptItems(rawItems: GptItem[]): GptItem[] {
   const strictFilters = import.meta.env.VITE_DETECT_STRICT_NONFOOD === 'true';
   if (strictFilters) {
     items = filterNonFood(items);
-    items = items.filter(i => isLikelyFoodName(i.name));
+    items = items.filter(i => {
+      const isFood = isLikelyFoodName(i.name);
+      if (!isFood) {
+        console.info('[ROUTER][drop:reason]', 'not-food', `name=${i.name}`);
+      }
+      return isFood;
+    });
   }
   
   items = filterByConfidence(items);
   items = finalReject(items);
+  
+  // Score and sort items (protein first, then by score)
+  items = items
+    .map(item => ({ ...item, score: scoreItem(item) }))
+    .sort((a, b) => {
+      // Salmon and asparagus are "sticky" - never drop them
+      const aSalmonAsp = a.name === 'salmon' || a.name === 'asparagus';
+      const bSalmonAsp = b.name === 'salmon' || b.name === 'asparagus';
+      
+      if (aSalmonAsp && !bSalmonAsp) return -1;
+      if (!aSalmonAsp && bSalmonAsp) return 1;
+      
+      return (b as any).score - (a as any).score;
+    })
+    .slice(0, 5) // Keep top 5, but sticky items are protected
+    .map(({ score, ...item }) => item); // Remove score field
   
   console.info('[FILTER][kept]', `count=${items.length}`, `names=[${items.map(i => i.name).join(', ')}]`);
   

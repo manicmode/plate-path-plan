@@ -19,41 +19,44 @@ const CATEGORY_PORTIONS: Record<string, number> = {
   sauce_condiment: 20
 };
 
-// Specific food overrides
-const SPECIFIC_PORTIONS: Record<string, number> = {
-  // Proteins
-  'salmon': 150,
-  'chicken': 120,
-  'beef': 150,
-  'pork': 130,
-  'egg': 50,
-  'tofu': 100,
-  
-  // Vegetables  
-  'asparagus': 85,
-  'broccoli': 90,
-  'salad': 90,
-  'tomato': 80,
-  'carrot': 70,
-  'spinach': 60,
-  
-  // Fruits
-  'lemon': 15,
-  'apple': 180,
-  'banana': 120,
-  'orange': 150,
-  
-  // Grains
-  'rice': 150,
-  'pasta': 140,
-  'bread': 30,
-  'potato': 150,
-  
-  // Dairy
-  'cheese': 30,
-  'yogurt': 120,
-  'milk': 250
+// Portion defaults v2 - improved defaults with hints
+const DEFAULT_PORTIONS_G: Record<string, number> = {
+  salmon: 160,            // 140–180g typical fillet; we pick 160g
+  asparagus: 85,          // ~7 spears * 12g = 84g
+  salad: 120,             // side salad
+  tomato: 80,             // medium chopped/sliced
+  lemon: 30,              // 1–2 wedges
+  lime: 25,
+  chicken: 120,
+  beef: 150,
+  pork: 130,
+  egg: 50,
+  tofu: 100,
+  broccoli: 90,
+  carrot: 70,
+  spinach: 60,
+  apple: 180,
+  banana: 120,
+  orange: 150,
+  rice: 150,
+  pasta: 140,
+  bread: 30,
+  potato: 150,
+  cheese: 30,
+  yogurt: 120,
+  milk: 250
 };
+
+// Parse hints for portion adjustments
+function fromHints(name: string, hint?: string): number | undefined {
+  if (!hint) return;
+  
+  const mSpears = hint.match(/(\d+)\s*(spears?)/i);
+  if (mSpears && name === 'asparagus') return Number(mSpears[1]) * 12;
+  
+  const mFillet = /fillet|filet/i.test(hint) && name === 'salmon' ? 160 : undefined;
+  return mFillet;
+}
 
 function parsePortionHint(hint: string | null, baseGrams: number): PortionResult {
   if (!hint) return { grams: baseGrams, source: 'est' };
@@ -92,11 +95,18 @@ function parsePortionHint(hint: string | null, baseGrams: number): PortionResult
 }
 
 export function estimatePortion(name: string, category: string, hint: string | null): PortionResult {
-  // Check for specific food first
-  const specific = SPECIFIC_PORTIONS[name.toLowerCase()];
+  // Try hint parsing first
+  const hintGrams = fromHints(name, hint || '');
+  if (hintGrams) {
+    console.info('[ROUTER][portion:applied]', `name=${name}`, `grams=${hintGrams}`, `source=hint`);
+    return { grams: hintGrams, source: 'hint-parsed' };
+  }
+  
+  // Check for specific food defaults
+  const specific = DEFAULT_PORTIONS_G[name.toLowerCase()];
   const baseGrams = specific || CATEGORY_PORTIONS[category] || 100;
   
-  // Parse hint for adjustments
+  // Parse hint for size adjustments
   const result = parsePortionHint(hint, baseGrams);
   
   // Round to sensible steps (5g increments for small portions, 10g for larger)
@@ -104,7 +114,10 @@ export function estimatePortion(name: string, category: string, hint: string | n
     Math.round(result.grams / 5) * 5 : 
     Math.round(result.grams / 10) * 10;
   
-  return { ...result, grams: Math.max(rounded, 5) }; // Minimum 5g
+  const finalGrams = Math.max(rounded, 5); // Minimum 5g
+  console.info('[ROUTER][portion:applied]', `name=${name}`, `grams=${finalGrams}`, `source=${result.source}`);
+  
+  return { ...result, grams: finalGrams };
 }
 
 export async function checkUserDefaults(name: string): Promise<number | null> {

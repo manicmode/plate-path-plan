@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { image_base64 } = await req.json();
+    const { image_base64, system_prompt, user_prompt } = await req.json();
     
     if (!image_base64) {
       throw new Error('image_base64 is required');
@@ -25,47 +25,47 @@ serve(async (req) => {
 
     console.log('[GPT-V2] Starting food detection with structured output...');
 
-    // Enhanced system prompt for structured food detection
-    const systemPrompt = `You are a nutrition vision assistant. Identify edible food items visible on the plate(s).
+    // Use prompts from client or fallback to defaults
+    const systemPrompt = system_prompt || `You are a nutrition vision assistant. You must output JSON only. Prioritize the MAIN EATABLE FOODS on the plate.
 
-Rules:
-- Never include containers or table settings (plate, bowl, dish, tray, table, tableware, cutlery, fork, knife, spoon, chopsticks, napkin, placemat, glass, cup)
-- Use generic food names only (no brands, no SKUs)  
-- Prefer specific mains/proteins (e.g., "grilled salmon", "chicken breast")
-- Include obvious meal components: protein, vegetables, carbs, fruits, fats
-- Avoid condiments unless they dominate the plate
-- For mixed salad, return "salad" as a single item (not lettuce/tomato separately) unless a single veg clearly dominates
-- If unsure about an item, omit it
+Ranking importance (keep at most 6 items total):
+1) Protein (fish, meat, eggs, tofu) – MUST include if present.
+2) Starches/grains.
+3) Vegetables (e.g., asparagus).
+4) Fruits (but avoid listing variants of the same fruit).
+5) Sauces/condiments (only if clearly visible as food).
+6) Garnishes (only if substantial).
+
+CITRUS RULE:
+- Collapse citrus synonyms. If you see lemon-ish items, output just "lemon". If lime-ish, output just "lime". Never output meyer lemon, sweet lemon, key lime, persian lime, etc. (map them to lemon or lime).
+- Never include more than ONE citrus item. If both clearly appear, prefer the one that's dominant (by color: yellow→lemon, green→lime).
+
+PROTEIN BIAS:
+- If there is a seared orange/pink fish fillet with grill marks or a typical salmon presentation with dill/lemon, choose "salmon". If uncertain between salmon and trout, prefer "salmon".
+
+NON-FOOD REJECTION:
+- Reject tableware, plate, fork, knife, napkin, mist, haze, text, brand names, reflections, backgrounds.
 
 Categories: protein, vegetable, fruit, grain, dairy, fat_oil, sauce_condiment
 
-REJECT these words completely: plate, dish, bowl, cup, glass, cutlery, fork, knife, spoon, table, napkin, packaging, label, can, jar, bottle, packet, wrapper, syrup, curd, ketchup, cookie, snack bar, cereal bar, candy
+REJECT these words completely: plate, dish, bowl, cup, glass, cutlery, fork, knife, spoon, table, napkin, packaging, label, can, jar, bottle, packet, wrapper, syrup, curd, ketchup, cookie, snack bar, cereal bar, candy, tableware, haze, mist, text, brand, logo
 
-Return strict JSON only:
-{
-  "items": [
-    {
-      "name": "string-lowercase", 
-      "category": "protein|vegetable|fruit|grain|dairy|fat_oil|sauce_condiment",
-      "confidence": 0.0_to_1.0,
-      "portion_hint": "string|null"
-    }
-  ]
-}
+OUTPUT SHAPE:
+[
+  {"name":"salmon","category":"protein","confidence":0.0_to_1.0,"portionHint":"optional natural phrase like '1 fillet' or '~6 spears'"},
+  ...
+]
+Return 2–6 items maximum.
 
 Example for salmon plate:
-{
-  "items": [
-    {"name": "salmon", "category": "protein", "confidence": 0.95, "portion_hint": "palm-sized filet"},
-    {"name": "asparagus", "category": "vegetable", "confidence": 0.92, "portion_hint": "~6 spears"},
-    {"name": "salad", "category": "vegetable", "confidence": 0.88, "portion_hint": "side salad"},
-    {"name": "lemon wedge", "category": "fruit", "confidence": 0.8, "portion_hint": "1 wedge"}
-  ]
-}
+[
+  {"name": "salmon", "category": "protein", "confidence": 0.95, "portionHint": "1 fillet"},
+  {"name": "asparagus", "category": "vegetable", "confidence": 0.92, "portionHint": "~6 spears"},
+  {"name": "salad", "category": "vegetable", "confidence": 0.88, "portionHint": "side salad"},
+  {"name": "lemon", "category": "fruit", "confidence": 0.8, "portionHint": "1 wedge"}
+]`;
 
-1-6 items max. No duplicates. No containers. Omit uncertain items.`;
-
-    const userPrompt = "Return strict JSON with detected food items:";
+    const userPrompt = user_prompt || "Return strict JSON with detected food items:";
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -116,7 +116,7 @@ Example for salmon plate:
       });
     }
 
-    // Parse JSON response
+    // Parse JSON response (handle both array and object formats)
     let parsedResult;
     try {
       parsedResult = JSON.parse(content);
@@ -130,16 +130,25 @@ Example for salmon plate:
       });
     }
 
-    const items = parsedResult.items || [];
+    // Handle both array format [...] and object format {items: [...]}
+    const items = Array.isArray(parsedResult) ? parsedResult : (parsedResult.items || []);
     
-    console.log(`[GPT-V2] Detected ${items.length} items:`, items.map(i => i.name));
+    // Normalize portionHint field name (GPT might return either)
+    const normalizedItems = items.map((item: any) => ({
+      name: item.name,
+      category: item.category,
+      confidence: item.confidence,
+      portion_hint: item.portion_hint || item.portionHint || null
+    }));
+    
+    console.log(`[GPT-V2] Detected ${normalizedItems.length} items:`, normalizedItems.map(i => i.name));
 
     return new Response(JSON.stringify({
-      items,
+      items: normalizedItems,
       model: 'gpt-4o',
       _debug: { 
         from: 'gpt-v2', 
-        count: items.length,
+        count: normalizedItems.length,
         raw_tokens: data.usage?.total_tokens || 0
       }
     }), {
