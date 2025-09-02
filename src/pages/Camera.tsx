@@ -2662,6 +2662,17 @@ console.log('Global search enabled:', enableGlobalSearch);
     };
   }, []);
 
+  // iOS Safari dynamic viewport fix
+  useEffect(() => {
+    const setVh = () => {
+      // iOS Safari dynamic viewport fix
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    return () => window.removeEventListener('resize', setVh);
+  }, []);
+
   const handleRetryPhoto = () => {
     resetErrorState();
     if (fileInputRef.current) {
