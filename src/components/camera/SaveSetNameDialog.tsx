@@ -3,47 +3,51 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface SaveSetNameDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string) => void;
-  defaultName?: string;
+  onSave: (name: string) => Promise<void>;
+  initialName?: string;
 }
 
 export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   isOpen,
   onClose,
   onSave,
-  defaultName
+  initialName = ''
 }) => {
-  const [setName, setSetName] = useState(defaultName || generateDefaultName());
+  const navigate = useNavigate();
+  const [setName, setSetName] = useState(initialName);
+  const [isSaving, setIsSaving] = useState(false);
 
-  function generateDefaultName(): string {
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    });
-    const timeStr = now.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-    return `Auto • ${dateStr} ${timeStr}`;
-  }
-
-  const handleSave = () => {
-    if (setName.trim()) {
-      onSave(setName.trim());
-      // Parent component handles success/error and close
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && setName.trim()) {
+      handleSave();
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
+  const handleSave = async () => {
+    if (!setName.trim()) return;
+    
+    try {
+      setIsSaving(true);
+      await onSave(setName.trim());
+      
+      toast.success(`Saved "${setName}" ✓ • View in Saved → Meal Sets`, {
+        action: {
+          label: 'View',
+          onClick: () => navigate('/saved-logs?type=sets')
+        }
+      });
+      onClose();
+    } catch (error) {
+      console.error('Failed to save set:', error);
+      toast.error('Failed to save set');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -69,25 +73,36 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
                 onKeyDown={handleKeyPress}
                 placeholder="Enter a name for this food set..."
                 className="mt-1"
+                disabled={isSaving}
                 autoFocus
               />
             </div>
             
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={onClose} className="flex-1">
-                Cancel
+              <Button
+                onClick={handleSave}
+                disabled={!setName.trim() || isSaving}
+                className="flex-1"
+              >
+                {isSaving ? 'Saving...' : 'Save Set'}
               </Button>
-              <Button onClick={handleSave} className="flex-1" disabled={!setName.trim()}>
-                Save Set
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isSaving}
+                className="flex-1"
+              >
+                Cancel
               </Button>
             </div>
           </div>
-
+          
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-2 top-2"
+            disabled={isSaving}
+            className="absolute right-4 top-4"
           >
             <X className="h-4 w-4" />
           </Button>

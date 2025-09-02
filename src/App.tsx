@@ -1,3 +1,4 @@
+// Clean up App.tsx imports - remove duplicates and organize properly
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
@@ -17,7 +18,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
-
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -49,11 +49,7 @@ import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
 import OnboardingGate from '@/routes/OnboardingGate';
 
-const HealthScanPhotoSheet = React.lazy(() => import('@/pages/HealthScanPhotoSheet'));
-const HealthReportScreen = React.lazy(() => import('@/pages/HealthReportScreen'));
-
-
-// Route wrapper for Home that bypasses lazy loading post-onboarding
+// Core page components
 import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
@@ -66,6 +62,12 @@ const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
+
+// Health Scan components
+const ScanHub = lazy(() => import('@/pages/ScanHub'));
+const HealthScanPhoto = lazy(() => import('@/pages/health-scan/HealthScanPhoto'));
+const HealthReport = lazy(() => import('@/pages/health-scan/HealthReport'));
+const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
@@ -101,8 +103,6 @@ const MyReports = lazy(() => import('@/pages/MyReports'));
 const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-const ScanHub = lazy(() => import('@/pages/ScanHub'));
-const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -310,10 +310,22 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                     
+                    {/* Health Scan Routes - before wildcard */}
+                    <Route path="/health-scan/photo" element={
+                      <ProtectedRoute>
+                        <HealthScanPhoto />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/health-scan/report" element={
+                      <ProtectedRoute>
+                        <HealthReport />
+                      </ProtectedRoute>
+                    } />
+                    
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (
                         <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthScanPhotoSheet />
+                          <HealthScanPhoto />
                         </Suspense>
                       ) : (
                         <div className="min-h-screen flex items-center justify-center bg-background">
@@ -330,7 +342,7 @@ function AppContent() {
                     <Route path="/health-report" element={
                       FF.FEATURE_HEALTH_REPORT_V1 ? (
                         <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthReportScreen />
+                          <HealthReport />
                         </Suspense>
                       ) : (
                         <div className="min-h-screen flex items-center justify-center bg-background">

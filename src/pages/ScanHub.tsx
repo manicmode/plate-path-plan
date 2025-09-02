@@ -187,7 +187,7 @@ export default function ScanHub() {
     logTileClick('photo');
     
     // Navigate to dedicated Health Scan photo capture
-    navigate('/health-scan-photo');
+    navigate('/health-scan/photo');
   };
 
   const handleEnterManually = () => {
