@@ -23,6 +23,8 @@ export interface ReviewItem {
   mapped?: boolean; // Track if nutrition mapping succeeded
   grams?: number; // For logging and saving
   canonicalName?: string; // For mapping
+  portionSource?: 'count' | 'area' | 'base' | 'heuristic';
+  portionRange?: [number, number];
 }
 
 interface ReviewItemsScreenProps {

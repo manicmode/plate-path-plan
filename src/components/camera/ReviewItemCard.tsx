@@ -18,6 +18,17 @@ interface ReviewItemCardProps {
   onOpenWheel?: (itemId: string) => void;
 }
 
+// Helper function to get display label for portion source
+function getPortionSourceLabel(source?: string): string {
+  switch (source) {
+    case 'count': return 'count';
+    case 'area': return 'area';
+    case 'base': return 'est';
+    case 'heuristic': return 'est';
+    default: return 'est';
+  }
+}
+
 export const ReviewItemCard: React.FC<ReviewItemCardProps> = ({
   item,
   canRemove = false,
@@ -72,7 +83,7 @@ export const ReviewItemCard: React.FC<ReviewItemCardProps> = ({
                   className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-1 cursor-pointer hover:bg-emerald-100"
                   onClick={() => onOpenWheel?.(item.id)}
                 >
-                  ≈{item.grams}g • est
+                  ≈{item.grams}g • {getPortionSourceLabel(item.portionSource)}
                 </Badge>
               )}
               {item.needsDetails && (

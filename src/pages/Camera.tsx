@@ -828,7 +828,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             grams: item.grams,
             canonicalName: item.name,
             needsDetails: false,
-            mapped: true
+            mapped: true,
+            portionSource: item.portionSource,
+            portionRange: item.portionRange
           }));
 
           console.log('[CAMERA][DETECT] Generated review items:', reviewItems.length);

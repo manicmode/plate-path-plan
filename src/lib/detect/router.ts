@@ -22,6 +22,8 @@ export interface DetectedItem {
   grams: number;
   confidence: number;
   source: string;
+  portionSource?: 'count' | 'area' | 'base' | 'heuristic';
+  portionRange?: [number, number];
 }
 
 // Reject list for filtering out non-food items
@@ -78,18 +80,8 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
     const processedItems = processGptItems(rawItems);
     console.info('[ROUTER][gpt:canonical]', `count=${processedItems.length}`, `names=[${processedItems.map(i => i.name).join(', ')}]`);
     
-    // Apply portion estimation
-    const itemsWithPortions = await Promise.all(
-      processedItems.map(async item => {
-        const portion = await estimatePortionWithDefaults(item.name, item.category, item.portion_hint);
-        return {
-          name: item.name,
-          grams: portion.grams,
-          confidence: item.confidence,
-          source: 'gpt-v2'
-        };
-      })
-    );
+    // Apply portion estimation (v3 or v2 based on feature flag)
+    const itemsWithPortions = await applyPortionEstimation(processedItems, imageBase64);
     
     // Scene-level guard
     const strictFilters = getBoolean(import.meta.env.VITE_DETECT_STRICT_NONFOOD);
@@ -98,7 +90,6 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
       return [];
     }
     
-    console.info('[PORTION][applied]', `summary=${itemsWithPortions.map(i => `${i.name}:${i.grams}g`).join(', ')}`);
     console.info('[REPORT][V2][GPT]', `items=${itemsWithPortions.length}`, `filtered=${rawItems.length - processedItems.length}`, `grams=${itemsWithPortions.map(i => i.grams).join(',')}`);
     
     return itemsWithPortions;
@@ -285,4 +276,84 @@ async function estimatePortionFromName(name: string): Promise<number> {
   // Import the function dynamically to avoid circular dependencies
   const { estimatePortionFromName: estimate } = await import('@/lib/portionEstimation');
   return estimate(name);
+}
+
+// Apply portion estimation (v3 or v2 based on feature flag)
+async function applyPortionEstimation(
+  processedItems: any[], 
+  imageBase64: string
+): Promise<DetectedItem[]> {
+  const useV3 = getBoolean(import.meta.env.VITE_PORTION_V3);
+  const strictMode = getBoolean(import.meta.env.VITE_PORTION_STRICT);
+  
+  if (!useV3) {
+    // Use v2 estimation (existing behavior)
+    const { estimatePortionWithDefaults } = await import('@/lib/portion/estimate');
+    return Promise.all(
+      processedItems.map(async item => {
+        const portion = await estimatePortionWithDefaults(item.name, item.category, item.portion_hint);
+        return {
+          name: item.name,
+          grams: portion.grams,
+          confidence: item.confidence,
+          source: 'gpt-v2',
+          portionSource: 'heuristic' as const
+        };
+      })
+    );
+  }
+  
+  // Use v3 estimation with plate detection
+  const { detectPlateEllipse } = await import('@/lib/portion/plateDetector');
+  const { estimatePortionV3 } = await import('@/lib/portion/scaler');
+  const { logPlateDetection } = await import('@/lib/portion/log');
+  
+  // Load image for plate detection
+  let plateArea: number | undefined;
+  try {
+    const image = await loadImageFromBase64(imageBase64);
+    const plateResult = detectPlateEllipse(image);
+    plateArea = plateResult.confidence > 0.35 ? plateResult.area : undefined;
+    logPlateDetection(plateArea, plateResult.confidence);
+  } catch (error) {
+    console.warn('[PORTION][V3] Plate detection failed:', error);
+  }
+  
+  // Apply v3 estimation to each item
+  return Promise.all(
+    processedItems.map(async item => {
+      const portionResult = await estimatePortionV3(
+        {
+          name: item.name,
+          cat: item.category,
+          hints: item.portion_hint,
+          // bbox: item.bbox, // TODO: Add when we have bbox from detection
+          // maskArea: item.maskArea // TODO: Add when we have segmentation
+        },
+        {
+          plateArea,
+          mode: strictMode ? 'strict' : 'lenient'
+        }
+      );
+      
+      return {
+        name: item.name,
+        grams: portionResult.grams,
+        confidence: item.confidence,
+        source: 'gpt-v2',
+        portionSource: portionResult.source,
+        portionRange: portionResult.range
+      };
+    })
+  );
+}
+
+// Load image from base64 for plate detection
+async function loadImageFromBase64(base64: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+  });
 }
