@@ -68,6 +68,16 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
         throw new Error('Camera not supported in this browser');
       }
 
+      // Ensure video element exists
+      if (!videoRef.current) {
+        console.error('🎥 Video element not found in DOM');
+        setDebugInfo('Error: Video element not found');
+        throw new Error('Video element not found');
+      }
+
+      console.log('🎥 Video element found:', videoRef.current);
+      setDebugInfo('Video element found, requesting stream...');
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -84,33 +94,30 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       
       streamRef.current = stream;
       
-      if (videoRef.current) {
-        console.log('🎥 Setting video srcObject...');
-        videoRef.current.srcObject = stream;
-        setDebugInfo('Video element connected to stream...');
-        
-        // Wait for video to load metadata
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          console.log('🎥 Video metadata loaded');
-          console.log('🎥 Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-          setDebugInfo(`Video loaded: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-        });
-        
-        // Ensure video plays
-        try {
-          await videoRef.current.play();
-          console.log('🎥 Video playing successfully');
-          setDebugInfo('Camera is now active');
-        } catch (playError) {
-          console.log('🎥 Video play failed:', playError);
-          setDebugInfo('Video play failed, but might still work');
-        }
-      } else {
-        console.error('🎥 Video ref is null');
-        setDebugInfo('Error: Video element not found');
+      console.log('🎥 Setting video srcObject...');
+      videoRef.current.srcObject = stream;
+      setDebugInfo('Video element connected to stream...');
+      
+      // Set permission to true AFTER successful setup
+      setHasPermission(true);
+      
+      // Wait for video to load metadata
+      videoRef.current.addEventListener('loadedmetadata', () => {
+        console.log('🎥 Video metadata loaded');
+        console.log('🎥 Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+        setDebugInfo(`Video loaded: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
+      });
+      
+      // Ensure video plays
+      try {
+        await videoRef.current.play();
+        console.log('🎥 Video playing successfully');
+        setDebugInfo('Camera is now active');
+      } catch (playError) {
+        console.log('🎥 Video play failed:', playError);
+        setDebugInfo('Video play failed, but might still work');
       }
       
-      setHasPermission(true);
     } catch (error) {
       console.error('🎥 Camera access denied:', error);
       setDebugInfo(`Camera error: ${(error as Error).message}`);
@@ -258,34 +265,33 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             
             {/* Camera View - Fixed z-index and positioning */}
             <div className="absolute inset-0 bg-black">
-              {hasPermission === true && (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover z-10"
-                  style={{ 
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%'
-                  }}
-                  onLoadedMetadata={() => {
-                    console.log('🎥 Video loaded metadata:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-                    setDebugInfo(`Video active: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-                  }}
-                  onError={(e) => {
-                    console.error('🎥 Video error:', e);
-                    setDebugInfo('Video element error');
-                  }}
-                  onCanPlay={() => {
-                    console.log('🎥 Video can play');
-                    setDebugInfo('Video ready to play');
-                  }}
-                />
-              )}
+              {/* Video element always rendered but conditionally visible */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover z-10 ${hasPermission === true ? 'opacity-100' : 'opacity-0'}`}
+                style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%'
+                }}
+                onLoadedMetadata={() => {
+                  console.log('🎥 Video loaded metadata:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+                  setDebugInfo(`Video active: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
+                }}
+                onError={(e) => {
+                  console.error('🎥 Video error:', e);
+                  setDebugInfo('Video element error');
+                }}
+                onCanPlay={() => {
+                  console.log('🎥 Video can play');
+                  setDebugInfo('Video ready to play');
+                }}
+              />
               
               {hasPermission === null && (
                 <div className="absolute inset-0 flex items-center justify-center z-20 bg-black">
