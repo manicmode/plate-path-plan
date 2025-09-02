@@ -765,27 +765,50 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           }
         }
         
-        // STEP 2: Only reach here if NOT a barcode - proceed with LYF v1 food detection
-        console.log('=== LYF V1 FOOD DETECTION PATH ===');
-        console.log('Image does not appear to be a barcode, proceeding with LYF v1 food detection...');
+        // STEP 2: Only reach here if NOT a barcode - proceed with detection router
+        console.log('=== DETECTION ROUTER PATH ===');
+        console.log('Image does not appear to be a barcode, proceeding with detection...');
         
-        // Force LYF onto frozen v1 pipeline exclusively
+        // Use the unified detection router
         const imageBase64 = convertToBase64(selectedImage);
-        setProcessingStep('Analyzing food with LYF v1...');
+        setProcessingStep('Detecting food items...');
         setIsAnalyzing(true);
         
         try {
-          console.info('[LYF][v1] path active');
-          setProcessingStep('Detecting food items...');
+          const { getDetectMode, detectWithGpt, detectWithVision, detectWithLyfV1Vision } = await import('@/lib/detect/router');
           
-          // === LYF v1 FROZEN PIPELINE ONLY ===
-          const { mappedFoodItems: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
-          console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
+          const mode = getDetectMode();
+          console.info('[DETECT][mode]', mode);
           
-          // Don't post-filter - pipeline already filtered appropriately
-          const items = rawItems ?? [];
+          let items = [];
           
-          console.info('[LYF][v1] final:', items.map(i => i.canonicalName || i.vision || i.name));
+          switch (mode) {
+            case 'GPT_ONLY':
+              items = await detectWithGpt(imageBase64);
+              break;
+              
+            case 'GPT_FIRST':
+              try {
+                items = await detectWithGpt(imageBase64);
+                if (!items?.length) {
+                  console.warn('[DETECT] GPT empty, fallback to Vision');
+                  console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+                  items = await detectWithVision(imageBase64);
+                }
+              } catch (e) {
+                console.warn('[DETECT] GPT error, fallback', e);
+                console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+                items = await detectWithVision(imageBase64);
+              }
+              break;
+              
+            case 'VISION_ONLY':
+            default:
+              items = await detectWithLyfV1Vision(imageBase64);
+              break;
+          }
+          
+          console.log('[CAMERA][DETECT] items_detected=', items.length, { mode });
           
           if (items.length === 0) {
             // No foods detected - show toast and don't render any legacy panel
@@ -796,25 +819,25 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
           // Transform to ReviewItem format for the new UI
           const reviewItems: ReviewItem[] = items.map((item: any, index: number) => ({
-            id: `lyf-${index}`,
-            name: item.canonicalName || item.vision || item.name,
-            portion: `${item.grams || 100}g`,
+            id: `detect-${index}`,
+            name: item.name,
+            portion: `${item.grams}g`,
             selected: true,
-            grams: item.grams || 100,
-            canonicalName: item.canonicalName,
-            needsDetails: !item.mapped,
-            mapped: item.mapped
+            grams: item.grams,
+            canonicalName: item.name,
+            needsDetails: false,
+            mapped: true
           }));
 
-          console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
-          console.info('[LYF][ui] review_opened items=', reviewItems.length);
+          console.log('[CAMERA][DETECT] Generated review items:', reviewItems.length);
+          console.info('[REVIEW][mode]', mode, 'count=', reviewItems.length);
           
           // Open review screen with atomic handoff
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
-          setInputSource('photo'); // Flag for LYF source
+          setInputSource('photo'); // Flag for detection source
         } catch (error) {
-          console.error('LYF v1 food detection failed:', error);
+          console.error('Detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
         } finally {
           setIsAnalyzing(false);

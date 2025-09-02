@@ -17,5 +17,6 @@ export const FF = {
   FEATURE_NUMBER_WHEEL_PICKERS: true, // Enable roller number pickers with haptics
   FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev debug mode for LYF v1
   FEATURE_ONE_TAP_LOG: true, // One-tap logging functionality
-  FEATURE_USE_GPT_FIRST: (import.meta.env.VITE_USE_GPT_FIRST ?? 'false') === 'true' // GPT-first detection with Vision fallback
+  FEATURE_USE_GPT_FIRST: (import.meta.env.VITE_FEATURE_USE_GPT_FIRST ?? 'false') === 'true', // GPT-first detection with Vision fallback
+  FEATURE_USE_GPT_ONLY: (import.meta.env.VITE_FEATURE_USE_GPT_ONLY ?? 'false') === 'true' // GPT-only detection (no Vision fallback)
 } as const;

@@ -75,29 +75,49 @@ export async function analyzePhoto(
     
     const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    // ✅ GPT-First Detection with Vision fallback
-    const { detectAndFuseFoods } = await import('@/detect/detectAndFuse');
+    // ✅ Single Detection Router
+    const { getDetectMode, detectWithGpt, detectWithVision, detectWithLyfV1Vision } = await import('@/lib/detect/router');
     
-    console.log('[PHOTO][GPT-FIRST] Starting detection with feature flag enabled...');
-    const detectionResult = await detectAndFuseFoods(base64, { useEnsemble: true });
+    const mode = getDetectMode();
+    console.info('[DETECT][mode]', mode);
     
-    const items = detectionResult.portions.map(portion => ({
-      name: portion.name,
-      grams: portion.grams_est,
-      confidence: portion.confidence === 'high' ? 0.9 : portion.confidence === 'medium' ? 0.7 : 0.5,
-      source: portion.source
-    }));
+    let items = [];
     
-    console.log('[PHOTO][GPT-FIRST] Detection path:', detectionResult.detectionPath);
-    console.log('[PHOTO][GPT-FIRST] items_detected=', items.length, detectionResult._debug);
+    switch (mode) {
+      case 'GPT_ONLY':
+        items = await detectWithGpt(base64);
+        break;
+        
+      case 'GPT_FIRST':
+        try {
+          items = await detectWithGpt(base64);
+          if (!items?.length) {
+            console.warn('[DETECT] GPT empty, fallback to Vision');
+            console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+            items = await detectWithVision(base64);
+          }
+        } catch (e) {
+          console.warn('[DETECT] GPT error, fallback', e);
+          console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+          items = await detectWithVision(base64);
+        }
+        break;
+        
+      case 'VISION_ONLY':
+      default:
+        items = await detectWithLyfV1Vision(base64);
+        break;
+    }
+    
+    console.log('[PHOTO][DETECT] items_detected=', items.length, { mode });
 
     return { 
       ok: true, 
       report: {
         items,
-        detectionPath: detectionResult.detectionPath,
-        source: 'gpt-first-detector',
-        _debug: detectionResult._debug
+        detectionPath: mode,
+        source: 'detect-router',
+        mode
       }
     };
 
