@@ -6,13 +6,13 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const { items, _debug } = await analyzeLyfV1(supabase, base64);
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] candidates_in:', items.length);
+    console.info('[LYF][v1] raw:', items.map(i => i.name));
   }
   
   const candidates = [...items].filter(i=>i?.name && looksFoodish(i.name)).sort(rankSource);
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] kept:', candidates.length, '| filtered_junk:', items.length - candidates.length);
+    console.info('[LYF][v1] keep:', candidates.map(i => i.name));
   }
   
   // Dedupe by canonical name before mapping
@@ -29,7 +29,7 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     console.info('[LYF][v1] dedup_heads:', dedupedCandidates.map(c => c.canonicalName));
   }
   
-  // Try to map all candidates, keep unmapped items too
+  // NEVER DROP unmapped items - include all candidates that pass filters
   const results: any[] = [];
   let mapped = 0, unmapped = 0;
   
@@ -46,13 +46,14 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
       });
       mapped++;
     } else {
-      // Keep unmapped items - user can edit them
+      // KEEP unmapped items - user can edit them in review modal
       results.push({ 
         vision: c.name, 
         canonicalName: c.canonicalName,
         hit: null, 
         source: c.source, 
         mapped: false,
+        needsDetails: true,
         grams: getDefaultGrams(c.canonicalName)
       });
       unmapped++;

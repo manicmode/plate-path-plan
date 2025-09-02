@@ -41,7 +41,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
-import { analyzePhotoForLyfV1Legacy } from '@/lyf_v1_frozen/adapter';
+import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
@@ -779,33 +779,32 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setProcessingStep('Detecting food items...');
           
           // === LYF v1 COMPATIBLE PATH ===
-          const { items } = await analyzePhotoForLyfV1Legacy(imageBase64)
+          const { mapped } = await analyzePhotoForLyfV1(supabase, imageBase64);
           
           // Verification hooks - dev only logging
           if (import.meta.env.DEV) {
-            console.info('[LYF][v1] ensemble enabled=', FF.FEATURE_LYF_ENSEMBLE)
-            console.info('[LYF][v1] detections=', items.map(r => `${r.name}:${r.grams ?? 100}g`))
+            console.info('[LYF][v1] ensemble enabled=', FF.FEATURE_LYF_ENSEMBLE);
           }
           
           // Guard for no detections
-          if (!items || items.length === 0) {
+          if (!mapped || mapped.length === 0) {
             toast.error('No foods detected. Try a clearer photo.');
             setIsMultiAILoading(false);
             return;
           }
           
-          // Map into ReviewItems model with portions
-          const reviewItemsData = items.map((it, idx) => ({
+          // Map into ReviewItems model with portions - include ALL candidates
+          const reviewItemsData = mapped.map((it, idx) => ({
             id: `ri-${idx}`,
-            name: titleCase(it.name),
-            portion: `${it.grams ?? guessDefaultGrams(it.name)}g`,
+            name: titleCase(it.canonicalName || it.vision),
+            portion: `${it.grams || guessDefaultGrams(it.canonicalName || it.vision)}g`,
             selected: false, // Start with nothing preselected - user must choose
-            grams: it.grams ?? guessDefaultGrams(it.name),
-            confidencePct: Math.round((it.confidence ?? 0.5) * 100),
-            source: it.source,
-            mapped: it.mapped ?? true, // Track if nutrition mapping succeeded
-            needsDetails: !(it.mapped ?? true), // Show "Needs details" chip for unmapped items
-          }))
+            grams: it.grams || guessDefaultGrams(it.canonicalName || it.vision),
+            confidencePct: Math.round((it.hit?.confidence || 0.5) * 100),
+            source: it.source || 'vision',
+            mapped: it.mapped !== false, // Track if nutrition mapping succeeded
+            needsDetails: it.mapped === false, // Show "Needs details" chip for unmapped items
+          }));
           
           // Always open review screen - never auto-confirm from photos
           setReviewItems(reviewItemsData);
@@ -815,7 +814,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           // Dev logging
           if (import.meta.env.DEV) {
             console.info('[LYF][v1] items=' + reviewItemsData.length + ' reviewOpen=true selected=0');
-            console.info('[LYF][ui] review_opened');
+            console.info('[LYF][ui] review_open', { 
+              count: reviewItemsData.length, 
+              names: reviewItemsData.map(i => i.name) 
+            });
           }
           
         } catch (error) {

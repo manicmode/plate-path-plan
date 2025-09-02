@@ -4,6 +4,25 @@ const sim  = (a:string,b:string)=>{const A=new Set(norm(a).split(' ')),B=new Set
 // Replace with your existing resolver import
 import { searchFoodByName } from '@/lib/foodSearch'; 
 
+// Canonicalize common variants before mapping
+function canonicalize(n: string): string {
+  n = n.toLowerCase().trim();
+  n = n.replace(/\b(cherry\s+)?tomatoes?\b/g, "cherry tomato");
+  n = n.replace(/\b(lemon\s+(slice|wedge|slices|wedges))\b/g, "lemon");
+  n = n.replace(/\basparagus(\s+spears?)?\b/g, "asparagus");
+  n = n.replace(/\bsalmon(\s+(fillet|filet|steak))?\b/g, "salmon");
+  return n;
+}
+
+// Similarity thresholds - lower for veg/fruit
+const BASE_SIM = 0.60;
+const VEG_FRUIT_SIM = 0.40; // asparagus, tomato, lemon
+
+function simThresholdFor(name: string): number {
+  const n = name.toLowerCase();
+  return /\b(asparagus|tomato|lemon)\b/.test(n) ? VEG_FRUIT_SIM : BASE_SIM;
+}
+
 export async function mapVisionNameToFood(name: string) {
   // Safety net: skip mapping for generic terms
   const genericTerms = ['food', 'tableware', 'dish', 'meal', 'cuisine', 'ingredient'];
@@ -14,14 +33,20 @@ export async function mapVisionNameToFood(name: string) {
     return null;
   }
 
-  const res = await searchFoodByName(name);
+  // Canonicalize before mapping
+  const canonicalName = canonicalize(name);
+  const threshold = simThresholdFor(canonicalName);
+
+  const res = await searchFoodByName(canonicalName);
   if (res?.length) {
-    res.sort((x:any,y:any)=> sim(name,x.name)>sim(name,y.name)?-1:1);
-    if (sim(name, res[0].name) >= 0.45) return res[0];
+    res.sort((x:any,y:any)=> sim(canonicalName,x.name)>sim(canonicalName,y.name)?-1:1);
+    if (sim(canonicalName, res[0].name) >= threshold) {
+      return res[0];
+    }
   }
   
   // Improved specific mapping for common items
-  const normalized = norm(name);
+  const normalized = norm(canonicalName);
   
   // Protein mappings
   if (normalized.includes('salmon') || normalized.includes('fish')) {
