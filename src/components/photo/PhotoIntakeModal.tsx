@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Camera, Upload, X, Flashlight, FlashlightOff, RotateCcw, Loader2 } from 'lucide-react';
+import { Camera, Upload, X, Flashlight, FlashlightOff, RotateCcw, Loader2, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { lightTap } from '@/lib/haptics';
 
 interface PhotoIntakeModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [showCaptureFlash, setShowCaptureFlash] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize camera when modal opens - with better timing
   useEffect(() => {
@@ -153,12 +156,43 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
     }
   };
 
+  const playShutterSound = () => {
+    try {
+      // Create a short beep sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+      console.log('Audio not available');
+    }
+  };
+
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current || isCapturing) return;
 
     setIsCapturing(true);
     
     try {
+      // Capture effects
+      lightTap(); // Haptic feedback
+      playShutterSound(); // Camera sound
+      
+      // Screen flash effect
+      setShowCaptureFlash(true);
+      setTimeout(() => setShowCaptureFlash(false), 200);
+      
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
@@ -177,21 +211,32 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       // Draw video frame to canvas
       ctx.drawImage(video, 0, 0);
       
-      // Convert to blob and immediately call onImageReady
-      canvas.toBlob((blob) => {
-        if (blob) {
-          console.log('📸 Photo captured successfully, size:', blob.size);
-          onImageReady(blob);
-        } else {
-          throw new Error('Failed to create image blob');
-        }
-      }, 'image/jpeg', 0.9);
+      // Short delay to show freeze effect
+      setTimeout(() => {
+        setIsProcessing(true);
+        setIsCapturing(false);
+        
+        // Convert to blob and call onImageReady after processing animation
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log('📸 Photo captured successfully, size:', blob.size);
+            
+            // Add processing delay for fun animation
+            setTimeout(() => {
+              setIsProcessing(false);
+              onImageReady(blob);
+            }, 2000);
+          } else {
+            throw new Error('Failed to create image blob');
+          }
+        }, 'image/jpeg', 0.9);
+      }, 500);
       
     } catch (error) {
       console.error('Photo capture failed:', error);
       toast.error('Failed to capture photo');
-    } finally {
       setIsCapturing(false);
+      setIsProcessing(false);
     }
   };
 
@@ -270,7 +315,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
 
           {/* Header Banner - Transparent overlay */}
           <div className="relative z-20 p-4">
-            <div className="mx-4 mt-8 mb-4 bg-neutral-800/90 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between">
+            <div className="mx-4 mt-4 mb-4 bg-neutral-800/90 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <Dialog.Title className="text-white text-lg font-semibold">{config.title}</Dialog.Title>
                 <Dialog.Description className="text-emerald-400 text-sm mt-1">{config.subtitle}</Dialog.Description>
@@ -287,10 +332,37 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           </div>
 
           {/* Corner Guides */}
-          <div className="absolute top-32 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
-          <div className="absolute top-32 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-28 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-28 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
           <div className="absolute bottom-40 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
           <div className="absolute bottom-40 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
+
+          {/* Capture Flash Overlay */}
+          {showCaptureFlash && (
+            <div className="absolute inset-0 bg-white z-40 animate-pulse" 
+                 style={{ animationDuration: '0.2s', animationIterationCount: 1 }} />
+          )}
+
+          {/* Processing Animation Overlay */}
+          {isProcessing && (
+            <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
+              <div className="text-white text-center">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-20 w-20 border-4 border-emerald-400/30 border-t-emerald-400 mx-auto mb-6" />
+                  <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-emerald-400 animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xl font-bold">Analyzing your photo...</p>
+                  <p className="text-emerald-400 text-sm animate-pulse">🔍 Detecting food items</p>
+                  <div className="flex items-center justify-center gap-1 mt-4">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Loading/Error States */}
           {hasPermission === null && (
@@ -348,12 +420,20 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
               <Button
                 size="lg"
                 onClick={capturePhoto}
-                disabled={!hasPermission || isCapturing}
-                className="bg-white text-black hover:bg-white/90 h-16 w-16 rounded-full p-0 shadow-lg"
+                disabled={!hasPermission || isCapturing || isProcessing}
+                className={`h-16 w-16 rounded-full p-0 shadow-lg transition-all duration-200 ${
+                  isCapturing || isProcessing 
+                    ? 'bg-emerald-500 text-white animate-pulse' 
+                    : 'bg-white text-black hover:bg-white/90 hover:scale-110'
+                }`}
                 title="Take photo"
               >
                 {isCapturing ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <div className="flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                ) : isProcessing ? (
+                  <Zap className="h-8 w-8 animate-pulse" />
                 ) : (
                   <Camera className="h-8 w-8" />
                 )}
