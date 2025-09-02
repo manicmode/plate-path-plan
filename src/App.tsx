@@ -50,6 +50,9 @@ import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
 import OnboardingGate from '@/routes/OnboardingGate';
 
+const HealthScanPhotoSheet = React.lazy(() => import('@/pages/HealthScanPhotoSheet'));
+const HealthReportScreen = React.lazy(() => import('@/pages/HealthReportScreen'));
+
 
 // Route wrapper for Home that bypasses lazy loading post-onboarding
 import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
@@ -135,7 +138,7 @@ const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
 const RecentScans = lazy(() => import('@/pages/RecentScans'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
 const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
-const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
+const HealthReportStandalone = lazy(() => import('@/components/StandaloneHealthReport').then(module => ({ default: module.StandaloneHealthReport })));
 const StandaloneReportTest = lazy(() => import('@/pages/StandaloneReportTest'));
 // Voice Agent - New realtime voice system
 const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
@@ -599,7 +602,41 @@ function AppContent() {
                                    <HealthReportStandalone />
                                  </Suspense>
                                } />
-                                <Route path="/health-report/analyze" element={
+                               <Route path="/health-scan-photo" element={
+                                 FF.FEATURE_HEALTH_SCAN_PHOTO ? (
+                                   <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                                     <HealthScanPhotoSheet />
+                                   </Suspense>
+                                 ) : (
+                                   <div className="min-h-screen flex items-center justify-center bg-background">
+                                     <div className="text-center p-8">
+                                       <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
+                                       <p className="text-muted-foreground mb-6">
+                                         Health Scan photo capture is not currently available.
+                                       </p>
+                                       <Button onClick={() => window.history.back()}>Go Back</Button>
+                                     </div>
+                                   </div>
+                                 )
+                               } />
+                               <Route path="/health-report" element={
+                                 FF.FEATURE_HEALTH_REPORT_V1 ? (
+                                   <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                                     <HealthReportScreen />
+                                   </Suspense>
+                                 ) : (
+                                   <div className="min-h-screen flex items-center justify-center bg-background">
+                                     <div className="text-center p-8">
+                                       <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
+                                       <p className="text-muted-foreground mb-6">
+                                         Health Report is not currently available.
+                                       </p>
+                                       <Button onClick={() => window.history.back()}>Go Back</Button>
+                                     </div>
+                                   </div>
+                                 )
+                                } />
+                                 <Route path="/health-report/analyze" element={
                                   FF.FEATURE_HEALTH_SCAN_PHOTO ? (
                                     <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
                                       <HealthReportStandalone />
@@ -618,11 +655,8 @@ function AppContent() {
                                     </div>
                                   )
                                 } />
-                             
-                               {/* Legacy health-report redirect to scan hub */}
-                               <Route path="/health-report" element={<Navigate to="/scan" replace />} />
-                               
-                {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
+                              
+                                {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
                 <Route path="/scan/not-found" element={
                   <>
                      {import.meta.env.DEV && console.debug('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}

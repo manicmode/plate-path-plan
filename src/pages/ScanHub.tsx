@@ -186,14 +186,8 @@ export default function ScanHub() {
   const handleTakePhoto = () => {
     logTileClick('photo');
     
-    // Navigate directly to Camera page with LYF v1 mode
-    navigate('/camera', { 
-      state: { 
-        source: 'health-scan', 
-        lyfMode: 'v1',
-        autoStart: true 
-      } 
-    });
+    // Navigate to dedicated Health Scan photo capture
+    navigate('/health-scan-photo');
   };
 
   const handleEnterManually = () => {

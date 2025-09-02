@@ -33,6 +33,7 @@ interface ReviewItemsScreenProps {
   onNext: (selectedItems: ReviewItem[]) => void;
   onLogImmediately?: (selectedItems: ReviewItem[]) => void; // One-tap logging
   items: ReviewItem[];
+  prefilledItems?: ReviewItem[]; // For prefilling from health report
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -40,7 +41,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onClose,
   onNext,
   onLogImmediately,
-  items: initialItems
+  items: initialItems,
+  prefilledItems
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -50,13 +52,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Atomic handoff - update items when props change
-  React.useEffect(() => {
-    console.log('ReviewItemsScreen received items:', initialItems);
-    if (Array.isArray(initialItems) && initialItems.length > 0) {
-      setItems(initialItems);
+  // Initialize items when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const itemsToUse = prefilledItems || initialItems;
+      console.log('[REVIEW] Initializing with items:', itemsToUse.length, prefilledItems ? '(prefilled)' : '(detected)');
+      setItems(itemsToUse.map(item => ({ ...item, selected: true })));
     }
-  }, [initialItems]);
+  }, [isOpen, initialItems, prefilledItems]);
   
   // Auto-open when items are set
   React.useEffect(() => {
