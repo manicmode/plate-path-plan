@@ -128,11 +128,11 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
 
   const contextConfig = {
     log: {
-      title: 'Log by Photo',
+      title: '📸 Photo Logging',
       subtitle: 'Take a photo of your meal or upload from gallery'
     },
     health: {
-      title: 'Health Scan Photo',
+      title: '🔍 Photo Health Analyzer',
       subtitle: 'Take a photo of brand product or meal for health report'
     }
   };
@@ -165,63 +165,66 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/90 z-50" />
-        <Dialog.Content className="fixed inset-0 bg-neutral-900 text-neutral-100 z-50">
-          {/* Header */}
-          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-black/50">
-            <div>
-              <Dialog.Title className="text-white text-lg font-semibold">{config.title}</Dialog.Title>
-              <Dialog.Description className="text-white/70 text-sm">{config.subtitle}</Dialog.Description>
+        <Dialog.Overlay className="fixed inset-0 bg-black z-50" />
+        <Dialog.Content className="fixed inset-0 bg-black text-white z-50 flex flex-col">
+          {/* Header Banner */}
+          <div className="relative z-20 p-4">
+            <div className="mx-4 mt-8 mb-4 bg-neutral-800/90 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <Dialog.Title className="text-white text-lg font-semibold">{config.title}</Dialog.Title>
+                <Dialog.Description className="text-emerald-400 text-sm mt-1">{config.subtitle}</Dialog.Description>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="text-white hover:bg-red-500/20 bg-red-500/80 hover:bg-red-500 h-10 w-10 rounded-full p-0"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-white hover:bg-white/20 bg-red-500/80 hover:bg-red-500"
-            >
-              <X className="h-5 w-5" />
-            </Button>
           </div>
 
-          {/* Camera Frame Guides */}
-          <div className="absolute inset-4 top-16 bottom-32 pointer-events-none z-10">
-            <div className="relative w-full h-full">
-              {/* Corner guides */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-white/60" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-white/60" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-l-2 border-b-2 border-white/60" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-r-2 border-b-2 border-white/60" />
-            </div>
+          {/* Camera View Container */}
+          <div className="flex-1 relative">
+            {/* Top Corner Guides */}
+            <div className="absolute top-8 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-10" />
+            <div className="absolute top-8 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-10" />
             
+            {/* Camera View */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {hasPermission && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+              )}
+              
+              {hasPermission === null && (
+                <div className="text-white text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                  <p>Initializing camera...</p>
+                </div>
+              )}
+            </div>
+
             {/* Bottom instruction */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 px-4 py-2 rounded-lg">
-              <p className="text-white text-sm font-medium">
-                {context === 'log' ? 'Position food in the frame' : 'Aim at the Ingredients or Nutrition Facts panel'}
+            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-10">
+              <p className="text-white text-sm font-medium text-center">
+                {context === 'log' ? 'Position food in the frame' : 'Position food in the frame'}
               </p>
-              <p className="text-white/70 text-xs">
+              <p className="text-white/70 text-xs text-center mt-1">
                 Fill the frame • Avoid glare • Keep steady
               </p>
             </div>
-          </div>
 
-          {/* Camera View */}
-          <div className="relative h-full flex items-center justify-center">
-            {hasPermission && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-            )}
-            
-            {hasPermission === null && (
-              <div className="text-white text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p>Initializing camera...</p>
-              </div>
-            )}
+            {/* Bottom Corner Guides */}
+            <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-10" />
+            <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-10" />
           </div>
 
           {/* Controls */}
