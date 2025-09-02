@@ -43,6 +43,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
+import { detectItemsEnsemble } from '@/detect/ensemble';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';

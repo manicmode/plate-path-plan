@@ -36,11 +36,16 @@ export function dedupe(items: { name: string; score?: number; cats?: string[] }[
   return [...byKey.values()];
 }
 
-export function filterByCategory(items: { name: string; score?: number; cats?: string[] }[]) {
+export function filterByCategory(items: { name: string; score?: number; cats?: string[]; category?: string }[]) {
   return items.filter(m => {
-    const isVeg = CANON_VEG.has(m.name);
-    if (isVeg) return true;
-    const ok = (m.score ?? 0) >= 0.62;
-    return ok;
+    const isVeg = CANON_VEG.has(m.name) || m.category === 'veg';
+    if (isVeg) return (m.score ?? 0) >= 0.35; // Lower threshold for veggies
+    
+    // Reject obvious brand/SKU suffixes unless explicitly preserved
+    const hasBrandSuffix = /\b(walmart|kroger|organic|premium|fresh|frozen|canned)\b/i.test(m.name);
+    if (hasBrandSuffix && (m.score ?? 0) < 0.8) return false;
+    
+    // Higher threshold for proteins/starches
+    return (m.score ?? 0) >= 0.62;
   });
 }
