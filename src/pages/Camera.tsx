@@ -779,7 +779,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setProcessingStep('Detecting food items...');
           
           // === LYF v1 FROZEN PIPELINE ONLY ===
-          const { mapped: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
+          const { mappedFoodItems: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
           console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
           
           // Don't post-filter - pipeline already filtered appropriately
@@ -2894,24 +2894,15 @@ console.log('Global search enabled:', enableGlobalSearch);
                     <span className="text-sm font-medium">Manual Entry</span>
                   </Button>
                   
-                  {/* Saved Sets Button */}
-                  <Button
-                    onClick={() => setShowSavedSetsSheet(true)}
-                    className="h-24 w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-                    size="lg"
-                  >
-                    <Save className="h-6 w-6" />
-                    <span className="text-sm font-medium">Saved Sets</span>
-                  </Button>
                   
                   {/* Saved Logs Tab */}
                   <Button
-                    onClick={() => setActiveTab('saved')}
+                    onClick={() => navigate('/saved-logs')}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Save className="h-6 w-6" />
-                    <span className="text-sm font-medium">Saved Logs</span>
+                    <span className="text-sm font-medium">Saved</span>
                   </Button>
                   
                   {/* Recent Logs Tab */}

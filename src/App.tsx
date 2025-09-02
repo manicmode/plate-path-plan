@@ -1,4 +1,3 @@
-
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
@@ -66,6 +65,7 @@ const CoachMain = lazy(() => import('@/pages/CoachMain'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
+const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
 
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
@@ -101,49 +101,8 @@ const MyReports = lazy(() => import('@/pages/MyReports'));
 const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-const BodyScanAI = lazy(() => import('@/pages/BodyScanAI'));
-const SideBodyScan = lazy(() => import('@/pages/SideBodyScan'));
-
-const BackBodyScan = lazy(() => import('@/pages/BackBodyScan'));
-const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
-const BodyScanResult = lazy(() => import('@/pages/BodyScanResult'));
-const BodyScanCompare = lazy(() => import('@/pages/BodyScanCompare'));
-const BodyScanHistory = lazy(() => import('@/pages/BodyScanHistory'));
-const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
-const SynonymsPage = lazy(() => import('@/pages/admin/SynonymsPage'));
-const SearchInsightsPage = lazy(() => import('@/pages/admin/SearchInsightsPage'));
-const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
-const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
-const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
-const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
-const PublicShare = lazy(() => import('@/pages/share/PublicShare'));
-const InfluencerRedirect = lazy(() => import('@/pages/InfluencerRedirect'));
-const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
-const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
-const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
-const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
-const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
-const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
-const DevChallengesPage = lazy(() => import('@/pages/dev/challenges-test'));
-const HabitCentralPage = lazy(() => import('@/pages/HabitCentralV2'));
-const FeatureFlagsPage = lazy(() => import('@/pages/FeatureFlagsPage'));
-const CamPure = lazy(() => import('@/pages/debug/CamPure'));
-const CamPhoto = lazy(() => import('@/pages/debug/CamPhoto'));
-const DebugRoutes = lazy(() => import('@/pages/DebugRoutes'));
-const StandaloneTest = lazy(() => import('@/pages/StandaloneTest'));
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
-const MealCapturePage = lazy(() => import('@/features/meal-capture/components/MealCapturePage'));
-const MealCaptureEntry = lazy(() => import('@/features/meal-capture/routes/Entry'));
-const ScanRecents = lazy(() => import('@/pages/ScanRecents'));
-const RecentScans = lazy(() => import('@/pages/RecentScans'));
-const SavedReports = lazy(() => import('@/pages/SavedReports'));
-const NutritionReport = lazy(() => import('@/pages/NutritionReport'));
-const HealthReportStandalone = lazy(() => import('@/components/StandaloneHealthReport').then(module => ({ default: module.StandaloneHealthReport })));
-const StandaloneReportTest = lazy(() => import('@/pages/StandaloneReportTest'));
-// Voice Agent - New realtime voice system
-const VoiceAgent = lazy(() => import('@/pages/VoiceAgent'));
-// ArenaDebug removed - V1 legacy
-
+const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -247,9 +206,7 @@ function AppContent() {
             <OnboardingGate>
               <Routes>
                 {/* Fullscreen pages without Layout */}
-                <Route path="/s/:shareId" element={<PublicShare />} />
-                <Route path="/shared-routine" element={<SharedRoutine />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/onboarding" element={
                 <ProtectedRoute>
@@ -259,21 +216,6 @@ function AppContent() {
               <Route path="/recovery-player" element={
                 <ProtectedRoute>
                   <RecoveryPlayer />
-                </ProtectedRoute>
-              } />
-              <Route path="/body-scan-ai" element={
-                <ProtectedRoute>
-                  <BodyScanAI />
-                </ProtectedRoute>
-              } />
-              <Route path="/body-scan-side" element={
-                <ProtectedRoute>
-                  <SideBodyScan />
-                </ProtectedRoute>
-              } />
-              <Route path="/body-scan-back" element={
-                <ProtectedRoute>
-                  <BackBodyScan />
                 </ProtectedRoute>
               } />
               
@@ -290,6 +232,11 @@ function AppContent() {
                     <Route path="/camera" element={
                       <ProtectedRoute>
                         <Camera />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/saved-logs" element={
+                      <ProtectedRoute>
+                        <SavedLogs />
                       </ProtectedRoute>
                     } />
                     <Route path="/analytics" element={
@@ -333,46 +280,7 @@ function AppContent() {
                         <ExerciseHub />
                       </ProtectedRoute>
                     } />
-                    <Route path="/exercise/intelligent" element={
-                      <ProtectedRoute>
-                        <IntelligentWorkoutPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/ai-routine-viewer" element={
-                      <ProtectedRoute>
-                        <AIRoutineViewer />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/routine-execution" element={
-                      <ProtectedRoute>
-                        <RoutineExecutionPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/routine-player/:week/:day" element={
-                      <ProtectedRoute>
-                        <RoutinePlayerPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/guided-workout/:week/:day" element={
-                      <ProtectedRoute>
-                        <GuidedWorkoutPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery-center" element={
-                      <ProtectedRoute>
-                        <RecoveryCenter />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/guided-meditation" element={
-                      <ProtectedRoute>
-                        <GuidedMeditation />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/ai-fitness-coach" element={
-                      <ProtectedRoute>
-                        <AIFitnessCoach />
-                      </ProtectedRoute>
-                    } />
+                    
                     <Route path="/profile" element={
                       <ProtectedRoute>
                         <Profile />
@@ -383,302 +291,61 @@ function AppContent() {
                           <GameAndChallengePage_Min />
                         </ProtectedRoute>
                       } />
-                      <Route path="/habit" element={
-                        <ProtectedRoute>
-                          <HabitCentralPage />
-                        </ProtectedRoute>
-                      } />
-                      {/* Voice Agent - New realtime voice system */}
-                      <Route path="/voice-agent" element={
-                        <ProtectedRoute>
-                          <VoiceAgent />
-                        </ProtectedRoute>
-                      } />
-                    <Route path="/supplement-hub" element={
-                      <ProtectedRoute>
-                        <SupplementHub />
-                      </ProtectedRoute>
-                    } />
+                      
                     <Route path="/supplements" element={
                       <ProtectedRoute>
                         <Supplements />
                       </ProtectedRoute>
                     } />
-                    <Route path="/supplements/:slug" element={
-                      <ProtectedRoute>
-                        <SupplementDetail />
-                      </ProtectedRoute>
-                    } />
+                    
                     <Route path="/hydration" element={
                       <ProtectedRoute>
                         <Hydration />
                       </ProtectedRoute>
                     } />
-                    <Route path="/progress/calories" element={
+                    
+                    <Route path="/scan" element={
                       <ProtectedRoute>
-                        <ProgressCalories />
+                        <ScanHub />
                       </ProtectedRoute>
                     } />
-                    <Route path="/progress/protein" element={
-                      <ProtectedRoute>
-                        <ProgressProtein />
-                      </ProtectedRoute>
+                    
+                    <Route path="/health-scan-photo" element={
+                      FF.FEATURE_HEALTH_SCAN_PHOTO ? (
+                        <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                          <HealthScanPhotoSheet />
+                        </Suspense>
+                      ) : (
+                        <div className="min-h-screen flex items-center justify-center bg-background">
+                          <div className="text-center p-8">
+                            <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
+                            <p className="text-muted-foreground mb-6">
+                              Health Scan photo capture is not currently available.
+                            </p>
+                            <Button onClick={() => window.history.back()}>Go Back</Button>
+                          </div>
+                        </div>
+                      )
                     } />
-                    <Route path="/progress/carbs" element={
-                      <ProtectedRoute>
-                        <ProgressCarbs />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/progress/fat" element={
-                      <ProtectedRoute>
-                        <ProgressFat />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/progress/hydration" element={
-                      <ProtectedRoute>
-                        <ProgressHydration />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/progress/supplements" element={
-                      <ProtectedRoute>
-                        <ProgressSupplements />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/my-reports" element={
-                      <ProtectedRoute>
-                        <MyReports />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/report-viewer" element={
-                      <ProtectedRoute>
-                        <ReportViewer />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/body-scan-results" element={
-                      <ProtectedRoute>
-                        <BodyScanResults />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/body-scan-result" element={
-                      <ProtectedRoute>
-                        <BodyScanResult />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/body-scan-compare" element={
-                      <ProtectedRoute>
-                        <BodyScanCompare />
-                      </ProtectedRoute>
+                    <Route path="/health-report" element={
+                      FF.FEATURE_HEALTH_REPORT_V1 ? (
+                        <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+                          <HealthReportScreen />
+                        </Suspense>
+                      ) : (
+                        <div className="min-h-screen flex items-center justify-center bg-background">
+                          <div className="text-center p-8">
+                            <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
+                            <p className="text-muted-foreground mb-6">
+                              Health Report is not currently available.
+                            </p>
+                            <Button onClick={() => window.history.back()}>Go Back</Button>
+                          </div>
+                        </div>
+                      )
                      } />
-                     <Route path="/body-scan-history" element={
-                       <ProtectedRoute>
-                         <BodyScanHistory />
-                       </ProtectedRoute>
-                     } />
-                    <Route path="/firebase-setup" element={
-                      <ProtectedRoute>
-                        <FirebaseSetup />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery/breathing" element={
-                      <ProtectedRoute>
-                        <BreathingPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery/stretching" element={
-                      <ProtectedRoute>
-                        <StretchingPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery/muscle-recovery" element={
-                      <ProtectedRoute>
-                        <MuscleRecoveryPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery/sleep" element={
-                      <ProtectedRoute>
-                        <SleepPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery/yoga" element={
-                      <ProtectedRoute>
-                        <YogaPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/recovery-analytics" element={
-                      <ProtectedRoute>
-                        <RecoveryAnalyticsPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/admin-dashboard" element={
-                      <ProtectedRoute>
-                        <AdminDashboard />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
-                    <Route path="/influencer-hub" element={
-                      <ProtectedRoute>
-                        <InfluencerHub />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/influencer-dashboard" element={
-                      <ProtectedRoute>
-                        <InfluencerDashboard />
-                      </ProtectedRoute>
-                    } />
-                    {/* Legacy redirects */}
-                    <Route path="/influencer" element={<Navigate to={ROUTES.INFLUENCER_HUB} replace />} />
-                     <Route path="/admin/security-logs" element={
-                       <ProtectedRoute>
-                         <SecurityLogsPage />
-                       </ProtectedRoute>
-                     } />
-                     <Route path="/admin/synonyms" element={
-                       <ProtectedRoute>
-                         <SynonymsPage />
-                       </ProtectedRoute>
-                     } />
-                     <Route path="/admin/search-insights" element={
-                       <ProtectedRoute>
-                         <SearchInsightsPage />
-                       </ProtectedRoute>
-                     } />
-                     {/* Legacy redirect for old influencer routes */}
-                     <Route path="/challenge-preview/:id" element={
-                      <ProtectedRoute>
-                        <ChallengePreview />
-                      </ProtectedRoute>
-                    } />
-                       <Route path="/dev/challenges" element={
-                         <ProtectedRoute>
-                           <DevChallengesPage />
-                         </ProtectedRoute>
-                        } />
-                           <Route path="/feature-flags" element={
-                             <ProtectedRoute>
-                               <FeatureFlagsPage />
-                             </ProtectedRoute>
-                           } />
-                             
-                              {/* Scan Hub Routes */}
-                               <Route path="/scan" element={
-                                <ProtectedRoute>
-                                  <ScanHub />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/meal-capture" element={
-                                <ProtectedRoute>
-                                  <MealCapturePage />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/meal-capture/entry" element={
-                                <ProtectedRoute>
-                                  <React.Suspense fallback={<div>Loading...</div>}>
-                                    <MealCaptureEntry />
-                                  </React.Suspense>
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/scan/recents" element={
-                               <ProtectedRoute>
-                                 <ScanRecents />
-                               </ProtectedRoute>
-                             } />
-                             <Route path="/scan/recent-scans" element={
-                               <ProtectedRoute>
-                                 <RecentScans />
-                               </ProtectedRoute>
-                             } />
-                             <Route path="/scan/saved-reports" element={
-                               <ProtectedRoute>
-                                 <SavedReports />
-                               </ProtectedRoute>
-                             } />
-                              <Route path="/nutrition-report/:reportId" element={
-                                <ProtectedRoute>
-                                  <NutritionReport />
-                                </ProtectedRoute>
-                              } />
-                               <Route path="/health-report/:reportId" element={
-                                 <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                                   <HealthReportStandalone />
-                                 </Suspense>
-                               } />
-                               <Route path="/health-scan-photo" element={
-                                 FF.FEATURE_HEALTH_SCAN_PHOTO ? (
-                                   <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                                     <HealthScanPhotoSheet />
-                                   </Suspense>
-                                 ) : (
-                                   <div className="min-h-screen flex items-center justify-center bg-background">
-                                     <div className="text-center p-8">
-                                       <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
-                                       <p className="text-muted-foreground mb-6">
-                                         Health Scan photo capture is not currently available.
-                                       </p>
-                                       <Button onClick={() => window.history.back()}>Go Back</Button>
-                                     </div>
-                                   </div>
-                                 )
-                               } />
-                               <Route path="/health-report" element={
-                                 FF.FEATURE_HEALTH_REPORT_V1 ? (
-                                   <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                                     <HealthReportScreen />
-                                   </Suspense>
-                                 ) : (
-                                   <div className="min-h-screen flex items-center justify-center bg-background">
-                                     <div className="text-center p-8">
-                                       <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
-                                       <p className="text-muted-foreground mb-6">
-                                         Health Report is not currently available.
-                                       </p>
-                                       <Button onClick={() => window.history.back()}>Go Back</Button>
-                                     </div>
-                                   </div>
-                                 )
-                                } />
-                                 <Route path="/health-report/analyze" element={
-                                  FF.FEATURE_HEALTH_SCAN_PHOTO ? (
-                                    <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                                      <HealthReportStandalone />
-                                    </Suspense>
-                                  ) : (
-                                    <div className="min-h-screen flex items-center justify-center bg-background">
-                                      <div className="text-center p-8">
-                                        <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
-                                        <p className="text-muted-foreground mb-6">
-                                          Health-Scan photo analysis is not currently available.
-                                        </p>
-                                        <Button onClick={() => window.history.back()}>
-                                          Go Back
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )
-                                } />
-                              
-                                {/* Belt-and-suspenders redirect for any missed /scan/not-found calls */}
-                <Route path="/scan/not-found" element={
-                  <>
-                     {import.meta.env.DEV && console.debug('[ROUTER][GUARD] Intercepted /scan/not-found navigation - redirecting to /scan')}
-                    <Navigate to="/scan" replace />
-                  </>
-                } />
-                              
-                              {/* V2 Enhanced Health Report Test - Dev Only */}
-                              <Route path="/standalone-test" element={
-                                <ProtectedRoute>
-                                  <StandaloneReportTest />
-                                </ProtectedRoute>
-                              } />
-                              
-                            {/* Other debug routes for developers */}
-                             <Route path="/debug/*" element={
-                               <ProtectedRoute>
-                                 <DebugRoutes />
-                               </ProtectedRoute>
-                             } />
-                      
-                      <Route path="*" element={<NotFound />} />
+              
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Layout>
               } />
@@ -691,9 +358,6 @@ function AppContent() {
             onClose={() => setShowMoodModal(false)} 
           />
           
-          {/* Global Mystery Gift Box - Always Floating */}
-          <MysteryBoxSafe />
-          
           <Toaster />
         </>
       )}
@@ -703,7 +367,6 @@ function AppContent() {
 
 // Temporary stubs for hook-order isolation
 const WorkoutCompletionProviderSafe: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
-const MysteryBoxSafe: React.FC = () => null;
 
 function App() {
   return (
@@ -722,7 +385,6 @@ function App() {
                             <LevelUpProvider>
                               <WorkoutCompletionProviderSafe>
                                 <AppContent />
-                                
                                 <WorkoutCompletionModal />
                               </WorkoutCompletionProviderSafe>
                             </LevelUpProvider>

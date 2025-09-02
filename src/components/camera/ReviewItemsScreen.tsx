@@ -3,8 +3,6 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { SavedSetsSheet } from './SavedSetsSheet';
-import { SaveSetDialog } from './SaveSetDialog';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
