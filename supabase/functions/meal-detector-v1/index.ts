@@ -25,25 +25,6 @@ const FOOD_DICTIONARY = new Set([
   'clams', 'oysters', 'turkey', 'duck', 'lamb', 'bacon', 'ham', 'sausage', 'salami'
 ]);
 
-// Generic terms that indicate food but aren't specific (for fallback detection)
-const GENERIC_FOOD_TERMS = /\b(plate|dishware|utensil|cutlery|table|recipe|cooking|cuisine|kitchen|food|dish|meal|produce|ingredient|logo|brand|text)\b/i;
-
-const extractFoodNouns = (labels: string[]): string[] => {
-  const foodNouns: string[] = [];
-  
-  for (const label of labels) {
-    const words = label.toLowerCase().split(/\s+/);
-    for (const word of words) {
-      const cleanWord = word.replace(/[^a-z]/g, '');
-      if (FOOD_DICTIONARY.has(cleanWord)) {
-        foodNouns.push(cleanWord);
-      }
-    }
-  }
-  
-  return [...new Set(foodNouns)]; // dedupe
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   
@@ -90,7 +71,7 @@ serve(async (req) => {
     
     const rawLabels = resp?.labelAnnotations ?? [];
     const labels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim()).filter(s => s);
-    
+
     // Filtering logic
     const NEG = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray)\b/i;
     const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
@@ -133,7 +114,16 @@ serve(async (req) => {
       items: chosen.slice(0, 8),
       imageWH: { width: 1200, height: 800 }, // Placeholder - would come from Vision API
       plateBBox: undefined, // Placeholder - would need object detection for plates
-      objects: rawObjects.map((o: any) => ({ name: o.name, score: o.score })),
+      objects: rawObjects.map((o: any) => ({ 
+        name: o.name, 
+        score: o.score,
+        bbox: o.boundingPoly ? {
+          x: Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)),
+          y: Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800)),
+          width: Math.max(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)) - Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)),
+          height: Math.max(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800)) - Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800))
+        } : undefined
+      })),
       labels: rawLabels.map((l: any) => ({ name: l.description, score: l.score })),
       _debug: {
         from: chosenFrom,

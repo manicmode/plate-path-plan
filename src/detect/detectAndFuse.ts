@@ -1,0 +1,87 @@
+// Orchestration layer for ensemble food detection
+
+import { detectFoodVisionV1, VisionV1Result } from './vision_v1';
+import { detectFoodGptV, GptVisionResult } from './gpt_v';
+import { fuseDetections, FusedFood } from './ensemble';
+import { estimatePortions, PortionEstimate } from '@/portion/estimate';
+
+export interface DetectionAndFusionResult {
+  fused: FusedFood[];
+  portions: PortionEstimate[];
+  visionRaw: VisionV1Result;
+  gptRaw: GptVisionResult;
+  ensembleUsed: boolean;
+  _debug?: {
+    visionFoodCount: number;
+    gptFoodCount: number;
+    fusedCount: number;
+    costIncurred: boolean;
+  };
+}
+
+export async function detectAndFuseFoods(
+  base64: string, 
+  { useEnsemble }: { useEnsemble: boolean }
+): Promise<DetectionAndFusionResult> {
+  
+  // Always run Vision v1 first
+  const visionResult = await detectFoodVisionV1(base64);
+  let gptResult: GptVisionResult = { names: [] };
+  let ensembleUsed = false;
+  let costIncurred = false;
+  
+  // Ensemble rules:
+  // - If useEnsemble is false -> just Vision
+  // - If Vision foods < 2 or total score < 0.6 -> run GPT fallback; otherwise skip
+  if (useEnsemble) {
+    const shouldRunGpt = visionResult.foods.length < 2 || 
+      visionResult.foods.every(f => (f.score ?? 0) < 0.6);
+    
+    if (shouldRunGpt) {
+      gptResult = await detectFoodGptV(base64);
+      ensembleUsed = true;
+      costIncurred = gptResult.names.length > 0;
+      
+      // Budget guard - log cost incurrence once per session
+      if (costIncurred && import.meta.env.DEV) {
+        console.info('[ENSEMBLE][COST]', {
+          session: 'current',
+          reason: visionResult.foods.length < 2 ? 'low_vision_recall' : 'low_vision_confidence'
+        });
+      }
+    }
+  }
+  
+  // Fuse detections
+  const fused = fuseDetections(visionResult.foods, gptResult.names);
+  
+  // Estimate portions
+  const portions = estimatePortions(fused, visionResult.plateBBox, visionResult.imageWH);
+  
+  const result: DetectionAndFusionResult = {
+    fused,
+    portions,
+    visionRaw: visionResult,
+    gptRaw: gptResult,
+    ensembleUsed,
+    _debug: {
+      visionFoodCount: visionResult.foods.length,
+      gptFoodCount: gptResult.names.length,
+      fusedCount: fused.length,
+      costIncurred
+    }
+  };
+  
+  // DEV summary logging
+  if (import.meta.env.DEV) {
+    console.info('[DETECT_AND_FUSE]', {
+      vision: visionResult.foods.length,
+      gpt: gptResult.names.length,
+      fused: fused.length,
+      ensemble_used: ensembleUsed,
+      portions: portions.map(p => `${p.name}:${p.grams_est}g`).slice(0, 3)
+    });
+  }
+  
+  return result;
+}

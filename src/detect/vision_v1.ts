@@ -1,29 +1,23 @@
 import { supabase } from '@/integrations/supabase/client';
-import { isFeatureEnabled } from '@/lib/featureFlags';
 
-export interface DetectionResult {
-  items: string[];
-  imageWH?: { width: number; height: number };
-  plateBBox?: { x: number; y: number; width: number; height: number };
-  objects: Array<{ name: string; score: number; bbox?: any }>;
-  labels: Array<{ name: string; score: number }>;
-  _debug: {
-    from: 'objects' | 'labels' | 'labels_generic' | 'ensemble' | 'none';
-    rawObjectsCount: number;
-    rawLabelsCount: number;
-    keptObjectsCount: number;
-    keptLabelsCount: number;
-    specificObjectsCount?: number;
-    specificLabelsCount?: number;
-    sampleObjects?: string[];
-    sampleLabels?: string[];
-    confidence?: 'high' | 'medium' | 'low';
-    ensembleUsed?: boolean;
-    reason?: string;
-  };
+export interface VisionFood {
+  name: string;
+  source: 'object' | 'label';
+  bbox?: { x: number; y: number; width: number; height: number; };
+  score?: number;
 }
 
-export async function detectFoodVisionV1(base64: string): Promise<DetectionResult> {
+export interface VisionV1Result {
+  imageWH?: { width: number; height: number };
+  plateBBox?: { x: number; y: number; width: number; height: number };
+  objects: Array<{ name: string; bbox?: any; score: number }>;
+  labels: Array<{ name: string; score: number }>;
+  chosen: 'objects' | 'labels' | 'labels_generic' | 'none';
+  foods: VisionFood[];
+  _debug?: any;
+}
+
+export async function detectFoodVisionV1(base64: string): Promise<VisionV1Result> {
   try {
     const { data, error } = await supabase.functions.invoke('meal-detector-v1', { 
       body: { image_base64: base64 } 
@@ -31,71 +25,68 @@ export async function detectFoodVisionV1(base64: string): Promise<DetectionResul
     
     if (error) throw error;
 
-    const result: DetectionResult = {
-      items: data?.items ?? [], 
-      imageWH: data?.imageWH ?? undefined,
-      plateBBox: data?.plateBBox ?? undefined,
-      objects: data?.objects ?? [],
-      labels: data?.labels ?? [],
-      _debug: data?._debug ?? { 
-        from: 'none',
-        rawObjectsCount: 0,
-        rawLabelsCount: 0,
-        keptObjectsCount: 0,
-        keptLabelsCount: 0
+    // Process the response into our structured format
+    const objects = data?.objects ?? [];
+    const labels = data?.labels ?? [];
+    const items = data?.items ?? [];
+    const chosen = data?._debug?.from ?? 'none';
+
+    // Create foods array with source information
+    const foods: VisionFood[] = items.map((name: string) => {
+      // Try to find matching object with bbox
+      const matchingObject = objects.find((obj: any) => 
+        obj.name.toLowerCase().includes(name.toLowerCase()) || 
+        name.toLowerCase().includes(obj.name.toLowerCase())
+      );
+
+      if (matchingObject) {
+        return {
+          name,
+          source: 'object' as const,
+          bbox: matchingObject.bbox,
+          score: matchingObject.score
+        };
       }
+
+      // Otherwise it came from labels
+      const matchingLabel = labels.find((label: any) => 
+        label.name.toLowerCase().includes(name.toLowerCase()) || 
+        name.toLowerCase().includes(label.name.toLowerCase())
+      );
+
+      return {
+        name,
+        source: 'label' as const,
+        score: matchingLabel?.score
+      };
+    });
+
+    const result: VisionV1Result = {
+      imageWH: data?.imageWH,
+      plateBBox: data?.plateBBox,
+      objects,
+      labels,
+      chosen,
+      foods,
+      _debug: data?._debug
     };
 
+    // DEV-only logging
     if (import.meta.env.DEV) {
-      console.info('[DETECT][v1]', {
-        objects: result._debug.rawObjectsCount,
-        labels: result._debug.rawLabelsCount,
-        chosen: result._debug.from,
-        foods: result.items.slice(0, 5)
+      console.info('[VISION][v1]', {
+        objects: objects.length,
+        labels: labels.length,
+        chosen,
+        foods: foods.length,
+        items: foods.map(f => f.name).slice(0, 5)
       });
-    }
-
-    if (isFeatureEnabled('lyf_ensemble') && shouldUseEnsemble(result)) {
-      try {
-        const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('meal-detector-fallback-gpt', {
-          body: { image_base64: base64 }
-        });
-
-        if (!fallbackError && fallbackData?.names?.length > 0) {
-          const mergedItems = [...new Set([...result.items, ...fallbackData.names])];
-          result.items = mergedItems;
-          result._debug.ensembleUsed = true;
-          result._debug.from = 'ensemble';
-          result._debug.reason = 'vision_low_conf';
-
-          if (import.meta.env.DEV) {
-            console.info('[DETECT][ensemble]', {
-              merged: mergedItems,
-              reason: 'vision_low_conf'
-            });
-          }
-        }
-      } catch (ensembleError) {
-        console.warn('[DETECT][ensemble] fallback failed:', ensembleError);
-      }
     }
 
     return result;
   } catch (error) {
-    console.error('[DETECT][v1] error:', error);
+    console.error('[VISION][v1] error:', error);
     throw error;
   }
-}
-
-function shouldUseEnsemble(result: DetectionResult): boolean {
-  if (result.items.length === 0) return true;
-  
-  const genericTerms = ['food', 'dish', 'meal', 'ingredient', 'produce'];
-  const hasSpecific = result.items.some(item => 
-    !genericTerms.some(generic => item.toLowerCase().includes(generic))
-  );
-  
-  return !hasSpecific;
 }
 
 // Food filtering - keep existing NEG list but do NOT drop nouns extracted by edge
@@ -108,11 +99,11 @@ export function filterFoodish(items: string[]): string[] {
   });
 }
 
-// Legacy export for backward compatibility
+// Legacy compatibility
 export async function detectFoodVisionV1Simple(supabase: any, base64: string) {
   const result = await detectFoodVisionV1(base64);
   return { 
-    items: result.items, 
+    items: result.foods.map(f => f.name), 
     _debug: result._debug 
   };
 }

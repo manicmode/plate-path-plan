@@ -769,62 +769,63 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setProcessingStep('Detecting food items...');
           
           // Call the unified Vision v1 detection system
-          const detectionResult = await detectFoodVisionV1(imageBase64);
-          console.log('[DETECTOR] vision_v1', { from: detectionResult._debug?.from, count: detectionResult.items.length });
+          // Use the unified ensemble detection system
+          const { detectAndFuseFoods } = await import('@/detect/detectAndFuse');
+          const { isFeatureEnabled } = await import('@/lib/featureFlags');
           
-          const { items, plateBBox, imageWH } = detectionResult;
+          const ensembleResult = await detectAndFuseFoods(imageBase64, { 
+            useEnsemble: isFeatureEnabled('lyf_ensemble') 
+          });
           
-          // Import portion estimation utilities
-          const { estimatePortions } = await import('@/portion/estimate');
+          console.log('[DETECTOR] ensemble', { 
+            fused: ensembleResult.fused.length,
+            ensemble_used: ensembleResult.ensembleUsed,
+            portions: ensembleResult.portions.slice(0, 3).map(p => `${p.name}:${p.grams_est}g`)
+          });
           
-          const specific = filterFoodish(items);
+          const { portions } = ensembleResult;
           
-          // Estimate portions if we have bounding boxes
-          const portionEstimates = imageWH && plateBBox ? 
-            estimatePortions(specific, [], imageWH, plateBBox) : 
-            specific.map(name => ({ name, grams_est: 120, confidence: 'low' as const }));
-          
-          let mapped: any[] = [];
-          
-          if (specific.length === 0) {
-            // Last-resort mapping from ALL label words
-            const allMapped = await Promise.all(items.map(async (item) => {
-              const hit = await mapVisionNameToFood(item);
-              return hit ? { vision: item, hit, source: 'fallback', grams_est: 120, confidence: 'low' } : null;
-            }));
-            mapped = allMapped.filter(Boolean);
-          } else {
-            // Use specific foods with portion estimates
-            const specificMapped = await Promise.all(portionEstimates.map(async (estimate) => {
-              const hit = await mapVisionNameToFood(estimate.name);
-              return hit ? { vision: estimate.name, hit, source: 'specific', grams_est: estimate.grams_est, confidence: estimate.confidence } : null;
-            }));
-            mapped = specificMapped.filter(Boolean);
+          if (portions.length === 0) {
+            toast.error('No food items detected. Please try a clearer photo or use manual entry.');
+            setIsMultiAILoading(false);
+            return;
           }
           
-          console.log('LYF v1 detection results:', mapped);
-          // Convert mapped results to MultiAI format
-          const enhancedResults = mapped.map((item) => ({
-            name: item.hit.name,
-            confidence: 85, // Default confidence for v1 mapped items
-            sources: [item.source],
-            calories: item.hit.calories || 100,
-            portion: '1 serving',
-            isEstimate: false
+          // Map portions to nutrition data
+          const mapped = await Promise.all(portions.map(async (portion) => {
+            const hit = await mapVisionNameToFood(portion.name);
+            return hit ? { ...hit, ...portion } : null;
+          }));
+          const validMapped = mapped.filter(Boolean);
+          
+          if (validMapped.length === 0) {
+            toast.error('No food items could be mapped to nutrition data. Please try manual entry.');
+            setIsMultiAILoading(false);
+            return;
+          }
+          
+          // Convert to RecognizedFood format with portion estimates
+          const foods: RecognizedFood[] = validMapped.map(item => ({
+            name: item!.name,
+            calories: Math.round((item!.grams_est / 100) * (item!.caloriesPer100g || 200)),
+            protein: Math.round((item!.grams_est / 100) * 20),
+            carbs: Math.round((item!.grams_est / 100) * 25),
+            fat: Math.round((item!.grams_est / 100) * 10),
+            fiber: Math.round((item!.grams_est / 100) * 3),
+            sugar: Math.round((item!.grams_est / 100) * 5),
+            sodium: Math.round((item!.grams_est / 100) * 300),
+            confidence: item!.confidence === 'high' ? 85 : item!.confidence === 'medium' ? 75 : 65,
+            serving: `${item!.grams_est}g (${item!.confidence} confidence)`,
+            _provider: 'ensemble-v1'
           }));
           
-          setMultiAIResults(enhancedResults);
-          
-          if (enhancedResults.length > 0) {
-            toast.success(`Found ${enhancedResults.length} food item(s) with LYF v1!`);
-          } else {
-            toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
-          }
+          setRecognizedFoods(foods);
+          setShowConfirmation(true);
+          setInputSource('photo');
           
         } catch (error) {
-          console.error('LYF v1 food detection failed:', error);
+          console.error('Ensemble food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
-          setShowMultiAIDetection(false);
         } finally {
           setIsMultiAILoading(false);
         }

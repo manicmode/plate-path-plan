@@ -1,4 +1,6 @@
-// Portion estimation using plate-scale heuristics
+// Portion estimation v1 - plate-scale and bbox-based
+
+import { FusedFood } from '@/detect/ensemble';
 
 export interface BoundingBox {
   x: number;
@@ -17,25 +19,54 @@ export interface PortionEstimate {
   grams_est: number;
   confidence: 'high' | 'medium' | 'low';
   area_ratio?: number;
-  food_class?: string;
+  food_class: string;
+  source: 'vision' | 'gpt' | 'both';
 }
 
-// Standard plate diameter assumption (documented constant)
-const STANDARD_PLATE_DIAMETER_CM = 27;
+// Constants (documented at top)
+const PLATE_DIAMETER_CM = 27;
 
-// Base portion sizes for quarter-plate areas by food class
+// Base grams by class for ¼-plate areas
 const BASE_PORTIONS: Record<string, number> = {
-  protein: 135, // chicken, salmon, beef, etc.
+  protein: 135, // salmon, chicken, beef, etc.
   starch: 175,  // rice, pasta, potato, bread
-  veg: 100,     // broccoli, carrots, mixed vegetables
+  veg: 100,     // broccoli, carrots, mixed vegetables  
   leafy: 75,    // lettuce, spinach, salads
   other: 120    // default fallback
 };
 
-export function estimatePlateScaleCmPerPx(
+export function classifyFood(canonicalName: string): 'protein' | 'starch' | 'veg' | 'leafy' | 'other' {
+  const name = canonicalName.toLowerCase();
+  
+  // Protein foods
+  if (/\b(salmon|chicken|beef|pork|tuna|shrimp|fish|meat|steak|turkey|duck|egg|tofu|tempeh)\b/.test(name)) {
+    return 'protein';
+  }
+  
+  // Starch foods
+  if (/\b(rice|pasta|noodle|bread|potato|quinoa|couscous|bun|baguette|tortilla|french fries|fries)\b/.test(name)) {
+    return 'starch';
+  }
+  
+  // Leafy vegetables
+  if (/\b(lettuce|spinach|kale|salad|greens|arugula|chard)\b/.test(name)) {
+    return 'leafy';
+  }
+  
+  // Other vegetables
+  if (/\b(asparagus|broccoli|carrot|tomato|pepper|onion|mushroom|cucumber|vegetable|bean|pea)\b/.test(name)) {
+    return 'veg';
+  }
+  
+  return 'other';
+}
+
+export function estimatePlateScale(
   plateBBox: BoundingBox, 
   imageWH: ImageDimensions
-): number {
+): number | null {
+  if (!plateBBox) return null;
+  
   // Estimate plate area in pixels
   const plateAreaPx = plateBBox.width * plateBBox.height;
   
@@ -43,53 +74,33 @@ export function estimatePlateScaleCmPerPx(
   const plateDiameterPx = Math.sqrt(plateAreaPx / Math.PI) * 2;
   
   // Calculate cm per pixel ratio
-  return STANDARD_PLATE_DIAMETER_CM / plateDiameterPx;
+  return PLATE_DIAMETER_CM / plateDiameterPx;
 }
 
-export function classifyFood(foodName: string): 'protein' | 'starch' | 'veg' | 'leafy' | 'other' {
-  const name = foodName.toLowerCase();
-  
-  // Protein foods
-  if (/\\b(salmon|chicken|beef|pork|tuna|shrimp|fish|meat|steak|turkey|duck|egg|tofu|tempeh)\\b/.test(name)) {
-    return 'protein';
-  }
-  
-  // Starch foods
-  if (/\\b(rice|pasta|noodle|bread|potato|quinoa|couscous|bun|baguette|tortilla)\\b/.test(name)) {
-    return 'starch';
-  }
-  
-  // Leafy vegetables
-  if (/\\b(lettuce|spinach|kale|salad|greens|arugula|chard)\\b/.test(name)) {
-    return 'leafy';
-  }
-  
-  // Other vegetables
-  if (/\\b(asparagus|broccoli|carrot|tomato|pepper|onion|mushroom|cucumber|vegetable)\\b/.test(name)) {
-    return 'veg';
-  }
-  
-  return 'other';
-}
-
-export function estimateGramsFromArea({
+export function gramsFromArea({
   foodClass,
   itemBBox,
   plateBBox,
-  imageWH,
-  cmPerPx
+  imageWH
 }: {
   foodClass: string;
-  itemBBox: BoundingBox;
+  itemBBox?: BoundingBox;
   plateBBox?: BoundingBox;
-  imageWH: ImageDimensions;
-  cmPerPx?: number;
+  imageWH?: ImageDimensions;
 }): { grams: number; confidence: 'high' | 'medium' | 'low'; area_ratio?: number } {
   
-  // Calculate item area
+  if (!itemBBox) {
+    // No bbox - use priors only
+    const baseGrams = BASE_PORTIONS[foodClass] || BASE_PORTIONS.other;
+    return {
+      grams: baseGrams,
+      confidence: 'low'
+    };
+  }
+  
   const itemAreaPx = itemBBox.width * itemBBox.height;
   
-  if (plateBBox) {
+  if (plateBBox && imageWH) {
     // High confidence: plate-based estimation
     const plateAreaPx = plateBBox.width * plateBBox.height;
     const area_ratio = itemAreaPx / plateAreaPx;
@@ -105,67 +116,63 @@ export function estimateGramsFromArea({
     };
   }
   
-  // Medium confidence: look for utensils for scale reference
-  // This would need utensil detection from Vision API objects
-  // For now, return base portion with medium confidence
+  // Medium confidence: bbox without plate context
+  // Use bbox size relative to image as a rough heuristic
+  if (imageWH) {
+    const imageArea = imageWH.width * imageWH.height;
+    const imageRatio = itemAreaPx / imageArea;
+    
+    const baseGrams = BASE_PORTIONS[foodClass] || BASE_PORTIONS.other;
+    // Scale based on how much of the image the item takes up
+    const grams = Math.round(baseGrams * Math.sqrt(imageRatio) * 4); // Rough scaling
+    
+    return {
+      grams: Math.max(10, Math.min(600, grams)),
+      confidence: 'medium'
+    };
+  }
   
-  // Low confidence: base portions only
+  // Low confidence: bbox but no context
   const baseGrams = BASE_PORTIONS[foodClass] || BASE_PORTIONS.other;
-  
   return {
-    grams: baseGrams,
+    grams: Math.round(baseGrams * 0.8), // Slightly reduce default
     confidence: 'low'
   };
 }
 
 export function estimatePortions(
-  items: string[], 
-  bboxes: BoundingBox[], 
-  imageWH: ImageDimensions, 
-  plateBBox?: BoundingBox
+  fusedItems: FusedFood[], 
+  plateBBox?: BoundingBox,
+  imageWH?: ImageDimensions
 ): PortionEstimate[] {
   
-  const cmPerPx = plateBBox ? estimatePlateScaleCmPerPx(plateBBox, imageWH) : undefined;
-  
-  return items.map((name, index) => {
-    const itemBBox = bboxes[index];
-    const food_class = classifyFood(name);
-    
-    if (!itemBBox) {
-      // Fallback when no bounding box available
-      const baseGrams = BASE_PORTIONS[food_class] || BASE_PORTIONS.other;
-      return {
-        name,
-        grams_est: baseGrams,
-        confidence: 'low' as const,
-        food_class
-      };
-    }
-    
-    const estimation = estimateGramsFromArea({
+  return fusedItems.map(item => {
+    const food_class = classifyFood(item.canonicalName);
+    const estimation = gramsFromArea({
       foodClass: food_class,
-      itemBBox,
+      itemBBox: item.bbox,
       plateBBox,
-      imageWH,
-      cmPerPx
+      imageWH
     });
     
-    // DEV-only logging
+    // DEV-only logging per item
     if (import.meta.env.DEV) {
-      console.info('[PORTION][v1]', {
-        name,
-        area_ratio: estimation.area_ratio?.toFixed(2),
+      console.info('[PORTION]', {
+        name: item.canonicalName,
+        area: estimation.area_ratio?.toFixed(2),
         grams: estimation.grams,
-        conf: estimation.confidence
+        conf: estimation.confidence,
+        source: item.origin
       });
     }
     
     return {
-      name,
+      name: item.canonicalName,
       grams_est: estimation.grams,
       confidence: estimation.confidence,
       area_ratio: estimation.area_ratio,
-      food_class
+      food_class,
+      source: item.origin
     };
   });
 }

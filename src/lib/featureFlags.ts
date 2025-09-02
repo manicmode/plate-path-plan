@@ -24,8 +24,8 @@ export const FEATURE_FLAGS = {
   // Photo Flow V2 Features (GATED ROLLOUT)
   photo_flow_v2: true, // Enable enhanced photo pipeline with OCR normalization and improved scoring
   
-  // LYF Ensemble Features (OPTIONAL FALLBACK)
-  lyf_ensemble: false, // Enable GPT fallback when Vision returns low confidence
+  // LYF Ensemble Features (VISION + GPT FUSION)
+  lyf_ensemble: import.meta.env.DEV ? true : false, // Enable ensemble detection (Vision + GPT fusion)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
