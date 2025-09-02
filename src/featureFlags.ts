@@ -3,7 +3,7 @@
  * All flags default to OFF for dark-ship deployment
  */
 export const FF = {
-  FEATURE_HEALTHSCAN_USE_OLD_MODAL: true, // Use original camera modal for Health Scan
+  FEATURE_HEALTHSCAN_USE_OLD_MODAL: (import.meta.env.VITE_FEATURE_HEALTHSCAN_USE_OLD_MODAL ?? 'true') === 'true',
   FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev-only debug logs
   FEATURE_BROWSER_STT: true,
   FEATURE_SERVER_STT: true,

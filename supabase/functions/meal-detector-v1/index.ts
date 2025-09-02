@@ -70,31 +70,63 @@ serve(async (req) => {
     const labelsKept    = labels.filter(l => keep(l.name));
     const labelsSpec    = labelsKept.filter(l => !isGeneric(l.name));
 
-    let chosen: Array<{name: string, source: "object"|"label", score: number}> = [];
-    let chosenFrom = "none";
+    let chosen: Array<{name: string, source: string, score: number}> = [];
+    let chosenFrom: string;
+
+    // Explicit veggie matcher (kept even when objects exist)
+    const VEGGIE_PATTERN =
+      /\b(asparagus|tomato|tomatoes|cherry tomato|lemon|lime|broccoli|carrot|spinach|lettuce|cucumber|pepper|onion)\b/i;
 
     if (objectsSpec.length > 0) {
-      const objNames = new Set(objectsSpec.map(o => o.name));
-      const vegLabels = labelsSpec
-        .filter(l => KEEP_VEG.test(l.name) && !objNames.has(l.name) && l.score >= 0.40)
-        .map(l => ({ ...l, source: "label" as const }));
+      // Start with specific objects (e.g., salmon)
+      chosen = objectsSpec.map((o: any) => ({
+        name: o.name,
+        source: 'object',
+        score: o.score || 0.7,
+      }));
 
-      chosen = [
-        ...objectsSpec.map(o => ({ ...o, source: "object" as const })),
-        ...vegLabels,
-      ];
-      chosenFrom = "objects_with_labels";
+      // Union: veggie labels, relaxed score, no duplicates
+      const objNames = new Set(objectsSpec.map((o: any) => (o.name || '').toLowerCase()));
+      const veggieLabels = labelsKept
+        .filter((l: any) => {
+          const n = (l.name || '').toLowerCase();
+          return VEGGIE_PATTERN.test(n) && !objNames.has(n) && (l.score ?? 0) >= 0.25;
+        })
+        .map((l: any) => ({
+          name: l.name,
+          source: 'label',
+          score: l.score || 0.5,
+        }));
+
+      chosen = [...chosen, ...veggieLabels];
+      chosenFrom = veggieLabels.length > 0 ? 'objects_with_labels' : 'objects';
+
     } else if (labelsSpec.length > 0) {
-      chosen = labelsSpec
-        .filter(l => KEEP_VEG.test(l.name) ? l.score >= 0.40 : l.score >= 0.55)
-        .map(l => ({ ...l, source: "label" as const }));
-      chosenFrom = "labels";
+      chosen = labelsSpec.map((l: any) => ({
+        name: l.name,
+        source: 'label',
+        score: l.score || 0.5,
+      }));
+      chosenFrom = 'labels';
+
     } else if (labelsKept.length > 0) {
-      chosen = labelsKept
-        .filter(l => l.score >= 0.45)
-        .map(l => ({ ...l, source: "label" as const }));
-      chosenFrom = "labels_generic";
+      chosen = labelsKept.map((l: any) => ({
+        name: l.name,
+        source: 'label',
+        score: l.score || 0.5,
+      }));
+      chosenFrom = 'labels_generic';
+
+    } else {
+      chosen = [];
+      chosenFrom = 'none';
     }
+
+    console.info('[MEAL-V1] Final selection:', {
+      from: chosenFrom,
+      count: chosen.length,
+      items: chosen.map(i => `${i.name}:${i.source}:${(i.score ?? 0).toFixed(2)}`),
+    });
 
     const payload: any = {
       items: chosen.slice(0, 8), // Return objects with {name, source, score}

@@ -788,13 +788,12 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.info('[LYF][v1] final:', items.map(i => i.canonicalName || i.vision || i.name));
           
           if (items.length === 0) {
-            // No foods detected - show toast and don't render any legacy panel
             toast.error('No foods detected. Try a clearer photo or add manually.');
             setIsAnalyzing(false);
             return;
           }
 
-          // Transform to ReviewItem format for the new UI
+          // Normalize into ReviewItem[]
           const reviewItems: ReviewItem[] = items.map((item: any, index: number) => ({
             id: `lyf-${index}`,
             name: item.canonicalName || item.vision || item.name,
@@ -803,16 +802,27 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             grams: item.grams || 100,
             canonicalName: item.canonicalName,
             needsDetails: !item.mapped,
-            mapped: item.mapped
+            mapped: item.mapped,
           }));
 
           console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
-          console.info('[LYF][ui] review_opened items=', reviewItems.length);
-          
-          // Open review screen with atomic handoff
-          setReviewItems(reviewItems);
-          setShowReviewScreen(true);
-          setInputSource('photo'); // Flag for LYF source
+
+          // Old modal vs new flow, gated by flag
+          if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
+            setReviewItems(reviewItems);
+            setShowReviewScreen(true);       // ← original modal path
+          } else {
+            const summaryItems = reviewItems.map(r => ({
+              id: r.id,
+              name: r.name,
+              portion: r.portion,
+              selected: r.selected,
+            }));
+            setSummaryItems(summaryItems);    // ← new flow, if flag flipped later
+            setShowSummaryPanel(true);
+          }
+
+          setInputSource('photo');
         } catch (error) {
           console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
