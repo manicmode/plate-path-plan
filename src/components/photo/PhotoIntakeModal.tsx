@@ -4,6 +4,7 @@ import { Camera, Upload, X, Flashlight, FlashlightOff, RotateCcw, Loader2, Spark
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { lightTap } from '@/lib/haptics';
+import { Sound } from '@/lib/sound/soundManager';
 
 interface PhotoIntakeModalProps {
   isOpen: boolean;
@@ -156,28 +157,6 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
     }
   };
 
-  const playShutterSound = () => {
-    try {
-      // Create a short beep sound using Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
-    } catch (error) {
-      console.log('Audio not available');
-    }
-  };
 
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current || isCapturing) return;
@@ -187,7 +166,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
     try {
       // Capture effects
       lightTap(); // Haptic feedback
-      playShutterSound(); // Camera sound
+      Sound.ensureUnlocked(); // Ensure audio is unlocked
+      Sound.play('shutter'); // Camera sound
       
       // Screen flash effect
       setShowCaptureFlash(true);
@@ -332,8 +312,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           </div>
 
           {/* Corner Guides */}
-          <div className="absolute top-28 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
-          <div className="absolute top-28 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-44 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-44 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
           <div className="absolute bottom-40 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
           <div className="absolute bottom-40 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
 
@@ -460,6 +440,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            capture="environment"
             onChange={handleFileUpload}
             className="hidden"
           />
