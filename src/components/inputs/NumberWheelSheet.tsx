@@ -76,7 +76,7 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
     }
   }, []);
   
-  // Initialize scroll position when sheet opens
+  // Initialize scroll position when sheet opens  
   useEffect(() => {
     if (open && wheelRef.current && !hasInitialized.current) {
       const itemHeight = 50;
@@ -95,6 +95,7 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
       }, 100);
     } else if (!open) {
       hasInitialized.current = false;
+      setValue(defaultValue); // Reset to initialValue when closed
     }
   }, [open, defaultValue, values, findNearestIndex]);
   

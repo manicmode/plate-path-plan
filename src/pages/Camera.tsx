@@ -3306,6 +3306,27 @@ console.log('Global search enabled:', enableGlobalSearch);
       <div className="mt-8">
         <ActivityLoggingSection />
       </div>
+
+      {/* Saved Sets Sheet */}
+      <SavedSetsSheet 
+        isOpen={showSavedSetsSheet}
+        onClose={() => setShowSavedSetsSheet(false)}
+        onInsertSet={(items) => {
+          // Convert saved set items to review items and show review screen
+          const reviewItems = items.map(item => ({
+            id: Math.random().toString(36).substr(2, 9),
+            name: item.name,
+            canonicalName: item.canonicalName,
+            portion: `${item.grams}g`,
+            selected: true,
+            grams: item.grams,
+            mapped: true
+          }));
+          
+          setReviewItems(reviewItems);
+          setShowReviewScreen(true);
+        }}
+      />
       
     </div>
   );

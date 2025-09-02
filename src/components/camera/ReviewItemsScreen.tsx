@@ -100,11 +100,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       toast.error('Please select at least one item to log');
       return;
     }
-    
-    if (!user?.id) {
-      toast.error('You must be logged in to log food');
-      return;
-    }
 
     setIsLogging(true);
 
@@ -115,23 +110,25 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       })));
 
       // Import here to avoid circular dependencies
-      const { createNutritionLogBatch } = await import('@/lib/nutritionLog');
+      const { oneTapLog } = await import('@/lib/nutritionLog');
       
       const logEntries = selectedItems.map(item => ({
         name: item.name,
         canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100,
-        source: 'photo_v1'
+        grams: item.grams || 100
       }));
 
-      await createNutritionLogBatch(logEntries, user.id);
+      await oneTapLog(logEntries);
       
       // Emit metrics
-      const { emitPhotoMetrics, incrementCounter } = await import('@/lib/metrics');
+      const { incrementCounter } = await import('@/lib/metrics');
       incrementCounter('photo.one_tap_used');
       
       toast.success(`Logged ✓`);
       onClose();
+      
+      // Navigate to today's log
+      navigate('/nutrition');
     } catch (error) {
       console.error('Failed to log items:', error);
       toast.error('Failed to log items. Please try again.');

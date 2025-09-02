@@ -1,7 +1,7 @@
 /* iOS 100vh fix: set --vh once and use it everywhere */
 :root { --vh: 1vh; }
 
-/* Sheet wrapper */
+/* Sheet wrapper - never collapses */
 .lyf-sheet {
   position: fixed;
   inset: 0;
@@ -11,8 +11,8 @@
   pointer-events: auto;
 }
 
-/* Panel - Full height mobile, centered desktop */
-.lyf-panel {
+/* Panel - Full height mobile, centered desktop (stable height) */
+.lyf-panel, .reviewSheet {
   width: 100%;
   min-height: 88dvh;
   max-height: 95dvh;
@@ -34,7 +34,7 @@
 }
 
 /* Scrolling list - show up to 4 items without scrolling, then scroll inside */
-.lyf-items {
+.lyf-items, .reviewList {
   flex: 1;
   min-height: 0;
   overflow: auto;

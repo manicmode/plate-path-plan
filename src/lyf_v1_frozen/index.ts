@@ -16,10 +16,8 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const { items: rawItems, _debug } = await analyzeLyfV1(supabase, base64);
   const items = ensureSources(rawItems ?? [], _debug?.from);
   
-  // Allowlist for labels that we should keep even when objects exist
-  const LABEL_KEEP_WHEN_OBJECTS = new Set([
-    'asparagus', 'tomato', 'cherry tomato', 'lemon', 'dill', 'parsley', 'cilantro', 'herb'
-  ]);
+  // Build drop log for forensics
+  const dropLog: Array<{name: string, source: string, reason: string}> = [];
   
   // Add concise dev logs
   console.info('[LYF][v1] raw:', `from=${_debug?.from} rawObjects=${_debug?.rawObjectsCount} rawLabels=${_debug?.rawLabelsCount}`);
@@ -29,8 +27,25 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   }
   
   // Filter objects and labels with appropriate thresholds
-  const objsKept = items.filter(i => i?.source === 'object' && i?.name && looksFoodishObj(i.name, i.confidence || i.score));
-  const labsKept = items.filter(i => i?.source === 'label' && i?.name && looksFoodishLabel(i.name, i.confidence || i.score));
+  const objsKept = items.filter(i => {
+    if (i?.source === 'object' && i?.name && looksFoodishObj(i.name, i.confidence || i.score)) {
+      return true;
+    } else if (i?.source === 'object') {
+      dropLog.push({name: i.name, source: i.source, reason: 'belowScore'});
+      return false;
+    }
+    return false;
+  });
+  
+  const labsKept = items.filter(i => {
+    if (i?.source === 'label' && i?.name && looksFoodishLabel(i.name, i.confidence || i.score)) {
+      return true;
+    } else if (i?.source === 'label') {
+      dropLog.push({name: i.name, source: i.source, reason: 'belowScore'});
+      return false;
+    }
+    return false;
+  });
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] objs', objsKept.map(i => i.name));
@@ -82,13 +97,20 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   }
   
   // Apply deduplication and prefer specific over generic
-  const dedupedCandidates = preferSpecific(candidatesWithCanonical).slice(0, 8); // Cap at 8 after dedup
+  const dedupedCandidates = preferSpecific(candidatesWithCanonical, dropLog).slice(0, 8); // Cap at 8 after dedup
   
-  // Log what we keep
+  // Log what we keep and drop
   console.info('[LYF][v1] keep:', dedupedCandidates.map(c => c.canonicalName));
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] deduped:', dedupedCandidates.map(c => `${c.canonicalName}:${c.source}`));
+    console.info('[LYF][v1] drop:', summarizeDrops(dropLog));
+    
+    // Show detailed drop table if debug flag enabled
+    const { FF } = await import('@/featureFlags');
+    if (FF.FEATURE_LYF_V1_DEBUG) {
+      console.table(dropLog);
+    }
   }
   
   // NEVER DROP unmapped items - include all candidates that pass filters
@@ -159,9 +181,8 @@ function canonicalizeName(name: string): string {
 }
 
 // Prefer specific items over generic ones and remove duplicates
-function preferSpecific(items: any[]): any[] {
+function preferSpecific(items: any[], dropLog: Array<{name: string, source: string, reason: string}>): any[] {
   const result = [];
-  const dropLog: Array<{name: string, source: string, reason: string}> = [];
   
   // First pass - categorize items
   const specifics = [];
@@ -218,18 +239,7 @@ function preferSpecific(items: any[]): any[] {
     }
   }
   
-  // Log drops in dev mode
-  if (import.meta.env.DEV && dropLog.length > 0) {
-    console.info('[LYF][v1] drop:', summarizeDrops(dropLog));
-  }
-  
   return deduped;
-}
-
-// Check if a canonical name is generic vs specific - enhanced for better dedup  
-function isGeneric(canonical: string): boolean {
-  const genericTerms = ['fish', 'fish product', 'seafood', 'meat', 'vegetable', 'fruit', 'protein'];
-  return genericTerms.includes(canonical.toLowerCase());
 }
 
 function summarizeDrops(dropLog: Array<{name: string, source: string, reason: string}>): Record<string, string[]> {
@@ -247,6 +257,12 @@ function summarizeDrops(dropLog: Array<{name: string, source: string, reason: st
   }
   
   return summary;
+}
+
+// Check if a canonical name is generic vs specific - enhanced for better dedup  
+function isGeneric(canonical: string): boolean {
+  const genericTerms = ['fish', 'fish product', 'seafood', 'meat', 'vegetable', 'fruit', 'protein'];
+  return genericTerms.includes(canonical.toLowerCase());
 }
 
 // Default portion estimates based on food type - plate-scale heuristics
