@@ -5,6 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const corsHeadersJson = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+function normalizeItems(raw: any[]): Array<{name:string, confidence:number, category:string, portion_hint?:string|null}> {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((it:any) => ({
+    name: it?.name ?? it?.food_name ?? it?.item_name ?? 'Unknown',
+    confidence: typeof it?.confidence === 'number' ? it.confidence : (typeof it?.conf === 'number' ? it.conf : 0.8),
+    category: it?.category ?? it?.food_category ?? 'unknown',
+    portion_hint: it?.portion_hint ?? it?.hint ?? it?.hints ?? null,
+  }));
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -468,12 +480,29 @@ JSON only. No prose.`;
             try {
               const relaxedResult = JSON.parse(relaxedContent);
               items = Array.isArray(relaxedResult) ? relaxedResult : (relaxedResult.items || []);
+              
+              // Normalize relaxed attempt items
+              const normalizedRelaxed = normalizeItems(items);
+              
               console.info('[GPT][raw_count]', {
                 request_id: requestId,
                 image_hash: imageHash,
-                count: items.length,
+                count: normalizedRelaxed.length,
                 attempt: 'relaxed'
               });
+              
+              // Return normalized relaxed result immediately
+              return new Response(JSON.stringify({
+                items: normalizedRelaxed,
+                _debug: {
+                  raw_items: items,
+                  count: normalizedRelaxed.length,
+                  request_id: requestId,
+                  image_hash: imageHash,
+                  attempt: 'relaxed'
+                }
+              }), { status: 200, headers: corsHeadersJson });
+              
             } catch (relaxedParseError) {
               console.error('[GPT][relaxed_parse_error]', {
                 request_id: requestId,
@@ -502,17 +531,12 @@ JSON only. No prose.`;
       });
     }
     
-    // Normalize portionHint field name (GPT might return either)
-    const normalizedItems = items.map((item: any) => ({
-      name: item.name,
-      category: item.category,
-      confidence: item.confidence,
-      portion_hint: item.portion_hint || item.portionHint || null
-    }));
+    // Normalize items using the canonical helper
+    const normalized = normalizeItems(items);
     
     // Apply basic non-food filtering
-    const beforeBasicFilter = normalizedItems.length;
-    const filteredItems = normalizedItems.filter((item: any) => {
+    const beforeBasicFilter = normalized.length;
+    const filteredItems = normalized.filter((item: any) => {
       const name = (item.name || '').toLowerCase();
       const isNonFood = ['plate', 'dish', 'bowl', 'table', 'fork', 'knife', 'spoon', 'cup', 'glass'].some(nf => name.includes(nf));
       return !isNonFood && name.length > 0;
@@ -542,26 +566,16 @@ JSON only. No prose.`;
     
     console.log(`[GPT-V2] Final result for ${requestId}:`, filteredItems.length, 'items:', filteredItems.map(i => i.name));
 
-    // Return result with diagnostic info
-    const result = {
+    return new Response(JSON.stringify({
       items: filteredItems,
-      model: 'gpt-4o',
-      _debug: { 
-        from: 'gpt-v2', 
+      _debug: {
+        raw_items: items,
         count: filteredItems.length,
-        raw_tokens: (data?.usage?.total_tokens) || 0,
-        diag: filteredItems.length === 0 ? 'gpt_empty' : undefined,
-        raw_count: beforeFilterCount,
-        filtered_count: afterBasicFilter,
         request_id: requestId,
         image_hash: imageHash,
-        duration_ms: duration_ms
+        attempt: attemptType
       }
-    };
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }), { status: 200, headers: corsHeadersJson });
 
   } catch (error) {
     console.error('[GPT-V2] Error:', error);

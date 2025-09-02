@@ -104,7 +104,27 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
       throw new Error(`GPT detection failed: ${error.message}`);
     }
 
-    const rawItems = data?.items || [];
+    // 1) Shape breadcrumb
+    console.warn('[ROUTER][gpt:response_shape]', {
+      hasData: !!data,
+      keys: data ? Object.keys(data) : [],
+      hasItems: !!data?.items,
+      isArray: Array.isArray(data?.items),
+      len: Array.isArray(data?.items) ? data.items.length : 0,
+      sample: Array.isArray(data?.items) ? data.items[0] : null,
+    });
+
+    // 2) Tolerant extractor (fail-open for future mismatches)
+    function extractItems(obj:any): any[] {
+      if (!obj) return [];
+      if (Array.isArray(obj.items)) return obj.items;
+      if (Array.isArray(obj.result?.items)) return obj.result.items;
+      if (Array.isArray(obj.foods)) return obj.foods;
+      if (Array.isArray(obj.detections)) return obj.detections;
+      return [];
+    }
+
+    const rawItems = extractItems(data);
     console.info('[ROUTER][gpt:raw]', `count=${rawItems.length}`);
     
     const isEmpty = !rawItems.length;
