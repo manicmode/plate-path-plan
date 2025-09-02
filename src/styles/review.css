@@ -34,7 +34,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(100dvh - 140px - env(safe-area-inset-bottom));
+  flex: 1;
 }
 
 /* Scrolling list */
@@ -43,6 +43,13 @@
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 200px);
+}
+
+/* Sticky actions footer */
+.lyf-actions {
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 /* Desktop centers the dialog */

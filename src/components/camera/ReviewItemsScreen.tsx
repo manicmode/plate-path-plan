@@ -5,6 +5,7 @@ import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { SaveSetDialog } from './SaveSetDialog';
 import { ReviewItemCard } from './ReviewItemCard';
+import { NumberWheelSheet } from './NumberWheelSheet';
 import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { saveMealSet } from '@/api/mealSets';
@@ -41,6 +42,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -169,6 +171,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
+  const handleOpenWheel = (itemId: string) => {
+    setOpenWheelForId(itemId);
+  };
+
+  const handleWheelChange = (grams: number) => {
+    if (openWheelForId) {
+      handleItemChange(openWheelForId, 'grams', grams);
+      handleItemChange(openWheelForId, 'portion', `${grams}g`);
+    }
+  };
+
+  const handleWheelClose = () => {
+    setOpenWheelForId(null);
+  };
+
   const selectedCount = items.filter(item => item.selected && item.name.trim()).length;
   const count = items.length;
 
@@ -202,17 +219,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             <div className="lyf-panel__body">
               {/* Header with count */}
               <div className="px-4 pt-3 pb-2 sm:px-5 sm:pt-3">
-                <h2 className="text-xl font-semibold text-foreground">
+                <h2 className="text-xl font-semibold text-foreground mt-2 mb-4">
                   Review Detected Items <span className="text-muted-foreground">({count})</span>
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   Check and edit the food items detected in your image.
                 </p>
               </div>
 
               {/* Scrollable content */}
               <div className="lyf-items px-4 sm:px-5">
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {items.map((item) => (
                     <ReviewItemCard
                       key={item.id}
@@ -220,6 +237,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                       canRemove={items.length > 1}
                       onChange={handleItemChange}
                       onRemove={handleRemoveItem}
+                      onOpenWheel={handleOpenWheel}
                     />
                   ))}
                 </div>
@@ -238,85 +256,88 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               </div>
             </div>
 
-            {/* Action stack pinned to bottom */}
-            <div className="px-4 py-3 border-t border-border bg-background">
-              <div className="grid gap-2">
-              {FF.FEATURE_LYF_LOG_THIS_SET ? (
-                <>
-                  {/* Primary: Log This Set (instant) */}
-                  <Button
-                    onClick={handleLogImmediately}
-                    disabled={selectedCount === 0}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    Log This Set ({selectedCount})
-                  </Button>
-                  
-                  {/* Secondary: See Health Profile & Log */}
-                  <Button
-                    onClick={handleSeeDetails}
-                    disabled={selectedCount === 0}
-                    variant="secondary"
-                    className="w-full"
-                  >
-                    <Info className="h-4 w-4 mr-2" />
-                    See Health Profile & Log
-                  </Button>
-                  
-                  {/* Third: Save This Set */}
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    variant="ghost"
-                    className="w-full"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save This Set
-                  </Button>
-                  
-                  {/* Fourth: Cancel */}
-                  <Button
-                    onClick={onClose}
-                    variant="ghost"
-                    className="w-full text-destructive hover:text-destructive"
-                  >
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                /* Fallback layout when feature flag is off */
-                <>
-                  <Button
-                    onClick={handleSeeDetails}
-                    disabled={selectedCount === 0}
-                    className="w-full"
-                  >
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Continue ({selectedCount})
-                  </Button>
-                  <div className="flex gap-3">
+            {/* Sticky action footer */}
+            <div className="lyf-actions bg-background border-t border-border">
+              <div className="p-4 space-y-3">
+                {FF.FEATURE_LYF_LOG_THIS_SET ? (
+                  <>
+                    {/* Primary: Log This Set (instant) */}
                     <Button
-                      onClick={handleSaveSet}
+                      onClick={handleLogImmediately}
                       disabled={selectedCount === 0}
-                      variant="ghost"
-                      className="flex-1"
+                      className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium text-base"
                     >
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Set
+                      <Zap className="h-5 w-5 mr-2" />
+                      Log This Set ({selectedCount})
                     </Button>
-                    <Button onClick={onClose} variant="outline" className="flex-1">
-                      Cancel
+                    
+                    {/* Secondary actions row */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        onClick={handleSeeDetails}
+                        disabled={selectedCount === 0}
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        <Info className="h-4 w-4 mr-1" />
+                        Health Profile
+                      </Button>
+                      
+                      <Button
+                        onClick={handleSaveSet}
+                        disabled={selectedCount === 0}
+                        variant="ghost" 
+                        size="sm"
+                        className="text-xs"
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        Save Set
+                      </Button>
+                      
+                      <Button
+                        onClick={onClose}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-destructive hover:text-destructive"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  /* Fallback layout when feature flag is off */
+                  <>
+                    <Button
+                      onClick={handleSeeDetails}
+                      disabled={selectedCount === 0}
+                      className="w-full"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Continue ({selectedCount})
                     </Button>
-                  </div>
-                </>
-              )}
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleSaveSet}
+                        disabled={selectedCount === 0}
+                        variant="ghost"
+                        className="flex-1"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Set
+                      </Button>
+                      <Button onClick={onClose} variant="outline" className="flex-1">
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                )}
 
-              {selectedCount > 0 && (
-                <p className="text-center text-xs text-muted-foreground">
-                  {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-                </p>
-              )}
+                {selectedCount > 0 && (
+                  <p className="text-center text-xs text-muted-foreground mt-2">
+                    {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -334,6 +355,18 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               }))
             }
             onSaved={handleSaveSetConfirm}
+          />
+
+          {/* Number Wheel Sheet */}
+          <NumberWheelSheet
+            open={!!openWheelForId}
+            defaultValue={openWheelForId ? (items.find(i => i.id === openWheelForId)?.grams || 100) : 100}
+            onChange={handleWheelChange}
+            onClose={handleWheelClose}
+            min={5}
+            max={1000}
+            step={5}
+            unit="g"
           />
         </Dialog.Content>
       </Dialog.Portal>
