@@ -1,17 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Camera, Upload, X, Flashlight, FlashlightOff, RotateCcw, Loader2, Sparkles, Zap } from 'lucide-react';
+import { Camera, Upload, X, Flashlight, FlashlightOff, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { lightTap } from '@/lib/haptics';
-import { Sound } from '@/lib/sound/soundManager';
+import { playShutter, bindShutterInit } from '@/lib/sound';
 
 interface PhotoIntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
   context: 'log' | 'health';
   onImageReady: (fileOrBlob: File | Blob) => void;
-  isProcessing?: boolean;
+  busy?: boolean;
+  showEmpty?: boolean;
+  onTryAgain?: () => void;
+  onAddManually?: () => void;
 }
 
 export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
@@ -19,7 +22,10 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   onClose,
   context,
   onImageReady,
-  isProcessing = false
+  busy = false,
+  showEmpty = false,
+  onTryAgain,
+  onAddManually
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,11 +38,11 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showCaptureFlash, setShowCaptureFlash] = useState(false);
 
-  // Initialize camera when modal opens - with better timing
+  // Initialize camera when modal opens
   useEffect(() => {
     let mounted = true;
     
-    if (isOpen && !isProcessing) {
+    if (isOpen && !busy) {
       // Add small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         if (mounted) {
@@ -54,16 +60,22 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       cleanup();
       setDebugInfo('');
     }
-  }, [isOpen, isProcessing]);
+  }, [isOpen, busy]);
 
-  // Stop camera stream when processing to free up camera
+  // Stop camera stream when busy to free up camera
   useEffect(() => {
-    if (isProcessing && streamRef.current) {
+    if (busy && streamRef.current) {
       console.log('🎥 Stopping camera stream during processing');
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-  }, [isProcessing]);
+  }, [busy]);
+
+  // Bind shutter sound init to capture button
+  useEffect(() => {
+    const captureBtn = document.querySelector('[data-capture-btn]') as HTMLElement;
+    bindShutterInit(captureBtn);
+  }, [hasPermission]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -168,23 +180,15 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   };
 
 
-  const handleCapturePointerDown = async () => {
-    try {
-      await Sound.ensureUnlocked();
-    } catch (error) {
-      console.log('Sound unlock failed:', error);
-    }
-  };
-
   const capturePhoto = async () => {
-    if (!videoRef.current || !canvasRef.current || isCapturing || isProcessing) return;
+    if (!videoRef.current || !canvasRef.current || isCapturing || busy) return;
 
     setIsCapturing(true);
     
     try {
       // Capture effects
       lightTap(); // Haptic feedback
-      await Sound.play('shutter'); // Camera sound
+      await playShutter(); // Camera sound - must be in direct click handler for iOS
       
       // Screen flash effect
       setShowCaptureFlash(true);
@@ -232,12 +236,12 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('File upload triggered');
     const file = event.target.files?.[0];
-    if (file) {
-      console.log('File selected:', file.name, file.type, file.size);
-      onImageReady(file);
-      // Reset input value to allow selecting the same file again
-      event.target.value = '';
-    }
+    if (!file) return;
+    
+    console.log('File selected:', file.name, file.type, file.size);
+    onImageReady(file);
+    // Reset input value to allow selecting the same file again
+    event.currentTarget.value = '';
   };
 
   const handleUploadClick = (e: React.MouseEvent) => {
@@ -282,7 +286,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   }
 
   return (
-    <Dialog.Root open={isOpen && !isProcessing} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black z-50" />
         <Dialog.Content className="fixed inset-0 bg-black text-white z-50 flex flex-col">
@@ -338,8 +342,54 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           )}
 
 
+          {/* Busy Overlay - Small spinner while processing */}
+          {busy && (
+            <div className="absolute inset-0 bg-black/70 z-40 flex items-center justify-center">
+              <div className="text-white text-center">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-400/30 border-t-emerald-400 mx-auto mb-4" />
+                  <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-emerald-400 animate-pulse" />
+                </div>
+                <p className="text-lg font-medium">Analyzing...</p>
+                <p className="text-emerald-400 text-sm animate-pulse">🔍 Detecting food items</p>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State - Inline inside modal */}
+          {showEmpty && (
+            <div className="absolute inset-0 bg-black/90 z-40 flex items-center justify-center p-4">
+              <div className="bg-neutral-900 text-neutral-100 rounded-2xl p-6 max-w-xs w-full text-center">
+                <div className="h-12 w-12 mx-auto mb-4 bg-neutral-700 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🍽️</span>
+                </div>
+                <h3 className="text-lg font-bold mb-3">No Items Detected</h3>
+                <p className="text-neutral-300 text-sm mb-4">
+                  We couldn't identify any food items. Try again or add manually.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={onTryAgain}
+                    size="sm"
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    Try Again
+                  </Button>
+                  <Button
+                    onClick={onAddManually}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Add Manually
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Loading/Error States */}
-          {hasPermission === null && (
+          {hasPermission === null && !busy && (
             <div className="absolute inset-0 flex items-center justify-center z-40 bg-black">
               <div className="text-white text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -349,7 +399,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             </div>
           )}
           
-          {hasPermission !== true && hasPermission !== null && (
+          {hasPermission !== true && hasPermission !== null && !busy && (
             <div className="absolute inset-0 flex items-center justify-center z-40 bg-black">
               <div className="text-white text-center">
                 <Camera className="h-12 w-12 mx-auto mb-4 text-red-400" />
@@ -394,10 +444,10 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
               <Button
                 size="lg"
                 onClick={capturePhoto}
-                onPointerDown={handleCapturePointerDown}
-                disabled={!hasPermission || isCapturing || isProcessing}
+                data-capture-btn
+                disabled={!hasPermission || isCapturing || busy}
                 className={`h-16 w-16 rounded-full p-0 shadow-lg transition-all duration-200 ${
-                  isCapturing || isProcessing 
+                  isCapturing || busy 
                     ? 'bg-emerald-500 text-white animate-pulse' 
                     : 'bg-white text-black hover:bg-white/90 hover:scale-110'
                 }`}
@@ -407,8 +457,6 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
                   <div className="flex items-center justify-center">
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   </div>
-                ) : isProcessing ? (
-                  <Zap className="h-8 w-8 animate-pulse" />
                 ) : (
                   <Camera className="h-8 w-8" />
                 )}
@@ -416,10 +464,11 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
 
               {/* Upload Button */}
               <Button
+                type="button"
                 variant="ghost"
                 size="lg"
                 onClick={handleUploadClick}
-                disabled={isProcessing}
+                disabled={busy}
                 className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0 shadow-lg disabled:opacity-50"
                 title="Upload from gallery"
               >
@@ -433,8 +482,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={handleFileUpload}
             className="hidden"
+            onChange={handleFileUpload}
           />
 
           {/* Hidden canvas for photo capture */}

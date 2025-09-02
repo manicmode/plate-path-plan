@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
+import React, { useState, useCallback, useRef } from 'react';
 import { PhotoIntakeModal } from './PhotoIntakeModal';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { detectItemsEnsemble } from '@/lib/detect/detectItemsEnsemble';
 import { toast } from 'sonner';
-import { Sparkles, Camera, Upload, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface LogPhotoIntakeModalProps {
   isOpen: boolean;
@@ -17,21 +14,26 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false); // race guard
   const [reviewOpen, setReviewOpen] = useState(false);
   const [detected, setDetected] = useState<ReviewItem[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showEmptyState, setShowEmptyState] = useState(false);
+  const [showEmpty, setShowEmpty] = useState(false);
 
-  const handleImage = async (file: File | Blob) => {
-    setIsProcessing(true);
-    setShowEmptyState(false);
+  const handleImage = useCallback(async (file: File | Blob) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setShowEmpty(false);
     
     try {
       console.info('[LOG PHOTO] Preparing image for detection');
       const { base64NoPrefix } = await prepareImageForAnalysis(file);
       
       // Add prefix for detection
-      const b64Out = `data:image/jpeg;base64,${base64NoPrefix}`;
+      const b64Out = base64NoPrefix.startsWith('data:image/') 
+        ? base64NoPrefix 
+        : `data:image/jpeg;base64,${base64NoPrefix}`;
       
       console.info('[LOG PHOTO] Running GPT-first detection');
       const items = await detectItemsEnsemble(b64Out, {
@@ -39,10 +41,12 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
         visionLabels: [], // No vision labels for upload photos
       });
 
-      if (items.length === 0) {
-        console.info('[LOG PHOTO] No items detected, showing empty state');
-        setIsProcessing(false);
-        setShowEmptyState(true);
+      if (!items.length) {
+        // Stay here; show inline empty UI inside PhotoIntakeModal
+        console.info('[LOG PHOTO] No items detected, showing inline empty state');
+        setDetected([]);
+        setReviewOpen(false);
+        setShowEmpty(true);
         return;
       }
 
@@ -57,23 +61,25 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
 
       console.info('[LOG PHOTO] Opening review with items:', reviewItems.map(r => r.name));
       setDetected(reviewItems);
-      setIsProcessing(false);
-      setReviewOpen(true);
+      setReviewOpen(true); // Open Review sheet on top of intake modal
       
     } catch (error) {
       console.error('[LOG PHOTO] Detection failed:', error);
-      setIsProcessing(false);
-      setShowEmptyState(true);
+      setShowEmpty(true);
       toast.error('Failed to analyze photo. Please try again.');
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
-  };
+  }, []);
 
   const handleTryAgain = () => {
-    setShowEmptyState(false);
+    setShowEmpty(false);
     // Modal stays open, user can try again
   };
 
   const handleAddManually = () => {
+    setShowEmpty(false);
     onClose();
     // Navigate to manual food entry or open search - could be implemented later
     toast.info('Manual entry - to be implemented');
@@ -81,6 +87,12 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
 
   const handleReviewConfirm = (selectedItems: ReviewItem[]) => {
     console.info('[LOG PHOTO] Review confirmed with items:', selectedItems.map(r => r.name));
+    
+    // Only call food-search when we have items
+    if (selectedItems.length === 0) {
+      setReviewOpen(false);
+      return;
+    }
     
     // TODO: Implement actual logging flow
     // For now, just close and show success
@@ -96,102 +108,22 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
   return (
     <>
       <PhotoIntakeModal
-        isOpen={isOpen && !reviewOpen && !showEmptyState}
+        key="log-intake"
+        isOpen={isOpen}
         onClose={onClose}
         context="log"
         onImageReady={handleImage}
-        isProcessing={isProcessing}
+        busy={busy}
+        showEmpty={showEmpty}
+        onTryAgain={handleTryAgain}
+        onAddManually={handleAddManually}
       />
-      
-      {/* Processing Overlay - Radix Portal with high z-index */}
-      {isProcessing && (
-        <Dialog.Root open={true} onOpenChange={() => {}}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/95 z-[100]" />
-            <Dialog.Content className="fixed inset-0 z-[100] flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-20 w-20 border-4 border-emerald-400/30 border-t-emerald-400 mx-auto mb-6" />
-                  <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-emerald-400 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xl font-bold">Analyzing your photo...</p>
-                  <p className="text-emerald-400 text-sm animate-pulse">🔍 Detecting food items</p>
-                  <div className="flex items-center justify-center gap-1 mt-4">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
-                  </div>
-                </div>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
-
-      {/* Empty State Fallback - Radix Portal with high z-index */}
-      {showEmptyState && (
-        <Dialog.Root open={true} onOpenChange={() => {}}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/90 z-[100]" />
-            <Dialog.Content className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <div className="bg-neutral-900 text-neutral-100 rounded-2xl p-8 max-w-md w-full text-center">
-                <div className="h-16 w-16 mx-auto mb-4 bg-neutral-700 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🍽️</span>
-                </div>
-                <Dialog.Title className="text-xl font-bold mb-4">No Items Detected</Dialog.Title>
-                <Dialog.Description className="text-neutral-300 mb-6">
-                  We couldn't identify any food items in this photo. Choose an option below to continue.
-                </Dialog.Description>
-                <div className="grid grid-cols-1 gap-3">
-                  <Button
-                    onClick={handleTryAgain}
-                    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    <Camera className="h-4 w-4" />
-                    Take Another Photo
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowEmptyState(false);
-                      // Trigger file picker
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) handleImage(file);
-                      };
-                      input.click();
-                    }}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload from Gallery
-                  </Button>
-                  <Button
-                    onClick={handleAddManually}
-                    variant="outline" 
-                    className="flex items-center gap-2"
-                  >
-                    <Search className="h-4 w-4" />
-                    Add Manually
-                  </Button>
-                </div>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
-
-      {/* Review Screen */}
       {reviewOpen && (
         <ReviewItemsScreen
-          isOpen={reviewOpen}
-          onClose={handleReviewClose}
-          onNext={handleReviewConfirm}
+          isOpen
           items={detected}
+          onNext={handleReviewConfirm}
+          onClose={handleReviewClose}
           source="logging"
         />
       )}
