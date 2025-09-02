@@ -1,5 +1,5 @@
 import { analyzeLyfV1 } from './detectorClient';
-import { looksFoodish, rankSource } from './filters';
+import { looksFoodish, looksFoodishLabel, looksFoodishObj, rankSource } from './filters';
 import { mapVisionNameToFood } from './mapToNutrition';
 import { preferSpecific } from './preferSpecific';
 
@@ -31,27 +31,35 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     console.info('[LYF][v1] raw:', items.map(i => i.name));
   }
   
-  // Separate objects and labels for explicit merging
-  const objs = items.filter(i => i?.source === 'object' && i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
-  const labs = items.filter(i => i?.source === 'label' && i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
+  // Filter objects and labels with appropriate thresholds
+  const objsKept = items.filter(i => i?.source === 'object' && i?.name && looksFoodishObj(i.name, i.confidence || i.score));
+  const labsKept = items.filter(i => i?.source === 'label' && i?.name && looksFoodishLabel(i.name, i.confidence || i.score));
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] objs', objs.map(i => i.name));
-    console.info('[LYF][v1] labs', labs.map(i => i.name));
+    console.info('[LYF][v1] objs', objsKept.map(i => i.name));
+    console.info('[LYF][v1] labs', labsKept.map(i => i.name));
   }
   
-  // Start with objects (specific hits like salmon)
-  let candidates = [...objs];
+  // Debug switch - temporarily force labels
+  const FORCE_LABELS = false; // turn off after test
   
-  // From labels, keep only whitelisted produce and not duplicates
-  for (const lab of labs) {
-    const n = (lab.canonicalName || canonicalizeName(lab.name)).toLowerCase();
-    const already = candidates.some(
-      c => (c.canonicalName || canonicalizeName(c.name)).toLowerCase() === n
-    );
-    if (!already && LABEL_KEEP_WHEN_OBJECTS.has(n)) {
-      candidates.push(lab);
-    }
+  // Use labels if server chose labels OR no objects survived
+  const useLabels = FORCE_LABELS || (_debug?.from === 'labels') || objsKept.length === 0;
+  
+  const isDup = (a: any, b: any) => {
+    const aName = (a.canonicalName || canonicalizeName(a.name)).toLowerCase();
+    const bName = (b.canonicalName || canonicalizeName(b.name)).toLowerCase();
+    return aName === bName;
+  };
+  
+  const candidates = useLabels
+    ? labsKept
+    : // keep objects, plus non-duplicate helpful labels (veg/fruit)
+      [...objsKept, ...labsKept.filter(l => !objsKept.some(o => isDup(l, o)))];
+  
+  if (import.meta.env.DEV) {
+    console.info('[LYF][v1] strategy:', useLabels ? 'labels' : 'objects+labels');
+    console.info('[LYF][v1] candidates:', candidates.map(i => i.name));
   }
   
   // Add canonical names to candidates

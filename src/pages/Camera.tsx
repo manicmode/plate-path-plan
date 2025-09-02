@@ -780,11 +780,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           const { mapped: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
           console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
           
-          const items = (rawItems ?? [])
-            .filter(i => looksFoodish(i.canonicalName || i.vision || i.name || ''))
-            .filter(i => (i.canonicalName || i.vision || i.name || '').toLowerCase() !== 'recipe'); // hard block
+          // Don't post-filter - pipeline already filtered appropriately
+          const items = rawItems ?? [];
           
-          console.info('[LYF][v1] keep:', items.map(i => i.canonicalName || i.vision || i.name));
+          console.info('[LYF][v1] final:', items.map(i => i.canonicalName || i.vision || i.name));
           
           if (items.length === 0) {
             // No foods detected - show toast and don't render any legacy panel

@@ -8,8 +8,41 @@ export const ALWAYS_ALLOW = new Set([
   'dill', 'parsley', 'cilantro', 'herb'
 ]);
 
+// Always keep these regardless of confidence
+const ALWAYS_KEEP = new Set(['asparagus','tomato','cherry tomato','lemon','dill']);
+
 // Label minimum score
 const LABEL_MIN_SCORE = 0.45;
+
+// Lenient label filtering - allowlist veggies/fruits
+export function looksFoodishLabel(name: string, confidence?: number): boolean {
+  const n = name.toLowerCase();
+  
+  // Always keep allowlisted items
+  if (ALWAYS_KEEP.has(n)) return true;
+  
+  // Always drop junk
+  if (NEG.test(n)) return false;
+  
+  // Broad food pattern match
+  return /\b(?:salmon|fish|seafood|beef|chicken|poultry|egg|rice|pasta|bread|vegetable|fruit|tomato|lemon|asparagus|broccoli|potato|herb|spice|dill|parsley|cilantro|green)\b/i.test(n);
+}
+
+// Standard object filtering
+export function looksFoodishObj(name: string, confidence?: number): boolean {
+  const n = name.toLowerCase();
+  
+  // Fast allowlist override for specific foods
+  if (ALWAYS_ALLOW.has(n) || Array.from(ALWAYS_ALLOW).some(food => n.includes(food))) {
+    return true;
+  }
+  
+  // Always drop junk
+  if (NEG.test(n)) return false;
+  
+  // Default heuristic for objects
+  return /\b(?:salmon|fish|seafood|beef|chicken|poultry|egg|rice|pasta|bread|vegetable|fruit|tomato|lemon|asparagus|broccoli|potato|herb|spice|dill|parsley|cilantro|green)\b/i.test(n);
+}
 
 export function looksFoodish(name: string, source?: string, confidence?: number): boolean {
   const n = name.toLowerCase();
