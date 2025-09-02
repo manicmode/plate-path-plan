@@ -41,9 +41,9 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
-import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
-import { detectFoodVisionV1, filterFoodish } from '@/detect/vision_v1';
+import { analyzePhotoForLyfV1Legacy } from '@/lyf_v1_frozen/adapter';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
+import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
@@ -121,6 +121,16 @@ interface VoiceApiResponse {
   error?: string;
   model_used?: string;
   fallback_used?: boolean;
+}
+
+// Helper functions for UI formatting
+function titleCase(s: string){ 
+  return s.replace(/\b\w/g, m => m.toUpperCase()) 
+}
+
+function guessDefaultGrams(name: string){
+  // keep existing heuristic (e.g., 85g protein, 100g veg)
+  return /salmon|chicken|beef/i.test(name) ? 120 : /asparagus|tomato|lettuce/i.test(name) ? 80 : 100
 }
 
 const CameraPage = () => {
@@ -765,36 +775,37 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         setShowMultiAIDetection(true);
         
         try {
-          console.log('Calling LYF v1 food detection...');
+          console.log('Calling LYF v1 legacy adapter...');
           setProcessingStep('Detecting food items...');
           
-          // Call the unified Vision v1 detection system
-          // Use the unified ensemble detection system
-          const { detectAndFuseFoods } = await import('@/detect/detectAndFuse');
-          const { isFeatureEnabled } = await import('@/lib/featureFlags');
+          // === LYF v1 COMPATIBLE PATH ===
+          const { items } = await analyzePhotoForLyfV1Legacy(imageBase64)
           
-          const ensembleResult = await detectAndFuseFoods(imageBase64, { 
-            useEnsemble: isFeatureEnabled('lyf_ensemble') 
-          });
+          // Verification hooks - dev only logging
+          if (import.meta.env.DEV) {
+            console.info('[LYF][v1] ensemble enabled=', FF.FEATURE_LYF_ENSEMBLE)
+            console.info('[LYF][v1] detections=', items.map(r => `${r.name}:${r.grams ?? 100}g`))
+          }
           
-          console.log('[DETECTOR] ensemble', { 
-            fused: ensembleResult.fused.length,
-            ensemble_used: ensembleResult.ensembleUsed,
-            portions: ensembleResult.portions.slice(0, 3).map(p => `${p.name}:${p.grams_est}g`)
-          });
+          // Map into ReviewItems model (unchanged UI)
+          const reviewItems = items.map((it, idx) => ({
+            id: `ri-${idx}`,
+            displayName: titleCase(it.name),
+            grams: it.grams ?? guessDefaultGrams(it.name), // keep existing fallback
+            confidencePct: Math.round((it.confidence ?? 0.5) * 100),
+            source: it.source,
+          }))
           
-          const { portions } = ensembleResult;
-          
-          if (portions.length === 0) {
+          if (reviewItems.length === 0) {
             toast.error('No food items detected. Please try a clearer photo or use manual entry.');
             setIsMultiAILoading(false);
             return;
           }
           
           // Map portions to nutrition data
-          const mapped = await Promise.all(portions.map(async (portion) => {
-            const hit = await mapVisionNameToFood(portion.name);
-            return hit ? { ...hit, ...portion } : null;
+          const mapped = await Promise.all(reviewItems.map(async (item) => {
+            const hit = await mapVisionNameToFood(item.displayName);
+            return hit ? { ...hit, grams: item.grams, confidence: item.confidencePct } : null;
           }));
           const validMapped = mapped.filter(Boolean);
           
@@ -807,15 +818,15 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           // Convert to RecognizedFood format with portion estimates
           const foods: RecognizedFood[] = validMapped.map(item => ({
             name: item!.name,
-            calories: Math.round((item!.grams_est / 100) * (item!.caloriesPer100g || 200)),
-            protein: Math.round((item!.grams_est / 100) * 20),
-            carbs: Math.round((item!.grams_est / 100) * 25),
-            fat: Math.round((item!.grams_est / 100) * 10),
-            fiber: Math.round((item!.grams_est / 100) * 3),
-            sugar: Math.round((item!.grams_est / 100) * 5),
-            sodium: Math.round((item!.grams_est / 100) * 300),
-            confidence: item!.confidence === 'high' ? 85 : item!.confidence === 'medium' ? 75 : 65,
-            serving: `${item!.grams_est}g (${item!.confidence} confidence)`,
+            calories: Math.round((item!.grams / 100) * (item!.caloriesPer100g || 200)),
+            protein: Math.round((item!.grams / 100) * 20),
+            carbs: Math.round((item!.grams / 100) * 25),
+            fat: Math.round((item!.grams / 100) * 10),
+            fiber: Math.round((item!.grams / 100) * 3),
+            sugar: Math.round((item!.grams / 100) * 5),
+            sodium: Math.round((item!.grams / 100) * 300),
+            confidence: item!.confidence,
+            serving: `${item!.grams}g`,
             _provider: 'ensemble-v1'
           }));
           
