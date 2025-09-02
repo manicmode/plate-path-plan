@@ -19,8 +19,8 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
   defaultValue,
   onChange,
   onClose,
-  min = 5,
-  max = 1000,
+  min = 10,
+  max = 500,
   step = 5,
   unit = 'g'
 }) => {
@@ -92,14 +92,14 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
     };
   }, [handleScroll]);
   
-  // Initialize scroll position when opened
+  // Initialize scroll position when opened - snap to nearest estimate
   useEffect(() => {
     if (open && wheelRef.current && values.length > 0) {
       const itemHeight = 40;
-      const targetIndex = values.findIndex(v => v >= defaultValue);
+      const targetIndex = values.findIndex(v => v >= defaultValue) || 0;
       const scrollTop = Math.max(0, targetIndex * itemHeight);
       wheelRef.current.scrollTop = scrollTop;
-      setCurrentValue(defaultValue);
+      setCurrentValue(values[targetIndex] || defaultValue);
     }
   }, [open, values, defaultValue]);
 

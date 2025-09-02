@@ -208,9 +208,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         <Dialog.Content
           className="lyf-sheet fixed z-[100] inset-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          role="dialog"
+          aria-labelledby="review-title"
+          aria-describedby="review-description"
         >
-          <Dialog.Title className="sr-only">Review Detected Items</Dialog.Title>
-          <Dialog.Description className="sr-only">Confirm items and portion sizes</Dialog.Description>
+          <Dialog.Title id="review-title" className="sr-only">Review Detected Items</Dialog.Title>
+          <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
           <div className="lyf-panel">
             {/* Mobile sheet grab handle */}
@@ -259,79 +262,46 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             {/* Sticky action footer */}
             <div className="lyf-actions bg-background border-t border-border">
               <div className="p-4 space-y-3">
-                {FF.FEATURE_LYF_LOG_THIS_SET ? (
-                  <>
-                    {/* Primary: Log This Set (instant) */}
-                    <Button
-                      onClick={handleLogImmediately}
-                      disabled={selectedCount === 0}
-                      className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium text-base"
-                    >
-                      <Zap className="h-5 w-5 mr-2" />
-                      Log This Set ({selectedCount})
-                    </Button>
-                    
-                    {/* Secondary actions row */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        onClick={handleSeeDetails}
-                        disabled={selectedCount === 0}
-                        variant="secondary"
-                        size="sm"
-                        className="text-xs"
-                      >
-                        <Info className="h-4 w-4 mr-1" />
-                        Health Profile
-                      </Button>
-                      
-                      <Button
-                        onClick={handleSaveSet}
-                        disabled={selectedCount === 0}
-                        variant="ghost" 
-                        size="sm"
-                        className="text-xs"
-                      >
-                        <Save className="h-4 w-4 mr-1" />
-                        Save Set
-                      </Button>
-                      
-                      <Button
-                        onClick={onClose}
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-destructive hover:text-destructive"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  /* Fallback layout when feature flag is off */
-                  <>
-                    <Button
-                      onClick={handleSeeDetails}
-                      disabled={selectedCount === 0}
-                      className="w-full"
-                    >
-                      <ArrowRight className="h-4 w-4 mr-2" />
-                      Continue ({selectedCount})
-                    </Button>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={handleSaveSet}
-                        disabled={selectedCount === 0}
-                        variant="ghost"
-                        className="flex-1"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Set
-                      </Button>
-                      <Button onClick={onClose} variant="outline" className="flex-1">
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                )}
+                {/* Two primary actions with equal prominence */}
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleLogImmediately}
+                    disabled={selectedCount === 0}
+                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base"
+                  >
+                    ⚡ One-Tap Log ({selectedCount})
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSeeDetails}
+                    disabled={selectedCount === 0}
+                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                  >
+                    🔎 Detailed Log ({selectedCount})
+                  </Button>
+                </div>
+                
+                {/* Secondary actions row */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={handleSaveSet}
+                    disabled={selectedCount === 0}
+                    variant="ghost" 
+                    size="sm"
+                    className="flex-1 text-xs"
+                  >
+                    💾 Save Set
+                  </Button>
+                  
+                  <Button
+                    onClick={onClose}
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Cancel
+                  </Button>
+                </div>
 
                 {selectedCount > 0 && (
                   <p className="text-center text-xs text-muted-foreground mt-2">
@@ -363,8 +333,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             defaultValue={openWheelForId ? (items.find(i => i.id === openWheelForId)?.grams || 100) : 100}
             onChange={handleWheelChange}
             onClose={handleWheelClose}
-            min={5}
-            max={1000}
+            min={10}
+            max={500}
             step={5}
             unit="g"
           />

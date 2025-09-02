@@ -4,29 +4,25 @@
 /* Sheet wrapper */
 .lyf-sheet {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  /* Use dynamic viewport to avoid Safari toolbar collapse */
-  height: 100dvh;
-  max-height: 100dvh;
+  inset: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   pointer-events: auto;
 }
 
-/* Panel */
+/* Panel - Full height mobile, centered desktop */
 .lyf-panel {
   width: 100%;
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  min-height: 88dvh;
+  max-height: 95dvh;
+  border-radius: 16px 16px 0 0;
   background: hsl(var(--background));
-  /* never smaller than content; never run off screen */
-  max-height: calc(100dvh - env(safe-area-inset-top));
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
   box-shadow: 0 -12px 40px rgb(0 0 0 / 0.35);
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
 }
 
 /* Title + list area */
@@ -37,13 +33,13 @@
   flex: 1;
 }
 
-/* Scrolling list */
+/* Scrolling list - show 4 items without scrolling */
 .lyf-items {
   flex: 1;
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 200px);
+  max-height: 60vh;
 }
 
 /* Sticky actions footer */
@@ -59,7 +55,8 @@
     justify-content: center;
   }
   .lyf-panel {
-    max-width: 720px;
+    max-width: 520px;
+    min-height: 70vh;
     max-height: 90vh;
     border-radius: 16px;
   }

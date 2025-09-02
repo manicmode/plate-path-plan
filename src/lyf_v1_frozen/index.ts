@@ -22,12 +22,10 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     'asparagus', 'tomato', 'cherry tomato', 'lemon', 'dill', 'parsley', 'cilantro', 'herb'
   ]);
   
+  // Add concise dev logs
+  console.info('[LYF][v1] raw:', `from=${_debug?.from} rawObjects=${_debug?.rawObjectsCount} rawLabels=${_debug?.rawLabelsCount}`);
+  
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] raw', { 
-      from: _debug?.from, 
-      rawObjectsCount: _debug?.rawObjectsCount, 
-      rawLabelsCount: _debug?.rawLabelsCount 
-    });
     console.info('[LYF][v1] raw:', items.map(i => i.name));
   }
   
@@ -75,8 +73,10 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   // Apply deduplication and prefer specific over generic
   const dedupedCandidates = preferSpecific(candidatesWithCanonical).slice(0, 8); // Cap at 8 after dedup
   
+  // Log what we keep
+  console.info('[LYF][v1] keep:', dedupedCandidates.map(c => c.canonicalName));
+  
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] kept:', dedupedCandidates.map(c => c.canonicalName));
     console.info('[LYF][v1] deduped:', dedupedCandidates.map(c => `${c.canonicalName}:${c.source}`));
   }
   
@@ -118,7 +118,7 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   return { mapped: results, _debug };
 }
 
-// Simple canonicalization for deduplication
+// Enhanced canonicalization for deduplication and synonym mapping
 function canonicalizeName(name: string): string {
   let canonical = name.toLowerCase().trim();
   
@@ -127,26 +127,29 @@ function canonicalizeName(name: string): string {
   canonical = canonical.replace(/\b(cooked|grilled|baked|fried|raw|fresh|smoked)\b/g, '').trim();
   canonical = canonical.replace(/\s+/g, ' ');
   
-  // Apply synonym mapping
+  // Apply synonym mapping including plurals → singular
   const synonymMap: Record<string, string> = {
     'cherry tomatoes': 'cherry tomato',
-    'cherry tomato': 'tomato',
-    'grape tomato': 'tomato', 
+    'lemons': 'lemon',
+    'lemon slices': 'lemon',
+    'lemon wedges': 'lemon',
     'lemon slice': 'lemon',
     'lemon wedge': 'lemon',
     'lime wedge': 'lime',
     'salmon fillet': 'salmon',
     'asparagus spear': 'asparagus',
+    'green asparagus': 'asparagus',
     'fish product': 'fish',
-    'fish fillet': 'fish'
+    'fish fillet': 'fish',
+    'seafood': 'fish' // Dedupe generic seafood to fish
   };
   
   return synonymMap[canonical] || canonical;
 }
 
-// Check if a canonical name is generic vs specific
+// Check if a canonical name is generic vs specific - enhanced for better dedup  
 function isGeneric(canonical: string): boolean {
-  const genericTerms = ['fish', 'meat', 'vegetable', 'fruit', 'seafood', 'protein'];
+  const genericTerms = ['fish', 'fish product', 'seafood', 'meat', 'vegetable', 'fruit', 'protein'];
   return genericTerms.includes(canonical.toLowerCase());
 }
 

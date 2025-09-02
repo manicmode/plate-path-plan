@@ -1,12 +1,15 @@
 // Hard junk filter - drop always
 const NEG = /\b(?:recipe|cuisine|cooking|garnish|dishware|plate|cutlery|fork|spoon|logo|brand|text|tableware|bowl|knife|utensil|napkin|package|pack|sleeve|box|label)\b/i;
 
-// Veg/fruit allowlist - always allow these with lower threshold
+// Veg/fruit allowlist - always allow these with lower threshold  
 export const ALWAYS_ALLOW = new Set([
   'salmon', 'fish', 'asparagus', 'tomato', 'cherry tomato', 'cherry tomatoes', 
   'grape tomato', 'lemon', 'lemon slice', 'lemon wedge', 'lime', 'lime wedge', 
   'dill', 'parsley', 'cilantro', 'herb'
 ]);
+
+// Keep vegetables with lower threshold
+const KEEP_LABELS_IF_MATCH = /^(asparagus|tomato|cherry tomato|grape tomato|lemon|lemon wedge|lemon slice|dill)$/i;
 
 // Always keep these regardless of confidence
 const ALWAYS_KEEP = new Set(['asparagus','tomato','cherry tomato','lemon','dill']);
@@ -14,15 +17,24 @@ const ALWAYS_KEEP = new Set(['asparagus','tomato','cherry tomato','lemon','dill'
 // Label minimum score
 const LABEL_MIN_SCORE = 0.45;
 
-// Lenient label filtering - allowlist veggies/fruits
+// Lenient label filtering - allowlist veggies/fruits with 0.40 threshold
 export function looksFoodishLabel(name: string, confidence?: number): boolean {
   const n = name.toLowerCase();
   
   // Always keep allowlisted items
   if (ALWAYS_KEEP.has(n)) return true;
   
-  // Always drop junk
+  // Always drop junk - never keep these
   if (NEG.test(n)) return false;
+  
+  // Use lower threshold (0.40) for vegetables matching KEEP_LABELS_IF_MATCH
+  if (KEEP_LABELS_IF_MATCH.test(n)) {
+    return !confidence || confidence >= 0.40;
+  }
+  
+  // Standard threshold for other labels
+  const minScore = confidence ? (confidence >= LABEL_MIN_SCORE) : true;
+  if (!minScore) return false;
   
   // Broad food pattern match
   return /\b(?:salmon|fish|seafood|beef|chicken|poultry|egg|rice|pasta|bread|vegetable|fruit|tomato|lemon|asparagus|broccoli|potato|herb|spice|dill|parsley|cilantro|green)\b/i.test(n);
