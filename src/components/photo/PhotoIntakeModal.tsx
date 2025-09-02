@@ -25,46 +25,95 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
-  // Initialize camera when modal opens
+  // Initialize camera when modal opens - with better timing
   useEffect(() => {
+    let mounted = true;
+    
     if (isOpen) {
-      initCamera();
+      // Add small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (mounted) {
+          console.log('🎥 Modal opened, initializing camera...');
+          setDebugInfo('Starting camera initialization...');
+          initCamera();
+        }
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        mounted = false;
+      };
     } else {
       cleanup();
+      setDebugInfo('');
     }
-    return cleanup;
   }, [isOpen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   const initCamera = async () => {
     try {
-      console.log('Requesting camera access...');
+      console.log('🎥 Requesting camera access...');
+      setDebugInfo('Requesting camera permissions...');
+      
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported in this browser');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
+        },
+        audio: false
       });
       
-      console.log('Camera stream obtained:', stream);
+      console.log('🎥 Camera stream obtained:', stream);
+      console.log('🎥 Stream active:', stream.active);
+      console.log('🎥 Video tracks:', stream.getVideoTracks().length);
+      setDebugInfo(`Camera stream active: ${stream.active}`);
+      
       streamRef.current = stream;
       
       if (videoRef.current) {
+        console.log('🎥 Setting video srcObject...');
         videoRef.current.srcObject = stream;
-        console.log('Video srcObject set');
+        setDebugInfo('Video element connected to stream...');
+        
+        // Wait for video to load metadata
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          console.log('🎥 Video metadata loaded');
+          console.log('🎥 Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+          setDebugInfo(`Video loaded: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
+        });
         
         // Ensure video plays
         try {
           await videoRef.current.play();
-          console.log('Video playing');
+          console.log('🎥 Video playing successfully');
+          setDebugInfo('Camera is now active');
         } catch (playError) {
-          console.log('Video play failed, might auto-play:', playError);
+          console.log('🎥 Video play failed:', playError);
+          setDebugInfo('Video play failed, but might still work');
         }
+      } else {
+        console.error('🎥 Video ref is null');
+        setDebugInfo('Error: Video element not found');
       }
+      
       setHasPermission(true);
     } catch (error) {
-      console.error('Camera access denied:', error);
+      console.error('🎥 Camera access denied:', error);
+      setDebugInfo(`Camera error: ${(error as Error).message}`);
       setHasPermission(false);
       toast.error('Camera access is required for photo capture');
     }
@@ -202,43 +251,75 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           </div>
 
           {/* Camera View Container */}
-          <div className="flex-1 relative">
-            {/* Top Corner Guides */}
-            <div className="absolute top-8 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-10" />
-            <div className="absolute top-8 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-10" />
+          <div className="flex-1 relative overflow-hidden">
+            {/* Top Corner Guides - moved higher and closer to banner */}
+            <div className="absolute top-2 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
+            <div className="absolute top-2 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
             
-            {/* Camera View */}
-            <div className="absolute inset-0">
-              {hasPermission && (
+            {/* Camera View - Fixed z-index and positioning */}
+            <div className="absolute inset-0 bg-black">
+              {hasPermission === true && (
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover z-10"
+                  style={{ 
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%'
+                  }}
                   onLoadedMetadata={() => {
-                    console.log('Video loaded:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+                    console.log('🎥 Video loaded metadata:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+                    setDebugInfo(`Video active: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
                   }}
                   onError={(e) => {
-                    console.error('Video error:', e);
+                    console.error('🎥 Video error:', e);
+                    setDebugInfo('Video element error');
+                  }}
+                  onCanPlay={() => {
+                    console.log('🎥 Video can play');
+                    setDebugInfo('Video ready to play');
                   }}
                 />
               )}
               
               {hasPermission === null && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black">
                   <div className="text-white text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
                     <p>Initializing camera...</p>
+                    {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
+                  </div>
+                </div>
+              )}
+              
+              {hasPermission !== true && hasPermission !== null && (
+                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black">
+                  <div className="text-white text-center">
+                    <Camera className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                    <p>Camera access denied</p>
+                    {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
+                    <Button onClick={initCamera} className="mt-4">Try Again</Button>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Debug info overlay - remove in production */}
+            {debugInfo && hasPermission === true && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded z-40">
+                {debugInfo}
+              </div>
+            )}
+
             {/* Bottom instruction */}
-            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-10">
+            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-30">
               <p className="text-white text-sm font-medium text-center">
-                {context === 'log' ? 'Position food in the frame' : 'Position food in the frame'}
+                Position food in the frame
               </p>
               <p className="text-white/70 text-xs text-center mt-1">
                 Fill the frame • Avoid glare • Keep steady
@@ -246,8 +327,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             </div>
 
             {/* Bottom Corner Guides */}
-            <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-10" />
-            <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-10" />
+            <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
+            <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
           </div>
 
           {/* Controls */}
