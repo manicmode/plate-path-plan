@@ -43,7 +43,6 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { analyzePhotoForLyfV1Legacy } from '@/lyf_v1_frozen/adapter';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
-import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
@@ -2140,22 +2139,6 @@ console.log('Global search enabled:', enableGlobalSearch);
     // Clear detection state and return - do NOT trigger legacy modal
     setIsMultiAILoading(false);
   };
-    
-    // Convert ReviewItem to SummaryItem
-    const summaryItems: SummaryItem[] = selectedItems.map(item => ({
-      id: item.id,
-      name: item.name,
-      portion: item.portion,
-      selected: true
-    }));
-    
-    // Store all selected items for sequential processing
-    setPendingItems(summaryItems);
-    setCurrentItemIndex(0);
-    
-    // Process the first item
-    processCurrentItem(summaryItems, 0);
-  };
 
   const processCurrentItem = async (items: SummaryItem[], index: number) => {
     console.log('🔄 Processing item:', index + 1, 'of', items.length);
@@ -3325,5 +3308,4 @@ console.log('Global search enabled:', enableGlobalSearch);
     </div>
   );
 };
-
 export default CameraPage;
