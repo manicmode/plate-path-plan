@@ -27,7 +27,7 @@ export async function prepareImageForAnalysis(
   const { 
     maxEdge = 1280, 
     minEdge = 720, 
-    quality = 0.82, 
+    quality = 0.7, 
     targetMaxBytes = 900_000 
   } = opts;
 
