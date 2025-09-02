@@ -8,24 +8,50 @@ export interface GptVisionResult {
 
 export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
   try {
-    const { data, error } = await supabase.functions.invoke('meal-detector-fallback-gpt', {
+    // Try new structured GPT-V2 endpoint first
+    const { data, error } = await supabase.functions.invoke('gpt-food-detector-v2', {
       body: { image_base64: base64 }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.warn('[GPT][v2] Failed, falling back to v1:', error);
+      // Fallback to old endpoint
+      const fallbackResponse = await supabase.functions.invoke('meal-detector-fallback-gpt', {
+        body: { image_base64: base64 }
+      });
+      
+      if (fallbackResponse.error) throw fallbackResponse.error;
+      
+      const fallbackResult: GptVisionResult = {
+        names: fallbackResponse.data?.names ?? [],
+        model: fallbackResponse.data?.model,
+        _debug: { ...fallbackResponse.data?._debug, fallback_used: true }
+      };
+      return fallbackResult;
+    }
+
+    // Process structured response from V2
+    const items = data?.items || [];
+    const names = items.map((item: any) => item.name);
 
     const result: GptVisionResult = {
-      names: data?.names ?? [],
-      model: data?.model,
-      _debug: data?._debug
+      names,
+      model: data?.model || 'gpt-4o-v2',
+      _debug: {
+        ...data?._debug,
+        structured_items: items.length,
+        has_categories: items.some((i: any) => i.category),
+        has_portions: items.some((i: any) => i.portion_estimate)
+      }
     };
 
     // DEV-only logging
     if (import.meta.env.DEV) {
-      console.info('[GPT][vision]', {
+      console.info('[GPT][v2]', {
         model: result.model,
         foods: result.names.length,
-        items: result.names.slice(0, 5)
+        items: result.names.slice(0, 5),
+        structured: items.length > 0
       });
     }
 
