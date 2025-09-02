@@ -7,14 +7,45 @@ const corsHeaders = {
 
 const corsHeadersJson = { ...corsHeaders, 'Content-Type': 'application/json' };
 
-function normalizeItems(raw: any[]): Array<{name:string, confidence:number, category:string, portion_hint?:string|null}> {
+function normalizeItems(raw: any[], requestId?: string): Array<{name:string, confidence:number, category:string, portion_hint?:string|null, calories?:number|null, nutrition?:any, image?:string|null}> {
   if (!Array.isArray(raw)) return [];
-  return raw.map((it:any) => ({
-    name: it?.name ?? it?.food_name ?? it?.item_name ?? 'Unknown',
-    confidence: typeof it?.confidence === 'number' ? it.confidence : (typeof it?.conf === 'number' ? it.conf : 0.8),
-    category: it?.category ?? it?.food_category ?? 'unknown',
-    portion_hint: it?.portion_hint ?? it?.hint ?? it?.hints ?? null,
-  }));
+  
+  const normalized = raw.map((it:any, index) => {
+    // Try multiple possible name fields
+    const name = it?.name ?? it?.productName ?? it?.displayName ?? it?.title ?? it?.description ?? it?.label ?? it?.food_name ?? it?.item_name ?? null;
+    
+    if (!name || name.length === 0) {
+      console.warn('[NORMALIZE][empty_name]', {
+        request_id: requestId,
+        index,
+        available_keys: Object.keys(it || {}),
+        raw_item: it
+      });
+    }
+    
+    return {
+      name: name || 'Unknown',
+      confidence: typeof it?.confidence === 'number' ? it.confidence : (typeof it?.conf === 'number' ? it.conf : 0.8),
+      category: it?.category ?? it?.food_category ?? 'unknown',
+      portion_hint: it?.portion_hint ?? it?.hint ?? it?.hints ?? null,
+      calories: typeof it?.calories === 'number' ? it.calories : null,
+      nutrition: it?.nutrition_facts ?? it?.nutrition ?? null,
+      image: it?.image_url ?? it?.image ?? null,
+    };
+  });
+  
+  // Warning if GPT detected items but normalizer mapped nothing useful
+  const validItems = normalized.filter(item => item.name && item.name !== 'Unknown' && item.name.length > 0);
+  if (raw.length > 0 && validItems.length === 0) {
+    console.warn('[NORMALIZE][no_valid_names]', {
+      request_id: requestId,
+      raw_count: raw.length,
+      sample_raw_keys: raw.slice(0, 3).map(item => Object.keys(item || {})),
+      sample_raw_items: raw.slice(0, 3)
+    });
+  }
+  
+  return normalized;
 }
 
 serve(async (req) => {
@@ -482,7 +513,16 @@ JSON only. No prose.`;
               items = Array.isArray(relaxedResult) ? relaxedResult : (relaxedResult.items || []);
               
               // Normalize relaxed attempt items
-              const normalizedRelaxed = normalizeItems(items);
+              // Debug: Log relaxed raw response before normalization
+              console.info('[NORMALIZE][relaxed_raw_before]', {
+                request_id: requestId,
+                image_hash: imageHash,
+                raw_items_count: items.length,
+                raw_sample: items.slice(0, 3),
+                all_raw_keys: items.slice(0, 5).map(item => Object.keys(item || {}))
+              });
+              
+              const normalizedRelaxed = normalizeItems(items, requestId);
               
               console.info('[GPT][raw_count]', {
                 request_id: requestId,
@@ -532,7 +572,16 @@ JSON only. No prose.`;
     }
     
     // Normalize items using the canonical helper
-    const normalized = normalizeItems(items);
+    // Debug: Log full raw response before normalization
+    console.info('[NORMALIZE][raw_before]', {
+      request_id: requestId,
+      image_hash: imageHash,
+      raw_items_count: items.length,
+      raw_sample: items.slice(0, 3),
+      all_raw_keys: items.slice(0, 5).map(item => Object.keys(item || {}))
+    });
+    
+    const normalized = normalizeItems(items, requestId);
     
     // Apply basic non-food filtering
     const beforeBasicFilter = normalized.length;
