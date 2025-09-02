@@ -22,43 +22,45 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     });
   }
   
-  // Build candidates: objects first, fall back to labels if no objects are foodish
-  const objs = items.filter(i => i?.source === 'object' && i?.name && looksFoodish(i.name, i.source, i.confidence));
-  const labs = items.filter(i => i?.source === 'label' && i?.name && looksFoodish(i.name, i.source, i.confidence) && (i.score || i.confidence || 0) >= 0.45);
-  const candidates = objs.length > 0 ? objs : labs;
+  // Build single candidate list from all normalized items
+  const candidates = items.filter(i => i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] candidates', candidates.map(c => `${c.name}:${(c.score || c.confidence || 0).toFixed(2)}:${c.source}`));
     console.info('[LYF][v1] keep:', candidates.map(i => i.name));
   }
   
-  // Merge objects + labels, then dedupe by similarity ≥0.85 without requiring bbox
-  const deduped = new Map<string, any>();
+  // Group by canonical name and de-duplicate 
+  const grouped = new Map<string, any[]>();
   for (const c of candidates) {
     const canonical = canonicalizeName(c.name);
-    let shouldAdd = true;
-    
-    // Check similarity with existing items
-    for (const [existingCanonical, existingItem] of deduped.entries()) {
-      if (calculateSimilarity(canonical, existingCanonical) >= 0.85) {
-        // Keep the better one (objects first, then higher confidence labels)
-        if (c.source === 'object' && existingItem.source === 'label') {
-          deduped.delete(existingCanonical);
-          deduped.set(canonical, { ...c, canonicalName: canonical });
-        } else if (c.source === existingItem.source && ((c.score || c.confidence || 0) > (existingItem.score || existingItem.confidence || 0))) {
-          deduped.delete(existingCanonical);
-          deduped.set(canonical, { ...c, canonicalName: canonical });
-        }
-        shouldAdd = false;
-        break;
-      }
+    if (!grouped.has(canonical)) {
+      grouped.set(canonical, []);
     }
-    
-    if (shouldAdd) {
-      deduped.set(canonical, { ...c, canonicalName: canonical });
-    }
+    grouped.get(canonical)!.push({ ...c, canonicalName: canonical });
   }
-  const dedupedCandidates = Array.from(deduped.values());
+  
+  // Choose representative from each group
+  const dedupedCandidates = Array.from(grouped.entries()).map(([canonical, items]) => {
+    // Prefer specific over generic (salmon > fish)
+    const specific = items.filter(i => !isGeneric(canonical));
+    const generic = items.filter(i => isGeneric(canonical));
+    
+    if (specific.length > 0 && generic.length > 0) {
+      // Keep only specific, drop generic
+      items = specific;
+    }
+    
+    // Sort by: objects first, then highest confidence
+    items.sort((a, b) => {
+      if (a.source !== b.source) {
+        return a.source === 'object' ? -1 : 1;
+      }
+      return (b.confidence || b.score || 0) - (a.confidence || a.score || 0);
+    });
+    
+    return items[0];
+  }).slice(0, 8); // Cap at 8 after dedup
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] dedup_heads:', dedupedCandidates.map(c => c.canonicalName));
@@ -148,4 +150,10 @@ function getDefaultGrams(canonicalName: string): number {
   if (/lettuce|spinach|kale/.test(name)) return 50;
   
   return 100; // Default fallback
+}
+
+// Check if a canonical name is generic vs specific
+function isGeneric(canonical: string): boolean {
+  const genericTerms = ['fish', 'fish product', 'meat', 'vegetable', 'fruit'];
+  return genericTerms.includes(canonical.toLowerCase());
 }

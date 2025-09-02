@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ArrowRight, Edit3, AlertCircle } from 'lucide-react';
+import { Plus, ArrowRight, Edit3, AlertCircle, Zap, Save, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { SaveSetDialog } from './SaveSetDialog';
 
 export interface ReviewItem {
   name: string;
@@ -17,12 +19,15 @@ export interface ReviewItem {
   eggSize?: string;
   needsDetails?: boolean; // Flag for showing "Needs details" chip
   mapped?: boolean; // Track if nutrition mapping succeeded
+  grams?: number; // For logging and saving
+  canonicalName?: string; // For mapping
 }
 
 interface ReviewItemsScreenProps {
   isOpen: boolean;
   onClose: () => void;
   onNext: (selectedItems: ReviewItem[]) => void;
+  onLogImmediately?: (selectedItems: ReviewItem[]) => void; // One-tap logging
   items: ReviewItem[];
 }
 
@@ -30,9 +35,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   isOpen,
   onClose,
   onNext,
+  onLogImmediately,
   items: initialItems
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   // Atomic handoff - update items when props change
   React.useEffect(() => {
@@ -76,6 +83,28 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
     onNext(selectedItems);
+  };
+
+  const handleLogImmediately = () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to log');
+      return;
+    }
+    if (onLogImmediately) {
+      onLogImmediately(selectedItems);
+    } else {
+      toast.error('Immediate logging not available');
+    }
+  };
+
+  const handleSaveSet = () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to save');
+      return;
+    }
+    setShowSaveDialog(true);
   };
 
   const selectedCount = items.filter(item => item.selected && item.name.trim() && item.portion.trim()).length;
@@ -198,28 +227,49 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             </Button>
           </div>
 
-          <div className="flex justify-between items-center mt-6">
-            <DialogClose asChild>
-              <Button
-                variant="outline"
-                className="flex-1 mr-3"
-              >
-                Cancel
-              </Button>
-            </DialogClose>
+          {/* Three action buttons */}
+          <div className="space-y-3 mt-6">
+            {/* Primary: Log selected items (one-tap) */}
+            <Button
+              onClick={handleLogImmediately}
+              disabled={selectedCount === 0}
+              className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Log Selected Items ({selectedCount})
+            </Button>
             
+            {/* Secondary: See details before logging */}
             <Button
               onClick={handleNext}
               disabled={selectedCount === 0}
-              className={`flex-1 ml-3 flex items-center justify-center space-x-2 ${
-                selectedCount > 0
-                  ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              variant="outline"
+              className="w-full"
             >
-              <span>Next → Confirm Food Log</span>
-              <ArrowRight className="h-4 w-4" />
+              <Info className="h-4 w-4 mr-2" />
+              See Details Before Logging
             </Button>
+            
+            <div className="flex gap-3">
+              {/* Tertiary: Save this set */}
+              <Button
+                onClick={handleSaveSet}
+                disabled={selectedCount === 0}
+                variant="ghost"
+                size="sm"
+                className="flex-1"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Set
+              </Button>
+              
+              {/* Cancel */}
+              <DialogClose asChild>
+                <Button variant="outline" size="sm" className="flex-1">
+                  Cancel
+                </Button>
+              </DialogClose>
+            </div>
           </div>
 
           {selectedCount > 0 && (
@@ -228,6 +278,24 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             </p>
           )}
         </div>
+        
+        {/* Save Set Dialog */}
+        <SaveSetDialog
+          isOpen={showSaveDialog}
+          onClose={() => setShowSaveDialog(false)}
+          items={items
+            .filter(item => item.selected && item.name.trim())
+            .map(item => ({
+              name: item.name,
+              canonicalName: item.canonicalName || item.name,
+              grams: item.grams || parseInt(item.portion.replace(/\D/g, '')) || 100
+            }))
+          }
+          onSaved={(setName) => {
+            setShowSaveDialog(false);
+            toast.success(`Saved "${setName}"`);
+          }}
+        />
       </AccessibleDialogContent>
     </Dialog>
   );

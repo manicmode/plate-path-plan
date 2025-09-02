@@ -4,14 +4,39 @@ const sim  = (a:string,b:string)=>{const A=new Set(norm(a).split(' ')),B=new Set
 // Replace with your existing resolver import
 import { searchFoodByName } from '@/lib/foodSearch'; 
 
+// Canonicalization map for de-duplication
+const CANON: Record<string, string> = {
+  'smoked salmon': 'salmon',
+  'cooked salmon': 'salmon', 
+  'salmon fillet': 'salmon',
+  'salmon filet': 'salmon',
+  'salmon steak': 'salmon',
+  'grilled salmon': 'salmon',
+  'baked salmon': 'salmon',
+  'fish': 'fish',
+  'fish product': 'fish',
+  'cherry tomatoes': 'cherry tomato',
+  'tomatoes': 'tomato',
+  'lemon wedge': 'lemon',
+  'lemon slice': 'lemon', 
+  'lemon zest': 'lemon',
+  'asparagus spears': 'asparagus',
+};
+
 // Canonicalize common variants before mapping
 function canonicalize(n: string): string {
   n = n.toLowerCase().trim();
+  
+  // Apply direct mapping first
+  if (CANON[n]) return CANON[n];
+  
+  // Pattern-based canonicalization
   n = n.replace(/\b(cherry\s+)?tomatoes?\b/g, "cherry tomato");
   n = n.replace(/\btomatoes?\b/g, "tomato");
   n = n.replace(/\b(lemon\s+(slice|wedge|slices|wedges))\b/g, "lemon");
   n = n.replace(/\basparagus(\s+spears?)?\b/g, "asparagus");
   n = n.replace(/\bsalmon(\s+(fillet|filet|steak|smoked|grilled|baked))?\b/g, "salmon");
+  
   return n;
 }
 

@@ -1,21 +1,28 @@
 // Hard junk filter - drop always
 const NEG = /\b(?:recipe|cuisine|cooking|garnish|dishware|plate|cutlery|fork|spoon|logo|brand|text|tableware|bowl|knife|utensil|napkin|package|pack|sleeve|box|label)\b/i;
 
+// Veg/fruit allowlist - always allow these with lower threshold
+export const ALWAYS_ALLOW = new Set(['salmon','asparagus','tomato','cherry tomato','lemon','lemon slice','lemon wedge','lime','lime wedge']);
+
 // Label minimum score
 const LABEL_MIN_SCORE = 0.45;
 
 export function looksFoodish(name: string, source?: string, confidence?: number): boolean {
   const n = name.toLowerCase();
   
-  // Fast allowlist override for specific foods
-  if (/(salmon|asparagus|tomato|cherry tomato|lemon)/i.test(n)) return true;
+  // Fast allowlist override for specific foods - always allow these
+  if (ALWAYS_ALLOW.has(n) || Array.from(ALWAYS_ALLOW).some(food => n.includes(food))) {
+    return true;
+  }
   
   // Always drop junk
   if (NEG.test(n)) return false;
   
-  // For labels, check minimum confidence scores
+  // For labels, check minimum confidence scores (relaxed for veg/fruit)
   if (source === 'label' && typeof confidence === 'number') {
-    if (confidence < LABEL_MIN_SCORE) return false;
+    const isVegFruit = /(asparagus|tomato|lemon|lime|broccoli|cauliflower|carrot|cucumber|pepper|lettuce|spinach|kale)/i.test(n);
+    const minScore = isVegFruit ? 0.35 : LABEL_MIN_SCORE;
+    if (confidence < minScore) return false;
   }
   
   // Default heuristic for other terms

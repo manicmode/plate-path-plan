@@ -25,14 +25,46 @@ interface MultiAIFoodDetectionProps {
   onAddToResults: (food: DetectedFood) => void;
 }
 
+interface MultiAIFoodDetectionProps {
+  detectedFoods: DetectedFood[];
+  isLoading: boolean;
+  onConfirm: (selectedFoods: DetectedFood[]) => void;
+  onCancel: () => void;
+  onAddManually: () => void;
+  onAddToResults: (food: DetectedFood) => void;
+  source?: string; // Add source prop to identify LYF vs other paths
+}
+
 export const MultiAIFoodDetection = ({ 
   detectedFoods, 
   isLoading, 
   onConfirm, 
   onCancel,
   onAddManually,
-  onAddToResults 
+  onAddToResults,
+  source 
 }: MultiAIFoodDetectionProps) => {
+  
+  // Hard guard: never render for LYF photo path
+  if (source === 'lyf-photo') {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-6 text-center">
+          <div className="text-sm text-muted-foreground">
+            No food confidently detected. Try a clearer photo or add manually.
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={onAddManually}
+            className="mt-4"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Food Manually
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const toggleSelection = (foodName: string) => {
