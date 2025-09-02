@@ -26,6 +26,7 @@ export const FEATURE_FLAGS = {
   
   // LYF Ensemble Features (VISION + GPT FUSION)
   lyf_ensemble: import.meta.env.DEV ? true : false, // Enable ensemble detection (Vision + GPT fusion)
+  lyf_skip_review: false, // Kill-switch for auto-confirm behavior in photo detection (always show review first)
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

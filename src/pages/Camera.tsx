@@ -787,52 +787,33 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             console.info('[LYF][v1] detections=', items.map(r => `${r.name}:${r.grams ?? 100}g`))
           }
           
-          // Map into ReviewItems model (unchanged UI)
-          const reviewItems = items.map((it, idx) => ({
+          // Guard for no detections
+          if (!items || items.length === 0) {
+            toast.error('No foods detected. Try a clearer photo.');
+            setIsMultiAILoading(false);
+            return;
+          }
+          
+          // Map into ReviewItems model with portions
+          const reviewItemsData = items.map((it, idx) => ({
             id: `ri-${idx}`,
-            displayName: titleCase(it.name),
-            grams: it.grams ?? guessDefaultGrams(it.name), // keep existing fallback
+            name: titleCase(it.name),
+            portion: `${it.grams ?? guessDefaultGrams(it.name)}g`,
+            selected: false, // Start with nothing preselected - user must choose
+            grams: it.grams ?? guessDefaultGrams(it.name),
             confidencePct: Math.round((it.confidence ?? 0.5) * 100),
             source: it.source,
           }))
           
-          if (reviewItems.length === 0) {
-            toast.error('No food items detected. Please try a clearer photo or use manual entry.');
-            setIsMultiAILoading(false);
-            return;
-          }
-          
-          // Map portions to nutrition data
-          const mapped = await Promise.all(reviewItems.map(async (item) => {
-            const hit = await mapVisionNameToFood(item.displayName);
-            return hit ? { ...hit, grams: item.grams, confidence: item.confidencePct } : null;
-          }));
-          const validMapped = mapped.filter(Boolean);
-          
-          if (validMapped.length === 0) {
-            toast.error('No food items could be mapped to nutrition data. Please try manual entry.');
-            setIsMultiAILoading(false);
-            return;
-          }
-          
-          // Convert to RecognizedFood format with portion estimates
-          const foods: RecognizedFood[] = validMapped.map(item => ({
-            name: item!.name,
-            calories: Math.round((item!.grams / 100) * (item!.caloriesPer100g || 200)),
-            protein: Math.round((item!.grams / 100) * 20),
-            carbs: Math.round((item!.grams / 100) * 25),
-            fat: Math.round((item!.grams / 100) * 10),
-            fiber: Math.round((item!.grams / 100) * 3),
-            sugar: Math.round((item!.grams / 100) * 5),
-            sodium: Math.round((item!.grams / 100) * 300),
-            confidence: item!.confidence,
-            serving: `${item!.grams}g`,
-            _provider: 'ensemble-v1'
-          }));
-          
-          setRecognizedFoods(foods);
-          setShowConfirmation(true);
+          // Always open review screen - never auto-confirm from photos
+          setReviewItems(reviewItemsData);
+          setShowReviewScreen(true);
           setInputSource('photo');
+          
+          // Dev logging
+          if (import.meta.env.DEV) {
+            console.info('[LYF][v1] items=' + reviewItemsData.length + ' reviewOpen=true selected=0')
+          }
           
         } catch (error) {
           console.error('Ensemble food detection failed:', error);
@@ -2269,6 +2250,12 @@ console.log('Global search enabled:', enableGlobalSearch);
     // Small delay to ensure smooth transition without main UI flashing
     setTimeout(() => {
       setShowConfirmation(true);
+      
+      // Dev logging for confirm open
+      if (import.meta.env.DEV) {
+        console.info('[LYF] confirm_open selected=' + items.length)
+      }
+      
       // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard after modal is rendered
     }, 50);
     
