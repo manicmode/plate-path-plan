@@ -566,16 +566,34 @@ JSON only. No prose.`;
     
     console.log(`[GPT-V2] Final result for ${requestId}:`, filteredItems.length, 'items:', filteredItems.map(i => i.name));
 
-    return new Response(JSON.stringify({
-      items: filteredItems,
-      _debug: {
-        raw_items: items,
-        count: filteredItems.length,
-        request_id: requestId,
-        image_hash: imageHash,
-        attempt: attemptType
-      }
-    }), { status: 200, headers: corsHeadersJson });
+return new Response(JSON.stringify({
+  items: filteredItems || [],  // Ensure array
+  metadata: {
+    request_id: requestId,
+    image_hash: imageHash,
+    attempt: attemptType,
+    kept: afterBasicFilter || 0,
+    dropped: (beforeBasicFilter || 0) - (afterBasicFilter || 0),
+    summary: (filteredItems || []).map(i => ({
+      name: i?.name || 'Unknown',
+      portion: i?.portion || null,
+      calories: i?.calories || null,
+      nutrition: i?.nutrition || null,
+      flags: i?.flags || [],
+      score: i?.score || null
+    }))
+  },
+  _debug: {
+    raw_items: items || [],
+    raw_count: beforeFilterCount || 0,
+    parsed_count: beforeBasicFilter || 0,
+    final_count: afterBasicFilter || 0,
+    sample: (filteredItems || []).slice(0, 3)
+  }
+}), { 
+  status: 200, 
+  headers: corsHeadersJson 
+});
 
   } catch (error) {
     console.error('[GPT-V2] Error:', error);
