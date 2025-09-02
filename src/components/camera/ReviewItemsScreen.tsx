@@ -3,10 +3,11 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { SavedSetsSheet } from './SavedSetsSheet';
 import { SaveSetDialog } from './SaveSetDialog';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { ReviewItemCard } from './ReviewItemCard';
-import { NumberWheelSheet } from './NumberWheelSheet';
+import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
 import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { saveMealSet } from '@/api/mealSets';
@@ -171,7 +172,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     try {
       // Import here to avoid circular dependencies
-      const { saveMealSet } = await import('@/lib/mealSets');
+      const { createMealSet } = await import('@/lib/mealSets');
       
       const mealSetItems = selectedItems.map(item => ({
         name: item.name,
@@ -179,7 +180,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         grams: item.grams || 100
       }));
 
-      await saveMealSet(setName, mealSetItems);
+      await createMealSet({ name: setName, items: mealSetItems });
       toast.success(`Set saved ✓`);
       setShowSaveNameDialog(false);
     } catch (error) {

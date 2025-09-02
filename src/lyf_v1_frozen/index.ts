@@ -1,7 +1,6 @@
 import { analyzeLyfV1 } from './detectorClient';
 import { looksFoodish, looksFoodishLabel, looksFoodishObj, rankSource } from './filters';
 import { mapVisionNameToFood } from './mapToNutrition';
-import { preferSpecific } from './preferSpecific';
 
 // If some caller returns items without a source, default them using _debug.from
 function ensureSources(items: any[], dbgFrom?: string) {
@@ -50,10 +49,22 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     return aName === bName;
   };
   
+  // Union in vegetables that should be kept even when objects exist
+  const keepVeggieLabels = () => {
+    const KEEP_VEGGIES = /^(asparagus|tomato|cherry tomato|lemon|lemon (slice|wedge)|dill)$/i;
+    return labsKept.filter(lab => KEEP_VEGGIES.test(lab.name) && !objsKept.some(obj => isDup(lab, obj)));
+  };
+  
   const candidates = useLabels
     ? labsKept
-    : // keep objects, plus non-duplicate helpful labels (veg/fruit)
-      [...objsKept, ...labsKept.filter(l => !objsKept.some(o => isDup(l, o)))];
+    : // objects + non-duplicate helpful labels (veg/fruit) + special veggies
+      [...objsKept, ...labsKept.filter(l => !objsKept.some(o => isDup(l, o))), ...keepVeggieLabels()];
+
+  // Log union labels for vegetables
+  const unionedVeggies = !useLabels ? keepVeggieLabels() : [];
+  if (unionedVeggies.length > 0) {
+    console.info('[LYF][v1] union-labels:', unionedVeggies.map(v => v.name));
+  }
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] strategy:', useLabels ? 'labels' : 'objects+labels');
@@ -147,10 +158,95 @@ function canonicalizeName(name: string): string {
   return synonymMap[canonical] || canonical;
 }
 
+// Prefer specific items over generic ones and remove duplicates
+function preferSpecific(items: any[]): any[] {
+  const result = [];
+  const dropLog: Array<{name: string, source: string, reason: string}> = [];
+  
+  // First pass - categorize items
+  const specifics = [];
+  const generics = [];
+  
+  for (const item of items) {
+    if (isGeneric(item.canonicalName)) {
+      generics.push(item);
+    } else {
+      specifics.push(item);
+    }
+  }
+  
+  // Add all specific items
+  result.push(...specifics);
+  
+  // Only add generics if no specific items exist for their category
+  for (const generic of generics) {
+    const hasSpecific = specifics.some(specific => {
+      // Check if there's a specific item that would replace this generic
+      const genericName = generic.canonicalName.toLowerCase();
+      const specificName = specific.canonicalName.toLowerCase();
+      
+      // Fish generics - drop if we have salmon, tuna, etc.
+      if (genericName.includes('fish') || genericName === 'seafood') {
+        return /salmon|tuna|trout|cod|halibut|bass|mackerel/.test(specificName);
+      }
+      
+      // Meat generics - drop if we have chicken, beef, etc.
+      if (genericName === 'meat' || genericName === 'protein') {
+        return /chicken|beef|pork|turkey|lamb|duck/.test(specificName);
+      }
+      
+      return false;
+    });
+    
+    if (!hasSpecific) {
+      result.push(generic);
+    } else {
+      dropLog.push({name: generic.name, source: generic.source, reason: 'generic'});
+    }
+  }
+  
+  // Remove exact duplicates by canonical name
+  const seen = new Set();
+  const deduped = [];
+  
+  for (const item of result) {
+    if (!seen.has(item.canonicalName)) {
+      seen.add(item.canonicalName);
+      deduped.push(item);
+    } else {
+      dropLog.push({name: item.name, source: item.source, reason: 'deduped'});
+    }
+  }
+  
+  // Log drops in dev mode
+  if (import.meta.env.DEV && dropLog.length > 0) {
+    console.info('[LYF][v1] drop:', summarizeDrops(dropLog));
+  }
+  
+  return deduped;
+}
+
 // Check if a canonical name is generic vs specific - enhanced for better dedup  
 function isGeneric(canonical: string): boolean {
   const genericTerms = ['fish', 'fish product', 'seafood', 'meat', 'vegetable', 'fruit', 'protein'];
   return genericTerms.includes(canonical.toLowerCase());
+}
+
+function summarizeDrops(dropLog: Array<{name: string, source: string, reason: string}>): Record<string, string[]> {
+  const summary: Record<string, string[]> = {
+    nonFood: [],
+    belowScore: [],
+    generic: [],
+    deduped: []
+  };
+  
+  for (const drop of dropLog) {
+    if (summary[drop.reason]) {
+      summary[drop.reason].push(drop.name);
+    }
+  }
+  
+  return summary;
 }
 
 // Default portion estimates based on food type - plate-scale heuristics

@@ -15,26 +15,34 @@ export interface MealSet {
   updated_at: string;
 }
 
-export async function saveMealSet(name: string, items: MealSetItem[]): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error('User must be authenticated to save meal sets');
-  }
-
-  const { error } = await supabase
+export async function createMealSet({ name, items }: { name: string; items: Array<{name: string; canonicalName?: string; grams: number}> }): Promise<MealSet> {
+  // Use type assertion to bypass the user_id requirement - the trigger will set it
+  const { data, error } = await supabase
     .from('meal_sets')
     .insert({
       name,
-      user_id: user.id,
       items: JSON.parse(JSON.stringify(items)) // Ensure proper JSON serialization
-    });
+    } as any)
+    .select()
+    .single();
 
   if (error) {
     throw new Error(`Failed to save meal set: ${error.message}`);
   }
+
+  console.info('[MEAL_SETS] saved:', { id: data.id, name: data.name, count: items.length });
+  
+  return {
+    ...data,
+    items: (data.items as unknown) as MealSetItem[]
+  };
 }
 
-export async function getMealSets(): Promise<MealSet[]> {
+export async function saveMealSet(name: string, items: MealSetItem[]): Promise<void> {
+  await createMealSet({ name, items });
+}
+
+export async function listMealSets(): Promise<MealSet[]> {
   const { data, error } = await supabase
     .from('meal_sets')
     .select('*')
@@ -44,11 +52,17 @@ export async function getMealSets(): Promise<MealSet[]> {
     throw new Error(`Failed to fetch meal sets: ${error.message}`);
   }
 
+  console.info('[MEAL_SETS] loaded:', data?.length || 0);
+
   // Type cast the Json items back to MealSetItem[]
   return (data || []).map(row => ({
     ...row,
     items: (row.items as unknown) as MealSetItem[]
   }));
+}
+
+export async function getMealSets(): Promise<MealSet[]> {
+  return listMealSets();
 }
 
 export async function deleteMealSet(id: string): Promise<void> {

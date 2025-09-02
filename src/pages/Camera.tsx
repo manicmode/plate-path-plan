@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { mapToLogFood } from '@/features/logging/utils/barcodeToLogFood';
 import { useAuth } from '@/contexts/auth';
+import { SavedSetsSheet } from '@/components/camera/SavedSetsSheet';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
@@ -196,6 +197,7 @@ const CameraPage = () => {
   
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
+  const [showSavedSetsSheet, setShowSavedSetsSheet] = useState(false);
   
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
@@ -2890,6 +2892,16 @@ console.log('Global search enabled:', enableGlobalSearch);
                   >
                     <Edit3 className="h-6 w-6" />
                     <span className="text-sm font-medium">Manual Entry</span>
+                  </Button>
+                  
+                  {/* Saved Sets Button */}
+                  <Button
+                    onClick={() => setShowSavedSetsSheet(true)}
+                    className="h-24 w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+                    size="lg"
+                  >
+                    <Save className="h-6 w-6" />
+                    <span className="text-sm font-medium">Saved Sets</span>
                   </Button>
                   
                   {/* Saved Logs Tab */}
