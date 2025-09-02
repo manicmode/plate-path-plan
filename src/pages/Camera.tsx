@@ -803,6 +803,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             grams: it.grams ?? guessDefaultGrams(it.name),
             confidencePct: Math.round((it.confidence ?? 0.5) * 100),
             source: it.source,
+            mapped: it.mapped ?? true, // Track if nutrition mapping succeeded
+            needsDetails: !(it.mapped ?? true), // Show "Needs details" chip for unmapped items
           }))
           
           // Always open review screen - never auto-confirm from photos

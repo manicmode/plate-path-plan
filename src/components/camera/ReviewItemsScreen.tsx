@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ArrowRight, Edit3 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, ArrowRight, Edit3, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export interface ReviewItem {
@@ -14,6 +15,8 @@ export interface ReviewItem {
   selected: boolean;
   id: string;
   eggSize?: string;
+  needsDetails?: boolean; // Flag for showing "Needs details" chip
+  mapped?: boolean; // Track if nutrition mapping succeeded
 }
 
 interface ReviewItemsScreenProps {
@@ -112,9 +115,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     
                     <div className="flex-1 space-y-3">
                       <div>
-                        <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Food Name
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Food Name
+                          </label>
+                          {item.needsDetails && (
+                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Needs details
+                            </Badge>
+                          )}
+                        </div>
                         <Input
                           value={item.name}
                           onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}

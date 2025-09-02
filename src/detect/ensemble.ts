@@ -8,13 +8,34 @@ export interface FusedFood {
   origin: 'vision' | 'gpt' | 'both';
 }
 
-// Canonicalization and synonym table
+// Canonicalization and synonym table - merge variants to head terms
 const SYNONYMS: Record<string, string> = {
+  // Salmon variants
   'salmon': 'salmon',
+  'smoked salmon': 'salmon', 
+  'grilled salmon': 'salmon',
+  'baked salmon': 'salmon',
+  'salmon fillet': 'salmon',
+  
+  // Tomato variants  
   'cherry tomato': 'tomato',
   'cherry tomatoes': 'tomato',
+  'grape tomato': 'tomato', 
+  'grape tomatoes': 'tomato',
+  'tomato slice': 'tomato',
+  'tomato slices': 'tomato',
+  
+  // Lemon variants
+  'lemon slice': 'lemon',
+  'lemon slices': 'lemon',
+  'lemon wedge': 'lemon',
+  'lemon wedges': 'lemon',
+  'lime wedge': 'lime',
+  'lime wedges': 'lime',
+  
+  // Other foods
   'fries': 'french fries',
-  'french fry': 'french fries',
+  'french fry': 'french fries', 
   'potato fries': 'french fries',
   'chicken breast': 'chicken',
   'grilled chicken': 'chicken',
@@ -29,7 +50,9 @@ const SYNONYMS: Record<string, string> = {
   'mixed greens': 'salad',
   'green salad': 'salad',
   'lettuce leaves': 'lettuce',
-  'spinach leaves': 'spinach'
+  'spinach leaves': 'spinach',
+  'asparagus spear': 'asparagus',
+  'asparagus spears': 'asparagus'
 };
 
 export function canonicalize(name: string): string {
