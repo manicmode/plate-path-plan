@@ -105,6 +105,7 @@ const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const DetectorPing = lazy(() => import('@/pages/debug/DetectorPing'));
 const SpeakToLog = lazy(() => import('@/pages/SpeakToLog'));
+const HealthReviewStackPage = lazy(() => import('@/pages/health/HealthReviewStackPage'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -369,6 +370,11 @@ function AppContent() {
                     <Route path="/speak-to-log" element={
                       <ProtectedRoute>
                         <SpeakToLog />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/health/review" element={
+                      <ProtectedRoute>
+                        <HealthReviewStackPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/debug/detector-ping" element={

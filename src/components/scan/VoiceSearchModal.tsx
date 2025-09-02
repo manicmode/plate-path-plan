@@ -83,34 +83,33 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // Handle transcript result - route to Search Modal for user selection
+  // Handle transcript result - route directly to manual log
   const handleTranscriptAccepted = useCallback((text: string, confidence?: number) => {
     console.log(`[VOICE] Transcript accepted: "${text}" (confidence: ${confidence})`);
     safeSetStatus('processing');
     
-    // Start processing watchdog (8s timeout)
+    // Start processing watchdog (6s timeout) 
     processingWatchdogRef.current = setTimeout(() => {
       if (mountedRef.current && status === 'processing') {
-        console.warn('[VOICE] Processing watchdog timeout');
-        toast.error('Slow network—try again or use manual entry');
-        safeSetStatus('idle');
+        console.warn('[VOICE] Processing watchdog timeout - routing anyway');
+        const finalQuery = text.trim();
+        console.log('[VOICE] confirm: TIMEOUT → route /log/manual');
+        window.location.href = `/log/manual?query=${encodeURIComponent(finalQuery)}&source=voice`;
       }
-    }, 8000);
+    }, 6000);
 
-    // Simulate brief processing delay for user feedback
+    // Brief processing delay, then route to manual log
     setTimeout(() => {
       if (!mountedRef.current) return;
       
       clearTimers();
+      const finalQuery = text.trim();
+      console.log('[VOICE] confirm: YES → route /log/manual');
       
-      // Dispatch custom event to open search modal
-      console.log('[VOICE] Routing to Search Modal');
-      const detail = { source: 'voice', initialQuery: text };
-      window.dispatchEvent(new CustomEvent('scan:open-search', { detail }));
-      safeSetStatus('done');
-      onOpenChange(false);
+      // Route to manual log with prefilled query
+      window.location.href = `/log/manual?query=${encodeURIComponent(finalQuery)}&source=voice`;
     }, 500);
-  }, [onOpenChange, safeSetStatus, clearTimers, status]);
+  }, [safeSetStatus, clearTimers, status]);
 
   // Start listening with Speech Recognition API
   const startListening = useCallback(() => {

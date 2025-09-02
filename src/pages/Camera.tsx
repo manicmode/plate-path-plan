@@ -28,6 +28,7 @@ import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
+import { canonicalizeName, dedupe, filterByCategory } from '@/pipelines/meal/normalizeItems';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -807,12 +808,33 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
           console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
 
+// Apply normalization and deduplication
+          // Apply normalization and deduplication  
+          const normalizedItems = reviewItems.map(item => ({
+            ...item,
+            name: canonicalizeName(item.name)
+          }));
+          
+          const dedupedItems = dedupe(normalizedItems.map(item => ({ ...item, score: 1 })));
+          const filteredItems = filterByCategory(dedupedItems);
+          
+          const finalItems: ReviewItem[] = filteredItems.map((item, index) => ({
+            id: `normalized-${index}`,
+            name: item.name,
+            portion: reviewItems.find(orig => canonicalizeName(orig.name) === item.name)?.portion || '100g',
+            selected: true,
+            grams: reviewItems.find(orig => canonicalizeName(orig.name) === item.name)?.grams || 100,
+            canonicalName: item.name,
+            needsDetails: false,
+            mapped: true,
+          }));
+
           // Old modal vs new flow, gated by flag
           if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
-            setReviewItems(reviewItems);
+            setReviewItems(finalItems);
             setShowReviewScreen(true);       // ← original modal path
           } else {
-            const summaryItems = reviewItems.map(r => ({
+            const summaryItems = finalItems.map(r => ({
               id: r.id,
               name: r.name,
               portion: r.portion,

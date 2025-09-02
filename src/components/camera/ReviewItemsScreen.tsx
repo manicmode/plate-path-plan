@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
@@ -10,7 +11,6 @@ import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { saveMealSet } from '@/api/mealSets';
 import { useAuth } from '@/contexts/auth';
-import { useNavigate } from 'react-router-dom';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -45,13 +45,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   prefilledItems,
   source = 'logging'
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Initialize items when modal opens
   useEffect(() => {

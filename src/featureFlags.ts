@@ -5,6 +5,7 @@
 export const FF = {
   FEATURE_HEALTHSCAN_USE_OLD_MODAL: (import.meta.env.VITE_FEATURE_HEALTHSCAN_USE_OLD_MODAL ?? 'true') === 'true',
   FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev-only debug logs
+  FEATURE_VOICE_CONFIRM_ROUTE: (import.meta.env.VITE_FEATURE_VOICE_CONFIRM_ROUTE ?? 'true') === 'true',
   FEATURE_BROWSER_STT: true,
   FEATURE_SERVER_STT: true,
   PIPELINE_ISOLATION: (import.meta.env.VITE_PIPELINE_ISOLATION ?? 'false') === 'true', // master kill
