@@ -819,6 +819,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         } finally {
           setIsAnalyzing(false);
         }
+      })();
       
       // Await analysis with abort controller
       await analysisPromise;
