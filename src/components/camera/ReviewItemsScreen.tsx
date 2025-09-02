@@ -189,60 +189,58 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm" />
         <Dialog.Content
-          className="review-content fixed z-[100] left-1/2 top-1/2 w-[min(520px,calc(100vw-24px))] max-h-[calc(var(--vh,1vh)*100-24px)]
-                     -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-background shadow-2xl outline-none
-                     sm:left-0 sm:right-0 sm:top-auto sm:bottom-0 sm:translate-x-0 sm:translate-y-0 sm:w-screen
-                     sm:max-h-[calc(var(--vh,1vh)*100)] sm:rounded-t-2xl"
+          className="lyf-sheet fixed z-[100] inset-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <Dialog.Title className="sr-only">Review Detected Items</Dialog.Title>
           <Dialog.Description className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
-          {/* Mobile sheet grab handle */}
-          <div className="sm:block hidden mx-auto mt-2 h-1.5 w-12 rounded-full bg-foreground/20" />
+          <div className="lyf-panel">
+            {/* Mobile sheet grab handle */}
+            <div className="sm:block hidden mx-auto mt-2 h-1.5 w-12 rounded-full bg-foreground/20" />
 
-          {/* Header with count */}
-          <div className="px-4 pt-3 pb-2 sm:px-5 sm:pt-3">
-            <h2 className="text-xl font-semibold text-foreground">
-              Review Detected Items <span className="text-muted-foreground">({count})</span>
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Check and edit the food items detected in your image.
-            </p>
-          </div>
+            <div className="lyf-panel__body">
+              {/* Header with count */}
+              <div className="px-4 pt-3 pb-2 sm:px-5 sm:pt-3">
+                <h2 className="text-xl font-semibold text-foreground">
+                  Review Detected Items <span className="text-muted-foreground">({count})</span>
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Check and edit the food items detected in your image.
+                </p>
+              </div>
 
-          {/* Scrollable content */}
-          <div className="px-4 sm:px-5 pb-24 sm:pb-[calc(env(safe-area-inset-bottom)+104px)]
-                          overflow-y-auto overscroll-contain max-h-[inherit]">
-            <div className="space-y-3">
-              {items.map((item) => (
-                <ReviewItemCard
-                  key={item.id}
-                  item={item}
-                  canRemove={items.length > 1}
-                  onChange={handleItemChange}
-                  onRemove={handleRemoveItem}
-                />
-              ))}
+              {/* Scrollable content */}
+              <div className="lyf-items px-4 sm:px-5">
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <ReviewItemCard
+                      key={item.id}
+                      item={item}
+                      canRemove={items.length > 1}
+                      onChange={handleItemChange}
+                      onRemove={handleRemoveItem}
+                    />
+                  ))}
+                </div>
+
+                {/* Add food button */}
+                <div className="flex justify-center mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleAddItem}
+                    className="flex items-center space-x-2 border-dashed border-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Food</span>
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* Add food button */}
-            <div className="flex justify-center mt-4">
-              <Button
-                variant="outline"
-                onClick={handleAddItem}
-                className="flex items-center space-x-2 border-dashed border-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Food</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Action stack pinned to bottom */}
-          <div className="fixed inset-x-0 bottom-0 z-[101] bg-background/95 backdrop-blur px-4 py-3
-                          sm:pb-[calc(env(safe-area-inset-bottom)+12px)]">
-            <div className="grid gap-2">
+            {/* Action stack pinned to bottom */}
+            <div className="px-4 py-3 border-t border-border bg-background">
+              <div className="grid gap-2">
               {FF.FEATURE_LYF_LOG_THIS_SET ? (
                 <>
                   {/* Primary: Log This Set (instant) */}
@@ -319,6 +317,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
                 </p>
               )}
+              </div>
             </div>
           </div>
           

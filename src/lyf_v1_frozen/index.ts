@@ -17,18 +17,52 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const { items: rawItems, _debug } = await analyzeLyfV1(supabase, base64);
   const items = ensureSources(rawItems ?? [], _debug?.from);
   
+  // Allowlist for labels that we should keep even when objects exist
+  const LABEL_KEEP_WHEN_OBJECTS = new Set([
+    'asparagus', 'tomato', 'cherry tomato', 'lemon', 'dill', 'parsley', 'cilantro', 'herb'
+  ]);
+  
   if (import.meta.env.DEV) {
+    console.info('[LYF][v1] raw', { 
+      from: _debug?.from, 
+      rawObjectsCount: _debug?.rawObjectsCount, 
+      rawLabelsCount: _debug?.rawLabelsCount 
+    });
     console.info('[LYF][v1] raw:', items.map(i => i.name));
   }
   
-  // Build single candidate list from all normalized items  
-  const candidates = items.filter(i => i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
+  // Separate objects and labels for explicit merging
+  const objs = items.filter(i => i?.source === 'object' && i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
+  const labs = items.filter(i => i?.source === 'label' && i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
+  
+  if (import.meta.env.DEV) {
+    console.info('[LYF][v1] objs', objs.map(i => i.name));
+    console.info('[LYF][v1] labs', labs.map(i => i.name));
+  }
+  
+  // Start with objects (specific hits like salmon)
+  let candidates = [...objs];
+  
+  // From labels, keep only whitelisted produce and not duplicates
+  for (const lab of labs) {
+    const n = (lab.canonicalName || canonicalizeName(lab.name)).toLowerCase();
+    const already = candidates.some(
+      c => (c.canonicalName || canonicalizeName(c.name)).toLowerCase() === n
+    );
+    if (!already && LABEL_KEEP_WHEN_OBJECTS.has(n)) {
+      candidates.push(lab);
+    }
+  }
   
   // Add canonical names to candidates
   const candidatesWithCanonical = candidates.map(c => ({
     ...c,
     canonicalName: canonicalizeName(c.name)
   }));
+  
+  if (import.meta.env.DEV) {
+    console.info('[LYF][v1] kept', candidatesWithCanonical.map(i => i.canonicalName));
+  }
   
   // Apply deduplication and prefer specific over generic
   const dedupedCandidates = preferSpecific(candidatesWithCanonical).slice(0, 8); // Cap at 8 after dedup

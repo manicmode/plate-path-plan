@@ -1,6 +1,63 @@
 /* iOS 100vh fix: set --vh once and use it everywhere */
 :root { --vh: 1vh; }
 
+/* Sheet wrapper */
+.lyf-sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  /* Use dynamic viewport to avoid Safari toolbar collapse */
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+/* Panel */
+.lyf-panel {
+  width: 100%;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  background: hsl(var(--background));
+  /* never smaller than content; never run off screen */
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Title + list area */
+.lyf-panel__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100dvh - 140px - env(safe-area-inset-bottom));
+}
+
+/* Scrolling list */
+.lyf-items {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Desktop centers the dialog */
+@media (min-width: 900px) {
+  .lyf-sheet {
+    align-items: center;
+    justify-content: center;
+  }
+  .lyf-panel {
+    max-width: 720px;
+    max-height: 90vh;
+    border-radius: 16px;
+  }
+}
+
 @supports (padding: max(0px)) {
   .review-content {
     /* ensure interior spacing respects notches/home indicator */
@@ -16,29 +73,6 @@
     bottom: 0 !important;
     transform: none !important;
   }
-}
-
-/* Scrollable content area */
-.review-content {
-  overflow-y: auto;
-  max-height: calc(100dvh - 220px);
-  padding: 12px;
-}
-
-@media (min-width: 640px) {
-  .review-content {
-    max-height: calc(85vh - 220px);
-  }
-}
-
-/* Sticky footer */
-.review-footer {
-  position: sticky;
-  bottom: 0;
-  background: hsl(var(--background));
-  border-top: 1px solid hsl(var(--border));
-  padding: 16px;
-  z-index: 10;
 }
 
 /* Number wheel styles */

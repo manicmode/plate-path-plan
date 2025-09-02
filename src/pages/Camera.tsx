@@ -2662,6 +2662,7 @@ console.log('Global search enabled:', enableGlobalSearch);
   }, []);
 
   // iOS Safari dynamic viewport fix
+  // iOS viewport height fix
   useEffect(() => {
     const setVh = () => {
       // iOS Safari dynamic viewport fix
