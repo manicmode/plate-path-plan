@@ -239,7 +239,28 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black z-50" />
         <Dialog.Content className="fixed inset-0 bg-black text-white z-50 flex flex-col">
-          {/* Header Banner */}
+          {/* Video element - Full screen behind everything */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover z-0 ${hasPermission === true ? 'opacity-100' : 'opacity-0'}`}
+            onLoadedMetadata={() => {
+              console.log('🎥 Video loaded metadata:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+              setDebugInfo(`Video active: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
+            }}
+            onError={(e) => {
+              console.error('🎥 Video error:', e);
+              setDebugInfo('Video element error');
+            }}
+            onCanPlay={() => {
+              console.log('🎥 Video can play');
+              setDebugInfo('Video ready to play');
+            }}
+          />
+
+          {/* Header Banner - Transparent overlay */}
           <div className="relative z-20 p-4">
             <div className="mx-4 mt-8 mb-4 bg-neutral-800/90 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between">
               <div>
@@ -257,88 +278,53 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             </div>
           </div>
 
-          {/* Camera View Container */}
-          <div className="flex-1 relative overflow-hidden">
-            {/* Top Corner Guides - moved higher and closer to banner */}
-            <div className="absolute top-2 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
-            <div className="absolute top-2 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
-            
-            {/* Camera View - Fixed z-index and positioning */}
-            <div className="absolute inset-0 bg-black">
-              {/* Video element always rendered but conditionally visible */}
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover z-10 ${hasPermission === true ? 'opacity-100' : 'opacity-0'}`}
-                style={{ 
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%'
-                }}
-                onLoadedMetadata={() => {
-                  console.log('🎥 Video loaded metadata:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-                  setDebugInfo(`Video active: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-                }}
-                onError={(e) => {
-                  console.error('🎥 Video error:', e);
-                  setDebugInfo('Video element error');
-                }}
-                onCanPlay={() => {
-                  console.log('🎥 Video can play');
-                  setDebugInfo('Video ready to play');
-                }}
-              />
-              
-              {hasPermission === null && (
-                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black">
-                  <div className="text-white text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                    <p>Initializing camera...</p>
-                    {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
-                  </div>
-                </div>
-              )}
-              
-              {hasPermission !== true && hasPermission !== null && (
-                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black">
-                  <div className="text-white text-center">
-                    <Camera className="h-12 w-12 mx-auto mb-4 text-red-400" />
-                    <p>Camera access denied</p>
-                    {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
-                    <Button onClick={initCamera} className="mt-4">Try Again</Button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Corner Guides */}
+          <div className="absolute top-2 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-2 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
+          <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
 
-            {/* Debug info overlay - remove in production */}
-            {debugInfo && hasPermission === true && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded z-40">
-                {debugInfo}
+          {/* Loading/Error States */}
+          {hasPermission === null && (
+            <div className="absolute inset-0 flex items-center justify-center z-40 bg-black">
+              <div className="text-white text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p>Initializing camera...</p>
+                {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
               </div>
-            )}
-
-            {/* Bottom instruction */}
-            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-30">
-              <p className="text-white text-sm font-medium text-center">
-                Position food in the frame
-              </p>
-              <p className="text-white/70 text-xs text-center mt-1">
-                Fill the frame • Avoid glare • Keep steady
-              </p>
             </div>
+          )}
+          
+          {hasPermission !== true && hasPermission !== null && (
+            <div className="absolute inset-0 flex items-center justify-center z-40 bg-black">
+              <div className="text-white text-center">
+                <Camera className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                <p>Camera access denied</p>
+                {debugInfo && <p className="text-xs text-gray-400 mt-2">{debugInfo}</p>}
+                <Button onClick={initCamera} className="mt-4">Try Again</Button>
+              </div>
+            </div>
+          )}
 
-            {/* Bottom Corner Guides */}
-            <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
-            <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
+          {/* Debug info overlay */}
+          {debugInfo && hasPermission === true && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded z-50">
+              {debugInfo}
+            </div>
+          )}
+
+          {/* Bottom instruction */}
+          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-30">
+            <p className="text-white text-sm font-medium text-center">
+              Position food in the frame
+            </p>
+            <p className="text-white/70 text-xs text-center mt-1">
+              Fill the frame • Avoid glare • Keep steady
+            </p>
           </div>
 
-          {/* Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/80 backdrop-blur-sm">
+          {/* Controls - Fixed positioning */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/80 backdrop-blur-sm z-30">
             <div className="flex items-center justify-center space-x-8">
               {/* Flash Toggle */}
               <Button
