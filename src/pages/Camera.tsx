@@ -810,8 +810,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
               names: reviewItemsData.map(i => i.name) 
             });
           } else {
-            // Do NOT open the legacy "0 items" modal for photos; just show a toast.
-            console.info('[LYF][ui] legacy_suppressed_zero_items');
+            // Always show review when any items exist - removed legacy suppression
+            console.info('[LYF][ui] review_opened items=0');
             toast.info('No clear food items detected. Try another angle or add manually.');
           }
           

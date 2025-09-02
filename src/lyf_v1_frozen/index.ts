@@ -6,20 +6,42 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const { items, _debug } = await analyzeLyfV1(supabase, base64);
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] raw:', items.map(i => i.name));
+    console.info('[LYF][v1] resp:', {
+      from: _debug?.from,
+      rawObjectsCount: _debug?.rawObjectsCount || _debug?.rawObjects || 0,
+      rawLabelsCount: _debug?.rawLabelsCount || _debug?.rawLabels || 0
+    });
   }
   
-  const candidates = [...items].filter(i=>i?.name && looksFoodish(i.name)).sort(rankSource);
+  const candidates = [...items].filter(i=>i?.name && looksFoodish(i.name, i.source, i.confidence)).sort(rankSource);
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] keep:', candidates.map(i => i.name));
+    console.info('[LYF][v1] keep:', candidates.map(i => i.name), `(count=${candidates.length})`);
   }
   
-  // Dedupe by canonical name before mapping
+  // Merge objects + labels, then dedupe by similarity ≥0.85 without requiring bbox
   const deduped = new Map<string, any>();
   for (const c of candidates) {
     const canonical = canonicalizeName(c.name);
-    if (!deduped.has(canonical)) {
+    let shouldAdd = true;
+    
+    // Check similarity with existing items
+    for (const [existingCanonical, existingItem] of deduped.entries()) {
+      if (calculateSimilarity(canonical, existingCanonical) >= 0.85) {
+        // Keep the better one (objects first, then higher confidence labels)
+        if (c.source === 'object' && existingItem.source === 'label') {
+          deduped.delete(existingCanonical);
+          deduped.set(canonical, { ...c, canonicalName: canonical });
+        } else if (c.source === existingItem.source && (c.confidence || 0) > (existingItem.confidence || 0)) {
+          deduped.delete(existingCanonical);
+          deduped.set(canonical, { ...c, canonicalName: canonical });
+        }
+        shouldAdd = false;
+        break;
+      }
+    }
+    
+    if (shouldAdd) {
       deduped.set(canonical, { ...c, canonicalName: canonical });
     }
   }
@@ -88,6 +110,15 @@ function canonicalizeName(name: string): string {
   };
   
   return synonymMap[canonical] || canonical;
+}
+
+// Calculate similarity between two canonical names
+function calculateSimilarity(a: string, b: string): number {
+  const wordsA = new Set(a.split(' '));
+  const wordsB = new Set(b.split(' '));
+  let common = 0;
+  wordsA.forEach(word => wordsB.has(word) && common++);
+  return common / Math.max(1, Math.max(wordsA.size, wordsB.size));
 }
 
 // Default portion estimates based on food type

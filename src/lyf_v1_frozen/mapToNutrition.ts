@@ -8,9 +8,10 @@ import { searchFoodByName } from '@/lib/foodSearch';
 function canonicalize(n: string): string {
   n = n.toLowerCase().trim();
   n = n.replace(/\b(cherry\s+)?tomatoes?\b/g, "cherry tomato");
+  n = n.replace(/\btomatoes?\b/g, "tomato");
   n = n.replace(/\b(lemon\s+(slice|wedge|slices|wedges))\b/g, "lemon");
   n = n.replace(/\basparagus(\s+spears?)?\b/g, "asparagus");
-  n = n.replace(/\bsalmon(\s+(fillet|filet|steak))?\b/g, "salmon");
+  n = n.replace(/\bsalmon(\s+(fillet|filet|steak|smoked|grilled|baked))?\b/g, "salmon");
   return n;
 }
 
