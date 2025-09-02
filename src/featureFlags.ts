@@ -3,6 +3,8 @@
  * All flags default to OFF for dark-ship deployment
  */
 export const FF = {
+  FEATURE_HEALTHSCAN_USE_OLD_MODAL: true, // Use original camera modal for Health Scan
+  FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev-only debug logs
   FEATURE_BROWSER_STT: true,
   FEATURE_SERVER_STT: true,
   PIPELINE_ISOLATION: (import.meta.env.VITE_PIPELINE_ISOLATION ?? 'false') === 'true', // master kill
@@ -17,6 +19,5 @@ export const FF = {
   FEATURE_LYF_ENSEMBLE: false, // Pin LYF to frozen v1 only - no GPT/ensemble paths
   FEATURE_LYF_LOG_THIS_SET: true, // Enable one-tap logging
   FEATURE_NUMBER_WHEEL_PICKERS: true, // Enable roller number pickers with haptics
-  FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev debug mode for LYF v1
   FEATURE_ONE_TAP_LOG: true // One-tap logging functionality
 } as const;

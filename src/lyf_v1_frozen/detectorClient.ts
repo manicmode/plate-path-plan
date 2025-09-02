@@ -50,15 +50,28 @@ export async function analyzeLyfV1(supabase: any, image_base64: string, opts?: {
       return { items: [], error: 'detector_unavailable', _debug: data?._debug || { from: 'error' } };
     }
 
+    // Robust normalizer - handle both string[] and object[] responses
     const raw = Array.isArray(data?.items) ? data.items : [];
     let items: Array<{ name: string; source: 'object'|'label'; confidence?: number; score?: number }> = [];
 
     if (raw.length > 0) {
       if (typeof raw[0] === 'string') {
-        const from = data?._debug?.from === 'objects' ? 'object' : 'label';
-        items = raw.map((name: string) => ({ name, source: from, confidence: 0.7, score: 0.7 }));
-      } else {
-        items = raw as any[];
+        // Legacy string array response
+        const from = data?._debug?.from?.includes('objects') ? 'object' : 'label';
+        items = raw.map((name: string) => ({ 
+          name, 
+          source: from as 'object'|'label', 
+          confidence: 0.7, 
+          score: 0.7 
+        }));
+      } else if (typeof raw[0] === 'object' && raw[0].name) {
+        // New object array response
+        items = raw.map((item: any) => ({
+          name: item.name,
+          source: item.source || 'label',
+          confidence: item.confidence || item.score || 0.7,
+          score: item.score || item.confidence || 0.7
+        }));
       }
     }
 
@@ -68,14 +81,20 @@ export async function analyzeLyfV1(supabase: any, image_base64: string, opts?: {
       return { items: [], error: 'no_items_detected', _debug: data?._debug };
     }
 
-    console.info('[LYF][v1] resp', {
-      from: data?._debug?.from,
-      rawObjects: data?._debug?.rawObjectsCount,
-      rawLabels: data?._debug?.rawLabelsCount,
-      keptObjects: data?._debug?.keptObjectsCount,
-      keptLabels: data?._debug?.keptLabelsCount,
-      items: items.map(i => `${i.name}:${i.source}`)
-    });
+    // Enhanced debug logging when enabled
+    if (import.meta.env.DEV || opts?.debug) {
+      const debugInfo = {
+        from: data?._debug?.from,
+        rawObjects: data?._debug?.rawObjectsCount,
+        rawLabels: data?._debug?.rawLabelsCount,
+        keptObjects: data?._debug?.keptObjectsCount,
+        keptLabels: data?._debug?.keptLabelsCount,
+        specificObjects: data?._debug?.specificObjectsCount,
+        specificLabels: data?._debug?.specificLabelsCount,
+        itemsPreview: items.slice(0, 5).map(i => `${i.name}:${i.source}`)
+      };
+      console.info('[LYF][v1] resp', debugInfo);
+    }
 
     return { items, _debug: data?._debug };
     

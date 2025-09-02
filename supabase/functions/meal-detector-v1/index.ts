@@ -1,4 +1,4 @@
-// meal-detector-v1/index.ts
+// meal-detector-v1/index.ts - CORS-safe veggie-union detector
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -60,7 +60,7 @@ serve(async (req) => {
     // Filters
     const NEG = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray|recipe|cuisine|cooking|garnish|dishware)\b/i;
     const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
-    const KEEP_VEG = /\b(asparagus|tomato|tomatoes|cherry tomato|lemon|lime|broccoli|carrot|spinach|lettuce|cucumber)\b/i;
+    const KEEP_VEG = /\b(asparagus|tomato|tomatoes|cherry tomato|lemon|lime|broccoli|carrot|spinach|lettuce|cucumber|dill|parsley|cilantro|herb)\b/i;
 
     const keep = (s: string) => !NEG.test(s) || KEEP_VEG.test(s);
     const isGeneric = (s: string) => GENERIC.test(s) && !KEEP_VEG.test(s);
@@ -76,7 +76,7 @@ serve(async (req) => {
     if (objectsSpec.length > 0) {
       const objNames = new Set(objectsSpec.map(o => o.name));
       const vegLabels = labelsSpec
-        .filter(l => KEEP_VEG.test(l.name) && !objNames.has(l.name))
+        .filter(l => KEEP_VEG.test(l.name) && !objNames.has(l.name) && l.score >= 0.40)
         .map(l => ({ ...l, source: "label" as const }));
 
       chosen = [
@@ -85,15 +85,19 @@ serve(async (req) => {
       ];
       chosenFrom = "objects_with_labels";
     } else if (labelsSpec.length > 0) {
-      chosen = labelsSpec.map(l => ({ ...l, source: "label" as const }));
+      chosen = labelsSpec
+        .filter(l => KEEP_VEG.test(l.name) ? l.score >= 0.40 : l.score >= 0.55)
+        .map(l => ({ ...l, source: "label" as const }));
       chosenFrom = "labels";
     } else if (labelsKept.length > 0) {
-      chosen = labelsKept.map(l => ({ ...l, source: "label" as const }));
+      chosen = labelsKept
+        .filter(l => l.score >= 0.45)
+        .map(l => ({ ...l, source: "label" as const }));
       chosenFrom = "labels_generic";
     }
 
     const payload: any = {
-      items: chosen.slice(0, 8), // RETURN OBJECTS, NOT STRINGS
+      items: chosen.slice(0, 8), // Return objects with {name, source, score}
       _debug: {
         from: chosenFrom,
         rawObjectsCount: objects.length,
@@ -106,11 +110,14 @@ serve(async (req) => {
         sampleLabels: labels.slice(0,6).map(l=>l.name),
       },
     };
+    
     if (debugMode) {
       payload._debug.chosen_items = chosen;
       payload._debug.objects_all = objects.slice(0,20);
-      payload._debug.labels_all  = labels.slice(0,20);
+      payload._debug.labels_all = labels.slice(0,20);
     }
+
+    console.log(`[MEAL-DETECTOR-V1] Success: ${chosen.length} items from ${chosenFrom}`);
 
     return new Response(JSON.stringify(payload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -121,12 +128,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       error: String(err?.message ?? err),
       items: [],
-      objects: [],
-      labels: [],
       _debug: { from: "error", message: String(err?.message ?? err) },
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200, // keep CORS happy; client will handle error
+      status: 200, // Keep CORS happy; client handles error
     });
   }
 });

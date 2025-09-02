@@ -23,6 +23,7 @@ export interface ReviewItem {
   mapped?: boolean; // Track if nutrition mapping succeeded
   grams?: number; // For logging and saving
   canonicalName?: string; // For mapping
+  source?: 'object' | 'label'; // Detection source
 }
 
 interface ReviewItemsScreenProps {
@@ -32,6 +33,7 @@ interface ReviewItemsScreenProps {
   onLogImmediately?: (selectedItems: ReviewItem[]) => void; // One-tap logging
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
+  source?: 'health-scan' | 'logging'; // Add source prop to distinguish flow
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -40,7 +42,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onNext,
   onLogImmediately,
   items: initialItems,
-  prefilledItems
+  prefilledItems,
+  source = 'logging'
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -138,6 +141,31 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
+  const handleHealthProfile = () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to view health profile');
+      return;
+    }
+    
+    // Navigate to health report with selected items
+    const healthItems = selectedItems.map(item => ({
+      name: item.name,
+      canonicalName: item.canonicalName || item.name,
+      grams: item.grams || 100,
+      source: item.source || 'label',
+      confidence: 0.8
+    }));
+    
+    navigate('/health-scan/report', {
+      state: {
+        items: healthItems,
+        source: 'health-scan'
+      }
+    });
+    onClose();
+  };
+
   const handleSeeDetails = () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
@@ -145,9 +173,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
     
-    // Navigate to health profile/confirmation flow
-    onNext(selectedItems);
-    onClose();
+    if (source === 'health-scan') {
+      handleHealthProfile();
+    } else {
+      // Navigate to detailed logging flow
+      onNext(selectedItems);
+      onClose();
+    }
   };
 
   const handleSaveSet = () => {
@@ -296,7 +328,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     disabled={selectedCount === 0}
                     className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
                   >
-                    🔎 Detailed Log ({selectedCount})
+                    {source === 'health-scan' ? '🏥 Health Profile & Log' : '🔎 Detailed Log'} ({selectedCount})
                   </Button>
                 </div>
                 

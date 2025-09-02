@@ -313,16 +313,24 @@ function AppContent() {
                     } />
                     
                     {/* Health Scan Routes - before wildcard */}
-                    <Route path="/health-scan/photo" element={
-                      <ProtectedRoute>
-                        <HealthScanPhoto />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/health-scan/report" element={
-                      <ProtectedRoute>
-                        <HealthReport />
-                      </ProtectedRoute>
-                    } />
+        <Route path="/health-scan/photo" element={
+          FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL ? (
+            <Navigate to="/scan" replace />  // UNUSED when FEATURE_HEALTHSCAN_USE_OLD_MODAL
+          ) : (
+            <ProtectedRoute>
+              <HealthScanPhoto />
+            </ProtectedRoute>
+          )
+        } />
+        <Route path="/health-scan/report" element={
+          FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL ? (
+            <Navigate to="/scan" replace />  // UNUSED when FEATURE_HEALTHSCAN_USE_OLD_MODAL
+          ) : (
+            <ProtectedRoute>
+              <HealthReport />
+            </ProtectedRoute>
+          )
+        } />
                     
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (
