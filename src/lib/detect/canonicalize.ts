@@ -22,7 +22,7 @@ const REJECT = new Set([
 // Category-specific confidence minimums
 const CONFIDENCE_MINS: Record<string, number> = {
   protein: 0.60,
-  vegetable: 0.50,
+  vegetable: 0.45, // Lowered from 0.50 to avoid dropping asparagus in bright plates
   fruit: 0.50,
   grain: 0.60,
   dairy: 0.60,
@@ -47,10 +47,9 @@ export function toCanonicalName(name: string): string {
     'grilled salmon': 'salmon',
     'baked salmon': 'salmon',
     
-    // Citrus variants  
+    // Citrus variants (keep lemon wedge, reject curd/syrup)
     'lime': 'lemon',
     'meyer lemon': 'lemon',
-    'lemon wedge': 'lemon',
     'lime wedge': 'lemon',
     
     // Salad variants
@@ -59,8 +58,14 @@ export function toCanonicalName(name: string): string {
     'mixed salad': 'salad',
     'garden salad': 'salad',
     
-    // Asparagus variants
+    // Asparagus synonyms
     'asparagus spears': 'asparagus',
+    'asparagus tips': 'asparagus',
+    'spears': 'asparagus', // when context is clear
+    
+    // Tomato synonyms
+    'cherry tomatoes': 'tomato',
+    'tomato slices': 'tomato',
     
     // Common proteins
     'chicken breast': 'chicken',
@@ -71,7 +76,8 @@ export function toCanonicalName(name: string): string {
     // Reject mappings (return empty to filter out)
     'lemon curd': '',
     'lemon syrup': '',
-    'asparagus risotto': 'asparagus' // assume asparagus dominates
+    // Special case: keep asparagus from risotto if no grain detected
+    'asparagus risotto': 'asparagus'
   };
   
   return mappings[cleaned] || cleaned;
@@ -79,10 +85,17 @@ export function toCanonicalName(name: string): string {
 
 export function dedupe(items: GptItem[]): GptItem[] {
   const canonicalMap = new Map<string, GptItem>();
+  const hasSalad = items.some(item => toCanonicalName(item.name) === 'salad');
   
   for (const item of items) {
     const canonical = toCanonicalName(item.name);
     if (!canonical) continue; // Skip rejected items
+    
+    // Special case: keep both "salad" AND "tomato" if tomato has confidence ≥0.65
+    if (canonical === 'tomato' && hasSalad && item.confidence >= 0.65) {
+      canonicalMap.set('tomato', { ...item, name: 'tomato' });
+      continue;
+    }
     
     const existing = canonicalMap.get(canonical);
     if (!existing || item.confidence > existing.confidence) {

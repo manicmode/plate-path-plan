@@ -67,7 +67,7 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
     }
 
     const rawItems = data?.items || [];
-    console.info('[GPT][raw_items]', `count=${rawItems.length}`);
+    console.info('[GPT][raw]', `count=${rawItems.length}`);
     
     if (!rawItems.length) {
       console.warn('[DETECT][GPT] No items detected');
@@ -124,6 +124,95 @@ export async function detectWithVision(imageBase64: string): Promise<DetectedIte
   } else {
     console.warn('[DETECT][VISION] No items detected');
     return [];
+  }
+}
+
+// Score detection results for best-of comparison
+function scoreResults(items: DetectedItem[]): number {
+  if (!items?.length) return 0;
+  
+  const hasProtein = items.some(item => item.source?.includes('protein') || 
+    ['salmon', 'chicken', 'beef', 'pork', 'fish', 'meat', 'egg'].some(p => 
+      item.name?.toLowerCase().includes(p)));
+  
+  const proteinScore = hasProtein ? 1 : 0;
+  const countScore = Math.min(items.length / 4, 1);
+  const avgConfidence = items.reduce((sum, item) => sum + (item.confidence || 0), 0) / items.length;
+  const confidenceScore = avgConfidence * 0.5;
+  
+  return proteinScore + countScore + confidenceScore;
+}
+
+async function runBestOf(imageBase64: string): Promise<DetectedItem[]> {
+  const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
+  
+  // Always get GPT results
+  let gptItems: DetectedItem[] = [];
+  let gptScore = 0;
+  try {
+    gptItems = await detectWithGpt(imageBase64);
+    gptScore = scoreResults(gptItems);
+  } catch (error) {
+    console.error('[BESTOF] GPT failed:', error);
+  }
+  
+  // Get Vision results only if SAFE_DETECT enabled
+  let visItems: DetectedItem[] = [];
+  let visScore = 0;
+  if (safeDet) {
+    try {
+      visItems = await detectWithVision(imageBase64);
+      visScore = scoreResults(visItems);
+    } catch (error) {
+      console.error('[BESTOF] Vision failed:', error);
+    }
+  }
+  
+  // Choose best result (GPT wins ties)
+  const useGpt = gptScore >= visScore;
+  const pick = useGpt ? 'gpt' : 'vision';
+  
+  if (safeDet) {
+    console.info('[BESTOF]', `gptScore=${gptScore.toFixed(2)}`, `visScore=${visScore.toFixed(2)}`, `pick=${pick}`);
+  }
+  
+  return useGpt ? gptItems : visItems;
+}
+
+export async function run(imageBase64: string): Promise<DetectedItem[]> {
+  const mode = getDetectMode();
+  console.info('[DETECT][mode]', mode);
+  
+  const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
+  
+  // Use best-of when SAFE_DETECT enabled, otherwise follow mode routing
+  if (safeDet) {
+    return await runBestOf(imageBase64);
+  }
+  
+  // Original mode-based routing
+  switch (mode) {
+    case 'GPT_ONLY':
+      return await detectWithGpt(imageBase64);
+      
+    case 'GPT_FIRST':
+      try {
+        const items = await detectWithGpt(imageBase64);
+        if (!items?.length) {
+          console.warn('[DETECT] GPT empty, fallback to Vision');
+          console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+          return await detectWithVision(imageBase64);
+        }
+        return items;
+      } catch (e) {
+        console.warn('[DETECT] GPT error, fallback', e);
+        console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
+        return await detectWithVision(imageBase64);
+      }
+      
+    case 'VISION_ONLY':
+    default:
+      return await detectWithLyfV1Vision(imageBase64);
   }
 }
 

@@ -75,49 +75,21 @@ export async function analyzePhoto(
     
     const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    // ✅ Single Detection Router
-    const { getDetectMode, detectWithGpt, detectWithVision, detectWithLyfV1Vision } = await import('@/lib/detect/router');
+    // ✅ Single Detection Router Entry Point
+    const { getDetectMode, run } = await import('@/lib/detect/router');
     
-    const mode = getDetectMode();
-    console.info('[DETECT][mode]', mode);
+    console.info('[DETECT][mode-check]', getDetectMode());
     
-    let items = [];
+    const items = await run(base64);
     
-    switch (mode) {
-      case 'GPT_ONLY':
-        items = await detectWithGpt(base64);
-        break;
-        
-      case 'GPT_FIRST':
-        try {
-          items = await detectWithGpt(base64);
-          if (!items?.length) {
-            console.warn('[DETECT] GPT empty, fallback to Vision');
-            console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-            items = await detectWithVision(base64);
-          }
-        } catch (e) {
-          console.warn('[DETECT] GPT error, fallback', e);
-          console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-          items = await detectWithVision(base64);
-        }
-        break;
-        
-      case 'VISION_ONLY':
-      default:
-        items = await detectWithLyfV1Vision(base64);
-        break;
-    }
-    
-    console.log('[PHOTO][DETECT] items_detected=', items.length, { mode });
+    console.log('[PHOTO][DETECT] items_detected=', items.length);
 
     return { 
       ok: true, 
       report: {
         items,
-        detectionPath: mode,
-        source: 'detect-router',
-        mode
+        detectionPath: getDetectMode(),
+        source: 'detect-router'
       }
     };
 
