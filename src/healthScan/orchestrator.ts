@@ -5,9 +5,19 @@ import type { HealthScanResult, HealthScanItem } from './types';
 export async function analyzeForHealthScan(imageBase64: string): Promise<HealthScanResult> {
   try {
     // Reuse LYF v1 detector with debug enabled in DEV
-    const { items: detectorItems, _debug } = await analyzeLyfV1(supabase, imageBase64, { 
+    const { items: detectorItems, error, _debug } = await analyzeLyfV1(supabase, imageBase64, { 
       debug: import.meta.env.DEV 
     });
+
+    // Handle detector errors gracefully
+    if (error === 'detector_unavailable') {
+      console.warn('[HS] Detector unavailable');
+      return { 
+        items: [], 
+        error: 'detector_unavailable',
+        _debug: _debug || { from: 'error' } 
+      };
+    }
 
     // Map detector results to health scan items
     const items: HealthScanItem[] = (detectorItems || []).map(item => ({
@@ -28,6 +38,7 @@ export async function analyzeForHealthScan(imageBase64: string): Promise<HealthS
     console.error('[HS] Detection error:', error);
     return { 
       items: [], 
+      error: 'detector_unavailable',
       _debug: { from: 'error', error: String(error) } 
     };
   }

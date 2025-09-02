@@ -3,6 +3,8 @@
  * All flags default to OFF for dark-ship deployment
  */
 export const FF = {
+  FEATURE_BROWSER_STT: true,
+  FEATURE_SERVER_STT: true,
   PIPELINE_ISOLATION: (import.meta.env.VITE_PIPELINE_ISOLATION ?? 'false') === 'true', // master kill
   PHOTO_ISOLATED: (import.meta.env.VITE_PHOTO_ISOLATED ?? 'false') === 'true',
   BARCODE_ISOLATED: (import.meta.env.VITE_BARCODE_ISOLATED ?? 'false') === 'true',

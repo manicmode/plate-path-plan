@@ -10,6 +10,7 @@ import { FF } from '@/featureFlags';
 interface HealthReportState {
   image?: string;
   items: HealthScanItem[];
+  error?: string;
   _debug?: any;
 }
 
@@ -109,7 +110,7 @@ export default function HealthReport() {
     );
   }
 
-  const { items, image } = reportData;
+  const { items, image, error } = reportData;
 
   return (
     <div className="min-h-screen bg-background">
@@ -142,21 +143,38 @@ export default function HealthReport() {
           </div>
         )}
 
-        {/* Items List */}
+      {/* Error Banner */}
+      {error === 'detector_unavailable' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p className="text-sm text-yellow-800">
+            Scanner temporarily unavailable. You can still log manually or try again later.
+          </p>
+        </div>
+      )}
+
+      {/* Items List */}
         <div className="p-4">
           <h2 className="text-lg font-semibold mb-4">
             Detected Items ({items.length})
           </h2>
           
           {items.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                No items detected in this photo
-              </p>
-              <Button onClick={handleRetakePhoto} variant="outline">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Retake Photo
-              </Button>
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                {error === 'detector_unavailable' 
+                  ? 'Unable to analyze photo right now'
+                  : 'No food items detected in this photo'
+                }
+              </div>
+              <div className="space-y-2">
+                <Button onClick={handleRetakePhoto} variant="outline">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Retake Photo
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  or add food manually from the main screen
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3 mb-6">

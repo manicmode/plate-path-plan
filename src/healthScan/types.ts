@@ -8,6 +8,7 @@ export interface HealthScanItem {
 
 export interface HealthScanResult {
   items: HealthScanItem[];
+  error?: string;
   _debug?: any;
 }
 

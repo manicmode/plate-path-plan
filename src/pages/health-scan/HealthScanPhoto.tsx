@@ -96,19 +96,20 @@ export default function HealthScanPhoto() {
         
         if (abortControllerRef.current?.signal.aborted) return;
         
-        // Check for scanner availability
-        if (result._debug?.from === 'error') {
+        // Check if _debug.from === 'error' or items.length === 0
+        if (result._debug?.from === 'error' || result.items.length === 0) {
           // Show non-blocking banner for scanner issues
           toast('Scanner temporarily unavailable. You can still log manually.', {
             duration: 4000,
           });
         }
         
-        // Navigate to report with results
+        // Navigate to report with results (even if empty due to detector unavailable)
         navigate('/health-scan/report', {
           state: {
             image: imageBase64,
             items: result.items,
+            error: result.error,
             _debug: result._debug
           }
         });
