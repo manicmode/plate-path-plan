@@ -1,0 +1,91 @@
+/* Mobile review sheet styles */
+.review-sheet {
+  /* Full height mobile sheet */
+  position: fixed;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  height: 100dvh;
+  width: 100%;
+  background: hsl(var(--background));
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .review-sheet {
+    /* Desktop: centered modal */
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 28rem;
+    height: auto;
+    max-height: 85vh;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 50px -12px hsl(var(--foreground) / 0.25);
+  }
+}
+
+/* Scrollable content area */
+.review-content {
+  overflow-y: auto;
+  max-height: calc(100dvh - 220px);
+  padding: 12px;
+}
+
+@media (min-width: 640px) {
+  .review-content {
+    max-height: calc(85vh - 220px);
+  }
+}
+
+/* Sticky footer */
+.review-footer {
+  position: sticky;
+  bottom: 0;
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border));
+  padding: 16px;
+  z-index: 10;
+}
+
+/* Number wheel styles */
+.wheel-container {
+  /* Hide scrollbar */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wheel-container::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel-item {
+  transition: all 0.2s ease-out;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Highlight band for wheel */
+.wheel-highlight {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    hsl(var(--primary) / 0.1) 20%,
+    hsl(var(--primary) / 0.15) 50%,
+    hsl(var(--primary) / 0.1) 80%,
+    transparent 100%
+  );
+  border: 2px solid hsl(var(--primary) / 0.2);
+}
+
+/* Safe area padding for mobile */
+.safe-area-padding {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}

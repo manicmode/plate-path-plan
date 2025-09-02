@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Plus, ArrowRight, Edit3, AlertCircle, Zap, Save, Info } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { SaveSetDialog } from './SaveSetDialog';
+import { ReviewItemCard } from './ReviewItemCard';
 import { FF } from '@/featureFlags';
+import '@/styles/review.css';
 
 export interface ReviewItem {
   name: string;
@@ -58,7 +55,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   }, [items, isOpen]);
 
-  const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected' | 'eggSize', value: string | boolean) => {
+  const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected' | 'eggSize' | 'grams', value: string | boolean | number) => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
@@ -108,7 +105,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setShowSaveDialog(true);
   };
 
-  const selectedCount = items.filter(item => item.selected && item.name.trim() && item.portion.trim()).length;
+  const selectedCount = items.filter(item => item.selected && item.name.trim()).length;
+  const count = items.length;
 
   // Debug logging
   console.log('ReviewItemsScreen render - isOpen:', isOpen, 'items count:', items.length, 'selectedCount:', selectedCount);
@@ -116,198 +114,137 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <AccessibleDialogContent 
-        className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-        title="Review detected items"
-        description="Select the items you want to log."
+        className="review-sheet"
+        title={`Review detected items (${count})`}
+        description="Select the items you want to log"
+        aria-labelledby="review-title"
+        aria-describedby="review-description"
       >
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Review Detected Items
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Check and edit the food items detected in your image
-            </p>
+        {/* Header */}
+        <div className="safe-area-padding border-b border-border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 id="review-title" className="text-xl font-bold text-foreground">
+                Review Detected Items ({count})
+              </h2>
+              <p id="review-description" className="text-sm text-muted-foreground mt-1">
+                Check and edit the food items detected in your image
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {items.map((item, index) => (
-              <Card key={item.id} className="border border-gray-200 dark:border-gray-700">
-                <CardContent className="p-4">
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      checked={item.selected}
-                      onCheckedChange={(checked) => 
-                        handleItemChange(item.id, 'selected', checked === true)
-                      }
-                      className="mt-1"
-                    />
-                    
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            Food Name
-                          </label>
-                          {item.needsDetails && (
-                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Needs details
-                            </Badge>
-                          )}
-                        </div>
-                        <Input
-                          value={item.name}
-                          onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                          placeholder="Enter food name..."
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Portion Size
-                        </label>
-                        <Input
-                          value={item.portion}
-                          onChange={(e) => handleItemChange(item.id, 'portion', e.target.value)}
-                          placeholder="e.g., 1 cup, 2 slices..."
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      {/* Egg Size Selector */}
-                      {item.name.toLowerCase().includes('egg') && (
-                        <div>
-                          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            Egg Size
-                          </label>
-                          <Select
-                            value={item.eggSize || 'large'}
-                            onValueChange={(value) => handleItemChange(item.id, 'eggSize', value)}
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select egg size" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="small">Small (54 kcal)</SelectItem>
-                              <SelectItem value="medium">Medium (63 kcal)</SelectItem>
-                              <SelectItem value="large">Large (72 kcal)</SelectItem>
-                              <SelectItem value="xl">XL (80 kcal)</SelectItem>
-                              <SelectItem value="jumbo">Jumbo (90 kcal)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-
-                    {items.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveItem(item.id)}
-                        className="mt-1 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        ×
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Scrollable content */}
+        <div className="review-content">
+          <div className="space-y-3">
+            {items.map((item) => (
+              <ReviewItemCard
+                key={item.id}
+                item={item}
+                canRemove={items.length > 1}
+                onChange={handleItemChange}
+                onRemove={handleRemoveItem}
+              />
             ))}
           </div>
 
+          {/* Add food button */}
           <div className="flex justify-center mt-4">
             <Button
               variant="outline"
               onClick={handleAddItem}
-              className="flex items-center space-x-2 border-dashed border-2 border-gray-300 hover:border-gray-400"
+              className="flex items-center space-x-2 border-dashed border-2"
             >
               <Plus className="h-4 w-4" />
               <span>Add Food</span>
             </Button>
           </div>
+        </div>
 
-          {/* Three action buttons */}
-          <div className="space-y-3 mt-6">
-            {FF.FEATURE_LYF_LOG_THIS_SET ? (
-              <>
-                {/* Primary: Log selected items (one-tap) */}
+
+        {/* Sticky footer with actions */}
+        <div className="review-footer space-y-3">
+          {FF.FEATURE_LYF_LOG_THIS_SET ? (
+            <>
+              {/* Primary: Log This Set (instant) */}
+              <Button
+                onClick={handleLogImmediately}
+                disabled={selectedCount === 0}
+                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-medium"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Log This Set ({selectedCount})
+              </Button>
+              
+              {/* Secondary: See Health Profile & Log */}
+              <Button
+                onClick={handleNext}
+                disabled={selectedCount === 0}
+                variant="outline"
+                className="w-full"
+              >
+                <Info className="h-4 w-4 mr-2" />
+                See Health Profile & Log
+              </Button>
+              
+              {/* Third: Save This Set */}
+              <Button
+                onClick={handleSaveSet}
+                disabled={selectedCount === 0}
+                variant="ghost"
+                className="w-full"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save This Set
+              </Button>
+              
+              {/* Fourth: Cancel */}
+              <Button
+                onClick={onClose}
+                variant="ghost"
+                className="w-full text-destructive"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            /* Fallback layout when feature flag is off */
+            <>
+              <Button
+                onClick={handleNext}
+                disabled={selectedCount === 0}
+                className="w-full"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Continue ({selectedCount})
+              </Button>
+              <div className="flex gap-3">
                 <Button
-                  onClick={handleLogImmediately}
+                  onClick={handleSaveSet}
                   disabled={selectedCount === 0}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                  variant="ghost"
+                  className="flex-1"
                 >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Log Selected Items ({selectedCount})
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Set
                 </Button>
-                
-                {/* Secondary: See details before logging */}
-                <Button
-                  onClick={handleNext}
-                  disabled={selectedCount === 0}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Info className="h-4 w-4 mr-2" />
-                  See Details Before Logging
+                <Button onClick={onClose} variant="outline" className="flex-1">
+                  Cancel
                 </Button>
-                
-                <div className="flex gap-3">
-                  {/* Tertiary: Save this set */}
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Set
-                  </Button>
-                  
-                  {/* Cancel */}
-                  <DialogClose asChild>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                </div>
-              </>
-            ) : (
-              /* Fallback layout when feature flag is off */
-              <>
-                <Button
-                  onClick={handleNext}
-                  disabled={selectedCount === 0}
-                  className="w-full"
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Continue ({selectedCount})
-                </Button>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Set
-                  </Button>
-                  <DialogClose asChild>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
 
           {selectedCount > 0 && (
-            <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-center text-xs text-muted-foreground">
               {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
             </p>
           )}

@@ -769,7 +769,6 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         
         // Force LYF onto frozen v1 pipeline exclusively
         const imageBase64 = convertToBase64(selectedImage);
-        
         setProcessingStep('Analyzing food with LYF v1...');
         setIsAnalyzing(true);
         
@@ -779,7 +778,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           
           // === LYF v1 FROZEN PIPELINE ONLY ===
           const { mapped: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
-          console.info('[LYF][v1] raw:', rawItems?.map(i => i.name || i.vision), _debug);
+          console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
           
           const items = (rawItems ?? [])
             .filter(i => looksFoodish(i.canonicalName || i.vision || i.name || ''))
@@ -787,37 +786,39 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           
           console.info('[LYF][v1] keep:', items.map(i => i.canonicalName || i.vision || i.name));
           
-          if (items.length > 0) {
-            // Map into ReviewItems model with portions - include ALL candidates
-            const reviewItemsData = items.map((it, idx) => ({
-              id: `ri-${idx}`,
-              name: titleCase(it.canonicalName || it.vision || it.name),
-              portion: `${it.grams || guessDefaultGrams(it.canonicalName || it.vision || it.name)}g`,
-              selected: false, // Start with nothing preselected - user must choose
-              grams: it.grams || guessDefaultGrams(it.canonicalName || it.vision || it.name),
-              confidencePct: Math.round((it.hit?.confidence || 0.5) * 100),
-              source: it.source || 'vision',
-              mapped: it.mapped !== false, // Track if nutrition mapping succeeded
-              needsDetails: it.mapped === false, // Show "Needs details" chip for unmapped items
-            }));
-            
-            setReviewItems(reviewItemsData);
-            setShowReviewScreen(true);
-            setInputSource('photo'); // Flag for LYF source
-            
-            console.info('[LYF][ui] review_opened items=', reviewItemsData.length);
-          } else {
-            console.info('[LYF][ui] no_items_to_review');
-            toast.info('No clear foods detected. Try a closer photo or better lighting.');
+          if (items.length === 0) {
+            // No foods detected - show toast and don't render any legacy panel
+            toast.error('No foods detected. Try a clearer photo or add manually.');
+            setIsAnalyzing(false);
+            return;
           }
+
+          // Transform to ReviewItem format for the new UI
+          const reviewItems: ReviewItem[] = items.map((item: any, index: number) => ({
+            id: `lyf-${index}`,
+            name: item.canonicalName || item.vision || item.name,
+            portion: `${item.grams || 100}g`,
+            selected: true,
+            grams: item.grams || 100,
+            canonicalName: item.canonicalName,
+            needsDetails: !item.mapped,
+            mapped: item.mapped
+          }));
+
+          console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
           
+          // Open review screen with atomic handoff
+          setReviewItems(reviewItems);
+          setShowReviewScreen(true);
+          setInputSource('photo'); // Flag for LYF source
+          
+          console.info('[LYF][ui] review_opened items=', reviewItems.length);
         } catch (error) {
           console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
         } finally {
           setIsAnalyzing(false);
         }
-      })();
       
       // Await analysis with abort controller
       await analysisPromise;

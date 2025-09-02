@@ -13,4 +13,5 @@ export const FF = {
   FEATURE_PHOTO_FLOW_V2: (import.meta.env.VITE_FEATURE_PHOTO_FLOW_V2 ?? 'false') === 'true',
   FEATURE_LYF_ENSEMBLE: false, // Pin LYF to frozen v1 only - no GPT/ensemble paths
   FEATURE_LYF_LOG_THIS_SET: true, // Enable one-tap logging
+  FEATURE_NUMBER_WHEEL_PICKERS: true, // Enable roller number pickers with haptics
 } as const;
