@@ -15,8 +15,25 @@ function getBoolean(value: string | undefined): boolean {
 }
 
 export function getDetectMode(context?: { mode?: string }): DetectMode {
-  // Force GPT-only for Log mode
-  if (context?.mode === 'log') {
+  // Safety: read environment mode override
+  const envMode = import.meta.env.VITE_DETECT_MODE;
+  const allowedModes = import.meta.env.VITE_DETECT_MODE_ALLOWED?.split(',') || ['VISION_ONLY', 'GPT_ONLY', 'HYBRID'];
+  
+  // Override with env setting if specified and allowed
+  if (envMode && allowedModes.includes(envMode)) {
+    const mode = envMode === 'VISION_ONLY' ? DetectMode.VISION_ONLY :
+                envMode === 'GPT_ONLY' ? DetectMode.GPT_ONLY :
+                envMode === 'HYBRID' ? DetectMode.HYBRID :
+                null;
+    
+    if (mode) {
+      console.info('[ROUTER][mode]=', envMode, '(env override)');
+      return mode;
+    }
+  }
+
+  // Force GPT-only for Log mode (if not overridden by env)
+  if (context?.mode === 'log' && (!envMode || envMode !== 'VISION_ONLY')) {
     console.info('[ROUTER] mode=GPT_ONLY (log)');
     return DetectMode.GPT_ONLY;
   }

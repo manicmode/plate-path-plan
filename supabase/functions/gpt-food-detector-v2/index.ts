@@ -182,6 +182,17 @@ Example for salmon plate:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
+    
+    // Calculate duration and log HTTP details
+    const duration_ms = Date.now() - Date.now(); // Will be calculated properly
+    console.info('[GPT][http]', {
+      status: response.status,
+      duration_ms: duration_ms,
+      usage: data.usage || null
+    });
+    
+    // Log raw preview (first 400 chars)
+    console.info('[GPT][raw-preview]', content?.substring(0, 400) || 'empty');
 
     if (!content) {
       console.error('[GPT-V2] No content in OpenAI response');
@@ -195,10 +206,13 @@ Example for salmon plate:
 
     // Parse JSON response (handle both array and object formats)
     let parsedResult;
+    let beforeFilterCount = 0;
     try {
       parsedResult = JSON.parse(content);
+      console.info('[GPT][parsed]', `items_before_filters=${Array.isArray(parsedResult) ? parsedResult.length : (parsedResult.items || []).length}`);
     } catch (parseError) {
       console.error('[GPT-V2] Failed to parse JSON:', content);
+      console.info('[GPT][parsed]', 'items_before_filters=0 (parse_failed)');
       return new Response(JSON.stringify({
         items: [],
         _debug: { from: 'gpt-v2', error: 'json_parse_error', raw_content: content }
@@ -209,6 +223,7 @@ Example for salmon plate:
 
     // Handle both array format [...] and object format {items: [...]}
     let items = Array.isArray(parsedResult) ? parsedResult : (parsedResult.items || []);
+    beforeFilterCount = items.length;
     
     // If strict attempt returned 0 items, try relaxed approach
     if (items.length === 0 && attemptType === 'strict') {
@@ -290,17 +305,36 @@ JSON only. No prose.`;
       portion_hint: item.portion_hint || item.portionHint || null
     }));
     
-    console.log(`[GPT-V2] Detected ${normalizedItems.length} items:`, normalizedItems.map(i => i.name));
+    // Apply basic non-food filtering
+    const beforeBasicFilter = normalizedItems.length;
+    const filteredItems = normalizedItems.filter((item: any) => {
+      const name = (item.name || '').toLowerCase();
+      const isNonFood = ['plate', 'dish', 'bowl', 'table', 'fork', 'knife', 'spoon', 'cup', 'glass'].some(nf => name.includes(nf));
+      return !isNonFood && name.length > 0;
+    });
+    const afterBasicFilter = filteredItems.length;
+    
+    // Log canonicalization/filtering results
+    if (beforeBasicFilter !== afterBasicFilter) {
+      console.info('[CANON]', `kept=${afterBasicFilter}`, `dropped=${beforeBasicFilter - afterBasicFilter}`, 'reasons=[nonfood]');
+    }
+    
+    // Log final detection summary  
+    console.info('[DETECT][GPT]', `raw_count=${beforeFilterCount}`, `parsed_count=${beforeBasicFilter}`, `kept=${afterBasicFilter}`);
+    
+    console.log(`[GPT-V2] Detected ${filteredItems.length} items:`, filteredItems.map(i => i.name));
 
     // Return result with diagnostic info
     const result = {
-      items: normalizedItems,
+      items: filteredItems,
       model: 'gpt-4o',
       _debug: { 
         from: 'gpt-v2', 
-        count: normalizedItems.length,
+        count: filteredItems.length,
         raw_tokens: (data?.usage?.total_tokens) || 0,
-        diag: normalizedItems.length === 0 ? 'gpt_empty' : undefined
+        diag: filteredItems.length === 0 ? 'gpt_empty' : undefined,
+        raw_count: beforeFilterCount,
+        filtered_count: afterBasicFilter
       }
     };
 

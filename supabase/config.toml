@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.vision-ocr]
 verify_jwt = true
+
+[functions.gpt-detect-diag]
+verify_jwt = false
