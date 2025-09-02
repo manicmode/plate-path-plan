@@ -260,6 +260,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   ))}
                 </div>
 
+                {/* Add spacer when there's only 1 item for better spacing */}
+                {selectedCount === 1 && <div style={{ minHeight: '28dvh' }} />}
+
                 {/* Add food button */}
                 <div className="flex justify-center mt-4">
                   <Button
@@ -296,23 +299,23 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   </Button>
                 </div>
                 
-                {/* Secondary actions row */}
-                <div className="flex gap-2 pt-2">
+                {/* Secondary actions row - improved styling */}
+                <div className="flex gap-3 pt-2">
                   <Button
                     onClick={handleSaveSet}
                     disabled={selectedCount === 0}
-                    variant="ghost" 
-                    size="sm"
-                    className="flex-1 text-xs"
+                    size="lg"
+                    className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
                   >
+                    <Save className="w-4 h-4 mr-2" />
                     💾 Save Set
                   </Button>
                   
                   <Button
                     onClick={onClose}
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 text-xs text-muted-foreground hover:text-destructive"
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
                   >
                     Cancel
                   </Button>

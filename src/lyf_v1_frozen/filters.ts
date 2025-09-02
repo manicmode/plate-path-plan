@@ -78,6 +78,8 @@ export function looksFoodish(name: string, source?: string, confidence?: number)
   return /\b(?:salmon|fish|seafood|beef|chicken|poultry|egg|rice|pasta|bread|vegetable|fruit|tomato|lemon|asparagus|broccoli|potato|herb|spice|dill|parsley|cilantro|green)\b/i.test(n);
 }
 
+export const VEG_LABELS = /^(asparagus|tomato|cherry tomato|grape tomato|lemon|lemon slice|lemon wedge|dill)$/i;
+
 export function rankSource(a: any, b: any): number {
   const w = (s: string) => s === 'object' ? 2 : 1;
   return (w(b.source || 'label') - w(a.source || 'label')) || ((b.confidence || 0) - (a.confidence || 0));

@@ -176,6 +176,27 @@ serve(async (req) => {
         s: o.score
       }));
       response._debug.dropped = dropped;
+      
+      // Add kept arrays for forensics
+      response._debug.labels_kept = labelsKept.map((name: string) => {
+        const label = rawLabels.find((l: any) => l.description?.toLowerCase().trim() === name);
+        return { name, score: label?.score ?? 0.7 };
+      }).slice(0, 50);
+      
+      response._debug.objects_kept = objectsKept.map((name: string) => {
+        const obj = rawObjects.find((o: any) => o.name?.toLowerCase().trim() === name);
+        return { name, score: obj?.score ?? 0.7 };
+      }).slice(0, 50);
+      
+      response._debug.dropped_labels = [
+        ...dropped.nonFood.filter(name => labels.includes(name)).map(name => ({ name, reason: 'nonFood' as const })),
+        ...dropped.generic.filter(name => labelsKept.includes(name)).map(name => ({ name, reason: 'generic' as const }))
+      ];
+      
+      response._debug.dropped_objects = [
+        ...dropped.nonFood.filter(name => objects.includes(name)).map(name => ({ name, reason: 'nonFood' as const })),
+        ...dropped.generic.filter(name => objectsKept.includes(name)).map(name => ({ name, reason: 'generic' as const }))
+      ];
     }
 
     return new Response(JSON.stringify(response), { 

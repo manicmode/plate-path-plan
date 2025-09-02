@@ -37,7 +37,7 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   const handleSave = () => {
     if (setName.trim()) {
       onSave(setName.trim());
-      // Don't close here - let parent handle success/error and close
+      // Parent component handles success/error and close
     }
   };
 

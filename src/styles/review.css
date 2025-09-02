@@ -39,7 +39,7 @@
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(4 * 80px + 32px); /* Approximately 4 items + spacing */
+  max-height: calc(4 * 80px + 24px); /* Show 4 items without scroll */
 }
 
 /* Sticky actions footer */

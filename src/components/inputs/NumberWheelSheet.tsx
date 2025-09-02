@@ -80,7 +80,10 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
   useEffect(() => {
     if (open && wheelRef.current && !hasInitialized.current) {
       const itemHeight = 50;
-      const targetIndex = findNearestIndex(defaultValue);
+      // Find nearest multiple of 5 to defaultValue
+      const target = defaultValue;
+      const nearestMultiple = Math.round(target / 5) * 5;
+      const targetIndex = findNearestIndex(nearestMultiple);
       const scrollTop = targetIndex * itemHeight;
       
       // Set initial value and position before animation

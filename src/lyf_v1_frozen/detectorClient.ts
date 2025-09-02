@@ -65,7 +65,14 @@ export async function analyzeLyfV1(supabase: any, image_base64: string) {
 
     // Concise debug logging for dev builds
     if (import.meta.env.DEV) {
-      console.info(`[LYF][v1] raw: from=${data?._debug?.from} rawObjects=${data?._debug?.rawObjectsCount} rawLabels=${data?._debug?.rawLabelsCount}`);
+      console.table({ 
+        from: data?._debug?.from, 
+        rawObjects: data?._debug?.rawObjectsCount, 
+        rawLabels: data?._debug?.rawLabelsCount, 
+        keptObjects: data?._debug?.keptObjectsCount, 
+        keptLabels: data?._debug?.keptLabelsCount 
+      });
+      console.log('[LYF][v1] labelsKeptRaw', data?._debug?.labels_kept?.slice(0,15));
       console.info('[LYF][v1] keep:', items.map(i => i.name));
       
       if (debugMode && data?._debug?.dropped) {
@@ -82,7 +89,12 @@ export async function analyzeLyfV1(supabase: any, image_base64: string) {
       }]);
     }
 
-    return { items, _debug: data?._debug };
+    return { 
+      items, 
+      _debug: data?._debug,
+      labelsKeptRaw: data?._debug?.labels_kept,
+      objectsKeptRaw: data?._debug?.objects_kept
+    };
   } catch (error) {
     clearTimeout(timeoutId);
     
