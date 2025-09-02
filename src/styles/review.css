@@ -33,13 +33,13 @@
   flex: 1;
 }
 
-/* Scrolling list - show 4 items without scrolling */
+/* Scrolling list - show up to 4 items without scrolling, then scroll inside */
 .lyf-items {
   flex: 1;
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: 60vh;
+  max-height: calc(4 * 80px + 32px); /* Approximately 4 items + spacing */
 }
 
 /* Sticky actions footer */

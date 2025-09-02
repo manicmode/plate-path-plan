@@ -130,7 +130,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       const { emitPhotoMetrics, incrementCounter } = await import('@/lib/metrics');
       incrementCounter('photo.one_tap_used');
       
-      toast.success(`Logged ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''} ✓`);
+      toast.success(`Logged ✓`);
       onClose();
     } catch (error) {
       console.error('Failed to log items:', error);
@@ -181,7 +181,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       }));
 
       await createMealSet({ name: setName, items: mealSetItems });
-      toast.success(`Set saved ✓`);
+      toast.success(`Saved ✓`);
       setShowSaveNameDialog(false);
     } catch (error) {
       console.error('Failed to save meal set:', error);

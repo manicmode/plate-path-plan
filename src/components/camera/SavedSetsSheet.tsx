@@ -68,7 +68,7 @@ export const SavedSetsSheet: React.FC<SavedSetsSheetProps> = ({
     
     onInsertSet(items);
     onClose();
-    toast.success(`Inserted ${set.name}`);
+    toast.success(`Inserted ✓`);
   };
   
   const formatItemsPreview = (items: MealSet['items']) => {
