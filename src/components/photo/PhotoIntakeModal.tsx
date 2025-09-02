@@ -11,13 +11,15 @@ interface PhotoIntakeModalProps {
   onClose: () => void;
   context: 'log' | 'health';
   onImageReady: (fileOrBlob: File | Blob) => void;
+  isProcessing?: boolean;
 }
 
 export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   isOpen,
   onClose,
   context,
-  onImageReady
+  onImageReady,
+  isProcessing = false
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,13 +31,12 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showCaptureFlash, setShowCaptureFlash] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize camera when modal opens - with better timing
   useEffect(() => {
     let mounted = true;
     
-    if (isOpen) {
+    if (isOpen && !isProcessing) {
       // Add small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         if (mounted) {
@@ -53,7 +54,16 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       cleanup();
       setDebugInfo('');
     }
-  }, [isOpen]);
+  }, [isOpen, isProcessing]);
+
+  // Stop camera stream when processing to free up camera
+  useEffect(() => {
+    if (isProcessing && streamRef.current) {
+      console.log('🎥 Stopping camera stream during processing');
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, [isProcessing]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -158,16 +168,23 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   };
 
 
+  const handleCapturePointerDown = async () => {
+    try {
+      await Sound.ensureUnlocked();
+    } catch (error) {
+      console.log('Sound unlock failed:', error);
+    }
+  };
+
   const capturePhoto = async () => {
-    if (!videoRef.current || !canvasRef.current || isCapturing) return;
+    if (!videoRef.current || !canvasRef.current || isCapturing || isProcessing) return;
 
     setIsCapturing(true);
     
     try {
       // Capture effects
       lightTap(); // Haptic feedback
-      Sound.ensureUnlocked(); // Ensure audio is unlocked
-      Sound.play('shutter'); // Camera sound
+      await Sound.play('shutter'); // Camera sound
       
       // Screen flash effect
       setShowCaptureFlash(true);
@@ -191,21 +208,14 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       // Draw video frame to canvas
       ctx.drawImage(video, 0, 0);
       
-      // Short delay to show freeze effect
+      // Short delay to show freeze effect then call parent
       setTimeout(() => {
-        setIsProcessing(true);
         setIsCapturing(false);
         
-        // Convert to blob and call onImageReady after processing animation
         canvas.toBlob((blob) => {
           if (blob) {
             console.log('📸 Photo captured successfully, size:', blob.size);
-            
-            // Add processing delay for fun animation
-            setTimeout(() => {
-              setIsProcessing(false);
-              onImageReady(blob);
-            }, 2000);
+            onImageReady(blob);
           } else {
             throw new Error('Failed to create image blob');
           }
@@ -216,7 +226,6 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       console.error('Photo capture failed:', error);
       toast.error('Failed to capture photo');
       setIsCapturing(false);
-      setIsProcessing(false);
     }
   };
 
@@ -229,6 +238,11 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       // Reset input value to allow selecting the same file again
       event.target.value = '';
     }
+  };
+
+  const handleUploadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
   };
 
   const contextConfig = {
@@ -268,7 +282,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   }
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen && !isProcessing} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black z-50" />
         <Dialog.Content className="fixed inset-0 bg-black text-white z-50 flex flex-col">
@@ -323,26 +337,6 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
                  style={{ animationDuration: '0.2s', animationIterationCount: 1 }} />
           )}
 
-          {/* Processing Animation Overlay */}
-          {isProcessing && (
-            <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-20 w-20 border-4 border-emerald-400/30 border-t-emerald-400 mx-auto mb-6" />
-                  <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-emerald-400 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xl font-bold">Analyzing your photo...</p>
-                  <p className="text-emerald-400 text-sm animate-pulse">🔍 Detecting food items</p>
-                  <div className="flex items-center justify-center gap-1 mt-4">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Loading/Error States */}
           {hasPermission === null && (
@@ -400,6 +394,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
               <Button
                 size="lg"
                 onClick={capturePhoto}
+                onPointerDown={handleCapturePointerDown}
                 disabled={!hasPermission || isCapturing || isProcessing}
                 className={`h-16 w-16 rounded-full p-0 shadow-lg transition-all duration-200 ${
                   isCapturing || isProcessing 
@@ -423,11 +418,9 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
               <Button
                 variant="ghost"
                 size="lg"
-                onClick={() => {
-                  console.log('Upload button clicked');
-                  fileInputRef.current?.click();
-                }}
-                className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0 shadow-lg"
+                onClick={handleUploadClick}
+                disabled={isProcessing}
+                className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0 shadow-lg disabled:opacity-50"
                 title="Upload from gallery"
               >
                 <Upload className="h-6 w-6" />
