@@ -1,4 +1,5 @@
 import { VisionFood } from './vision_v1';
+import { looksFoodish } from './filters';
 
 export interface FusedFood {
   canonicalName: string;
@@ -12,26 +13,39 @@ export interface FusedFood {
 const SYNONYMS: Record<string, string> = {
   // Salmon variants
   'salmon': 'salmon',
+  'salmon fillet': 'salmon',
   'smoked salmon': 'salmon', 
   'grilled salmon': 'salmon',
   'baked salmon': 'salmon',
-  'salmon fillet': 'salmon',
+  'cooked salmon': 'salmon',
   
   // Tomato variants  
-  'cherry tomato': 'tomato',
-  'cherry tomatoes': 'tomato',
-  'grape tomato': 'tomato', 
-  'grape tomatoes': 'tomato',
+  'cherry tomato': 'cherry tomato', // Keep cherry tomato distinct from regular tomato
+  'cherry tomatoes': 'cherry tomato',
+  'grape tomato': 'cherry tomato', 
+  'grape tomatoes': 'cherry tomato',
+  'tomato': 'tomato',
+  'tomatoes': 'tomato',
   'tomato slice': 'tomato',
   'tomato slices': 'tomato',
   
-  // Lemon variants
+  // Lemon variants - all map to lemon
+  'lemon': 'lemon',
   'lemon slice': 'lemon',
   'lemon slices': 'lemon',
   'lemon wedge': 'lemon',
   'lemon wedges': 'lemon',
+  
+  // Lime variants
+  'lime': 'lime',
   'lime wedge': 'lime',
   'lime wedges': 'lime',
+  
+  // Asparagus variants
+  'asparagus': 'asparagus',
+  'asparagus spear': 'asparagus',
+  'asparagus spears': 'asparagus',
+  'green asparagus': 'asparagus',
   
   // Other foods
   'fries': 'french fries',
@@ -50,9 +64,7 @@ const SYNONYMS: Record<string, string> = {
   'mixed greens': 'salad',
   'green salad': 'salad',
   'lettuce leaves': 'lettuce',
-  'spinach leaves': 'spinach',
-  'asparagus spear': 'asparagus',
-  'asparagus spears': 'asparagus'
+  'spinach leaves': 'spinach'
 };
 
 export function canonicalize(name: string): string {
@@ -73,10 +85,15 @@ export function canonicalize(name: string): string {
   return canonical;
 }
 
-// Jaro-Winkler similarity (simplified version)
+// Improved similarity function for better deduplication
 export function similar(a: string, b: string): number {
   const aTokens = new Set(a.toLowerCase().split(' '));
   const bTokens = new Set(b.toLowerCase().split(' '));
+  
+  // Check if one contains the other (e.g., "cherry tomato" vs "tomato")
+  if (a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase())) {
+    return 0.9; // High similarity for containment
+  }
   
   let intersection = 0;
   aTokens.forEach(token => {
@@ -88,10 +105,10 @@ export function similar(a: string, b: string): number {
 }
 
 export function fuseDetections(visionFoods: VisionFood[], gptNames: string[]): FusedFood[] {
-  const SIMILARITY_THRESHOLD = 0.6; // Adjusted for token-based similarity
+  const SIMILARITY_THRESHOLD = 0.85; // Stricter similarity for better deduplication
   const fused: FusedFood[] = [];
   
-  // Start with Vision foods (they have bboxes)
+  // Start with Vision foods (they have bboxes) - prioritize them
   for (const visionFood of visionFoods) {
     const canonical = canonicalize(visionFood.name);
     fused.push({
@@ -105,15 +122,17 @@ export function fuseDetections(visionFoods: VisionFood[], gptNames: string[]): F
   
   let addedFromGpt = 0;
   
-  // Process GPT names
+  // Process GPT names - merge with existing or add new
   for (const gptName of gptNames) {
     const gptCanonical = canonicalize(gptName);
     
     // Check if it matches any existing fused item
     let matched = false;
     for (const fusedItem of fused) {
-      if (similar(gptCanonical, fusedItem.canonicalName) >= SIMILARITY_THRESHOLD) {
-        // Merge sources
+      const similarity = similar(gptCanonical, fusedItem.canonicalName);
+      
+      if (similarity >= SIMILARITY_THRESHOLD) {
+        // Merge sources - prefer Vision entry (keep bbox and score)
         fusedItem.sources.add('gpt');
         fusedItem.origin = 'both';
         matched = true;
@@ -132,15 +151,23 @@ export function fuseDetections(visionFoods: VisionFood[], gptNames: string[]): F
     }
   }
   
+  // Keep top 8 fused items, prioritizing those with bboxes and higher scores
+  const sorted = fused.sort((a, b) => {
+    // Prioritize items with bboxes (Vision detections)
+    if (a.bbox && !b.bbox) return -1;
+    if (!a.bbox && b.bbox) return 1;
+    
+    // Then by score
+    return (b.score || 0) - (a.score || 0);
+  });
+  
+  const topItems = sorted.slice(0, 8);
+  
   // DEV logging
   if (import.meta.env.DEV) {
-    console.info('[ENSEMBLE]', {
-      vision: visionFoods.length,
-      gpt: gptNames.length,
-      fused: fused.length,
-      added_from_gpt: addedFromGpt
-    });
+    console.info('[ENSEMBLE] vision=' + visionFoods.length + ' gpt=' + gptNames.length + ' fused=' + topItems.length + ' added_from_gpt=' + addedFromGpt);
+    console.info('[LYF][ensemble] fused:', topItems.map(item => item.canonicalName));
   }
   
-  return fused;
+  return topItems;
 }

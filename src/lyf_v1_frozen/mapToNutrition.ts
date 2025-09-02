@@ -8,7 +8,9 @@ export async function mapVisionNameToFood(name: string) {
   // Safety net: skip mapping for generic terms
   const genericTerms = ['food', 'tableware', 'dish', 'meal', 'cuisine', 'ingredient'];
   if (genericTerms.includes(name.toLowerCase())) {
-    console.info('[LYF][v1] only generic terms—skipping map', name);
+    if (import.meta.env.DEV) {
+      console.info('[LYF][v1] only generic terms—skipping map', name);
+    }
     return null;
   }
 
@@ -17,9 +19,32 @@ export async function mapVisionNameToFood(name: string) {
     res.sort((x:any,y:any)=> sim(name,x.name)>sim(name,y.name)?-1:1);
     if (sim(name, res[0].name) >= 0.45) return res[0];
   }
-  const v = norm(name);
-  if (v.includes('salmon')||v.includes('fish')) return (await searchFoodByName('salmon, cooked'))?.[0];
-  if (v.includes('asparagus'))                 return (await searchFoodByName('asparagus, cooked'))?.[0];
-  if (v.includes('tomato'))                    return (await searchFoodByName('tomato, raw'))?.[0];
+  
+  // Improved specific mapping for common items
+  const normalized = norm(name);
+  
+  // Protein mappings
+  if (normalized.includes('salmon') || normalized.includes('fish')) {
+    return (await searchFoodByName('salmon, cooked'))?.[0];
+  }
+  
+  // Vegetable mappings  
+  if (normalized.includes('asparagus')) {
+    return (await searchFoodByName('asparagus, cooked'))?.[0];
+  }
+  
+  // Tomato mappings - distinguish types
+  if (normalized.includes('cherry tomato') || normalized.includes('grape tomato')) {
+    return (await searchFoodByName('tomatoes, red, raw'))?.[0];
+  }
+  if (normalized.includes('tomato')) {
+    return (await searchFoodByName('tomatoes, red, raw'))?.[0];
+  }
+  
+  // Citrus mapping
+  if (normalized.includes('lemon')) {
+    return (await searchFoodByName('lemon, raw'))?.[0];
+  }
+  
   return null;
 }

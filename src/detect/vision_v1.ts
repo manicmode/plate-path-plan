@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { looksFoodish, isVegFruit } from './filters';
 
 export interface VisionFood {
   name: string;
@@ -31,8 +32,42 @@ export async function detectFoodVisionV1(base64: string): Promise<VisionV1Result
     const items = data?.items ?? [];
     const chosen = data?._debug?.from ?? 'none';
 
-    // Create foods array with source information
-    const foods: VisionFood[] = items.map((name: string) => {
+    // Filter and process items with improved thresholds
+    const minScoreObject = 0.45;
+    const minScoreLabel = 0.60;
+    const minScoreVegFruit = 0.40; // Lower threshold for veg/fruit items
+    
+    const processedItems: string[] = [];
+    
+    // Process objects first (they have bboxes)
+    const validObjects = objects.filter((obj: any) => {
+      const threshold = isVegFruit(obj.name) ? minScoreVegFruit : minScoreObject;
+      return obj.score >= threshold && looksFoodish(obj.name);
+    });
+    
+    validObjects.forEach((obj: any) => {
+      processedItems.push(obj.name);
+    });
+    
+    // Process labels if we need more items or for veg/fruit specifically
+    const validLabels = labels.filter((label: any) => {
+      const threshold = isVegFruit(label.name) ? minScoreVegFruit : minScoreLabel;
+      return label.score >= threshold && looksFoodish(label.name);
+    });
+    
+    validLabels.forEach((label: any) => {
+      // Avoid duplicates with objects
+      const alreadyExists = processedItems.some(item => 
+        item.toLowerCase().includes(label.name.toLowerCase()) ||
+        label.name.toLowerCase().includes(item.toLowerCase())
+      );
+      if (!alreadyExists) {
+        processedItems.push(label.name);
+      }
+    });
+    
+    // Create foods array with source information - limit to top items
+    const foods: VisionFood[] = processedItems.slice(0, 8).map((name: string) => {
       // Try to find matching object with bbox
       const matchingObject = objects.find((obj: any) => 
         obj.name.toLowerCase().includes(name.toLowerCase()) || 

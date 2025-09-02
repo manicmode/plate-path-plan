@@ -43,6 +43,7 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { analyzePhotoForLyfV1Legacy } from '@/lyf_v1_frozen/adapter';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
+import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
@@ -814,7 +815,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           
           // Dev logging
           if (import.meta.env.DEV) {
-            console.info('[LYF][v1] items=' + reviewItemsData.length + ' reviewOpen=true selected=0')
+            console.info('[LYF][v1] items=' + reviewItemsData.length + ' reviewOpen=true selected=0');
+            console.info('[LYF][ui] review_opened');
           }
           
         } catch (error) {
@@ -2049,9 +2051,13 @@ console.log('Global search enabled:', enableGlobalSearch);
     setShowTransition(true);
   };
 
-  // Legacy handler for backward compatibility
+  // Legacy handler for backward compatibility  
   const handleReviewNext = async (selectedItems: ReviewItem[]) => {
     setShowReviewScreen(false);
+    
+    if (import.meta.env.DEV) {
+      console.info('[LYF] confirm_open selected=' + selectedItems.length);
+    }
     
     if (selectedItems.length === 0) {
       toast.error('No items selected to confirm');
@@ -2059,6 +2065,81 @@ console.log('Global search enabled:', enableGlobalSearch);
     }
 
     console.log('Processing selected items for sequential confirmation:', selectedItems);
+    
+    try {
+      // Convert ReviewItems to RecognizedFood format for confirmation
+      const foods: RecognizedFood[] = [];
+      
+      for (const item of selectedItems) {
+        // Try to map to nutrition if not already mapped
+        let nutritionData = null;
+        if (item.mapped) {
+          // Item was already successfully mapped during detection
+          nutritionData = await mapVisionNameToFood(item.name);
+        } else {
+          // Try to map the user's edited name
+          nutritionData = await mapVisionNameToFood(item.name);
+        }
+        
+        if (nutritionData) {
+          const grams = parseInt(item.portion.replace('g', '')) || 100;
+          foods.push({
+            name: nutritionData.name,
+            calories: Math.round((grams / 100) * (nutritionData.caloriesPer100g || 200)),
+            protein: Math.round((grams / 100) * 20),
+            carbs: Math.round((grams / 100) * 25),
+            fat: Math.round((grams / 100) * 10),
+            fiber: Math.round((grams / 100) * 3),
+            sugar: Math.round((grams / 100) * 5),
+            sodium: Math.round((grams / 100) * 300),
+            confidence: 85,
+            serving: item.portion,
+            _provider: 'ensemble-v1'
+          });
+        } else {
+          // Create a placeholder entry for items that couldn't be mapped
+          const grams = parseInt(item.portion.replace('g', '')) || 100;
+          foods.push({
+            name: item.name,
+            calories: Math.round(grams * 2), // Rough estimate: 2 cal/gram
+            protein: Math.round(grams * 0.15),
+            carbs: Math.round(grams * 0.2),
+            fat: Math.round(grams * 0.08),
+            fiber: Math.round(grams * 0.02),
+            sugar: Math.round(grams * 0.05),
+            sodium: Math.round(grams * 3),
+            confidence: 50, // Low confidence for unmapped items
+            serving: item.portion,
+            _provider: 'ensemble-v1-unmapped'
+          });
+        }
+      }
+      
+      if (foods.length > 0) {
+        setRecognizedFoods(foods);
+        setShowConfirmation(true);
+        setInputSource('photo');
+      } else {
+        toast.error('Unable to process any selected items. Please try manual entry.');
+      }
+      
+    } catch (error) {
+      console.error('Error processing review items:', error);
+      toast.error('Error processing items. Please try again.');
+    }
+  };
+
+  const handleReviewClose = () => {
+    setShowReviewScreen(false);
+    setReviewItems([]);
+    
+    if (import.meta.env.DEV) {
+      console.info('[LYF][ui] review_closed');
+    }
+    
+    // Clear detection state and return - do NOT trigger legacy modal
+    setIsMultiAILoading(false);
+  };
     
     // Convert ReviewItem to SummaryItem
     const summaryItems: SummaryItem[] = selectedItems.map(item => ({
@@ -3180,7 +3261,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       {inputSource !== 'barcode' && (
         <ReviewItemsScreen
           isOpen={showReviewScreen}
-          onClose={() => setShowReviewScreen(false)}
+          onClose={handleReviewClose}
           onNext={handleReviewNext}
           items={reviewItems}
         />

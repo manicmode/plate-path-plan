@@ -4,6 +4,7 @@ import { detectFoodVisionV1, VisionV1Result } from './vision_v1';
 import { detectFoodGptV, GptVisionResult } from './gpt_v';
 import { fuseDetections, FusedFood } from './ensemble';
 import { estimatePortions, PortionEstimate } from '@/portion/estimate';
+import { looksFoodish } from './filters';
 
 export interface DetectionAndFusionResult {
   fused: FusedFood[];
@@ -52,8 +53,9 @@ export async function detectAndFuseFoods(
     }
   }
   
-  // Fuse detections
-  const fused = fuseDetections(visionResult.foods, gptResult.names);
+  // Fuse detections - apply additional filtering to ensure quality
+  const filteredGptNames = gptResult.names.filter(name => looksFoodish(name));
+  const fused = fuseDetections(visionResult.foods, filteredGptNames);
   
   // Estimate portions
   const portions = estimatePortions(fused, visionResult.plateBBox, visionResult.imageWH);
