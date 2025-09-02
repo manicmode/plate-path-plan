@@ -69,9 +69,23 @@ function filterDetectedItems(items: DetectedItem[]): DetectedItem[] {
 }
 
 function convertGptToItems(gptResult: GptVisionResult): DetectedItem[] {
+  // Check if we have structured data from GPT-v2
+  if (gptResult._debug?.structured_items) {
+    // Use structured response from GPT-v2
+    const items = gptResult._debug.raw_items || [];
+    return items.map((item: any) => ({
+      name: item.name.toLowerCase().trim(),
+      category: item.category || 'other',
+      portion_estimate: item.portion_estimate,
+      confidence: item.confidence || 0.8,
+      source: 'gpt' as const
+    }));
+  }
+  
+  // Fallback to legacy format
   return gptResult.names.map(name => ({
     name: name.toLowerCase().trim(),
-    category: 'other' as const, // GPT should provide category, fallback to 'other'
+    category: 'other' as const, // Legacy doesn't provide category
     confidence: 0.8, // Default confidence for GPT results
     source: 'gpt' as const
   }));
@@ -111,13 +125,19 @@ export async function detectGptFirst(base64: string, timeout = 8000): Promise<Gp
       gptEmpty = true;
       console.log('[GPT-FIRST] GPT returned empty result, using Vision fallback');
     } else {
-      const avgConfidence = 0.8; // GPT doesn't provide confidence, assume good
+      // Check for structured response
+      const hasStructuredItems = gptResult._debug?.structured_items > 0;
+      const avgConfidence = hasStructuredItems ? 0.8 : 0.7;
+      
       if (avgConfidence < 0.5) {
         gptLowConfidence = true;
         console.log('[GPT-FIRST] GPT low confidence, using Vision fallback');
       } else {
         gptSuccess = true;
         console.log('[GPT-FIRST] GPT detection successful:', gptResult.names);
+        if (hasStructuredItems) {
+          console.log('[GPT-FIRST] Using structured GPT-v2 response');
+        }
       }
     }
   } catch (error) {

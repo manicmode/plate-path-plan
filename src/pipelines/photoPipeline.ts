@@ -75,27 +75,29 @@ export async function analyzePhoto(
     
     const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    // ✅ LYF V1: Call meal-detector-v1 for Log Your Food
-    console.log('[LYF] endpoint: meal-detector-v1');
-    const { data: meal, error } = await supabase.functions.invoke('meal-detector-v1', {
-      body: { image_base64: base64 }
-    });
-
-    if (error) {
-      console.log('[PHOTO][MEAL_ERROR]', error);
-      return { ok: false, reason: 'meal_detection_error' };
-    }
-
-    const items = meal?.items ?? [];
-    console.log('[LYF] items detected:', items.map(i => i.name));
-    console.log('[PHOTO][MEAL] items_detected=', items.length, meal?._debug || null);
+    // ✅ GPT-First Detection with Vision fallback
+    const { detectAndFuseFoods } = await import('@/detect/detectAndFuse');
+    
+    console.log('[PHOTO][GPT-FIRST] Starting detection with feature flag enabled...');
+    const detectionResult = await detectAndFuseFoods(base64, { useEnsemble: true });
+    
+    const items = detectionResult.portions.map(portion => ({
+      name: portion.name,
+      grams: portion.grams_est,
+      confidence: portion.confidence === 'high' ? 0.9 : portion.confidence === 'medium' ? 0.7 : 0.5,
+      source: portion.source
+    }));
+    
+    console.log('[PHOTO][GPT-FIRST] Detection path:', detectionResult.detectionPath);
+    console.log('[PHOTO][GPT-FIRST] items_detected=', items.length, detectionResult._debug);
 
     return { 
       ok: true, 
       report: {
-        ...meal,
         items,
-        source: 'meal-detector'
+        detectionPath: detectionResult.detectionPath,
+        source: 'gpt-first-detector',
+        _debug: detectionResult._debug
       }
     };
 

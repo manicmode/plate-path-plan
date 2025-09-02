@@ -40,6 +40,7 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
       _debug: {
         ...data?._debug,
         structured_items: items.length,
+        raw_items: items, // Store raw items for gptFirst conversion
         has_categories: items.some((i: any) => i.category),
         has_portions: items.some((i: any) => i.portion_estimate)
       }
