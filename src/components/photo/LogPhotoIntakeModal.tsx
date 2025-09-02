@@ -38,6 +38,7 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
 
       if (items.length === 0) {
         console.info('[LOG PHOTO] No items detected, showing empty state');
+        setIsProcessing(false);
         setShowEmptyState(true);
         return;
       }
@@ -53,13 +54,14 @@ export const LogPhotoIntakeModal: React.FC<LogPhotoIntakeModalProps> = ({
 
       console.info('[LOG PHOTO] Opening review with items:', reviewItems.map(r => r.name));
       setDetected(reviewItems);
+      setIsProcessing(false);
       setReviewOpen(true);
       
     } catch (error) {
       console.error('[LOG PHOTO] Detection failed:', error);
-      toast.error('Failed to analyze photo. Please try again.');
-    } finally {
       setIsProcessing(false);
+      setShowEmptyState(true);
+      toast.error('Failed to analyze photo. Please try again.');
     }
   };
 
