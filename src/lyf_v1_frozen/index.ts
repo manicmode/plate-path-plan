@@ -13,10 +13,14 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     });
   }
   
-  const candidates = [...items].filter(i=>i?.name && looksFoodish(i.name, i.source, i.confidence)).sort(rankSource);
+  // Build candidates: objects first, fall back to labels if no objects are foodish
+  const objs = items.filter(i => i?.source === 'object' && i?.name && looksFoodish(i.name, i.source, i.confidence));
+  const labs = items.filter(i => i?.source === 'label' && i?.name && looksFoodish(i.name, i.source, i.confidence) && (i.score || i.confidence || 0) >= 0.45);
+  const candidates = objs.length > 0 ? objs : labs;
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] keep:', candidates.map(i => i.name), `(count=${candidates.length})`);
+    console.info('[LYF][v1] candidates', candidates.map(c => `${c.name}:${(c.score || c.confidence || 0).toFixed(2)}:${c.source}`));
+    console.info('[LYF][v1] keep:', candidates.map(i => i.name));
   }
   
   // Merge objects + labels, then dedupe by similarity ≥0.85 without requiring bbox
@@ -32,7 +36,7 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
         if (c.source === 'object' && existingItem.source === 'label') {
           deduped.delete(existingCanonical);
           deduped.set(canonical, { ...c, canonicalName: canonical });
-        } else if (c.source === existingItem.source && (c.confidence || 0) > (existingItem.confidence || 0)) {
+        } else if (c.source === existingItem.source && ((c.score || c.confidence || 0) > (existingItem.score || existingItem.confidence || 0))) {
           deduped.delete(existingCanonical);
           deduped.set(canonical, { ...c, canonicalName: canonical });
         }

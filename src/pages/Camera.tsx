@@ -805,14 +805,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             setShowReviewScreen(true);
             setInputSource('photo');
             
-            console.info('[LYF][ui] review_open', { 
-              count: reviewItemsData.length, 
-              names: reviewItemsData.map(i => i.name) 
-            });
+            console.info('[LYF][ui] review_opened items=', reviewItemsData.length);
           } else {
-            // Always show review when any items exist - removed legacy suppression
             console.info('[LYF][ui] review_opened items=0');
-            toast.info('No clear food items detected. Try another angle or add manually.');
+            toast.info('No clear foods detected. Try a closer photo.');
           }
           
         } catch (error) {
