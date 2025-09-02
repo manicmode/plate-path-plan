@@ -66,6 +66,15 @@ export const ReviewItemCard: React.FC<ReviewItemCardProps> = ({
             
             {/* Secondary info chips */}
             <div className="flex items-center gap-2 text-xs">
+              {item.grams && (
+                <Badge 
+                  variant="secondary" 
+                  className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-1 cursor-pointer hover:bg-emerald-100"
+                  onClick={() => onOpenWheel?.(item.id)}
+                >
+                  ≈{item.grams}g • est
+                </Badge>
+              )}
               {item.needsDetails && (
                 <Badge variant="secondary" className="text-xs flex items-center gap-1 h-5">
                   <AlertCircle className="h-3 w-3" />

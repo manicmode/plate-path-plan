@@ -205,8 +205,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const selectedCount = items.filter(item => item.selected && item.name.trim()).length;
   const count = items.length;
 
-  // Debug logging
+  // Debug logging  
   console.log('ReviewItemsScreen render - isOpen:', isOpen, 'items count:', items.length, 'selectedCount:', selectedCount);
+  
+  // Add review open telemetry
+  useEffect(() => {
+    if (isOpen && items.length > 0) {
+      console.info('[REVIEW][open]', `count=${items.length}`);
+    }
+  }, [isOpen, items.length]);
 
   // Background scroll lock effect
   useEffect(() => {

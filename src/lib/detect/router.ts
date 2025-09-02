@@ -41,29 +41,62 @@ export function filterDetectedItems(items: DetectedItem[]): DetectedItem[] {
 }
 
 export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]> {
-  const { detectGptFirst } = await import('@/detect/gptFirst');
+  const { buildMealPrompt } = await import('@/lib/detect/gptPrompt');
+  const { processGptItems } = await import('@/lib/detect/canonicalize');
+  const { estimatePortionWithDefaults } = await import('@/lib/portion/estimate');
+  const { supabase } = await import('@/integrations/supabase/client');
   
   console.info('[DETECT][GPT] Starting GPT detection...');
-  const result = await detectGptFirst(imageBase64);
   
-  if (result.items?.length) {
-    console.info('[REPORT][V2][GPT] Success', result.items);
+  try {
+    // Get prompt
+    const { system, user } = buildMealPrompt();
     
-    // Apply filtering and portion estimation
+    // Call GPT-V2 structured endpoint
+    const { data, error } = await supabase.functions.invoke('gpt-food-detector-v2', {
+      body: { 
+        image_base64: imageBase64,
+        system_prompt: system,
+        user_prompt: user
+      }
+    });
+
+    if (error) {
+      console.error('[DETECT][GPT] Error:', error);
+      throw new Error(`GPT detection failed: ${error.message}`);
+    }
+
+    const rawItems = data?.items || [];
+    console.info('[GPT][raw_items]', `count=${rawItems.length}`);
+    
+    if (!rawItems.length) {
+      console.warn('[DETECT][GPT] No items detected');
+      return [];
+    }
+
+    // Process through canonicalization pipeline
+    const processedItems = processGptItems(rawItems);
+    
+    // Apply portion estimation
     const itemsWithPortions = await Promise.all(
-      result.items.map(async item => ({
-        name: item.name,
-        grams: item.portion_estimate || await estimatePortionFromName(item.name),
-        confidence: item.confidence,
-        source: item.source
-      }))
+      processedItems.map(async item => {
+        const portion = await estimatePortionWithDefaults(item.name, item.category, item.portion_hint);
+        return {
+          name: item.name,
+          grams: portion.grams,
+          confidence: item.confidence,
+          source: 'gpt-v2'
+        };
+      })
     );
     
-    const filteredItems = filterDetectedItems(itemsWithPortions);
-    return filteredItems;
-  } else {
-    console.warn('[DETECT][GPT] No items detected');
-    return [];
+    console.info('[PORTION][applied]', `summary=${itemsWithPortions.map(i => `${i.name}:${i.grams}g`).join(', ')}`);
+    console.info('[REPORT][V2][GPT]', `items=${itemsWithPortions.length}`, `filtered=${rawItems.length - processedItems.length}`, `grams=${itemsWithPortions.map(i => i.grams).join(',')}`);
+    
+    return itemsWithPortions;
+  } catch (error) {
+    console.error('[DETECT][GPT] Error:', error);
+    throw error; // Re-throw for router to handle fallback
   }
 }
 

@@ -52,6 +52,8 @@ import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 // Import smoke tests for development
 import '@/utils/smokeTests';
+// Import dev detection test utility
+import '@/utils/devDetectionTest';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
 
 interface RecognizedFood {
