@@ -2,8 +2,17 @@ import { analyzeLyfV1 } from './detectorClient';
 import { looksFoodish, rankSource } from './filters';
 import { mapVisionNameToFood } from './mapToNutrition';
 
+// If some caller returns items without a source, default them using _debug.from
+function ensureSources(items: any[], dbgFrom?: string) {
+  const fallback: 'object' | 'label' = dbgFrom === 'objects' ? 'object' : 'label';
+  return items.map((i: any) =>
+    (i && i.source) ? i : { ...i, source: fallback }
+  );
+}
+
 export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
-  const { items, _debug } = await analyzeLyfV1(supabase, base64);
+  const { items: rawItems, _debug } = await analyzeLyfV1(supabase, base64);
+  const items = ensureSources(rawItems ?? [], _debug?.from);
   
   if (import.meta.env.DEV) {
     console.info('[LYF][v1] resp:', {

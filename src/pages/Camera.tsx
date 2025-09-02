@@ -807,8 +807,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             
             console.info('[LYF][ui] review_opened items=', reviewItemsData.length);
           } else {
-            console.info('[LYF][ui] review_opened items=0');
-            toast.info('No clear foods detected. Try a closer photo.');
+            console.info('[LYF][ui] no_items_to_review');
+            toast.info('No clear foods detected. Try a closer photo or better lighting.');
           }
           
         } catch (error) {
