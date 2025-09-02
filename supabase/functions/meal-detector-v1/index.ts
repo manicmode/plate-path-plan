@@ -1,217 +1,132 @@
+// meal-detector-v1/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const cors = {
+const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-// Food dictionary for label extraction
-const FOOD_DICTIONARY = new Set([
-  'salmon', 'asparagus', 'chicken', 'beef', 'pork', 'tuna', 'shrimp', 'egg', 'eggs',
-  'bread', 'bun', 'baguette', 'tortilla', 'pasta', 'noodles', 'rice', 'quinoa',
-  'potato', 'potatoes', 'tomato', 'tomatoes', 'lettuce', 'spinach', 'kale', 'broccoli',
-  'carrot', 'carrots', 'onion', 'onions', 'pepper', 'peppers', 'apple', 'apples',
-  'banana', 'bananas', 'orange', 'oranges', 'lemon', 'lemons', 'lime', 'limes',
-  'grape', 'grapes', 'strawberry', 'strawberries', 'blueberry', 'blueberries',
-  'yogurt', 'cheese', 'butter', 'oil', 'donut', 'donuts', 'muffin', 'muffins',
-  'cookie', 'cookies', 'cake', 'cakes', 'sandwich', 'sandwiches', 'burger', 'burgers',
-  'pizza', 'soup', 'curry', 'stew', 'hummus', 'falafel', 'kebab', 'tofu', 'tempeh',
-  'sushi', 'sashimi', 'udon', 'ramen', 'pho', 'naan', 'pita', 'couscous', 'avocado',
-  'mushroom', 'mushrooms', 'corn', 'beans', 'lentils', 'chickpeas', 'nuts', 'almonds',
-  'walnuts', 'cashews', 'peanuts', 'seeds', 'sunflower', 'chia', 'flax', 'oats',
-  'cereal', 'milk', 'cream', 'fish', 'lobster', 'crab', 'scallops', 'mussels',
-  'clams', 'oysters', 'turkey', 'duck', 'lamb', 'bacon', 'ham', 'sausage', 'salami'
-]);
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const body = await req.json();
-    const { image_base64, debug } = body;
-    const debugMode = debug === true || new URL(req.url).searchParams.get('debug') === '1';
+    const { image_base64, debug } = body ?? {};
+    const debugMode = debug === true;
+
     const key = Deno.env.get("GOOGLE_VISION_API_KEY");
     if (!key) throw new Error("Missing GOOGLE_VISION_API_KEY");
 
-    // Sanitize base64 input
     const content = (image_base64 || "").split(",").pop();
     if (!content) throw new Error("Invalid image data");
 
-    console.log("[MEAL-V1] Starting detection...");
-
-    // Single Vision API call with both features
     const requestBody = {
       requests: [{
         image: { content },
         features: [
           { type: "OBJECT_LOCALIZATION", maxResults: 50 },
-          { type: "LABEL_DETECTION", maxResults: 50 }
+          { type: "LABEL_DETECTION", maxResults: 50 },
         ],
       }],
     };
 
-    const response = await fetch(`${VISION_URL}?key=${key}`, {
+    const visionResponse = await fetch(`${VISION_URL}?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
 
-    const rawResponse = await response.text();
-    if (!response.ok) throw new Error(`Vision ${response.status}: ${rawResponse}`);
-    
-    const json = JSON.parse(rawResponse);
+    const raw = await visionResponse.text();
+    if (!visionResponse.ok) throw new Error(`Vision ${visionResponse.status}: ${raw}`);
+    const json = JSON.parse(raw);
     const resp = json?.responses?.[0] ?? {};
-    
-    // Parse objects with minScore filtering
     const rawObjects = resp?.localizedObjectAnnotations ?? [];
+    const rawLabels  = resp?.labelAnnotations ?? [];
+
+    // Normalize
     const objects = rawObjects
-      .filter((o: any) => (o.score || 0) >= 0.55) // Apply minScore filter
-      .map((o: any) => (o.name || "").toLowerCase().trim())
-      .filter(s => s);
-    
-    const rawLabels = resp?.labelAnnotations ?? [];
-    const labels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim()).filter(s => s);
+      .filter((o: any) => (o.score || 0) >= 0.55)
+      .map((o: any) => ({ name: (o.name||"").toLowerCase().trim(), score: o.score||0 }))
+      .filter((o: any) => o.name);
 
-    // Filtering logic
-    const NEG = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray)\b/i;
+    const labels = rawLabels
+      .map((l: any) => ({ name: (l.description||"").toLowerCase().trim(), score: l.score||0 }))
+      .filter((l: any) => l.name);
+
+    // Filters
+    const NEG = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray|recipe|cuisine|cooking|garnish|dishware)\b/i;
     const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
-    
-    const keep = (s: string) => !NEG.test(s);
-    const isGeneric = (s: string) => GENERIC.test(s);
+    const KEEP_VEG = /\b(asparagus|tomato|tomatoes|cherry tomato|lemon|lime|broccoli|carrot|spinach|lettuce|cucumber)\b/i;
 
-    // Track dropped items for debug
-    const dropped = {
-      nonFood: [] as string[],
-      belowScore: [] as string[],
-      generic: [] as string[],
-      deduped: [] as string[]
-    };
+    const keep = (s: string) => !NEG.test(s) || KEEP_VEG.test(s);
+    const isGeneric = (s: string) => GENERIC.test(s) && !KEEP_VEG.test(s);
 
-    // Build filtered arrays with drop tracking
-    const objectsKept = objects.filter(o => {
-      const kept = keep(o);
-      if (!kept) dropped.nonFood.push(o);
-      return kept;
-    });
-    const objectsSpecific = objectsKept.filter(s => {
-      const nonGeneric = !isGeneric(s);
-      if (!nonGeneric) dropped.generic.push(s);
-      return nonGeneric;
-    });
-    const labelsKept = labels.filter(l => {
-      const kept = keep(l);
-      if (!kept) dropped.nonFood.push(l);
-      return kept;
-    });
-    const labelsSpecific = labelsKept.filter(s => {
-      const nonGeneric = !isGeneric(s);
-      if (!nonGeneric) dropped.generic.push(s);
-      return nonGeneric;
-    });
+    const objectsKept   = objects.filter(o => keep(o.name));
+    const objectsSpec   = objectsKept.filter(o => !isGeneric(o.name));
+    const labelsKept    = labels.filter(l => keep(l.name));
+    const labelsSpec    = labelsKept.filter(l => !isGeneric(l.name));
 
-    let chosen: string[];
-    let chosenFrom: string;
-    
-    // Choosing logic (this is the fix):
-    if (objectsSpecific.length > 0) {
-      chosen = objectsSpecific;
-      chosenFrom = 'objects';
-    } else if (labelsSpecific.length > 0) {
-      chosen = labelsSpecific;
-      chosenFrom = 'labels';
+    let chosen: Array<{name: string, source: "object"|"label", score: number}> = [];
+    let chosenFrom = "none";
+
+    if (objectsSpec.length > 0) {
+      const objNames = new Set(objectsSpec.map(o => o.name));
+      const vegLabels = labelsSpec
+        .filter(l => KEEP_VEG.test(l.name) && !objNames.has(l.name))
+        .map(l => ({ ...l, source: "label" as const }));
+
+      chosen = [
+        ...objectsSpec.map(o => ({ ...o, source: "object" as const })),
+        ...vegLabels,
+      ];
+      chosenFrom = "objects_with_labels";
+    } else if (labelsSpec.length > 0) {
+      chosen = labelsSpec.map(l => ({ ...l, source: "label" as const }));
+      chosenFrom = "labels";
     } else if (labelsKept.length > 0) {
-      chosen = labelsKept;
-      chosenFrom = 'labels_generic';
-    } else {
-      chosen = [];
-      chosenFrom = 'none';
+      chosen = labelsKept.map(l => ({ ...l, source: "label" as const }));
+      chosenFrom = "labels_generic";
     }
-    
-    // Add info log
-    console.info('[MEAL-V1]', JSON.stringify({
-      chosen: chosenFrom,
-      objects: objects.slice(0,5),
-      labels: labels.slice(0,5)
-    }));
 
-    // Build response with optional debug payload
-    const response: any = {
-      items: chosen.slice(0, 8),
-      imageWH: { width: 1200, height: 800 },
-      plateBBox: undefined,
-      objects: rawObjects.map((o: any) => ({ 
-        name: o.name, 
-        score: o.score,
-        bbox: o.boundingPoly ? {
-          x: Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)),
-          y: Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800)),
-          width: Math.max(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)) - Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.x * 1200)),
-          height: Math.max(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800)) - Math.min(...o.boundingPoly.normalizedVertices.map((v: any) => v.y * 800))
-        } : undefined
-      })),
-      labels: rawLabels.map((l: any) => ({ name: l.description, score: l.score })),
+    const payload: any = {
+      items: chosen.slice(0, 8), // RETURN OBJECTS, NOT STRINGS
       _debug: {
         from: chosenFrom,
         rawObjectsCount: objects.length,
         rawLabelsCount: labels.length,
         keptObjectsCount: objectsKept.length,
         keptLabelsCount: labelsKept.length,
-        specificObjectsCount: objectsSpecific.length,
-        specificLabelsCount: labelsSpecific.length,
-        sampleObjects: objects.slice(0,6),
-        sampleLabels: labels.slice(0,6)
-      }
+        specificObjectsCount: objectsSpec.length,
+        specificLabelsCount: labelsSpec.length,
+        sampleObjects: objects.slice(0,6).map(o=>o.name),
+        sampleLabels: labels.slice(0,6).map(l=>l.name),
+      },
     };
-
-    // Add forensic debug data when requested
     if (debugMode) {
-      response._debug.labels_top20 = rawLabels.slice(0, 20).map((l: any) => ({
-        d: l.description, 
-        s: l.score
-      }));
-      response._debug.objects_all = rawObjects.map((o: any) => ({
-        n: o.name, 
-        s: o.score
-      }));
-      response._debug.dropped = dropped;
-      
-      // Add kept arrays for forensics
-      response._debug.labels_kept = labelsKept.map((name: string) => {
-        const label = rawLabels.find((l: any) => l.description?.toLowerCase().trim() === name);
-        return { name, score: label?.score ?? 0.7 };
-      }).slice(0, 50);
-      
-      response._debug.objects_kept = objectsKept.map((name: string) => {
-        const obj = rawObjects.find((o: any) => o.name?.toLowerCase().trim() === name);
-        return { name, score: obj?.score ?? 0.7 };
-      }).slice(0, 50);
-      
-      response._debug.dropped_labels = [
-        ...dropped.nonFood.filter(name => labels.includes(name)).map(name => ({ name, reason: 'nonFood' as const })),
-        ...dropped.generic.filter(name => labelsKept.includes(name)).map(name => ({ name, reason: 'generic' as const }))
-      ];
-      
-      response._debug.dropped_objects = [
-        ...dropped.nonFood.filter(name => objects.includes(name)).map(name => ({ name, reason: 'nonFood' as const })),
-        ...dropped.generic.filter(name => objectsKept.includes(name)).map(name => ({ name, reason: 'generic' as const }))
-      ];
+      payload._debug.chosen_items = chosen;
+      payload._debug.objects_all = objects.slice(0,20);
+      payload._debug.labels_all  = labels.slice(0,20);
     }
 
-    return new Response(JSON.stringify(response), { 
-      headers: { ...cors, "Content-Type": "application/json" }
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
-
-  } catch (e) {
-    console.error("[MEAL-DETECTOR-V1] Error:", e);
-    return new Response(JSON.stringify({ 
-      error: String(e), 
+  } catch (err) {
+    console.error("[MEAL-DETECTOR-V1] Error:", err);
+    return new Response(JSON.stringify({
+      error: String(err?.message ?? err),
       items: [],
-      _debug: { from: "error" }
+      objects: [],
+      labels: [],
+      _debug: { from: "error", message: String(err?.message ?? err) },
     }), {
-      status: 200, 
-      headers: { ...cors, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, // keep CORS happy; client will handle error
     });
   }
 });

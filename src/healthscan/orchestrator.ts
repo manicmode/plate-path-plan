@@ -26,15 +26,15 @@ export async function analyzeForHealthScan(imageBase64: string): Promise<HealthS
   // Keep ALL plausible items; for unmapped, set needsDetails: true.
   const results: HealthScanItem[] = items.map(i => ({
     name: i.name,
-    grams: i.portionGrams ?? null,
-    canonicalName: i.canonicalName ?? i.name,
-    needsDetails: !i.canonicalName,
+    grams: null, // Default grams - will be estimated later
+    canonicalName: i.name, // Use name as canonical if no mapping
+    needsDetails: true, // Default to needing details
     // placeholders for now - could be expanded with nutrition analysis
     healthTag: 'neutral' as const,
-    calories: i.calories ?? null,
-    macros: i.macros ?? null,
+    calories: null, // Default calories
+    macros: null, // Default macros
     source: i.source,
-    confidence: i.confidence ?? null,
+    confidence: i.confidence ?? i.score ?? null,
   }));
 
   return { results, _debug };

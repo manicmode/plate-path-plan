@@ -64,11 +64,11 @@ describe('LYF v1 Frozen Mapping', () => {
 
       const result = await analyzePhotoForLyfV1(mockSupabase, 'fake-base64');
 
-      expect(result.mapped).toHaveLength(2);
-      expect(result.mapped[0].vision).toBe('salmon');
-      expect(result.mapped[1].vision).toBe('asparagus');
-      expect(result.mapped.find((m: any) => m.vision === 'plate')).toBeUndefined();
-      expect(result.mapped.find((m: any) => m.vision === 'logo')).toBeUndefined();
+      expect(result.mappedFoodItems).toHaveLength(2);
+      expect(result.mappedFoodItems[0].name).toContain('salmon');
+      expect(result.mappedFoodItems[1].name).toContain('asparagus');
+      expect(result.mappedFoodItems.find((m: any) => m.name === 'plate')).toBeUndefined();
+      expect(result.mappedFoodItems.find((m: any) => m.name === 'logo')).toBeUndefined();
     });
   });
 });
