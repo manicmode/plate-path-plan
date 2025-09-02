@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { SavedSetsSheet } from './SavedSetsSheet';
-import { SaveSetDialog } from './SaveSetDialog';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
@@ -12,8 +11,7 @@ import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { saveMealSet } from '@/api/mealSets';
 import { useAuth } from '@/contexts/auth';
-import { useNavigate } from 'react-router-dom';
-import '@/styles/review.css';
+import { healthReviewStack } from '@/state/healthReviewStack';
 
 export interface ReviewItem {
   name: string;
@@ -25,6 +23,7 @@ export interface ReviewItem {
   mapped?: boolean; // Track if nutrition mapping succeeded
   grams?: number; // For logging and saving
   canonicalName?: string; // For mapping
+  source?: 'object' | 'label'; // Detection source
 }
 
 interface ReviewItemsScreenProps {
@@ -34,6 +33,7 @@ interface ReviewItemsScreenProps {
   onLogImmediately?: (selectedItems: ReviewItem[]) => void; // One-tap logging
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
+  source?: 'health-scan' | 'logging'; // Add source prop to distinguish flow
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -42,15 +42,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onNext,
   onLogImmediately,
   items: initialItems,
-  prefilledItems
+  prefilledItems,
+  source = 'logging'
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -140,6 +142,27 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
+  const handleHealthProfile = () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to view health profile');
+      return;
+    }
+    
+    const checkedItemNames = selectedItems.map(item => item.canonicalName || item.name);
+    
+    // Check if we have any items to process
+    if (checkedItemNames.length === 0) {
+      toast.warning('No items selected');
+      return;
+    }
+    
+    // Add items to health review stack and navigate
+    healthReviewStack.append(checkedItemNames);
+    navigate('/health/review');
+    onClose();
+  };
+
   const handleSeeDetails = () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
@@ -147,9 +170,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
     
-    // Navigate to health profile/confirmation flow
-    onNext(selectedItems);
-    onClose();
+    if (source === 'health-scan') {
+      handleHealthProfile();
+    } else {
+      // Navigate to detailed logging flow
+      onNext(selectedItems);
+      onClose();
+    }
   };
 
   const handleSaveSet = () => {
@@ -222,7 +249,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/90 backdrop-blur-0" />
         <Dialog.Content
           className="lyf-sheet fixed z-[100] inset-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -233,7 +260,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           <Dialog.Title id="review-title" className="sr-only">Review Detected Items</Dialog.Title>
           <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
-          <div className="lyf-panel">
+          <div className="lyf-panel bg-neutral-900 text-neutral-100">
             {/* Mobile sheet grab handle */}
             <div className="sm:block hidden mx-auto mt-2 h-1.5 w-12 rounded-full bg-foreground/20" />
 
@@ -250,84 +277,135 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
               {/* Scrollable content */}
               <div className="lyf-items px-4 sm:px-5">
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      item={item}
-                      canRemove={items.length > 1}
-                      onChange={handleItemChange}
-                      onRemove={handleRemoveItem}
-                      onOpenWheel={handleOpenWheel}
-                    />
-                  ))}
-                </div>
+                {/* Empty state when no items detected */}
+                {items.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-500/20 flex items-center justify-center">
+                        <Info className="w-8 h-8 text-orange-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        No Items Detected
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        We couldn't detect any food items in this image. You can try again with a clearer photo or add items manually.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          // Re-open picker - this will be handled by parent
+                          window.location.reload(); // Temporary - should trigger photo picker
+                        }}
+                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold"
+                      >
+                        📸 Try Again
+                      </Button>
+                      
+                      <Button
+                        onClick={handleAddItem}
+                        variant="outline"
+                        className="w-full h-12 border-white/20"
+                      >
+                        ➕ Add Manually
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <ReviewItemCard
+                        key={item.id}
+                        item={item}
+                        canRemove={items.length > 1}
+                        onChange={handleItemChange}
+                        onRemove={handleRemoveItem}
+                        onOpenWheel={handleOpenWheel}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 {/* Add spacer when there's only 1 item for better spacing */}
                 {selectedCount === 1 && <div style={{ minHeight: '28dvh' }} />}
 
-                {/* Add food button */}
-                <div className="flex justify-center mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handleAddItem}
-                    className="flex items-center space-x-2 border-dashed border-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Food</span>
-                  </Button>
-                </div>
+                {/* Add food button - only show when items exist */}
+                {items.length > 0 && (
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleAddItem}
+                      className="flex items-center space-x-2 border-dashed border-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Food</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Sticky action footer */}
             <div className="lyf-actions bg-background border-t border-border">
               <div className="p-4 space-y-3">
-                {/* Two primary actions with equal prominence */}
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleLogImmediately}
-                    disabled={selectedCount === 0 || isLogging}
-                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
-                  >
-                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSeeDetails}
-                    disabled={selectedCount === 0}
-                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                  >
-                    🔎 Detailed Log ({selectedCount})
-                  </Button>
-                </div>
-                
-                {/* Secondary actions row - improved styling */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    💾 Save Set
-                  </Button>
-                  
-                  <Button
-                    onClick={onClose}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                {/* Show different actions for empty vs populated states */}
+                {items.length === 0 ? (
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Add some food items to continue
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Two primary actions with equal prominence */}
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleLogImmediately}
+                        disabled={selectedCount === 0 || isLogging}
+                        className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
+                      >
+                        {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
+                      </Button>
+                      
+                      <Button
+                        onClick={handleSeeDetails}
+                        disabled={selectedCount === 0}
+                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                      >
+                        {source === 'health-scan' ? '🏥 Health Profile & Log' : '🔎 Detailed Log'} ({selectedCount})
+                      </Button>
+                    </div>
+                    
+                    {/* Secondary actions row - improved styling */}
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        onClick={handleSaveSet}
+                        disabled={selectedCount === 0}
+                        size="lg"
+                        className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        💾 Save Set
+                      </Button>
+                      
+                      <Button
+                        onClick={onClose}
+                        variant="outline"
+                        size="lg"
+                        className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
 
-                {selectedCount > 0 && (
-                  <p className="text-center text-xs text-muted-foreground mt-2">
-                    {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-                  </p>
+                    {selectedCount > 0 && (
+                      <p className="text-center text-xs text-muted-foreground mt-2">
+                        {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
