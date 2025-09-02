@@ -1,12 +1,11 @@
 import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Camera, Upload, Plus, AlertCircle } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 interface FallbackSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
+  title: string;
   message?: string;
   actions: {
     tryAgain: () => void;
@@ -18,50 +17,47 @@ interface FallbackSheetProps {
 export const FallbackSheet: React.FC<FallbackSheetProps> = ({
   isOpen,
   onClose,
-  title = "No items detected",
-  message = "We couldn't find any food items in this photo. Try again with better lighting or add items manually.",
+  title,
+  message,
   actions
 }) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="rounded-t-xl">
-        <SheetHeader className="text-center pb-6">
-          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-            <AlertCircle className="h-6 w-6 text-muted-foreground" />
+      <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetHeader className="text-center pb-4">
+          <div className="h-12 w-12 mx-auto mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
+            <span className="text-xl">🍽️</span>
           </div>
-          <SheetTitle className="text-xl">{title}</SheetTitle>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {message}
-          </p>
+          <SheetTitle>{title}</SheetTitle>
+          {message && (
+            <SheetDescription className="text-muted-foreground">
+              {message}
+            </SheetDescription>
+          )}
         </SheetHeader>
         
-        <div className="space-y-3 pb-6">
+        <div className="flex flex-col gap-3 pt-4">
           <Button
             onClick={actions.tryAgain}
-            className="w-full h-12 text-base"
+            className="w-full"
             size="lg"
           >
-            <Camera className="mr-2 h-4 w-4" />
             Try Again
           </Button>
-          
           <Button
             onClick={actions.upload}
             variant="outline"
-            className="w-full h-12 text-base"
+            className="w-full"
             size="lg"
           >
-            <Upload className="mr-2 h-4 w-4" />
             Upload Photo
           </Button>
-          
           <Button
             onClick={actions.addManually}
-            variant="outline"
-            className="w-full h-12 text-base"
+            variant="ghost"
+            className="w-full"
             size="lg"
           >
-            <Plus className="mr-2 h-4 w-4" />
             Add Manually
           </Button>
         </div>

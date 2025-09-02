@@ -188,9 +188,9 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
     setIsCapturing(true);
     
     try {
-      // Capture effects
-      lightTap(); // Haptic feedback
-      await playShutter(); // Camera sound - must be in direct click handler for iOS
+      // Play shutter sound and haptic in same gesture (iOS requirement)
+      await playShutter();
+      lightTap();
       
       // Screen flash effect
       setShowCaptureFlash(true);

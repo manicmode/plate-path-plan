@@ -79,6 +79,7 @@ export const LogPhotoFlow: React.FC<LogPhotoFlowProps> = ({
       // 4) Transition based on results
       setProcessingOpen(false);
 
+      // Only call food-search if we have items (avoid spam)
       if (!items || items.length === 0) {
         console.info('[LOG PHOTO] No items detected, showing fallback');
         setDetected([]);
