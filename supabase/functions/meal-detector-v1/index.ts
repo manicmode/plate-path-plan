@@ -91,26 +91,35 @@ serve(async (req) => {
     const rawLabels = resp?.labelAnnotations ?? [];
     const labels = rawLabels.map((l: any) => (l.description || "").toLowerCase().trim()).filter(s => s);
     
-    // Check if objects contain only generic terms
-    const hasSpecificObjects = objects.some(obj => !GENERIC_FOOD_TERMS.test(obj));
+    // Filtering logic
+    const NEG = /\b(plate|tableware|fork|spoon|knife|napkin|logo|brand|font|text|cutlery|table|placemat|bowl|glass|cup|tray)\b/i;
+    const GENERIC = /\b(food|foods|dish|meal|snack|cuisine|produce|ingredient|vegetable|vegetables|fruit|fruits|meat|seafood|dairy)\b/i;
     
+    const keep = (s: string) => !NEG.test(s);
+    const isGeneric = (s: string) => GENERIC.test(s);
+
+    // Build filtered arrays
+    const objectsKept = objects.filter(keep);
+    const objectsSpecific = objectsKept.filter(s => !isGeneric(s));
+    const labelsKept = labels.filter(keep);
+    const labelsSpecific = labelsKept.filter(s => !isGeneric(s));
+
     let chosen: string[];
     let chosenFrom: string;
     
-    if (hasSpecificObjects) {
-      // Use objects if they contain specific food items
-      chosen = objects.filter(obj => !GENERIC_FOOD_TERMS.test(obj));
+    // Choosing logic (this is the fix):
+    if (objectsSpecific.length > 0) {
+      chosen = objectsSpecific;
       chosenFrom = 'objects';
+    } else if (labelsSpecific.length > 0) {
+      chosen = labelsSpecific;
+      chosenFrom = 'labels';
+    } else if (labelsKept.length > 0) {
+      chosen = labelsKept;
+      chosenFrom = 'labels_generic';
     } else {
-      // Fallback to label food extraction
-      const extractedFoods = extractFoodNouns(labels);
-      if (extractedFoods.length > 0) {
-        chosen = extractedFoods;
-        chosenFrom = 'labels';
-      } else {
-        chosen = [];
-        chosenFrom = 'none';
-      }
+      chosen = [];
+      chosenFrom = 'none';
     }
     
     // Add info log
@@ -122,10 +131,20 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       items: chosen.slice(0, 8),
+      imageWH: { width: 1200, height: 800 }, // Placeholder - would come from Vision API
+      plateBBox: undefined, // Placeholder - would need object detection for plates
+      objects: rawObjects.map((o: any) => ({ name: o.name, score: o.score })),
+      labels: rawLabels.map((l: any) => ({ name: l.description, score: l.score })),
       _debug: {
         from: chosenFrom,
-        objCount: objects.length,
-        labelCount: labels.length
+        rawObjectsCount: objects.length,
+        rawLabelsCount: labels.length,
+        keptObjectsCount: objectsKept.length,
+        keptLabelsCount: labelsKept.length,
+        specificObjectsCount: objectsSpecific.length,
+        specificLabelsCount: labelsSpecific.length,
+        sampleObjects: objects.slice(0,6),
+        sampleLabels: labels.slice(0,6)
       }
     }), { headers: { ...cors, "Content-Type": "application/json" }});
 

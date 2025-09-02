@@ -331,11 +331,21 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       devLog('PHOTO] iOS fallback: photo capture (no live stream)');
       try {
         const file = await openPhotoCapture('image/*','environment');
-        // Process the file with existing photo analysis flow
+        // Process the file with unified vision v1 detector
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const imageBase64 = e.target?.result as string;
-          onCapture(imageBase64);
+          try {
+            // Use unified Vision v1 detector
+            const { detectFoodVisionV1 } = await import('@/detect/vision_v1');
+            const detectionResult = await detectFoodVisionV1(imageBase64);
+            
+            // Process results for health scan
+            onCapture(imageBase64);
+          } catch (error) {
+            console.error('[HEALTH-SCAN] Detection error:', error);
+            onCapture(imageBase64); // Fallback to original processing
+          }
         };
         reader.readAsDataURL(file);
       } catch {}

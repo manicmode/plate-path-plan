@@ -768,24 +768,36 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.log('Calling LYF v1 food detection...');
           setProcessingStep('Detecting food items...');
           
-          // Call the shared Vision v1 detection system
-          const { items, _debug } = await detectFoodVisionV1(supabase, imageBase64);
-          console.log('[DETECTOR] vision_v1', { from: _debug?.from, count: items.length });
+          // Call the unified Vision v1 detection system
+          const detectionResult = await detectFoodVisionV1(imageBase64);
+          console.log('[DETECTOR] vision_v1', { from: detectionResult._debug?.from, count: detectionResult.items.length });
+          
+          const { items, plateBBox, imageWH } = detectionResult;
+          
+          // Import portion estimation utilities
+          const { estimatePortions } = await import('@/portion/estimate');
           
           const specific = filterFoodish(items);
+          
+          // Estimate portions if we have bounding boxes
+          const portionEstimates = imageWH && plateBBox ? 
+            estimatePortions(specific, [], imageWH, plateBBox) : 
+            specific.map(name => ({ name, grams_est: 120, confidence: 'low' as const }));
+          
           let mapped: any[] = [];
           
           if (specific.length === 0) {
             // Last-resort mapping from ALL label words
             const allMapped = await Promise.all(items.map(async (item) => {
               const hit = await mapVisionNameToFood(item);
-              return hit ? { vision: item, hit, source: 'fallback' } : null;
+              return hit ? { vision: item, hit, source: 'fallback', grams_est: 120, confidence: 'low' } : null;
             }));
             mapped = allMapped.filter(Boolean);
           } else {
-            const specificMapped = await Promise.all(specific.map(async (item) => {
-              const hit = await mapVisionNameToFood(item);
-              return hit ? { vision: item, hit, source: 'specific' } : null;
+            // Use specific foods with portion estimates
+            const specificMapped = await Promise.all(portionEstimates.map(async (estimate) => {
+              const hit = await mapVisionNameToFood(estimate.name);
+              return hit ? { vision: estimate.name, hit, source: 'specific', grams_est: estimate.grams_est, confidence: estimate.confidence } : null;
             }));
             mapped = specificMapped.filter(Boolean);
           }
