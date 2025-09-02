@@ -164,6 +164,11 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       const ctx = canvas.getContext('2d');
       
       if (!ctx) throw new Error('Canvas context not available');
+      
+      // Ensure video is ready and has dimensions
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        throw new Error('Video not ready for capture');
+      }
 
       // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
@@ -172,12 +177,15 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
       // Draw video frame to canvas
       ctx.drawImage(video, 0, 0);
       
-      // Convert to blob
+      // Convert to blob and immediately call onImageReady
       canvas.toBlob((blob) => {
         if (blob) {
+          console.log('📸 Photo captured successfully, size:', blob.size);
           onImageReady(blob);
+        } else {
+          throw new Error('Failed to create image blob');
         }
-      }, 'image/jpeg', 0.8);
+      }, 'image/jpeg', 0.9);
       
     } catch (error) {
       console.error('Photo capture failed:', error);
@@ -279,10 +287,10 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           </div>
 
           {/* Corner Guides */}
-          <div className="absolute top-2 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
-          <div className="absolute top-2 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
-          <div className="absolute bottom-32 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
-          <div className="absolute bottom-32 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
+          <div className="absolute top-32 left-8 w-6 h-6 border-l-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute top-32 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-30" />
+          <div className="absolute bottom-40 left-8 w-6 h-6 border-l-2 border-b-2 border-emerald-400 z-30" />
+          <div className="absolute bottom-40 right-8 w-6 h-6 border-r-2 border-b-2 border-emerald-400 z-30" />
 
           {/* Loading/Error States */}
           {hasPermission === null && (
@@ -306,15 +314,9 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             </div>
           )}
 
-          {/* Debug info overlay */}
-          {debugInfo && hasPermission === true && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded z-50">
-              {debugInfo}
-            </div>
-          )}
 
           {/* Bottom instruction */}
-          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-30">
+          <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl z-30">
             <p className="text-white text-sm font-medium text-center">
               Position food in the frame
             </p>
