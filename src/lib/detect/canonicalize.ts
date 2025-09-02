@@ -19,6 +19,31 @@ const REJECT = new Set([
   'container', 'bar', 'snack'
 ]);
 
+// Non-food terms vocabulary
+export const NON_FOOD_TERMS = new Set([
+  'ground','soil','gravel','concrete','asphalt','road','carpet','mat','tile','floor','table','tableware','fork','knife','spoon','plate','bowl','cup','glass','napkin','utensil',
+  'mist','haze','fog','smog','smoke','cloud','sky','shadow','reflection','glare','blur','noise','grain','gray','grey','monochrome','bokeh',
+  'package','packaging','label','barcode','can','jar','bottle','wrapper','packet','box'
+]);
+
+// Food dictionary for validation
+const FOOD_TERMS = new Set([
+  // Proteins
+  'salmon','chicken','beef','pork','fish','turkey','duck','lamb','tuna','cod','shrimp','crab','lobster','egg','tofu','tempeh','beans','lentils','chickpeas',
+  // Vegetables  
+  'asparagus','tomato','carrot','broccoli','spinach','lettuce','onion','garlic','pepper','cucumber','zucchini','potato','sweet potato','corn','peas','celery','mushroom','cabbage','kale','arugula','salad',
+  // Fruits
+  'apple','banana','orange','lemon','lime','berry','strawberry','blueberry','grape','pineapple','mango','avocado','peach','pear','cherry','melon','watermelon',
+  // Grains
+  'rice','pasta','bread','quinoa','oats','barley','wheat','noodles','couscous','bulgur','risotto',
+  // Dairy
+  'cheese','milk','yogurt','butter','cream','mozzarella','cheddar','parmesan','feta',
+  // Fats/oils
+  'oil','olive oil','coconut oil','nuts','almonds','walnuts','seeds',
+  // Sauces/condiments
+  'sauce','dressing','vinegar','mustard','mayo','pesto','salsa'
+]);
+
 // Category-specific confidence minimums
 const CONFIDENCE_MINS: Record<string, number> = {
   protein: 0.60,
@@ -126,15 +151,48 @@ export function finalReject(items: GptItem[]): GptItem[] {
   });
 }
 
+export function filterNonFood(items: GptItem[]): GptItem[] {
+  const filtered = items.filter(item => {
+    const name = (item.name || '').toLowerCase();
+    for (const term of NON_FOOD_TERMS) {
+      if (name.includes(term)) return false;
+    }
+    return true;
+  });
+  
+  const removedCount = items.length - filtered.length;
+  if (removedCount > 0) {
+    console.info('[FILTER][nonfood_removed]', `count=${removedCount}`);
+  }
+  
+  return filtered;
+}
+
+export function isLikelyFoodName(name: string): boolean {
+  const lowerName = name.toLowerCase();
+  for (const foodTerm of FOOD_TERMS) {
+    if (lowerName.includes(foodTerm)) return true;
+  }
+  return false;
+}
+
 export function processGptItems(rawItems: GptItem[]): GptItem[] {
   console.info('[GPT][raw_items]', `count=${rawItems.length}`);
   
   // Apply canonicalization and deduplication
-  const canonicalized = dedupe(rawItems);
-  const filtered = filterByConfidence(canonicalized);
-  const final = finalReject(filtered);
+  let items = dedupe(rawItems);
   
-  console.info('[FILTER][kept]', `count=${final.length}`, `names=[${final.map(i => i.name).join(', ')}]`);
+  // Apply filtering pipeline
+  const strictFilters = import.meta.env.VITE_DETECT_STRICT_NONFOOD === 'true';
+  if (strictFilters) {
+    items = filterNonFood(items);
+    items = items.filter(i => isLikelyFoodName(i.name));
+  }
   
-  return final;
+  items = filterByConfidence(items);
+  items = finalReject(items);
+  
+  console.info('[FILTER][kept]', `count=${items.length}`, `names=[${items.map(i => i.name).join(', ')}]`);
+  
+  return items;
 }

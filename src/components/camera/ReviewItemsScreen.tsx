@@ -211,7 +211,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   // Add review open telemetry
   useEffect(() => {
     if (isOpen && items.length > 0) {
-      console.info('[REVIEW][open]', `count=${items.length}`);
+      console.info('[REVIEW][open]', 'fullscreen', `count=${items.length}`);
     }
   }, [isOpen, items.length]);
 
@@ -227,9 +227,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 bg-black" />
         <Dialog.Content
-          className="lyf-sheet fixed z-[100] inset-0"
+          className="fixed inset-0 z-[100] bg-[#0B0F14] text-white"
           onOpenAutoFocus={(e) => e.preventDefault()}
           role="dialog"
           aria-labelledby="review-title"
@@ -238,24 +238,58 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           <Dialog.Title id="review-title" className="sr-only">Review Detected Items</Dialog.Title>
           <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
-          <div className="lyf-panel">
-            {/* Mobile sheet grab handle */}
-            <div className="sm:block hidden mx-auto mt-2 h-1.5 w-12 rounded-full bg-foreground/20" />
+          <div className="flex h-full w-full flex-col">
+            {/* Header (sticky) */}
+            <header className="sticky top-0 z-10 bg-[#0B0F14] px-5 pt-4 pb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">
+                Review Detected Items ({count})
+              </h2>
+              <p className="text-sm text-gray-400">
+                Check and edit the food items detected in your image.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-white hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </header>
 
-            <div className="lyf-panel__body">
-              {/* Header with count */}
-              <div className="px-4 pt-3 pb-2 sm:px-5 sm:pt-3">
-                <h2 className="text-xl font-semibold text-foreground mt-2 mb-4">
-                  Review Detected Items <span className="text-muted-foreground">({count})</span>
-                </h2>
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  Check and edit the food items detected in your image.
+          {/* ScrollArea (flex-1, overflow-y-auto) */}
+          <div className="flex-1 overflow-y-auto px-5 pb-24">
+            {count === 0 ? (
+              // Empty state
+              <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                <div className="text-6xl">🍽️</div>
+                <h3 className="text-xl font-semibold text-white">No food detected</h3>
+                <p className="text-gray-400 text-center">
+                  Try again, upload from gallery, or add manually.
                 </p>
+                <div className="flex flex-col gap-3 w-full max-w-sm pt-4">
+                  <Button
+                    onClick={onClose}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Try Again
+                  </Button>
+                  <Button
+                    onClick={handleAddItem}
+                    variant="outline"
+                    className="w-full border-gray-600 text-white hover:bg-white/10"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Manually
+                  </Button>
+                </div>
               </div>
-
-              {/* Scrollable content */}
-              <div className="lyf-items px-4 sm:px-5">
-                <div className="space-y-2">
+            ) : (
+              // Items list
+              <>
+                <div className="space-y-2 pt-4">
                   {items.map((item) => (
                     <ReviewItemCard
                       key={item.id}
@@ -268,96 +302,93 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   ))}
                 </div>
 
-                {/* Add spacer when there's only 1 item for better spacing */}
-                {selectedCount === 1 && <div style={{ minHeight: '28dvh' }} />}
-
                 {/* Add food button */}
-                <div className="flex justify-center mt-4">
+                <div className="flex justify-center mt-6">
                   <Button
                     variant="outline"
                     onClick={handleAddItem}
-                    className="flex items-center space-x-2 border-dashed border-2"
+                    className="flex items-center space-x-2 border-dashed border-2 border-gray-600 text-white hover:bg-white/10"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Add Food</span>
                   </Button>
                 </div>
-              </div>
-            </div>
-
-            {/* Sticky action footer */}
-            <div className="lyf-actions bg-background border-t border-border">
-              <div className="p-4 space-y-3">
-                {/* Two primary actions with equal prominence */}
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleLogImmediately}
-                    disabled={selectedCount === 0 || isLogging}
-                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
-                  >
-                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSeeDetails}
-                    disabled={selectedCount === 0}
-                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                  >
-                    🔎 Detailed Log ({selectedCount})
-                  </Button>
-                </div>
-                
-                {/* Secondary actions row - improved styling */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    💾 Save Set
-                  </Button>
-                  
-                  <Button
-                    onClick={onClose}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-
-                {selectedCount > 0 && (
-                  <p className="text-center text-xs text-muted-foreground mt-2">
-                    {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-                  </p>
-                )}
-              </div>
-            </div>
+              </>
+            )}
           </div>
-          
-          {/* Save Set Name Dialog */}
-          <SaveSetNameDialog
-            isOpen={showSaveNameDialog}
-            onClose={() => setShowSaveNameDialog(false)}
-            onSave={handleSaveSetWithName}
-          />
 
-          {/* Number Wheel Sheet */}
-          <NumberWheelSheet
-            open={!!openWheelForId}
-            defaultValue={openWheelForId ? (items.find(i => i.id === openWheelForId)?.grams || 100) : 100}
-            onChange={handleWheelChange}
-            onClose={handleWheelClose}
-            min={10}
-            max={500}
-            step={5}
-            unit="g"
-          />
+          {/* Footer (sticky) - only show if we have items */}
+          {count > 0 && (
+            <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
+              <div className="space-y-3">
+                <Button
+                  onClick={handleLogImmediately}
+                  disabled={selectedCount === 0 || isLogging}
+                  className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
+                >
+                  {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
+                </Button>
+                
+                <Button
+                  onClick={handleSeeDetails}
+                  disabled={selectedCount === 0}
+                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                >
+                  🔎 Detailed Log ({selectedCount})
+                </Button>
+              </div>
+              
+              {/* Secondary actions row */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={handleSaveSet}
+                  disabled={selectedCount === 0}
+                  size="lg"
+                  className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  💾 Save Set
+                </Button>
+                
+                <Button
+                  onClick={onClose}
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              {selectedCount > 0 && (
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                </p>
+              )}
+            </footer>
+          )}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      {/* Save Set Name Dialog */}
+      <SaveSetNameDialog
+        isOpen={showSaveNameDialog}
+        onClose={() => setShowSaveNameDialog(false)}
+        onSave={handleSaveSetWithName}
+      />
+
+      {/* Number Wheel Sheet */}
+      <NumberWheelSheet
+        open={!!openWheelForId}
+        defaultValue={openWheelForId ? (items.find(i => i.id === openWheelForId)?.grams || 100) : 100}
+        onChange={handleWheelChange}
+        onClose={handleWheelClose}
+        min={10}
+        max={500}
+        step={5}
+        unit="g"
+      />
     </Dialog.Root>
   );
 };

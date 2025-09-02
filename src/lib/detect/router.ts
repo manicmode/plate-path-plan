@@ -90,6 +90,13 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
       })
     );
     
+    // Scene-level guard
+    const strictFilters = getBoolean(import.meta.env.VITE_DETECT_STRICT_NONFOOD);
+    if (strictFilters && !isLikelyFoodScene(itemsWithPortions)) {
+      console.info('[FILTER][scene]', 'no-food-scene → returning empty');
+      return [];
+    }
+    
     console.info('[PORTION][applied]', `summary=${itemsWithPortions.map(i => `${i.name}:${i.grams}g`).join(', ')}`);
     console.info('[REPORT][V2][GPT]', `items=${itemsWithPortions.length}`, `filtered=${rawItems.length - processedItems.length}`, `grams=${itemsWithPortions.map(i => i.grams).join(',')}`);
     
@@ -120,11 +127,27 @@ export async function detectWithVision(imageBase64: string): Promise<DetectedIte
     );
     
     const filteredItems = filterDetectedItems(itemsWithPortions);
+    
+    // Scene-level guard
+    const strictFilters = getBoolean(import.meta.env.VITE_DETECT_STRICT_NONFOOD);
+    if (strictFilters && !isLikelyFoodScene(filteredItems)) {
+      console.info('[FILTER][scene]', 'no-food-scene → returning empty');
+      return [];
+    }
+    
     return filteredItems;
   } else {
     console.warn('[DETECT][VISION] No items detected');
     return [];
   }
+}
+
+// Scene-level guard (prevents junk lists when photo is not a meal)
+function isLikelyFoodScene(items: DetectedItem[]): boolean {
+  const allowedCategories = new Set(['protein','vegetable','fruit','grain','dairy','fat_oil','sauce_condiment']);
+  return items.length > 0 && items.some(item => 
+    item.source === 'gpt-v2' || allowedCategories.has(item.source)
+  );
 }
 
 // Score detection results for best-of comparison
@@ -243,6 +266,14 @@ export async function detectWithLyfV1Vision(imageBase64: string): Promise<Detect
   );
   
   const filteredItems = filterDetectedItems(itemsWithPortions);
+  
+  // Scene-level guard
+  const strictFilters = getBoolean(import.meta.env.VITE_DETECT_STRICT_NONFOOD);
+  if (strictFilters && !isLikelyFoodScene(filteredItems)) {
+    console.info('[FILTER][scene]', 'no-food-scene → returning empty');
+    return [];
+  }
+  
   return filteredItems;
 }
 
