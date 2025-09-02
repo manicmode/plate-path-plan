@@ -9,7 +9,10 @@ export async function gptDetectItems(imageBase64: string, timeoutMs = 8000): Pro
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
-    const body = { image_b64: imageBase64, mode: 'gpt-first' };
+    // Ensure proper base64 format (normalize before sending)
+    const b64Out = imageBase64.startsWith('data:image/') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    
+    const body = { image_b64: b64Out, mode: 'gpt-first' };
     console.log('[UPLOAD] invoking meal-detector with keys=' + JSON.stringify(Object.keys(body)));
     
     const { data, error } = await supabase.functions.invoke('meal-detector', {

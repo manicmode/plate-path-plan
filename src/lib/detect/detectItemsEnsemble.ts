@@ -33,20 +33,25 @@ export async function detectItemsEnsemble(imageBase64: string, opts: Opts = {}):
 
   // 3) Resolve to good nutrition names via search (but don't let SKUs rename our items)
   //    We only *look up* to get a better score/category signal.
+  //    Guard: skip food-search when no items to avoid 400 errors
   const withSearch: Detected[] = [];
-  for (const r of results) {
-    const hits = await foodSearchCandidates(r.name, 3);
-    const top = hits[0];
-    withSearch.push({
-      ...r,
-      score: Math.max(r.score ?? 0, Number(top?.score ?? 0)),
-      cats: top?.cats,
-      // name stays canonicalized; we do not replace it with "Crunchy Salmon Walmart"
-    });
+  if (results.length > 0) {
+    for (const r of results) {
+      const hits = await foodSearchCandidates(r.name, 3);
+      const top = hits[0];
+      withSearch.push({
+        ...r,
+        score: Math.max(r.score ?? 0, Number(top?.score ?? 0)),
+        cats: top?.cats,
+        // name stays canonicalized; we do not replace it with "Crunchy Salmon Walmart"
+      });
+    }
+  } else {
+    console.log('[DETECTION] No items detected, skipping food-search calls');
   }
 
   // 4) Hard reject + dedupe + quality filtering + conflict rules
-  let final = dedupe(withSearch) as Detected[];
+  let final = results.length > 0 ? dedupe(withSearch) as Detected[] : [];
   final = hardReject(final) as Detected[];
   final = qualityFilter(final) as Detected[];
   final = conflictClean(final) as Detected[];

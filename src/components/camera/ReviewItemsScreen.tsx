@@ -277,84 +277,135 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
               {/* Scrollable content */}
               <div className="lyf-items px-4 sm:px-5">
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      item={item}
-                      canRemove={items.length > 1}
-                      onChange={handleItemChange}
-                      onRemove={handleRemoveItem}
-                      onOpenWheel={handleOpenWheel}
-                    />
-                  ))}
-                </div>
+                {/* Empty state when no items detected */}
+                {items.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-500/20 flex items-center justify-center">
+                        <Info className="w-8 h-8 text-orange-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        No Items Detected
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        We couldn't detect any food items in this image. You can try again with a clearer photo or add items manually.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          // Re-open picker - this will be handled by parent
+                          window.location.reload(); // Temporary - should trigger photo picker
+                        }}
+                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold"
+                      >
+                        📸 Try Again
+                      </Button>
+                      
+                      <Button
+                        onClick={handleAddItem}
+                        variant="outline"
+                        className="w-full h-12 border-white/20"
+                      >
+                        ➕ Add Manually
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <ReviewItemCard
+                        key={item.id}
+                        item={item}
+                        canRemove={items.length > 1}
+                        onChange={handleItemChange}
+                        onRemove={handleRemoveItem}
+                        onOpenWheel={handleOpenWheel}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 {/* Add spacer when there's only 1 item for better spacing */}
                 {selectedCount === 1 && <div style={{ minHeight: '28dvh' }} />}
 
-                {/* Add food button */}
-                <div className="flex justify-center mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handleAddItem}
-                    className="flex items-center space-x-2 border-dashed border-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Food</span>
-                  </Button>
-                </div>
+                {/* Add food button - only show when items exist */}
+                {items.length > 0 && (
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleAddItem}
+                      className="flex items-center space-x-2 border-dashed border-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Food</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Sticky action footer */}
             <div className="lyf-actions bg-background border-t border-border">
               <div className="p-4 space-y-3">
-                {/* Two primary actions with equal prominence */}
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleLogImmediately}
-                    disabled={selectedCount === 0 || isLogging}
-                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
-                  >
-                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSeeDetails}
-                    disabled={selectedCount === 0}
-                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                  >
-                    {source === 'health-scan' ? '🏥 Health Profile & Log' : '🔎 Detailed Log'} ({selectedCount})
-                  </Button>
-                </div>
-                
-                {/* Secondary actions row - improved styling */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0}
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    💾 Save Set
-                  </Button>
-                  
-                  <Button
-                    onClick={onClose}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                {/* Show different actions for empty vs populated states */}
+                {items.length === 0 ? (
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Add some food items to continue
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Two primary actions with equal prominence */}
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleLogImmediately}
+                        disabled={selectedCount === 0 || isLogging}
+                        className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
+                      >
+                        {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
+                      </Button>
+                      
+                      <Button
+                        onClick={handleSeeDetails}
+                        disabled={selectedCount === 0}
+                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                      >
+                        {source === 'health-scan' ? '🏥 Health Profile & Log' : '🔎 Detailed Log'} ({selectedCount})
+                      </Button>
+                    </div>
+                    
+                    {/* Secondary actions row - improved styling */}
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        onClick={handleSaveSet}
+                        disabled={selectedCount === 0}
+                        size="lg"
+                        className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        💾 Save Set
+                      </Button>
+                      
+                      <Button
+                        onClick={onClose}
+                        variant="outline"
+                        size="lg"
+                        className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
 
-                {selectedCount > 0 && (
-                  <p className="text-center text-xs text-muted-foreground mt-2">
-                    {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-                  </p>
+                    {selectedCount > 0 && (
+                      <p className="text-center text-xs text-muted-foreground mt-2">
+                        {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>

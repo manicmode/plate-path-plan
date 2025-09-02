@@ -796,13 +796,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             featureBackend: (import.meta.env?.VITE_DETECTION_BACKEND as any) || 'gpt-first',
           });
           
-          if (detectedItems.length === 0) {
-            toast.error('No foods detected. Try a clearer photo or add manually.');
-            setIsAnalyzing(false);
-            return;
-          }
-
-          // Convert ensemble results to ReviewItem[]
+          // Convert ensemble results to ReviewItem[] (even if empty)
           const reviewItems: ReviewItem[] = detectedItems.map((item, index) => ({
             id: `ensemble-${index}`,
             name: item.name, // Already canonicalized
@@ -819,7 +813,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           // Items are already canonicalized and deduped by ensemble
           const finalItems = reviewItems;
 
-          // Old modal vs new flow, gated by flag
+          // Always show Review modal (even for 0 items) - let modal handle empty state
           if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
             setReviewItems(finalItems);
             setShowReviewScreen(true);       // ← original modal path

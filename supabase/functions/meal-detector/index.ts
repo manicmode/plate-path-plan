@@ -81,11 +81,23 @@ async function gptExtractFoods(imageBase64: string): Promise<any[]> {
 
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     
-    // Server-side validation: reject terms, confidence filter, normalize
+    console.log(`[MEAL] raw model items count = ${items.length}`);
+
+    // Server-side validation: reject terms, softer confidence filtering
     const validated = items
       .filter((item: any) => {
         const name = (item.name || '').toLowerCase().trim();
-        return name && !REJECT_TERMS.has(name) && (item.confidence || 0) >= 0.35;
+        const category = (item.category || 'other').toLowerCase();
+        const confidence = item.confidence || 0;
+        
+        if (!name || REJECT_TERMS.has(name)) return false;
+        
+        // Softer thresholds by category
+        if (['veg', 'fruit', 'vegetable'].includes(category)) {
+          return confidence >= 0.25; // More permissive for veggies
+        } else {
+          return confidence >= 0.55; // Stricter for proteins/grains/dairy
+        }
       })
       .map((item: any) => ({
         name: (item.name || '').toLowerCase().trim(),
@@ -95,7 +107,7 @@ async function gptExtractFoods(imageBase64: string): Promise<any[]> {
       }))
       .slice(0, 6); // Max 6 items
 
-    console.log(`[MEAL-DETECTOR] GPT extracted ${validated.length} validated items`);
+    console.log(`[MEAL] after server filters count = ${validated.length}`);
     return validated;
 
   } catch (error) {
@@ -109,13 +121,21 @@ serve(async (req) => {
   
   try {
     const body = await req.json();
-    const { image_base64, image_b64, mode } = body;
+    const { image_base64, image_b64, image_url, mode } = body;
     
-    // === MEAL-DETECTOR INSTRUMENTATION ===
-    console.log('[MEAL-DETECTOR] inputs: image_base64?=' + !!image_base64 + ' len=' + (image_base64?.length || 0) + ', image_b64?=' + !!image_b64 + ' len=' + (image_b64?.length || 0) + ', mode=' + mode);
+    // === DETAILED LOGGING FOR INVESTIGATION ===
+    console.log('[MEAL] recv keys = { image_b64: ' + !!image_b64 + ', image_url: ' + !!image_url + ' }');
     
     // Use either key (maintain compatibility)
-    const imageInput = image_base64 || image_b64;
+    let imageInput = image_base64 || image_b64;
+    
+    // Handle base64 prefix normalization
+    if (imageInput && !imageInput.startsWith('data:image/')) {
+      // Accept bare base64 too — add JPEG prefix
+      imageInput = `data:image/jpeg;base64,${imageInput}`;
+    }
+    
+    console.log('[MEAL] image_b64 head = "' + (imageInput?.slice(0, 22) || 'null') + '", hasPrefix = ' + (imageInput?.startsWith('data:image/') || false) + ', b64Len = ' + (imageInput?.length || 0));
     
     // Sanitize base64 input
     const content = (imageInput || "").split(",").pop();
