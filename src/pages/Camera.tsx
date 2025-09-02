@@ -40,8 +40,8 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
-import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
+import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
@@ -767,64 +767,59 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         console.log('=== LYF V1 FOOD DETECTION PATH ===');
         console.log('Image does not appear to be a barcode, proceeding with LYF v1 food detection...');
         
-        // If not a barcode, proceed with LYF v1 food recognition
+        // Force LYF onto frozen v1 pipeline exclusively
         const imageBase64 = convertToBase64(selectedImage);
         
         setProcessingStep('Analyzing food with LYF v1...');
-        setIsMultiAILoading(true);
-        setShowMultiAIDetection(true);
+        setIsAnalyzing(true);
         
         try {
-          console.log('Calling LYF v1 legacy adapter...');
+          console.info('[LYF][v1] path active');
           setProcessingStep('Detecting food items...');
           
-          // === LYF v1 COMPATIBLE PATH ===
-          const { mapped } = await analyzePhotoForLyfV1(supabase, imageBase64);
+          // === LYF v1 FROZEN PIPELINE ONLY ===
+          const { mapped: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
+          console.info('[LYF][v1] raw:', rawItems?.map(i => i.name || i.vision), _debug);
           
-          // Verification hooks - dev only logging
-          if (import.meta.env.DEV) {
-            console.info('[LYF][v1] ensemble enabled=', FF.FEATURE_LYF_ENSEMBLE);
-          }
+          const items = (rawItems ?? [])
+            .filter(i => looksFoodish(i.canonicalName || i.vision || i.name || ''))
+            .filter(i => (i.canonicalName || i.vision || i.name || '').toLowerCase() !== 'recipe'); // hard block
           
-          // Guard for no detections
-          if (!mapped || mapped.length === 0) {
-            toast.error('No foods detected. Try a clearer photo.');
-            setIsMultiAILoading(false);
-            return;
-          }
+          console.info('[LYF][v1] keep:', items.map(i => i.canonicalName || i.vision || i.name));
           
-          // Map into ReviewItems model with portions - include ALL candidates
-          const reviewItemsData = mapped.map((it, idx) => ({
-            id: `ri-${idx}`,
-            name: titleCase(it.canonicalName || it.vision),
-            portion: `${it.grams || guessDefaultGrams(it.canonicalName || it.vision)}g`,
-            selected: false, // Start with nothing preselected - user must choose
-            grams: it.grams || guessDefaultGrams(it.canonicalName || it.vision),
-            confidencePct: Math.round((it.hit?.confidence || 0.5) * 100),
-            source: it.source || 'vision',
-            mapped: it.mapped !== false, // Track if nutrition mapping succeeded
-            needsDetails: it.mapped === false, // Show "Needs details" chip for unmapped items
-          }));
-          
-          // Always open review screen - never auto-confirm from photos
-          setReviewItems(reviewItemsData);
-          setShowReviewScreen(true);
-          setInputSource('photo');
-          
-          // Dev logging
-          if (import.meta.env.DEV) {
-            console.info('[LYF][v1] items=' + reviewItemsData.length + ' reviewOpen=true selected=0');
+          if (items.length > 0) {
+            // Map into ReviewItems model with portions - include ALL candidates
+            const reviewItemsData = items.map((it, idx) => ({
+              id: `ri-${idx}`,
+              name: titleCase(it.canonicalName || it.vision || it.name),
+              portion: `${it.grams || guessDefaultGrams(it.canonicalName || it.vision || it.name)}g`,
+              selected: false, // Start with nothing preselected - user must choose
+              grams: it.grams || guessDefaultGrams(it.canonicalName || it.vision || it.name),
+              confidencePct: Math.round((it.hit?.confidence || 0.5) * 100),
+              source: it.source || 'vision',
+              mapped: it.mapped !== false, // Track if nutrition mapping succeeded
+              needsDetails: it.mapped === false, // Show "Needs details" chip for unmapped items
+            }));
+            
+            setReviewItems(reviewItemsData);
+            setShowReviewScreen(true);
+            setInputSource('photo');
+            
             console.info('[LYF][ui] review_open', { 
               count: reviewItemsData.length, 
               names: reviewItemsData.map(i => i.name) 
             });
+          } else {
+            // Do NOT open the legacy "0 items" modal for photos; just show a toast.
+            console.info('[LYF][ui] legacy_suppressed_zero_items');
+            toast.info('No clear food items detected. Try another angle or add manually.');
           }
           
         } catch (error) {
-          console.error('Ensemble food detection failed:', error);
+          console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
         } finally {
-          setIsMultiAILoading(false);
+          setIsAnalyzing(false);
         }
       })();
       
@@ -2133,13 +2128,10 @@ console.log('Global search enabled:', enableGlobalSearch);
   const handleReviewClose = () => {
     setShowReviewScreen(false);
     setReviewItems([]);
-    
-    if (import.meta.env.DEV) {
-      console.info('[LYF][ui] review_closed');
-    }
+    console.info('[LYF][ui] review_closed');
     
     // Clear detection state and return - do NOT trigger legacy modal
-    setIsMultiAILoading(false);
+    setIsAnalyzing(false);
   };
 
   const processCurrentItem = async (items: SummaryItem[], index: number) => {
@@ -2997,19 +2989,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
 
-      {/* Multi-AI Food Detection Results */}
-      {showMultiAIDetection && (
-        <div className="animate-slide-up mb-0 !mb-0">
-          <MultiAIFoodDetection
-            detectedFoods={multiAIResults}
-            isLoading={isMultiAILoading}
-            onConfirm={handleMultiAIConfirm}
-            onCancel={handleMultiAICancel}
-            onAddManually={() => setShowManualFoodEntry(true)}
-            onAddToResults={handleAddToMultiAIResults}
-          />
-        </div>
-      )}
+      {/* Multi-AI detection removed - using frozen v1 pipeline exclusively */}
 
       {/* Error Display Card */}
       {showError && (
