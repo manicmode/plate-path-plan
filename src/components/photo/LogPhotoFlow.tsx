@@ -6,6 +6,7 @@ import { FallbackSheet } from '@/components/ui/FallbackSheet';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
 import { detectItemsEnsemble } from '@/lib/detect/detectItemsEnsemble';
 import { playShutter } from '@/lib/sound';
+import { estimatePortionFromName } from '@/lib/portion';
 import { toast } from 'sonner';
 
 interface LogPhotoFlowProps {
@@ -85,13 +86,14 @@ export const LogPhotoFlow: React.FC<LogPhotoFlowProps> = ({
         return;
       }
 
-      // Convert to ReviewItem[] format
+      // Convert to ReviewItem[] format with proper portion estimates
       const reviewItems: ReviewItem[] = items.map((item, index) => ({
         id: `log-${index}`,
         name: item.name,
         portion: '1 serving',
         selected: true,
         canonicalName: item.name,
+        grams: estimatePortionFromName(item.name),
       }));
 
       console.info('[LOG PHOTO] Opening review with items:', reviewItems.map(r => r.name));

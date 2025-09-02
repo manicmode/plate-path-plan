@@ -1,25 +1,28 @@
-// Embedded data-URI for immediate playback, no network fetch
-const SHUTTER_DATA_URI = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTWX3PbDczEICg';
+// Embedded data-URI for immediate playback, no network fetch (tiny MP3)
+const SHUTTER_DATA_URI = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMPDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PD//////////////////////////////////////8AAAAATGF2YzU4Ljk5AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//MUZAAAAAGkAAAAAAAAA0gAAAAATEFN//MUZAMAAAGkAAAAAAAAA0gAAAAARTMu//MUZAYAAAGkAAAAAAAAA0gAAAAAOTku//MUZAkAAAGkAAAAAAAAA0gAAAAANVVV';
 
-let audio: HTMLAudioElement | null = null;
+let shutterEl: HTMLAudioElement | null = null;
+
+export function initShutter() {
+  if (!shutterEl) {
+    shutterEl = new Audio(SHUTTER_DATA_URI);
+    shutterEl.preload = 'auto';
+    shutterEl.volume = 0.3;
+    shutterEl.crossOrigin = 'anonymous';
+  }
+}
 
 export async function playShutter() {
   try {
-    if (!audio) {
-      audio = new Audio(SHUTTER_DATA_URI);
-      audio.preload = 'auto';
-      audio.volume = 0.3;
-    }
+    initShutter();
+    if (!shutterEl) return;
     
     // Reset time to allow rapid successive plays
-    audio.currentTime = 0;
-    await audio.play();
+    shutterEl.currentTime = 0;
+    await shutterEl.play();
   } catch (error) {
-    // Fallback haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
-    }
-    console.log('Shutter sound failed, used haptic fallback:', error);
+    // iOS Safari doesn't support navigator.vibrate - silently fail
+    console.log('Shutter sound failed:', error);
   }
 }
 
@@ -28,10 +31,8 @@ export function bindShutterInit(element: HTMLElement | null) {
   
   const handler = () => {
     // Initialize audio on first interaction
-    if (!audio) {
-      audio = new Audio(SHUTTER_DATA_URI);
-      audio.preload = 'auto';
-      audio.volume = 0.3;
+    if (!shutterEl) {
+      initShutter();
     }
     element.removeEventListener('pointerdown', handler);
   };

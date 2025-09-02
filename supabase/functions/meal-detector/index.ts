@@ -13,7 +13,8 @@ const FOODISH = /salmon|fish|asparagus|vegetable|veggie|tomato|potato|chicken|be
 
 // Hard reject list for GPT filtering
 const REJECT_TERMS = new Set([
-  'food','plate','dish','bowl','table','sauce dish','utensil','fork','knife','spoon','napkin','cup','glass','tray'
+  'food','plate','dish','bowl','table','sauce dish','utensil','fork','knife','spoon','napkin','cup','glass','tray',
+  'tableware','cutlery','silverware','placemat','tablecloth','container'
 ]);
 
 // GPT Vision function for food-only extraction
@@ -36,7 +37,7 @@ async function gptExtractFoods(imageBase64: string): Promise<any[]> {
         messages: [
           {
             role: 'system',
-            content: 'You are a nutrition vision assistant. Extract a list of edible food items visible on the plate(s). Exclude containers and context (plate, bowl, table, utensil, cup, napkin, hand, packaging). Output only normalized, generic food names (e.g., "grilled salmon", "asparagus", "lemon wedge"). No brands, no SKU words.'
+            content: 'You are a nutrition vision assistant. Extract a list of edible food items visible on the plate(s). Prefer specific mains/proteins (e.g., "grilled salmon", "chicken breast") over generic context; never output containers or table settings. Output only normalized, generic food names. No brands, no SKU words.'
           },
           {
             role: 'user',
