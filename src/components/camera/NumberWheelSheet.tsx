@@ -42,7 +42,17 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
   const triggerHaptics = useCallback(() => {
     if ('vibrate' in navigator) {
       try {
-        navigator.vibrate(10);
+        navigator.vibrate(10); // Light impact on tick
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }, []);
+
+  const triggerConfirmHaptics = useCallback(() => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(25); // Medium impact on confirm
       } catch (e) {
         // Ignore errors
       }
@@ -104,6 +114,7 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
   }, [open, values, defaultValue]);
 
   const handleConfirm = () => {
+    triggerConfirmHaptics();
     onChange(currentValue);
     onClose();
   };
@@ -124,6 +135,7 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
         <Dialog.Content
           className="fixed inset-x-0 bottom-0 z-[102] bg-background rounded-t-3xl border-t border-border max-h-[70vh] flex flex-col"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          aria-label="Select amount (grams)"
         >
           <Dialog.Title className="sr-only">Select Amount</Dialog.Title>
           <Dialog.Description className="sr-only">Choose portion size</Dialog.Description>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { SaveSetDialog } from './SaveSetDialog';
+import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from './NumberWheelSheet';
 import { FF } from '@/featureFlags';
@@ -42,7 +43,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
+  const [isLogging, setIsLogging] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -102,26 +105,37 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
+    setIsLogging(true);
+
     try {
       console.info('[LYF][one-tap-log]', selectedItems.map(i => ({ 
         name: i.canonicalName || i.name, 
         grams: i.grams || 100 
       })));
 
-      const batchItems = selectedItems.map(item => ({
+      // Import here to avoid circular dependencies
+      const { createNutritionLogBatch } = await import('@/lib/nutritionLog');
+      
+      const logEntries = selectedItems.map(item => ({
         name: item.name,
         canonicalName: item.canonicalName || item.name,
         grams: item.grams || 100,
         source: 'photo_v1'
       }));
 
-      await createFoodLogsBatch(batchItems, user.id);
+      await createNutritionLogBatch(logEntries, user.id);
       
-      toast.success(`Logged ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      // Emit metrics
+      const { emitPhotoMetrics, incrementCounter } = await import('@/lib/metrics');
+      incrementCounter('photo.one_tap_used');
+      
+      toast.success(`Logged ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''} ✓`);
       onClose();
     } catch (error) {
       console.error('Failed to log items:', error);
       toast.error('Failed to log items. Please try again.');
+    } finally {
+      setIsLogging(false);
     }
   };
 
@@ -137,7 +151,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     onClose();
   };
 
-  const handleSaveSet = async () => {
+  const handleSaveSet = () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to save');
@@ -149,13 +163,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
     
-    setShowSaveDialog(true);
+    setShowSaveNameDialog(true);
   };
 
-  const handleSaveSetConfirm = async (setName: string) => {
+  const handleSaveSetWithName = async (setName: string) => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     
     try {
+      // Import here to avoid circular dependencies
+      const { saveMealSet } = await import('@/lib/mealSets');
+      
       const mealSetItems = selectedItems.map(item => ({
         name: item.name,
         canonicalName: item.canonicalName || item.name,
@@ -163,8 +180,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       }));
 
       await saveMealSet(setName, mealSetItems);
-      toast.success(`Saved "${setName}" with ${selectedItems.length} items`);
-      setShowSaveDialog(false);
+      toast.success(`Set saved ✓`);
+      setShowSaveNameDialog(false);
     } catch (error) {
       console.error('Failed to save meal set:', error);
       toast.error('Failed to save set. Please try again.');
@@ -266,10 +283,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 <div className="space-y-3">
                   <Button
                     onClick={handleLogImmediately}
-                    disabled={selectedCount === 0}
-                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base"
+                    disabled={selectedCount === 0 || isLogging}
+                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
                   >
-                    ⚡ One-Tap Log ({selectedCount})
+                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                   </Button>
                   
                   <Button
@@ -312,19 +329,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             </div>
           </div>
           
-          {/* Save Set Dialog */}
-          <SaveSetDialog
-            isOpen={showSaveDialog}
-            onClose={() => setShowSaveDialog(false)}
-            items={items
-              .filter(item => item.selected && item.name.trim())
-              .map(item => ({
-                name: item.name,
-                canonicalName: item.canonicalName || item.name,
-                grams: item.grams || 100
-              }))
-            }
-            onSaved={handleSaveSetConfirm}
+          {/* Save Set Name Dialog */}
+          <SaveSetNameDialog
+            isOpen={showSaveNameDialog}
+            onClose={() => setShowSaveNameDialog(false)}
+            onSave={handleSaveSetWithName}
           />
 
           {/* Number Wheel Sheet */}

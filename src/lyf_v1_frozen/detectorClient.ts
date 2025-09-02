@@ -4,22 +4,22 @@ function asItemObjects(data: any): Array<{ name: string; source: Src; confidence
   const dbgFrom: Src = data?._debug?.from === 'objects' ? 'object' : 'label';
   const raw = Array.isArray(data?.items) ? data.items : [];
 
-  // Case A: strings → wrap with {name, source}
+  // Normalizer hardening - coerce to proper format
   if (raw.length && typeof raw[0] === 'string') {
     return raw.map((name: string) => ({
-      name,
+      name: String(name || ''),
       source: dbgFrom,
       confidence: 0.7,
       score: 0.7,
     }));
   }
 
-  // Case B: objects with name → ensure source exists
+  // Handle partial objects and normalize
   if (raw.length && typeof raw[0] === 'object') {
     return raw
-      .filter((o: any) => !!o?.name)
+      .filter((o: any) => o && (o.name || o.description))
       .map((o: any) => ({
-        name: String(o.name),
+        name: String(o.name || o.description || ''),
         source: (o.source === 'object' || o.source === 'label') ? o.source : dbgFrom,
         confidence: typeof o.confidence === 'number' ? o.confidence : (typeof o.score === 'number' ? o.score : 0.7),
         score: typeof o.score === 'number' ? o.score : (typeof o.confidence === 'number' ? o.confidence : 0.7),
@@ -38,26 +38,59 @@ export async function analyzeLyfV1(supabase: any, image_base64: string) {
     console.warn('[LYF][v1] Image too small (~' + sizeKB + 'kB), may return empty results. Consider compressing to ~0.85 quality / 1000-1200px');
   }
 
-  const { data, error } = await supabase.functions.invoke('meal-detector-v1', {
-    body: { image_base64 },
-  });
+  // Add debug flag for dev builds
+  const debugMode = import.meta.env.DEV && import.meta.env.VITE_LYF_V1_DEBUG !== 'false';
+  
+  const startTime = performance.now();
 
-  if (error) {
-    console.warn('[LYF][v1] detector error', error);
-    return { items: [], _debug: { from: 'error', error } };
+  // Add 12s timeout with AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const { data, error } = await supabase.functions.invoke('meal-detector-v1', {
+      body: { image_base64, debug: debugMode },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      console.warn('[LYF][v1] detector error', error);
+      return { items: [], _debug: { from: 'error', error } };
+    }
+
+    const detectMs = Math.round(performance.now() - startTime);
+    const items = asItemObjects(data);
+
+    // Concise debug logging for dev builds
+    if (import.meta.env.DEV) {
+      console.info(`[LYF][v1] raw: from=${data?._debug?.from} rawObjects=${data?._debug?.rawObjectsCount} rawLabels=${data?._debug?.rawLabelsCount}`);
+      console.info('[LYF][v1] keep:', items.map(i => i.name));
+      
+      if (debugMode && data?._debug?.dropped) {
+        console.info('[LYF][v1] drop:', data._debug.dropped);
+      }
+    }
+
+    // Emit metrics
+    if (typeof window !== 'undefined' && window.console?.table) {
+      console.table([{
+        'detect_ms': detectMs,
+        'items_kept': items.length,
+        'image_kb': sizeKB
+      }]);
+    }
+
+    return { items, _debug: data?._debug };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      console.warn('[LYF][v1] Detection timed out after 12s');
+      throw new Error('Detection timed out. Please try again or use a smaller image.');
+    }
+    
+    throw error;
   }
-
-  const items = asItemObjects(data);
-
-  // Helpful telemetry while we stabilize
-  console.info('[LYF][v1] resp', {
-    from: data?._debug?.from,
-    rawObjects: data?._debug?.rawObjectsCount,
-    rawLabels: data?._debug?.rawLabelsCount,
-    keptObjects: data?._debug?.keptObjectsCount,
-    keptLabels: data?._debug?.keptLabelsCount,
-    itemsPreview: items.map(i => `${i.name}:${i.source}`),
-  });
-
-  return { items, _debug: data?._debug };
 }

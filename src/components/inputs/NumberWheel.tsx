@@ -14,8 +14,8 @@ interface NumberWheelProps {
 export const NumberWheel: React.FC<NumberWheelProps> = ({
   value,
   onChange,
-  min = 5,
-  max = 1000,
+  min = 10,
+  max = 500,
   step = 5,
   unit = 'g',
   className = ''
@@ -44,7 +44,17 @@ export const NumberWheel: React.FC<NumberWheelProps> = ({
   const triggerHaptics = useCallback(() => {
     if ('vibrate' in navigator) {
       try {
-        navigator.vibrate(10);
+        navigator.vibrate(10); // Light impact
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }, []);
+  
+  const triggerMediumHaptics = useCallback(() => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(25); // Medium impact
       } catch (e) {
         // Ignore errors
       }
@@ -117,6 +127,15 @@ export const NumberWheel: React.FC<NumberWheelProps> = ({
             const clampedValue = Math.max(min, Math.min(max, newValue));
             onChange(clampedValue);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              onChange(Math.min(max, value + step));
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              onChange(Math.max(min, value - step));
+            }
+          }}
           min={min}
           max={max}
           step={step}
@@ -131,9 +150,26 @@ export const NumberWheel: React.FC<NumberWheelProps> = ({
     <div className={`relative ${className}`}>
       {/* Value display */}
       <div className="text-center mb-2">
-        <span className="text-lg font-semibold tabular-nums">
-          {value}{unit}
+        <span className="text-lg font-semibold tabular-nums" aria-live="polite">
+          {value}{unit} selected
         </span>
+      </div>
+      
+      {/* Quick adjustment buttons */}
+      <div className="flex justify-center gap-1 mb-2">
+        {[-25, -10, +10, +25].map((delta) => (
+          <button
+            key={delta}
+            onClick={() => {
+              const newValue = Math.max(min, Math.min(max, value + delta));
+              onChange(newValue);
+              triggerHaptics();
+            }}
+            className="px-2 py-1 text-xs bg-muted rounded text-muted-foreground hover:bg-muted-foreground hover:text-background transition-colors"
+          >
+            {delta > 0 ? '+' : ''}{delta}
+          </button>
+        ))}
       </div>
       
       {/* Wheel container */}

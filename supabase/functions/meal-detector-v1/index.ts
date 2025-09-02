@@ -29,7 +29,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   
   try {
-    const { image_base64 } = await req.json();
+    const body = await req.json();
+    const { image_base64, debug } = body;
+    const debugMode = debug === true || new URL(req.url).searchParams.get('debug') === '1';
     const key = Deno.env.get("GOOGLE_VISION_API_KEY");
     if (!key) throw new Error("Missing GOOGLE_VISION_API_KEY");
 
@@ -79,11 +81,35 @@ serve(async (req) => {
     const keep = (s: string) => !NEG.test(s);
     const isGeneric = (s: string) => GENERIC.test(s);
 
-    // Build filtered arrays
-    const objectsKept = objects.filter(keep);
-    const objectsSpecific = objectsKept.filter(s => !isGeneric(s));
-    const labelsKept = labels.filter(keep);
-    const labelsSpecific = labelsKept.filter(s => !isGeneric(s));
+    // Track dropped items for debug
+    const dropped = {
+      nonFood: [] as string[],
+      belowScore: [] as string[],
+      generic: [] as string[],
+      deduped: [] as string[]
+    };
+
+    // Build filtered arrays with drop tracking
+    const objectsKept = objects.filter(o => {
+      const kept = keep(o);
+      if (!kept) dropped.nonFood.push(o);
+      return kept;
+    });
+    const objectsSpecific = objectsKept.filter(s => {
+      const nonGeneric = !isGeneric(s);
+      if (!nonGeneric) dropped.generic.push(s);
+      return nonGeneric;
+    });
+    const labelsKept = labels.filter(l => {
+      const kept = keep(l);
+      if (!kept) dropped.nonFood.push(l);
+      return kept;
+    });
+    const labelsSpecific = labelsKept.filter(s => {
+      const nonGeneric = !isGeneric(s);
+      if (!nonGeneric) dropped.generic.push(s);
+      return nonGeneric;
+    });
 
     let chosen: string[];
     let chosenFrom: string;
@@ -110,10 +136,11 @@ serve(async (req) => {
       labels: labels.slice(0,5)
     }));
 
-    return new Response(JSON.stringify({
+    // Build response with optional debug payload
+    const response: any = {
       items: chosen.slice(0, 8),
-      imageWH: { width: 1200, height: 800 }, // Placeholder - would come from Vision API
-      plateBBox: undefined, // Placeholder - would need object detection for plates
+      imageWH: { width: 1200, height: 800 },
+      plateBBox: undefined,
       objects: rawObjects.map((o: any) => ({ 
         name: o.name, 
         score: o.score,
@@ -136,7 +163,24 @@ serve(async (req) => {
         sampleObjects: objects.slice(0,6),
         sampleLabels: labels.slice(0,6)
       }
-    }), { headers: { ...cors, "Content-Type": "application/json" }});
+    };
+
+    // Add forensic debug data when requested
+    if (debugMode) {
+      response._debug.labels_top20 = rawLabels.slice(0, 20).map((l: any) => ({
+        d: l.description, 
+        s: l.score
+      }));
+      response._debug.objects_all = rawObjects.map((o: any) => ({
+        n: o.name, 
+        s: o.score
+      }));
+      response._debug.dropped = dropped;
+    }
+
+    return new Response(JSON.stringify(response), { 
+      headers: { ...cors, "Content-Type": "application/json" }
+    });
 
   } catch (e) {
     console.error("[MEAL-DETECTOR-V1] Error:", e);

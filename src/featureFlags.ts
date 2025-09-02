@@ -14,4 +14,6 @@ export const FF = {
   FEATURE_LYF_ENSEMBLE: false, // Pin LYF to frozen v1 only - no GPT/ensemble paths
   FEATURE_LYF_LOG_THIS_SET: true, // Enable one-tap logging
   FEATURE_NUMBER_WHEEL_PICKERS: true, // Enable roller number pickers with haptics
+  FEATURE_LYF_V1_DEBUG: import.meta.env.DEV, // Dev debug mode for LYF v1
+  FEATURE_ONE_TAP_LOG: true // One-tap logging functionality
 } as const;
