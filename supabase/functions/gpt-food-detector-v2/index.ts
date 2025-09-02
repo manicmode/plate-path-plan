@@ -14,6 +14,10 @@ serve(async (req) => {
   try {
     const { image_base64, system_prompt, user_prompt, attempt } = await req.json();
     
+    // Generate request ID for tracing
+    const requestId = `gpt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.info('[GPT][trace]', { request_id: requestId, timestamp: new Date().toISOString() });
+    
     if (!image_base64) {
       throw new Error('image_base64 is required');
     }
@@ -108,8 +112,16 @@ Example for salmon plate:
     // Determine attempt type from client
     const attemptType = attempt || 'strict';
     
+    // Generate image hash for tracing (simple hash of first 100 chars of base64)
+    const imageHash = normalizedBase64.slice(0, 100).split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0).toString(16);
+    
     // Log request details before API call
     console.info('[GPT][req]', {
+      request_id: requestId,
+      image_hash: imageHash,
       has_prefix: hasPrefix,
       bytes: imageBytes,
       dims: imageDims,
@@ -180,42 +192,99 @@ Example for salmon plate:
       throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
     }
 
+    const startTime = Date.now();
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
     // Calculate duration and log HTTP details
-    const duration_ms = Date.now() - Date.now(); // Will be calculated properly
+    const duration_ms = Date.now() - startTime;
     console.info('[GPT][http]', {
+      request_id: requestId,
+      image_hash: imageHash,
       status: response.status,
       duration_ms: duration_ms,
       usage: data.usage || null
     });
     
-    // Log raw preview (first 400 chars)
+    // **CRITICAL DIAGNOSTIC LOG**: Log the FULL raw GPT response before any parsing
+    console.info('[GPT][raw_response]', {
+      request_id: requestId,
+      image_hash: imageHash,
+      full_content: content || 'null',
+      content_length: content?.length || 0,
+      content_type: typeof content,
+      has_choices: !!data.choices?.length,
+      model_used: data.model || 'unknown'
+    });
+    
+    // Also log raw preview (first 400 chars) for quick scanning
     console.info('[GPT][raw-preview]', content?.substring(0, 400) || 'empty');
 
     if (!content) {
-      console.error('[GPT-V2] No content in OpenAI response');
+      console.error('[GPT-V2] No content in OpenAI response', {
+        request_id: requestId,
+        image_hash: imageHash,
+        response_structure: Object.keys(data),
+        choices_length: data.choices?.length || 0
+      });
       return new Response(JSON.stringify({
         items: [],
-        _debug: { from: 'gpt-v2', error: 'no_content' }
+        _debug: { 
+          from: 'gpt-v2', 
+          error: 'no_content',
+          request_id: requestId,
+          image_hash: imageHash
+        }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // **PARSING STARTS HERE** - Log before parsing begins
+    console.info('[GPT][parse_start]', {
+      request_id: requestId,
+      image_hash: imageHash,
+      raw_content_preview: content.substring(0, 200),
+      about_to_parse: true
+    });
+    
     // Parse JSON response (handle both array and object formats)
     let parsedResult;
     let beforeFilterCount = 0;
     try {
       parsedResult = JSON.parse(content);
-      console.info('[GPT][parsed]', `items_before_filters=${Array.isArray(parsedResult) ? parsedResult.length : (parsedResult.items || []).length}`);
+      const itemCount = Array.isArray(parsedResult) ? parsedResult.length : (parsedResult.items || []).length;
+      console.info('[GPT][parsed]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        items_before_filters: itemCount,
+        parse_success: true,
+        parsed_type: Array.isArray(parsedResult) ? 'array' : 'object'
+      });
     } catch (parseError) {
-      console.error('[GPT-V2] Failed to parse JSON:', content);
-      console.info('[GPT][parsed]', 'items_before_filters=0 (parse_failed)');
+      console.error('[GPT-V2] Failed to parse JSON:', {
+        request_id: requestId,
+        image_hash: imageHash,
+        error: parseError.message,
+        raw_content: content,
+        parse_success: false
+      });
+      console.info('[GPT][parsed]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        items_before_filters: 0,
+        parse_success: false,
+        error: 'parse_failed'
+      });
       return new Response(JSON.stringify({
         items: [],
-        _debug: { from: 'gpt-v2', error: 'json_parse_error', raw_content: content }
+        _debug: { 
+          from: 'gpt-v2', 
+          error: 'json_parse_error', 
+          raw_content: content,
+          request_id: requestId,
+          image_hash: imageHash
+        }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -278,23 +347,51 @@ JSON only. No prose.`;
           const relaxedData = await relaxedResponse.json();
           const relaxedContent = relaxedData.choices?.[0]?.message?.content;
           
+          // Log relaxed attempt raw response as well
+          console.info('[GPT][relaxed_raw_response]', {
+            request_id: requestId,
+            image_hash: imageHash,
+            full_content: relaxedContent || 'null',
+            content_length: relaxedContent?.length || 0,
+            attempt: 'relaxed'
+          });
+          
           if (relaxedContent) {
             try {
               const relaxedResult = JSON.parse(relaxedContent);
               items = Array.isArray(relaxedResult) ? relaxedResult : (relaxedResult.items || []);
-              console.info('[GPT][raw_count]', items.length, 'attempt=relaxed');
+              console.info('[GPT][raw_count]', {
+                request_id: requestId,
+                image_hash: imageHash,
+                count: items.length,
+                attempt: 'relaxed'
+              });
             } catch (relaxedParseError) {
-              console.error('[GPT][relaxed_parse_error]', relaxedContent);
+              console.error('[GPT][relaxed_parse_error]', {
+                request_id: requestId,
+                image_hash: imageHash,
+                error: relaxedParseError.message,
+                raw_content: relaxedContent
+              });
             }
           }
         } else {
-          console.error('[GPT][relaxed_error]', relaxedResponse.status);
+          console.error('[GPT][relaxed_error]', {
+            request_id: requestId,
+            image_hash: imageHash,
+            status: relaxedResponse.status
+          });
         }
       } catch (relaxedError) {
         console.error('[GPT][relaxed_call_error]', relaxedError.message);
       }
     } else {
-      console.info('[GPT][raw_count]', items.length, `attempt=${attemptType}`);
+      console.info('[GPT][raw_count]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        count: items.length,
+        attempt: attemptType
+      });
     }
     
     // Normalize portionHint field name (GPT might return either)
@@ -316,13 +413,26 @@ JSON only. No prose.`;
     
     // Log canonicalization/filtering results
     if (beforeBasicFilter !== afterBasicFilter) {
-      console.info('[CANON]', `kept=${afterBasicFilter}`, `dropped=${beforeBasicFilter - afterBasicFilter}`, 'reasons=[nonfood]');
+      console.info('[CANON]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        kept: afterBasicFilter,
+        dropped: beforeBasicFilter - afterBasicFilter,
+        reasons: ['nonfood']
+      });
     }
     
     // Log final detection summary  
-    console.info('[DETECT][GPT]', `raw_count=${beforeFilterCount}`, `parsed_count=${beforeBasicFilter}`, `kept=${afterBasicFilter}`);
+    console.info('[DETECT][GPT]', {
+      request_id: requestId,
+      image_hash: imageHash,
+      raw_count: beforeFilterCount,
+      parsed_count: beforeBasicFilter,
+      kept: afterBasicFilter,
+      final_items: filteredItems.map(i => i.name)
+    });
     
-    console.log(`[GPT-V2] Detected ${filteredItems.length} items:`, filteredItems.map(i => i.name));
+    console.log(`[GPT-V2] Final result for ${requestId}:`, filteredItems.length, 'items:', filteredItems.map(i => i.name));
 
     // Return result with diagnostic info
     const result = {
@@ -334,7 +444,10 @@ JSON only. No prose.`;
         raw_tokens: (data?.usage?.total_tokens) || 0,
         diag: filteredItems.length === 0 ? 'gpt_empty' : undefined,
         raw_count: beforeFilterCount,
-        filtered_count: afterBasicFilter
+        filtered_count: afterBasicFilter,
+        request_id: requestId,
+        image_hash: imageHash,
+        duration_ms: duration_ms
       }
     };
 
