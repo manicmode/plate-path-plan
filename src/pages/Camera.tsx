@@ -52,6 +52,7 @@ import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
+import { LogPhotoIntakeModal } from '@/components/photo/LogPhotoIntakeModal';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -205,6 +206,9 @@ const CameraPage = () => {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   const [showSavedSetsSheet, setShowSavedSetsSheet] = useState(false);
+  
+  // Photo intake modal state
+  const [showLogPhotoModal, setShowLogPhotoModal] = useState(false);
   
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
@@ -2825,7 +2829,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         </div>
       )}
 
-      {/* Main Camera UI */}
+  {/* Main Camera UI */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
@@ -2834,7 +2838,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                 <div className="grid grid-cols-2 gap-4">
                   {/* Upload Photo Tab */}
                   <Button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowLogPhotoModal(true)}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
@@ -3261,6 +3265,12 @@ console.log('Global search enabled:', enableGlobalSearch);
 
 
       {/* Legacy BarcodeScanner removed - using LogBarcodeScannerModal only */}
+
+      {/* Log Photo Intake Modal */}
+      <LogPhotoIntakeModal
+        isOpen={showLogPhotoModal}
+        onClose={() => setShowLogPhotoModal(false)}
+      />
 
       {/* Log Barcode Scanner Modal - Full Screen */}
       <LogBarcodeScannerModal
