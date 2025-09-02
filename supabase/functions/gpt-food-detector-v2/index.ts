@@ -27,6 +27,14 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
+    // Log configuration details
+    const keyTail = openaiApiKey.slice(-6);
+    console.info('[GPT][cfg]', {
+      model: 'gpt-4o',
+      key_tail: `******${keyTail}`,
+      request_id: requestId
+    });
+
     // Normalize and validate image
     let normalizedBase64 = image_base64;
     let hasPrefix = false;
@@ -117,6 +125,26 @@ Example for salmon plate:
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0).toString(16);
+
+    // Calculate actual decoded byte size for diagnostics
+    const base64Data = hasPrefix ? normalizedBase64.split(',')[1] : normalizedBase64;
+    const decodedLength = Math.floor(base64Data.length * 3 / 4);
+    
+    // Log image payload details
+    console.info('[GPT][img]', {
+      request_id: requestId,
+      bytes: decodedLength,
+      prefixOk: hasPrefix,
+      mime: mimeType,
+      b64_length: base64Data.length
+    });
+    
+    // **CRITICAL**: Ensure proper data URL format for OpenAI vision API
+    if (!hasPrefix || !normalizedBase64.startsWith('data:image/')) {
+      console.warn('[GPT][img] Fixing missing/invalid data URL prefix');
+      normalizedBase64 = `data:image/jpeg;base64,${base64Data}`;
+      hasPrefix = true;
+    }
     
     // Log request details before API call
     console.info('[GPT][req]', {
@@ -144,8 +172,24 @@ Example for salmon plate:
 
     let response: Response;
     let retryAttempt = false;
+    const startTime = Date.now();
     
     try {
+      // **CRITICAL**: Use proper vision content structure for OpenAI API
+      const visionContent = [
+        { 
+          type: 'text', 
+          text: userPrompt 
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: normalizedBase64,
+            detail: 'high'
+          }
+        }
+      ];
+
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -158,43 +202,107 @@ Example for salmon plate:
             { role: 'system', content: systemPrompt },
             { 
               role: 'user', 
-              content: [
-                { type: 'text', text: userPrompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: normalizedBase64,
-                    detail: 'high'
-                  }
-                }
-              ]
+              content: visionContent
             }
           ]
         }),
       });
+      
+      const elapsed_ms = Date.now() - startTime;
+      
+      if (response.ok) {
+        console.info('[GPT][http]', {
+          request_id: requestId,
+          image_hash: imageHash,
+          status: response.status,
+          t_ms: elapsed_ms
+        });
+      } else {
+        const errorBody = await response.text();
+        console.error('[GPT][err]', {
+          request_id: requestId,
+          image_hash: imageHash,
+          status: response.status,
+          body: errorBody.substring(0, 300)
+        });
+        
+        // Return structured error instead of throwing
+        return new Response(JSON.stringify({
+          items: [],
+          _debug: { 
+            from: 'gpt-v2', 
+            error: 'http_error',
+            status: response.status,
+            body_preview: errorBody.substring(0, 100),
+            request_id: requestId,
+            image_hash: imageHash
+          }
+        }), {
+          status: 200, // Return 200 to avoid breaking UI
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     } catch (fetchError) {
-      console.error('[GPT][error]', { status: 'fetch_failed', message: fetchError.message });
-      throw fetchError;
+      const elapsed_ms = Date.now() - startTime;
+      console.error('[GPT][err]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        status: 'fetch_failed',
+        message: fetchError.message,
+        t_ms: elapsed_ms
+      });
+      
+      // Return structured error instead of throwing
+      return new Response(JSON.stringify({
+        items: [],
+        _debug: { 
+          from: 'gpt-v2', 
+          error: 'fetch_failed',
+          message: fetchError.message,
+          request_id: requestId,
+          image_hash: imageHash
+        }
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Handle 413 (payload too large) with auto-downscale retry
     if (response.status === 413) {
-      console.warn('[GPT][error] 413 payload too large, retrying with smaller image');
-      // For now, just log - actual downscaling would happen in client
-      const errorText = await response.text();
-      console.error(`[GPT][error] status=413 message="payload too large"`);
-      throw new Error(`Image too large: ${response.status} ${errorText}`);
+      const elapsed_ms = Date.now() - startTime;
+      console.warn('[GPT][err]', {
+        request_id: requestId,
+        image_hash: imageHash,
+        status: 413,
+        message: 'payload too large',
+        t_ms: elapsed_ms
+      });
+      
+      return new Response(JSON.stringify({
+        items: [],
+        _debug: { 
+          from: 'gpt-v2', 
+          error: 'payload_too_large',
+          request_id: requestId,
+          image_hash: imageHash
+        }
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[GPT][error] status=${response.status} message="${errorText.slice(0, 100)}"`);
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
-    }
-
-    const startTime = Date.now();
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
+    
+    // **DIAGNOSTIC**: Log raw content before any parsing  
+    console.info('[GPT][raw]', {
+      request_id: requestId,
+      image_hash: imageHash,
+      len: content?.length || 0,
+      sample: content?.substring(0, 200) || 'null'
+    });
     
     // Calculate duration and log HTTP details
     const duration_ms = Date.now() - startTime;
