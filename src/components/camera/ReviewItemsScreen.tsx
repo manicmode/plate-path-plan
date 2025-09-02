@@ -10,6 +10,7 @@ import { Plus, ArrowRight, Edit3, AlertCircle, Zap, Save, Info } from 'lucide-re
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { SaveSetDialog } from './SaveSetDialog';
+import { FF } from '@/featureFlags';
 
 export interface ReviewItem {
   name: string;
@@ -229,47 +230,80 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
           {/* Three action buttons */}
           <div className="space-y-3 mt-6">
-            {/* Primary: Log selected items (one-tap) */}
-            <Button
-              onClick={handleLogImmediately}
-              disabled={selectedCount === 0}
-              className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Log Selected Items ({selectedCount})
-            </Button>
-            
-            {/* Secondary: See details before logging */}
-            <Button
-              onClick={handleNext}
-              disabled={selectedCount === 0}
-              variant="outline"
-              className="w-full"
-            >
-              <Info className="h-4 w-4 mr-2" />
-              See Details Before Logging
-            </Button>
-            
-            <div className="flex gap-3">
-              {/* Tertiary: Save this set */}
-              <Button
-                onClick={handleSaveSet}
-                disabled={selectedCount === 0}
-                variant="ghost"
-                size="sm"
-                className="flex-1"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Set
-              </Button>
-              
-              {/* Cancel */}
-              <DialogClose asChild>
-                <Button variant="outline" size="sm" className="flex-1">
-                  Cancel
+            {FF.FEATURE_LYF_LOG_THIS_SET ? (
+              <>
+                {/* Primary: Log selected items (one-tap) */}
+                <Button
+                  onClick={handleLogImmediately}
+                  disabled={selectedCount === 0}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Log Selected Items ({selectedCount})
                 </Button>
-              </DialogClose>
-            </div>
+                
+                {/* Secondary: See details before logging */}
+                <Button
+                  onClick={handleNext}
+                  disabled={selectedCount === 0}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  See Details Before Logging
+                </Button>
+                
+                <div className="flex gap-3">
+                  {/* Tertiary: Save this set */}
+                  <Button
+                    onClick={handleSaveSet}
+                    disabled={selectedCount === 0}
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Set
+                  </Button>
+                  
+                  {/* Cancel */}
+                  <DialogClose asChild>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                </div>
+              </>
+            ) : (
+              /* Fallback layout when feature flag is off */
+              <>
+                <Button
+                  onClick={handleNext}
+                  disabled={selectedCount === 0}
+                  className="w-full"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Continue ({selectedCount})
+                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleSaveSet}
+                    disabled={selectedCount === 0}
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Set
+                  </Button>
+                  <DialogClose asChild>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                </div>
+              </>
+            )}
           </div>
 
           {selectedCount > 0 && (

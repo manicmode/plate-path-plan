@@ -26,44 +26,21 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const candidates = items.filter(i => i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
   
   if (import.meta.env.DEV) {
+    console.info('[LYF][v1] raw:', items.map(i => i.name));
     console.info('[LYF][v1] candidates', candidates.map(c => `${c.name}:${(c.score || c.confidence || 0).toFixed(2)}:${c.source}`));
-    console.info('[LYF][v1] keep:', candidates.map(i => i.name));
   }
   
-  // Group by canonical name and de-duplicate 
-  const grouped = new Map<string, any[]>();
-  for (const c of candidates) {
-    const canonical = canonicalizeName(c.name);
-    if (!grouped.has(canonical)) {
-      grouped.set(canonical, []);
-    }
-    grouped.get(canonical)!.push({ ...c, canonicalName: canonical });
-  }
+  // Add canonical names to candidates
+  const candidatesWithCanonical = candidates.map(c => ({
+    ...c,
+    canonicalName: canonicalizeName(c.name)
+  }));
   
-  // Choose representative from each group
-  const dedupedCandidates = Array.from(grouped.entries()).map(([canonical, items]) => {
-    // Prefer specific over generic (salmon > fish)
-    const specific = items.filter(i => !isGeneric(canonical));
-    const generic = items.filter(i => isGeneric(canonical));
-    
-    if (specific.length > 0 && generic.length > 0) {
-      // Keep only specific, drop generic
-      items = specific;
-    }
-    
-    // Sort by: objects first, then highest confidence
-    items.sort((a, b) => {
-      if (a.source !== b.source) {
-        return a.source === 'object' ? -1 : 1;
-      }
-      return (b.confidence || b.score || 0) - (a.confidence || a.score || 0);
-    });
-    
-    return items[0];
-  }).slice(0, 8); // Cap at 8 after dedup
+  // Apply deduplication and prefer specific over generic
+  const dedupedCandidates = preferSpecific(candidatesWithCanonical).slice(0, 8); // Cap at 8 after dedup
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] dedup_heads:', dedupedCandidates.map(c => c.canonicalName));
+    console.info('[LYF][v1] keep:', dedupedCandidates.map(c => c.canonicalName));
   }
   
   // NEVER DROP unmapped items - include all candidates that pass filters
@@ -115,25 +92,70 @@ function canonicalizeName(name: string): string {
   
   // Apply synonym mapping
   const synonymMap: Record<string, string> = {
+    'cherry tomatoes': 'cherry tomato',
     'cherry tomato': 'tomato',
     'grape tomato': 'tomato', 
     'lemon slice': 'lemon',
     'lemon wedge': 'lemon',
     'lime wedge': 'lime',
     'salmon fillet': 'salmon',
-    'asparagus spear': 'asparagus'
+    'asparagus spear': 'asparagus',
+    'fish product': 'fish',
+    'fish fillet': 'fish'
   };
   
   return synonymMap[canonical] || canonical;
 }
 
-// Calculate similarity between two canonical names
-function calculateSimilarity(a: string, b: string): number {
-  const wordsA = new Set(a.split(' '));
-  const wordsB = new Set(b.split(' '));
-  let common = 0;
-  wordsA.forEach(word => wordsB.has(word) && common++);
-  return common / Math.max(1, Math.max(wordsA.size, wordsB.size));
+// Check if a canonical name is generic vs specific
+function isGeneric(canonical: string): boolean {
+  const genericTerms = ['fish', 'meat', 'vegetable', 'fruit', 'seafood', 'protein'];
+  return genericTerms.includes(canonical.toLowerCase());
+}
+
+// Prefer specific over generic foods
+function preferSpecific(items: any[]): any[] {
+  const grouped = new Map<string, any[]>();
+  
+  // Group by canonical name
+  for (const item of items) {
+    const canonical = item.canonicalName;
+    if (!grouped.has(canonical)) {
+      grouped.set(canonical, []);
+    }
+    grouped.get(canonical)!.push(item);
+  }
+  
+  const result: any[] = [];
+  
+  // For each canonical group, choose the best representative
+  for (const [canonical, group] of grouped.entries()) {
+    // Sort by source (object > label) then confidence
+    group.sort((a, b) => {
+      if (a.source !== b.source) {
+        return a.source === 'object' ? -1 : 1;
+      }
+      return (b.confidence || b.score || 0) - (a.confidence || a.score || 0);
+    });
+    
+    result.push(group[0]); // Take the best one
+  }
+  
+  // Now handle generic vs specific deduplication
+  const specificItems = result.filter(item => !isGeneric(item.canonicalName));
+  const genericItems = result.filter(item => isGeneric(item.canonicalName));
+  
+  // If we have specific fish like "salmon", remove generic "fish"
+  const hasSpecificFish = specificItems.some(item => 
+    ['salmon', 'tuna', 'cod', 'trout', 'bass'].includes(item.canonicalName)
+  );
+  
+  if (hasSpecificFish) {
+    // Remove generic fish items
+    return specificItems.concat(genericItems.filter(item => item.canonicalName !== 'fish'));
+  }
+  
+  return result;
 }
 
 // Default portion estimates based on food type
@@ -150,10 +172,4 @@ function getDefaultGrams(canonicalName: string): number {
   if (/lettuce|spinach|kale/.test(name)) return 50;
   
   return 100; // Default fallback
-}
-
-// Check if a canonical name is generic vs specific
-function isGeneric(canonical: string): boolean {
-  const genericTerms = ['fish', 'fish product', 'meat', 'vegetable', 'fruit'];
-  return genericTerms.includes(canonical.toLowerCase());
 }

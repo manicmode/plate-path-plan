@@ -2,7 +2,7 @@
 const NEG = /\b(?:recipe|cuisine|cooking|garnish|dishware|plate|cutlery|fork|spoon|logo|brand|text|tableware|bowl|knife|utensil|napkin|package|pack|sleeve|box|label)\b/i;
 
 // Veg/fruit allowlist - always allow these with lower threshold
-export const ALWAYS_ALLOW = new Set(['salmon','asparagus','tomato','cherry tomato','lemon','lemon slice','lemon wedge','lime','lime wedge']);
+export const ALWAYS_ALLOW = new Set(['salmon','asparagus','tomato','cherry tomato','cherry tomatoes','lemon','lemon slice','lemon wedge','lime','lime wedge','dill']);
 
 // Label minimum score
 const LABEL_MIN_SCORE = 0.45;
