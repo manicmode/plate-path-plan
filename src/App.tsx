@@ -600,7 +600,7 @@ function AppContent() {
                                  </Suspense>
                                } />
                                 <Route path="/health-report/analyze" element={
-                                  FF.FEATURE_PHOTO_FLOW_V2 ? (
+                                  FF.FEATURE_HEALTH_SCAN_PHOTO ? (
                                     <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
                                       <HealthReportStandalone />
                                     </Suspense>
@@ -609,7 +609,7 @@ function AppContent() {
                                       <div className="text-center p-8">
                                         <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
                                         <p className="text-muted-foreground mb-6">
-                                          Health-Scan V2 photo analysis is not currently available.
+                                          Health-Scan photo analysis is not currently available.
                                         </p>
                                         <Button onClick={() => window.history.back()}>
                                           Go Back

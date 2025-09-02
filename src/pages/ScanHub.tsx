@@ -186,20 +186,14 @@ export default function ScanHub() {
   const handleTakePhoto = () => {
     logTileClick('photo');
     
-    // Don't auto-open photo modal while meal tokens exist
-    const mealActive = mealCaptureEnabledFromSearch(location.search);
-    const inflight = sessionStorage.getItem("mc:handoff:inflight") === "1";
-    const hasToken = sessionStorage.getItem('mc:token') !== null;
-    if (mealActive && (inflight || hasToken)) {
-      return; // skip any "auto-open photo modal" effects
-    }
-    
-    if (!imageAnalyzerEnabled) {
-      toast('Photo analysis is in beta; try manual or voice for now.');
-      setManualEntryOpen(true);
-    } else {
-      setPhotoModalOpen(true);
-    }
+    // Navigate directly to Camera page with LYF v1 mode
+    navigate('/camera', { 
+      state: { 
+        source: 'health-scan', 
+        lyfMode: 'v1',
+        autoStart: true 
+      } 
+    });
   };
 
   const handleEnterManually = () => {
@@ -391,13 +385,12 @@ export default function ScanHub() {
             enableSound={true}
           />
 
-          {FF.FEATURE_PHOTO_FLOW_V2 && (
+          {FF.FEATURE_HEALTH_SCAN_PHOTO && (
             <ScanTile
               icon={Camera}
               title="Take a Photo"
-              subtitle="AI-powered ingredient analysis"
+              subtitle="Analyze a plate in seconds"
               onClick={handleTakePhoto}
-              disabled={!imageAnalyzerEnabled}
               enableSound={true}
             />
           )}
