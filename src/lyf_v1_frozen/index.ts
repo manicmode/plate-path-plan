@@ -1,6 +1,7 @@
 import { analyzeLyfV1 } from './detectorClient';
 import { looksFoodish, rankSource } from './filters';
 import { mapVisionNameToFood } from './mapToNutrition';
+import { preferSpecific } from './preferSpecific';
 
 // If some caller returns items without a source, default them using _debug.from
 function ensureSources(items: any[], dbgFrom?: string) {
@@ -11,24 +12,17 @@ function ensureSources(items: any[], dbgFrom?: string) {
 }
 
 export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
+  console.info('[LYF][v1] path active');
+  
   const { items: rawItems, _debug } = await analyzeLyfV1(supabase, base64);
   const items = ensureSources(rawItems ?? [], _debug?.from);
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] resp:', {
-      from: _debug?.from,
-      rawObjectsCount: _debug?.rawObjectsCount || _debug?.rawObjects || 0,
-      rawLabelsCount: _debug?.rawLabelsCount || _debug?.rawLabels || 0
-    });
-  }
-  
-  // Build single candidate list from all normalized items
-  const candidates = items.filter(i => i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
-  
-  if (import.meta.env.DEV) {
     console.info('[LYF][v1] raw:', items.map(i => i.name));
-    console.info('[LYF][v1] candidates', candidates.map(c => `${c.name}:${(c.score || c.confidence || 0).toFixed(2)}:${c.source}`));
   }
+  
+  // Build single candidate list from all normalized items  
+  const candidates = items.filter(i => i?.name && looksFoodish(i.name, i.source, i.confidence || i.score));
   
   // Add canonical names to candidates
   const candidatesWithCanonical = candidates.map(c => ({
@@ -40,7 +34,8 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
   const dedupedCandidates = preferSpecific(candidatesWithCanonical).slice(0, 8); // Cap at 8 after dedup
   
   if (import.meta.env.DEV) {
-    console.info('[LYF][v1] keep:', dedupedCandidates.map(c => c.canonicalName));
+    console.info('[LYF][v1] kept:', dedupedCandidates.map(c => c.canonicalName));
+    console.info('[LYF][v1] deduped:', dedupedCandidates.map(c => `${c.canonicalName}:${c.source}`));
   }
   
   // NEVER DROP unmapped items - include all candidates that pass filters
@@ -113,62 +108,28 @@ function isGeneric(canonical: string): boolean {
   return genericTerms.includes(canonical.toLowerCase());
 }
 
-// Prefer specific over generic foods
-function preferSpecific(items: any[]): any[] {
-  const grouped = new Map<string, any[]>();
-  
-  // Group by canonical name
-  for (const item of items) {
-    const canonical = item.canonicalName;
-    if (!grouped.has(canonical)) {
-      grouped.set(canonical, []);
-    }
-    grouped.get(canonical)!.push(item);
-  }
-  
-  const result: any[] = [];
-  
-  // For each canonical group, choose the best representative
-  for (const [canonical, group] of grouped.entries()) {
-    // Sort by source (object > label) then confidence
-    group.sort((a, b) => {
-      if (a.source !== b.source) {
-        return a.source === 'object' ? -1 : 1;
-      }
-      return (b.confidence || b.score || 0) - (a.confidence || a.score || 0);
-    });
-    
-    result.push(group[0]); // Take the best one
-  }
-  
-  // Now handle generic vs specific deduplication
-  const specificItems = result.filter(item => !isGeneric(item.canonicalName));
-  const genericItems = result.filter(item => isGeneric(item.canonicalName));
-  
-  // If we have specific fish like "salmon", remove generic "fish"
-  const hasSpecificFish = specificItems.some(item => 
-    ['salmon', 'tuna', 'cod', 'trout', 'bass'].includes(item.canonicalName)
-  );
-  
-  if (hasSpecificFish) {
-    // Remove generic fish items
-    return specificItems.concat(genericItems.filter(item => item.canonicalName !== 'fish'));
-  }
-  
-  return result;
-}
-
-// Default portion estimates based on food type
+// Default portion estimates based on food type - plate-scale heuristics
 function getDefaultGrams(canonicalName: string): number {
   const name = canonicalName.toLowerCase();
   
-  if (/salmon|tuna|trout|fish/.test(name)) return 140;
+  // Proteins - typical serving sizes
+  if (/salmon/.test(name)) return 140;
+  if (/tuna|trout|fish/.test(name)) return 120;  
   if (/chicken|beef|pork|protein/.test(name)) return 120;
-  if (/asparagus/.test(name)) return 90;
+  
+  // Vegetables - realistic plate portions
+  if (/asparagus/.test(name)) return 80; // bunch on plate
   if (/broccoli|cauliflower/.test(name)) return 100;
-  if (/tomato/.test(name)) return 30;
-  if (/lemon|lime/.test(name)) return 10;
+  if (/cherry tomato/.test(name)) return 40; // 4-5 pieces
+  if (/tomato/.test(name)) return 80; // medium tomato slices
+  
+  // Citrus - garnish amounts
+  if (/lemon|lime/.test(name)) return 10; // wedge
+  
+  // Starches
   if (/rice|pasta|bread/.test(name)) return 150;
+  
+  // Leafy greens 
   if (/lettuce|spinach|kale/.test(name)) return 50;
   
   return 100; // Default fallback

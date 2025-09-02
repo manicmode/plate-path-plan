@@ -806,13 +806,12 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           }));
 
           console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
+          console.info('[LYF][ui] review_opened items=', reviewItems.length);
           
           // Open review screen with atomic handoff
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
           setInputSource('photo'); // Flag for LYF source
-          
-          console.info('[LYF][ui] review_opened items=', reviewItems.length);
         } catch (error) {
           console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');

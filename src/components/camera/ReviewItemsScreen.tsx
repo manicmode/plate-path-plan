@@ -6,6 +6,10 @@ import { toast } from 'sonner';
 import { SaveSetDialog } from './SaveSetDialog';
 import { ReviewItemCard } from './ReviewItemCard';
 import { FF } from '@/featureFlags';
+import { createFoodLogsBatch } from '@/api/nutritionLogs';
+import { saveMealSet } from '@/api/mealSets';
+import { useAuth } from '@/contexts/auth';
+import { useNavigate } from 'react-router-dom';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -37,6 +41,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Atomic handoff - update items when props change
   React.useEffect(() => {
@@ -82,26 +88,85 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     onNext(selectedItems);
   };
 
-  const handleLogImmediately = () => {
+  const handleLogImmediately = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to log');
       return;
     }
-    if (onLogImmediately) {
-      onLogImmediately(selectedItems);
-    } else {
-      toast.error('Immediate logging not available');
+    
+    if (!user?.id) {
+      toast.error('You must be logged in to log food');
+      return;
+    }
+
+    try {
+      console.info('[LYF][one-tap-log]', selectedItems.map(i => ({ 
+        name: i.canonicalName || i.name, 
+        grams: i.grams || 100 
+      })));
+
+      const batchItems = selectedItems.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100,
+        source: 'photo_v1'
+      }));
+
+      await createFoodLogsBatch(batchItems, user.id);
+      
+      toast.success(`Logged ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      onClose();
+    } catch (error) {
+      console.error('Failed to log items:', error);
+      toast.error('Failed to log items. Please try again.');
     }
   };
 
-  const handleSaveSet = () => {
+  const handleSeeDetails = () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to continue');
+      return;
+    }
+    
+    // Navigate to health profile/confirmation flow
+    onNext(selectedItems);
+    onClose();
+  };
+
+  const handleSaveSet = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to save');
       return;
     }
+    
+    if (!user?.id) {
+      toast.error('You must be logged in to save sets');
+      return;
+    }
+    
     setShowSaveDialog(true);
+  };
+
+  const handleSaveSetConfirm = async (setName: string) => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    
+    try {
+      const mealSetItems = selectedItems.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100
+      }));
+
+      await saveMealSet(setName, mealSetItems);
+      toast.success(`Saved "${setName}" with ${selectedItems.length} items`);
+      setShowSaveDialog(false);
+    } catch (error) {
+      console.error('Failed to save meal set:', error);
+      toast.error('Failed to save set. Please try again.');
+    }
   };
 
   const selectedCount = items.filter(item => item.selected && item.name.trim()).length;
@@ -192,7 +257,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   
                   {/* Secondary: See Health Profile & Log */}
                   <Button
-                    onClick={handleNext}
+                    onClick={handleSeeDetails}
                     disabled={selectedCount === 0}
                     variant="secondary"
                     className="w-full"
@@ -225,7 +290,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 /* Fallback layout when feature flag is off */
                 <>
                   <Button
-                    onClick={handleNext}
+                    onClick={handleSeeDetails}
                     disabled={selectedCount === 0}
                     className="w-full"
                   >
@@ -266,13 +331,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               .map(item => ({
                 name: item.name,
                 canonicalName: item.canonicalName || item.name,
-                grams: item.grams || parseInt(item.portion.replace(/\D/g, '')) || 100
+                grams: item.grams || 100
               }))
             }
-            onSaved={(setName) => {
-              setShowSaveDialog(false);
-              toast.success(`Saved "${setName}"`);
-            }}
+            onSaved={handleSaveSetConfirm}
           />
         </Dialog.Content>
       </Dialog.Portal>
