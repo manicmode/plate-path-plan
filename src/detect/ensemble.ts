@@ -104,6 +104,99 @@ export function similar(a: string, b: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
+export interface DetectedItem {
+  name: string;
+  confidence: number;
+  category: 'veg' | 'protein' | 'starch' | 'fruit' | 'other';
+  source: 'gpt' | 'vision' | 'both';
+}
+
+export async function detectItemsEnsemble(imageFile: File): Promise<DetectedItem[]> {
+  const TIMEOUT_MS = 8000;
+  const VEGGIE_HERBS = new Set(['asparagus', 'lemon', 'avocado', 'broccoli', 'spinach', 'tomato', 'cucumber', 'carrot', 'pepper', 'onion', 'garlic', 'herbs', 'basil', 'cilantro']);
+  
+  try {
+    // GPT-first detection with timeout
+    const gptPromise = callGptVisionDetection(imageFile);
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('GPT_TIMEOUT')), TIMEOUT_MS)
+    );
+    
+    let gptItems: DetectedItem[] = [];
+    let visionItems: DetectedItem[] = [];
+    
+    try {
+      gptItems = await Promise.race([gptPromise, timeoutPromise]);
+    } catch (error) {
+      console.warn('[DETECTION] GPT timeout, falling back to vision-first');
+      // Fall back to vision detection
+      visionItems = await callVisionDetection(imageFile);
+    }
+    
+    // If GPT succeeded, supplement with vision for missing veggies
+    if (gptItems.length > 0) {
+      visionItems = await callVisionDetection(imageFile);
+      const gptNames = new Set(gptItems.map(item => canonicalize(item.name)));
+      
+      // Add vision items only if they're veggies/herbs and not in GPT results
+      for (const visionItem of visionItems) {
+        const canonical = canonicalize(visionItem.name);
+        if (VEGGIE_HERBS.has(canonical) && !gptNames.has(canonical)) {
+          gptItems.push({
+            name: canonical,
+            confidence: visionItem.confidence * 0.8, // Slightly lower confidence
+            category: 'veg',
+            source: 'vision'
+          });
+        }
+      }
+    }
+    
+    const allItems = gptItems.length > 0 ? gptItems : visionItems;
+    
+    // Canonicalize and dedupe
+    const canonicalized = allItems.map(item => ({
+      ...item,
+      name: canonicalize(item.name)
+    }));
+    
+    const deduped = dedupe(canonicalized);
+    
+    if (import.meta.env?.DEV) {
+      console.info('[DETECTION] backend=gpt-first, items=', deduped.map(i => i.name));
+    }
+    
+    return deduped;
+  } catch (error) {
+    console.error('[DETECTION] Ensemble detection failed:', error);
+    return [];
+  }
+}
+
+async function callGptVisionDetection(imageFile: File): Promise<DetectedItem[]> {
+  // Placeholder - would call GPT Vision API with schema
+  // For now, return empty array to avoid breaking build
+  return [];
+}
+
+async function callVisionDetection(imageFile: File): Promise<DetectedItem[]> {
+  // Placeholder - would call existing vision detection
+  // For now, return empty array to avoid breaking build
+  return [];
+}
+
+function dedupe(items: DetectedItem[]): DetectedItem[] {
+  const byKey = new Map<string, DetectedItem>();
+  for (const item of items) {
+    const key = canonicalize(item.name);
+    const existing = byKey.get(key);
+    if (!existing || item.confidence > existing.confidence) {
+      byKey.set(key, { ...item, name: key });
+    }
+  }
+  return [...byKey.values()];
+}
+
 export function fuseDetections(visionFoods: VisionFood[], gptNames: string[]): FusedFood[] {
   const SIMILARITY_THRESHOLD = 0.85; // Stricter similarity for better deduplication
   const fused: FusedFood[] = [];
@@ -164,7 +257,7 @@ export function fuseDetections(visionFoods: VisionFood[], gptNames: string[]): F
   const topItems = sorted.slice(0, 8);
   
   // DEV logging
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     console.info('[ENSEMBLE] vision=' + visionFoods.length + ' gpt=' + gptNames.length + ' fused=' + topItems.length + ' added_from_gpt=' + addedFromGpt);
     console.info('[LYF][ensemble] fused:', topItems.map(item => item.canonicalName));
   }
