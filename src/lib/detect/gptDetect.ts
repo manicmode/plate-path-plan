@@ -9,8 +9,11 @@ export async function gptDetectItems(imageBase64: string, timeoutMs = 8000): Pro
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
+    const body = { image_b64: imageBase64, mode: 'gpt-first' };
+    console.log('[UPLOAD] invoking meal-detector with keys=' + JSON.stringify(Object.keys(body)));
+    
     const { data, error } = await supabase.functions.invoke('meal-detector', {
-      body: { imageBase64, mode: 'gpt-first' },
+      body,
     });
     if (error) {
       console.warn('[GPT-DETECT] edge error', error);

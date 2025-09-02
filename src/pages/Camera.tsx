@@ -787,6 +787,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           
           // === NEW ENSEMBLE DETECTION (GPT-first) ===
           console.info('[DETECTION] backend=', import.meta.env?.VITE_DETECTION_BACKEND ?? 'gpt-first');
+          
+          // === UPLOAD PHOTO INSTRUMENTATION ===
+          console.log('[UPLOAD] file: type=' + (selectedImage?.split(';')[0]?.split(':')[1] || 'unknown') + ' size=' + selectedImage?.length + ' bytes');
+          console.log('[UPLOAD] b64: present=' + !!imageBase64 + ' length=' + imageBase64?.length + ' head=' + imageBase64?.substring(0, 30) + '...');
+          
           const detectedItems = await detectItemsEnsemble(imageBase64, {
             featureBackend: (import.meta.env?.VITE_DETECTION_BACKEND as any) || 'gpt-first',
           });

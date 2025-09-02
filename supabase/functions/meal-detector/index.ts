@@ -14,13 +14,23 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   
   try {
-    const { image_base64 } = await req.json();
+    const body = await req.json();
+    const { image_base64, image_b64, mode } = body;
+    
+    // === MEAL-DETECTOR INSTRUMENTATION ===
+    console.log('[MEAL-DETECTOR] inputs: image_base64?=' + !!image_base64 + ' len=' + (image_base64?.length || 0) + ', image_b64?=' + !!image_b64 + ' len=' + (image_b64?.length || 0) + ', mode=' + mode);
+    
+    // Use either key (maintain compatibility)
+    const imageInput = image_base64 || image_b64;
     const key = Deno.env.get("GOOGLE_VISION_API_KEY");
     if (!key) throw new Error("Missing GOOGLE_VISION_API_KEY");
 
     // Sanitize base64 input
-    const content = (image_base64 || "").split(",").pop();
-    if (!content) throw new Error("Invalid image data");
+    const content = (imageInput || "").split(",").pop();
+    if (!content) {
+      console.log('[MEAL-DETECTOR] No valid image data - falling back to Vision-only');
+      throw new Error("Invalid image data");
+    }
 
     console.log("[MEAL-DETECTOR] Starting object detection...");
 
