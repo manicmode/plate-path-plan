@@ -83,33 +83,35 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // Handle transcript result - route directly to manual log
+  // Handle transcript result - route directly to manual log with watchdog
   const handleTranscriptAccepted = useCallback((text: string, confidence?: number) => {
     console.log(`[VOICE] Transcript accepted: "${text}" (confidence: ${confidence})`);
+    console.log('[VOICE] confirm: YES → /log/manual');
     safeSetStatus('processing');
     
-    // Start processing watchdog (6s timeout) 
-    processingWatchdogRef.current = setTimeout(() => {
-      if (mountedRef.current && status === 'processing') {
-        console.warn('[VOICE] Processing watchdog timeout - routing anyway');
-        const finalQuery = text.trim();
-        console.log('[VOICE] confirm: TIMEOUT → route /log/manual');
-        window.location.href = `/log/manual?query=${encodeURIComponent(finalQuery)}&source=voice`;
+    const finalQuery = text.trim();
+    const goManual = () => {
+      console.log('[VOICE] Routing to manual log');
+      window.location.href = `/log/manual?query=${encodeURIComponent(finalQuery)}&source=voice`;
+    };
+    
+    // Immediate navigation
+    setTimeout(() => {
+      if (!mountedRef.current) return;
+      goManual();
+    }, 500);
+
+    // 6s watchdog in case navigation gets blocked
+    const watchdogTimer = setTimeout(() => {
+      if (mountedRef.current) {
+        console.log('[VOICE] watchdog route → /log/manual');
+        goManual();
       }
     }, 6000);
 
-    // Brief processing delay, then route to manual log
-    setTimeout(() => {
-      if (!mountedRef.current) return;
-      
-      clearTimers();
-      const finalQuery = text.trim();
-      console.log('[VOICE] confirm: YES → route /log/manual');
-      
-      // Route to manual log with prefilled query
-      window.location.href = `/log/manual?query=${encodeURIComponent(finalQuery)}&source=voice`;
-    }, 500);
-  }, [safeSetStatus, clearTimers, status]);
+    // Cleanup function
+    return () => clearTimeout(watchdogTimer);
+  }, [safeSetStatus]);
 
   // Start listening with Speech Recognition API
   const startListening = useCallback(() => {

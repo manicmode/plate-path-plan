@@ -43,7 +43,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
-import { detectItemsEnsemble } from '@/detect/ensemble';
+import { detectItemsEnsemble } from '@/lib/detect/detectItemsEnsemble';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
@@ -135,6 +135,11 @@ function guessDefaultGrams(name: string){
   // keep existing heuristic (e.g., 85g protein, 100g veg)
   return /salmon|chicken|beef/i.test(name) ? 120 : /asparagus|tomato|lettuce/i.test(name) ? 80 : 100
 }
+
+const estimatePortionFromLabel = (labelName: string): string => {
+  const grams = guessDefaultGrams(labelName);
+  return `${grams}g`;
+};
 
 const CameraPage = () => {
   const navigate = useNavigate();
@@ -780,55 +785,34 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.info('[LYF][v1] path active');
           setProcessingStep('Detecting food items...');
           
-          // === LYF v1 FROZEN PIPELINE ONLY ===
-          const { mappedFoodItems: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
-          console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
+          // === NEW ENSEMBLE DETECTION (GPT-first) ===
+          console.info('[DETECTION] backend=', import.meta.env?.VITE_DETECTION_BACKEND ?? 'gpt-first');
+          const detectedItems = await detectItemsEnsemble(imageBase64, {
+            featureBackend: (import.meta.env?.VITE_DETECTION_BACKEND as any) || 'gpt-first',
+          });
           
-          // Don't post-filter - pipeline already filtered appropriately
-          const items = rawItems ?? [];
-          
-          console.info('[LYF][v1] final:', items.map(i => i.canonicalName || i.vision || i.name));
-          
-          if (items.length === 0) {
+          if (detectedItems.length === 0) {
             toast.error('No foods detected. Try a clearer photo or add manually.');
             setIsAnalyzing(false);
             return;
           }
 
-          // Normalize into ReviewItem[]
-          const reviewItems: ReviewItem[] = items.map((item: any, index: number) => ({
-            id: `lyf-${index}`,
-            name: item.canonicalName || item.vision || item.name,
-            portion: `${item.grams || 100}g`,
+          // Convert ensemble results to ReviewItem[]
+          const reviewItems: ReviewItem[] = detectedItems.map((item, index) => ({
+            id: `ensemble-${index}`,
+            name: item.name, // Already canonicalized
+            portion: estimatePortionFromLabel(item.name),
             selected: true,
-            grams: item.grams || 100,
-            canonicalName: item.canonicalName,
-            needsDetails: !item.mapped,
-            mapped: item.mapped,
-          }));
-
-          console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
-
-// Apply normalization and deduplication
-          // Apply normalization and deduplication  
-          const normalizedItems = reviewItems.map(item => ({
-            ...item,
-            name: canonicalizeName(item.name)
-          }));
-          
-          const dedupedItems = dedupe(normalizedItems.map(item => ({ ...item, score: 1 })));
-          const filteredItems = filterByCategory(dedupedItems);
-          
-          const finalItems: ReviewItem[] = filteredItems.map((item, index) => ({
-            id: `normalized-${index}`,
-            name: item.name,
-            portion: reviewItems.find(orig => canonicalizeName(orig.name) === item.name)?.portion || '100g',
-            selected: true,
-            grams: reviewItems.find(orig => canonicalizeName(orig.name) === item.name)?.grams || 100,
+            grams: guessDefaultGrams(item.name),
             canonicalName: item.name,
             needsDetails: false,
             mapped: true,
           }));
+
+          console.log('[CAMERA][ENSEMBLE] Generated review items:', reviewItems.length);
+
+          // Items are already canonicalized and deduped by ensemble
+          const finalItems = reviewItems;
 
           // Old modal vs new flow, gated by flag
           if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {

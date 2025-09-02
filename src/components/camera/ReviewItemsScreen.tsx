@@ -11,7 +11,7 @@ import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { saveMealSet } from '@/api/mealSets';
 import { useAuth } from '@/contexts/auth';
-import '@/styles/review.css';
+import { healthReviewStack } from '@/state/healthReviewStack';
 
 export interface ReviewItem {
   name: string;
@@ -149,21 +149,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
     
-    // Navigate to health report with selected items
-    const healthItems = selectedItems.map(item => ({
-      name: item.name,
-      canonicalName: item.canonicalName || item.name,
-      grams: item.grams || 100,
-      source: item.source || 'label',
-      confidence: 0.8
-    }));
+    const checkedItemNames = selectedItems.map(item => item.canonicalName || item.name);
     
-    navigate('/health-scan/report', {
-      state: {
-        items: healthItems,
-        source: 'health-scan'
-      }
-    });
+    // Check if we have any items to process
+    if (checkedItemNames.length === 0) {
+      toast.warning('No items selected');
+      return;
+    }
+    
+    // Add items to health review stack and navigate
+    healthReviewStack.append(checkedItemNames);
+    navigate('/health/review');
     onClose();
   };
 

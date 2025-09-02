@@ -1,60 +1,35 @@
-// Health Review Stack State Management
-import { create } from 'zustand';
+import { canonicalizeName } from '@/lib/detect/canonicalize';
 
-interface HealthReviewItem {
-  name: string;
-  status: 'pending' | 'loading' | 'ready' | 'error';
-  healthData?: any;
-  error?: string;
-}
-
-interface HealthReviewStackState {
-  items: HealthReviewItem[];
-  setItems: (items: HealthReviewItem[]) => void;
-  addItems: (newItems: HealthReviewItem[]) => void;
-  updateItem: (name: string, updates: Partial<HealthReviewItem>) => void;
-  clearItems: () => void;
-}
-
-export const useHealthReviewStack = create<HealthReviewStackState>((set, get) => ({
-  items: [],
-  
-  setItems: (items) => set({ items }),
-  
-  addItems: (newItems) => set((state) => {
-    // Avoid duplicates based on canonical name
-    const existingNames = new Set(state.items.map(item => item.name.toLowerCase()));
-    const uniqueNewItems = newItems.filter(item => 
-      !existingNames.has(item.name.toLowerCase())
-    );
-    return { items: [...state.items, ...uniqueNewItems] };
-  }),
-  
-  updateItem: (name, updates) => set((state) => ({
-    items: state.items.map(item =>
-      item.name.toLowerCase() === name.toLowerCase()
-        ? { ...item, ...updates }
-        : item
-    )
-  })),
-  
-  clearItems: () => set({ items: [] }),
-}));
+type StackItem = { name: string; status?: 'pending' | 'loading' | 'ready' | 'error' };
+const s = new Map<string, StackItem>();
 
 export const healthReviewStack = {
-  set: (items: { name: string; status?: 'pending' }[]) => {
-    const reviewItems = items.map(item => ({
-      name: item.name,
-      status: 'pending' as const,
-    }));
-    useHealthReviewStack.getState().setItems(reviewItems);
+  set(items: string[]) {
+    s.clear();
+    for (const n of items) {
+      const key = canonicalizeName(n);
+      s.set(key, { name: key, status: 'pending' });
+    }
   },
-  
-  add: (items: { name: string }[]) => {
-    const reviewItems = items.map(item => ({
-      name: item.name,
-      status: 'pending' as const,
-    }));
-    useHealthReviewStack.getState().addItems(reviewItems);
+  append(items: string[]) {
+    for (const n of items) {
+      const key = canonicalizeName(n);
+      if (!s.has(key)) {
+        s.set(key, { name: key, status: 'pending' });
+      }
+    }
+  },
+  all(): StackItem[] {
+    return [...s.values()];
+  },
+  update(name: string, patch: Partial<StackItem>) {
+    const key = canonicalizeName(name);
+    const cur = s.get(key);
+    if (cur) {
+      s.set(key, { ...cur, ...patch });
+    }
+  },
+  clear() {
+    s.clear();
   },
 };
