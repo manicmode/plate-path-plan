@@ -33,6 +33,8 @@ export function detectPlateEllipse(
       const ellipse: PlateEllipse = { cx, cy, rx, ry, angle: 0 };
       const area = Math.PI * rx * ry;
       
+      console.info('[PORTION] plate detected: true, method: vision');
+      
       return {
         ellipse,
         area,
@@ -40,7 +42,9 @@ export function detectPlateEllipse(
       };
     }
 
-    // Strategy 2: Lightweight heuristic detection
+    // Strategy 2: Lightweight ellipse-from-alpha heuristic
+    console.info('[PORTION] plate detected: false, method: heuristic');
+    
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return { confidence: 0 };
@@ -90,6 +94,8 @@ export function detectPlateEllipse(
       };
       
       const area = Math.PI * ellipse.rx * ellipse.ry;
+      
+      console.info('[PORTION] plate detected: true, method: heuristic');
       
       return {
         ellipse,

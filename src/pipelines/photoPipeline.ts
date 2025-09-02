@@ -76,11 +76,11 @@ export async function analyzePhoto(
     const base64 = canvas.toDataURL('image/jpeg', 0.95);
 
     // ✅ Single Detection Router Entry Point
-    const { getDetectMode, run } = await import('@/lib/detect/router');
+    const { run } = await import('@/lib/detect/router');
     
-    console.info('[DETECT][mode-check]', getDetectMode());
+    console.info('[DETECT][log] starting GPT_ONLY');
     
-    const items = await run(base64);
+    const items = await run(base64, { mode: 'log' });
     
     console.log('[PHOTO][DETECT] items_detected=', items.length);
 
@@ -88,7 +88,7 @@ export async function analyzePhoto(
       ok: true, 
       report: {
         items,
-        detectionPath: getDetectMode(),
+        detectionPath: 'GPT_ONLY',
         source: 'detect-router'
       }
     };

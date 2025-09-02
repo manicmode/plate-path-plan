@@ -21,13 +21,22 @@ const REJECT = new Set([
 
 // Canonicalization mappings
 const CANON_MAP: Record<string, string> = {
-  // citrus
+  // citrus family collapse
   'meyer lemon': 'lemon',
   'sweet lemon': 'lemon', 
   'key lime': 'lime',
   'persian lime': 'lime',
   'lime wedge': 'lime',
   'lemon wedge': 'lemon',
+  'lemon slice': 'lemon',
+  'lime slice': 'lime',
+  // protein normalization
+  'salmon filet': 'salmon',
+  'salmon fillet': 'salmon',
+  'baked salmon': 'salmon',
+  'grilled salmon': 'salmon',
+  'salmon steak': 'salmon',
+  'seared salmon': 'salmon',
   // greens
   'greens': 'salad',
   'mixed greens': 'salad',
@@ -202,8 +211,8 @@ export function isLikelyFoodName(name: string): boolean {
   return false;
 }
 
-export function processGptItems(rawItems: GptItem[]): GptItem[] {
-  console.info('[GPT][raw_items]', `count=${rawItems.length}`);
+export async function processGptItems(rawItems: GptItem[]): Promise<GptItem[]> {
+  console.info('[ROUTER][gpt:raw]', `count=${rawItems.length}`, `names=[${rawItems.map(i => i.name).join(', ')}]`);
   
   // Apply canonicalization and deduplication
   let items = dedupe(rawItems);
@@ -224,23 +233,29 @@ export function processGptItems(rawItems: GptItem[]): GptItem[] {
   items = filterByConfidence(items);
   items = finalReject(items);
   
-  // Score and sort items (protein first, then by score)
-  items = items
-    .map(item => ({ ...item, score: scoreItem(item) }))
-    .sort((a, b) => {
-      // Salmon and asparagus are "sticky" - never drop them
-      const aSalmonAsp = a.name === 'salmon' || a.name === 'asparagus';
-      const bSalmonAsp = b.name === 'salmon' || b.name === 'asparagus';
-      
-      if (aSalmonAsp && !bSalmonAsp) return -1;
-      if (!aSalmonAsp && bSalmonAsp) return 1;
-      
-      return (b as any).score - (a as any).score;
-    })
-    .slice(0, 5) // Keep top 5, but sticky items are protected
-    .map(({ score, ...item }) => item); // Remove score field
+  // Apply citrus throttling and protein boost
+  const { applyQualityFilters } = await import('./filters');
+  const { applyProteinBoost, ensureProteinSurvival } = await import('./ranker');
   
-  console.info('[FILTER][kept]', `count=${items.length}`, `names=[${items.map(i => i.name).join(', ')}]`);
+  // Convert to compatible types for filtering and ranking
+  const compatibleItems = items.map(item => ({
+    ...item,
+    category: item.category
+  }));
   
-  return items;
+  const qualityFiltered = applyQualityFilters(compatibleItems);
+  const proteinBoosted = applyProteinBoost(qualityFiltered);
+  const finalItems = ensureProteinSurvival(proteinBoosted, 5);
+  
+  // Convert back to GptItem format
+  const result = finalItems.map(item => ({
+    name: item.name,
+    category: item.category || 'unknown',
+    confidence: item.confidence,
+    portion_hint: (item as any).portion_hint || null
+  }));
+  
+  console.info('[ROUTER][gpt:canonical]', `count=${result.length}`, `names=[${result.map(i => i.name).join(', ')}]`);
+  
+  return result;
 }

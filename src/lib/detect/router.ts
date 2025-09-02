@@ -2,19 +2,29 @@
  * Detection Router - Single source of truth for detection mode
  */
 
-export type DetectMode = 'GPT_ONLY' | 'GPT_FIRST' | 'VISION_ONLY';
+export enum DetectMode {
+  GPT_ONLY = 'GPT_ONLY',
+  VISION_ONLY = 'VISION_ONLY',
+  HYBRID = 'HYBRID'
+}
+
+export type DetectModeType = keyof typeof DetectMode;
 
 function getBoolean(value: string | undefined): boolean {
   return value === 'true';
 }
 
-export function getDetectMode(): DetectMode {
-  const visionOnly = getBoolean(import.meta.env.VITE_FEATURE_USE_VISION_ONLY);
-  const first = getBoolean(import.meta.env.VITE_FEATURE_USE_GPT_FIRST);
+export function getDetectMode(context?: { mode?: string }): DetectMode {
+  // Force GPT-only for Log mode
+  if (context?.mode === 'log') {
+    console.info('[ROUTER] mode=GPT_ONLY (log)');
+    return DetectMode.GPT_ONLY;
+  }
   
-  if (visionOnly) return 'VISION_ONLY';
-  if (first) return 'GPT_FIRST';
-  return 'GPT_ONLY'; // Default to GPT_ONLY
+  const visionOnly = getBoolean(import.meta.env.VITE_FEATURE_USE_VISION_ONLY);
+  
+  if (visionOnly) return DetectMode.VISION_ONLY;
+  return DetectMode.GPT_ONLY; // Default to GPT_ONLY
 }
 
 export interface DetectedItem {
@@ -77,7 +87,7 @@ export async function detectWithGpt(imageBase64: string): Promise<DetectedItem[]
     }
 
     // Process through canonicalization pipeline
-    const processedItems = processGptItems(rawItems);
+    const processedItems = await processGptItems(rawItems);
     console.info('[ROUTER][gpt:canonical]', `count=${processedItems.length}`, `names=[${processedItems.map(i => i.name).join(', ')}]`);
     
     // Apply portion estimation (v3 or v2 based on feature flag)
@@ -194,10 +204,10 @@ async function runBestOf(imageBase64: string): Promise<DetectedItem[]> {
   return useGpt ? gptItems : visItems;
 }
 
-export async function run(imageBase64: string): Promise<DetectedItem[]> {
+export async function run(imageBase64: string, context?: { mode?: string }): Promise<DetectedItem[]> {
   console.info('[ROUTER][start]');
   
-  const mode = getDetectMode();
+  const mode = getDetectMode(context);
   console.info('[ROUTER][mode]', mode);
   
   const safeDet = getBoolean(import.meta.env.VITE_FEATURE_SAFE_DETECT);
@@ -209,25 +219,10 @@ export async function run(imageBase64: string): Promise<DetectedItem[]> {
   
   // Original mode-based routing
   switch (mode) {
-    case 'GPT_ONLY':
+    case DetectMode.GPT_ONLY:
       return await detectWithGpt(imageBase64);
       
-    case 'GPT_FIRST':
-      try {
-        const items = await detectWithGpt(imageBase64);
-        if (!items?.length) {
-          console.warn('[DETECT] GPT empty, fallback to Vision');
-          console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-          return await detectWithVision(imageBase64);
-        }
-        return items;
-      } catch (e) {
-        console.warn('[DETECT] GPT error, fallback', e);
-        console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-        return await detectWithVision(imageBase64);
-      }
-      
-    case 'VISION_ONLY':
+    case DetectMode.VISION_ONLY:
     default:
       return await detectWithLyfV1Vision(imageBase64);
   }
@@ -283,10 +278,10 @@ async function applyPortionEstimation(
   processedItems: any[], 
   imageBase64: string
 ): Promise<DetectedItem[]> {
-  const useV3 = getBoolean(import.meta.env.VITE_PORTION_V3);
+  const USE_PORTION_V3 = true; // Always use v3 for Log mode
   const strictMode = getBoolean(import.meta.env.VITE_PORTION_STRICT);
   
-  if (!useV3) {
+  if (!USE_PORTION_V3) {
     // Use v2 estimation (existing behavior)
     const { estimatePortionWithDefaults } = await import('@/lib/portion/estimate');
     return Promise.all(

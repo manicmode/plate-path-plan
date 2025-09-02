@@ -771,46 +771,20 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         console.log('=== DETECTION ROUTER PATH ===');
         console.log('Image does not appear to be a barcode, proceeding with detection...');
         
+        console.info('[DETECT][log] starting GPT_ONLY');
+        
         // Use the unified detection router
         const imageBase64 = convertToBase64(selectedImage);
         setProcessingStep('Detecting food items...');
         setIsAnalyzing(true);
         
         try {
-          const { getDetectMode, detectWithGpt, detectWithVision, detectWithLyfV1Vision } = await import('@/lib/detect/router');
+          const { run } = await import('@/lib/detect/router');
           
-          const mode = getDetectMode();
-          console.info('[DETECT][mode]', mode);
+          // Force log mode for GPT-only detection
+          const items = await run(imageBase64, { mode: 'log' });
           
-          let items = [];
-          
-          switch (mode) {
-            case 'GPT_ONLY':
-              items = await detectWithGpt(imageBase64);
-              break;
-              
-            case 'GPT_FIRST':
-              try {
-                items = await detectWithGpt(imageBase64);
-                if (!items?.length) {
-                  console.warn('[DETECT] GPT empty, fallback to Vision');
-                  console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-                  items = await detectWithVision(imageBase64);
-                }
-              } catch (e) {
-                console.warn('[DETECT] GPT error, fallback', e);
-                console.info('[REPORT][V2][GPT_FAIL] Vision Fallback');
-                items = await detectWithVision(imageBase64);
-              }
-              break;
-              
-            case 'VISION_ONLY':
-            default:
-              items = await detectWithLyfV1Vision(imageBase64);
-              break;
-          }
-          
-          console.log('[CAMERA][DETECT] items_detected=', items.length, { mode });
+          console.log('[CAMERA][DETECT] items_detected=', items.length);
           
           if (items.length === 0) {
             // No foods detected - show toast and don't render any legacy panel
@@ -834,7 +808,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           }));
 
           console.log('[CAMERA][DETECT] Generated review items:', reviewItems.length);
-          console.info('[REVIEW][mode]', mode, 'count=', reviewItems.length);
+          console.info('[REVIEW][mode]', 'GPT_ONLY', 'count=', reviewItems.length);
           
           // Open review screen with atomic handoff
           setReviewItems(reviewItems);

@@ -6,6 +6,8 @@
 export function buildMealPrompt(): { system: string; user: string } {
   const system = `You are a nutrition vision assistant. You must output JSON only. Prioritize the MAIN EATABLE FOODS on the plate.
 
+Ask for max 6 primary foods + optional condiments. Require categories and confidence per item; prefer proteins if visible.
+
 Ranking importance (keep at most 6 items total):
 1) Protein (fish, meat, eggs, tofu) – MUST include if present.
 2) Starches/grains.
@@ -20,6 +22,7 @@ CITRUS RULE:
 
 PROTEIN BIAS:
 - If there is a seared orange/pink fish fillet with grill marks or a typical salmon presentation with dill/lemon, choose "salmon". If uncertain between salmon and trout, prefer "salmon".
+- DO NOT reject proteins or cooked meats/fish even with sauce/greens around.
 
 NON-FOOD REJECTION:
 - Reject tableware, plate, fork, knife, napkin, mist, haze, text, brand names, reflections, backgrounds.
@@ -35,7 +38,7 @@ OUTPUT SHAPE:
 ]
 Return 2–6 items maximum.
 
-Example for salmon plate:
+Few-shot example for salmon + asparagus + salad + lemon:
 [
   {"name": "salmon", "category": "protein", "confidence": 0.95, "portionHint": "1 fillet"},
   {"name": "asparagus", "category": "vegetable", "confidence": 0.92, "portionHint": "~6 spears"},

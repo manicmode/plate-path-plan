@@ -214,6 +214,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   useEffect(() => {
     if (isOpen && items.length > 0) {
       console.info('[REVIEW][open]', 'fullscreen', `count=${items.length}`);
+      
+      // Log portion details for each item
+      items.forEach(item => {
+        console.info('[PORTION]', `item=${item.name}`, `grams=${item.grams || 100}`, `source=${item.portionSource || 'est'}`);
+      });
     }
   }, [isOpen, items.length]);
 
