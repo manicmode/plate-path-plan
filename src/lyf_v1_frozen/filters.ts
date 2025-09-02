@@ -5,19 +5,19 @@ const NEG = /\b(?:recipe|cuisine|cooking|garnish|dishware|plate|cutlery|fork|spo
 export const ALWAYS_ALLOW = new Set([
   'salmon', 'fish', 'asparagus', 'tomato', 'cherry tomato', 'cherry tomatoes', 
   'grape tomato', 'lemon', 'lemon slice', 'lemon wedge', 'lime', 'lime wedge', 
-  'dill', 'parsley', 'cilantro', 'herb', 'broccoli', 'carrot', 'spinach', 'lettuce', 'cucumber'
+  'dill', 'parsley', 'cilantro', 'herb'
 ]);
 
 // Keep vegetables with lower threshold
-const KEEP_LABELS_IF_MATCH = /^(asparagus|tomato|cherry tomato|grape tomato|lemon|lemon wedge|lemon slice|dill|parsley|cilantro|herb|broccoli|carrot|spinach|lettuce|cucumber)$/i;
+const KEEP_LABELS_IF_MATCH = /^(asparagus|tomato|cherry tomato|grape tomato|lemon|lemon wedge|lemon slice|dill)$/i;
 
 // Always keep these regardless of confidence
-const ALWAYS_KEEP = new Set(['asparagus','tomato','cherry tomato','lemon','dill','parsley','cilantro','herb','broccoli','carrot','spinach','lettuce','cucumber']);
+const ALWAYS_KEEP = new Set(['asparagus','tomato','cherry tomato','lemon','dill']);
 
 // Label minimum score
 const LABEL_MIN_SCORE = 0.45;
 
-// Lenient label filtering - allowlist veggies/fruits with 0.25 threshold
+// Lenient label filtering - allowlist veggies/fruits with 0.40 threshold
 export function looksFoodishLabel(name: string, confidence?: number): boolean {
   const n = name.toLowerCase();
   
@@ -27,9 +27,9 @@ export function looksFoodishLabel(name: string, confidence?: number): boolean {
   // Always drop junk - never keep these
   if (NEG.test(n)) return false;
   
-  // Use lower threshold (0.25) for vegetables matching KEEP_LABELS_IF_MATCH
+  // Use lower threshold (0.40) for vegetables matching KEEP_LABELS_IF_MATCH
   if (KEEP_LABELS_IF_MATCH.test(n)) {
-    return !confidence || confidence >= 0.25;
+    return !confidence || confidence >= 0.40;
   }
   
   // Standard threshold for other labels

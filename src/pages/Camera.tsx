@@ -28,7 +28,6 @@ import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
-import { canonicalizeName, dedupe, filterByCategory } from '@/pipelines/meal/normalizeItems';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -43,7 +42,6 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
-import { detectItemsEnsemble } from '@/lib/detect/detectItemsEnsemble';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
 import { FF } from '@/featureFlags';
@@ -52,7 +50,6 @@ import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
-import { LogPhotoIntakeModal } from '@/components/photo/LogPhotoIntakeModal';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
@@ -137,11 +134,6 @@ function guessDefaultGrams(name: string){
   return /salmon|chicken|beef/i.test(name) ? 120 : /asparagus|tomato|lettuce/i.test(name) ? 80 : 100
 }
 
-const estimatePortionFromLabel = (labelName: string): string => {
-  const grams = guessDefaultGrams(labelName);
-  return `${grams}g`;
-};
-
 const CameraPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -206,9 +198,6 @@ const CameraPage = () => {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   const [showSavedSetsSheet, setShowSavedSetsSheet] = useState(false);
-  
-  // Photo intake modal state
-  const [showLogPhotoModal, setShowLogPhotoModal] = useState(false);
   
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
@@ -789,50 +778,41 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.info('[LYF][v1] path active');
           setProcessingStep('Detecting food items...');
           
-          // === NEW ENSEMBLE DETECTION (GPT-first) ===
-          console.info('[DETECTION] backend=', import.meta.env?.VITE_DETECTION_BACKEND ?? 'gpt-first');
+          // === LYF v1 FROZEN PIPELINE ONLY ===
+          const { mappedFoodItems: rawItems, _debug } = await analyzePhotoForLyfV1(supabase, imageBase64);
+          console.info('[LYF][v1] raw:', rawItems?.map(i => i.canonicalName || i.vision), _debug);
           
-          // === UPLOAD PHOTO INSTRUMENTATION ===
-          console.log('[UPLOAD] file: type=' + (selectedImage?.split(';')[0]?.split(':')[1] || 'unknown') + ' size=' + selectedImage?.length + ' bytes');
-          console.log('[UPLOAD] b64: present=' + !!imageBase64 + ' length=' + imageBase64?.length + ' head=' + imageBase64?.substring(0, 30) + '...');
+          // Don't post-filter - pipeline already filtered appropriately
+          const items = rawItems ?? [];
           
-          const detectedItems = await detectItemsEnsemble(imageBase64, {
-            featureBackend: (import.meta.env?.VITE_DETECTION_BACKEND as any) || 'gpt-first',
-          });
+          console.info('[LYF][v1] final:', items.map(i => i.canonicalName || i.vision || i.name));
           
-          // Convert ensemble results to ReviewItem[] (even if empty)
-          const reviewItems: ReviewItem[] = detectedItems.map((item, index) => ({
-            id: `ensemble-${index}`,
-            name: item.name, // Already canonicalized
-            portion: estimatePortionFromLabel(item.name),
-            selected: true,
-            grams: guessDefaultGrams(item.name),
-            canonicalName: item.name,
-            needsDetails: false,
-            mapped: true,
-          }));
-
-          console.log('[CAMERA][ENSEMBLE] Generated review items:', reviewItems.length);
-
-          // Items are already canonicalized and deduped by ensemble
-          const finalItems = reviewItems;
-
-          // Always show Review modal (even for 0 items) - let modal handle empty state
-          if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
-            setReviewItems(finalItems);
-            setShowReviewScreen(true);       // ← original modal path
-          } else {
-            const summaryItems = finalItems.map(r => ({
-              id: r.id,
-              name: r.name,
-              portion: r.portion,
-              selected: r.selected,
-            }));
-            setSummaryItems(summaryItems);    // ← new flow, if flag flipped later
-            setShowSummaryPanel(true);
+          if (items.length === 0) {
+            // No foods detected - show toast and don't render any legacy panel
+            toast.error('No foods detected. Try a clearer photo or add manually.');
+            setIsAnalyzing(false);
+            return;
           }
 
-          setInputSource('photo');
+          // Transform to ReviewItem format for the new UI
+          const reviewItems: ReviewItem[] = items.map((item: any, index: number) => ({
+            id: `lyf-${index}`,
+            name: item.canonicalName || item.vision || item.name,
+            portion: `${item.grams || 100}g`,
+            selected: true,
+            grams: item.grams || 100,
+            canonicalName: item.canonicalName,
+            needsDetails: !item.mapped,
+            mapped: item.mapped
+          }));
+
+          console.log('[CAMERA][LYF_V1] Generated review items:', reviewItems.length);
+          console.info('[LYF][ui] review_opened items=', reviewItems.length);
+          
+          // Open review screen with atomic handoff
+          setReviewItems(reviewItems);
+          setShowReviewScreen(true);
+          setInputSource('photo'); // Flag for LYF source
         } catch (error) {
           console.error('LYF v1 food detection failed:', error);
           toast.error('Food detection failed. Please try again or use manual entry.');
@@ -2829,7 +2809,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         </div>
       )}
 
-  {/* Main Camera UI */}
+      {/* Main Camera UI */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
@@ -2838,7 +2818,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                 <div className="grid grid-cols-2 gap-4">
                   {/* Upload Photo Tab */}
                   <Button
-                    onClick={() => setShowLogPhotoModal(true)}
+                    onClick={() => fileInputRef.current?.click()}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
@@ -3265,12 +3245,6 @@ console.log('Global search enabled:', enableGlobalSearch);
 
 
       {/* Legacy BarcodeScanner removed - using LogBarcodeScannerModal only */}
-
-      {/* Log Photo Intake Modal */}
-      <LogPhotoIntakeModal
-        isOpen={showLogPhotoModal}
-        onClose={() => setShowLogPhotoModal(false)}
-      />
 
       {/* Log Barcode Scanner Modal - Full Screen */}
       <LogBarcodeScannerModal

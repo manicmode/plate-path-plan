@@ -186,13 +186,8 @@ export default function ScanHub() {
   const handleTakePhoto = () => {
     logTileClick('photo');
     
-    if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
-      // Use original modal shared with logging
-      setPhotoModalOpen(true);
-    } else {
-      // Fall back to new /health-scan/photo route (keep for later experiments)
-      navigate('/health-scan/photo');
-    }
+    // Navigate to dedicated Health Scan photo capture
+    navigate('/health-scan-photo');
   };
 
   const handleEnterManually = () => {
@@ -239,32 +234,18 @@ export default function ScanHub() {
     // Close the capture UI
     setPhotoModalOpen(false);
 
-    if (FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL) {
-      // Use shared modal with Health Scan source
-      const payload = {
-        source: 'photo' as const,
-        imageBase64,
-        captureTs: Date.now(),
-        healthScanMode: true // Flag to indicate Health Scan origin
-      };
+    // Provide the image to Health modal
+    const payload = {
+      source: 'photo' as const,
+      imageBase64,                 // <-- IMPORTANT
+      captureTs: Date.now(),
+    };
 
-      setAnalysisData(payload);
-      setHealthModalStep('loading');
-      console.log('[HC][OPEN]', { from: 'health-scan-photo', initial: 'loading' });
-      setHealthCheckModalOpen(true);
-    } else {
-      // Legacy behavior for when flag is disabled
-      const payload = {
-        source: 'photo' as const,
-        imageBase64,
-        captureTs: Date.now(),
-      };
+    setAnalysisData(payload);
+    setHealthModalStep('loading'); // first view should be loading
+    console.log('[HC][OPEN]', { from: 'photo', initial: 'loading' });
 
-      setAnalysisData(payload);
-      setHealthModalStep('loading');
-      console.log('[HC][OPEN]', { from: 'photo', initial: 'loading' });
-      setHealthCheckModalOpen(true);
-    }
+    setHealthCheckModalOpen(true);
   };
 
   // Handle photo fallback to manual

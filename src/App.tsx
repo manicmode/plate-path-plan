@@ -1,4 +1,3 @@
-// Clean up App.tsx imports - remove duplicates and organize properly
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
@@ -18,6 +17,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
+
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -49,7 +49,11 @@ import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
 import OnboardingGate from '@/routes/OnboardingGate';
 
-// Core page components
+const HealthScanPhotoSheet = React.lazy(() => import('@/pages/HealthScanPhotoSheet'));
+const HealthReportScreen = React.lazy(() => import('@/pages/HealthReportScreen'));
+
+
+// Route wrapper for Home that bypasses lazy loading post-onboarding
 import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
@@ -62,12 +66,6 @@ const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
-
-// Health Scan components
-const ScanHub = lazy(() => import('@/pages/ScanHub'));
-const HealthScanPhoto = lazy(() => import('@/pages/health-scan/HealthScanPhoto'));
-const HealthReport = lazy(() => import('@/pages/health-scan/HealthReport'));
-const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
@@ -103,9 +101,8 @@ const MyReports = lazy(() => import('@/pages/MyReports'));
 const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-const DetectorPing = lazy(() => import('@/pages/debug/DetectorPing'));
-const SpeakToLog = lazy(() => import('@/pages/SpeakToLog'));
-const HealthReviewStackPage = lazy(() => import('@/pages/health/HealthReviewStackPage'));
+const ScanHub = lazy(() => import('@/pages/ScanHub'));
+const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -313,30 +310,10 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                     
-                    {/* Health Scan Routes - before wildcard */}
-        <Route path="/health-scan/photo" element={
-          FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL ? (
-            <Navigate to="/scan" replace />  // UNUSED when FEATURE_HEALTHSCAN_USE_OLD_MODAL
-          ) : (
-            <ProtectedRoute>
-              <HealthScanPhoto />
-            </ProtectedRoute>
-          )
-        } />
-        <Route path="/health-scan/report" element={
-          FF.FEATURE_HEALTHSCAN_USE_OLD_MODAL ? (
-            <Navigate to="/scan" replace />  // UNUSED when FEATURE_HEALTHSCAN_USE_OLD_MODAL
-          ) : (
-            <ProtectedRoute>
-              <HealthReport />
-            </ProtectedRoute>
-          )
-        } />
-                    
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (
                         <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthScanPhoto />
+                          <HealthScanPhotoSheet />
                         </Suspense>
                       ) : (
                         <div className="min-h-screen flex items-center justify-center bg-background">
@@ -353,7 +330,7 @@ function AppContent() {
                     <Route path="/health-report" element={
                       FF.FEATURE_HEALTH_REPORT_V1 ? (
                         <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthReport />
+                          <HealthReportScreen />
                         </Suspense>
                       ) : (
                         <div className="min-h-screen flex items-center justify-center bg-background">
@@ -366,23 +343,8 @@ function AppContent() {
                           </div>
                         </div>
                       )
-                    } />
-                    <Route path="/speak-to-log" element={
-                      <ProtectedRoute>
-                        <SpeakToLog />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/health/review" element={
-                      <ProtectedRoute>
-                        <HealthReviewStackPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/debug/detector-ping" element={
-                      <ProtectedRoute>
-                        <DetectorPing />
-                      </ProtectedRoute>
-                    } />
-                    
+                     } />
+              
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Layout>

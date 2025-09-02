@@ -1,13 +1,10 @@
 import { analyzeLyfV1 } from './detectorClient';
 import { looksFoodish } from './filters';
 import { mapVisionNameToFood } from './mapToNutrition';
-import { FF } from '@/featureFlags';
 
 // Preserve set for vegetables that should never be dropped
 const PRESERVE_VEGGIES = new Set([
-  'asparagus', 'tomato', 'cherry tomato', 'grape tomato', 'lemon', 'lemon slice', 
-  'lemon wedge', 'lime', 'lime wedge', 'dill', 'parsley', 'cilantro', 'herb',
-  'broccoli', 'carrot', 'spinach', 'lettuce', 'cucumber'
+  'asparagus','tomato','cherry tomato','lemon','lime','broccoli','carrot','spinach','lettuce','cucumber'
 ]);
 
 // Enhanced looksFoodish functions
@@ -34,8 +31,7 @@ function dedupePreferSpecific(items: any[]): any[] {
   
   for (const item of sorted) {
     const key = item.name.toLowerCase();
-    // Never dedupe preserved vegetables
-    if (PRESERVE_VEGGIES.has(key) || !seen.has(key)) {
+    if (!seen.has(key)) {
       seen.add(key);
       result.push(item);
     }
@@ -45,15 +41,11 @@ function dedupePreferSpecific(items: any[]): any[] {
 }
 
 export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
-  const { items, error, _debug } = await analyzeLyfV1(supabase, base64, { 
-    debug: FF.FEATURE_LYF_V1_DEBUG 
-  });
+  const { items, _debug } = await analyzeLyfV1(supabase, base64);
   
-  if (error || !Array.isArray(items) || items.length === 0) {
-    if (FF.FEATURE_LYF_V1_DEBUG) {
-      console.warn('[LYF][v1] No items returned from detector:', error);
-    }
-    return { mappedFoodItems: [], error, _debug };
+  if (!Array.isArray(items) || items.length === 0) {
+    console.warn('[LYF][v1] No items returned from detector');
+    return { mappedFoodItems: [], _debug };
   }
 
   // Keep objects normally; labels with relaxed veg threshold
@@ -69,25 +61,26 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
     return conf >= min && looksFoodishLabel(i.name, conf);
   });
 
+  // Dedupe that NEVER removes vegetables
+  const isDup = (a: any, b: any) => {
+    const A = (a.canonicalName || a.name || '').toLowerCase();
+    const B = (b.canonicalName || b.name || '').toLowerCase();
+    if (PRESERVE_VEGGIES.has(A) || PRESERVE_VEGGIES.has(B)) return false;
+    return A === B;
+  };
+
   // Union policy: when objects exist, always include preserved veg labels
   const useLabels = objsKept.length === 0;
   const candidates = useLabels
     ? labsKept
-    : [...objsKept, ...labsKept.filter(l => {
-        const n = l.name.toLowerCase();
-        return PRESERVE_VEGGIES.has(n) && !objsKept.some(o => o.name.toLowerCase() === n);
-      })];
+    : [...objsKept, ...labsKept.filter(l =>
+        PRESERVE_VEGGIES.has(l.name.toLowerCase()) || !objsKept.some(o => isDup(l, o))
+      )];
 
   // Apply deduplication with vegetable protection
   const deduped = dedupePreferSpecific(candidates);
   
-  if (FF.FEATURE_LYF_V1_DEBUG) {
-    console.info('[LYF][v1] keep:', deduped.map(i => i.name));
-    const dropped = items.filter(i => !deduped.some(d => d.name === i.name));
-    if (dropped.length > 0) {
-      console.info('[LYF][v1] drop:', dropped.map(i => `${i.name} (${i.source}, ${(i.confidence || i.score || 0).toFixed(2)})`));
-    }
-  }
+  console.info('[LYF][v1] keep:', deduped.map(i => i.name));
 
   // Map to nutrition data - keep unmapped items with needsDetails flag
   const mappedFoodItems = [];
@@ -98,25 +91,20 @@ export async function analyzePhotoForLyfV1(supabase: any, base64: string) {
         ...mapped,
         source: item.source,
         confidence: item.confidence ?? item.score,
-        needsDetails: false,
-        mapped: true
+        needsDetails: false
       });
     } else {
-      // Keep unmapped preserved veggies instead of dropping them
-      const shouldKeep = PRESERVE_VEGGIES.has(item.name.toLowerCase()) || item.source === 'object';
-      if (shouldKeep) {
-        mappedFoodItems.push({
-          name: item.name,
-          canonicalName: item.name,
-          source: item.source,
-          confidence: item.confidence ?? item.score,
-          needsDetails: true,
-          mapped: false,
-          portionGrams: 100, // Default estimate
-        });
-      }
+      // Keep unmapped items instead of dropping them
+      mappedFoodItems.push({
+        name: item.name,
+        canonicalName: item.name,
+        source: item.source,
+        confidence: item.confidence ?? item.score,
+        needsDetails: true,
+        portionGrams: 100, // Default estimate
+      });
     }
   }
 
-  return { mappedFoodItems, error, _debug };
+  return { mappedFoodItems, _debug };
 }

@@ -372,8 +372,8 @@ export function useRouteToHealthAnalyzerV2() {
   const navigate = useNavigate();
   
   return (res: any) => {
-    console.log('[PHOTO][ROUTE] storing result for health review');
+    console.log('[PHOTO][ROUTE] storing result for analyzer');
     const id = putPhoto(res);
-    navigate(`/health/review?src=photo&rid=${id}`, { replace: false });
+    navigate(`/health-report/analyze?src=photo&rid=${id}`, { replace: false });
   };
 }
