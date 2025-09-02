@@ -95,6 +95,23 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
     
     if (isEmpty) {
       console.warn('[DETECT][GPT] No items detected');
+      
+      // If GPT_ONLY mode and we got empty results, try Vision fallback as safety net
+      if (getDetectMode(context) === DetectMode.GPT_ONLY) {
+        console.warn('[ROUTER][gpt_empty]=true');
+        console.info('[ROUTER][fallback]=VISION_ONLY');
+        
+        try {
+          const visionItems = await detectWithVision(imageBase64);
+          if (visionItems.length > 0) {
+            console.info('[ROUTER][fallback_success]', visionItems.length, 'items from Vision');
+            return visionItems;
+          }
+        } catch (visionError) {
+          console.error('[ROUTER][fallback_error]', visionError);
+        }
+      }
+      
       return [];
     }
 

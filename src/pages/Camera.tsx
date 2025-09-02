@@ -375,7 +375,17 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     if (fileSizeMB <= 1 && longestSide >= 1280 && longestSide <= 1600) {
       // Image is already optimal, convert directly to base64
       console.log('Image is optimal, no compression needed');
-      return await fileToBase64(file);
+      const base64Result = await fileToBase64(file);
+      
+      // Final image logging for diagnostics (uncompressed case)
+      const estKB = Math.round(base64Result.length * 0.75 / 1024);
+      console.info('[IMG][final]', {
+        w: dimensions.width,
+        h: dimensions.height,
+        estKB
+      });
+      
+      return base64Result;
     }
 
     console.log('Compressing image with quality guard...');
@@ -394,11 +404,32 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       
       console.log('Compressed image size:', compressedSizeMB.toFixed(2), 'MB');
       
-      return await fileToBase64(compressedFile);
+      const base64Result = await fileToBase64(compressedFile);
+      
+      // Final image logging for diagnostics
+      const finalDimensions = await getImageDimensions(compressedFile);
+      const estKB = Math.round(base64Result.length * 0.75 / 1024);
+      console.info('[IMG][final]', {
+        w: finalDimensions.width,
+        h: finalDimensions.height,
+        estKB
+      });
+      
+      return base64Result;
     } catch (error) {
       console.error('Error compressing image:', error);
       toast.error('Failed to compress image. Using original size.');
-      return await fileToBase64(file);
+      const fallbackResult = await fileToBase64(file);
+      
+      // Final image logging for diagnostics (fallback case)
+      const estKB = Math.round(fallbackResult.length * 0.75 / 1024);
+      console.info('[IMG][final]', {
+        w: dimensions.width,
+        h: dimensions.height,
+        estKB
+      });
+      
+      return fallbackResult;
     }
   };
 

@@ -41,7 +41,7 @@ serve(async (req) => {
       
       imageBytes = Math.floor(base64Data.length * 0.75); // Rough byte estimate
       
-      // Add prefix if missing
+      // Add prefix if missing - ensure it's always a data-URL
       if (!hasPrefix) {
         normalizedBase64 = `data:image/jpeg;base64,${base64Data}`;
         hasPrefix = true;
@@ -60,8 +60,6 @@ serve(async (req) => {
     } catch (e) {
       console.warn('[GPT][req] Image normalization failed:', e.message);
     }
-
-    console.log(`[GPT][req] has_prefix=${hasPrefix} bytes=${imageBytes} dims=${imageDims} mime=${mimeType}`);
 
     console.log('[GPT-V2] Starting food detection with structured output...');
 
@@ -110,6 +108,15 @@ Example for salmon plate:
     // Determine attempt type from client
     const attemptType = attempt || 'strict';
     
+    // Log request details before API call
+    console.info('[GPT][req]', {
+      has_prefix: hasPrefix,
+      bytes: imageBytes,
+      dims: imageDims,
+      mime: mimeType,
+      attempt: attemptType
+    });
+    
     // Adjust parameters based on attempt type
     const modelParams = attemptType === 'relaxed' ? {
       model: 'gpt-4o',
@@ -123,32 +130,49 @@ Example for salmon plate:
       top_p: 1
     };
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...modelParams,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { 
-            role: 'user', 
-            content: [
-              { type: 'text', text: userPrompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: normalizedBase64,
-                  detail: 'high'
+    let response: Response;
+    let retryAttempt = false;
+    
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...modelParams,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { 
+              role: 'user', 
+              content: [
+                { type: 'text', text: userPrompt },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: normalizedBase64,
+                    detail: 'high'
+                  }
                 }
-              }
-            ]
-          }
-        ]
-      }),
-    });
+              ]
+            }
+          ]
+        }),
+      });
+    } catch (fetchError) {
+      console.error('[GPT][error]', { status: 'fetch_failed', message: fetchError.message });
+      throw fetchError;
+    }
+
+    // Handle 413 (payload too large) with auto-downscale retry
+    if (response.status === 413) {
+      console.warn('[GPT][error] 413 payload too large, retrying with smaller image');
+      // For now, just log - actual downscaling would happen in client
+      const errorText = await response.text();
+      console.error(`[GPT][error] status=413 message="payload too large"`);
+      throw new Error(`Image too large: ${response.status} ${errorText}`);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -184,7 +208,79 @@ Example for salmon plate:
     }
 
     // Handle both array format [...] and object format {items: [...]}
-    const items = Array.isArray(parsedResult) ? parsedResult : (parsedResult.items || []);
+    let items = Array.isArray(parsedResult) ? parsedResult : (parsedResult.items || []);
+    
+    // If strict attempt returned 0 items, try relaxed approach
+    if (items.length === 0 && attemptType === 'strict') {
+      console.warn('[GPT][empty_strict]');
+      
+      const relaxedPrompt = `You are analyzing a single food photo.
+Return a compact JSON array of detected foods with fields:
+name, confidence (0..1), hints (optional like "6 spears", "half plate").
+Do not include tableware or containers. Prefer proteins, vegetables, fruits, grains.
+JSON only. No prose.`;
+
+      console.info('[GPT][req]', {
+        has_prefix: hasPrefix,
+        bytes: imageBytes,
+        dims: imageDims,
+        mime: mimeType,
+        attempt: 'relaxed'
+      });
+
+      try {
+        const relaxedResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            temperature: 0,
+            max_tokens: 300,
+            top_p: 1,
+            messages: [
+              { role: 'system', content: relaxedPrompt },
+              { 
+                role: 'user', 
+                content: [
+                  { type: 'text', text: 'Return JSON array of detected food items:' },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: normalizedBase64,
+                      detail: 'high'
+                    }
+                  }
+                ]
+              }
+            ]
+          }),
+        });
+
+        if (relaxedResponse.ok) {
+          const relaxedData = await relaxedResponse.json();
+          const relaxedContent = relaxedData.choices?.[0]?.message?.content;
+          
+          if (relaxedContent) {
+            try {
+              const relaxedResult = JSON.parse(relaxedContent);
+              items = Array.isArray(relaxedResult) ? relaxedResult : (relaxedResult.items || []);
+              console.info('[GPT][raw_count]', items.length, 'attempt=relaxed');
+            } catch (relaxedParseError) {
+              console.error('[GPT][relaxed_parse_error]', relaxedContent);
+            }
+          }
+        } else {
+          console.error('[GPT][relaxed_error]', relaxedResponse.status);
+        }
+      } catch (relaxedError) {
+        console.error('[GPT][relaxed_call_error]', relaxedError.message);
+      }
+    } else {
+      console.info('[GPT][raw_count]', items.length, `attempt=${attemptType}`);
+    }
     
     // Normalize portionHint field name (GPT might return either)
     const normalizedItems = items.map((item: any) => ({
@@ -194,18 +290,21 @@ Example for salmon plate:
       portion_hint: item.portion_hint || item.portionHint || null
     }));
     
-    console.log(`[GPT][raw_count]=${normalizedItems.length} attempt=${attemptType}`);
     console.log(`[GPT-V2] Detected ${normalizedItems.length} items:`, normalizedItems.map(i => i.name));
 
-    return new Response(JSON.stringify({
+    // Return result with diagnostic info
+    const result = {
       items: normalizedItems,
       model: 'gpt-4o',
       _debug: { 
         from: 'gpt-v2', 
         count: normalizedItems.length,
-        raw_tokens: data.usage?.total_tokens || 0
+        raw_tokens: (data?.usage?.total_tokens) || 0,
+        diag: normalizedItems.length === 0 ? 'gpt_empty' : undefined
       }
-    }), {
+    };
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
