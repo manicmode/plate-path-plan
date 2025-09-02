@@ -249,7 +249,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/90 backdrop-blur-0" />
         <Dialog.Content
           className="lyf-sheet fixed z-[100] inset-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -260,7 +260,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           <Dialog.Title id="review-title" className="sr-only">Review Detected Items</Dialog.Title>
           <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
-          <div className="lyf-panel">
+          <div className="lyf-panel bg-neutral-900 text-neutral-100">
             {/* Mobile sheet grab handle */}
             <div className="sm:block hidden mx-auto mt-2 h-1.5 w-12 rounded-full bg-foreground/20" />
 

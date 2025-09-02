@@ -1,4 +1,4 @@
-import { canonicalizeName, dedupe, qualityFilter, conflictClean, CANON_VEG } from './canonicalize';
+import { canonicalizeName, dedupe, qualityFilter, hardReject, conflictClean, CANON_VEG } from './canonicalize';
 import { foodSearchCandidates } from './foodSearch';
 import { gptDetectItems } from './gptDetect';
 
@@ -45,10 +45,29 @@ export async function detectItemsEnsemble(imageBase64: string, opts: Opts = {}):
     });
   }
 
-  // 4) Dedupe + quality filtering + small conflict rule
+  // 4) Hard reject + dedupe + quality filtering + conflict rules
   let final = dedupe(withSearch) as Detected[];
+  final = hardReject(final) as Detected[];
   final = qualityFilter(final) as Detected[];
   final = conflictClean(final) as Detected[];
+
+  // 5) Boost veggies if GPT missed them but found proteins/carbs
+  const hasProteinOrCarb = final.some(f => !CANON_VEG.has(f.name));
+  const hasVeggie = final.some(f => CANON_VEG.has(f.name));
+  
+  if (backend === 'gpt-first' && hasProteinOrCarb && !hasVeggie && labels.length) {
+    const veggieLabels = labels.filter(n => CANON_VEG.has(n)).slice(0, 2);
+    for (const n of veggieLabels) {
+      if (!final.some(f => f.name === n)) {
+        final.push({ name: n, score: 0.5, src: 'vision' });
+      }
+    }
+  }
+
+  // 6) Cap to max 6 items, keep highest confidence
+  final = final
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 6);
 
   // If GPT timed out (or returned nothing) and backend is vision-first/only, add a tiny search assist:
   if (!final.length && (backend === 'vision-first' || backend === 'vision-only') && labels.length) {
@@ -62,6 +81,6 @@ export async function detectItemsEnsemble(imageBase64: string, opts: Opts = {}):
     final = qualityFilter(dedupe(extras)) as Detected[];
   }
 
-  console.info('[DETECTION] backend=gpt-first (ensemble), items=', final.map(f => f.name));
+  console.info('[DETECTION] backend=' + backend + ' (ensemble), items=' + JSON.stringify(final.map(f => f.name)));
   return final;
 }

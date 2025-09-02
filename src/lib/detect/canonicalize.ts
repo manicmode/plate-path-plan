@@ -6,8 +6,15 @@ const SYNONYMS: Record<string, string> = {
   'sushi cooked tuna & aburi salmon': 'salmon',
   'salmon ahumado en lonchas': 'smoked salmon',
   'lemon juice': 'lemon',
+  'mixed salad': 'salad',
+  'rice bowl': 'rice',
   'vegetarian fish slice': 'veg fish slice',
 };
+
+const REJECT = new Set([
+  'food','plate','dish','bowl','table','tray','cup','glass','napkin',
+  'fork','knife','spoon','utensil','chopsticks','tablecloth','placemat'
+]);
 
 export const CANON_VEG = new Set([
   'asparagus', 'lemon', 'avocado', 'broccoli', 'spinach',
@@ -38,6 +45,11 @@ export function qualityFilter(items: Item[]) {
     if (isVeg) return score >= 0.35;      // permissive for veggies
     return score >= 0.62;                 // stricter for proteins/starches
   });
+}
+
+// Hard reject filter: remove containers and utensils
+export function hardReject(items: Item[]) {
+  return items.filter(i => !REJECT.has(i.name));
 }
 
 // Small "conflict" fix: if salmon exists, drop weird veg-fish slice unless GPT insisted
