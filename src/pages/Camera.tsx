@@ -803,7 +803,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             
             setReviewItems(reviewItemsData);
             setShowReviewScreen(true);
-            setInputSource('lyf-photo'); // Flag for LYF source
+            setInputSource('photo'); // Flag for LYF source
             
             console.info('[LYF][ui] review_opened items=', reviewItemsData.length);
           } else {

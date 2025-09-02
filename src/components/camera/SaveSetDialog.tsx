@@ -26,7 +26,7 @@ export const SaveSetDialog: React.FC<SaveSetDialogProps> = ({
   items,
   onSaved
 }) => {
-  const [setName, setName] = useState('');
+  const [setName, setSetName] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set(items.map((_, i) => i)));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -63,15 +63,12 @@ export const SaveSetDialog: React.FC<SaveSetDialogProps> = ({
       const selectedItemsData = Array.from(selectedItems).map(index => items[index]);
 
       // Create the meal set
-      const { data: mealSet, error: setError } = await supabase
-        .from('meal_sets')
+      const { error: setError } = await supabase
+        .from('meal_sets' as any)
         .insert({
-          user_id: user.id,
           name: setName.trim(),
           items: selectedItemsData
-        })
-        .select()
-        .single();
+        });
 
       if (setError) throw setError;
 
