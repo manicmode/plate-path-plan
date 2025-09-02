@@ -15,6 +15,7 @@ interface PhotoIntakeModalProps {
   showEmpty?: boolean;
   onTryAgain?: () => void;
   onAddManually?: () => void;
+  onUploadClick?: () => void;
 }
 
 export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
@@ -25,7 +26,8 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   busy = false,
   showEmpty = false,
   onTryAgain,
-  onAddManually
+  onAddManually,
+  onUploadClick
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -244,9 +246,13 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
     event.currentTarget.value = '';
   };
 
-  const handleUploadClick = (e: React.MouseEvent) => {
+  const handleUpload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    fileInputRef.current?.click();
+    if (onUploadClick) {
+      onUploadClick();
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
   const contextConfig = {
@@ -467,7 +473,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
                 type="button"
                 variant="ghost"
                 size="lg"
-                onClick={handleUploadClick}
+                onClick={handleUpload}
                 disabled={busy}
                 className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0 shadow-lg disabled:opacity-50"
                 title="Upload from gallery"
