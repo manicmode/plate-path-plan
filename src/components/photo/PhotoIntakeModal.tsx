@@ -38,6 +38,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
 
   const initCamera = async () => {
     try {
+      console.log('Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -46,9 +47,20 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
         }
       });
       
+      console.log('Camera stream obtained:', stream);
       streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        console.log('Video srcObject set');
+        
+        // Ensure video plays
+        try {
+          await videoRef.current.play();
+          console.log('Video playing');
+        } catch (playError) {
+          console.log('Video play failed, might auto-play:', playError);
+        }
       }
       setHasPermission(true);
     } catch (error) {
@@ -120,9 +132,13 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File upload triggered');
     const file = event.target.files?.[0];
     if (file) {
+      console.log('File selected:', file.name, file.type, file.size);
       onImageReady(file);
+      // Reset input value to allow selecting the same file again
+      event.target.value = '';
     }
   };
 
@@ -192,7 +208,7 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
             <div className="absolute top-8 right-8 w-6 h-6 border-r-2 border-t-2 border-emerald-400 z-10" />
             
             {/* Camera View */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0">
               {hasPermission && (
                 <video
                   ref={videoRef}
@@ -200,14 +216,21 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
                   playsInline
                   muted
                   className="w-full h-full object-cover"
-                  style={{ transform: 'scaleX(-1)' }}
+                  onLoadedMetadata={() => {
+                    console.log('Video loaded:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+                  }}
+                  onError={(e) => {
+                    console.error('Video error:', e);
+                  }}
                 />
               )}
               
               {hasPermission === null && (
-                <div className="text-white text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                  <p>Initializing camera...</p>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-white text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                    <p>Initializing camera...</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -228,15 +251,16 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
           </div>
 
           {/* Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/50">
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/80 backdrop-blur-sm">
             <div className="flex items-center justify-center space-x-8">
               {/* Flash Toggle */}
               <Button
                 variant="ghost"
                 size="lg"
                 onClick={toggleFlash}
-                className="text-white hover:bg-white/20 h-12 w-12 rounded-full p-0"
+                className="text-white hover:bg-white/20 h-12 w-12 rounded-full p-0 border border-white/20"
                 disabled={!hasPermission}
+                title="Toggle flash"
               >
                 {flashEnabled ? (
                   <Flashlight className="h-6 w-6" />
@@ -250,17 +274,26 @@ export const PhotoIntakeModal: React.FC<PhotoIntakeModalProps> = ({
                 size="lg"
                 onClick={capturePhoto}
                 disabled={!hasPermission || isCapturing}
-                className="bg-white text-black hover:bg-white/90 h-16 w-16 rounded-full p-0"
+                className="bg-white text-black hover:bg-white/90 h-16 w-16 rounded-full p-0 shadow-lg"
+                title="Take photo"
               >
-                <Camera className="h-8 w-8" />
+                {isCapturing ? (
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                ) : (
+                  <Camera className="h-8 w-8" />
+                )}
               </Button>
 
               {/* Upload Button */}
               <Button
                 variant="ghost"
                 size="lg"
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0"
+                onClick={() => {
+                  console.log('Upload button clicked');
+                  fileInputRef.current?.click();
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white h-12 w-12 rounded-full p-0 shadow-lg"
+                title="Upload from gallery"
               >
                 <Upload className="h-6 w-6" />
               </Button>
