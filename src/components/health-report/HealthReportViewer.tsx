@@ -28,8 +28,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
-  const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
-  const [selectedItemAnalysisData, setSelectedItemAnalysisData] = useState<any>(null);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -134,75 +132,94 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     console.log('🔴 CLICK TEST - Item clicked:', index);
     
     const item = report.itemAnalysis[index];
-    console.info('[HEALTH][PHOTO_ITEM] tap', { name: item?.name });
+    console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item?.name });
 
-    const base = toProductModelFromDetected(item);
-    
-    // Force enable generic foods for now
+    // Force enable generic foods for photo items
     const ENABLE_GENERIC = true;
-    let product = base;
+    let product = null;
 
     if (ENABLE_GENERIC) {
       const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
       const { productFromGeneric } = await import('@/health/generic/mapToProductModel');
       
       const g = resolveGenericFood(item.name);
-      console.log('[HEALTH][DEBUG] Looking up generic food for name:', item.name);
-      console.log('[HEALTH][DEBUG] Generic lookup result:', g?.slug || 'no match');
+      console.log('[GENERIC][RESOLVE]', { q: item.name, found: !!g });
 
       if (g) {
-        console.info('[HEALTH][GENERIC] matched', { slug: g.slug });
-
-        const genericPM = productFromGeneric(g);
+        console.info('[GENERIC][MAP]', { name: item.name, slug: g.slug });
         
-        console.log('[HEALTH][DEBUG] Base data:', base);
-        console.log('[HEALTH][DEBUG] Generic data:', genericPM);
-
-        // Merge: prefer detected serving grams if present, else generic's;
-        // Fill missing nutrients from generic.
-        product = {
-          ...genericPM,
-          ...base,
-          serving: {
-            grams: base?.serving?.grams ?? genericPM.serving?.grams ?? null,
-            label: base?.serving?.label ?? genericPM.serving?.label ?? 'per item',
+        // Create product model from generic food data
+        const genericProduct = productFromGeneric(g);
+        
+        // Create HealthAnalysisResult from generic food
+        const healthAnalysisResult = {
+          itemName: genericProduct.name,
+          productName: genericProduct.name,
+          title: genericProduct.name,
+          healthScore: 85, // Good score for whole foods
+          ingredientsText: `${genericProduct.name} (whole food)`,
+          ingredientFlags: [],
+          flags: [],
+          nutritionData: {
+            calories: genericProduct.nutrients.calories || 0,
+            protein: genericProduct.nutrients.protein_g || 0,
+            carbs: genericProduct.nutrients.carbs_g || 0,
+            fat: genericProduct.nutrients.fat_g || 0,
+            fiber: genericProduct.nutrients.fiber_g || 0,
+            sugar: genericProduct.nutrients.sugar_g || 0,
+            sodium: genericProduct.nutrients.sodium_mg || 0,
           },
-          nutrients: {
-            calories: base?.nutrients?.calories ?? genericPM.nutrients?.calories ?? null,
-            protein_g: base?.nutrients?.protein_g ?? genericPM.nutrients?.protein_g ?? null,
-            carbs_g: base?.nutrients?.carbs_g ?? genericPM.nutrients?.carbs_g ?? null,
-            fat_g: base?.nutrients?.fat_g ?? genericPM.nutrients?.fat_g ?? null,
-            fiber_g: base?.nutrients?.fiber_g ?? genericPM.nutrients?.fiber_g ?? null,
-            sugar_g: base?.nutrients?.sugar_g ?? genericPM.nutrients?.sugar_g ?? null,
-            sodium_mg: base?.nutrients?.sodium_mg ?? genericPM.nutrients?.sodium_mg ?? null,
+          nutritionDataPerServing: {
+            energyKcal: genericProduct.nutrients.calories || 0,
+            protein_g: genericProduct.nutrients.protein_g || 0,
+            carbs_g: genericProduct.nutrients.carbs_g || 0,
+            fat_g: genericProduct.nutrients.fat_g || 0,
+            fiber_g: genericProduct.nutrients.fiber_g || 0,
+            sugar_g: genericProduct.nutrients.sugar_g || 0,
+            sodium_mg: genericProduct.nutrients.sodium_mg || 0,
           },
+          serving_size: genericProduct.serving?.label || `${genericProduct.serving?.grams}g`,
+          healthProfile: {
+            isOrganic: false,
+            isGMO: false,
+            allergens: [],
+            preservatives: [],
+            additives: []
+          },
+          personalizedWarnings: [],
+          suggestions: [
+            'Whole foods like this are excellent nutritional choices',
+            'Consider pairing with other nutrient-dense foods for a complete meal'
+          ],
+          overallRating: 'excellent' as const
         };
+
+        console.info('[HC][STEP] report', { source: 'photo_item' });
         
-        console.log('[HEALTH][DEBUG] Final merged product:', product);
+        // Use renderHealthReport to open the full health report modal
+        const { renderHealthReport } = await import('@/lib/health/renderHealthReport');
+        renderHealthReport({
+          result: healthAnalysisResult,
+          onScanAnother: () => {
+            console.log('[HEALTH][SCAN_ANOTHER] from photo item');
+          },
+          onClose: () => {
+            console.log('[HEALTH][CLOSE] from photo item');
+          },
+          analysisData: {
+            source: 'photo_item',
+            imageUrl: undefined
+          }
+        });
       } else {
-        console.warn('[HEALTH][GENERIC] no_match', { name: item.name });
+        console.warn('[GENERIC][RESOLVE] no match found for:', item.name);
+        toast({
+          title: "Nutrition Data Unavailable",
+          description: `Detailed nutrition data not available for ${item.name}`,
+          variant: "destructive"
+        });
       }
     }
-
-    // Set up analysis data for HealthCheckModal and open it
-    console.log('🔴 SETTING MODAL DATA');
-    console.info('[HEALTH][DEBUG] Setting up modal data:', {
-      source: 'photo_item',
-      name: item.name,
-      hasProduct: !!(product || base),
-      productName: (product || base)?.name
-    });
-    
-    setSelectedItemAnalysisData({
-      source: 'photo_item',
-      name: item.name,
-      product: product || base,
-      captureTs: Date.now()
-    });
-    
-    console.log('🔴 OPENING MODAL');
-    setHealthCheckModalOpen(true);
-    console.info('[HEALTH][OPEN_FULL]', { source: 'photo_item', name: product?.name || item.name });
   };
 
   return (
@@ -459,77 +476,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           </div>
         </Dialog.Content>
       </Dialog.Portal>
-
-      {/* Full Health Check Modal - render at document root to ensure visibility */}
-      {healthCheckModalOpen && createPortal(
-        <div 
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999999,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <div 
-            style={{ 
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'white',
-              color: 'black',
-              padding: '20px',
-              borderRadius: '10px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-              maxWidth: '400px',
-              width: '90%',
-              zIndex: 1000000
-            }}
-          >
-            <h2 style={{ marginBottom: '15px', color: '#8B5CF6' }}>
-              🍽️ {selectedItemAnalysisData?.name} Health Report
-            </h2>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <strong>Nutrition Facts:</strong><br/>
-              • Calories: {selectedItemAnalysisData?.product?.nutrients?.calories || 'Unknown'}<br/>
-              • Protein: {selectedItemAnalysisData?.product?.nutrients?.protein_g || 'Unknown'}g<br/>
-              • Carbs: {selectedItemAnalysisData?.product?.nutrients?.carbs_g || 'Unknown'}g<br/>
-              • Fat: {selectedItemAnalysisData?.product?.nutrients?.fat_g || 'Unknown'}g<br/>
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <strong>Serving Size:</strong> {selectedItemAnalysisData?.product?.serving?.label || 'Unknown'}
-            </div>
-            
-            <button 
-              onClick={() => {
-                console.log('[HEALTH][MODAL_CLOSE] Simple health modal closed');
-                setHealthCheckModalOpen(false);
-                setSelectedItemAnalysisData(null);
-              }}
-              style={{ 
-                padding: '10px 20px', 
-                backgroundColor: '#8B5CF6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                width: '100%'
-              }}
-            >
-              ✅ Close Health Report
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
     </Dialog.Root>
   );
 };
