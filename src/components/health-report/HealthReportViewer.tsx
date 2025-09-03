@@ -174,6 +174,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
 
     // Set up analysis data for HealthCheckModal and open it
+    console.info('[HEALTH][DEBUG] Setting up modal data:', {
+      source: 'photo_item',
+      name: item.name,
+      hasProduct: !!(product || base),
+      productName: (product || base)?.name
+    });
+    
     setSelectedItemAnalysisData({
       source: 'photo_item',
       name: item.name,
@@ -434,17 +441,20 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Full Health Check Modal */}
-      <HealthCheckModal
-        isOpen={healthCheckModalOpen}
-        onClose={() => {
-          setHealthCheckModalOpen(false);
-          setSelectedItemAnalysisData(null);
-        }}
-        initialState="report"
-        disableQuickScan={true}
-        analysisData={selectedItemAnalysisData}
-      />
+      {/* Full Health Check Modal - render outside main dialog to avoid conflicts */}
+      {healthCheckModalOpen && (
+        <HealthCheckModal
+          isOpen={healthCheckModalOpen}
+          onClose={() => {
+            console.log('[HEALTH][MODAL_CLOSE] User closed photo item modal');
+            setHealthCheckModalOpen(false);
+            setSelectedItemAnalysisData(null);
+          }}
+          initialState="report"
+          disableQuickScan={true}
+          analysisData={selectedItemAnalysisData}
+        />
+      )}
     </Dialog.Root>
   );
 };

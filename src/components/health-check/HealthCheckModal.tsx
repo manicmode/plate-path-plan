@@ -590,6 +590,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   // Reset state when modal opens/closes
   useEffect(() => {
+    console.log('[HC][DEBUG] Reset state effect:', {
+      isOpen,
+      initialState,
+      source: analysisData?.source
+    });
+    
     if (isOpen) {
       console.log('[HC][STEP]', initialState, { source: analysisData?.source });
       setCurrentState(initialState);
@@ -606,6 +612,13 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   // Handle analysis data from URL params (e.g., from manual entry)
   useEffect(() => {
     if (!isOpen || !analysisData) return;
+    
+    console.log('[HC][DEBUG] Analysis data effect:', {
+      isOpen,
+      source: analysisData?.source,
+      hasProduct: !!analysisData?.product,
+      analysisData
+    });
     
     const { source, barcode, name } = analysisData;
     
