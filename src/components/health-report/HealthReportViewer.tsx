@@ -468,40 +468,57 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             justifyContent: 'center'
           }}
         >
-          <div style={{ color: 'white', padding: '20px', textAlign: 'center' }}>
-            🔴 MODAL IS VISIBLE - Click anywhere to close
-            <br />
-            Item: {selectedItemAnalysisData?.name}
-            <br />
+          <div 
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'white',
+              color: 'black',
+              padding: '20px',
+              borderRadius: '10px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              maxWidth: '400px',
+              width: '90%',
+              zIndex: 1000000
+            }}
+          >
+            <h2 style={{ marginBottom: '15px', color: '#8B5CF6' }}>
+              🍽️ {selectedItemAnalysisData?.name} Health Report
+            </h2>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Nutrition Facts:</strong><br/>
+              • Calories: {selectedItemAnalysisData?.product?.nutrients?.calories || 'Unknown'}<br/>
+              • Protein: {selectedItemAnalysisData?.product?.nutrients?.protein_g || 'Unknown'}g<br/>
+              • Carbs: {selectedItemAnalysisData?.product?.nutrients?.carbs_g || 'Unknown'}g<br/>
+              • Fat: {selectedItemAnalysisData?.product?.nutrients?.fat_g || 'Unknown'}g<br/>
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Serving Size:</strong> {selectedItemAnalysisData?.product?.serving?.label || 'Unknown'}
+            </div>
+            
             <button 
               onClick={() => {
-                console.log('[HEALTH][MODAL_CLOSE] Test close clicked');
+                console.log('[HEALTH][MODAL_CLOSE] Simple health modal closed');
                 setHealthCheckModalOpen(false);
                 setSelectedItemAnalysisData(null);
               }}
               style={{ 
                 padding: '10px 20px', 
-                marginTop: '10px',
-                backgroundColor: 'red',
+                backgroundColor: '#8B5CF6',
                 color: 'white',
                 border: 'none',
-                borderRadius: '5px'
+                borderRadius: '5px',
+                cursor: 'pointer',
+                width: '100%'
               }}
             >
-              CLOSE TEST MODAL
+              ✅ Close Health Report
             </button>
           </div>
-          <HealthCheckModal
-            isOpen={healthCheckModalOpen}
-            onClose={() => {
-              console.log('[HEALTH][MODAL_CLOSE] User closed photo item modal');
-              setHealthCheckModalOpen(false);
-              setSelectedItemAnalysisData(null);
-            }}
-            initialState="report"
-            disableQuickScan={true}
-            analysisData={selectedItemAnalysisData}
-          />
         </div>,
         document.body
       )}
