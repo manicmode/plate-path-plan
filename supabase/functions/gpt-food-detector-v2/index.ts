@@ -326,6 +326,7 @@ Example for salmon plate:
       }
     } catch (fetchError) {
       const elapsed_ms = Date.now() - startTime;
+      console.error('[OPENAI][CALL_ERR]', fetchError instanceof Error ? fetchError.message : String(fetchError));
       console.error('[GPT][err]', {
         request_id: requestId,
         image_hash: imageHash,
@@ -366,22 +367,6 @@ Example for salmon plate:
         _debug: { 
           from: 'gpt-v2', 
           error: 'payload_too_large',
-          request_id: requestId,
-          image_hash: imageHash
-        }
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } catch (e) {
-      console.error('[OPENAI][CALL_ERR]', e instanceof Error ? e.message : String(e));
-      // Return structured error instead of throwing
-      return new Response(JSON.stringify({
-        items: [],
-        _debug: { 
-          from: 'gpt-v2', 
-          error: 'openai_call_failed',
-          message: e instanceof Error ? e.message : String(e),
           request_id: requestId,
           image_hash: imageHash
         }
