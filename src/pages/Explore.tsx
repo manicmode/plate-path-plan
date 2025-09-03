@@ -97,18 +97,30 @@ const Explore = () => {
       
       console.info('[HEALTH][PIPELINE] golden', { count: result.items?.length ?? 0 });
       
-      if (result.success && result.items.length > 0) {
-        setDetectedItems(result.items);
+      if (result.success) {
+        setDetectedItems(result.items || []);
         setShowHealthReview(true);
         setIsCameraOpen(false);
-        toast.success('Food detection complete!');
+        
+        if (result.items && result.items.length > 0) {
+          toast.success('Food detection complete!');
+        } else {
+          // Show modal even with empty results for fallback UI
+          console.info('[HEALTH][PIPELINE] golden', { count: 0 });
+        }
       } else {
         console.info('[HEALTH][PIPELINE] golden', { count: 0 });
-        toast.error('No food items detected. Please try again.');
+        // Show modal with empty items for fallback UI instead of error toast
+        setDetectedItems([]);
+        setShowHealthReview(true);
+        setIsCameraOpen(false);
       }
     } catch (error) {
       console.error('[HEALTH_SCAN] Detection error:', error);
-      toast.error('Analysis failed. Please try again.');
+      // Show modal with empty items for fallback UI instead of error toast
+      setDetectedItems([]);
+      setShowHealthReview(true);
+      setIsCameraOpen(false);
     }
   };
 
@@ -300,6 +312,7 @@ const Explore = () => {
           }}
           onCapture={handleHealthScanPhotoCapture}
           onManualFallback={handleHealthScanManualFallback}
+          mode="health-scan"
         />
       )}
 

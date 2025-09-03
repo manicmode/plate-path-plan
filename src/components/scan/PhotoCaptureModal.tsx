@@ -38,6 +38,7 @@ interface PhotoCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onCapture: (imageData: string) => void;
   onManualFallback: () => void;
+  mode?: 'health-scan' | 'default'; // Add mode prop to bypass routing for health scan
 }
 
 
@@ -45,7 +46,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
   onCapture,
-  onManualFallback
+  onManualFallback,
+  mode = 'default'
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -246,10 +248,36 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   };
 
   const handleCapturedBlob = async (blob: Blob) => {
-    console.log('[PHOTO][GATEWAY][CAPTURED]', { size: blob.size, type: blob.type });
+    console.log('[PHOTO][GATEWAY][CAPTURED]', { size: blob.size, type: blob.type, mode });
     
     // Guard against unmounted state
     if (!mountedRef.current) return;
+    
+    // Health Scan mode: bypass all routing and use golden pipeline directly
+    if (mode === 'health-scan') {
+      console.log('[PHOTO][GOLDEN] Health scan mode - converting to base64');
+      
+      try {
+        // Convert blob to base64 for golden pipeline
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        
+        const imageBase64 = await base64Promise;
+        console.log('[PHOTO][GOLDEN] Calling onCapture with base64 data');
+        
+        // Call the golden pipeline through onCapture callback
+        onCapture(imageBase64);
+        return;
+      } catch (error) {
+        console.error('[PHOTO][GOLDEN] Failed to convert blob to base64:', error);
+        toast.error('Failed to process photo. Please try again.');
+        return;
+      }
+    }
     
     // Try meal capture gateway first (only when flag is enabled)
     const result = await handoffFromPhotoCapture(
