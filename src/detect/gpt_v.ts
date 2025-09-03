@@ -33,7 +33,7 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
     const items = extractItems(data);
 
     // Keep the signal in debug, but NEVER throw
-    if (import.meta.env.VITE_DEBUG_CLIENT && items.length === 0 && data) {
+    if (import.meta.env.VITE_DEBUG_CLIENT === 'true' && items.length === 0 && data) {
       console.warn('[PHOTO][SCHEMA_MISMATCH]', requestId, data);
     }
 

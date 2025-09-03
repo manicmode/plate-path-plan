@@ -88,13 +88,15 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const { image_base64, system_prompt, user_prompt, attempt } = body;
 
-    console.info('[EDGE][REQUEST_DEBUG]', {
-      method: req.method,
-      hasBody: !!body,
-      bodyKeys: body ? Object.keys(body) : [],
-      imageKey: body?.image_base64 ? 'present' : (body?.image ? 'present(image)' : 'missing'),
-      imageLength: (body?.image_base64?.length ?? body?.image?.length ?? 0),
-    });
+    if (DEBUG) {
+      console.info('[EDGE][REQUEST_DEBUG]', {
+        method: req.method,
+        hasBody: !!body,
+        bodyKeys: body ? Object.keys(body) : [],
+        imageKey: body?.image_base64 ? 'present' : (body?.image ? 'present(image)' : 'missing'),
+        imageLength: (body?.image_base64?.length ?? body?.image?.length ?? 0),
+      });
+    }
     
     // Generate request ID for tracing
     const requestId = `gpt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -378,14 +380,16 @@ Example for salmon plate:
 
     const data = await response.json().catch(() => ({}));
     
-    console.info('[OPENAI][RESPONSE_DEBUG]', {
-      status: response.status,
-      ok: response.ok,
-      hasChoices: !!data?.choices?.length,
-      firstChoice: data?.choices?.[0]?.message?.content?.substring(0, 100) ?? null,
-      usage: data?.usage ?? null,
-      error: data?.error ?? null,
-    });
+    if (DEBUG) {
+      console.info('[OPENAI][RESPONSE_DEBUG]', {
+        status: response.status,
+        ok: response.ok,
+        hasChoices: !!data?.choices?.length,
+        firstChoice: data?.choices?.[0]?.message?.content?.substring(0, 100) ?? null,
+        usage: data?.usage ?? null,
+        error: data?.error ?? null,
+      });
+    }
     
     const content = data.choices?.[0]?.message?.content;
     

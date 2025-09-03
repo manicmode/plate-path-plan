@@ -100,12 +100,15 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
       attempt: attemptType
     };
     
-    console.info('[CLIENT][INVOCATION_DEBUG]', {
-      mode: 'GPT_ONLY',
-      keys: Object.keys(payload),
-      imageKey: payload.image_base64 ? 'image_base64' : 'missing',
-      imageLength: (payload.image_base64?.length ?? 0),
-    });
+    // Debug logging (only when enabled)
+    if (import.meta.env.VITE_DEBUG_CLIENT === 'true') {
+      console.info('[CLIENT][INVOCATION_DEBUG]', {
+        mode: 'GPT_ONLY',
+        keys: Object.keys(payload),
+        imageKey: payload.image_base64 ? 'image_base64' : 'missing',
+        imageLength: (payload.image_base64?.length ?? 0),
+      });
+    }
     
     // Call GPT-V2 structured endpoint
     console.time(`[PHOTO][${requestId}][edge]`);
