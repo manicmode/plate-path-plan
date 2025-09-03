@@ -630,52 +630,52 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         if (analysisData.product) {
           console.log('[PHOTO_ITEM→HEALTH] Processing product directly:', analysisData.product);
           
-          // Format product data for analysis
-          const productData = {
-            ok: true,
-            source: 'photo_item',
-            confidence: 0.9,
-            analysis: {
-              itemName: analysisData.product.name,
-              productName: analysisData.product.name,
-              title: analysisData.product.name,
-              healthScore: analysisData.product?.meta?.healthScore || 7, // Use mapped score from V2 scorer
-              ingredientsText: analysisData.product.ingredientsText || analysisData.product.name, // Use ingredients or fallback to name
-              ingredientFlags: analysisData.product.flags || [], // Use generated flags
-              flags: analysisData.product.flags || [], // Ensure both properties are set
-              nutritionData: analysisData.product.nutrients || {},
-              // Add per-serving nutrition support for photo items with portion data
-              nutritionDataPerServing: analysisData.product?.meta?.perPortion ? {
-                energyKcal: analysisData.product.meta.perPortion.kcal,
-                protein_g: analysisData.product.meta.perPortion.protein,
-                carbs_g: analysisData.product.meta.perPortion.carbs,
-                fat_g: analysisData.product.meta.perPortion.fat,
-                fiber_g: analysisData.product.meta.perPortion.fiber,
-                sodium_mg: analysisData.product.meta.perPortion.sodium,
-              } : undefined,
-              serving_size: analysisData.product?.meta?.portion?.label || undefined,
-              // Add portion grams for display logic
-              servingSizeGrams: analysisData.product?.meta?.portion?.grams || null,
-              healthProfile: {
-                isOrganic: false,
-                isGMO: false,
-                allergens: [],
-                preservatives: [],
-                additives: []
-              },
-              personalizedWarnings: [],
-              suggestions: [],
-              overallRating: 'good' as const
-            }
-          };
+           // Format product data for analysis
+           const productData = {
+             ok: true,
+             source: 'photo_item',
+             confidence: 0.9,
+             analysis: {
+               itemName: analysisData.product.name,
+               productName: analysisData.product.name,
+               title: analysisData.product.name,
+               healthScore: analysisData.product?.meta?.healthScore || 7, // Use mapped score from V2 scorer
+               ingredientsText: (analysisData.product.ingredients || []).join(', ') || analysisData.product.name, // Use ingredients array or fallback to name
+               ingredientFlags: analysisData.product?.meta?.flags || [], // Use generated flags from meta
+               flags: analysisData.product?.meta?.flags || [], // Ensure both properties use meta.flags
+               nutritionData: analysisData.product.nutrients || {},
+               // Add per-serving nutrition support for photo items with portion data
+               nutritionDataPerServing: analysisData.product?.meta?.perPortion ? {
+                 energyKcal: analysisData.product.meta.perPortion.kcal,
+                 protein_g: analysisData.product.meta.perPortion.protein,
+                 carbs_g: analysisData.product.meta.perPortion.carbs,
+                 fat_g: analysisData.product.meta.perPortion.fat,
+                 fiber_g: analysisData.product.meta.perPortion.fiber,
+                 sodium_mg: analysisData.product.meta.perPortion.sodium,
+               } : undefined,
+               serving_size: analysisData.product?.meta?.portion?.label || undefined,
+               // Add portion grams for display logic
+               servingSizeGrams: analysisData.product?.meta?.portion?.grams || null,
+               healthProfile: {
+                 isOrganic: false,
+                 isGMO: false,
+                 allergens: [],
+                 preservatives: [],
+                 additives: []
+               },
+               personalizedWarnings: [],
+               suggestions: [],
+               overallRating: 'good' as const
+             }
+           };
           
-          console.info('[HEALTH][PHOTO_ITEM]->[MODAL]', { 
-            name: analysisData.product.name,
-            hasIngredients: !!(analysisData.product.ingredientsText),
-            flagsCount: (analysisData.product.flags || []).length,
-            portionGrams: analysisData.product?.meta?.portion?.grams,
-            hasPerPortion: !!(analysisData.product?.meta?.perPortion)
-          });
+           console.info('[HEALTH][PHOTO_ITEM]->[MODAL]', { 
+             name: analysisData.product.name,
+             hasIngredients: !!((analysisData.product.ingredients || []).length),
+             flagsCount: (analysisData.product?.meta?.flags || []).length,
+             portionGrams: analysisData.product?.meta?.portion?.grams,
+             hasPerPortion: !!(analysisData.product?.meta?.perPortion)
+           });
 
           // Log portion availability for debugging
           const hasPer100g = !!(analysisData.product?.meta?.per100g);

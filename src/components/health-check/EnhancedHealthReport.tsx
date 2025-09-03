@@ -355,7 +355,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
     sodium:   nutritionData?.sodium   ?? null,
   };
 
-  const grams = portion?.grams ?? (result as any)?.serving_size_g ?? (analysisData as any)?.serving_size_g ?? null;
+  const grams = portion?.grams ?? (result as any)?.servingSizeGrams ?? (result as any)?.serving_size_g ?? (analysisData as any)?.serving_size_g ?? null;
 
   // Header serving candidate for display
   const headerServingG =

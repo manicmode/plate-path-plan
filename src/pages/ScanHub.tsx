@@ -492,13 +492,22 @@ export default function ScanHub() {
       <HealthCheckModal
         isOpen={healthCheckModalOpen}
         onClose={() => {
-          console.log('[SCAN] Health modal closed - staying on scan page');
+          console.log('[SCAN] Health modal closed');
           camHardStop('modal_close'); // Force stop before cleanup
           setHealthCheckModalOpen(false);
           setAnalysisData(null);
+          
+          // Check if we should return to health report viewer
+          // This happens when the modal was opened from a photo item in the health report
+          if (healthReportData && healthModalStep === 'report') {
+            console.log('[SCAN] Returning to health report viewer');
+            setHealthReportViewerOpen(true);
+          } else {
+            console.log('[SCAN] Staying on scan page');
+          }
+          
           setHealthModalStep('scanner');
           handledRef.current = false;
-          // Always stay on /scan page when modal is closed/canceled
         }}
         initialState={
           forceHealth
