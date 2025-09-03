@@ -97,6 +97,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           overall_score: Math.round(report.overallScore),
           items_snapshot: itemsSnapshot,
           report_snapshot: report,
+          user_id: user.id,
           image_url: null // Could add later if needed
         } as any)
         .select('id')

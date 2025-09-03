@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowRight, Zap, Info, X } from 'lucide-react';
+import { Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
+import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -45,6 +47,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
+  const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
+  const [isSavingSet, setIsSavingSet] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -162,6 +166,63 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   const handleWheelClose = () => {
     setOpenWheelForId(null);
+  };
+
+  const handleSaveSet = () => {
+    if (!user?.id) {
+      toast.error('Please log in to save sets');
+      return;
+    }
+    setShowSaveSetDialog(true);
+  };
+
+  const handleSaveSetWithName = async (setName: string) => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to save');
+      return;
+    }
+
+    setIsSavingSet(true);
+    try {
+      const itemsSnapshot = selectedItems.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100,
+        score: 0, // No score available in ReviewItemsScreen
+        calories: 0, // No calories available in ReviewItemsScreen  
+        healthRating: 'unknown'
+      }));
+
+      const { data, error } = await supabase
+        .from('saved_meal_set_reports')
+        .insert({
+          name: setName.trim(),
+          overall_score: null, // No overall score available
+          items_snapshot: itemsSnapshot,
+          report_snapshot: null, // No report data available
+          user_id: user.id,
+          image_url: null
+        } as any)
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
+        action: {
+          label: 'View',
+          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
+        }
+      });
+      
+      setShowSaveSetDialog(false);
+    } catch (error) {
+      console.error('Failed to save set:', error);
+      toast.error('Failed to save set');
+    } finally {
+      setIsSavingSet(false);
+    }
   };
 
   const selectedCount = items.filter(item => item.selected && item.name.trim()).length;
@@ -296,13 +357,24 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                 </Button>
                 
-                <Button
-                  onClick={handleSeeDetails}
-                  disabled={selectedCount === 0}
-                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                >
-                  🔎 Detailed Log ({selectedCount})
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={handleSaveSet}
+                    disabled={selectedCount === 0 || isSavingSet}
+                    className="h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSavingSet ? 'Saving...' : 'Save Set'}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSeeDetails}
+                    disabled={selectedCount === 0}
+                    className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                  >
+                    🔎 Details
+                  </Button>
+                </div>
               </div>
               
               {/* Cancel button full width */}
@@ -339,6 +411,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         max={500}
         step={5}
         unit="g"
+      />
+
+      {/* Save Set Name Dialog */}
+      <SaveSetNameDialog
+        isOpen={showSaveSetDialog}
+        onClose={() => setShowSaveSetDialog(false)}
+        onSave={handleSaveSetWithName}
       />
     </Dialog.Root>
   );

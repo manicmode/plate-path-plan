@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 interface SaveSetNameDialogProps {
@@ -20,6 +20,7 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   initialName = ''
 }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [setName, setSetName] = useState(initialName);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -43,18 +44,20 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
       console.log('[DEBUG] onSave completed successfully');
       
       // Show success toast with option to view
-      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
-        action: {
-          label: 'View',
-          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
-        }
+      toast({
+        title: "Set Saved Successfully",
+        description: `"${setName}" has been saved to your meal sets.`
       });
       
       console.log('[DEBUG] About to close dialog');
       onClose();
     } catch (error) {
       console.error('[DEBUG] Failed to save set:', error);
-      toast.error('Failed to save set');
+      toast({
+        title: "Save Failed",
+        description: "Could not save your set. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
       console.log('[DEBUG] SaveSetNameDialog handleSave completed');
@@ -64,9 +67,9 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[103] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[450] bg-black/50 backdrop-blur-sm" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[104] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background p-6 shadow-lg"
+          className="fixed left-1/2 top-1/2 z-[460] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background p-6 shadow-lg"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <Dialog.Title className="text-lg font-semibold mb-4">Save This Set</Dialog.Title>
