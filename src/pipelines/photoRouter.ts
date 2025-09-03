@@ -145,6 +145,27 @@ async function analyzeMealBase64(b64: string, signal?: AbortSignal) {
       }
     }
     
+    console.warn("[PHOTO][GOLDEN] mapped items", mappedItems, "raw", allCandidates);
+    
+    // Debug bypass fallback: if no mapped items but raw detector has items
+    if (mappedItems.length === 0 && allCandidates?.length > 0) {
+      console.warn("[PHOTO][GOLDEN] bypassing meal-only filter, forwarding raw candidates");
+      // Add raw candidates as mapped items with minimal nutrition data for display
+      for (const candidate of allCandidates) {
+        mappedItems.push({
+          ...candidate,
+          nutritionData: {
+            name: candidate.name,
+            id: `raw-${candidate.name}`,
+            calories_per_100g: 100, // placeholder values for display
+            protein_per_100g: 5,
+            carbs_per_100g: 10,
+            fat_per_100g: 3
+          }
+        });
+      }
+    }
+    
     // Portion estimation for mapped items
     const objectsOnly = allCandidates.filter(i => i.source === 'object');
     const plateCandidate = objectsOnly.find(o => /(plate|dish|bowl)/i.test(o.name));
