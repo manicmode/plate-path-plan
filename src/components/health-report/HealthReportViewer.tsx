@@ -170,21 +170,18 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             <div className="flex-1 overflow-y-auto px-5 py-6 space-y-8">
               {/* Overall Score */}
               <div className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 animate-pulse">
-                  <span className={`text-3xl font-bold ${getScoreColor(report.overallScore)}`}>
+                <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-white/10 border-2 border-white/20 animate-pulse">
+                  <span className={`text-4xl font-bold ${getScoreColor(report.overallScore)}`}>
                     {report.overallScore}
                   </span>
                 </div>
                 <div className="space-y-2">
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${verdictStyle.bg}`}>
+                  <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full ${verdictStyle.bg}`}>
                     {getScoreIcon(report.overallScore)}
-                    <span className={`font-semibold ${verdictStyle.color}`}>
+                    <span className={`text-lg font-bold ${verdictStyle.color}`}>
                       {verdictStyle.text}
                     </span>
                   </div>
-                  <p className="text-gray-300 text-sm">
-                    Based on nutritional analysis of your meal
-                  </p>
                 </div>
               </div>
 
