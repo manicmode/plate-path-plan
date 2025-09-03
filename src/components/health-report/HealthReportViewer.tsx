@@ -236,8 +236,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.log('[HR][CTA][CLICK] Detailed Log');
-      console.log('[HR][FLOW] set active');
-      console.log('[HR][FLOW] beginConfirmSequence called');
     }
 
     // Transform items to match FoodConfirmModal interface
@@ -255,7 +253,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     setConfirmModalOpen(true);
 
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][ConfirmModal] mount', modalItems[0]?.name);
+      console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
     }
 
     // Close the report AFTER starting the flow

@@ -243,14 +243,6 @@ function AppContent() {
                         <SavedLogs />
                       </ProtectedRoute>
                     } />
-                    
-                    {/* Disabled ReviewItemsPage route - using global confirm flow 
-                    <Route path="/log/review-items" element={
-                      <ProtectedRoute>
-                        <ReviewItemsPage />
-                      </ProtectedRoute>
-                    } />
-                    */}
                     <Route path="/analytics" element={
                       <ProtectedRoute>
                         <Analytics />

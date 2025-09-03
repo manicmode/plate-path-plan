@@ -179,8 +179,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.log('[REV][CTA][CLICK] Details');
-      console.log('[REV][FLOW] set active');
-      console.log('[REV][FLOW] beginConfirmSequence called');
     }
 
     const selectedItems = items.filter(item => item.selected && item.name.trim());

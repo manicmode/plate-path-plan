@@ -30,7 +30,7 @@ import { HealthReportViewer } from '@/components/health-report/HealthReportViewe
 import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
-import { FoodConfirmModal } from '@/components/FoodConfirmModal';
+
 
 export default function ScanHub() {
   const navigate = useNavigate();

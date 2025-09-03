@@ -119,7 +119,7 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
             <DialogTitle>Confirm Food Log</DialogTitle>
           </VisuallyHidden.Root>
           <div className="flex items-center justify-between">
-            <span className="text-lg font-semibold">Confirm Food Items</span>
+            <span className="text-lg font-semibold">Confirm Food Log</span>
             <Badge variant="secondary">
               {currentIndex + 1} of {items.length}
             </Badge>
