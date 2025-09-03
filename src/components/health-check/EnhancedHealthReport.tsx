@@ -20,7 +20,8 @@ import {
   Zap,
   X,
   Loader2,
-  Plus
+  Plus,
+  Settings
 } from 'lucide-react';
 import type { HealthAnalysisResult } from './HealthCheckModal';
 import { useToast } from '@/hooks/use-toast';
@@ -643,6 +644,17 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               )}
             </TabsTrigger>
             <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+            
+            {/* Add cog-only tab for photo items portion editing */}
+            {analysisData?.source === 'photo_item' && portion?.grams && (
+              <TabsTrigger 
+                value="nutrition"
+                className="flex items-center justify-center p-2"
+                aria-label="Edit portion size"
+              >
+                <Settings className="w-4 h-4" />
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="nutrition" className="mt-6">
@@ -653,6 +665,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               servingGrams={typeof portion?.grams === 'number' ? portion.grams : 
                           typeof headerServingG === 'number' ? headerServingG : undefined}
               portionLabel={typeof portion?.grams === 'number' ? `${portion.grams}g` : 'Unknown serving'}
+              renderIconOnly={analysisData?.source === 'photo_item'}
             />
             {/* PORTION INQUIRY - Call Site Logging */}
             {(() => {

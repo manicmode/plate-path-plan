@@ -1047,6 +1047,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         overallRating: raw?.overallRating || raw?.rating || 'fair'
       };
 
+      // Preserve photo-specific fields for portion size transfer
+      if (raw?.servingSizeGrams || result?.servingSizeGrams) {
+        (normalized as any).servingSizeGrams = raw?.servingSizeGrams || result?.servingSizeGrams;
+        console.log('[PORTION][TRANSFER] Preserved servingSizeGrams:', (normalized as any).servingSizeGrams);
+      }
+      
+      if (raw?.serving_size || result?.serving_size) {
+        normalized.serving_size = raw?.serving_size || result?.serving_size;
+      }
+      
+      if (raw?.nutritionDataPerServing || result?.nutritionDataPerServing) {
+        normalized.nutritionDataPerServing = raw?.nutritionDataPerServing || result?.nutritionDataPerServing;
+      }
+      
+      // Alias flags to ensure UI compatibility (already handled above, but add explicit alias)
+      normalized.flags = ingredientFlags;
+
       if (import.meta.env.VITE_DEBUG_HEALTH === 'true') {
         console.log('[MAPPED][REPORT]', {
           itemName: normalized.itemName,

@@ -22,6 +22,7 @@ interface NutritionToggleProps {
   className?: string;
   servingGrams?: number | null | undefined;
   portionLabel?: string;
+  renderIconOnly?: boolean; // New prop to render icon-only edit button for photo items
 }
 
 type NutritionMode = 'per100g' | 'portion';
@@ -33,7 +34,8 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
   ocrText,
   className,
   servingGrams,
-  portionLabel
+  portionLabel,
+  renderIconOnly = false
 }) => {
   const [mode, setMode] = useState<NutritionMode>('per100g');
   const [currentPortionInfo, setCurrentPortionInfo] = useState<PortionInfo | null>(null);
@@ -239,10 +241,16 @@ const MemoizedNutritionToggle = React.memo<NutritionToggleProps>(({
               onPortionChange={handlePortionChange}
               enabled={portionDetectionEnabled}
             >
-              <Button variant="outline" size="sm" className="h-8 px-3 text-xs" aria-label="Edit portion">
-                {formatPortionDisplay(portionInfo)}
-                <Settings className="w-3 h-3 ml-1" />
-              </Button>
+              {renderIconOnly ? (
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0" aria-label="Edit portion">
+                  <Settings className="w-3 h-3" />
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs" aria-label="Edit portion">
+                  {formatPortionDisplay(portionInfo)}
+                  <Settings className="w-3 h-3 ml-1" />
+                </Button>
+              )}
             </PortionSheetLazy>
           )}
         </div>
