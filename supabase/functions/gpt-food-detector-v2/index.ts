@@ -402,6 +402,9 @@ Example for salmon plate:
 
     const data = await response.json().catch(() => ({}));
     
+    // UNCONDITIONAL: Dump entire raw OpenAI response for debugging
+    console.log('[OPENAI][RESPONSE_DEBUG]', JSON.stringify(data, null, 2));
+    
     if (DEBUG) {
       console.info('[OPENAI][RESPONSE_DEBUG]', {
         status: response.status,
