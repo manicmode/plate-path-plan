@@ -63,6 +63,7 @@ const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
+const SavedReports = lazy(() => import('@/pages/SavedReports'));
 
 // Health Scan components
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
@@ -325,11 +326,17 @@ function AppContent() {
                         <HealthScanPhoto />
                       </ProtectedRoute>
                     } />
-                    <Route path="/health-scan/report" element={
-                      <ProtectedRoute>
-                        <HealthReport />
-                      </ProtectedRoute>
-                    } />
+                     <Route path="/health-scan/report" element={
+                       <ProtectedRoute>
+                         <HealthReport />
+                       </ProtectedRoute>
+                     } />
+                     
+                     <Route path="/scan/saved-reports" element={
+                       <ProtectedRoute>
+                         <SavedReports />
+                       </ProtectedRoute>
+                     } />
                     
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (

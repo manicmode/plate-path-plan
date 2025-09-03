@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Eye, Utensils } from 'lucide-react';
+import { ArrowLeft, BookOpen, Eye, Utensils, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SavedLogsMeals } from '@/components/saved/SavedLogsMeals';
 // No mock data imports - pure DB only
 
 interface NutritionLog {
@@ -26,6 +27,7 @@ export default function SavedReports() {
   const { toast } = useToast();
   const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'individual' | 'meal-sets'>('individual');
 
   useEffect(() => {
     loadSavedReports();
@@ -137,81 +139,131 @@ export default function SavedReports() {
           </div>
         </div>
 
+        {/* Toggle between Individual and Meal Sets */}
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center bg-white/10 rounded-full p-1">
+            <Button
+              variant={activeTab === 'individual' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('individual')}
+              className={`rounded-full px-6 py-2 text-sm font-medium transition-all ${
+                activeTab === 'individual' 
+                  ? 'bg-white text-primary shadow-sm' 
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              Individual Reports
+            </Button>
+            <Button
+              variant={activeTab === 'meal-sets' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('meal-sets')}
+              className={`rounded-full px-6 py-2 text-sm font-medium transition-all ${
+                activeTab === 'meal-sets' 
+                  ? 'bg-white text-primary shadow-sm' 
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              Meal Sets
+            </Button>
+          </div>
+        </div>
+
         {/* Header with count */}
         <div className="flex items-center space-x-2 mb-6">
           <BookOpen className="h-5 w-5 text-white" />
           <Badge variant="secondary" className="bg-white/20 text-white">
-            {savedReports.length}
+            {activeTab === 'individual' ? savedReports.length : 0}
           </Badge>
+          <span className="text-white/70 text-sm">
+            {activeTab === 'individual' ? 'Individual meal reports' : 'Meal set reports'}
+          </span>
         </div>
 
-        {/* Saved reports list */}
+        {/* Content based on active tab */}
         <div className="space-y-4">
-          {loading ? (
-            <Card className="bg-white/10 border-white/20">
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                <span className="ml-3 text-white">Loading saved reports...</span>
-              </CardContent>
-            </Card>
-          ) : savedReports.length === 0 ? (
+          {activeTab === 'individual' ? (
+            // Individual reports content
+            loading ? (
+              <Card className="bg-white/10 border-white/20">
+                <CardContent className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  <span className="ml-3 text-white">Loading saved reports...</span>
+                </CardContent>
+              </Card>
+            ) : savedReports.length === 0 ? (
+              <Card className="bg-white/10 border-white/20">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <BookOpen className="h-12 w-12 text-white/50 mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    No individual reports
+                  </h3>
+                  <p className="text-rose-100/70 text-center">
+                    Complete food analyses to see saved nutrition reports here
+                  </p>
+                  <Button
+                    onClick={() => navigate('/scan')}
+                    className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                  >
+                    Start Scanning
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              savedReports.map((report) => (
+                <Card key={report.id} className="bg-white/10 border-white/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-green-600 rounded-full p-2">
+                          <Utensils className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-white">
+                              {report.food_name}
+                            </h3>
+                            <Badge className={getQualityColor(report.quality_verdict)}>
+                              {report.quality_verdict}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-4 text-sm text-rose-100/70">
+                            <span>{report.calories} cal</span>
+                            <span>P: {report.protein}g</span>
+                            <span>C: {report.carbs}g</span>
+                            <span>F: {report.fat}g</span>
+                            <span>{formatTime(report.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewReport(report.id)}
+                        className="text-white hover:bg-white/10"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )
+          ) : (
+            // Meal sets content - placeholder for now
             <Card className="bg-white/10 border-white/20">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BookOpen className="h-12 w-12 text-white/50 mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">
-                  No saved reports
+                  Meal Set Reports
                 </h3>
-                <p className="text-rose-100/70 text-center">
-                  Complete food analyses to see saved nutrition reports here
+                <p className="text-rose-100/70 text-center mb-4">
+                  Saved meal set reports with overall health scores will appear here
                 </p>
-                <Button
-                  onClick={() => navigate('/scan')}
-                  className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
-                >
-                  Start Scanning
-                </Button>
+                <p className="text-rose-100/50 text-sm text-center">
+                  Feature coming soon - scan multiple items together to create meal set reports
+                </p>
               </CardContent>
             </Card>
-          ) : (
-            savedReports.map((report) => (
-              <Card key={report.id} className="bg-white/10 border-white/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-green-600 rounded-full p-2">
-                        <Utensils className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold text-white">
-                            {report.food_name}
-                          </h3>
-                          <Badge className={getQualityColor(report.quality_verdict)}>
-                            {report.quality_verdict}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-rose-100/70">
-                          <span>{report.calories} cal</span>
-                          <span>P: {report.protein}g</span>
-                          <span>C: {report.carbs}g</span>
-                          <span>F: {report.fat}g</span>
-                          <span>{formatTime(report.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewReport(report.id)}
-                      className="text-white hover:bg-white/10"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
           )}
         </div>
       </div>
