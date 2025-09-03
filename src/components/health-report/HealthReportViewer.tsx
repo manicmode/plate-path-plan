@@ -298,13 +298,19 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                         className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-200 ease-in-out cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 active:scale-[0.98]"
                         tabIndex={0}
                         role="button"
-                        onClick={() => handleItemClick(index)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleItemClick(index);
-                          }
-                        }}
+                         onClick={(e) => {
+                           console.log('🔴 RAW CLICK EVENT FIRED', e.target);
+                           e.stopPropagation();
+                           handleItemClick(index);
+                         }}
+                         onKeyDown={(e) => {
+                           console.log('🔴 KEY EVENT FIRED', e.key);
+                           if (e.key === 'Enter' || e.key === ' ') {
+                             e.preventDefault();
+                             e.stopPropagation();
+                             handleItemClick(index);
+                           }
+                         }}
                         aria-label={`View details for ${item.name} - ${item.calories} calories, health rating ${item.healthRating}`}
                       >
                         <div className="flex-1">
