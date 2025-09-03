@@ -5,17 +5,30 @@ export type GenericFood = typeof generic[number];
 export function resolveGenericFood(name: string): GenericFood | null {
   const q = name?.toLowerCase().trim();
   if (!q) return null;
+  
+  console.log('[GENERIC][DEBUG] Looking up:', q);
 
   // exact slug/display match
   const direct = generic.find(g =>
     g.slug === q || g.display_name.toLowerCase() === q
   );
-  if (direct) return direct;
+  if (direct) {
+    console.log('[GENERIC][DEBUG] Direct match found:', direct.slug);
+    return direct;
+  }
 
   // alias / contains
   for (const g of generic) {
-    if (g.aliases?.some(a => a.toLowerCase() === q)) return g;
-    if (g.slug.includes(q) || q.includes(g.slug)) return g;
+    console.log('[GENERIC][DEBUG] Checking:', g.slug);
+    if (g.aliases?.some(a => a.toLowerCase() === q)) {
+      console.log('[GENERIC][DEBUG] Alias match:', g.slug);
+      return g;
+    }
+    if (g.slug.includes(q) || q.includes(g.slug)) {
+      console.log('[GENERIC][DEBUG] Contains match:', g.slug, 'for query:', q);
+      return g;
+    }
   }
+  console.log('[GENERIC][DEBUG] No match found for:', q);
   return null;
 }
