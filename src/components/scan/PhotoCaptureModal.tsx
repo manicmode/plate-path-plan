@@ -11,8 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { handoffFromPhotoCapture } from '@/features/meal-capture/gateway';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useRouteToHealthAnalyzerV2 } from '@/lib/health/photoFlowV2Utils';
-import { routePhoto } from '@/pipelines/photoRouter';
 import { Sound, bindSoundUnlockOnce } from '@/lib/sound/soundManager';
 import { toast } from 'sonner';
 import { scannerLiveCamEnabled } from '@/lib/platform';
@@ -49,7 +47,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const routeToAnalyzer = useRouteToHealthAnalyzerV2();
   
   // Stable IDs for accessibility
   const titleId = useId();
@@ -271,38 +268,25 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       return;
     }
 
-    // V2 Photo Flow processing
+    // V2 Photo Flow processing - For Health Scan, use golden pipeline directly
     if (isFeatureEnabled('photo_flow_v2')) {
       try {
         if (!mountedRef.current) return;
         setProcessing(true);
         setProcessingError(null);
         
-        console.log('[PHOTO][V2_PROCESSING]', { size: blob.size });
+        console.log('[PHOTO][GOLDEN] processing for health scan', { size: blob.size });
         
-        // Here you would call the enhanced photo pipeline
-        // For now, simulate processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Convert blob to base64 and call onCapture for golden pipeline
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageBase64 = e.target?.result as string;
+          console.log('[PHOTO][GOLDEN] calling onCapture callback');
+          onCapture(imageBase64);
+        };
+        reader.readAsDataURL(blob);
         
-        if (!mountedRef.current) return;
-        
-        setProcessing(true);
-        
-        // Convert blob to base64 for router
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        canvas.width = 640;
-        canvas.height = 480;
-        ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.8);
-        
-        // Route photo through new router system
-        const routed = await routePhoto(base64);
-        
-        // Route via ephemeral store - do NOT close modal manually
-        console.log('[PHOTO][V2_ROUTING] to health analyzer, kind=', routed.kind);
-        routeToAnalyzer(routed);
+        return; // Exit early for health scan flow
         
       } catch (error: any) {
         console.log('[PHOTO][FAIL] reason=', error?.message || 'unknown');
