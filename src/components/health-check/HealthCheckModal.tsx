@@ -2353,8 +2353,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     onClose();
   };
 
+  const handleDialogChange = (open: boolean) => {
+    // Only close when the dialog is actually being closed (open = false)
+    if (!open) {
+      handleClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
       <DialogContent 
         className={`max-w-full max-h-full w-full h-full p-0 border-0 pointer-events-auto ${
           currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
