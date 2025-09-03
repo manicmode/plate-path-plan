@@ -7,6 +7,7 @@ import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { ItemHealthReportViewer } from './ItemHealthReportViewer';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -25,7 +26,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
-  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [showItemViewer, setShowItemViewer] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -127,12 +129,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleItemClick = (index: number) => {
-    console.info('[HEALTH][ITEM] clicked', { item: report.itemAnalysis[index]?.name });
-    setSelectedItemIndex(index);
-  };
-
-  const handleItemDetailClose = () => {
-    setSelectedItemIndex(null);
+    const item = report.itemAnalysis[index];
+    console.info('[HEALTH][ITEM_VIEWER] open', { name: item?.name });
+    setSelectedItem(item);
+    setShowItemViewer(true);
   };
 
   return (
@@ -384,117 +384,17 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Item Detail Modal */}
-      {selectedItemIndex !== null && (
-        <Dialog.Root open={true} onOpenChange={handleItemDetailClose}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/80 z-[350]" />
-            <Dialog.Content
-              className="fixed inset-0 z-[400] bg-gradient-to-br from-red-900/95 via-purple-900/95 to-red-800/95 backdrop-blur-sm text-white overflow-hidden"
-              onOpenAutoFocus={(e) => e.preventDefault()}
-            >
-              <div className="flex h-full w-full flex-col">
-                {/* Header */}
-                <header className="sticky top-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/10">
-                  <div>
-                    <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                      🔍 {report.itemAnalysis[selectedItemIndex]?.name}
-                    </h2>
-                    <p className="text-sm text-gray-300">
-                      Detailed health analysis
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleItemDetailClose}
-                    className="text-white hover:bg-white/10"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </header>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
-                  {(() => {
-                    const item = report.itemAnalysis[selectedItemIndex];
-                    if (!item) return null;
-
-                    return (
-                      <>
-                        {/* Item Score */}
-                        <div className="text-center space-y-4">
-                          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/10 border-2 border-white/20">
-                            <span className={`text-2xl font-bold ${getScoreColor(item.score)}`}>
-                              {item.score}
-                            </span>
-                          </div>
-                          <div className="space-y-2">
-                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${getVerdictDisplay(item.score).bg}`}>
-                              {getScoreIcon(item.score)}
-                              <span className={`font-semibold ${getVerdictDisplay(item.score).color}`}>
-                                {item.healthRating}
-                              </span>
-                            </div>
-                            <p className="text-gray-300 text-sm">
-                              {item.calories} calories analyzed
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Benefits */}
-                        {item.benefits.length > 0 && (
-                          <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
-                            <h3 className="text-lg font-semibold mb-3 text-green-400 flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5" />
-                              Health Benefits
-                            </h3>
-                            <ul className="space-y-2">
-                              {item.benefits.map((benefit, index) => (
-                                <li key={index} className="text-green-200 text-sm flex items-start gap-2">
-                                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                                  {benefit}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Concerns */}
-                        {item.concerns.length > 0 && (
-                          <div className="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/20">
-                            <h3 className="text-lg font-semibold mb-3 text-yellow-400 flex items-center gap-2">
-                              <AlertTriangle className="w-5 h-5" />
-                              Health Considerations
-                            </h3>
-                            <ul className="space-y-2">
-                              {item.concerns.map((concern, index) => (
-                                <li key={index} className="text-yellow-200 text-sm flex items-start gap-2">
-                                  <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-                                  {concern}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Footer */}
-                <footer className="sticky bottom-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 py-4 border-t border-white/10">
-                  <Button
-                    onClick={handleItemDetailClose}
-                    className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold"
-                  >
-                    Back to Report
-                  </Button>
-                </footer>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+      {/* Item Health Report Viewer */}
+      {showItemViewer && selectedItem && (
+        <ItemHealthReportViewer
+          isOpen={showItemViewer}
+          onClose={() => {
+            setShowItemViewer(false);
+            setSelectedItem(null);
+          }}
+          item={selectedItem}
+          baseReport={report}
+        />
       )}
     </Dialog.Root>
   );
