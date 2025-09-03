@@ -162,10 +162,13 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       logFallbackEvents.searchStarted('text', trimmed.length);
       const startTime = Date.now();
       
-      const results = await searchFoodByName(trimmed);
+      const results = await searchFoodByName(trimmed, { 
+        maxResults: 50, 
+        bypassGuard: true 
+      });
       const ms = Date.now() - startTime;
       
-      console.info('[TELEMETRY] manual_search: result', { count: results.length, ms });
+      console.info('[HEALTH][SEARCH] results', { q: trimmed, count: results.length, ms });
       
       setSearchResults(results);
       saveRecentSearch(trimmed);
@@ -209,6 +212,9 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
     const source = initialQuery ? 'voice' : 'manual';
     console.log('[PARITY][TAP]', { source, itemName: result?.name });
     console.log('[PARITY][HANDLER]', { source, usingHandler: false });
+    
+    // Log diagnostic for search selection
+    console.info('[HEALTH][SEARCH] open_report', { id: result.id, name: result.name });
     
     // Log telemetry
     logFallbackEvents.resultSelected(

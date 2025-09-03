@@ -206,6 +206,7 @@ export default function ScanHub() {
 
   const handleEnterManually = () => {
     logTileClick('manual');
+    console.info('[HEALTH][MANUAL] open');
     if (!textEnabled) {
       toast('Manual entry is currently disabled');
       return;
@@ -215,6 +216,7 @@ export default function ScanHub() {
 
   const handleSpeakToAnalyze = () => {
     logTileClick('voice');
+    console.info('[HEALTH][VOICE] open');
     if (!voiceEnabled) {
       toast('Voice analysis is currently disabled');
       return;

@@ -86,6 +86,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   // Handle transcript result - route to Search Modal for user selection
   const handleTranscriptAccepted = useCallback((text: string, confidence?: number) => {
     console.log(`[VOICE] Transcript accepted: "${text}" (confidence: ${confidence})`);
+    console.info('[HEALTH][VOICE] transcript', { text });
     safeSetStatus('processing');
     
     // Start processing watchdog (8s timeout)
@@ -115,6 +116,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   // Start listening with Speech Recognition API
   const startListening = useCallback(() => {
     console.log('[VOICE] Starting listening...');
+    console.info('[HEALTH][VOICE] start');
     safeSetError(null);
     clearTimers();
 
@@ -163,6 +165,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
       rec.onerror = (e: any) => {
         console.warn('[VOICE] Recognition error:', e.error);
+        console.error('[HEALTH][VOICE] err', e);
         clearTimers();
         stopRecognition();
         
@@ -236,6 +239,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   // Stop listening
   const stopListening = useCallback(() => {
     console.log('[VOICE] Stopping listening...');
+    console.info('[HEALTH][VOICE] stop');
     clearTimers();
     stopRecognition();
     safeSetStatus('idle');

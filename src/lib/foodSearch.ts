@@ -41,9 +41,9 @@ export function mapOFFItem(item: any): CanonicalSearchResult {
  */
 export async function searchFoodByName(
   query: string, 
-  options: { timeout?: number; maxResults?: number; finalItemsLength?: number } = {}
+  options: { timeout?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean } = {}
 ): Promise<CanonicalSearchResult[]> {
-  const { timeout = 6000, maxResults = 10, finalItemsLength = 0 } = options;
+  const { timeout = 6000, maxResults = 50, finalItemsLength = 0, bypassGuard = false } = options;
   
   if (!isFeatureEnabled('fallback_text_enabled')) {
     console.log('🚫 [FoodSearch] Text fallback disabled');
@@ -58,8 +58,8 @@ export async function searchFoodByName(
     return [];
   }
   
-  // Guard: Don't call during intake - only on user confirm
-  if (!finalItemsLength) {
+  // Guard: Don't call during intake - only on user confirm (bypass for manual/voice search)
+  if (!finalItemsLength && !bypassGuard) {
     console.log('🚫 [FoodSearch] Guarded - no final items to search for');
     return [];
   }
