@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { HealthReportReviewModal } from '@/components/health-report/HealthReportReviewModal';
-import { generateHealthReport } from '@/lib/health/generateHealthReport';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Camera } from 'lucide-react';
+import { renderHealthReport } from '@/lib/health/renderHealthReport';
+import { resolveGenericFood } from '@/health/generic/resolveGenericFood';
+import { productFromGeneric } from '@/health/generic/mapToProductModel';
+import type { HealthAnalysisResult } from '@/components/health-check/HealthCheckModal';
 
 export default function HealthScanPhoto() {
   const navigate = useNavigate();
@@ -66,16 +69,86 @@ export default function HealthScanPhoto() {
 
   const handleShowHealthReport = async (selectedItems: ReviewItem[]) => {
     try {
-      const reportData = await generateHealthReport(selectedItems);
-      navigate('/health-scan/report', { 
-        state: { 
-          reportData,
-          items: selectedItems 
-        } 
-      });
+      // Convert each detected item to generic food and create health analysis
+      if (selectedItems.length === 1) {
+        // Single item - use the full health report modal
+        const item = selectedItems[0];
+        const genericFood = resolveGenericFood(item.name);
+        
+        if (genericFood) {
+          console.info('[HEALTH][PHOTO] Using generic food data for:', item.name, '→', genericFood.slug);
+          
+          const productModel = productFromGeneric(genericFood);
+          
+          // Create HealthAnalysisResult from generic food data
+          const healthAnalysisResult: HealthAnalysisResult = {
+            itemName: productModel.name,
+            productName: productModel.name,
+            title: productModel.name,
+            healthScore: 85, // Default good score for whole foods
+            ingredientsText: `${productModel.name} (whole food)`,
+            ingredientFlags: [],
+            flags: [],
+            nutritionData: {
+              calories: productModel.nutrients.calories || 0,
+              protein: productModel.nutrients.protein_g || 0,
+              carbs: productModel.nutrients.carbs_g || 0,
+              fat: productModel.nutrients.fat_g || 0,
+              fiber: productModel.nutrients.fiber_g || 0,
+              sugar: productModel.nutrients.sugar_g || 0,
+              sodium: productModel.nutrients.sodium_mg || 0,
+            },
+            nutritionDataPerServing: {
+              energyKcal: productModel.nutrients.calories || 0,
+              protein_g: productModel.nutrients.protein_g || 0,
+              carbs_g: productModel.nutrients.carbs_g || 0,
+              fat_g: productModel.nutrients.fat_g || 0,
+              fiber_g: productModel.nutrients.fiber_g || 0,
+              sugar_g: productModel.nutrients.sugar_g || 0,
+              sodium_mg: productModel.nutrients.sodium_mg || 0,
+            },
+            serving_size: productModel.serving?.label || `${productModel.serving?.grams}g`,
+            healthProfile: {
+              isOrganic: false,
+              isGMO: false,
+              allergens: [],
+              preservatives: [],
+              additives: []
+            },
+            personalizedWarnings: [],
+            suggestions: [
+              'Whole foods like this are excellent nutritional choices',
+              'Consider pairing with other nutrient-dense foods for a complete meal'
+            ],
+            overallRating: 'excellent' as const
+          };
+
+          // Use the same renderHealthReport system as barcode/manual/voice
+          renderHealthReport({
+            result: healthAnalysisResult,
+            onScanAnother: () => {
+              setShowReviewModal(false);
+              setPhotoModalOpen(true);
+            },
+            onClose: () => {
+              setShowReviewModal(false);
+              navigate('/scan');
+            },
+            analysisData: {
+              source: 'photo',
+              imageUrl: undefined
+            }
+          });
+        } else {
+          toast.error(`Nutrition data not available for ${item.name}`);
+        }
+      } else {
+        // Multiple items - show simple message for now
+        toast.info('Please select one item at a time for detailed analysis');
+      }
     } catch (error) {
-      console.error('Failed to generate health report:', error);
-      toast.error('Failed to generate health report');
+      console.error('Failed to show health report:', error);
+      toast.error('Failed to show health report');
     }
   };
 
