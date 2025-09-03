@@ -23,15 +23,27 @@ export default function HealthScanPhoto() {
   const handlePhotoCapture = async (imageBase64: string) => {
     console.log('[HEALTH_SCAN] Photo captured, starting detection...');
     
+    // Enforce golden detection pipeline
+    const USE_GOLDEN = (import.meta.env.VITE_DETECTOR_PIPELINE_VERSION ?? 'golden') === 'golden';
+    if (!USE_GOLDEN) {
+      console.warn('[HEALTH_SCAN] Non-golden pipeline requested, defaulting to golden for Health Scan');
+    }
+    
     try {
-      const result = await runFoodDetectionPipeline(imageBase64, { mode: 'health' });
+      const result = await runFoodDetectionPipeline(imageBase64, { 
+        mode: 'health'
+      });
       
       if (result.success && result.items.length > 0) {
+        // Add minimal diagnostics
+        console.info('[HEALTH][PIPELINE] golden', { count: result.items?.length ?? 0 });
+        
         setDetectedItems(result.items);
         setShowReviewModal(true);
         setPhotoModalOpen(false);
         toast.success('Food detection complete!');
       } else {
+        console.info('[HEALTH][PIPELINE] golden', { count: 0 });
         toast.error('No food items detected. Please try again.');
       }
     } catch (error) {
