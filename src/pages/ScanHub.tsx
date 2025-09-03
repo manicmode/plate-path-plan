@@ -159,6 +159,7 @@ export default function ScanHub() {
   const [healthAnalyzing, setHealthAnalyzing] = useState(false);
   const [healthReportData, setHealthReportData] = useState<HealthReportData | null>(null);
   const [healthReportViewerOpen, setHealthReportViewerOpen] = useState(false);
+  const [healthReportGenerating, setHealthReportGenerating] = useState(false);
 
   // Feature flag checks
   const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
@@ -335,6 +336,9 @@ export default function ScanHub() {
   const handleHealthReportGeneration = async (selectedItems: ReviewItem[]) => {
     console.info('[HEALTH][REVIEW] generating report', { count: selectedItems?.length ?? 0 });
     
+    // Show heart loading animation immediately
+    setHealthReportGenerating(true);
+    
     try {
       const report = await generateHealthReport(selectedItems);
       setHealthReportData(report);
@@ -343,6 +347,9 @@ export default function ScanHub() {
     } catch (error) {
       console.error('[HEALTH][REVIEW][ERROR] report generation failed', error);
       toast.error('Could not generate report. Please try again.');
+    } finally {
+      // Hide heart loading animation
+      setHealthReportGenerating(false);
     }
   };
 
@@ -629,8 +636,11 @@ export default function ScanHub() {
         items={healthDetectedItems}
       />
 
-      {/* Health Scan Loading Animation */}
-      <HealthScanLoading isOpen={healthAnalyzing} />
+      {/* Health Scan Loading Animation - only show during photo analysis, not report generation */}
+      <HealthScanLoading isOpen={healthAnalyzing && !healthReportGenerating} />
+
+      {/* Health Report Generation Loading Animation */}
+      <HealthScanLoading isOpen={healthReportGenerating} />
 
       {/* Health Report Viewer */}
       {healthReportData && (
