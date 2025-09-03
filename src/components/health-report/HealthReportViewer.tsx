@@ -214,14 +214,21 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleDetailedLog = () => {
+  const handleDetailedLog = async () => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[LOG][DETAILED] open', { count: items.length });
+      console.info('[DL][CTA] clicked');
+      console.info('[DL][CTA] items', items.map(i => i.name));
+      console.info('[DL][CTA] transition → ReviewItems');
     }
     
-    // Close Health Report first, then open ReviewItemsScreen
-    onClose();
-    setShowDetailedLog(true);
+    // Import modal transition helper
+    const { modalTransition } = await import('@/lib/modalTransition');
+    
+    // Atomic transition: close Health Report and open ReviewItems without intermediate state
+    await modalTransition.replaceModal('HealthReport', { key: 'ReviewItems' }, {
+      onClose: () => onClose(),
+      onOpen: () => setShowDetailedLog(true)
+    });
   };
 
   const handleDetailedLogClose = () => {

@@ -46,6 +46,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   prefilledItems,
   afterLogSuccess
 }) => {
+  // Add mount logging for forensic breadcrumbs
+  useEffect(() => {
+    if (isOpen && import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][ReviewItems] mount');
+    }
+  }, [isOpen]);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
@@ -277,7 +283,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           aria-labelledby="review-title"
           aria-describedby="review-description"
         >
-          <Dialog.Title id="review-title" className="sr-only">Review Detected Items</Dialog.Title>
+          <Dialog.Title id="review-title" className="sr-only">Confirm Food Log</Dialog.Title>
           <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
           <div className="flex h-full w-full flex-col">

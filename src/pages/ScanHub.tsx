@@ -30,6 +30,7 @@ import { HealthReportViewer } from '@/components/health-report/HealthReportViewe
 import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { modalTransition } from '@/lib/modalTransition';
 
 
 export default function ScanHub() {
@@ -645,6 +646,11 @@ export default function ScanHub() {
         <HealthReportViewer
           isOpen={healthReportViewerOpen}
           onClose={() => {
+            if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+              console.info('[ScanHub] HealthReportViewer onClose called', { 
+                hasTransitionGuard: modalTransition?.hasGuard?.('modalTransition') || false 
+              });
+            }
             setHealthReportViewerOpen(false);
             setHealthReportData(null);
           }}
