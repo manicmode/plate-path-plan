@@ -546,7 +546,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       {/* Save Set Name Dialog */}
       <SaveSetNameDialog
         isOpen={showSaveNameDialog}
-        onClose={() => setShowSaveNameDialog(false)}
+        onClose={() => {
+          console.log('[DEBUG] SaveSetNameDialog onClose called');
+          setShowSaveNameDialog(false);
+        }}
         onSave={handleSaveWithName}
       />
 
