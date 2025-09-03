@@ -10,10 +10,9 @@ type Item = {
   score?: unknown;
 };
 
-// Toggle in prod via env; fallback to false
-const DEBUG =
-  (typeof Deno !== 'undefined' && Deno.env?.get('DEBUG_EDGE') === 'true') ||
-  false;
+// Toggle in prod via env; fallback to true for dev/staging if not explicitly set
+const DEBUG_EDGE_RAW = Deno.env.get('DEBUG_EDGE');
+const DEBUG = DEBUG_EDGE_RAW === 'true' || (!DEBUG_EDGE_RAW && Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined);
 
 // Safe number coercion (prevents NaN leaking)
 const n = (v: unknown): number => {
@@ -79,6 +78,14 @@ function normalizeItems(raw: any[], requestId?: string): Array<{name:string, con
 }
 
 serve(async (req) => {
+  // Log DEBUG_EDGE environment value at function start
+  console.info('[EDGE][DEBUG_STATUS]', {
+    DEBUG_EDGE_RAW: Deno.env.get('DEBUG_EDGE'),
+    DEBUG_COMPUTED: DEBUG,
+    DENO_DEPLOYMENT_ID: Deno.env.get('DENO_DEPLOYMENT_ID'),
+    timestamp: new Date().toISOString()
+  });
+
   // Handle CORS preflight early
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeadersJson });
@@ -274,6 +281,13 @@ Example for salmon plate:
         }
       ];
 
+      console.info('[EDGE][BEFORE_OPENAI_FETCH]', {
+        request_id: requestId,
+        timestamp: new Date().toISOString(),
+        has_api_key: !!openaiApiKey,
+        model: modelParams.model
+      });
+
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -290,6 +304,14 @@ Example for salmon plate:
             }
           ]
         }),
+      });
+
+      console.info('[EDGE][AFTER_OPENAI_FETCH]', {
+        request_id: requestId,
+        timestamp: new Date().toISOString(),
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
       });
       
       const elapsed_ms = Date.now() - startTime;
