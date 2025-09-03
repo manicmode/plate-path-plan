@@ -8,6 +8,11 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 import { ROUTES } from '@/routes/constants';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
+import { HealthReportReviewModal } from '@/components/health-report/HealthReportReviewModal';
+import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
+import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { toast } from 'sonner';
 
 const Explore = () => {
   const navigate = useNavigate();
@@ -15,6 +20,11 @@ const Explore = () => {
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
   const [navigationInProgress, setNavigationInProgress] = useState(false);
+  
+  // Health Scan Photo states
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [detectedItems, setDetectedItems] = useState<ReviewItem[]>([]);
+  const [showHealthReview, setShowHealthReview] = useState(false);
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -35,12 +45,9 @@ const Explore = () => {
         navigate('/supplement-hub');
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'health-check') {
-        // Check if Scan Hub is enabled
-        if (isFeatureEnabled('scan_hub_enabled')) {
-          navigate('/scan', { state: { from: '/explore' } });
-        } else {
-          setIsHealthCheckOpen(true);
-        }
+        // Use legacy PhotoCaptureModal with golden pipeline
+        console.info('[HEALTH][ENTRY] using legacy PhotoCaptureModal');
+        setIsCameraOpen(true);
       } else if (tileId === 'game-challenge') {
         setNavigationInProgress(true);
         navigate('/game-and-challenge');
@@ -73,6 +80,43 @@ const Explore = () => {
       setNavigationInProgress(false);
     }
   }, [navigate, navigationInProgress, handleProfileClick]);
+
+  const handleHealthScanPhotoCapture = async (imageBase64: string) => {
+    console.info('[HEALTH][PIPELINE] start golden');
+    
+    // Enforce golden detection pipeline
+    const USE_GOLDEN = (import.meta.env.VITE_DETECTOR_PIPELINE_VERSION ?? 'golden') === 'golden';
+    if (!USE_GOLDEN) {
+      console.warn('[HEALTH][PIPELINE] forcing golden in Health Scan');
+    }
+    
+    try {
+      const result = await runFoodDetectionPipeline(imageBase64, { 
+        mode: 'health'
+      });
+      
+      console.info('[HEALTH][PIPELINE] golden', { count: result.items?.length ?? 0 });
+      
+      if (result.success && result.items.length > 0) {
+        setDetectedItems(result.items);
+        setShowHealthReview(true);
+        setIsCameraOpen(false);
+        toast.success('Food detection complete!');
+      } else {
+        console.info('[HEALTH][PIPELINE] golden', { count: 0 });
+        toast.error('No food items detected. Please try again.');
+      }
+    } catch (error) {
+      console.error('[HEALTH_SCAN] Detection error:', error);
+      toast.error('Analysis failed. Please try again.');
+    }
+  };
+
+  const handleHealthScanManualFallback = () => {
+    console.log('[HEALTH_SCAN] Manual fallback triggered');
+    toast.info('Manual entry not available in Health Scan mode');
+    setIsCameraOpen(false);
+  };
 
   const mainTiles = [
     {
@@ -246,14 +290,35 @@ const Explore = () => {
       </div>
 
       {/* Modals with proper error boundaries */}
-      {isHealthCheckOpen && (
-        <HealthCheckModal 
-          isOpen={isHealthCheckOpen} 
-          onClose={() => {
-            setIsHealthCheckOpen(false);
-            // Always navigate to health scan page when closing barcode scanner
-            navigate('/scan');
-          }} 
+      {isCameraOpen && (
+        <PhotoCaptureModal
+          open={isCameraOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCameraOpen(false);
+            }
+          }}
+          onCapture={handleHealthScanPhotoCapture}
+          onManualFallback={handleHealthScanManualFallback}
+        />
+      )}
+
+      {showHealthReview && (
+        <HealthReportReviewModal
+          isOpen={showHealthReview}
+          onClose={() => setShowHealthReview(false)}
+          onShowHealthReport={(selectedItems) => {
+            // Navigate to health report page with selected items
+            navigate('/health-scan/report', { 
+              state: { 
+                reportData: { items: selectedItems },
+                items: selectedItems 
+              } 
+            });
+          }}
+          onNext={() => {}} // Not used in health scan flow
+          onLogImmediately={() => {}} // Not used in health scan flow
+          items={detectedItems}
         />
       )}
       
