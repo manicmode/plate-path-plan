@@ -147,6 +147,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       const { productFromGeneric } = await import('@/health/generic/mapToProductModel');
       
       const g = resolveGenericFood(item.name);
+      console.log('[HEALTH][DEBUG] Looking up generic food for name:', item.name);
+      console.log('[HEALTH][DEBUG] Generic lookup result:', g?.slug || 'no match');
 
       if (g) {
         console.info('[HEALTH][GENERIC] matched', { slug: g.slug });
