@@ -394,7 +394,7 @@ export default function ScanHub() {
     <div className="min-h-screen bg-gradient-to-br from-rose-600 via-rose-700 to-slate-700 pb-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="relative isolate z-40 text-center mb-8 sticky top-0 bg-gradient-to-br from-rose-600/80 via-rose-700/80 to-slate-700/80 backdrop-blur-sm supports-[backdrop-filter]:bg-gradient-to-br supports-[backdrop-filter]:from-rose-600/60 supports-[backdrop-filter]:via-rose-700/60 supports-[backdrop-filter]:to-slate-700/60 py-4 -mx-4 px-4">
+        <div className="relative isolate z-[60] text-center mb-8 sticky top-0 bg-gradient-to-br from-rose-600/80 via-rose-700/80 to-slate-700/80 backdrop-blur-sm supports-[backdrop-filter]:bg-gradient-to-br supports-[backdrop-filter]:from-rose-600/60 supports-[backdrop-filter]:via-rose-700/60 supports-[backdrop-filter]:to-slate-700/60 py-4 -mx-4 px-4">
           <Button
             data-test="scan-back"
             variant="ghost"
