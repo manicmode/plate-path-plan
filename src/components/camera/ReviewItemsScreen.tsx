@@ -34,6 +34,7 @@ interface ReviewItemsScreenProps {
   onLogImmediately?: (selectedItems: ReviewItem[]) => void; // One-tap logging
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
+  afterLogSuccess?: () => void; // Called after successful logging for custom navigation/cleanup
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -42,7 +43,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onNext,
   onLogImmediately,
   items: initialItems,
-  prefilledItems
+  prefilledItems,
+  afterLogSuccess
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
@@ -127,11 +129,19 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       const { incrementCounter } = await import('@/lib/metrics');
       incrementCounter('photo.one_tap_used');
       
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][DETAILED] confirm', { count: selectedItems.length });
+      }
+      
       toast.success(`Logged ✓`);
       onClose();
       
-      // Navigate to today's log
-      navigate('/nutrition');
+      // Use custom afterLogSuccess callback if provided, otherwise navigate to nutrition
+      if (afterLogSuccess) {
+        afterLogSuccess();
+      } else {
+        navigate('/nutrition');
+      }
     } catch (error) {
       console.error('Failed to log items:', error);
       toast.error('Failed to log items. Please try again.');
@@ -255,9 +265,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black" />
+        <Dialog.Overlay className="fixed inset-0 bg-black z-[400]" />
         <Dialog.Content
-          className="fixed inset-0 z-[100] bg-[#0B0F14] text-white"
+          className="fixed inset-0 z-[500] bg-[#0B0F14] text-white"
           onOpenAutoFocus={(e) => e.preventDefault()}
           role="dialog"
           aria-labelledby="review-title"

@@ -13,6 +13,9 @@ import { toProductModelFromDetected } from '@/lib/health/toProductModelFromDetec
 import { SaveSetNameDialog } from '@/components/camera/SaveSetNameDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { ReviewItemsScreen } from '@/components/camera/ReviewItemsScreen';
+import { useSound } from '@/contexts/SoundContext';
+import { lightTap } from '@/lib/haptics';
+import { useNavigate } from 'react-router-dom';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -32,6 +35,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { playFoodLogConfirm } = useSound();
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
@@ -146,9 +151,19 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       return;
     }
 
+    // Debounce protection
+    if (isLogging) return;
+
     setIsLogging(true);
+    
     try {
-      console.info('[HEALTH][REPORT] one-click log', { items: items.length });
+      // Debug logging (gated behind VITE_LOG_DEBUG)
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][ONE_CLICK] start', { 
+          count: items.length,
+          items: items.map(i => ({ n: i.name, g: i.grams || 100 }))
+        });
+      }
       
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
@@ -161,11 +176,33 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
       await oneTapLog(logEntries);
       
+      // Play success sound/haptic (wrapped in try/catch so they never block navigation)
+      try {
+        playFoodLogConfirm();
+        lightTap();
+      } catch (soundError) {
+        console.debug('Sound/haptic error (non-blocking):', soundError);
+      }
+      
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][ONE_CLICK] done');
+      }
+      
       toast({
         title: "Food Logged",
         description: `Successfully logged ${items.length} item${items.length > 1 ? 's' : ''} to your diary.`,
       });
+      
+      // Close Health Report
+      onClose();
+      
+      // Navigate to Home using same pattern as other logging flows
+      navigate('/home', { replace: true });
+      
     } catch (error) {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.error('[LOG][ONE_CLICK] failed', error);
+      }
       console.error('[HEALTH][REPORT][ERROR] log failed', error);
       toast({
         title: "Log Failed",
@@ -178,11 +215,30 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleDetailedLog = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[LOG][DETAILED] open', { count: items.length });
+    }
+    
+    // Close Health Report first, then open ReviewItemsScreen
+    onClose();
     setShowDetailedLog(true);
   };
 
   const handleDetailedLogClose = () => {
     setShowDetailedLog(false);
+  };
+
+  const handleAfterLogSuccess = () => {
+    // Called after successful logging from ReviewItemsScreen
+    try {
+      playFoodLogConfirm();
+      lightTap();
+    } catch (soundError) {
+      console.debug('Sound/haptic error (non-blocking):', soundError);
+    }
+    
+    handleDetailedLogClose();
+    navigate('/home', { replace: true });
   };
 
   const handleItemClick = async (index: number) => {
@@ -554,13 +610,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         onSave={handleSaveWithName}
       />
 
-      {/* Detailed Log Modal */}
+      {/* Detailed Log Modal - Rendered outside Health Report with higher z-index */}
       {showDetailedLog && (
         <ReviewItemsScreen
           isOpen={showDetailedLog}
           onClose={handleDetailedLogClose}
           onNext={() => {}} // Not used - logging handled within modal
           items={items}
+          afterLogSuccess={handleAfterLogSuccess}
         />
       )}
     </Dialog.Root>
