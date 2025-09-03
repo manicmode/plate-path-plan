@@ -631,8 +631,6 @@ export default function ScanHub() {
         isOpen={healthReviewModalOpen}
         onClose={() => setHealthReviewModalOpen(false)}
         onShowHealthReport={handleHealthReportGeneration}
-        onNext={() => {}} // Not used in health scan flow
-        onLogImmediately={() => {}} // Not used in health scan flow
         items={healthDetectedItems}
       />
 

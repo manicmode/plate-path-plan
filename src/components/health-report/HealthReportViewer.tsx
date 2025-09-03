@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight, Zap } from 'lucide-react';
 import { HealthReportData, mapPhotoReportToNutritionLog } from '@/lib/health/generateHealthReport';
 import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { toProductModelFromDetected } from '@/lib/health/toProductModelFromDetected';
 import { SaveSetNameDialog } from '@/components/camera/SaveSetNameDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { ReviewItemsScreen } from '@/components/camera/ReviewItemsScreen';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
+  const [showDetailedLog, setShowDetailedLog] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -152,7 +154,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleLogThis = async () => {
+  const handleOneClickLog = async () => {
     if (!user?.id) {
       toast({
         title: "Authentication Required", 
@@ -164,7 +166,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
     setIsLogging(true);
     try {
-      console.info('[HEALTH][REPORT] log', { items: items.length });
+      console.info('[HEALTH][REPORT] one-click log', { items: items.length });
       
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
@@ -191,6 +193,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     } finally {
       setIsLogging(false);
     }
+  };
+
+  const handleDetailedLog = () => {
+    setShowDetailedLog(true);
+  };
+
+  const handleDetailedLogClose = () => {
+    setShowDetailedLog(false);
   };
 
   const handleItemClick = async (index: number) => {
@@ -490,44 +500,42 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             {/* Footer */}
             <footer className="sticky bottom-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 py-4 border-t border-white/10">
               <div className="space-y-3">
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Logging Buttons Row */}
+                <div className="grid grid-cols-2 gap-2">
                   <Button
-                    onClick={handleSaveReportSet}
-                    disabled={isSaving}
-                    className="h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold disabled:opacity-50"
+                    onClick={handleOneClickLog}
+                    disabled={isLogging}
+                    className="h-11 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-sm"
                   >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Report Set
-                      </>
-                    )}
+                    {isLogging ? '⏳ Logging...' : `⚡ One-Click Log`}
                   </Button>
                   
                   <Button
-                    onClick={handleLogThis}
-                    disabled={isLogging}
-                    className="h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold disabled:opacity-50"
+                    onClick={handleDetailedLog}
+                    className="h-11 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-sm"
                   >
-                    {isLogging ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Logging...
-                      </>
-                    ) : (
-                      <>
-                        <Utensils className="w-4 h-4 mr-2" />
-                        Log This
-                      </>
-                    )}
+                    🔎 Detailed Log
                   </Button>
                 </div>
+
+                {/* Save Report Set Button */}
+                <Button
+                  onClick={handleSaveReportSet}
+                  disabled={isSaving}
+                  className="w-full h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      💾 Save Report Set
+                    </>
+                  )}
+                </Button>
                 
                 {/* Close Button */}
                 <Button
@@ -549,6 +557,16 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         onClose={() => setShowSaveNameDialog(false)}
         onSave={handleSaveWithName}
       />
+
+      {/* Detailed Log Modal */}
+      {showDetailedLog && (
+        <ReviewItemsScreen
+          isOpen={showDetailedLog}
+          onClose={handleDetailedLogClose}
+          onNext={() => {}} // Not used - logging handled within modal
+          items={items}
+        />
+      )}
     </Dialog.Root>
   );
 };

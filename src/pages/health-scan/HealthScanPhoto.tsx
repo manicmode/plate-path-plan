@@ -198,8 +198,6 @@ export default function HealthScanPhoto() {
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
         onShowHealthReport={handleShowHealthReport}
-        onNext={() => {}} // Not used in health scan flow
-        onLogImmediately={() => {}} // Not used in health scan flow
         items={detectedItems}
       />
     </div>

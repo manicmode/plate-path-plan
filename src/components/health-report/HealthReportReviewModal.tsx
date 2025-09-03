@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { SaveSetNameDialog } from '@/components/camera/SaveSetNameDialog';
 import { ReviewItemCard } from '@/components/camera/ReviewItemCard';
 import { NumberWheelSheet } from '@/components/inputs/NumberWheelSheet';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
-import { useAuth } from '@/contexts/auth';
-import { useNavigate } from 'react-router-dom';
 import '@/styles/review.css';
 
 interface HealthReportReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onShowHealthReport: (selectedItems: ReviewItem[]) => void;
-  onNext: (selectedItems: ReviewItem[]) => void;
-  onLogImmediately?: (selectedItems: ReviewItem[]) => void;
   items: ReviewItem[];
 }
 
@@ -24,17 +19,11 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
   isOpen,
   onClose,
   onShowHealthReport,
-  onNext,
-  onLogImmediately,
   items: initialItems
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
-  const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
-  const [isLogging, setIsLogging] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -88,89 +77,6 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
     }
   };
 
-  const handleNext = () => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim() && item.portion.trim());
-    if (selectedItems.length === 0) {
-      return;
-    }
-    onNext(selectedItems);
-  };
-
-  const handleLogImmediately = async () => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to log');
-      return;
-    }
-
-    setIsLogging(true);
-
-    try {
-      console.info('[HEALTH_REVIEW][one-tap-log]', selectedItems.map(i => ({ 
-        name: i.canonicalName || i.name, 
-        grams: i.grams || 100 
-      })));
-
-      const { oneTapLog } = await import('@/lib/nutritionLog');
-      
-      const logEntries = selectedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100
-      }));
-
-      await oneTapLog(logEntries);
-      
-      const { incrementCounter } = await import('@/lib/metrics');
-      incrementCounter('photo.one_tap_used');
-      
-      toast.success(`Logged ✓`);
-      onClose();
-      
-      navigate('/nutrition');
-    } catch (error) {
-      console.error('Failed to log items:', error);
-      toast.error('Failed to log items. Please try again.');
-    } finally {
-      setIsLogging(false);
-    }
-  };
-
-  const handleSaveSet = () => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to save');
-      return;
-    }
-    
-    if (!user?.id) {
-      toast.error('You must be logged in to save sets');
-      return;
-    }
-    
-    setShowSaveNameDialog(true);
-  };
-
-  const handleSaveSetWithName = async (setName: string) => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    
-    try {
-      const { createMealSet } = await import('@/lib/mealSets');
-      
-      const mealSetItems = selectedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100
-      }));
-
-      await createMealSet({ name: setName, items: mealSetItems });
-      toast.success(`Saved ✓`);
-      setShowSaveNameDialog(false);
-    } catch (error) {
-      console.error('Failed to save meal set:', error);
-      toast.error('Failed to save set. Please try again.');
-    }
-  };
 
   const handleOpenWheel = (itemId: string) => {
     setOpenWheelForId(itemId);
@@ -305,46 +211,15 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
                     {isGeneratingReport ? '⏳ Generating...' : `📊 Show Me Health Report (${selectedCount})`}
                   </Button>
                   
-                  {/* Secondary actions row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      onClick={handleLogImmediately}
-                      disabled={selectedCount === 0 || isLogging}
-                      className="h-11 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-sm"
-                    >
-                      {isLogging ? '⏳ Logging...' : `⚡ One-Click Log`}
-                    </Button>
-                    
-                    <Button
-                      onClick={handleNext}
-                      disabled={selectedCount === 0}
-                      className="h-11 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-sm"
-                    >
-                      🔎 Detailed Log
-                    </Button>
-                  </div>
-                  
-                  {/* Tertiary actions row */}
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={handleSaveSet}
-                      disabled={selectedCount === 0}
-                      size="lg"
-                      className="flex-1 h-11 rounded-xl bg-zinc-700/80 hover:bg-zinc-600/80 border border-white/10 text-white font-medium"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      💾 Save Set
-                    </Button>
-                    
-                    <Button
-                      onClick={onClose}
-                      variant="outline"
-                      size="lg"
-                      className="flex-1 h-11 rounded-xl border-white/30 bg-transparent text-white hover:bg-white/10"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  {/* Full-width Cancel Button */}
+                  <Button
+                    onClick={onClose}
+                    variant="outline"
+                    size="lg"
+                    className="w-full h-11 rounded-xl border-white/30 bg-transparent text-white hover:bg-white/10"
+                  >
+                    Cancel
+                  </Button>
 
                   {selectedCount > 0 && (
                     <p className="text-center text-xs text-gray-300 mt-2">
@@ -358,12 +233,6 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Save Set Name Dialog */}
-      <SaveSetNameDialog
-        isOpen={showSaveNameDialog}
-        onClose={() => setShowSaveNameDialog(false)}
-        onSave={handleSaveSetWithName}
-      />
 
       {/* Number Wheel Sheet */}
       <NumberWheelSheet
