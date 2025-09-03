@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowRight, Zap, Save, Info, X } from 'lucide-react';
+import { Plus, ArrowRight, Zap, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
 import { FF } from '@/featureFlags';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
-import { saveMealSet } from '@/api/mealSets';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import '@/styles/review.css';
@@ -45,8 +43,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   prefilledItems
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const { user } = useAuth();
@@ -152,42 +148,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     onClose();
   };
 
-  const handleSaveSet = () => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to save');
-      return;
-    }
-    
-    if (!user?.id) {
-      toast.error('You must be logged in to save sets');
-      return;
-    }
-    
-    setShowSaveNameDialog(true);
-  };
-
-  const handleSaveSetWithName = async (setName: string) => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    
-    try {
-      // Import here to avoid circular dependencies
-      const { createMealSet } = await import('@/lib/mealSets');
-      
-      const mealSetItems = selectedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100
-      }));
-
-      await createMealSet({ name: setName, items: mealSetItems });
-      toast.success(`Saved ✓`);
-      setShowSaveNameDialog(false);
-    } catch (error) {
-      console.error('Failed to save meal set:', error);
-      toast.error('Failed to save set. Please try again.');
-    }
-  };
 
   const handleOpenWheel = (itemId: string) => {
     setOpenWheelForId(itemId);
@@ -368,12 +328,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Save Set Name Dialog */}
-      <SaveSetNameDialog
-        isOpen={showSaveNameDialog}
-        onClose={() => setShowSaveNameDialog(false)}
-        onSave={handleSaveSetWithName}
-      />
 
       {/* Number Wheel Sheet */}
       <NumberWheelSheet
