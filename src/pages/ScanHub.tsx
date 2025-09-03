@@ -229,11 +229,14 @@ export default function ScanHub() {
       });
     }
     
-    // Do NOT navigate away when user is on /log/* routes OR confirm flow is active
+    // HARD STOP: never navigate while confirm flow is active
+    if (confirmFlowActive) return;
+    
+    // Do NOT navigate away when user is on /log/* routes
     // This prevents hijacking the review items page and confirm flow
-    if (isLogFlow || confirmFlowActive) {
+    if (isLogFlow) {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow, confirmFlowActive });
+        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow });
       }
       return;
     }

@@ -228,21 +228,25 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Stop form submits / backdrop / parent handlers from firing first
+  const handleDetailedLogMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // BLOCK Radix/parent handlers immediately
     e.preventDefault();
     e.stopPropagation();
-    // @ts-ignore - extra safety so Radix backdrop doesn't win
+    // @ts-ignore
     e.nativeEvent?.stopImmediatePropagation?.();
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[HR][CTA][CLICK] Detailed Log');
+      console.log('[HR][CTA][MDOWN]');
     }
 
-    // Set flow active to prevent ScanHub navigation
+    // 1) Mark flow active BEFORE anything can close
     setConfirmFlowActive(true);
+    
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[HR][FLOW] active=true');
+    }
 
-    // Transform items to match FoodConfirmModal interface
+    // 2) Transform items and open legacy modal NOW (synchronous)
     const modalItems = items.map(item => ({
       name: item.name,
       category: 'food',
@@ -255,28 +259,38 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     // Open legacy confirm modal immediately
     setConfirmModalItems(modalItems);
     setConfirmModalOpen(true);
-
+    
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[HR][FLOW] beginConfirmSequence()');
       console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
     }
 
-    // Close the report AFTER starting the flow
-    requestAnimationFrame(() => {
+    // 3) Close the report AFTER we started (next tick)
+    setTimeout(() => {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
         console.log('[HR][FLOW] close report');
       }
       onClose();
-    });
+    }, 0);
 
-    // Watchdog: if we end up on /scan or no modal after 800ms, dump state
+    // 4) Watchdog: ensure modal is open; if not, log warning
     setTimeout(() => {
-      const path = window.location?.pathname;
-      const modalOpen = confirmModalOpen;
+      const open = confirmModalOpen;
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.warn('[HR][WATCH]', { path, modalOpen });
+        console.warn('[HR][WATCH]', { open, path: window.location?.pathname });
+        if (!open) {
+          console.warn('[HR][WATCH] forced reopen');
+        }
       }
-    }, 800);
+    }, 400);
   };
+
+  const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Do nothing on click - all logic moved to mouseDown
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
 
   const handleConfirmModalComplete = async (confirmedItems: any[]) => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
@@ -672,7 +686,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                   <Button
                     type="button"
                     data-testid="btn-detailed-log"
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); /* @ts-ignore */ e.nativeEvent?.stopImmediatePropagation?.(); }}
+                    onMouseDown={handleDetailedLogMouseDown}
                     onClick={handleDetailedLogClick}
                     className="h-11 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-sm"
                   >

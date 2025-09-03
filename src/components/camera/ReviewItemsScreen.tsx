@@ -171,15 +171,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
-  const handleSeeDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Stop form submits / backdrop / parent handlers from firing first
+  const handleDetailsMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    // @ts-ignore - extra safety so Radix backdrop doesn't win
+    // @ts-ignore
     e.nativeEvent?.stopImmediatePropagation?.();
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[REV][CTA][CLICK] Details');
+      console.log('[REV][CTA][MDOWN]');
     }
 
     const selectedItems = items.filter(item => item.selected && item.name.trim());
@@ -192,7 +191,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setConfirmFlowActive(true);
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][CTA] start (review)', selectedItems.map(i => i.name));
+      console.log('[REV][FLOW] active=true');
     }
     
     // Transform items to match FoodConfirmModal interface
@@ -210,6 +209,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setConfirmModalOpen(true);
 
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[REV][FLOW] beginConfirmSequence()');
       console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
     }
 
@@ -217,6 +217,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     requestAnimationFrame(() => {
       onClose();
     });
+  };
+
+  const handleDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Do nothing on click - all logic moved to mouseDown
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleConfirmModalComplete = async (confirmedItems: any[]) => {
@@ -521,8 +527,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   </Button>
                   
                   <Button
-                    onClick={handleSeeDetailsClick}
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); /* @ts-ignore */ e.nativeEvent?.stopImmediatePropagation?.(); }}
+                    onMouseDown={handleDetailsMouseDown}
+                    onClick={handleDetailsClick}
                     disabled={selectedCount === 0}
                     className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
                   >
