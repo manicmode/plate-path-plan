@@ -36,27 +36,13 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
       setIsSaving(true);
       await onSave(setName.trim());
       
-      // Check feature flag to determine navigation
-      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
-      
-      if (isNewSaveEnabled) {
-        // Navigate to saved reports with Meal Sets tab
-        toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
-          action: {
-            label: 'View',
-            onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
-          }
-        });
-        navigate('/scan/saved-reports?tab=meal-sets');
-      } else {
-        // Navigate to saved logs (old behavior)
-        toast.success(`Saved "${setName}" ✓ • View in Saved → Meal Sets`, {
-          action: {
-            label: 'View',
-            onClick: () => navigate('/saved-logs?type=sets')
-          }
-        });
-      }
+      // Show success toast with option to view
+      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
+        action: {
+          label: 'View',
+          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
+        }
+      });
       
       onClose();
     } catch (error) {
