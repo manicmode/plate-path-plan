@@ -1,0 +1,227 @@
+/**
+ * Health Report Generation
+ * Generates comprehensive health analysis from detected food items
+ */
+import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+
+export interface HealthReportData {
+  overallScore: number;
+  totalCalories: number;
+  macroBalance: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  flags: Array<{
+    type: 'warning' | 'info' | 'positive';
+    message: string;
+    severity: 'low' | 'medium' | 'high';
+  }>;
+  itemAnalysis: Array<{
+    name: string;
+    score: number;
+    calories: number;
+    healthRating: 'excellent' | 'good' | 'fair' | 'poor';
+    benefits: string[];
+    concerns: string[];
+  }>;
+  recommendations: string[];
+}
+
+// Basic nutrition database for common foods (calories per 100g)
+const NUTRITION_DB: Record<string, {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  score: number;
+  benefits: string[];
+  concerns: string[];
+}> = {
+  salmon: {
+    calories: 208, protein: 22, carbs: 0, fat: 13, score: 85,
+    benefits: ['High in omega-3 fatty acids', 'Excellent protein source', 'Rich in B vitamins'],
+    concerns: ['May contain mercury', 'High in calories if large portion']
+  },
+  chicken: {
+    calories: 165, protein: 25, carbs: 0, fat: 7, score: 80,
+    benefits: ['Lean protein source', 'Low in saturated fat', 'Good source of niacin'],
+    concerns: ['Quality depends on preparation method']
+  },
+  broccoli: {
+    calories: 34, protein: 3, carbs: 7, fat: 0, score: 95,
+    benefits: ['High in vitamin C', 'Rich in fiber', 'Contains antioxidants'],
+    concerns: []
+  },
+  rice: {
+    calories: 130, protein: 3, carbs: 28, fat: 0, score: 65,
+    benefits: ['Good energy source', 'Gluten-free', 'Easy to digest'],
+    concerns: ['High glycemic index', 'Low in essential nutrients']
+  },
+  avocado: {
+    calories: 160, protein: 2, carbs: 9, fat: 15, score: 90,
+    benefits: ['Healthy monounsaturated fats', 'High in fiber', 'Rich in potassium'],
+    concerns: ['High in calories', 'May cause digestive issues for some']
+  },
+  pizza: {
+    calories: 266, protein: 11, carbs: 33, fat: 10, score: 35,
+    benefits: ['Contains some protein', 'May include vegetables'],
+    concerns: ['High in refined carbs', 'Often high in sodium', 'Processed ingredients']
+  },
+  // Add more foods as needed
+};
+
+export async function generateHealthReport(items: ReviewItem[]): Promise<HealthReportData> {
+  console.log('[HEALTH_REPORT] Generating report for', items.length, 'items');
+  
+  let totalCalories = 0;
+  let totalProtein = 0;
+  let totalCarbs = 0;
+  let totalFat = 0;
+  const itemAnalysis = [];
+  const flags = [];
+  const recommendations = [];
+
+  // Analyze each item
+  for (const item of items) {
+    const grams = item.grams || 100;
+    const foodKey = item.name.toLowerCase();
+    
+    // Try to find exact match or partial match
+    let nutritionData = NUTRITION_DB[foodKey];
+    if (!nutritionData) {
+      // Try partial matching
+      const partialMatch = Object.keys(NUTRITION_DB).find(key => 
+        foodKey.includes(key) || key.includes(foodKey)
+      );
+      if (partialMatch) {
+        nutritionData = NUTRITION_DB[partialMatch];
+      }
+    }
+    
+    // Use defaults if no match found
+    if (!nutritionData) {
+      nutritionData = {
+        calories: 100, protein: 5, carbs: 15, fat: 3, score: 60,
+        benefits: ['Provides energy'],
+        concerns: ['Nutritional data not available']
+      };
+    }
+
+    // Scale nutrition to actual portion
+    const scaledCalories = Math.round((nutritionData.calories * grams) / 100);
+    const scaledProtein = Math.round((nutritionData.protein * grams) / 100);
+    const scaledCarbs = Math.round((nutritionData.carbs * grams) / 100);
+    const scaledFat = Math.round((nutritionData.fat * grams) / 100);
+
+    totalCalories += scaledCalories;
+    totalProtein += scaledProtein;
+    totalCarbs += scaledCarbs;
+    totalFat += scaledFat;
+
+    // Determine health rating based on score
+    let healthRating: 'excellent' | 'good' | 'fair' | 'poor';
+    if (nutritionData.score >= 85) healthRating = 'excellent';
+    else if (nutritionData.score >= 70) healthRating = 'good';
+    else if (nutritionData.score >= 50) healthRating = 'fair';
+    else healthRating = 'poor';
+
+    itemAnalysis.push({
+      name: item.name,
+      score: nutritionData.score,
+      calories: scaledCalories,
+      healthRating,
+      benefits: nutritionData.benefits,
+      concerns: nutritionData.concerns
+    });
+
+    // Generate flags based on item analysis
+    if (scaledCalories > 400) {
+      flags.push({
+        type: 'warning' as const,
+        message: `${item.name} is high in calories (${scaledCalories} cal)`,
+        severity: 'medium' as const
+      });
+    }
+
+    if (nutritionData.score < 40) {
+      flags.push({
+        type: 'warning' as const,
+        message: `${item.name} has low nutritional value`,
+        severity: 'high' as const
+      });
+    }
+
+    if (nutritionData.score >= 85) {
+      flags.push({
+        type: 'positive' as const,
+        message: `${item.name} is an excellent nutritional choice`,
+        severity: 'low' as const
+      });
+    }
+  }
+
+  // Calculate overall score
+  const averageItemScore = itemAnalysis.reduce((sum, item) => sum + item.score, 0) / itemAnalysis.length;
+  let overallScore = averageItemScore;
+
+  // Adjust score based on total calories and balance
+  if (totalCalories > 800) overallScore -= 10;
+  if (totalCalories < 200) overallScore -= 5;
+
+  // Check macro balance
+  const totalMacros = totalProtein + totalCarbs + totalFat;
+  const proteinPercent = totalMacros > 0 ? (totalProtein / totalMacros) * 100 : 0;
+  const carbPercent = totalMacros > 0 ? (totalCarbs / totalMacros) * 100 : 0;
+  const fatPercent = totalMacros > 0 ? (totalFat / totalMacros) * 100 : 0;
+
+  // Generate recommendations
+  if (proteinPercent < 15) {
+    recommendations.push('Consider adding more protein sources like lean meat, fish, or legumes');
+  }
+  if (carbPercent > 65) {
+    recommendations.push('Try to balance with more protein and healthy fats');
+  }
+  if (totalCalories > 600) {
+    recommendations.push('Consider portion control to manage calorie intake');
+  }
+  if (itemAnalysis.some(item => item.healthRating === 'excellent')) {
+    recommendations.push('Great choice including nutrient-dense foods!');
+  }
+  if (itemAnalysis.length === 1) {
+    recommendations.push('Consider adding variety with vegetables or fruits');
+  }
+
+  // Additional flags based on overall meal
+  if (totalCalories > 1000) {
+    flags.push({
+      type: 'warning',
+      message: 'High calorie meal - consider portion sizes',
+      severity: 'high'
+    });
+  }
+
+  if (proteinPercent < 10) {
+    flags.push({
+      type: 'info',
+      message: 'Low protein content - consider adding protein sources',
+      severity: 'medium'
+    });
+  }
+
+  const result: HealthReportData = {
+    overallScore: Math.max(0, Math.min(100, Math.round(overallScore))),
+    totalCalories,
+    macroBalance: {
+      protein: Math.round(proteinPercent),
+      carbs: Math.round(carbPercent),
+      fat: Math.round(fatPercent)
+    },
+    flags,
+    itemAnalysis,
+    recommendations
+  };
+
+  console.log('[HEALTH_REPORT] Generated report:', result);
+  return result;
+}

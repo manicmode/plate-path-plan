@@ -176,6 +176,22 @@ export default function HealthScanPhoto() {
     );
   }
 
+  const handleShowHealthReport = async (selectedItems) => {
+    try {
+      const reportData = await generateHealthReport(selectedItems);
+      navigate('/health-scan/report', { 
+        state: { 
+          ...reportData,
+          source: 'photo_health_scan' 
+        },
+        replace: true 
+      });
+    } catch (error) {
+      console.error('Failed to generate health report:', error);
+      toast.error('Failed to generate health report');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black z-50">
       {/* Header */}
