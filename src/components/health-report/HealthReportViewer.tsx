@@ -132,11 +132,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleItemClick = async (index: number) => {
+    console.log('🟡 [STEP 1] handleItemClick called', { index });
+    
     const item = report.itemAnalysis[index];
+    console.log('🟡 [STEP 2] Analysis item retrieved', { analysisItem: item });
     console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item?.name });
 
     if (!onOpenHealthModal) {
-      console.warn('[HEALTH][PHOTO_ITEM] No modal opener provided');
+      console.error('🔴 [STEP 3] onOpenHealthModal is missing!');
       toast({
         title: "Feature Unavailable",
         description: "Health modal is not available in this context",
@@ -144,15 +147,28 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       });
       return;
     }
+    
+    console.log('🟢 [STEP 3] onOpenHealthModal exists');
 
     try {
-      // Use the enhanced mapper that handles GenericFoods and portion calculation
+      console.log('🟡 [STEP 4] Finding original ReviewItem...');
+      
+      // Find the original ReviewItem that corresponds to this analysis item
+      const reviewItem = items.find(reviewItem => reviewItem.name === item.name);
+      console.log('🟡 [STEP 5] ReviewItem found', { reviewItem, availableItems: items.map(i => i.name) });
+      
+      if (!reviewItem) {
+        console.error('🔴 [STEP 6] No matching ReviewItem found!');
+        throw new Error(`Could not find original item data for ${item.name}`);
+      }
+
+      console.log('🟡 [STEP 7] Calling toProductModelFromDetected with ReviewItem...');
       const { toProductModelFromDetected } = await import('@/lib/health/toProductModelFromDetected');
+      const product = await toProductModelFromDetected(reviewItem);
+      console.log('🟢 [STEP 8] ProductModel created', { product });
       
-      const product = await toProductModelFromDetected(item);
-      
-      if (product.source === 'generic' && product.meta) {
-        console.info('[HC][STEP] report', { source: 'photo_item' });
+      if (product.source === 'photo_item' && product.meta) {
+        console.log('🟡 [STEP 9] Creating analysisData...');
         
         // Create analysis object with proper nutrition data for HealthCheckModal
         const analysisData = {
@@ -180,10 +196,11 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           }
         };
         
-        // Use the modal opening function provided by parent
+        console.log('🟡 [STEP 10] Calling onOpenHealthModal...', { analysisData });
         onOpenHealthModal(analysisData);
+        console.log('🟢 [STEP 11] Modal opening completed');
       } else {
-        console.warn('[GENERIC][RESOLVE] no match found for:', item.name);
+        console.error('🔴 [STEP 9] Product not photo_item or missing meta', { source: product.source, hasMeta: !!product.meta });
         toast({
           title: "Nutrition Data Unavailable",
           description: `Detailed nutrition data not available for ${item.name}`,
@@ -191,7 +208,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         });
       }
     } catch (error) {
-      console.error('[HEALTH][PHOTO_ITEM][ERROR]', error);
+      console.error('🔴 [ERROR] handleItemClick failed:', error.message);
+      console.error('🔴 [ERROR] Stack:', error.stack);
       toast({
         title: "Error Opening Health Report",
         description: "Could not open detailed health report for this item",
