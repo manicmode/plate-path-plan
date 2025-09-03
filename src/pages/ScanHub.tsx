@@ -30,7 +30,6 @@ import { HealthReportViewer } from '@/components/health-report/HealthReportViewe
 import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
-import { modalTransition } from '@/lib/modalTransition';
 
 
 export default function ScanHub() {
@@ -182,6 +181,48 @@ export default function ScanHub() {
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.state, photoModalOpen, manualEntryOpen, navigate, location.pathname]);
+
+  // Route-aware fallback guard - prevent hijacking log flows
+  useEffect(() => {
+    const path = location.pathname;
+    const isLogFlow = path.startsWith('/log');
+    
+    // Check if any modals are open
+    const anyModalOpen = healthCheckModalOpen || photoModalOpen || manualEntryOpen || 
+                         voiceModalOpen || healthPhotoModalOpen || healthReviewModalOpen || 
+                         healthReportViewerOpen;
+    
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[ScanHub][fallback-check]', { 
+        path, 
+        isLogFlow, 
+        anyModalOpen,
+        modals: {
+          healthCheck: healthCheckModalOpen,
+          photo: photoModalOpen,
+          manual: manualEntryOpen,
+          voice: voiceModalOpen,
+          healthPhoto: healthPhotoModalOpen,
+          healthReview: healthReviewModalOpen,
+          healthReportViewer: healthReportViewerOpen
+        }
+      });
+    }
+    
+    // Do NOT navigate away when user is on /log/* routes
+    // This prevents hijacking the review items page
+    if (isLogFlow) {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[ScanHub][fallback-guard] Skipping fallback - user on log flow');
+      }
+      return;
+    }
+    
+    // Future fallback logic can go here if needed
+    // Example: if (!anyModalOpen && path === '/scan') { /* fallback logic */ }
+    
+  }, [location.pathname, healthCheckModalOpen, photoModalOpen, manualEntryOpen, 
+      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen]);
 
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
@@ -647,9 +688,7 @@ export default function ScanHub() {
           isOpen={healthReportViewerOpen}
           onClose={() => {
             if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-              console.info('[ScanHub] HealthReportViewer onClose called', { 
-                hasTransitionGuard: modalTransition?.hasGuard?.('modalTransition') || false 
-              });
+              console.info('[ScanHub] HealthReportViewer onClose called');
             }
             setHealthReportViewerOpen(false);
             setHealthReportData(null);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -281,9 +282,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
           role="dialog"
           aria-labelledby="review-title"
-          aria-describedby="review-description"
+          aria-describedby=""
         >
-          <Dialog.Title id="review-title" className="sr-only">Confirm Food Log</Dialog.Title>
+          <VisuallyHidden.Root>
+            <Dialog.Title id="review-title">Confirm Food Log</Dialog.Title>
+          </VisuallyHidden.Root>
           <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
           <div className="flex h-full w-full flex-col">

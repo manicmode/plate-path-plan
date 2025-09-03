@@ -64,6 +64,7 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
+const ReviewItemsPage = lazy(() => import('@/pages/ReviewItemsPage'));
 
 // Health Scan components
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
@@ -239,6 +240,12 @@ function AppContent() {
                     <Route path="/saved-logs" element={
                       <ProtectedRoute>
                         <SavedLogs />
+                      </ProtectedRoute>
+                    } />
+                    
+                    <Route path="/log/review-items" element={
+                      <ProtectedRoute>
+                        <ReviewItemsPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/analytics" element={

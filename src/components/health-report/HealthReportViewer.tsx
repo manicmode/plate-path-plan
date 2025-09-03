@@ -40,7 +40,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
-  const [showDetailedLog, setShowDetailedLog] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
@@ -216,36 +215,19 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
   const handleDetailedLog = async () => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][CTA] clicked');
+      console.info('[DL][CTA] clicked', { count: items.length });
       console.info('[DL][CTA] items', items.map(i => i.name));
-      console.info('[DL][CTA] transition → ReviewItems');
     }
     
-    // Import modal transition helper
-    const { modalTransition } = await import('@/lib/modalTransition');
-    
-    // Atomic transition: close Health Report and open ReviewItems without intermediate state
-    await modalTransition.replaceModal('HealthReport', { key: 'ReviewItems' }, {
-      onClose: () => onClose(),
-      onOpen: () => setShowDetailedLog(true)
+    // Navigate to the review items page instead of opening modal
+    navigate('/log/review-items', { 
+      state: { items, origin: 'health_report' }, 
+      replace: true 
     });
-  };
-
-  const handleDetailedLogClose = () => {
-    setShowDetailedLog(false);
-  };
-
-  const handleAfterLogSuccess = () => {
-    // Called after successful logging from ReviewItemsScreen
-    try {
-      playFoodLogConfirm();
-      lightTap();
-    } catch (soundError) {
-      console.debug('Sound/haptic error (non-blocking):', soundError);
-    }
     
-    handleDetailedLogClose();
-    navigate('/home', { replace: true });
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][CTA] navigate → /log/review-items');
+    }
   };
 
   const handleItemClick = async (index: number) => {
@@ -616,17 +598,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         }}
         onSave={handleSaveWithName}
       />
-
-      {/* Detailed Log Modal - Rendered outside Health Report with higher z-index */}
-      {showDetailedLog && (
-        <ReviewItemsScreen
-          isOpen={showDetailedLog}
-          onClose={handleDetailedLogClose}
-          onNext={() => {}} // Not used - logging handled within modal
-          items={items}
-          afterLogSuccess={handleAfterLogSuccess}
-        />
-      )}
     </Dialog.Root>
   );
 };
