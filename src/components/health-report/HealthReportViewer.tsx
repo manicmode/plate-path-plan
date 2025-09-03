@@ -138,7 +138,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
     const base = toProductModelFromDetected(item);
     
-    const ENABLE_GENERIC = import.meta.env.VITE_ENABLE_GENERIC_FOODS === 'true';
+    // Force enable generic foods for now
+    const ENABLE_GENERIC = true;
     let product = base;
 
     if (ENABLE_GENERIC) {
