@@ -303,12 +303,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                         tabIndex={0}
                         role="button"
                          onClick={(e) => {
-                           console.log('🔴 RAW CLICK EVENT FIRED', e.target);
+                           console.log('🔴 RAW CLICK EVENT FIRED', e.target, e.currentTarget);
+                           console.log('🔴 CLICK POSITION', e.clientX, e.clientY);
+                           e.preventDefault();
                            e.stopPropagation();
                            handleItemClick(index);
                          }}
                          onKeyDown={(e) => {
-                           console.log('🔴 KEY EVENT FIRED', e.key);
+                           console.log('🔴 KEY EVENT FIRED', e.key, e.target);
                            if (e.key === 'Enter' || e.key === ' ') {
                              e.preventDefault();
                              e.stopPropagation();
