@@ -178,7 +178,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     e.nativeEvent?.stopImmediatePropagation?.();
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][CTA] clicked (capture)');
+      console.log('[REV][CTA][CLICK] Details');
+      console.log('[REV][FLOW] set active');
+      console.log('[REV][FLOW] beginConfirmSequence called');
     }
 
     const selectedItems = items.filter(item => item.selected && item.name.trim());
@@ -206,7 +208,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setConfirmModalOpen(true);
 
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][ConfirmModal] mount', modalItems[0]?.name);
+      console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
     }
 
     // Close the review screen AFTER starting the flow

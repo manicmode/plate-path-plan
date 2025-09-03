@@ -235,8 +235,9 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     e.nativeEvent?.stopImmediatePropagation?.();
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][CTA] clicked (capture)');
-      console.log('[DL][CTA] start', items?.map(i => i?.name));
+      console.log('[HR][CTA][CLICK] Detailed Log');
+      console.log('[HR][FLOW] set active');
+      console.log('[HR][FLOW] beginConfirmSequence called');
     }
 
     // Transform items to match FoodConfirmModal interface
@@ -259,8 +260,20 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
     // Close the report AFTER starting the flow
     requestAnimationFrame(() => {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.log('[HR][FLOW] close report');
+      }
       onClose();
     });
+
+    // Watchdog: if we end up on /scan or no modal after 800ms, dump state
+    setTimeout(() => {
+      const path = window.location?.pathname;
+      const modalOpen = confirmModalOpen;
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.warn('[HR][WATCH]', { path, modalOpen });
+      }
+    }, 800);
   };
 
   const handleConfirmModalComplete = async (confirmedItems: any[]) => {

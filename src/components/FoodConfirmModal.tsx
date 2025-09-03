@@ -39,9 +39,12 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
       setConfirmedItems([]);
       setEditedPortion(null);
       
-      // Forensic breadcrumbs
-      if (import.meta.env.VITE_LOG_DEBUG === 'true' && items.length > 0) {
-        console.info('[DL][FLOW] open', { index: 1, name: items[0]?.name });
+      // Legacy modal assert
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.log('[LEGACY][ConfirmModal][MOUNT]');
+        if (items.length > 0) {
+          console.log('[LEGACY][FLOW] open index=0', items[0]?.name);
+        }
       }
     }
   }, [isOpen, items]);
