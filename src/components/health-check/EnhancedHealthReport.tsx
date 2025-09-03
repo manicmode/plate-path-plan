@@ -405,6 +405,19 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
       hasIngredientsText: !!ingredientsText
     });
     
+    // For photo items, use the servingSizeGrams directly from the analysis result
+    const directServingGrams = (result as any)?.servingSizeGrams;
+    if (typeof directServingGrams === 'number' && directServingGrams > 0) {
+      console.log('[PORTION][PHOTO_ITEM] Using direct serving grams:', directServingGrams);
+      setPortion({
+        grams: directServingGrams,
+        source: 'photo_analysis',
+        label: `${directServingGrams}g`,
+        requiresConfirmation: false
+      });
+      return;
+    }
+    
     // Start with no portion - let resolver determine
     setPortion({ grams: null, source: 'unknown', label: 'Unknown serving' });
     
@@ -671,6 +684,7 @@ export const EnhancedHealthReport: React.FC<EnhancedHealthReportProps> = ({
               nutrition100g={nutritionData}
               reportId={ocrHash}
               ocrPreview={ingredientsText?.slice(0, 160)}
+              existingFlags={flags}
             />
           </TabsContent>
           

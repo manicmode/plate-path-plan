@@ -22,6 +22,13 @@ interface FlagsTabProps {
   reportId?: string;
   ocrPreview?: string;
   className?: string;
+  // Add explicit flags prop to use analysis result flags instead of detecting our own
+  existingFlags?: Array<{
+    ingredient: string;
+    flag: string;
+    severity: 'low' | 'medium' | 'high';
+    reason?: string;
+  }>;
 }
 
 interface FeedbackModalProps {
@@ -128,7 +135,8 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
   nutrition100g,
   reportId,
   ocrPreview,
-  className
+  className,
+  existingFlags
 }) => {
   const { toast } = useToast();
   
@@ -153,8 +161,20 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
     isOpen: false
   });
 
-  // Detect flags using existing system
+  // Use existing flags from analysis result or detect new ones as fallback
   const detectedFlags = useMemo(() => {
+    // If we have existing flags from the analysis result, convert them to HealthFlag format
+    if (existingFlags && existingFlags.length > 0) {
+      return existingFlags.map((flag, index) => ({
+        key: `${flag.ingredient}-${index}`,
+        label: flag.flag,
+        description: flag.reason || `Flagged ingredient or nutrition value: ${flag.ingredient}`,
+        severity: (flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'good') as 'danger' | 'warning' | 'good',
+        category: 'ingredient' as const
+      }));
+    }
+    
+    // Fallback: detect flags using existing system if no analysis flags provided
     const nutritionThresholds: NutritionThresholds = {
       sugar_g_100g: nutrition100g?.sugar,
       satfat_g_100g: nutrition100g?.saturated_fat_g || nutrition100g?.fat, // fallback
@@ -164,7 +184,7 @@ export const FlagsTab: React.FC<FlagsTabProps> = ({
     };
     
     return detectFlags(ingredientsText || '', nutritionThresholds);
-  }, [ingredientsText, nutrition100g]);
+  }, [existingFlags, ingredientsText, nutrition100g]);
 
   // Filter out hidden flags
   const visibleFlags = detectedFlags.filter(flag => !hiddenFlags.has(flag.key));
