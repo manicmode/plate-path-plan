@@ -173,21 +173,16 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       }
     }
 
-    // Close overview so the full modal renders on top
-    onClose();
+    // Set up analysis data for HealthCheckModal and open it
+    setSelectedItemAnalysisData({
+      source: 'photo_item',
+      name: item.name,
+      product: product || base,
+      captureTs: Date.now()
+    });
     
-    // Defer open to next tick
-    setTimeout(() => {
-      setSelectedItemAnalysisData({
-        source: 'photo_item',
-        name: item.name,
-        product: product || base,
-        captureTs: Date.now()
-      });
-      
-      setHealthCheckModalOpen(true);
-      console.info('[HEALTH][OPEN_FULL]', { source: 'photo_item', name: product?.name || item.name });
-    }, 0);
+    setHealthCheckModalOpen(true);
+    console.info('[HEALTH][OPEN_FULL]', { source: 'photo_item', name: product?.name || item.name });
   };
 
   return (
