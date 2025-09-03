@@ -59,6 +59,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const verdictStyle = getVerdictDisplay(report.overallScore);
 
   const handleSaveReportSet = () => {
+    console.log('[DEBUG] handleSaveReportSet called', { userId: user?.id, isSaved });
     if (!user?.id) {
       toast({
         title: "Authentication Required",
@@ -72,6 +73,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleSaveWithName = async (setName: string) => {
+    console.log('[DEBUG] handleSaveWithName called', { setName });
     setIsSaving(true);
     try {
       // Always use new behavior - save to saved_meal_set_reports
@@ -86,6 +88,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         healthRating: report.itemAnalysis.find(a => a.name === item.name)?.healthRating || 'unknown'
       }));
 
+      console.log('[DEBUG] About to insert to supabase', { itemsSnapshot });
+
       const { data, error } = await supabase
         .from('saved_meal_set_reports')
         .insert({
@@ -98,8 +102,12 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[DEBUG] Supabase error:', error);
+        throw error;
+      }
 
+      console.log('[DEBUG] Save successful, setting isSaved to true');
       console.info('[SAVE][SET] inserted', { 
         id: data.id, 
         name: setName, 
@@ -114,6 +122,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       
       setShowSaveNameDialog(false);
       setIsSaved(true); // Show checkmark state
+      console.log('[DEBUG] isSaved state set to true');
     } catch (error) {
       console.error('[HEALTH][REPORT][ERROR] save failed', error);
       toast({
@@ -495,11 +504,11 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                   <Button
                     onClick={handleSaveReportSet}
                     disabled={isSaving || isSaved}
-                    className={`w-full py-4 text-base font-medium rounded-xl ${
-                      isSaved 
-                        ? 'bg-green-700 text-white cursor-default' 
-                        : 'bg-green-600 hover:bg-green-700 text-white'
-                    }`}
+                     className={`w-full py-4 text-base font-medium rounded-xl transition-all duration-200 ${
+                       isSaved 
+                         ? 'bg-green-700 text-white cursor-default' 
+                         : 'bg-green-600 hover:bg-green-700 text-white'
+                     }`}
                   >
                     {isSaving ? (
                       <>
