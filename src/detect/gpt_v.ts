@@ -6,6 +6,16 @@ export interface GptVisionResult {
   _debug?: any;
 }
 
+// Tolerant item extraction for GPT + legacy shapes
+export function extractItems(obj: any): any[] {
+  if (!obj) return [];
+  if (Array.isArray(obj.items)) return obj.items;
+  if (Array.isArray(obj.result?.items)) return obj.result.items;
+  if (Array.isArray(obj.foods)) return obj.foods;
+  if (Array.isArray(obj.detections)) return obj.detections;
+  return [];
+}
+
 export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
   // Timing breadcrumbs (prevents silent hangs)
   const requestId = crypto.randomUUID();
@@ -19,10 +29,12 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
     });
     console.timeEnd(`[PHOTO][${requestId}][edge]`); // duration from request to first byte
 
-    // schema guard (debug only)
-    if (import.meta.env.VITE_DEBUG_CLIENT && (!data || !Array.isArray(data.items))) {
+    // Tolerant item extraction for GPT + legacy shapes
+    const items = extractItems(data);
+
+    // Keep the signal in debug, but NEVER throw
+    if (import.meta.env.VITE_DEBUG_CLIENT && items.length === 0 && data) {
       console.warn('[PHOTO][SCHEMA_MISMATCH]', requestId, data);
-      throw new Error('Bad payload shape'); // fail fast instead of spinner
     }
 
     if (error) {
@@ -42,8 +54,7 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
       return fallbackResult;
     }
 
-    // Process structured response from V2
-    const items = data?.items || [];
+    // Process structured response from V2  
     const names = items.map((item: any) => item.name);
 
     const result: GptVisionResult = {

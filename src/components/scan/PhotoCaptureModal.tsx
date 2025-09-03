@@ -303,15 +303,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         // Route via ephemeral store - do NOT close modal manually
         console.log('[PHOTO][V2_ROUTING] to health analyzer, kind=', routed.kind);
         routeToAnalyzer(routed);
-        setProcessing(false);
         
       } catch (error: any) {
         console.log('[PHOTO][FAIL] reason=', error?.message || 'unknown');
         if (mountedRef.current) {
-          setProcessing(false);
           setProcessingError(error.message || 'Could not analyze photo');
         }
         return;
+      } finally {
+        if (mountedRef.current) {
+          setProcessing(false);
+        }
       }
     }
 
