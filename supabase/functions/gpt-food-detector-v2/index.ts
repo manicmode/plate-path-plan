@@ -480,9 +480,20 @@ Example for salmon plate:
     
     let items: any[] = [];
     try {
-      const parsed = JSON.parse(content);
+      // Handle markdown code blocks by stripping ```json and ``` wrappers
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+        console.info('[PARSE][MARKDOWN_STRIPPED]', { 
+          original_length: content.length, 
+          cleaned_length: cleanContent.length,
+          sample: cleanContent.substring(0, 100)
+        });
+      }
+      
+      const parsed = JSON.parse(cleanContent);
       items = parsed.items || parsed.foods || parsed.detections || (Array.isArray(parsed) ? parsed : []);
-      console.info('[PARSE][SUCCESS]', { contentLength: content.length, itemCount: items.length });
+      console.info('[PARSE][SUCCESS]', { contentLength: cleanContent.length, itemCount: items.length });
     } catch (error: any) {
       console.error('[PARSE][ERROR]', { error: error?.message, sample: content?.substring(0, 200) ?? null });
       return new Response(JSON.stringify({ items: [] }), { status: 200, headers: corsHeadersJson });
@@ -554,7 +565,17 @@ JSON only. No prose.`;
           
           if (relaxedContent) {
             try {
-              const relaxedResult = JSON.parse(relaxedContent);
+              // Handle markdown code blocks in relaxed response too
+              let cleanRelaxedContent = relaxedContent.trim();
+              if (cleanRelaxedContent.startsWith('```json')) {
+                cleanRelaxedContent = cleanRelaxedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+                console.info('[PARSE][RELAXED_MARKDOWN_STRIPPED]', { 
+                  original_length: relaxedContent.length, 
+                  cleaned_length: cleanRelaxedContent.length
+                });
+              }
+              
+              const relaxedResult = JSON.parse(cleanRelaxedContent);
               items = Array.isArray(relaxedResult) ? relaxedResult : (relaxedResult.items || []);
               
               // Normalize relaxed attempt items
