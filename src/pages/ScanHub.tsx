@@ -31,31 +31,30 @@ import { generateHealthReport, HealthReportData } from '@/lib/health/generateHea
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { FoodConfirmModal } from '@/components/FoodConfirmModal';
-import { addConfirmFlowListener, removeConfirmFlowListener, handleConfirmFlowComplete, handleConfirmFlowReject, getConfirmFlowState } from '@/lib/confirmFlow';
 
 export default function ScanHub() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addRecent } = useScanRecents();
 
-  // Global confirm flow state
-  const [confirmFlowActive, setConfirmFlowActive] = useState(false);
-  const [confirmFlowItems, setConfirmFlowItems] = useState<any[]>([]);
+  // Remove global confirm flow state - not using it anymore
+  // const [confirmFlowActive, setConfirmFlowActive] = useState(false);
+  // const [confirmFlowItems, setConfirmFlowItems] = useState<any[]>([]);
 
-  // Listen to global confirm flow state
-  useEffect(() => {
-    const listener = (items: any[], active: boolean) => {
-      setConfirmFlowActive(active);
-      setConfirmFlowItems(items);
+  // Remove global confirm flow listener - not using it anymore
+  // useEffect(() => {
+  //   const listener = (items: any[], active: boolean) => {
+  //     setConfirmFlowActive(active);
+  //     setConfirmFlowItems(items);
       
-      if (import.meta.env.VITE_LOG_DEBUG === 'true' && active && items.length > 0) {
-        console.info('[DL][ConfirmModal] mount', { index: 1, name: items[0]?.name });
-      }
-    };
+  //     if (import.meta.env.VITE_LOG_DEBUG === 'true' && active && items.length > 0) {
+  //       console.info('[DL][ConfirmModal] mount', { index: 1, name: items[0]?.name });
+  //     }
+  //   };
     
-    addConfirmFlowListener(listener);
-    return () => removeConfirmFlowListener(listener);
-  }, []);
+  //   addConfirmFlowListener(listener);
+  //   return () => removeConfirmFlowListener(listener);
+  // }, []);
 
   // Guard: only run when meal capture flag is enabled
   useEffect(() => {
@@ -206,14 +205,13 @@ export default function ScanHub() {
     // Check if any modals are open
     const anyModalOpen = healthCheckModalOpen || photoModalOpen || manualEntryOpen || 
                          voiceModalOpen || healthPhotoModalOpen || healthReviewModalOpen || 
-                         healthReportViewerOpen || confirmFlowActive;
+                         healthReportViewerOpen;
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.info('[ScanHub][fallback-check]', { 
         path, 
         isLogFlow, 
         anyModalOpen,
-        confirmFlowActive,
         modals: {
           healthCheck: healthCheckModalOpen,
           photo: photoModalOpen,
@@ -226,11 +224,11 @@ export default function ScanHub() {
       });
     }
     
-    // Do NOT navigate away when user is on /log/* routes or confirm flow is active
+    // Do NOT navigate away when user is on /log/* routes
     // This prevents hijacking the review items page and confirm flow
-    if (isLogFlow || confirmFlowActive) {
+    if (isLogFlow) {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow, confirmFlowActive });
+        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow });
       }
       return;
     }
@@ -239,7 +237,7 @@ export default function ScanHub() {
     // Example: if (!anyModalOpen && path === '/scan') { /* fallback logic */ }
     
   }, [location.pathname, healthCheckModalOpen, photoModalOpen, manualEntryOpen, 
-      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen, confirmFlowActive]);
+      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen]);
 
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
@@ -720,14 +718,6 @@ export default function ScanHub() {
           }}
         />
       )}
-
-      {/* Global FoodConfirmModal Flow */}
-      <FoodConfirmModal
-        isOpen={confirmFlowActive}
-        items={confirmFlowItems}
-        onConfirm={handleConfirmFlowComplete}
-        onReject={handleConfirmFlowReject}
-      />
     </div>
   );
 }

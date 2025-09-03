@@ -16,7 +16,7 @@ import { ReviewItemsScreen } from '@/components/camera/ReviewItemsScreen';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { useNavigate } from 'react-router-dom';
-import { beginConfirmSequence } from '@/lib/confirmFlow';
+import { FoodConfirmModal } from '@/components/FoodConfirmModal';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -43,6 +43,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       console.log('[DL][CTA] bound');
     }
   }, [isOpen]);
+  
+  // Local confirm modal state (original pattern)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -236,13 +240,104 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       console.log('[DL][CTA] start', items?.map(i => i?.name));
     }
 
-    // Start EXISTING confirm sequence immediately (modal for item #1 must open now)
-    beginConfirmSequence(items, { origin: 'health_report' });
+    // Transform items to match FoodConfirmModal interface
+    const modalItems = items.map(item => ({
+      name: item.name,
+      category: 'food',
+      portion_estimate: item.grams || 100,
+      confidence: 0.9,
+      displayText: `${item.grams || 100}g • est.`,
+      canonicalName: item.canonicalName || item.name
+    }));
 
-    // If you want to close the report after starting, do it on the next frame so flow isn't interrupted:
+    // Open original confirm modal
+    setConfirmModalItems(modalItems);
+    setConfirmModalOpen(true);
+
+    // Close the report after starting the flow
     requestAnimationFrame(() => {
       onClose();
     });
+  };
+
+  const handleConfirmModalComplete = async (confirmedItems: any[]) => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] end', { 
+        confirmed: confirmedItems.length, 
+        origin: 'health_report' 
+      });
+      confirmedItems.forEach((item, index) => {
+        console.info('[DL][FLOW] confirm', { index: index + 1, name: item.name });
+      });
+    }
+
+    setConfirmModalOpen(false);
+
+    try {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][DETAILED][CONFIRM][START]', { count: confirmedItems.length });
+        confirmedItems.forEach((item, index) => {
+          console.info('[LOG][INSERT][START]', { 
+            index: index + 1, 
+            name: item.name, 
+            grams: item.portion_estimate || 100 
+          });
+        });
+      }
+
+      // Import here to avoid circular dependencies
+      const { oneTapLog } = await import('@/lib/nutritionLog');
+      
+      const logEntries = confirmedItems.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.portion_estimate || 100
+      }));
+
+      await oneTapLog(logEntries);
+      
+      // Log successful inserts
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        logEntries.forEach((entry, index) => {
+          console.info('[LOG][INSERT][OK]', { 
+            index: index + 1, 
+            name: entry.name,
+            grams: entry.grams
+          });
+        });
+        console.info('[LOG][DETAILED][CONFIRM][DONE]');
+      }
+
+      // Import toast dynamically to avoid circular deps
+      const { toast } = await import('sonner');
+      toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
+      
+      // Navigate to home
+      navigate('/home', { replace: true });
+      
+    } catch (error) {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.error('[DL][FLOW] log failed', error);
+        confirmedItems.forEach((item, index) => {
+          console.error('[LOG][INSERT][FAIL]', { 
+            index: index + 1, 
+            name: item.name, 
+            error: error.message 
+          });
+        });
+      }
+      
+      // Import toast dynamically
+      const { toast } = await import('sonner');
+      toast.error('Failed to log items. Please try again.');
+    }
+  };
+
+  const handleConfirmModalReject = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] rejected', { origin: 'health_report' });
+    }
+    setConfirmModalOpen(false);
   };
 
   const handleItemClick = async (index: number) => {
@@ -615,6 +710,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           setShowSaveNameDialog(false);
         }}
         onSave={handleSaveWithName}
+      />
+
+      {/* Food Confirm Modal - Original Pattern */}
+      <FoodConfirmModal
+        isOpen={confirmModalOpen}
+        items={confirmModalItems}
+        onConfirm={handleConfirmModalComplete}
+        onReject={handleConfirmModalReject}
       />
     </Dialog.Root>
   );
