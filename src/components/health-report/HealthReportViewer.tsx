@@ -7,7 +7,8 @@ import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
-import { ItemHealthReportViewer } from './ItemHealthReportViewer';
+import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
+import { toProductModelFromDetected } from '@/lib/health/toProductModelFromDetected';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -26,8 +27,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [showItemViewer, setShowItemViewer] = useState(false);
+  const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
+  const [selectedItemAnalysisData, setSelectedItemAnalysisData] = useState<any>(null);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -130,9 +131,20 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
   const handleItemClick = (index: number) => {
     const item = report.itemAnalysis[index];
-    console.info('[HEALTH][ITEM_VIEWER] open', { name: item?.name });
-    setSelectedItem(item);
-    setShowItemViewer(true);
+    console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item?.name });
+    
+    // Transform the detected item into product model format
+    const productModel = toProductModelFromDetected(item);
+    
+    // Set up analysis data for HealthCheckModal
+    setSelectedItemAnalysisData({
+      source: 'photo_item',
+      name: item.name,
+      product: productModel,
+      captureTs: Date.now()
+    });
+    
+    setHealthCheckModalOpen(true);
   };
 
   return (
@@ -384,18 +396,16 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Item Health Report Viewer */}
-      {showItemViewer && selectedItem && (
-        <ItemHealthReportViewer
-          isOpen={showItemViewer}
-          onClose={() => {
-            setShowItemViewer(false);
-            setSelectedItem(null);
-          }}
-          item={selectedItem}
-          baseReport={report}
-        />
-      )}
+      {/* Full Health Check Modal */}
+      <HealthCheckModal
+        isOpen={healthCheckModalOpen}
+        onClose={() => {
+          setHealthCheckModalOpen(false);
+          setSelectedItemAnalysisData(null);
+        }}
+        initialState="report"
+        analysisData={selectedItemAnalysisData}
+      />
     </Dialog.Root>
   );
 };
