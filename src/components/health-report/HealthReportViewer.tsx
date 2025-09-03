@@ -130,6 +130,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleItemClick = async (index: number) => {
+    console.log('🔴 CLICK TEST - Item clicked:', index);
+    
     const item = report.itemAnalysis[index];
     console.info('[HEALTH][PHOTO_ITEM] tap', { name: item?.name });
 
@@ -174,6 +176,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
 
     // Set up analysis data for HealthCheckModal and open it
+    console.log('🔴 SETTING MODAL DATA');
     console.info('[HEALTH][DEBUG] Setting up modal data:', {
       source: 'photo_item',
       name: item.name,
@@ -188,6 +191,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       captureTs: Date.now()
     });
     
+    console.log('🔴 OPENING MODAL');
     setHealthCheckModalOpen(true);
     console.info('[HEALTH][OPEN_FULL]', { source: 'photo_item', name: product?.name || item.name });
   };
