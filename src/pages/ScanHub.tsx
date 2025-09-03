@@ -31,6 +31,7 @@ import { generateHealthReport, HealthReportData } from '@/lib/health/generateHea
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { ManualEntryModal } from '@/components/health-scan/ManualEntryModal';
+import { VoiceCaptureModal } from '@/components/health-scan/VoiceCaptureModal';
 import { parseManualText } from '@/lib/health/parseManualText';
 
 
@@ -157,6 +158,7 @@ export default function ScanHub() {
   // Health Scan state
   const [healthPhotoModalOpen, setHealthPhotoModalOpen] = useState(false);
   const [healthManualModalOpen, setHealthManualModalOpen] = useState(false);
+  const [healthVoiceModalOpen, setHealthVoiceModalOpen] = useState(false);
   const [healthReviewModalOpen, setHealthReviewModalOpen] = useState(false);
   const [healthDetectedItems, setHealthDetectedItems] = useState<ReviewItem[]>([]);
   const [healthAnalyzing, setHealthAnalyzing] = useState(false);
@@ -219,11 +221,12 @@ export default function ScanHub() {
 
   const handleSpeakToAnalyze = () => {
     logTileClick('voice');
+    console.info('[HEALTH][VOICE] open');
     if (!voiceEnabled) {
       toast('Voice analysis is currently disabled');
       return;
     }
-    setVoiceModalOpen(true);
+    setHealthVoiceModalOpen(true);
   };
 
   const handleSaves = () => {
@@ -345,6 +348,22 @@ export default function ScanHub() {
     } catch (error) {
       console.error('[HEALTH][REVIEW][ERROR] report generation failed', error);
       toast.error('Could not generate report. Please try again.');
+    }
+  };
+
+  // Handle Health Scan voice submission
+  const handleHealthVoiceSubmit = (transcript: string) => {
+    console.info('[HEALTH][VOICE] transcript', { text: transcript });
+    
+    const items = parseManualText(transcript);
+    console.info('[HEALTH][VOICE] items', { count: items.length });
+    
+    if (items.length > 0) {
+      setHealthDetectedItems(items);
+      setHealthVoiceModalOpen(false);
+      setHealthReviewModalOpen(true);
+    } else {
+      toast.warning('Couldn\'t recognize foods—try again or add manually.');
     }
   };
 
@@ -618,6 +637,13 @@ export default function ScanHub() {
           }
         }}
         onProductSelected={handleVoiceProductSelected}
+      />
+
+      {/* Health Scan Voice Capture Modal */}
+      <VoiceCaptureModal
+        isOpen={healthVoiceModalOpen}
+        onClose={() => setHealthVoiceModalOpen(false)}
+        onSubmit={handleHealthVoiceSubmit}
       />
 
       {/* Health Scan Manual Entry Modal */}
