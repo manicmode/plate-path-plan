@@ -269,8 +269,8 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </header>
 
-        {/* DEV Debug Menu Button */}
-        {import.meta.env.DEV && (
+        {/* DEV Debug Menu Button - HIDDEN FOR NOW */}
+        {false && import.meta.env.DEV && (
           <div style={{ position: 'fixed', right: 12, bottom: 12, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
               onClick={() => (window.location.href = '/debug')}
