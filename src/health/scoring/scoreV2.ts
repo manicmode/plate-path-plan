@@ -76,13 +76,41 @@ function scorePackaged(n: Nutrients): number {
  * Main scoring function with dual curves based on food classification
  */
 export function scoreFoodV2(ctx: ScoreContext): number {
+  const DBG = import.meta.env.VITE_HEALTH_SCORE_DEBUG === 'true';
+  
+  if (DBG) {
+    console.info('[SCORE][V2][INPUT]', {
+      source: (ctx as any).source, // 'photo_item'
+      name: ctx.name, 
+      kind: ctx.genericSlug,
+      genericSlug: ctx.genericSlug,
+      per100g: (ctx as any).nutrients?.per100g, 
+      portion: (ctx as any).portion,
+      flags: (ctx as any).flags,
+      rawNutrients: ctx.nutrients
+    });
+  }
+
   const kind = classifyFoodKind(ctx);
-  const useWhole = (kind === 'whole_food');
+  // For photo items that are ambiguous, treat as whole food if they match generic foods
+  const useWhole = (kind === 'whole_food') || 
+    (kind === 'ambiguous' && ctx.genericSlug && (ctx as any).source === 'photo_item');
+  
   const n = ctx.nutrients ?? {};
 
   const score = useWhole ? scoreWholeFood(n) : scorePackaged(n);
 
-  // Diagnostic logging when flag is enabled
+  if (DBG) {
+    console.info('[SCORE][V2][COMPONENTS]', {
+      kind,
+      useWhole,
+      curve: useWhole ? 'whole_food' : 'packaged',
+      finalScore: score,
+      nutrients: n
+    });
+  }
+
+  // Diagnostic logging when V2 flag is enabled
   if (import.meta.env.VITE_HEALTH_SCORE_V2 === 'true') {
     console.info('[SCORE][V2]', { 
       name: ctx.name, 

@@ -29,7 +29,8 @@ export interface ProductModel {
     portion?: {
       grams: number | null;
       label: string | null;
-      isEstimated: boolean;
+      isEstimated?: boolean;
+      source?: 'photo_estimate' | 'user_input' | 'default';
     };
     per100g?: any;
     perPortion?: any;
@@ -104,6 +105,12 @@ export async function toProductModelFromDetected(item: any): Promise<ProductMode
       }
     });
 
+    console.info('[PIPE][PHOTO]->modal score10', { 
+      name: genericFood.display_name, 
+      score10: healthScore10,
+      score100: Math.round(healthScore10 * 10)
+    });
+
     // Generate basic ingredient list and flags for whole foods
     const capitalizeWords = (str: string) => str.replace(/\b\w/g, l => l.toUpperCase());
     const ingredientsList = [capitalizeWords(genericFood.display_name)];
@@ -161,7 +168,7 @@ export async function toProductModelFromDetected(item: any): Promise<ProductMode
       name: genericFood.display_name,
       brand: null,
       image_url: item.imageUrl ?? null,
-      source: 'generic',
+      source: 'photo_item',
       serving: {
         grams: grams ?? genericFood.serving.grams,
         label: portionLabel ?? genericFood.serving.label,
@@ -176,11 +183,11 @@ export async function toProductModelFromDetected(item: any): Promise<ProductMode
         sodium_mg: perPortion?.sodium ?? per100g.sodium,
       },
       meta: {
-        portion: {
+        portion: grams ? {
           grams,
           label: portionLabel,
-          isEstimated: true,
-        },
+          source: 'photo_estimate' as const
+        } : undefined,
         per100g,
         perPortion,
         healthScore: healthScore10, // Include calculated health score

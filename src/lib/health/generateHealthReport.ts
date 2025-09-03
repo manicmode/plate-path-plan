@@ -165,7 +165,7 @@ export async function generateHealthReport(items: ReviewItem[]): Promise<HealthR
         // Convert to 0-100 for consistency with existing logic
         const score100 = healthScore * 10;
         
-        console.info('[HEALTH][REPORT][V2_SCORE]', { 
+        console.info('[PIPE][PHOTO]->list score100', { 
           name: item.name, 
           genericSlug: genericFood.slug,
           score10: healthScore,
