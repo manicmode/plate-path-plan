@@ -214,11 +214,6 @@ export const SaveTab: React.FC<SaveTabProps> = ({
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     Saving to Log...
                   </>
-                ) : savedLogId ? (
-                  <>
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    Saved Successfully!
-                  </>
                 ) : (
                   <>
                     <Save className="w-5 h-5 mr-2" />
