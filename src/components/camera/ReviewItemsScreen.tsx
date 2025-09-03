@@ -345,23 +345,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 </Button>
               </div>
               
-              {/* Secondary actions row */}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={handleSaveSet}
-                  disabled={selectedCount === 0}
-                  size="lg"
-                  className="flex-1 h-12 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white font-bold"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  💾 Save Set
-                </Button>
-                
+              {/* Cancel button full width */}
+              <div className="pt-2">
                 <Button
                   onClick={onClose}
                   variant="outline"
                   size="lg"
-                  className="flex-1 h-12 rounded-xl border-white/20 bg-transparent text-white"
+                  className="w-full h-12 rounded-xl border-white/20 bg-transparent text-white"
                 >
                   Cancel
                 </Button>

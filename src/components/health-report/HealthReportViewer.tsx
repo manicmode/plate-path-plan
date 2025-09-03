@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { toProductModelFromDetected } from '@/lib/health/toProductModelFromDetected';
+import { SaveSetNameDialog } from '@/components/camera/SaveSetNameDialog';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
+  const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -52,7 +54,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
   const verdictStyle = getVerdictDisplay(report.overallScore);
 
-  const handleSaveReport = async () => {
+  const handleSaveReportSet = () => {
     if (!user?.id) {
       toast({
         title: "Authentication Required",
@@ -62,27 +64,38 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       return;
     }
 
+    setShowSaveNameDialog(true);
+  };
+
+  const handleSaveWithName = async (setName: string) => {
     setIsSaving(true);
     try {
-      console.info('[HEALTH][REPORT] saving', { items: items.length });
+      console.info('[HEALTH][REPORT] saving meal set', { items: items.length, name: setName });
       
-      // Map photo report to nutrition_logs format (same as barcode)
-      const nutritionLogData = mapPhotoReportToNutritionLog(report, items);
+      // Import here to avoid circular dependencies
+      const { createMealSet } = await import('@/lib/mealSets');
       
-      // Use same persistence as barcode reports
-      const savedLog = await saveScanToNutritionLogs(nutritionLogData, 'photo');
+      const mealSetItems = items.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100
+      }));
+
+      await createMealSet({ name: setName, items: mealSetItems });
       
-      console.info('[HEALTH][REPORT] saved', { id: savedLog?.id });
+      console.info('[HEALTH][REPORT] meal set saved', { name: setName });
       
       toast({
-        title: "Report Saved",
-        description: "Your health report has been saved to your history.",
+        title: "Report Set Saved",
+        description: `"${setName}" has been saved to your meal sets.`,
       });
+      
+      setShowSaveNameDialog(false);
     } catch (error) {
       console.error('[HEALTH][REPORT][ERROR] save failed', error);
       toast({
         title: "Save Failed",
-        description: "Could not save your health report. Please try again.",
+        description: "Could not save your health report set. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -431,7 +444,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-3">
                   <Button
-                    onClick={handleSaveReport}
+                    onClick={handleSaveReportSet}
                     disabled={isSaving}
                     className="h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold disabled:opacity-50"
                   >
@@ -443,7 +456,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                     ) : (
                       <>
                         <Save className="w-4 h-4 mr-2" />
-                        Save Report
+                        Save Report Set
                       </>
                     )}
                   </Button>
@@ -480,6 +493,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      {/* Save Set Name Dialog */}
+      <SaveSetNameDialog
+        isOpen={showSaveNameDialog}
+        onClose={() => setShowSaveNameDialog(false)}
+        onSave={handleSaveWithName}
+      />
     </Dialog.Root>
   );
 };
