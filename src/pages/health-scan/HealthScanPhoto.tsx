@@ -49,7 +49,7 @@ export default function HealthScanPhoto() {
 
   const handleBack = () => {
     setPhotoModalOpen(false);
-    navigate('/health-scan');
+    navigate('/scan');
   };
 
   const handleShowHealthReport = async (selectedItems: ReviewItem[]) => {
