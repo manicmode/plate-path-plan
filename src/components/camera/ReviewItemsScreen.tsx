@@ -14,6 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FoodConfirmModal } from '@/components/FoodConfirmModal';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
+import { useSound } from '@/contexts/SoundContext';
+import { lightTap } from '@/lib/haptics';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -70,6 +72,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [isSavingSet, setIsSavingSet] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { playFoodLogConfirm } = useSound();
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -226,31 +229,22 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleConfirmModalComplete = async (confirmedItems: any[]) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] end', { 
-        confirmed: confirmedItems.length, 
-        origin: 'review_items' 
-      });
-      confirmedItems.forEach((item, index) => {
-        console.info('[DL][FLOW] confirm', { index: index + 1, name: item.name });
-      });
-    }
-
     setConfirmModalOpen(false);
-    setConfirmFlowActive(false); // Clear flow active state
+    setConfirmFlowActive(false);
 
     try {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[LOG][DETAILED][CONFIRM][START]', { count: confirmedItems.length });
-        confirmedItems.forEach((item, index) => {
-          console.info('[LOG][INSERT][START]', { 
-            index: index + 1, 
-            name: item.name, 
-            grams: item.portion_estimate || 100 
-          });
-        });
-      }
+      playFoodLogConfirm();
+      lightTap();
+    } catch (error) {
+      console.warn('[HAPTIC][ERROR]', error);
+    }
 
+    console.log('[CONFIRM][SUCCESS]', {
+      count: confirmedItems.length,
+      timestamp: Date.now()
+    });
+
+    try {
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
       
@@ -262,18 +256,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
       await oneTapLog(logEntries);
       
-      // Log successful inserts
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        logEntries.forEach((entry, index) => {
-          console.info('[LOG][INSERT][OK]', { 
-            index: index + 1, 
-            name: entry.name,
-            grams: entry.grams
-          });
-        });
-        console.info('[LOG][DETAILED][CONFIRM][DONE]');
-      }
-
       // Import toast dynamically to avoid circular deps
       const { toast } = await import('sonner');
       toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
@@ -282,16 +264,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       navigate('/home', { replace: true });
       
     } catch (error) {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.error('[DL][FLOW] log failed', error);
-        confirmedItems.forEach((item, index) => {
-          console.error('[LOG][INSERT][FAIL]', { 
-            index: index + 1, 
-            name: item.name, 
-            error: error.message 
-          });
-        });
-      }
+      console.error('[CONFIRM][ERROR]', error);
       
       // Import toast dynamically
       const { toast } = await import('sonner');
@@ -300,11 +273,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleConfirmModalReject = () => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[LEGACY][FLOW] reject', { origin: 'review_items' });
-    }
+    console.log('[CONFIRM][CANCEL]', {
+      totalItems: items?.length,
+      timestamp: Date.now()
+    });
     setConfirmModalOpen(false);
-    setConfirmFlowActive(false); // Clear flow active state
+    setConfirmFlowActive(false);
   };
 
 
@@ -416,6 +390,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            if (confirmModalOpen) e.preventDefault();
+          }}
           role="dialog"
           aria-labelledby="review-title"
           aria-describedby=""

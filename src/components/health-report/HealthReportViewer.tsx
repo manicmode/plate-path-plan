@@ -21,22 +21,19 @@ import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
-  onClose: () => void;
+  onSafeClose?: () => void; // replaces onClose
   report: HealthReportData;
   items: ReviewItem[];
   // Modal opening functions for photo item clicks
   onOpenHealthModal?: (analysisData: any) => void;
-  // Remove old interface props - using global confirm flow now  
-  // onStartConfirmFlow?: (items: any[], origin: string) => void;
 }
 
 export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   isOpen,
-  onClose,
+  onSafeClose,
   report,
   items,
   onOpenHealthModal
-  // onStartConfirmFlow - removed, using global flow
 }) => {
   // Add forensic breadcrumbs
   useEffect(() => {
@@ -208,7 +205,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       });
       
       // Close Health Report
-      onClose();
+      onSafeClose?.();
       
       // Navigate to Home using same pattern as other logging flows
       navigate('/home', { replace: true });
@@ -228,25 +225,20 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleDetailedLogMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // BLOCK Radix/parent handlers immediately
+  const handleDetailedLogMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // @ts-ignore
-    e.nativeEvent?.stopImmediatePropagation?.();
-    
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[HR][CTA][MDOWN]');
-    }
 
-    // 1) Mark flow active BEFORE anything can close
-    setConfirmFlowActive(true);
-    
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[HR][FLOW] active=true');
-    }
+    console.log('[HR][CTA][MDOWN]', { itemsLength: items?.length });
+    if (!items?.length) return;
 
-    // 2) Transform items and open legacy modal NOW (synchronous)
+    // Atomic modal-open state
+    React.startTransition(() => {
+      setConfirmFlowActive(true);
+      setConfirmModalOpen(true);
+    });
+
+    // Transform items for modal
     const modalItems = items.map(item => ({
       name: item.name,
       category: 'food',
@@ -256,33 +248,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       canonicalName: item.canonicalName || item.name
     }));
 
-    // Open legacy confirm modal immediately
     setConfirmModalItems(modalItems);
-    setConfirmModalOpen(true);
-    
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[HR][FLOW] beginConfirmSequence()');
-      console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
-    }
 
-    // 3) Close the report AFTER we started (next tick)
+    console.log('[LEGACY][FLOW] open index=0');
+
+    // Defer viewer hide until modal mount completes
     setTimeout(() => {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.log('[HR][FLOW] close report');
-      }
-      onClose();
+      onSafeClose?.(); // hide viewer, do not unmount data
     }, 0);
-
-    // 4) Watchdog: ensure modal is open; if not, log warning
-    setTimeout(() => {
-      const open = confirmModalOpen;
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.warn('[HR][WATCH]', { open, path: window.location?.pathname });
-        if (!open) {
-          console.warn('[HR][WATCH] forced reopen');
-        }
-      }
-    }, 400);
   };
 
   const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -293,31 +266,22 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
 
   const handleConfirmModalComplete = async (confirmedItems: any[]) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] end', { 
-        confirmed: confirmedItems.length, 
-        origin: 'health_report' 
-      });
-      confirmedItems.forEach((item, index) => {
-        console.info('[DL][FLOW] confirm', { index: index + 1, name: item.name });
-      });
-    }
-
     setConfirmModalOpen(false);
-    setConfirmFlowActive(false); // Clear flow active state
+    setConfirmFlowActive(false);
 
     try {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[LOG][DETAILED][CONFIRM][START]', { count: confirmedItems.length });
-        confirmedItems.forEach((item, index) => {
-          console.info('[LOG][INSERT][START]', { 
-            index: index + 1, 
-            name: item.name, 
-            grams: item.portion_estimate || 100 
-          });
-        });
-      }
+      if (typeof playFoodLogConfirm === 'function') playFoodLogConfirm();
+      if (typeof lightTap === 'function') lightTap();
+    } catch (error) {
+      console.warn('[HAPTIC][ERROR]', error);
+    }
 
+    console.log('[CONFIRM][SUCCESS]', {
+      count: confirmedItems.length,
+      timestamp: Date.now()
+    });
+
+    try {
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
       
@@ -329,18 +293,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
       await oneTapLog(logEntries);
       
-      // Log successful inserts
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        logEntries.forEach((entry, index) => {
-          console.info('[LOG][INSERT][OK]', { 
-            index: index + 1, 
-            name: entry.name,
-            grams: entry.grams
-          });
-        });
-        console.info('[LOG][DETAILED][CONFIRM][DONE]');
-      }
-
       // Import toast dynamically to avoid circular deps
       const { toast } = await import('sonner');
       toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
@@ -349,16 +301,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       navigate('/home', { replace: true });
       
     } catch (error) {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.error('[DL][FLOW] log failed', error);
-        confirmedItems.forEach((item, index) => {
-          console.error('[LOG][INSERT][FAIL]', { 
-            index: index + 1, 
-            name: item.name, 
-            error: error.message 
-          });
-        });
-      }
+      console.error('[CONFIRM][ERROR]', error);
       
       // Import toast dynamically
       const { toast } = await import('sonner');
@@ -367,11 +310,12 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleConfirmModalReject = () => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[LEGACY][FLOW] reject', { origin: 'health_report' });
-    }
+    console.log('[CONFIRM][CANCEL]', {
+      totalItems: items?.length,
+      timestamp: Date.now()
+    });
     setConfirmModalOpen(false);
-    setConfirmFlowActive(false); // Clear flow active state
+    setConfirmFlowActive(false);
   };
 
   const handleItemClick = async (index: number) => {
@@ -461,8 +405,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    return (
+    <Dialog.Root open={isOpen} onOpenChange={() => onSafeClose?.()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/80 z-[250]" />
         <Dialog.Content
@@ -470,6 +414,9 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            if (confirmModalOpen) e.preventDefault();
+          }}
         >
           <div className="flex h-full w-full flex-col">
             {/* Header */}
@@ -487,7 +434,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClose}
+                onClick={() => onSafeClose?.()}
                 className="text-white hover:bg-white/10"
               >
                 <X className="h-4 w-4" />
@@ -726,7 +673,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                 
                 {/* Close Button */}
                 <Button
-                  onClick={onClose}
+                  onClick={() => onSafeClose?.()}
                   variant="outline"
                   className="w-full h-10 border-white/30 text-white hover:bg-white/10"
                 >

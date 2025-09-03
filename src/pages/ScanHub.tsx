@@ -247,6 +247,15 @@ export default function ScanHub() {
   }, [location.pathname, healthCheckModalOpen, photoModalOpen, manualEntryOpen, 
       voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen, confirmFlowActive]);
 
+  useEffect(() => {
+    if (!healthReportViewerOpen && !confirmFlowActive && healthReportData) {
+      const timeoutId = setTimeout(() => {
+        setHealthReportData(null);
+      }, 150); // iOS Safari headroom
+      return () => clearTimeout(timeoutId);
+    }
+  }, [healthReportViewerOpen, confirmFlowActive, healthReportData]);
+
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
       tile, 
@@ -707,12 +716,11 @@ export default function ScanHub() {
       {healthReportData && (
         <HealthReportViewer
           isOpen={healthReportViewerOpen}
-          onClose={() => {
+          onSafeClose={() => {
             if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-              console.info('[ScanHub] HealthReportViewer onClose called');
+              console.info('[ScanHub] HealthReportViewer onSafeClose called');
             }
             setHealthReportViewerOpen(false);
-            setHealthReportData(null);
           }}
           report={healthReportData}
           items={healthDetectedItems}

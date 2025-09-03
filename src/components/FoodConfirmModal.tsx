@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Check, X } from 'lucide-react';
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { useConfirmFlowActive } from '@/lib/confirmFlowState';
 
 interface FoodItem {
   name: string;
@@ -28,6 +29,7 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   const [currentIndex, setCurrentIndex] = useState(0);
   const [confirmedItems, setConfirmedItems] = useState<FoodItem[]>([]);
   const [editedPortion, setEditedPortion] = useState<number | null>(null);
+  const confirmFlowActive = useConfirmFlowActive();
 
   const currentItem = items[currentIndex];
   const isLastItem = currentIndex === items.length - 1;
@@ -113,11 +115,33 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
 
   return (
     <Dialog open={isOpen} onOpenChange={onReject}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent 
+        className="sm:max-w-md z-[600] bg-white dark:bg-gray-800"
+        onEscapeKeyDown={(e) => {
+          if (confirmFlowActive) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (confirmFlowActive) { e.preventDefault(); e.stopPropagation(); }
+        }}
+        onInteractOutside={(e) => {
+          if (confirmFlowActive) { e.preventDefault(); e.stopPropagation(); }
+        }}
+      >
+        <VisuallyHidden>
+          <DialogTitle>Confirm Food Items</DialogTitle>
+          <DialogDescription>
+            Confirm items and adjust portion sizes for logging to your diary
+          </DialogDescription>
+        </VisuallyHidden>
+
+        {process.env.NODE_ENV === 'development' && (() => {
+          console.log('[LEGACY][ConfirmModal][MOUNT]', {
+            selectedIndex: currentIndex, totalItems: items?.length, timestamp: Date.now()
+          });
+          return null;
+        })()}
+
         <DialogHeader>
-          <VisuallyHidden.Root>
-            <DialogTitle>Confirm Food Log</DialogTitle>
-          </VisuallyHidden.Root>
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold">Confirm Food Log</span>
             <Badge variant="secondary">
