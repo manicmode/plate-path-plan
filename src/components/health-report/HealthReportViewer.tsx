@@ -36,6 +36,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
   const [showDetailedLog, setShowDetailedLog] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -73,75 +74,46 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const handleSaveWithName = async (setName: string) => {
     setIsSaving(true);
     try {
-      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
+      // Always use new behavior - save to saved_meal_set_reports
+      console.info('[SAVE][SET]', { items: items.length, name: setName });
       
-      if (isNewSaveEnabled) {
-        // NEW BEHAVIOR: Save to saved_meal_set_reports (does NOT affect daily calories)
-        console.info('[SAVE][SET]', { items: items.length, name: setName });
-        
-        const itemsSnapshot = items.map(item => ({
-          name: item.name,
-          canonicalName: item.canonicalName || item.name,
-          grams: item.grams || 100,
-          score: report.itemAnalysis.find(a => a.name === item.name)?.score || 0,
-          calories: report.itemAnalysis.find(a => a.name === item.name)?.calories || 0,
-          healthRating: report.itemAnalysis.find(a => a.name === item.name)?.healthRating || 'unknown'
-        }));
+      const itemsSnapshot = items.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100,
+        score: report.itemAnalysis.find(a => a.name === item.name)?.score || 0,
+        calories: report.itemAnalysis.find(a => a.name === item.name)?.calories || 0,
+        healthRating: report.itemAnalysis.find(a => a.name === item.name)?.healthRating || 'unknown'
+      }));
 
-        const { data, error } = await supabase
-          .from('saved_meal_set_reports')
-          .insert({
-            name: setName.trim(),
-            overall_score: Math.round(report.overallScore),
-            items_snapshot: itemsSnapshot,
-            report_snapshot: report,
-            image_url: null // Could add later if needed
-          } as any)
-          .select('id')
-          .single();
+      const { data, error } = await supabase
+        .from('saved_meal_set_reports')
+        .insert({
+          name: setName.trim(),
+          overall_score: Math.round(report.overallScore),
+          items_snapshot: itemsSnapshot,
+          report_snapshot: report,
+          image_url: null // Could add later if needed
+        } as any)
+        .select('id')
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        console.info('[SAVE][SET] inserted', { 
-          id: data.id, 
-          name: setName, 
-          overall: report.overallScore, 
-          items: itemsSnapshot?.length 
-        });
-        
-        toast({
-          title: "Report Set Saved",
-          description: `"${setName}" has been saved to your meal set reports.`,
-        });
-        
-        setShowSaveNameDialog(false);
-        
-        // Navigate to /scan/saved-reports with Meal Sets tab preselected
-        const navigate = (await import('react-router-dom')).useNavigate;
-        // This needs to be handled in the dialog component since we can't use hooks here
-      } else {
-        // OLD BEHAVIOR: Save to meal_sets
-        console.info('[HEALTH][REPORT] saving meal set', { items: items.length, name: setName });
-        
-        const { createMealSet } = await import('@/lib/mealSets');
-        
-        const mealSetItems = items.map(item => ({
-          name: item.name,
-          canonicalName: item.canonicalName || item.name,
-          grams: item.grams || 100
-        }));
-
-        await createMealSet({ name: setName, items: mealSetItems });
-        
-        console.info('[HEALTH][REPORT] meal set saved', { name: setName });
-        
-        toast({
-          title: "Report Set Saved",
-          description: `"${setName}" has been saved to your meal sets.`,
-        });
-        
-        setShowSaveNameDialog(false);
-      }
+      console.info('[SAVE][SET] inserted', { 
+        id: data.id, 
+        name: setName, 
+        overall: report.overallScore, 
+        items: itemsSnapshot?.length 
+      });
+      
+      toast({
+        title: "Report Set Saved",
+        description: `"${setName}" has been saved to your meal set reports.`,
+      });
+      
+      setShowSaveNameDialog(false);
+      setIsSaved(true); // Show checkmark state
     } catch (error) {
       console.error('[HEALTH][REPORT][ERROR] save failed', error);
       toast({
@@ -519,23 +491,34 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                 </div>
 
                 {/* Save Report Set Button */}
-                <Button
-                  onClick={handleSaveReportSet}
-                  disabled={isSaving}
-                  className="w-full h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      💾 Save Report Set
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleSaveReportSet}
+                    disabled={isSaving || isSaved}
+                    className={`w-full py-4 text-base font-medium rounded-xl ${
+                      isSaved 
+                        ? 'bg-green-700 text-white cursor-default' 
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Saving Report Set...
+                      </>
+                    ) : isSaved ? (
+                      <>
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        ✅ Report Set Saved
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5 mr-2" />
+                        💾 Save Report Set
+                      </>
+                    )}
+                  </Button>
+                </div>
                 
                 {/* Close Button */}
                 <Button

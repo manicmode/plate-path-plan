@@ -54,86 +54,56 @@ export default function SavedReports() {
         return;
       }
 
-      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
+      // Always use new behavior - load from saved_meal_set_reports
+      console.log('[SAVED] Loading from saved_meal_set_reports and saved_health_reports');
+      
+      // Load individual reports
+      const { data: individualData, error: individualError } = await supabase
+        .from('saved_health_reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(25);
 
-      if (isNewSaveEnabled) {
-        // NEW BEHAVIOR: Load from saved_health_reports and saved_meal_set_reports
-        console.log('[SAVED][NEW] Loading from new tables');
-        
-        // Load individual reports
-        const { data: individualData, error: individualError } = await supabase
-          .from('saved_health_reports')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(25);
-
-        if (individualError) {
-          console.error('[SAVED][INDIVIDUAL][ERROR]', individualError);
-        } else {
-          // Map to expected format
-          const mappedIndividual = (individualData || []).map(report => {
-            const snapshot = report.report_snapshot as any;
-            return {
-              id: report.id,
-              food_name: report.title,
-              calories: Math.round((snapshot?.nutritionData?.calories || 0)),
-              protein: Math.round((snapshot?.nutritionData?.protein || 0) * 10) / 10,
-              carbs: Math.round((snapshot?.nutritionData?.carbs || 0) * 10) / 10,
-              fat: Math.round((snapshot?.nutritionData?.fat || 0) * 10) / 10,
-              quality_score: report.quality_score || 0,
-              quality_verdict: report.quality_score >= 80 ? 'excellent' : 
-                             report.quality_score >= 60 ? 'good' : 
-                             report.quality_score >= 40 ? 'moderate' : 'poor',
-              created_at: report.created_at,
-              source: report.source
-            };
-          });
-          setSavedReports(mappedIndividual);
-        }
-
-        // Load meal set reports
-        const { data: mealSetData, error: mealSetError } = await supabase
-          .from('saved_meal_set_reports')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(25);
-
-        if (mealSetError) {
-          console.error('[SAVED][MEAL_SET][ERROR]', mealSetError);
-        } else {
-          setMealSetReports(mealSetData || []);
-        }
+      if (individualError) {
+        console.error('[SAVED][INDIVIDUAL][ERROR]', individualError);
       } else {
-        // OLD BEHAVIOR: Load from nutrition_logs
-        console.log('[SAVED][OLD] Loading from nutrition_logs');
-        
-        // @ts-ignore - New columns not in generated types yet
-        const query = (supabase as any)
-          .from('nutrition_logs_clean')
-          .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
-          .in('source', ['photo','barcode','vision_api','manual'])
-          .not('report_snapshot', 'is', null)  // Show only snapshot-backed rows
-          .order('created_at', { ascending: false })
-          .limit(25);
+        // Map to expected format
+        const mappedIndividual = (individualData || []).map(report => {
+          const snapshot = report.report_snapshot as any;
+          return {
+            id: report.id,
+            food_name: report.title,
+            calories: Math.round((snapshot?.nutritionData?.calories || 0)),
+            protein: Math.round((snapshot?.nutritionData?.protein || 0) * 10) / 10,
+            carbs: Math.round((snapshot?.nutritionData?.carbs || 0) * 10) / 10,
+            fat: Math.round((snapshot?.nutritionData?.fat || 0) * 10) / 10,
+            quality_score: report.quality_score || 0,
+            quality_verdict: report.quality_score >= 80 ? 'excellent' : 
+                           report.quality_score >= 60 ? 'good' : 
+                           report.quality_score >= 40 ? 'moderate' : 'poor',
+            created_at: report.created_at,
+            source: report.source
+          };
+        });
+        setSavedReports(mappedIndividual);
+      }
 
-        const { data, error } = await query;
+      // Load meal set reports
+      const { data: mealSetData, error: mealSetError } = await supabase
+        .from('saved_meal_set_reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(25);
 
-        if (error) {
-          console.error('[SAVED][QUERY][ERROR]', error);
-          toast({
-            title: "Error",
-            description: "Failed to load saved reports",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        setSavedReports(data || []);
-        setMealSetReports([]); // No meal sets in old mode
+      if (mealSetError) {
+        console.error('[SAVED][MEAL_SET][ERROR]', mealSetError);
+      } else {
+        console.log('[SAVED][MEAL_SET] Loaded', { count: mealSetData?.length || 0 });
+        setMealSetReports(mealSetData || []);
       }
 
       console.log('[SAVED][DATASOURCE]', { 
-        source: isNewSaveEnabled ? 'new-tables' : 'nutrition_logs', 
+        source: 'saved_health_reports + saved_meal_set_reports', 
         individualCount: savedReports?.length || 0,
         mealSetCount: mealSetReports?.length || 0 
       });
