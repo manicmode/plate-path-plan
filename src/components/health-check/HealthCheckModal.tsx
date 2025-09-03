@@ -640,10 +640,22 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               productName: analysisData.product.name,
               title: analysisData.product.name,
               healthScore: analysisData.product?.meta?.healthScore || 7, // Use mapped score from V2 scorer
-              ingredientsText: '',
-              ingredientFlags: [],
-              flags: [],
+              ingredientsText: analysisData.product.ingredientsText || analysisData.product.name, // Use ingredients or fallback to name
+              ingredientFlags: analysisData.product.flags || [], // Use generated flags
+              flags: analysisData.product.flags || [], // Ensure both properties are set
               nutritionData: analysisData.product.nutrients || {},
+              // Add per-serving nutrition support for photo items with portion data
+              nutritionDataPerServing: analysisData.product?.meta?.perPortion ? {
+                energyKcal: analysisData.product.meta.perPortion.kcal,
+                protein_g: analysisData.product.meta.perPortion.protein,
+                carbs_g: analysisData.product.meta.perPortion.carbs,
+                fat_g: analysisData.product.meta.perPortion.fat,
+                fiber_g: analysisData.product.meta.perPortion.fiber,
+                sodium_mg: analysisData.product.meta.perPortion.sodium,
+              } : undefined,
+              serving_size: analysisData.product?.meta?.portion?.label || undefined,
+              // Add portion grams for display logic
+              servingSizeGrams: analysisData.product?.meta?.portion?.grams || null,
               healthProfile: {
                 isOrganic: false,
                 isGMO: false,
@@ -656,6 +668,25 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               overallRating: 'good' as const
             }
           };
+          
+          console.info('[HEALTH][PHOTO_ITEM]->[MODAL]', { 
+            name: analysisData.product.name,
+            hasIngredients: !!(analysisData.product.ingredientsText),
+            flagsCount: (analysisData.product.flags || []).length,
+            portionGrams: analysisData.product?.meta?.portion?.grams,
+            hasPerPortion: !!(analysisData.product?.meta?.perPortion)
+          });
+
+          // Log portion availability for debugging
+          const hasPer100g = !!(analysisData.product?.meta?.per100g);
+          const portionG = analysisData.product?.meta?.portion?.grams;
+          if (!hasPer100g || !portionG) {
+            console.warn('[PORTION][MISSING_INPUT]', { 
+              hasPer100g, 
+              portionG,
+              product: analysisData.product.name 
+            });
+          }
           
           processDirectAnalysisResult(productData);
         } else {

@@ -34,6 +34,13 @@ export interface ProductModel {
     per100g?: any;
     perPortion?: any;
     healthScore?: number; // Add health score to meta
+    ingredients?: string[]; // Basic ingredient list for whole foods
+    flags?: Array<{
+      ingredient: string;
+      flag: string;
+      severity: 'low' | 'medium' | 'high';
+      reason?: string;
+    }>; // Generated flags for the modal
   };
 }
 
@@ -97,6 +104,58 @@ export async function toProductModelFromDetected(item: any): Promise<ProductMode
       }
     });
 
+    // Generate basic ingredient list and flags for whole foods
+    const capitalizeWords = (str: string) => str.replace(/\b\w/g, l => l.toUpperCase());
+    const ingredientsList = [capitalizeWords(genericFood.display_name)];
+    
+    // Generate basic flags based on nutritional content and health score
+    const flags = [];
+    const score100 = healthScore10 * 10; // Convert to 0-100 scale for flag thresholds
+    
+    if (score100 >= 85) {
+      flags.push({
+        ingredient: genericFood.display_name,
+        flag: 'Excellent nutritional choice',
+        severity: 'low' as const,
+        reason: 'High overall health score'
+      });
+    }
+    
+    if (per100g.fiber && per100g.fiber >= 3) {
+      flags.push({
+        ingredient: genericFood.display_name,
+        flag: 'Good source of fiber',
+        severity: 'low' as const,
+        reason: `Contains ${per100g.fiber}g fiber per 100g`
+      });
+    }
+    
+    if (per100g.protein >= 15) {
+      flags.push({
+        ingredient: genericFood.display_name,
+        flag: 'High protein content',
+        severity: 'low' as const,
+        reason: `Contains ${per100g.protein}g protein per 100g`
+      });
+    }
+    
+    if (per100g.sodium && per100g.sodium > 600) {
+      flags.push({
+        ingredient: genericFood.display_name,
+        flag: 'High sodium content',
+        severity: 'medium' as const,
+        reason: `Contains ${per100g.sodium}mg sodium per 100g`
+      });
+    }
+
+    console.info('[GENERIC][MAP_OUT]', { 
+      name: genericFood.display_name, 
+      grams, 
+      hasPer100g: !!per100g, 
+      flagsCount: flags.length,
+      ingredients: ingredientsList
+    });
+
     return {
       id: `detected:${item.id ?? item.name}`,
       name: genericFood.display_name,
@@ -125,6 +184,8 @@ export async function toProductModelFromDetected(item: any): Promise<ProductMode
         per100g,
         perPortion,
         healthScore: healthScore10, // Include calculated health score
+        ingredients: ingredientsList, // Basic ingredient list for whole foods
+        flags, // Generated flags for the modal
       }
     };
   }

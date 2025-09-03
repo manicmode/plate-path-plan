@@ -157,7 +157,15 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         // Create analysis object with proper nutrition data for HealthCheckModal
         const analysisData = {
           source: 'photo_item',
-          product,
+          product: {
+            ...product,
+            // Ensure ingredients and flags are available for the modal
+            ingredientsText: product.meta?.ingredients?.join(', ') || product.name,
+            ingredients: product.meta?.ingredients || [product.name],
+            flags: product.meta?.flags || [],
+            // Set serving size grams for per-portion calculation
+            servingSizeGrams: product.meta?.portion?.grams,
+          },
           productName: product.name,
           captureTs: Date.now(),
           meta: {
