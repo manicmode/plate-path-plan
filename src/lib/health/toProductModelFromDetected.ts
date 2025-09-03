@@ -33,6 +33,7 @@ export interface ProductModel {
     };
     per100g?: any;
     perPortion?: any;
+    healthScore?: number; // Add health score to meta
   };
 }
 
@@ -40,10 +41,10 @@ export interface ProductModel {
  * Transform a detected item from photo analysis into the product model format
  * that HealthCheckModal expects, using GenericFoods data for nutrition
  */
-export function toProductModelFromDetected(item: any): ProductModel {
+export async function toProductModelFromDetected(item: any): Promise<ProductModel> {
   console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item.name });
   
-  // Extract estimated grams from detected item
+  // Enhanced mapper that includes scoring context for photo items
   const grams = item.grams ?? item.portionGrams ?? item.estGrams ?? item.estimated_grams ?? null;
   const portionLabel = item.portionLabel ?? item.portion ?? (grams ? `${grams}g` : null);
   
@@ -79,6 +80,23 @@ export function toProductModelFromDetected(item: any): ProductModel {
 
     console.info('[HEALTH][GENERIC][PORTION]', perPortion);
 
+    // Calculate health score using new V2 scoring system
+    const { scoreFood } = await import('@/health/scoring');
+    const healthScore10 = scoreFood({
+      name: genericFood.display_name,
+      source: 'photo_item',
+      genericSlug: genericFood.slug,
+      nutrients: {
+        calories: per100g.kcal,
+        protein_g: per100g.protein,
+        carbs_g: per100g.carbs,
+        fat_g: per100g.fat,
+        fiber_g: per100g.fiber,
+        sodium_mg: per100g.sodium,
+        sugars_g: null, // Not available in generic foods yet
+      }
+    });
+
     return {
       id: `detected:${item.id ?? item.name}`,
       name: genericFood.display_name,
@@ -106,6 +124,7 @@ export function toProductModelFromDetected(item: any): ProductModel {
         },
         per100g,
         perPortion,
+        healthScore: healthScore10, // Include calculated health score
       }
     };
   }

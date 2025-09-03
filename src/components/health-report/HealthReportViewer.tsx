@@ -149,7 +149,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       // Use the enhanced mapper that handles GenericFoods and portion calculation
       const { toProductModelFromDetected } = await import('@/lib/health/toProductModelFromDetected');
       
-      const product = toProductModelFromDetected(item);
+      const product = await toProductModelFromDetected(item);
       
       if (product.source === 'generic' && product.meta) {
         console.info('[HC][STEP] report', { source: 'photo_item' });

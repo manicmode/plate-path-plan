@@ -45,20 +45,22 @@ export async function analyzeVoice(input: { transcript: string }): Promise<Pipel
     const primaryFood = data.foods[0];
     const itemName = primaryFood.name || trimmedTranscript;
     
-    // Health scoring (same as manual)
-    const calories = primaryFood.calories || 0;
-    const protein = primaryFood.protein || 0;
-    const fiber = primaryFood.fiber || 0;
-    const sugar = primaryFood.sugar || 0;
-    const sodium = primaryFood.sodium || 0;
+    // Calculate health score using centralized scoring system
+    const { scoreFood } = await import('@/health/scoring');
     
-    let healthScore = 5;
-    if (fiber > 3) healthScore += 1;
-    if (protein > 10) healthScore += 1;
-    if (sugar > 15) healthScore -= 1;
-    if (sodium > 400) healthScore -= 1;
-    if (calories > 300) healthScore -= 0.5;
-    healthScore = Math.max(1, Math.min(10, healthScore));
+    const healthScore = scoreFood({
+      name: itemName,
+      source: 'voice',
+      nutrients: {
+        calories: primaryFood.calories,
+        protein_g: primaryFood.protein,
+        carbs_g: primaryFood.carbs,
+        fat_g: primaryFood.fat,
+        fiber_g: primaryFood.fiber,
+        sugars_g: primaryFood.sugar,
+        sodium_mg: primaryFood.sodium,
+      }
+    });
 
     const report = {
       itemName,
