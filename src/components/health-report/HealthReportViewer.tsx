@@ -133,41 +133,61 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     const item = report.itemAnalysis[index];
     console.info('[HEALTH][PHOTO_ITEM] tap', { name: item?.name });
 
-    const productDetected = toProductModelFromDetected(item);
-
-    // If detected item lacks robust nutrients, try generic resolver
-    const lacksCore =
-      !productDetected?.nutrients?.calories &&
-      !productDetected?.nutrients?.protein_g &&
-      !productDetected?.nutrients?.carbs_g &&
-      !productDetected?.nutrients?.fat_g;
-
-    let product = productDetected;
-
+    const base = toProductModelFromDetected(item);
+    
     const ENABLE_GENERIC = import.meta.env.VITE_ENABLE_GENERIC_FOODS === 'true';
-    if (ENABLE_GENERIC && lacksCore) {
+    let product = base;
+
+    if (ENABLE_GENERIC) {
       const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
       const { productFromGeneric } = await import('@/health/generic/mapToProductModel');
       
-      const match = resolveGenericFood(item.name);
-      if (match) {
-        console.info('[HEALTH][GENERIC] matched', { slug: match.slug });
-        product = productFromGeneric(match);
+      const g = resolveGenericFood(item.name);
+
+      if (g) {
+        console.info('[HEALTH][GENERIC] matched', { slug: g.slug });
+
+        const genericPM = productFromGeneric(g);
+
+        // Merge: prefer detected serving grams if present, else generic's;
+        // Fill missing nutrients from generic.
+        product = {
+          ...genericPM,
+          ...base,
+          serving: {
+            grams: base?.serving?.grams ?? genericPM.serving?.grams ?? null,
+            label: base?.serving?.label ?? genericPM.serving?.label ?? 'per item',
+          },
+          nutrients: {
+            calories: base?.nutrients?.calories ?? genericPM.nutrients?.calories ?? null,
+            protein_g: base?.nutrients?.protein_g ?? genericPM.nutrients?.protein_g ?? null,
+            carbs_g: base?.nutrients?.carbs_g ?? genericPM.nutrients?.carbs_g ?? null,
+            fat_g: base?.nutrients?.fat_g ?? genericPM.nutrients?.fat_g ?? null,
+            fiber_g: base?.nutrients?.fiber_g ?? genericPM.nutrients?.fiber_g ?? null,
+            sugar_g: base?.nutrients?.sugar_g ?? genericPM.nutrients?.sugar_g ?? null,
+            sodium_mg: base?.nutrients?.sodium_mg ?? genericPM.nutrients?.sodium_mg ?? null,
+          },
+        };
       } else {
         console.warn('[HEALTH][GENERIC] no_match', { name: item.name });
       }
     }
 
-    // Set up analysis data for HealthCheckModal
-    setSelectedItemAnalysisData({
-      source: 'photo_item',
-      name: item.name,
-      product: product,
-      captureTs: Date.now()
-    });
+    // Close overview so the full modal renders on top
+    onClose();
     
-    setHealthCheckModalOpen(true);
-    console.info('[HC][STEP] report', { source: 'photo_item' });
+    // Defer open to next tick
+    setTimeout(() => {
+      setSelectedItemAnalysisData({
+        source: 'photo_item',
+        name: item.name,
+        product: product || base,
+        captureTs: Date.now()
+      });
+      
+      setHealthCheckModalOpen(true);
+      console.info('[HEALTH][OPEN_FULL]', { source: 'photo_item', name: product?.name || item.name });
+    }, 0);
   };
 
   return (

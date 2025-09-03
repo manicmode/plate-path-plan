@@ -540,8 +540,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     }
   };
 
-  // Mount probe
-  useEffect(() => { console.log('[HC][MOUNT] v1'); }, []);
+  // Mount probe and source logging
+  useEffect(() => { 
+    console.log('[HC][MOUNT] v1'); 
+    console.info('[HC][STEP] report', { source: analysisData?.source ?? 'unknown' });
+  }, [analysisData?.source]);
 
   // AUTO-KICK when a photo payload is provided from ScanHub
   useEffect(() => {
@@ -610,8 +613,42 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     if (source === 'manual' || source === 'voice' || source === 'photo_item') {
       console.log('[HC][STATE] skip scanner for', source);
       if (source === 'photo_item') {
-        // For photo_item, go straight to report state
-        setCurrentState('report');
+        // For photo_item, process the product data directly
+        if (analysisData.product) {
+          console.log('[PHOTO_ITEM→HEALTH] Processing product directly:', analysisData.product);
+          
+          // Format product data for analysis
+          const productData = {
+            ok: true,
+            source: 'photo_item',
+            confidence: 0.9,
+            analysis: {
+              itemName: analysisData.product.name,
+              productName: analysisData.product.name,
+              title: analysisData.product.name,
+              healthScore: 7, // Default good score for photo items
+              ingredientsText: '',
+              ingredientFlags: [],
+              flags: [],
+              nutritionData: analysisData.product.nutrients || {},
+              healthProfile: {
+                isOrganic: false,
+                isGMO: false,
+                allergens: [],
+                preservatives: [],
+                additives: []
+              },
+              personalizedWarnings: [],
+              suggestions: [],
+              overallRating: 'good' as const
+            }
+          };
+          
+          processDirectAnalysisResult(productData);
+        } else {
+          setCurrentState('report');
+        }
+        return;
       } else {
         setCurrentState('loading');
       }
@@ -2337,7 +2374,10 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
         </VisuallyHidden>
         <div className="relative w-full h-full">
           {/* Main Content */}
-          {currentState === 'scanner' && analysisData?.source !== 'manual' && analysisData?.source !== 'voice' && (
+          {currentState === 'scanner' && 
+           analysisData?.source !== 'manual' && 
+           analysisData?.source !== 'voice' && 
+           analysisData?.source !== 'photo_item' && (
             FF.PIPELINE_ISOLATION && FF.BARCODE_ISOLATED ? (
               <PipelineRouter mode="barcode">
                 <BarcodeScannerShim 
