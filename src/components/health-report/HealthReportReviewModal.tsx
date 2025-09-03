@@ -204,7 +204,7 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/80" />
         <Dialog.Content
-          className="fixed inset-0 z-[100] bg-gradient-to-br from-red-900/30 via-purple-900/30 to-red-800/30 backdrop-blur-sm text-white"
+          className="fixed inset-0 z-[100] bg-gradient-to-br from-red-900/60 via-purple-900/60 to-red-800/60 backdrop-blur-sm text-white"
           onOpenAutoFocus={(e) => e.preventDefault()}
           role="dialog"
           aria-labelledby="health-review-title"
@@ -215,7 +215,7 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
 
           <div className="flex h-full w-full flex-col">
             {/* Header (sticky) */}
-            <header className="sticky top-0 z-10 bg-gradient-to-r from-red-900/40 to-purple-900/40 backdrop-blur-sm px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/10">
+            <header className="sticky top-0 z-10 bg-gradient-to-r from-red-900/70 to-purple-900/70 backdrop-blur-sm px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/10">
               <div>
                 <h2 className="text-xl font-semibold text-white">
                   Review Detected Items ({count})
@@ -294,7 +294,7 @@ export const HealthReportReviewModal: React.FC<HealthReportReviewModalProps> = (
 
             {/* Footer (sticky) - only show if we have items */}
             {count > 0 && (
-              <footer className="sticky bottom-0 z-10 bg-gradient-to-r from-red-900/40 to-purple-900/40 backdrop-blur-sm px-5 py-4 border-t border-white/10">
+              <footer className="sticky bottom-0 z-10 bg-gradient-to-r from-red-900/70 to-purple-900/70 backdrop-blur-sm px-5 py-4 border-t border-white/10">
                 <div className="space-y-3">
                   {/* Main Health Report Button */}
                   <Button
