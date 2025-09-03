@@ -453,17 +453,19 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
       {/* Full Health Check Modal - render outside main dialog to avoid conflicts */}
       {healthCheckModalOpen && (
-        <HealthCheckModal
-          isOpen={healthCheckModalOpen}
-          onClose={() => {
-            console.log('[HEALTH][MODAL_CLOSE] User closed photo item modal');
-            setHealthCheckModalOpen(false);
-            setSelectedItemAnalysisData(null);
-          }}
-          initialState="report"
-          disableQuickScan={true}
-          analysisData={selectedItemAnalysisData}
-        />
+        <div style={{ zIndex: 9999 }}>
+          <HealthCheckModal
+            isOpen={healthCheckModalOpen}
+            onClose={() => {
+              console.log('[HEALTH][MODAL_CLOSE] User closed photo item modal');
+              setHealthCheckModalOpen(false);
+              setSelectedItemAnalysisData(null);
+            }}
+            initialState="report"
+            disableQuickScan={true}
+            analysisData={selectedItemAnalysisData}
+          />
+        </div>
       )}
     </Dialog.Root>
   );
