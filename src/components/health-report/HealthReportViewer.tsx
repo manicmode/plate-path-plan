@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight } from 'lucide-react';
@@ -451,9 +452,45 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         </Dialog.Content>
       </Dialog.Portal>
 
-      {/* Full Health Check Modal - render outside main dialog to avoid conflicts */}
-      {healthCheckModalOpen && (
-        <div style={{ zIndex: 9999 }}>
+      {/* Full Health Check Modal - render at document root to ensure visibility */}
+      {healthCheckModalOpen && createPortal(
+        <div 
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999999,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div style={{ color: 'white', padding: '20px', textAlign: 'center' }}>
+            🔴 MODAL IS VISIBLE - Click anywhere to close
+            <br />
+            Item: {selectedItemAnalysisData?.name}
+            <br />
+            <button 
+              onClick={() => {
+                console.log('[HEALTH][MODAL_CLOSE] Test close clicked');
+                setHealthCheckModalOpen(false);
+                setSelectedItemAnalysisData(null);
+              }}
+              style={{ 
+                padding: '10px 20px', 
+                marginTop: '10px',
+                backgroundColor: 'red',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px'
+              }}
+            >
+              CLOSE TEST MODAL
+            </button>
+          </div>
           <HealthCheckModal
             isOpen={healthCheckModalOpen}
             onClose={() => {
@@ -465,7 +502,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             disableQuickScan={true}
             analysisData={selectedItemAnalysisData}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </Dialog.Root>
   );
