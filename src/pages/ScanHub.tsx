@@ -24,6 +24,9 @@ import { goToHealthAnalysis } from '@/lib/nav';
 import { camHardStop } from '@/lib/camera/guardian';
 import { useAutoImmersive } from '@/lib/uiChrome';
 import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
+import { HealthReportReviewModal } from '@/components/health-report/HealthReportReviewModal';
+import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
+import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 
 
 export default function ScanHub() {
@@ -146,6 +149,11 @@ export default function ScanHub() {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [healthModalStep, setHealthModalStep] = useState<'scanner' | 'loading' | 'report' | 'fallback' | 'no_detection' | 'not_found' | 'candidates' | 'meal_detection' | 'meal_confirm'>('scanner');
 
+  // Health Scan photo flow state
+  const [healthPhotoModalOpen, setHealthPhotoModalOpen] = useState(false);
+  const [healthReviewModalOpen, setHealthReviewModalOpen] = useState(false);
+  const [healthDetectedItems, setHealthDetectedItems] = useState<ReviewItem[]>([]);
+
   // Feature flag checks
   const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
   const voiceEnabled = isFeatureEnabled('fallback_voice_enabled');
@@ -186,8 +194,8 @@ export default function ScanHub() {
   const handleTakePhoto = () => {
     logTileClick('photo');
     
-    // Navigate to dedicated Health Scan photo capture
-    navigate('/health-scan/photo');
+    console.info('[HEALTH][ENTRY] using legacy PhotoCaptureModal');
+    setHealthPhotoModalOpen(true);
   };
 
   const handleEnterManually = () => {
@@ -289,6 +297,33 @@ export default function ScanHub() {
     setHealthModalStep('loading');
     console.log('[HC][OPEN]', { from: 'voice', initial: 'loading' });
     setHealthCheckModalOpen(true);
+  };
+
+  // Handle Health Scan photo capture with golden pipeline
+  const handleHealthPhotoCapture = async (imageBase64: string) => {
+    console.info('[HEALTH][PIPELINE] start golden');
+    setHealthPhotoModalOpen(false);
+    
+    try {
+      const { items } = await runFoodDetectionPipeline(imageBase64, { mode: 'health' });
+      console.info('[HEALTH][PIPELINE] golden', { count: items?.length ?? 0 });
+      
+      setHealthDetectedItems(items ?? []);
+      setHealthReviewModalOpen(true);
+    } catch (error) {
+      console.error('[HEALTH][PIPELINE] error:', error);
+      toast('Failed to analyze photo. Please try again.');
+      
+      // Show review modal with empty items as fallback
+      setHealthDetectedItems([]);
+      setHealthReviewModalOpen(true);
+    }
+  };
+
+  // Handle Health Scan fallback to manual entry
+  const handleHealthPhotoManualFallback = () => {
+    setHealthPhotoModalOpen(false);
+    setManualEntryOpen(true);
   };
 
   // Handle URL params to force modals (with guards)
@@ -540,6 +575,28 @@ export default function ScanHub() {
           }
         }}
         onProductSelected={handleVoiceProductSelected}
+      />
+
+      {/* Health Scan Photo Modal */}
+      <PhotoCaptureModal
+        open={healthPhotoModalOpen}
+        onOpenChange={setHealthPhotoModalOpen}
+        onCapture={handleHealthPhotoCapture}
+        onManualFallback={handleHealthPhotoManualFallback}
+      />
+
+      {/* Health Report Review Modal */}
+      <HealthReportReviewModal
+        isOpen={healthReviewModalOpen}
+        onClose={() => setHealthReviewModalOpen(false)}
+        onShowHealthReport={() => {
+          // Handle show health report - placeholder for now
+          console.log('[HEALTH][REVIEW] Show health report requested');
+          toast('Health report generation coming soon!');
+        }}
+        onNext={() => {}} // Not used in health scan flow
+        onLogImmediately={() => {}} // Not used in health scan flow
+        items={healthDetectedItems}
       />
     </div>
   );
