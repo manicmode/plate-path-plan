@@ -31,12 +31,31 @@ import { generateHealthReport, HealthReportData } from '@/lib/health/generateHea
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { FoodConfirmModal } from '@/components/FoodConfirmModal';
-
+import { addConfirmFlowListener, removeConfirmFlowListener, handleConfirmFlowComplete, handleConfirmFlowReject, getConfirmFlowState } from '@/lib/confirmFlow';
 
 export default function ScanHub() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addRecent } = useScanRecents();
+
+  // Global confirm flow state
+  const [confirmFlowActive, setConfirmFlowActive] = useState(false);
+  const [confirmFlowItems, setConfirmFlowItems] = useState<any[]>([]);
+
+  // Listen to global confirm flow state
+  useEffect(() => {
+    const listener = (items: any[], active: boolean) => {
+      setConfirmFlowActive(active);
+      setConfirmFlowItems(items);
+      
+      if (import.meta.env.VITE_LOG_DEBUG === 'true' && active && items.length > 0) {
+        console.info('[DL][ConfirmModal] mount', { index: 1, name: items[0]?.name });
+      }
+    };
+    
+    addConfirmFlowListener(listener);
+    return () => removeConfirmFlowListener(listener);
+  }, []);
 
   // Guard: only run when meal capture flag is enabled
   useEffect(() => {
@@ -71,10 +90,6 @@ export default function ScanHub() {
       sessionStorage.removeItem(handledKey);
     }
   }, [location.pathname, location.search, navigate]);
-  
-  // Do NOT hide bottom nav on the main Health Scan page
-  // Only hide it when entering actual scanner interfaces
-  // useAutoImmersive(true); // <- REMOVED: Health Scan page should show nav
   
   // Track original entry point to avoid going back to saved/recent scans
   const originalEntryRef = useRef<string | null>(null);
@@ -183,11 +198,6 @@ export default function ScanHub() {
     }
   }, [location.state, photoModalOpen, manualEntryOpen, navigate, location.pathname]);
 
-  // State for existing FoodConfirmModal flow
-  const [confirmFlowItems, setConfirmFlowItems] = useState<any[]>([]);
-  const [confirmFlowOrigin, setConfirmFlowOrigin] = useState<string>('');
-  const [confirmFlowActive, setConfirmFlowActive] = useState(false);
-
   // Route-aware fallback guard - prevent hijacking log flows
   useEffect(() => {
     const path = location.pathname;
@@ -289,9 +299,6 @@ export default function ScanHub() {
       state: { from: '/scan' } 
     });
   };
-
-  // Handle barcode detection from scanner - this will be handled by HealthCheckModal
-  // Just track in recents when modal closes successfully
 
   // Handle photo capture
   const handlePhotoCapture = (imageBase64: string) => {
@@ -408,97 +415,6 @@ export default function ScanHub() {
     setManualEntryOpen(true);
   };
 
-  // Existing confirm flow handlers
-  const handleStartConfirmFlow = (items: any[], origin: string) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] start', { count: items.length, origin });
-      items.forEach((item, index) => {
-        console.info('[DL][FLOW] open', { index: index + 1, name: item.name });
-      });
-    }
-    setConfirmFlowItems(items);
-    setConfirmFlowOrigin(origin);
-    setConfirmFlowActive(true);
-  };
-
-  const handleConfirmFlowComplete = async (confirmedItems: any[]) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] end', { confirmed: confirmedItems.length, origin: confirmFlowOrigin });
-      confirmedItems.forEach((item, index) => {
-        console.info('[DL][FLOW] confirm', { index: index + 1, name: item.name });
-      });
-    }
-
-    try {
-      // Add per-item logging for forensics
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[LOG][DETAILED][CONFIRM][START]', { count: confirmedItems.length });
-        confirmedItems.forEach((item, index) => {
-          console.info('[LOG][INSERT][START]', { 
-            index: index + 1, 
-            name: item.name, 
-            grams: item.portion_estimate || 100 
-          });
-        });
-      }
-
-      // Import here to avoid circular dependencies
-      const { oneTapLog } = await import('@/lib/nutritionLog');
-      
-      const logEntries = confirmedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.portion_estimate || 100
-      }));
-
-      await oneTapLog(logEntries);
-      
-      // Log successful inserts
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        logEntries.forEach((entry, index) => {
-          console.info('[LOG][INSERT][OK]', { 
-            index: index + 1, 
-            name: entry.name,
-            grams: entry.grams
-          });
-        });
-        console.info('[LOG][DETAILED][CONFIRM][DONE]');
-      }
-      
-      toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
-      
-      // Navigate to home
-      navigate('/home', { replace: true });
-    } catch (error) {
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.error('[DL][FLOW] log failed', error);
-        confirmedItems.forEach((item, index) => {
-          console.error('[LOG][INSERT][FAIL]', { 
-            index: index + 1, 
-            name: item.name, 
-            error: error.message 
-          });
-        });
-      }
-      console.error('[DL][FLOW] log failed', error);
-      toast.error('Failed to log items. Please try again.');
-    } finally {
-      // Reset confirm flow state
-      setConfirmFlowActive(false);
-      setConfirmFlowItems([]);
-      setConfirmFlowOrigin('');
-    }
-  };
-
-  const handleConfirmFlowReject = () => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] rejected', { origin: confirmFlowOrigin });
-    }
-    // Reset confirm flow state
-    setConfirmFlowActive(false);
-    setConfirmFlowItems([]);
-    setConfirmFlowOrigin('');
-  };
   // Handle URL params to force modals (with guards)
   useEffect(() => {
     if ((!forceHealth && !forceVoice) || handledRef.current) return;
@@ -795,22 +711,17 @@ export default function ScanHub() {
           report={healthReportData}
           items={healthDetectedItems}
           onOpenHealthModal={(analysisData) => {
-            console.log('🟣 [SCANHUB] onOpenHealthModal called', { analysisData });
-            console.log('[HC][OPEN]', { from: 'photo_item', data: analysisData });
+            console.log('🟢 [HEALTH REPORT] → [HEALTH MODAL]', { analysisData });
+            
+            setHealthReportViewerOpen(false); // Close the report first
             setAnalysisData(analysisData);
-            setHealthModalStep('report'); // Skip loading, go directly to report
-            console.log('🟣 [SCANHUB] About to open health check modal...');
+            setHealthModalStep('report'); // Go straight to report view in the modal
             setHealthCheckModalOpen(true);
-            console.log('🟣 [SCANHUB] Health check modal state set to true');
-            // Close the health report viewer when opening the full modal
-            setHealthReportViewerOpen(false);
-            console.log('🟣 [SCANHUB] Health report viewer closed');
           }}
-          onStartConfirmFlow={handleStartConfirmFlow}
         />
       )}
 
-      {/* Existing FoodConfirmModal Flow */}
+      {/* Global FoodConfirmModal Flow */}
       <FoodConfirmModal
         isOpen={confirmFlowActive}
         items={confirmFlowItems}

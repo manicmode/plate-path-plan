@@ -36,7 +36,8 @@ interface ReviewItemsScreenProps {
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
   afterLogSuccess?: () => void; // Called after successful logging for custom navigation/cleanup
-  onStartConfirmFlow?: (items: any[], origin: string) => void; // Existing confirm flow trigger
+  // Remove old interface props - using global confirm flow now
+  // onStartConfirmFlow?: (items: any[], origin: string) => void;
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -46,8 +47,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onLogImmediately,
   items: initialItems,
   prefilledItems,
-  afterLogSuccess,
-  onStartConfirmFlow
+  afterLogSuccess
+  // onStartConfirmFlow - removed, using global flow
 }) => {
   // Add mount logging for forensic breadcrumbs
   useEffect(() => {
@@ -163,40 +164,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
-  const handleSeeDetails = () => {
+  const handleSeeDetails = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to continue');
       return;
     }
     
-    // Use feature flag to control routing vs existing confirm flow
-    const useRouteBasedFlow = import.meta.env.VITE_FEATURE_DETAILED_LOG_REWIRE_ONLY !== 'true';
+    // Use existing confirm flow directly
+    const { beginConfirmSequence } = await import('@/lib/confirmFlow');
     
-    if (useRouteBasedFlow) {
-      // Old route-based approach 
-      onNext(selectedItems);
-      onClose();
-    } else {
-      // NEW: Use existing FoodConfirmModal flow
-      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[DL][FLOW] start', { count: selectedItems.length, origin: 'review_items' });
-      }
-      
-      // Convert items to FoodConfirmModal format
-      const foodItems = selectedItems.map(item => ({
-        name: item.name,
-        category: 'food', // default category
-        portion_estimate: item.grams || 100,
-        confidence: 0.8, // confidence from review items
-        displayText: `${item.grams || 100}g • est.`,
-        canonicalName: item.canonicalName
-      }));
-      
-      // Trigger existing confirm flow via parent
-      onStartConfirmFlow?.(foodItems, 'review_items');
-      onClose();
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][CTA] start (review)', selectedItems.map(i => i.name));
     }
+    
+    beginConfirmSequence(selectedItems, { origin: 'review_items' });
   };
 
 

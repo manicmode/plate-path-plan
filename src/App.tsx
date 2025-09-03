@@ -64,7 +64,8 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
 const SavedReports = lazy(() => import('@/pages/SavedReports'));
-const ReviewItemsPage = lazy(() => import('@/pages/ReviewItemsPage'));
+// Disabled ReviewItemsPage - using global confirm flow instead
+// const ReviewItemsPage = lazy(() => import('@/pages/ReviewItemsPage'));
 
 // Health Scan components
 const ScanHub = lazy(() => import('@/pages/ScanHub'));
@@ -243,11 +244,13 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                     
+                    {/* Disabled ReviewItemsPage route - using global confirm flow 
                     <Route path="/log/review-items" element={
                       <ProtectedRoute>
                         <ReviewItemsPage />
                       </ProtectedRoute>
                     } />
+                    */}
                     <Route path="/analytics" element={
                       <ProtectedRoute>
                         <Analytics />

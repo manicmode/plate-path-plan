@@ -90,7 +90,6 @@ export default function ReviewItemsPage() {
           // After successful logging, navigate to home
           navigate('/home', { replace: true });
         }}
-        onStartConfirmFlow={handleStartConfirmFlow}
       />
 
       {/* Existing FoodConfirmModal Flow */}
