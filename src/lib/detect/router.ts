@@ -93,15 +93,24 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
     // Get prompt
     const { system, user } = buildMealPrompt();
     
+    const payload = { 
+      image_base64: imageBase64,
+      system_prompt: system,
+      user_prompt: user,
+      attempt: attemptType
+    };
+    
+    console.info('[CLIENT][INVOCATION_DEBUG]', {
+      mode: 'GPT_ONLY',
+      keys: Object.keys(payload),
+      imageKey: payload.image_base64 ? 'image_base64' : 'missing',
+      imageLength: (payload.image_base64?.length ?? 0),
+    });
+    
     // Call GPT-V2 structured endpoint
     console.time(`[PHOTO][${requestId}][edge]`);
     const { data, error } = await supabase.functions.invoke('gpt-food-detector-v2', {
-      body: { 
-        image_base64: imageBase64,
-        system_prompt: system,
-        user_prompt: user,
-        attempt: attemptType
-      }
+      body: payload
     });
     console.timeEnd(`[PHOTO][${requestId}][edge]`);
 
