@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { ReviewItemsScreen } from '@/components/camera/ReviewItemsScreen';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { useNavigate } from 'react-router-dom';
+import { beginConfirmSequence } from '@/lib/confirmFlow';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -36,6 +37,12 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   onOpenHealthModal
   // onStartConfirmFlow - removed, using global flow
 }) => {
+  // Add forensic breadcrumbs
+  useEffect(() => {
+    if (isOpen && import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][CTA] bound');
+    }
+  }, [isOpen]);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -216,20 +223,26 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleDetailedLog = async () => {
+  const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][CTA] clicked', { count: items.length });
-      console.info('[DL][CTA] items', items.map(i => i.name));
+      console.log('[DL][CTA] clicked (capture)');
     }
     
-    // Use existing confirm flow directly
-    const { beginConfirmSequence } = await import('@/lib/confirmFlow');
-    
+    // Stop form submits / backdrop / parent handlers from firing first
+    e.preventDefault();
+    e.stopPropagation();
+
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][CTA] start', items.map(i => i.name));
+      console.log('[DL][CTA] start', items?.map(i => i?.name));
     }
-    
+
+    // Start EXISTING confirm sequence immediately (modal for item #1 must open now)
     beginConfirmSequence(items, { origin: 'health_report' });
+
+    // If you want to close the report after starting, do it on the next frame so flow isn't interrupted:
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   const handleItemClick = async (index: number) => {
@@ -326,6 +339,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         <Dialog.Content
           className="fixed inset-0 z-[300] bg-gradient-to-br from-red-900/95 via-purple-900/95 to-red-800/95 backdrop-blur-sm text-white overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="flex h-full w-full flex-col">
             {/* Header */}
@@ -540,7 +555,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                   </Button>
                   
                   <Button
-                    onClick={handleDetailedLog}
+                    onClick={handleDetailedLogClick}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     className="h-11 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-sm"
                   >
                     🔎 Detailed Log

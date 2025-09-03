@@ -12,6 +12,7 @@ import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { beginConfirmSequence } from '@/lib/confirmFlow';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -53,6 +54,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   // Add mount logging for forensic breadcrumbs
   useEffect(() => {
     if (isOpen && import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][CTA] bound');
       console.info('[DL][ReviewItems] mount');
     }
   }, [isOpen]);
@@ -164,21 +166,32 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
-  const handleSeeDetails = async () => {
+  const handleSeeDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][CTA] clicked (capture)');
+    }
+    
+    // Stop form submits / backdrop / parent handlers from firing first
+    e.preventDefault();
+    e.stopPropagation();
+
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to continue');
       return;
     }
     
-    // Use existing confirm flow directly
-    const { beginConfirmSequence } = await import('@/lib/confirmFlow');
-    
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][CTA] start (review)', selectedItems.map(i => i.name));
+      console.log('[DL][CTA] start (review)', selectedItems.map(i => i.name));
     }
     
+    // Start EXISTING confirm sequence immediately (modal for item #1 must open now)
     beginConfirmSequence(selectedItems, { origin: 'review_items' });
+
+    // Close the review screen after starting the flow
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
 
@@ -288,6 +301,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         <Dialog.Content
           className="fixed inset-0 z-[500] bg-[#0B0F14] text-white"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
           role="dialog"
           aria-labelledby="review-title"
           aria-describedby=""
@@ -399,7 +414,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   </Button>
                   
                   <Button
-                    onClick={handleSeeDetails}
+                    onClick={handleSeeDetailsClick}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     disabled={selectedCount === 0}
                     className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
                   >
