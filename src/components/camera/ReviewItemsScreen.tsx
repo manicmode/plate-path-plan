@@ -12,7 +12,7 @@ import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { FoodConfirmModal } from '@/components/FoodConfirmModal';
+import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
@@ -62,9 +62,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   }, [isOpen]);
   
-  // Local confirm modal state (original pattern)
+  // Legacy confirm modal state (per-item rich modal)
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
+  const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
@@ -190,6 +191,31 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
+    // Transform items to rich FoodItem objects for legacy modal
+    const richFoodItems = selectedItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      calories: 100, // Default values - ReviewItemsScreen doesn't have nutrition analysis
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+      image: undefined,
+      imageUrl: undefined,
+      ingredientsText: '',
+      source: 'review_items',
+      confidence: 0.9,
+      // Portion scaling data for slider
+      basePer100: null,
+      portionGrams: item.grams || 100,
+      factor: (item.grams || 100) / 100,
+      allergens: [],
+      additives: [],
+      categories: [],
+    }));
+
     // Set flow active to prevent ScanHub navigation
     setConfirmFlowActive(true);
     
@@ -197,23 +223,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       console.log('[REV][FLOW] active=true');
     }
     
-    // Transform items to match FoodConfirmModal interface
-    const modalItems = selectedItems.map(item => ({
-      name: item.name,
-      category: 'food',
-      portion_estimate: item.grams || 100,
-      confidence: 0.9,
-      displayText: `${item.grams || 100}g • est.`,
-      canonicalName: item.canonicalName || item.name
-    }));
-
     // Open legacy confirm modal immediately
-    setConfirmModalItems(modalItems);
+    setConfirmModalItems(richFoodItems);
+    setCurrentConfirmIndex(0);
     setConfirmModalOpen(true);
 
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.log('[REV][FLOW] beginConfirmSequence()');
-      console.log('[LEGACY][FLOW] open index=0', modalItems[0]?.name);
+      console.log('[LEGACY][FLOW] open index=0', richFoodItems[0]?.name);
     }
 
     // Close the review screen AFTER starting the flow
@@ -228,8 +245,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     e.stopPropagation();
   };
 
-  const handleConfirmModalComplete = async (confirmedItems: any[]) => {
-    setConfirmModalOpen(false);
+  const handleConfirmModalComplete = async (foodItem: any) => {
     setConfirmFlowActive(false);
 
     try {
@@ -240,7 +256,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
 
     console.log('[CONFIRM][SUCCESS]', {
-      count: confirmedItems.length,
+      itemName: foodItem.name,
       timestamp: Date.now()
     });
 
@@ -248,20 +264,30 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
       
-      const logEntries = confirmedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.portion_estimate || 100
-      }));
+      const logEntry = {
+        name: foodItem.name,
+        canonicalName: foodItem.name,
+        grams: Math.round((foodItem.portionGrams || 100) * (foodItem.factor || 1))
+      };
 
-      await oneTapLog(logEntries);
+      await oneTapLog([logEntry]);
       
-      // Import toast dynamically to avoid circular deps
-      const { toast } = await import('sonner');
-      toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
-      
-      // Navigate to home
-      navigate('/home', { replace: true });
+      // Check if there are more items
+      const nextIndex = currentConfirmIndex + 1;
+      if (nextIndex < confirmModalItems.length) {
+        // Move to next item
+        setCurrentConfirmIndex(nextIndex);
+      } else {
+        // All items processed
+        setConfirmModalOpen(false);
+        
+        // Import toast dynamically to avoid circular deps
+        const { toast } = await import('sonner');
+        toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
+        
+        // Navigate to home
+        navigate('/home', { replace: true });
+      }
       
     } catch (error) {
       console.error('[CONFIRM][ERROR]', error);
@@ -274,11 +300,23 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   const handleConfirmModalReject = () => {
     console.log('[CONFIRM][CANCEL]', {
-      totalItems: items?.length,
+      totalItems: confirmModalItems?.length,
       timestamp: Date.now()
     });
     setConfirmModalOpen(false);
     setConfirmFlowActive(false);
+  };
+
+  const handleConfirmModalSkip = () => {
+    // Skip current item, move to next
+    const nextIndex = currentConfirmIndex + 1;
+    if (nextIndex < confirmModalItems.length) {
+      setCurrentConfirmIndex(nextIndex);
+    } else {
+      // No more items, close modal
+      setConfirmModalOpen(false);
+      setConfirmFlowActive(false);
+    }
   };
 
 
@@ -557,13 +595,20 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         onSave={handleSaveSetWithName}
       />
 
-      {/* Food Confirm Modal - Original Pattern */}
-      <FoodConfirmModal
-        isOpen={confirmModalOpen}
-        items={confirmModalItems}
-        onConfirm={handleConfirmModalComplete}
-        onReject={handleConfirmModalReject}
-      />
+      {/* Legacy Rich Food Confirmation Modal */}
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
+        <FoodConfirmationCard
+          isOpen={confirmModalOpen}
+          onClose={handleConfirmModalReject}
+          onConfirm={handleConfirmModalComplete}
+          onSkip={handleConfirmModalSkip}
+          onCancelAll={handleConfirmModalReject}
+          foodItem={confirmModalItems[currentConfirmIndex]}
+          showSkip={true}
+          currentIndex={currentConfirmIndex}
+          totalItems={confirmModalItems.length}
+        />
+      )}
     </Dialog.Root>
   );
 };
