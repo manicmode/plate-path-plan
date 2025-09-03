@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2 } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight } from 'lucide-react';
 import { HealthReportData, mapPhotoReportToNutritionLog } from '@/lib/health/generateHealthReport';
 import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
 import { useToast } from '@/hooks/use-toast';
@@ -148,11 +148,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             <header className="sticky top-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/10">
               <div>
                 <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                  📊 Health Report
+                  ✨ Your Health Report
                 </h2>
                 <p className="text-sm text-gray-300">
                   Nutritional analysis of your meal
                 </p>
+                {/* Glowing gradient underline */}
+                <div className="mt-2 w-32 h-0.5 bg-gradient-to-r from-purple-400 via-pink-400 to-transparent rounded-full opacity-60 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
               </div>
               <Button
                 variant="ghost"
@@ -165,10 +167,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             </header>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-5 py-6 space-y-8">
               {/* Overall Score */}
               <div className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/10 border-2 border-white/20">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 animate-pulse">
                   <span className={`text-3xl font-bold ${getScoreColor(report.overallScore)}`}>
                     {report.overallScore}
                   </span>
@@ -187,38 +189,48 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
               </div>
 
               {/* Nutrition Overview */}
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <h3 className="text-lg font-semibold mb-4 text-white">Nutrition Breakdown</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Calories</span>
-                      <span className="text-white font-semibold">{Math.round(report.totalCalories)}</span>
+              <div className="relative">
+                {/* Top glowing divider */}
+                <div className="mb-4 w-full h-px bg-gradient-to-r from-transparent via-purple-400/50 to-transparent shadow-[0_0_4px_rgba(168,85,247,0.3)]"></div>
+                
+                <div className="bg-white/8 rounded-xl p-5 border border-white/15 shadow-lg">
+                  <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
+                    🍽️ Nutrition Breakdown
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Calories</span>
+                        <span className="text-white font-semibold">{Math.round(report.totalCalories)}</span>
+                      </div>
+                       <div className="flex justify-between">
+                         <span className="text-gray-300">Protein</span>
+                         <span className="text-white font-semibold">{Math.round(report.macroBalance.protein)}g</span>
+                       </div>
+                     </div>
+                     <div className="space-y-3">
+                       <div className="flex justify-between">
+                         <span className="text-gray-300">Carbs</span>
+                         <span className="text-white font-semibold">{Math.round(report.macroBalance.carbs)}g</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-gray-300">Fat</span>
+                         <span className="text-white font-semibold">{Math.round(report.macroBalance.fat)}g</span>
+                       </div>
                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-gray-300">Protein</span>
-                       <span className="text-white font-semibold">{Math.round(report.macroBalance.protein)}g</span>
-                     </div>
-                   </div>
-                   <div className="space-y-3">
-                     <div className="flex justify-between">
-                       <span className="text-gray-300">Carbs</span>
-                       <span className="text-white font-semibold">{Math.round(report.macroBalance.carbs)}g</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <span className="text-gray-300">Fat</span>
-                       <span className="text-white font-semibold">{Math.round(report.macroBalance.fat)}g</span>
-                     </div>
                   </div>
                 </div>
+                
+                {/* Bottom glowing divider */}
+                <div className="mt-4 w-full h-px bg-gradient-to-r from-transparent via-purple-400/50 to-transparent shadow-[0_0_4px_rgba(168,85,247,0.3)]"></div>
               </div>
 
               {/* Individual Items */}
               {report.itemAnalysis.length > 0 && (
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                  <h3 className="text-xl font-bold mb-5 text-white flex items-center gap-2">
                     <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                      Tap a food to see details
+                      👆 Tap a food for the full report
                     </span>
                   </h3>
                   <div className="space-y-3">
@@ -244,11 +256,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                              <span>Health rating: {item.healthRating}</span>
                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {getScoreIcon(item.score)}
-                          <span className={`font-semibold ${getScoreColor(item.score)}`}>
-                            {item.score}
-                          </span>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            {getScoreIcon(item.score)}
+                            <span className={`font-semibold ${getScoreColor(item.score)}`}>
+                              {item.score}
+                            </span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
                         </div>
                       </div>
                     ))}
