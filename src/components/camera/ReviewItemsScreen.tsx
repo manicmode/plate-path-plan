@@ -171,13 +171,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleSeeDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][CTA] clicked (capture)');
-    }
-    
     // Stop form submits / backdrop / parent handlers from firing first
     e.preventDefault();
     e.stopPropagation();
+    // @ts-ignore - extra safety so Radix backdrop doesn't win
+    e.nativeEvent?.stopImmediatePropagation?.();
+    
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][CTA] clicked (capture)');
+    }
 
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
@@ -199,11 +201,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       canonicalName: item.canonicalName || item.name
     }));
 
-    // Open original confirm modal
+    // Open legacy confirm modal immediately
     setConfirmModalItems(modalItems);
     setConfirmModalOpen(true);
 
-    // Close the review screen after starting the flow
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][ConfirmModal] mount', modalItems[0]?.name);
+    }
+
+    // Close the review screen AFTER starting the flow
     requestAnimationFrame(() => {
       onClose();
     });
@@ -510,7 +516,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                   
                   <Button
                     onClick={handleSeeDetailsClick}
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); /* @ts-ignore */ e.nativeEvent?.stopImmediatePropagation?.(); }}
                     disabled={selectedCount === 0}
                     className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
                   >

@@ -228,15 +228,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[DL][CTA] clicked (capture)');
-    }
-    
     // Stop form submits / backdrop / parent handlers from firing first
     e.preventDefault();
     e.stopPropagation();
-
+    // @ts-ignore - extra safety so Radix backdrop doesn't win
+    e.nativeEvent?.stopImmediatePropagation?.();
+    
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][CTA] clicked (capture)');
       console.log('[DL][CTA] start', items?.map(i => i?.name));
     }
 
@@ -250,11 +249,15 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       canonicalName: item.canonicalName || item.name
     }));
 
-    // Open original confirm modal
+    // Open legacy confirm modal immediately
     setConfirmModalItems(modalItems);
     setConfirmModalOpen(true);
 
-    // Close the report after starting the flow
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.log('[DL][ConfirmModal] mount', modalItems[0]?.name);
+    }
+
+    // Close the report AFTER starting the flow
     requestAnimationFrame(() => {
       onClose();
     });
@@ -650,8 +653,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                   </Button>
                   
                   <Button
+                    type="button"
+                    data-testid="btn-detailed-log"
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); /* @ts-ignore */ e.nativeEvent?.stopImmediatePropagation?.(); }}
                     onClick={handleDetailedLogClick}
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     className="h-11 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-sm"
                   >
                     🔎 Detailed Log
