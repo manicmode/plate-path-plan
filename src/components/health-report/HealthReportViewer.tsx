@@ -24,6 +24,8 @@ interface HealthReportViewerProps {
   items: ReviewItem[];
   // Modal opening functions for photo item clicks
   onOpenHealthModal?: (analysisData: any) => void;
+  // Existing confirm flow trigger
+  onStartConfirmFlow?: (items: any[], origin: string) => void;
 }
 
 export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
@@ -31,7 +33,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   onClose,
   report,
   items,
-  onOpenHealthModal
+  onOpenHealthModal,
+  onStartConfirmFlow
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -219,14 +222,37 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       console.info('[DL][CTA] items', items.map(i => i.name));
     }
     
-    // Navigate to the review items page instead of opening modal
-    navigate('/log/review-items', { 
-      state: { items, origin: 'health_report' }, 
-      replace: true 
-    });
+    // Use feature flag to control routing vs existing confirm flow
+    const useRouteBasedFlow = import.meta.env.VITE_FEATURE_DETAILED_LOG_REWIRE_ONLY !== 'true';
     
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][CTA] navigate → /log/review-items');
+    if (useRouteBasedFlow) {
+      // Old route-based approach (disabled for re-wire)
+      navigate('/log/review-items', { 
+        state: { items, origin: 'health_report' }, 
+        replace: true 
+      });
+      
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[DL][CTA] navigate → /log/review-items');
+      }
+    } else {
+      // NEW: Use existing FoodConfirmModal flow
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[DL][FLOW] start', { count: items.length, origin: 'health_report' });
+      }
+      
+      // Convert items to FoodConfirmModal format
+      const foodItems = items.map(item => ({
+        name: item.name,
+        category: 'food', // default category
+        portion_estimate: item.grams || 100,
+        confidence: 0.9, // high confidence since from health report
+        displayText: `${item.grams || 100}g • est.`,
+        canonicalName: item.canonicalName
+      }));
+      
+      // Trigger existing confirm flow
+      onStartConfirmFlow?.(foodItems, 'health_report');
     }
   };
 

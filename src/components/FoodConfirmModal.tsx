@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Check, X } from 'lucide-react';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 interface FoodItem {
   name: string;
@@ -13,6 +14,7 @@ interface FoodItem {
   confidence: number;
   image?: string;
   displayText?: string;
+  canonicalName?: string;
 }
 
 interface FoodConfirmModalProps {
@@ -30,9 +32,37 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   const currentItem = items[currentIndex];
   const isLastItem = currentIndex === items.length - 1;
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(0);
+      setConfirmedItems([]);
+      setEditedPortion(null);
+      
+      // Forensic breadcrumbs
+      if (import.meta.env.VITE_LOG_DEBUG === 'true' && items.length > 0) {
+        console.info('[DL][FLOW] open', { index: 1, name: items[0]?.name });
+      }
+    }
+  }, [isOpen, items]);
+
+  // Forensic breadcrumbs for item navigation
+  useEffect(() => {
+    if (isOpen && currentItem && import.meta.env.VITE_LOG_DEBUG === 'true') {
+      if (currentIndex > 0) {
+        console.info('[DL][FLOW] next', { index: currentIndex + 1 });
+        console.info('[DL][FLOW] open', { index: currentIndex + 1, name: currentItem.name });
+      }
+    }
+  }, [currentIndex, currentItem, isOpen]);
+
   if (!isOpen || !currentItem) return null;
 
   const handleConfirm = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] confirm', { index: currentIndex + 1, name: currentItem.name });
+    }
+
     const updatedItem = {
       ...currentItem,
       portion_estimate: editedPortion || currentItem.portion_estimate || 100
@@ -52,6 +82,10 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   };
 
   const handleReject = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] skip', { index: currentIndex + 1, name: currentItem.name });
+    }
+
     if (isLastItem) {
       // Last item rejected, return what we have
       onConfirm(confirmedItems);
@@ -63,6 +97,9 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   };
 
   const handleRejectAll = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] reject_all', { total: items.length });
+    }
     onReject();
   };
 
@@ -75,12 +112,15 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
     <Dialog open={isOpen} onOpenChange={onReject}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Confirm Food Items</span>
+          <VisuallyHidden.Root>
+            <DialogTitle>Confirm Food Log</DialogTitle>
+          </VisuallyHidden.Root>
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Confirm Food Items</span>
             <Badge variant="secondary">
               {currentIndex + 1} of {items.length}
             </Badge>
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">

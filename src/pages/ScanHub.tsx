@@ -30,6 +30,7 @@ import { HealthReportViewer } from '@/components/health-report/HealthReportViewe
 import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { FoodConfirmModal } from '@/components/FoodConfirmModal';
 
 
 export default function ScanHub() {
@@ -182,6 +183,11 @@ export default function ScanHub() {
     }
   }, [location.state, photoModalOpen, manualEntryOpen, navigate, location.pathname]);
 
+  // State for existing FoodConfirmModal flow
+  const [confirmFlowItems, setConfirmFlowItems] = useState<any[]>([]);
+  const [confirmFlowOrigin, setConfirmFlowOrigin] = useState<string>('');
+  const [confirmFlowActive, setConfirmFlowActive] = useState(false);
+
   // Route-aware fallback guard - prevent hijacking log flows
   useEffect(() => {
     const path = location.pathname;
@@ -190,13 +196,14 @@ export default function ScanHub() {
     // Check if any modals are open
     const anyModalOpen = healthCheckModalOpen || photoModalOpen || manualEntryOpen || 
                          voiceModalOpen || healthPhotoModalOpen || healthReviewModalOpen || 
-                         healthReportViewerOpen;
+                         healthReportViewerOpen || confirmFlowActive;
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.info('[ScanHub][fallback-check]', { 
         path, 
         isLogFlow, 
         anyModalOpen,
+        confirmFlowActive,
         modals: {
           healthCheck: healthCheckModalOpen,
           photo: photoModalOpen,
@@ -209,11 +216,11 @@ export default function ScanHub() {
       });
     }
     
-    // Do NOT navigate away when user is on /log/* routes
-    // This prevents hijacking the review items page
-    if (isLogFlow) {
+    // Do NOT navigate away when user is on /log/* routes or confirm flow is active
+    // This prevents hijacking the review items page and confirm flow
+    if (isLogFlow || confirmFlowActive) {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[ScanHub][fallback-guard] Skipping fallback - user on log flow');
+        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow, confirmFlowActive });
       }
       return;
     }
@@ -222,7 +229,7 @@ export default function ScanHub() {
     // Example: if (!anyModalOpen && path === '/scan') { /* fallback logic */ }
     
   }, [location.pathname, healthCheckModalOpen, photoModalOpen, manualEntryOpen, 
-      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen]);
+      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen, confirmFlowActive]);
 
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
@@ -399,6 +406,98 @@ export default function ScanHub() {
   const handleHealthPhotoManualFallback = () => {
     setHealthPhotoModalOpen(false);
     setManualEntryOpen(true);
+  };
+
+  // Existing confirm flow handlers
+  const handleStartConfirmFlow = (items: any[], origin: string) => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] start', { count: items.length, origin });
+      items.forEach((item, index) => {
+        console.info('[DL][FLOW] open', { index: index + 1, name: item.name });
+      });
+    }
+    setConfirmFlowItems(items);
+    setConfirmFlowOrigin(origin);
+    setConfirmFlowActive(true);
+  };
+
+  const handleConfirmFlowComplete = async (confirmedItems: any[]) => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] end', { confirmed: confirmedItems.length, origin: confirmFlowOrigin });
+      confirmedItems.forEach((item, index) => {
+        console.info('[DL][FLOW] confirm', { index: index + 1, name: item.name });
+      });
+    }
+
+    try {
+      // Add per-item logging for forensics
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][DETAILED][CONFIRM][START]', { count: confirmedItems.length });
+        confirmedItems.forEach((item, index) => {
+          console.info('[LOG][INSERT][START]', { 
+            index: index + 1, 
+            name: item.name, 
+            grams: item.portion_estimate || 100 
+          });
+        });
+      }
+
+      // Import here to avoid circular dependencies
+      const { oneTapLog } = await import('@/lib/nutritionLog');
+      
+      const logEntries = confirmedItems.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.portion_estimate || 100
+      }));
+
+      await oneTapLog(logEntries);
+      
+      // Log successful inserts
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        logEntries.forEach((entry, index) => {
+          console.info('[LOG][INSERT][OK]', { 
+            index: index + 1, 
+            name: entry.name,
+            grams: entry.grams
+          });
+        });
+        console.info('[LOG][DETAILED][CONFIRM][DONE]');
+      }
+      
+      toast.success(`Logged ${confirmedItems.length} item${confirmedItems.length > 1 ? 's' : ''} ✓`);
+      
+      // Navigate to home
+      navigate('/home', { replace: true });
+    } catch (error) {
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.error('[DL][FLOW] log failed', error);
+        confirmedItems.forEach((item, index) => {
+          console.error('[LOG][INSERT][FAIL]', { 
+            index: index + 1, 
+            name: item.name, 
+            error: error.message 
+          });
+        });
+      }
+      console.error('[DL][FLOW] log failed', error);
+      toast.error('Failed to log items. Please try again.');
+    } finally {
+      // Reset confirm flow state
+      setConfirmFlowActive(false);
+      setConfirmFlowItems([]);
+      setConfirmFlowOrigin('');
+    }
+  };
+
+  const handleConfirmFlowReject = () => {
+    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+      console.info('[DL][FLOW] rejected', { origin: confirmFlowOrigin });
+    }
+    // Reset confirm flow state
+    setConfirmFlowActive(false);
+    setConfirmFlowItems([]);
+    setConfirmFlowOrigin('');
   };
   // Handle URL params to force modals (with guards)
   useEffect(() => {
@@ -707,8 +806,17 @@ export default function ScanHub() {
             setHealthReportViewerOpen(false);
             console.log('🟣 [SCANHUB] Health report viewer closed');
           }}
+          onStartConfirmFlow={handleStartConfirmFlow}
         />
       )}
+
+      {/* Existing FoodConfirmModal Flow */}
+      <FoodConfirmModal
+        isOpen={confirmFlowActive}
+        items={confirmFlowItems}
+        onConfirm={handleConfirmFlowComplete}
+        onReject={handleConfirmFlowReject}
+      />
     </div>
   );
 }
