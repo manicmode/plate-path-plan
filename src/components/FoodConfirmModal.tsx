@@ -34,6 +34,13 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   const currentItem = items[currentIndex];
   const isLastItem = currentIndex === items.length - 1;
 
+  // Dev breadcrumb when modal opens
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && isOpen) {
+      console.log('[CONFIRM][OPENED]', { ts: Date.now() });
+    }
+  }, [isOpen]);
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -116,7 +123,7 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   return (
     <Dialog open={isOpen} onOpenChange={onReject}>
       <DialogContent 
-        className="sm:max-w-md z-[600] bg-white dark:bg-gray-800"
+        className="sm:max-w-md z-[600]"
         onEscapeKeyDown={(e) => {
           if (confirmFlowActive) e.preventDefault();
         }}

@@ -249,10 +249,8 @@ export default function ScanHub() {
 
   useEffect(() => {
     if (!healthReportViewerOpen && !confirmFlowActive && healthReportData) {
-      const timeoutId = setTimeout(() => {
-        setHealthReportData(null);
-      }, 150); // iOS Safari headroom
-      return () => clearTimeout(timeoutId);
+      const id = setTimeout(() => setHealthReportData(null), 60);
+      return () => clearTimeout(id);
     }
   }, [healthReportViewerOpen, confirmFlowActive, healthReportData]);
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
+import { flushSync } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight, Zap } from 'lucide-react';
 import { HealthReportData, mapPhotoReportToNutritionLog } from '@/lib/health/generateHealthReport';
@@ -232,12 +233,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     console.log('[HR][CTA][MDOWN]', { itemsLength: items?.length });
     if (!items?.length) return;
 
-    // Atomic modal-open state
-    React.startTransition(() => {
-      setConfirmFlowActive(true);
-      setConfirmModalOpen(true);
-    });
-
     // Transform items for modal
     const modalItems = items.map(item => ({
       name: item.name,
@@ -248,14 +243,19 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       canonicalName: item.canonicalName || item.name
     }));
 
-    setConfirmModalItems(modalItems);
+    // Synchronous atomic open (higher priority than startTransition)
+    flushSync(() => {
+      setConfirmFlowActive(true);
+      setConfirmModalItems(modalItems);
+      setConfirmModalOpen(true);
+    });
 
     console.log('[LEGACY][FLOW] open index=0');
 
-    // Defer viewer hide until modal mount completes
-    setTimeout(() => {
-      onSafeClose?.(); // hide viewer, do not unmount data
-    }, 0);
+    // Hide viewer AFTER the open commit has flushed & painted
+    requestAnimationFrame(() => {
+      onSafeClose?.(); // hide, don't unmount data
+    });
   };
 
   const handleDetailedLogClick = (e: React.MouseEvent<HTMLButtonElement>) => {
