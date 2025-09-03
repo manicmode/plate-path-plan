@@ -114,6 +114,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         grams: i.grams || 100 
       })));
 
+      if (import.meta.env.VITE_LOG_DEBUG === 'true') {
+        console.info('[LOG][DETAILED][CONFIRM][START]', { count: selectedItems.length });
+      }
+
       // Import here to avoid circular dependencies
       const { oneTapLog } = await import('@/lib/nutritionLog');
       
@@ -130,7 +134,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       incrementCounter('photo.one_tap_used');
       
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[LOG][DETAILED] confirm', { count: selectedItems.length });
+        console.info('[LOG][DETAILED][CONFIRM][DONE]');
       }
       
       toast.success(`Logged ✓`);
