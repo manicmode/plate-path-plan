@@ -26,11 +26,19 @@ export default function SavedReports() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [savedReports, setSavedReports] = useState<NutritionLog[]>([]);
+  const [mealSetReports, setMealSetReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'individual' | 'meal-sets'>('individual');
 
   useEffect(() => {
     loadSavedReports();
+    
+    // Check if tab is specified in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'meal-sets') {
+      setActiveTab('meal-sets');
+    }
   }, []);
 
   const loadSavedReports = async () => {
@@ -41,44 +49,95 @@ export default function SavedReports() {
       if (!user) {
         console.log('No authenticated user - showing empty state');
         setSavedReports([]);
+        setMealSetReports([]);
         setLoading(false);
         return;
       }
 
-      // DEV proof of session
-      const { data: s } = await supabase.auth.getSession();
-      console.log('[SAVED][SESSION]', { user: s?.session?.user?.id, hasAuth: !!s?.session });
+      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
 
-      // Main list (DB only, RLS, no local merges)
-      // @ts-ignore - New columns not in generated types yet
-      const query = (supabase as any)
-        .from('nutrition_logs_clean')
-        .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
-        .in('source', ['photo','barcode','vision_api','manual'])
-        .not('report_snapshot', 'is', null)  // Show only snapshot-backed rows
-        .order('created_at', { ascending: false })
-        .limit(25);
+      if (isNewSaveEnabled) {
+        // NEW BEHAVIOR: Load from saved_health_reports and saved_meal_set_reports
+        console.log('[SAVED][NEW] Loading from new tables');
+        
+        // Load individual reports
+        const { data: individualData, error: individualError } = await supabase
+          .from('saved_health_reports')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(25);
 
-      const { data, error } = await query;
+        if (individualError) {
+          console.error('[SAVED][INDIVIDUAL][ERROR]', individualError);
+        } else {
+          // Map to expected format
+          const mappedIndividual = (individualData || []).map(report => {
+            const snapshot = report.report_snapshot as any;
+            return {
+              id: report.id,
+              food_name: report.title,
+              calories: Math.round((snapshot?.nutritionData?.calories || 0)),
+              protein: Math.round((snapshot?.nutritionData?.protein || 0) * 10) / 10,
+              carbs: Math.round((snapshot?.nutritionData?.carbs || 0) * 10) / 10,
+              fat: Math.round((snapshot?.nutritionData?.fat || 0) * 10) / 10,
+              quality_score: report.quality_score || 0,
+              quality_verdict: report.quality_score >= 80 ? 'excellent' : 
+                             report.quality_score >= 60 ? 'good' : 
+                             report.quality_score >= 40 ? 'moderate' : 'poor',
+              created_at: report.created_at,
+              source: report.source
+            };
+          });
+          setSavedReports(mappedIndividual);
+        }
 
-      if (error) {
-        console.error('[SAVED][QUERY][ERROR]', error);
-        toast({
-          title: "Error",
-          description: "Failed to load saved reports",
-          variant: "destructive"
-        });
-        return;
+        // Load meal set reports
+        const { data: mealSetData, error: mealSetError } = await supabase
+          .from('saved_meal_set_reports')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(25);
+
+        if (mealSetError) {
+          console.error('[SAVED][MEAL_SET][ERROR]', mealSetError);
+        } else {
+          setMealSetReports(mealSetData || []);
+        }
+      } else {
+        // OLD BEHAVIOR: Load from nutrition_logs
+        console.log('[SAVED][OLD] Loading from nutrition_logs');
+        
+        // @ts-ignore - New columns not in generated types yet
+        const query = (supabase as any)
+          .from('nutrition_logs_clean')
+          .select('id, created_at, food_name, image_url, source, calories, protein, carbs, fat, quality_score, quality_verdict')
+          .in('source', ['photo','barcode','vision_api','manual'])
+          .not('report_snapshot', 'is', null)  // Show only snapshot-backed rows
+          .order('created_at', { ascending: false })
+          .limit(25);
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('[SAVED][QUERY][ERROR]', error);
+          toast({
+            title: "Error",
+            description: "Failed to load saved reports",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        setSavedReports(data || []);
+        setMealSetReports([]); // No meal sets in old mode
       }
 
-      console.log('[SAVED][QUERY]', { count: data?.length ?? 0, filters: { is_mock: false, deleted_at: 'null' } });
-
-      // Data source proof logging
-      console.log('[SAVED][DATASOURCE]', { source: 'db-only', count: data?.length || 0 });
-      console.log('[SAVED][DATA-SAMPLE]', data?.slice(0, 3)?.map(r => ({ food: r.food_name, source: r.source, created: r.created_at })));
-      console.log('[SAVED][PURGE]', { removed: ['clearMockData.ts import', 'no localStorage merges', 'no fixtures'] });
+      console.log('[SAVED][DATASOURCE]', { 
+        source: isNewSaveEnabled ? 'new-tables' : 'nutrition_logs', 
+        individualCount: savedReports?.length || 0,
+        mealSetCount: mealSetReports?.length || 0 
+      });
       
-      setSavedReports(data || []);
     } catch (error) {
       console.error('Error loading saved reports:', error);
     } finally {
@@ -171,7 +230,7 @@ export default function SavedReports() {
         <div className="flex items-center space-x-2 mb-6">
           <BookOpen className="h-5 w-5 text-white" />
           <Badge variant="secondary" className="bg-white/20 text-white">
-            {activeTab === 'individual' ? savedReports.length : 0}
+            {activeTab === 'individual' ? savedReports.length : mealSetReports.length}
           </Badge>
           <span className="text-white/70 text-sm">
             {activeTab === 'individual' ? 'Individual meal reports' : 'Meal set reports'}
@@ -249,21 +308,73 @@ export default function SavedReports() {
               ))
             )
           ) : (
-            // Meal sets content - placeholder for now
-            <Card className="bg-white/10 border-white/20">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <BookOpen className="h-12 w-12 text-white/50 mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Meal Set Reports
-                </h3>
-                <p className="text-rose-100/70 text-center mb-4">
-                  Saved meal set reports with overall health scores will appear here
-                </p>
-                <p className="text-rose-100/50 text-sm text-center">
-                  Feature coming soon - scan multiple items together to create meal set reports
-                </p>
-              </CardContent>
-            </Card>
+            // Meal sets content
+            mealSetReports.length === 0 ? (
+              <Card className="bg-white/10 border-white/20">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <BookOpen className="h-12 w-12 text-white/50 mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    No meal set reports
+                  </h3>
+                  <p className="text-rose-100/70 text-center mb-4">
+                    Save multi-item health reports to see them here
+                  </p>
+                  <Button
+                    onClick={() => navigate('/scan')}
+                    className="mt-4 bg-rose-600 hover:bg-rose-700 text-white"
+                  >
+                    Start Scanning
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              mealSetReports.map((report) => (
+                <Card key={report.id} className="bg-white/10 border-white/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-purple-600 rounded-full p-2">
+                          <Utensils className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-white">
+                              {report.name}
+                            </h3>
+                            <Badge className={`${
+                              report.overall_score >= 80 ? 'bg-green-100 text-green-800' :
+                              report.overall_score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              Score: {report.overall_score}%
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-4 text-sm text-rose-100/70">
+                            <span>{report.items_snapshot?.length || 0} items</span>
+                            <span>{formatTime(report.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // For now, show a toast. Later could navigate to a detailed view
+                          toast({
+                            title: "Meal Set Report",
+                            description: `${report.name} - ${report.items_snapshot?.length || 0} items, ${report.overall_score}% health score`
+                          });
+                        }}
+                        className="text-white hover:bg-white/10"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )
           )}
         </div>
       </div>

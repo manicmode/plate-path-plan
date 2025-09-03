@@ -5314,6 +5314,87 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_health_reports: {
+        Row: {
+          barcode: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          portion_grams: number | null
+          quality_score: number | null
+          report_snapshot: Json
+          source: string
+          source_meta: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          portion_grams?: number | null
+          quality_score?: number | null
+          report_snapshot?: Json
+          source: string
+          source_meta?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          portion_grams?: number | null
+          quality_score?: number | null
+          report_snapshot?: Json
+          source?: string
+          source_meta?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_meal_set_reports: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          items_snapshot: Json
+          name: string
+          overall_score: number | null
+          report_snapshot: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          items_snapshot?: Json
+          name: string
+          overall_score?: number | null
+          report_snapshot?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          items_snapshot?: Json
+          name?: string
+          overall_score?: number | null
+          report_snapshot?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       schedule_rule: {
         Row: {
           created_at: string
@@ -9669,8 +9750,10 @@ export type Database = {
               _limit?: number
             }
         Returns: {
+          avatar_url: string
           body: string
           created_at: string
+          display_name: string
           id: string
           user_id: string
         }[]
@@ -9720,6 +9803,7 @@ export type Database = {
           avatar_url: string
           display_name: string
           points: number
+          rank: number
           streak: number
           user_id: string
         }[]

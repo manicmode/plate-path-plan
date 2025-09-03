@@ -11,6 +11,7 @@ import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { toProductModelFromDetected } from '@/lib/health/toProductModelFromDetected';
 import { SaveSetNameDialog } from '@/components/camera/SaveSetNameDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -70,27 +71,75 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const handleSaveWithName = async (setName: string) => {
     setIsSaving(true);
     try {
-      console.info('[HEALTH][REPORT] saving meal set', { items: items.length, name: setName });
+      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
       
-      // Import here to avoid circular dependencies
-      const { createMealSet } = await import('@/lib/mealSets');
-      
-      const mealSetItems = items.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100
-      }));
+      if (isNewSaveEnabled) {
+        // NEW BEHAVIOR: Save to saved_meal_set_reports (does NOT affect daily calories)
+        console.info('[SAVE][SET]', { items: items.length, name: setName });
+        
+        const itemsSnapshot = items.map(item => ({
+          name: item.name,
+          canonicalName: item.canonicalName || item.name,
+          grams: item.grams || 100,
+          score: report.itemAnalysis.find(a => a.name === item.name)?.score || 0,
+          calories: report.itemAnalysis.find(a => a.name === item.name)?.calories || 0,
+          healthRating: report.itemAnalysis.find(a => a.name === item.name)?.healthRating || 'unknown'
+        }));
 
-      await createMealSet({ name: setName, items: mealSetItems });
-      
-      console.info('[HEALTH][REPORT] meal set saved', { name: setName });
-      
-      toast({
-        title: "Report Set Saved",
-        description: `"${setName}" has been saved to your meal sets.`,
-      });
-      
-      setShowSaveNameDialog(false);
+        const { data, error } = await supabase
+          .from('saved_meal_set_reports')
+          .insert({
+            name: setName.trim(),
+            overall_score: Math.round(report.overallScore),
+            items_snapshot: itemsSnapshot,
+            report_snapshot: report,
+            image_url: null // Could add later if needed
+          } as any)
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        console.info('[SAVE][SET] inserted', { 
+          id: data.id, 
+          name: setName, 
+          overall: report.overallScore, 
+          items: itemsSnapshot?.length 
+        });
+        
+        toast({
+          title: "Report Set Saved",
+          description: `"${setName}" has been saved to your meal set reports.`,
+        });
+        
+        setShowSaveNameDialog(false);
+        
+        // Navigate to /scan/saved-reports with Meal Sets tab preselected
+        const navigate = (await import('react-router-dom')).useNavigate;
+        // This needs to be handled in the dialog component since we can't use hooks here
+      } else {
+        // OLD BEHAVIOR: Save to meal_sets
+        console.info('[HEALTH][REPORT] saving meal set', { items: items.length, name: setName });
+        
+        const { createMealSet } = await import('@/lib/mealSets');
+        
+        const mealSetItems = items.map(item => ({
+          name: item.name,
+          canonicalName: item.canonicalName || item.name,
+          grams: item.grams || 100
+        }));
+
+        await createMealSet({ name: setName, items: mealSetItems });
+        
+        console.info('[HEALTH][REPORT] meal set saved', { name: setName });
+        
+        toast({
+          title: "Report Set Saved",
+          description: `"${setName}" has been saved to your meal sets.`,
+        });
+        
+        setShowSaveNameDialog(false);
+      }
     } catch (error) {
       console.error('[HEALTH][REPORT][ERROR] save failed', error);
       toast({

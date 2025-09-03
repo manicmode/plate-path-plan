@@ -53,66 +53,128 @@ export const SaveTab: React.FC<SaveTabProps> = ({
 
     try {
       setIsSaving(true);
-      console.log('[SAVE] Saving health report:', {
-        itemName: result.itemName,
-        source: analysisData?.source,
-        portionGrams,
-        ocrHash
-      });
-
-      // Create enhanced report snapshot with portion info
-      const reportSnapshot = {
-        ...result,
-        portionGrams,
-        portionMode: portionGrams ? 'custom' : 'per100g',
-        ocrHash,
-        savedAt: new Date().toISOString()
-      };
-
-      // Map analysis data to nutrition log format
-      const scanData = {
-        ...result,
-        imageUrl: analysisData?.imageUrl,
-        barcode: analysisData?.barcode,
-      };
-
-      const source = analysisData?.source === 'barcode' ? 'barcode' : 
-                     analysisData?.source === 'manual' ? 'manual' : 'photo';
-
-      const sourceMeta = {
-        source,
-        barcode: analysisData?.barcode ?? null,
-        imageUrl: analysisData?.imageUrl ?? null,
-        productName: result.itemName ?? result.productName ?? null,
-        portionGrams: portionGrams ?? null,
-        ocrHash: ocrHash ?? null,
-      };
-
-      const payload = {
-        ...toNutritionLogRow(scanData, source),
-        report_snapshot: reportSnapshot,
-        snapshot_version: 'v2', // Enhanced with portion info
-        source_meta: sourceMeta,
-      };
       
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .insert(payload as any)
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      const logId = data.id;
-      setSavedLogId(logId);
-      onSaved?.(logId);
-
-      console.log('[SAVE][SUCCESS]', { logId, portionGrams });
+      // Check feature flag
+      const isNewSaveEnabled = import.meta.env.VITE_SAVE_SPLIT === 'true';
       
-      toast({
-        title: "Saved Successfully! 💾",
-        description: `${result.itemName} has been saved to your nutrition logs.`,
-      });
+      if (isNewSaveEnabled) {
+        // NEW BEHAVIOR: Save to saved_health_reports (does NOT affect daily calories)
+        console.log('[SAVE][INDIVIDUAL] Saving health report:', {
+          itemName: result.itemName,
+          source: analysisData?.source,
+          portionGrams,
+          ocrHash
+        });
+
+        const source = (analysisData?.source === 'barcode' ? 'barcode' : 
+                       analysisData?.source === 'manual' ? 'manual' : 
+                       analysisData?.source === 'voice' ? 'voice' : 'photo') as 'photo' | 'barcode' | 'manual' | 'voice';
+
+        const reportSnapshot = {
+          ...result,
+          portionGrams,
+          portionMode: portionGrams ? 'custom' : 'per100g',
+          ocrHash,
+          savedAt: new Date().toISOString()
+        };
+
+        const sourceMeta = {
+          source,
+          barcode: analysisData?.barcode ?? null,
+          imageUrl: analysisData?.imageUrl ?? null,
+          productName: result.itemName ?? result.productName ?? null,
+          portionGrams: portionGrams ?? null,
+          ocrHash: ocrHash ?? null,
+        };
+
+        const { data, error } = await supabase
+          .from('saved_health_reports')
+          .insert({
+            title: result.itemName || result.productName || 'Unknown Item',
+            source,
+            image_url: analysisData?.imageUrl ?? null,
+            barcode: analysisData?.barcode ?? null,
+            portion_grams: portionGrams ?? null,
+            quality_score: Math.round((result?.healthScore || 0) * 100),
+            report_snapshot: reportSnapshot,
+            source_meta: sourceMeta,
+          } as any)
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        const reportId = data.id;
+        setSavedLogId(reportId);
+        onSaved?.(reportId);
+
+        console.log('[SAVE][INDIVIDUAL][SUCCESS]', { reportId, portionGrams });
+        
+        toast({
+          title: "Report Saved! 💾",
+          description: `${result.itemName} has been saved to your health reports.`,
+        });
+      } else {
+        // OLD BEHAVIOR: Save to nutrition_logs (affects daily calories)
+        console.log('[SAVE] Saving health report:', {
+          itemName: result.itemName,
+          source: analysisData?.source,
+          portionGrams,
+          ocrHash
+        });
+
+        const reportSnapshot = {
+          ...result,
+          portionGrams,
+          portionMode: portionGrams ? 'custom' : 'per100g',
+          ocrHash,
+          savedAt: new Date().toISOString()
+        };
+
+        const scanData = {
+          ...result,
+          imageUrl: analysisData?.imageUrl,
+          barcode: analysisData?.barcode,
+        };
+
+        const source = analysisData?.source === 'barcode' ? 'barcode' : 
+                       analysisData?.source === 'manual' ? 'manual' : 'photo';
+
+        const sourceMeta = {
+          source,
+          barcode: analysisData?.barcode ?? null,
+          imageUrl: analysisData?.imageUrl ?? null,
+          productName: result.itemName ?? result.productName ?? null,
+          portionGrams: portionGrams ?? null,
+          ocrHash: ocrHash ?? null,
+        };
+
+        const payload = {
+          ...toNutritionLogRow(scanData, source),
+          report_snapshot: reportSnapshot,
+          snapshot_version: 'v2',
+          source_meta: sourceMeta,
+        };
+        
+        const { data, error } = await supabase
+          .from('nutrition_logs')
+          .insert(payload as any)
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        const logId = data.id;
+        setSavedLogId(logId);
+        onSaved?.(logId);
+
+        console.log('[SAVE][SUCCESS]', { logId, portionGrams });
+        
+        toast({
+          title: "Saved Successfully! 💾",
+          description: `${result.itemName} has been saved to your nutrition logs.`,
+        });
+      }
     } catch (error: any) {
       console.error('❌ Save failed:', error);
       toast({
