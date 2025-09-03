@@ -25,6 +25,9 @@ import { camHardStop } from '@/lib/camera/guardian';
 import { useAutoImmersive } from '@/lib/uiChrome';
 import { mealCaptureEnabledFromSearch } from '@/features/meal-capture/flags';
 import { HealthReportReviewModal } from '@/components/health-report/HealthReportReviewModal';
+import { HealthScanLoading } from '@/components/health-report/HealthScanLoading';
+import { HealthReportViewer } from '@/components/health-report/HealthReportViewer';
+import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 
@@ -153,6 +156,9 @@ export default function ScanHub() {
   const [healthPhotoModalOpen, setHealthPhotoModalOpen] = useState(false);
   const [healthReviewModalOpen, setHealthReviewModalOpen] = useState(false);
   const [healthDetectedItems, setHealthDetectedItems] = useState<ReviewItem[]>([]);
+  const [healthAnalyzing, setHealthAnalyzing] = useState(false);
+  const [healthReportData, setHealthReportData] = useState<HealthReportData | null>(null);
+  const [healthReportViewerOpen, setHealthReportViewerOpen] = useState(false);
 
   // Feature flag checks
   const imageAnalyzerEnabled = isFeatureEnabled('image_analyzer_v1');
@@ -303,15 +309,18 @@ export default function ScanHub() {
   const handleHealthPhotoCapture = async (imageBase64: string) => {
     console.info('[HEALTH][PIPELINE] start golden');
     setHealthPhotoModalOpen(false);
+    setHealthAnalyzing(true); // Show loading animation
     
     try {
       const { items } = await runFoodDetectionPipeline(imageBase64, { mode: 'health' });
       console.info('[HEALTH][PIPELINE] golden', { count: items?.length ?? 0 });
       
       setHealthDetectedItems(items ?? []);
+      setHealthAnalyzing(false); // Hide loading animation
       setHealthReviewModalOpen(true);
     } catch (error) {
       console.error('[HEALTH][PIPELINE] error:', error);
+      setHealthAnalyzing(false); // Hide loading animation
       toast('Failed to analyze photo. Please try again.');
       
       // Show review modal with empty items as fallback
@@ -320,12 +329,26 @@ export default function ScanHub() {
     }
   };
 
+  // Handle Health Report generation (no routing)
+  const handleHealthReportGeneration = async (selectedItems: ReviewItem[]) => {
+    console.info('[HEALTH][REVIEW] generating report', { count: selectedItems?.length ?? 0 });
+    
+    try {
+      const report = await generateHealthReport(selectedItems);
+      setHealthReportData(report);
+      setHealthReviewModalOpen(false);
+      setHealthReportViewerOpen(true);
+    } catch (error) {
+      console.error('[HEALTH][REVIEW][ERROR] report generation failed', error);
+      toast.error('Could not generate report. Please try again.');
+    }
+  };
+
   // Handle Health Scan fallback to manual entry
   const handleHealthPhotoManualFallback = () => {
     setHealthPhotoModalOpen(false);
     setManualEntryOpen(true);
   };
-
   // Handle URL params to force modals (with guards)
   useEffect(() => {
     if ((!forceHealth && !forceVoice) || handledRef.current) return;
@@ -589,15 +612,26 @@ export default function ScanHub() {
       <HealthReportReviewModal
         isOpen={healthReviewModalOpen}
         onClose={() => setHealthReviewModalOpen(false)}
-        onShowHealthReport={() => {
-          // Handle show health report - placeholder for now
-          console.log('[HEALTH][REVIEW] Show health report requested');
-          toast('Health report generation coming soon!');
-        }}
+        onShowHealthReport={handleHealthReportGeneration}
         onNext={() => {}} // Not used in health scan flow
         onLogImmediately={() => {}} // Not used in health scan flow
         items={healthDetectedItems}
       />
+
+      {/* Health Scan Loading Animation */}
+      <HealthScanLoading isOpen={healthAnalyzing} />
+
+      {/* Health Report Viewer */}
+      {healthReportData && (
+        <HealthReportViewer
+          isOpen={healthReportViewerOpen}
+          onClose={() => {
+            setHealthReportViewerOpen(false);
+            setHealthReportData(null);
+          }}
+          report={healthReportData}
+        />
+      )}
     </div>
   );
 }
