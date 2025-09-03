@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, X, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { analyzeForHealthScan } from '@/healthScan/orchestrator';
+import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
+import { HealthReportReviewModal } from '@/components/health-report/HealthReportReviewModal';
+import { generateHealthReport } from '@/lib/health/generateHealthReport';
+import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { FF } from '@/featureFlags';
 
 export default function HealthScanPhoto() {
@@ -16,6 +19,8 @@ export default function HealthScanPhoto() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [detectedItems, setDetectedItems] = useState<ReviewItem[]>([]);
 
   // Initialize camera
   useEffect(() => {
@@ -91,27 +96,19 @@ export default function HealthScanPhoto() {
       }, 12000);
 
       try {
-        const result = await analyzeForHealthScan(imageBase64);
+        console.log('[HEALTH_SCAN] Starting food detection...');
+        const result = await runFoodDetectionPipeline(imageBase64, { mode: 'health' });
         clearTimeout(timeoutId);
         
         if (abortControllerRef.current?.signal.aborted) return;
         
-        // Check for scanner availability
-        if (result._debug?.from === 'error') {
-          // Show non-blocking banner for scanner issues
-          toast('Scanner temporarily unavailable. You can still log manually.', {
-            duration: 4000,
-          });
+        if (result.success && result.items.length > 0) {
+          setDetectedItems(result.items);
+          setShowReviewModal(true);
+          toast.success('Food detection complete!');
+        } else {
+          toast.error('No food items detected. Please try again.');
         }
-        
-        // Navigate to report with results
-        navigate('/health-scan/report', {
-          state: {
-            image: imageBase64,
-            items: result.items,
-            _debug: result._debug
-          }
-        });
         
       } catch (error) {
         clearTimeout(timeoutId);
@@ -176,7 +173,7 @@ export default function HealthScanPhoto() {
     );
   }
 
-  const handleShowHealthReport = async (selectedItems) => {
+  const handleShowHealthReport = async (selectedItems: ReviewItem[]) => {
     try {
       const reportData = await generateHealthReport(selectedItems);
       navigate('/health-scan/report', { 
@@ -262,6 +259,16 @@ export default function HealthScanPhoto() {
 
       {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Health Report Review Modal */}
+      <HealthReportReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onShowHealthReport={handleShowHealthReport}
+        onNext={() => {}} // Not used in health scan flow
+        onLogImmediately={() => {}} // Not used in health scan flow
+        items={detectedItems}
+      />
     </div>
   );
 }
