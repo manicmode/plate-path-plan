@@ -1,11 +1,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// ===== Utilities (place near top of file) =====
+type Item = {
+  name?: string | null;
+  portion?: unknown;
+  calories?: unknown;
+  nutrition?: unknown;
+  flags?: unknown[] | null;
+  score?: unknown;
+};
+
+// Toggle in prod via env; fallback to false
+const DEBUG =
+  (typeof Deno !== 'undefined' && Deno.env?.get('DEBUG_EDGE') === 'true') ||
+  false;
+
+// Safe number coercion (prevents NaN leaking)
+const n = (v: unknown): number => {
+  const num = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(num) ? num : 0;
+};
+
+// Ensure arrays are arrays (never null/undefined)
+const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
+// CORS headers (object form is valid HeadersInit in Edge runtime)
+const corsHeadersJson: HeadersInit = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const corsHeadersJson = { ...corsHeaders, 'Content-Type': 'application/json' };
 
 function normalizeItems(raw: any[], requestId?: string): Array<{name:string, confidence:number, category:string, portion_hint?:string|null, calories?:number|null, nutrition?:any, image?:string|null}> {
   if (!Array.isArray(raw)) return [];
@@ -49,9 +79,9 @@ function normalizeItems(raw: any[], requestId?: string): Array<{name:string, con
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight early
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeadersJson });
   }
 
   try {
@@ -531,17 +561,42 @@ JSON only. No prose.`;
                 attempt: 'relaxed'
               });
               
-              // Return normalized relaxed result immediately
-              return new Response(JSON.stringify({
-                items: normalizedRelaxed,
-                _debug: {
-                  raw_items: items,
-                  count: normalizedRelaxed.length,
-                  request_id: requestId,
-                  image_hash: imageHash,
-                  attempt: 'relaxed'
+              // Return normalized relaxed result immediately (hardened)
+              const filteredItemsSafe = arr<Item>(normalizedRelaxed);
+              const rawItemsSafe = arr<Item>(items);
+              const requestIdSafe = String(requestId ?? '');
+              const imageHashSafe = String(imageHash ?? '');
+              
+              const payload: Record<string, unknown> = {
+                items: filteredItemsSafe,
+                metadata: {
+                  request_id: requestIdSafe,
+                  image_hash: imageHashSafe,
+                  attempt: 'relaxed',
+                  kept: n(filteredItemsSafe.length),
+                  dropped: 0,
+                  summary: filteredItemsSafe.map((i) => ({
+                    name: (i?.name && String(i.name).trim()) || 'Unknown',
+                    portion: i?.portion ?? null,
+                    calories: i?.calories ?? null,
+                    nutrition: i?.nutrition ?? null,
+                    flags: Array.isArray(i?.flags) ? (i!.flags as unknown[]) : [],
+                    score: i?.score ?? null,
+                  }))
                 }
-              }), { status: 200, headers: corsHeadersJson });
+              };
+              
+              if (DEBUG) {
+                payload._debug = {
+                  raw_items: rawItemsSafe,
+                  count: n(filteredItemsSafe.length),
+                  request_id: requestIdSafe,
+                  image_hash: imageHashSafe,
+                  attempt: 'relaxed'
+                };
+              }
+              
+              return new Response(JSON.stringify(payload), { status: 200, headers: corsHeadersJson });
               
             } catch (relaxedParseError) {
               console.error('[GPT][relaxed_parse_error]', {
@@ -615,34 +670,53 @@ JSON only. No prose.`;
     
     console.log(`[GPT-V2] Final result for ${requestId}:`, filteredItems.length, 'items:', filteredItems.map(i => i.name));
 
-return new Response(JSON.stringify({
-  items: filteredItems || [],  // Ensure array
-  metadata: {
-    request_id: requestId,
-    image_hash: imageHash,
-    attempt: attemptType,
-    kept: afterBasicFilter || 0,
-    dropped: (beforeBasicFilter || 0) - (afterBasicFilter || 0),
-    summary: (filteredItems || []).map(i => ({
-      name: i?.name || 'Unknown',
-      portion: i?.portion || null,
-      calories: i?.calories || null,
-      nutrition: i?.nutrition || null,
-      flags: i?.flags || [],
-      score: i?.score || null
-    }))
-  },
-  _debug: {
-    raw_items: items || [],
-    raw_count: beforeFilterCount || 0,
-    parsed_count: beforeBasicFilter || 0,
-    final_count: afterBasicFilter || 0,
-    sample: (filteredItems || []).slice(0, 3)
-  }
-}), { 
-  status: 200, 
-  headers: corsHeadersJson 
-});
+    // Hardened return block with null-safety
+    const filteredItemsSafe = arr<Item>(filteredItems);
+    const rawItemsSafe = arr<Item>(items);
+    const requestIdSafe = String(requestId ?? '');
+    const imageHashSafe = String(imageHash ?? '');
+    const attemptTypeSafe = String(attemptType ?? '');
+    const beforeBasicFilterSafe = n(beforeBasicFilter);
+    const afterBasicFilterSafe = n(afterBasicFilter);
+    const beforeFilterCountSafe = n(beforeFilterCount);
+
+    // Build safe summary
+    const summary = filteredItemsSafe.map((i) => ({
+      name: (i?.name && String(i.name).trim()) || 'Unknown',
+      portion: i?.portion ?? null,
+      calories: i?.calories ?? null,
+      nutrition: i?.nutrition ?? null,
+      flags: Array.isArray(i?.flags) ? (i!.flags as unknown[]) : [],
+      score: i?.score ?? null,
+    }));
+
+    // Backward-compatible payload (root-level `items`)
+    const payload: Record<string, unknown> = {
+      items: filteredItemsSafe, // old clients still read this
+      metadata: {
+        request_id: requestIdSafe,
+        image_hash: imageHashSafe,
+        attempt: attemptTypeSafe,
+        kept: afterBasicFilterSafe,
+        dropped: n(beforeBasicFilterSafe) - n(afterBasicFilterSafe),
+        summary,
+      },
+    };
+
+    if (DEBUG) {
+      payload._debug = {
+        raw_items: rawItemsSafe,
+        raw_count: beforeFilterCountSafe,
+        parsed_count: beforeBasicFilterSafe,
+        final_count: afterBasicFilterSafe,
+        sample: filteredItemsSafe.slice(0, 3),
+      };
+    }
+
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: corsHeadersJson,
+    });
 
   } catch (error) {
     console.error('[GPT-V2] Error:', error);
