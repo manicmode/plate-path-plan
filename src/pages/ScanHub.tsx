@@ -630,6 +630,7 @@ export default function ScanHub() {
             setHealthReportData(null);
           }}
           report={healthReportData}
+          items={healthDetectedItems}
         />
       )}
     </div>

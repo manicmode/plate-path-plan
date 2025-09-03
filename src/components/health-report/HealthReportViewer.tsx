@@ -1,20 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
-import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { HealthReportData } from '@/lib/health/generateHealthReport';
+import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2 } from 'lucide-react';
+import { HealthReportData, mapPhotoReportToNutritionLog } from '@/lib/health/generateHealthReport';
+import { saveScanToNutritionLogs } from '@/services/nutritionLogs';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth';
+import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
   onClose: () => void;
   report: HealthReportData;
+  items: ReviewItem[];
 }
 
 export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   isOpen,
   onClose,
-  report
+  report,
+  items
 }) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLogging, setIsLogging] = useState(false);
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -35,6 +45,85 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const verdictStyle = getVerdictDisplay(report.overallScore);
+
+  const handleSaveReport = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save health reports.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      console.info('[HEALTH][REPORT] saving', { items: items.length });
+      
+      // Map photo report to nutrition_logs format (same as barcode)
+      const nutritionLogData = mapPhotoReportToNutritionLog(report, items);
+      
+      // Use same persistence as barcode reports
+      const savedLog = await saveScanToNutritionLogs(nutritionLogData, 'photo');
+      
+      console.info('[HEALTH][REPORT] saved', { id: savedLog?.id });
+      
+      toast({
+        title: "Report Saved",
+        description: "Your health report has been saved to your history.",
+      });
+    } catch (error) {
+      console.error('[HEALTH][REPORT][ERROR] save failed', error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save your health report. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLogThis = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Required", 
+        description: "Please log in to log food items.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLogging(true);
+    try {
+      console.info('[HEALTH][REPORT] log', { items: items.length });
+      
+      // Import here to avoid circular dependencies
+      const { oneTapLog } = await import('@/lib/nutritionLog');
+      
+      const logEntries = items.map(item => ({
+        name: item.name,
+        canonicalName: item.canonicalName || item.name,
+        grams: item.grams || 100
+      }));
+
+      await oneTapLog(logEntries);
+      
+      toast({
+        title: "Food Logged",
+        description: `Successfully logged ${items.length} item${items.length > 1 ? 's' : ''} to your diary.`,
+      });
+    } catch (error) {
+      console.error('[HEALTH][REPORT][ERROR] log failed', error);
+      toast({
+        title: "Log Failed",
+        description: "Could not log food items. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLogging(false);
+    }
+  };
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
@@ -120,7 +209,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                   <h3 className="text-lg font-semibold mb-4 text-white">Item Analysis</h3>
                   <div className="space-y-3">
                     {report.itemAnalysis.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div 
+                        key={index} 
+                        className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-200 ease-in-out cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        tabIndex={0}
+                        role="button"
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+                      >
                         <div className="flex-1">
                           <p className="text-white font-medium">{item.name}</p>
                            <div className="flex items-center gap-4 text-sm text-gray-300 mt-1">
@@ -202,12 +297,55 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
             {/* Footer */}
             <footer className="sticky bottom-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 py-4 border-t border-white/10">
-              <Button
-                onClick={onClose}
-                className="w-full h-12 bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700 text-white font-bold"
-              >
-                Close Report
-              </Button>
+              <div className="space-y-3">
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={handleSaveReport}
+                    disabled={isSaving}
+                    className="h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Report
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleLogThis}
+                    disabled={isLogging}
+                    className="h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold disabled:opacity-50"
+                  >
+                    {isLogging ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Logging...
+                      </>
+                    ) : (
+                      <>
+                        <Utensils className="w-4 h-4 mr-2" />
+                        Log This
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Close Button */}
+                <Button
+                  onClick={onClose}
+                  variant="outline"
+                  className="w-full h-10 border-white/30 text-white hover:bg-white/10"
+                >
+                  Close Report
+                </Button>
+              </div>
             </footer>
           </div>
         </Dialog.Content>

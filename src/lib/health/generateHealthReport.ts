@@ -71,6 +71,49 @@ const NUTRITION_DB: Record<string, {
   // Add more foods as needed
 };
 
+// Add a helper to map photo report to nutrition_logs format
+export function mapPhotoReportToNutritionLog(report: HealthReportData, items: ReviewItem[]): any {
+  // Combine all items into a single meal entry for nutrition_logs
+  const combinedName = items.map(item => item.name).join(', ');
+  
+  return {
+    name: combinedName,
+    food_name: combinedName,
+    calories: report.totalCalories,
+    protein: Math.round((report.totalCalories * report.macroBalance.protein) / 400), // 4 cal per gram
+    carbs: Math.round((report.totalCalories * report.macroBalance.carbs) / 400), // 4 cal per gram  
+    fat: Math.round((report.totalCalories * report.macroBalance.fat) / 900), // 9 cal per gram
+    fiber: Math.round(report.totalCalories * 0.02), // rough estimate
+    sugar: Math.round(report.totalCalories * 0.05), // rough estimate
+    sodium: Math.round(report.totalCalories * 2), // rough estimate mg
+    quality_score: report.overallScore,
+    quality_verdict: getQualityVerdict(report.overallScore),
+    quality_reasons: report.flags.map(flag => flag.message),
+    serving_size: `${items.reduce((sum, item) => sum + (item.grams || 100), 0)}g`,
+    source: 'photo_health_scan',
+    processing_level: 'minimally_processed', // default for whole foods
+    ingredient_analysis: {
+      items: report.itemAnalysis,
+      flags: report.flags,
+      recommendations: report.recommendations
+    },
+    confidence: 85, // Default confidence for photo health scans
+    nutritionData: {
+      calories: report.totalCalories,
+      protein: Math.round((report.totalCalories * report.macroBalance.protein) / 400),
+      carbs: Math.round((report.totalCalories * report.macroBalance.carbs) / 400),
+      fat: Math.round((report.totalCalories * report.macroBalance.fat) / 900)
+    }
+  };
+}
+
+function getQualityVerdict(score: number): string {
+  if (score >= 80) return 'excellent';
+  if (score >= 70) return 'good';
+  if (score >= 50) return 'moderate';
+  return 'poor';
+}
+
 export async function generateHealthReport(items: ReviewItem[]): Promise<HealthReportData> {
   console.log('[HEALTH_REPORT] Generating report for', items.length, 'items');
   
