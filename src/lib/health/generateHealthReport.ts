@@ -125,30 +125,93 @@ export async function generateHealthReport(items: ReviewItem[]): Promise<HealthR
   const flags = [];
   const recommendations = [];
 
-  // Analyze each item
+  // Analyze each item using V2 scoring system when available
   for (const item of items) {
     const grams = item.grams || 100;
     const foodKey = item.name.toLowerCase();
     
-    // Try to find exact match or partial match
-    let nutritionData = NUTRITION_DB[foodKey];
-    if (!nutritionData) {
-      // Try partial matching
-      const partialMatch = Object.keys(NUTRITION_DB).find(key => 
-        foodKey.includes(key) || key.includes(foodKey)
-      );
-      if (partialMatch) {
-        nutritionData = NUTRITION_DB[partialMatch];
+    // Try to resolve from GenericFoods first
+    let nutritionData = null;
+    let healthScore = 60; // Default fallback score
+    
+    try {
+      const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
+      const genericFood = resolveGenericFood(item.name);
+      
+      if (genericFood) {
+        // Use GenericFoods data and V2 scoring
+        const { scoreFood } = await import('@/health/scoring');
+        
+        // Build ScoreContext for V2 scoring
+        const scoreContext = {
+          name: item.name,
+          source: 'photo_item' as const,
+          genericSlug: genericFood.slug,
+          nutrients: {
+            calories: genericFood.nutrients.calories,
+            protein_g: genericFood.nutrients.protein_g,
+            carbs_g: genericFood.nutrients.carbs_g,
+            fat_g: genericFood.nutrients.fat_g,
+            fiber_g: genericFood.nutrients.fiber_g,
+            sodium_mg: genericFood.nutrients.sodium_mg,
+            sugars_g: null, // GenericFoods don't have sugar data yet
+            satfat_g: null
+          }
+        };
+        
+        // Get V2 score (0-10 scale)
+        healthScore = scoreFood(scoreContext);
+        
+        // Convert to 0-100 for consistency with existing logic
+        const score100 = healthScore * 10;
+        
+        console.info('[HEALTH][REPORT][V2_SCORE]', { 
+          name: item.name, 
+          genericSlug: genericFood.slug,
+          score10: healthScore,
+          score100 
+        });
+        
+        nutritionData = {
+          calories: genericFood.nutrients.calories || 100,
+          protein: genericFood.nutrients.protein_g || 5,
+          carbs: genericFood.nutrients.carbs_g || 15,
+          fat: genericFood.nutrients.fat_g || 3,
+          score: score100,
+          benefits: score100 >= 85 ? ['Excellent nutritional choice', 'High in beneficial nutrients'] :
+                   score100 >= 70 ? ['Good nutritional value', 'Provides essential nutrients'] :
+                   ['Provides energy'],
+          concerns: score100 < 50 ? ['Low nutritional value', 'Consider healthier alternatives'] : []
+        };
       }
+    } catch (error) {
+      console.warn('[HEALTH][REPORT][GENERIC_FALLBACK]', { name: item.name, error: error.message });
     }
     
-    // Use defaults if no match found
+    // Fallback to NUTRITION_DB if GenericFoods resolution failed
     if (!nutritionData) {
-      nutritionData = {
-        calories: 100, protein: 5, carbs: 15, fat: 3, score: 60,
-        benefits: ['Provides energy'],
-        concerns: ['Nutritional data not available']
-      };
+      let staticData = NUTRITION_DB[foodKey];
+      if (!staticData) {
+        // Try partial matching
+        const partialMatch = Object.keys(NUTRITION_DB).find(key => 
+          foodKey.includes(key) || key.includes(foodKey)
+        );
+        if (partialMatch) {
+          staticData = NUTRITION_DB[partialMatch];
+        }
+      }
+      
+      // Use defaults if no match found
+      if (!staticData) {
+        staticData = {
+          calories: 100, protein: 5, carbs: 15, fat: 3, score: 60,
+          benefits: ['Provides energy'],
+          concerns: ['Nutritional data not available']
+        };
+      }
+      
+      nutritionData = staticData;
+      healthScore = staticData.score / 10; // Convert to 0-10 scale
     }
 
     // Scale nutrition to actual portion

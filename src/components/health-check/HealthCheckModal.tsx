@@ -639,7 +639,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
               itemName: analysisData.product.name,
               productName: analysisData.product.name,
               title: analysisData.product.name,
-              healthScore: 7, // Default good score for photo items
+              healthScore: analysisData.product?.meta?.healthScore || 7, // Use mapped score from V2 scorer
               ingredientsText: '',
               ingredientFlags: [],
               flags: [],
