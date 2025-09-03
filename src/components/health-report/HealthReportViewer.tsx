@@ -145,31 +145,35 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       return;
     }
 
-    // Force enable generic foods for photo items
-    const ENABLE_GENERIC = true;
-
-    if (ENABLE_GENERIC) {
-      const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
-      const { productFromGeneric } = await import('@/health/generic/mapToProductModel');
+    try {
+      // Use the enhanced mapper that handles GenericFoods and portion calculation
+      const { toProductModelFromDetected } = await import('@/lib/health/toProductModelFromDetected');
       
-      const g = resolveGenericFood(item.name);
-      console.log('[GENERIC][RESOLVE]', { q: item.name, found: !!g });
-
-      if (g) {
-        console.info('[GENERIC][MAP]', { name: item.name, slug: g.slug });
-        
-        // Create product model from generic food data
-        const genericProduct = productFromGeneric(g);
-        
+      const product = toProductModelFromDetected(item);
+      
+      if (product.source === 'generic' && product.meta) {
         console.info('[HC][STEP] report', { source: 'photo_item' });
         
-        // Use the modal opening function provided by parent
-        onOpenHealthModal({
+        // Create analysis object with proper nutrition data for HealthCheckModal
+        const analysisData = {
           source: 'photo_item',
-          product: genericProduct,
-          productName: genericProduct.name,
-          captureTs: Date.now()
-        });
+          product,
+          productName: product.name,
+          captureTs: Date.now(),
+          meta: {
+            ...product.meta,
+            source: 'photo_item',
+            detectedName: item.name,
+          },
+          nutrition: {
+            per100g: product.meta.per100g,
+            perPortion: product.meta.perPortion,
+            basis: product.meta.perPortion ? 'portion' : '100g',
+          }
+        };
+        
+        // Use the modal opening function provided by parent
+        onOpenHealthModal(analysisData);
       } else {
         console.warn('[GENERIC][RESOLVE] no match found for:', item.name);
         toast({
@@ -178,6 +182,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           variant: "destructive"
         });
       }
+    } catch (error) {
+      console.error('[HEALTH][PHOTO_ITEM][ERROR]', error);
+      toast({
+        title: "Error Opening Health Report",
+        description: "Could not open detailed health report for this item",
+        variant: "destructive"
+      });
     }
   };
 
