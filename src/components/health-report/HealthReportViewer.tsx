@@ -129,22 +129,45 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
   };
 
-  const handleItemClick = (index: number) => {
+  const handleItemClick = async (index: number) => {
     const item = report.itemAnalysis[index];
-    console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item?.name });
-    
-    // Transform the detected item into product model format
-    const productModel = toProductModelFromDetected(item);
-    
+    console.info('[HEALTH][PHOTO_ITEM] tap', { name: item?.name });
+
+    const productDetected = toProductModelFromDetected(item);
+
+    // If detected item lacks robust nutrients, try generic resolver
+    const lacksCore =
+      !productDetected?.nutrients?.calories &&
+      !productDetected?.nutrients?.protein_g &&
+      !productDetected?.nutrients?.carbs_g &&
+      !productDetected?.nutrients?.fat_g;
+
+    let product = productDetected;
+
+    const ENABLE_GENERIC = import.meta.env.VITE_ENABLE_GENERIC_FOODS === 'true';
+    if (ENABLE_GENERIC && lacksCore) {
+      const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
+      const { productFromGeneric } = await import('@/health/generic/mapToProductModel');
+      
+      const match = resolveGenericFood(item.name);
+      if (match) {
+        console.info('[HEALTH][GENERIC] matched', { slug: match.slug });
+        product = productFromGeneric(match);
+      } else {
+        console.warn('[HEALTH][GENERIC] no_match', { name: item.name });
+      }
+    }
+
     // Set up analysis data for HealthCheckModal
     setSelectedItemAnalysisData({
       source: 'photo_item',
       name: item.name,
-      product: productModel,
+      product: product,
       captureTs: Date.now()
     });
     
     setHealthCheckModalOpen(true);
+    console.info('[HC][STEP] report', { source: 'photo_item' });
   };
 
   return (
@@ -404,6 +427,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           setSelectedItemAnalysisData(null);
         }}
         initialState="report"
+        disableQuickScan={true}
         analysisData={selectedItemAnalysisData}
       />
     </Dialog.Root>

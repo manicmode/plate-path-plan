@@ -1,0 +1,30 @@
+[
+  {
+    "slug": "salmon",
+    "display_name": "Salmon (Atlantic, cooked)",
+    "serving": { "grams": 85, "label": "per 85g (3 oz)" },
+    "nutrients": { "calories": 175, "protein_g": 24, "carbs_g": 0, "fat_g": 8, "fiber_g": 0, "sodium_mg": 50 },
+    "aliases": ["salmon fillet", "grilled salmon", "baked salmon", "fish salmon"]
+  },
+  {
+    "slug": "asparagus",
+    "display_name": "Asparagus (cooked)",
+    "serving": { "grams": 85, "label": "per 85g (~6 spears)" },
+    "nutrients": { "calories": 20, "protein_g": 2, "carbs_g": 4, "fat_g": 0, "fiber_g": 2, "sodium_mg": 2 },
+    "aliases": ["asparagus spear", "steamed asparagus"]
+  },
+  {
+    "slug": "tomato",
+    "display_name": "Tomato (raw)",
+    "serving": { "grams": 80, "label": "per 80g (~1 small)" },
+    "nutrients": { "calories": 15, "protein_g": 1, "carbs_g": 3, "fat_g": 0, "fiber_g": 1, "sodium_mg": 5 },
+    "aliases": ["tomatoes"]
+  },
+  {
+    "slug": "lemon",
+    "display_name": "Lemon (raw)",
+    "serving": { "grams": 30, "label": "per 30g (wedge)" },
+    "nutrients": { "calories": 9, "protein_g": 0, "carbs_g": 3, "fat_g": 0, "fiber_g": 1, "sodium_mg": 0 },
+    "aliases": ["lemon wedge", "lemon slice"]
+  }
+]

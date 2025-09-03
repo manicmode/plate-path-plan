@@ -160,6 +160,7 @@ interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialState?: ModalState;
+  disableQuickScan?: boolean;
   analysisData?: {
     source?: string;
     barcode?: string;
@@ -230,6 +231,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   isOpen,
   onClose,
   initialState = 'scanner',
+  disableQuickScan,
   analysisData
 }) => {
   const [currentState, setCurrentState] = useState<ModalState>(initialState);
@@ -548,6 +550,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     // Log CSP when Health Check modal opens (dev helper)
     logActiveCSP('HEALTH_MODAL_OPEN');
 
+    // Skip auto-kick for photo_item source or when quick scan is disabled
+    if (disableQuickScan || analysisData?.source === 'photo_item') {
+      console.log('[HC] Skip auto-kick for', analysisData?.source);
+      return;
+    }
+
     const isPhoto = analysisData?.source === 'photo';
     const img = (analysisData as any)?.imageBase64 as string | undefined;
     if (!isPhoto || !img || img.length < 50) return; // trivial sanity
@@ -575,7 +583,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       // fall back gracefully for other sources
       setCurrentState('fallback');
     });
-  }, [isOpen, analysisData?.source, (analysisData as any)?.imageBase64, analysisData?.captureTs]);
+  }, [isOpen, analysisData?.source, (analysisData as any)?.imageBase64, analysisData?.captureTs, disableQuickScan]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -598,10 +606,15 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     
     const { source, barcode, name } = analysisData;
     
-    // Guard scanner mount for manual/voice
-    if (source === 'manual' || source === 'voice') {
+    // Guard scanner mount for manual/voice and photo_item
+    if (source === 'manual' || source === 'voice' || source === 'photo_item') {
       console.log('[HC][STATE] skip scanner for', source);
-      setCurrentState('loading');
+      if (source === 'photo_item') {
+        // For photo_item, go straight to report state
+        setCurrentState('report');
+      } else {
+        setCurrentState('loading');
+      }
       // Continue to manual/voice processing path
     }
     
