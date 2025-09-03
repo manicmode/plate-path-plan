@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FoodConfirmModal } from '@/components/FoodConfirmModal';
+import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import '@/styles/review.css';
 
 export interface ReviewItem {
@@ -186,6 +187,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       toast.error('Please select at least one item to continue');
       return;
     }
+
+    // Set flow active to prevent ScanHub navigation
+    setConfirmFlowActive(true);
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.log('[DL][CTA] start (review)', selectedItems.map(i => i.name));
@@ -227,6 +231,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
 
     setConfirmModalOpen(false);
+    setConfirmFlowActive(false); // Clear flow active state
 
     try {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
@@ -290,9 +295,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   const handleConfirmModalReject = () => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] rejected', { origin: 'review_items' });
+      console.info('[LEGACY][FLOW] reject', { origin: 'review_items' });
     }
     setConfirmModalOpen(false);
+    setConfirmFlowActive(false); // Clear flow active state
   };
 
 

@@ -17,6 +17,7 @@ import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { useNavigate } from 'react-router-dom';
 import { FoodConfirmModal } from '@/components/FoodConfirmModal';
+import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -238,6 +239,9 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       console.log('[HR][CTA][CLICK] Detailed Log');
     }
 
+    // Set flow active to prevent ScanHub navigation
+    setConfirmFlowActive(true);
+
     // Transform items to match FoodConfirmModal interface
     const modalItems = items.map(item => ({
       name: item.name,
@@ -286,6 +290,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     }
 
     setConfirmModalOpen(false);
+    setConfirmFlowActive(false); // Clear flow active state
 
     try {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
@@ -349,9 +354,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
   const handleConfirmModalReject = () => {
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.info('[DL][FLOW] rejected', { origin: 'health_report' });
+      console.info('[LEGACY][FLOW] reject', { origin: 'health_report' });
     }
     setConfirmModalOpen(false);
+    setConfirmFlowActive(false); // Clear flow active state
   };
 
   const handleItemClick = async (index: number) => {

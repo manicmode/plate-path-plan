@@ -30,6 +30,7 @@ import { HealthReportViewer } from '@/components/health-report/HealthReportViewe
 import { generateHealthReport, HealthReportData } from '@/lib/health/generateHealthReport';
 import { runFoodDetectionPipeline } from '@/lib/pipelines/runFoodDetectionPipeline';
 import { ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { useConfirmFlowActive } from '@/lib/confirmFlowState';
 
 
 export default function ScanHub() {
@@ -198,20 +199,23 @@ export default function ScanHub() {
   }, [location.state, photoModalOpen, manualEntryOpen, navigate, location.pathname]);
 
   // Route-aware fallback guard - prevent hijacking log flows
+  const confirmFlowActive = useConfirmFlowActive();
+
   useEffect(() => {
     const path = location.pathname;
     const isLogFlow = path.startsWith('/log');
     
-    // Check if any modals are open
+    // Check if any modals are open (including confirm flow)
     const anyModalOpen = healthCheckModalOpen || photoModalOpen || manualEntryOpen || 
                          voiceModalOpen || healthPhotoModalOpen || healthReviewModalOpen || 
-                         healthReportViewerOpen;
+                         healthReportViewerOpen || confirmFlowActive;
     
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.info('[ScanHub][fallback-check]', { 
         path, 
         isLogFlow, 
         anyModalOpen,
+        confirmFlowActive,
         modals: {
           healthCheck: healthCheckModalOpen,
           photo: photoModalOpen,
@@ -219,16 +223,17 @@ export default function ScanHub() {
           voice: voiceModalOpen,
           healthPhoto: healthPhotoModalOpen,
           healthReview: healthReviewModalOpen,
-          healthReportViewer: healthReportViewerOpen
+          healthReportViewer: healthReportViewerOpen,
+          confirmFlow: confirmFlowActive
         }
       });
     }
     
-    // Do NOT navigate away when user is on /log/* routes
+    // Do NOT navigate away when user is on /log/* routes OR confirm flow is active
     // This prevents hijacking the review items page and confirm flow
-    if (isLogFlow) {
+    if (isLogFlow || confirmFlowActive) {
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow });
+        console.info('[ScanHub][fallback-guard] Skipping fallback', { isLogFlow, confirmFlowActive });
       }
       return;
     }
@@ -237,7 +242,7 @@ export default function ScanHub() {
     // Example: if (!anyModalOpen && path === '/scan') { /* fallback logic */ }
     
   }, [location.pathname, healthCheckModalOpen, photoModalOpen, manualEntryOpen, 
-      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen]);
+      voiceModalOpen, healthPhotoModalOpen, healthReviewModalOpen, healthReportViewerOpen, confirmFlowActive]);
 
   const logTileClick = (tile: string) => {
     console.log('scan_tile_click', { 
