@@ -30,11 +30,17 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   };
 
   const handleSave = async () => {
-    if (!setName.trim()) return;
+    console.log('[DEBUG] SaveSetNameDialog handleSave called', { setName: setName.trim() });
+    if (!setName.trim()) {
+      console.log('[DEBUG] No name entered, returning');
+      return;
+    }
     
     try {
       setIsSaving(true);
+      console.log('[DEBUG] About to call onSave with name:', setName.trim());
       await onSave(setName.trim());
+      console.log('[DEBUG] onSave completed successfully');
       
       // Show success toast with option to view
       toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
@@ -44,12 +50,14 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
         }
       });
       
+      console.log('[DEBUG] About to close dialog');
       onClose();
     } catch (error) {
-      console.error('Failed to save set:', error);
+      console.error('[DEBUG] Failed to save set:', error);
       toast.error('Failed to save set');
     } finally {
       setIsSaving(false);
+      console.log('[DEBUG] SaveSetNameDialog handleSave completed');
     }
   };
 
