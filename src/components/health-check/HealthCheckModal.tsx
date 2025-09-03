@@ -1001,7 +1001,31 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     setCaptureId(currentCaptureId);
     setIsProcessing(true);
     
+    // Watchdog protection against infinite spinners
+    const WATCHDOG_MS = 12000;
+    let watchdog: number | undefined;
+    
+    const stopSpinner = () => {
+      setIsProcessing(false);
+      setCurrentState('fallback');
+    };
+    
+    const showError = (message: string) => {
+      const { toast } = useToast();
+      toast({
+        title: "Slow Network",
+        description: message,
+        variant: "destructive"
+      });
+    };
+    
     try {
+      watchdog = window.setTimeout(() => {
+        console.warn('[PHOTO][WATCHDOG_TIMEOUT]', currentCaptureId);
+        stopSpinner();
+        showError('Slow network—try again');
+      }, WATCHDOG_MS);
+      
       console.log('[HC][STEP]', 'loading', { source: 'photo_analysis_v2' });
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
@@ -1037,6 +1061,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           }
           
           // Process successful result
+          clearTimeout(watchdog);
           await processAndShowResult(result, result, currentCaptureId, sourceMeta.source === 'photo' ? 'image' : 'barcode');
           cleanup();
         },
@@ -1046,6 +1071,8 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             return; // stale
           }
           
+          clearTimeout(watchdog);
+          const { toast } = useToast();
           console.error('❌ Photo Pipeline v2 analysis failed:', error);
           toast({
             title: "Analysis Failed",
@@ -1060,9 +1087,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     } catch (error) {
       if (currentRunId.current !== runId) return; // stale
       
+      clearTimeout(watchdog);
       console.error('❌ Photo Pipeline v2 processing failed:', error);
       setCurrentState('fallback');
     } finally {
+      clearTimeout(watchdog);
       setIsProcessing(false);
     }
   };

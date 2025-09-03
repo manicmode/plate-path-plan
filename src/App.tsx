@@ -18,6 +18,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
+const DebugPipeline = React.lazy(() => import('@/pages/DebugPipeline'));
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -271,7 +272,15 @@ function AppContent() {
                              </React.Suspense>
                            }
                          />
-                         <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                          <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                          <Route 
+                            path="/debug/pipeline"
+                            element={
+                              <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
+                                <DebugPipeline />
+                              </React.Suspense>
+                            }
+                          />
                        </>
                      )}
 

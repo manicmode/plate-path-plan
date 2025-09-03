@@ -7,11 +7,23 @@ export interface GptVisionResult {
 }
 
 export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
+  // Timing breadcrumbs (prevents silent hangs)
+  const requestId = crypto.randomUUID();
+  console.time(`[PHOTO][${requestId}][capture→edge]`);
+  
   try {
-    // Try new structured GPT-V2 endpoint first
+    // right before fetch
+    console.time(`[PHOTO][${requestId}][edge]`);
     const { data, error } = await supabase.functions.invoke('gpt-food-detector-v2', {
       body: { image_base64: base64 }
     });
+    console.timeEnd(`[PHOTO][${requestId}][edge]`); // duration from request to first byte
+
+    // schema guard (debug only)
+    if (import.meta.env.VITE_DEBUG_CLIENT && (!data || !Array.isArray(data.items))) {
+      console.warn('[PHOTO][SCHEMA_MISMATCH]', requestId, data);
+      throw new Error('Bad payload shape'); // fail fast instead of spinner
+    }
 
     if (error) {
       console.warn('[GPT][v2] Failed, falling back to v1:', error);
@@ -46,6 +58,8 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
       }
     };
 
+    console.timeEnd(`[PHOTO][${requestId}][capture→edge]`); // full network timing
+
     // DEV-only logging
     if (import.meta.env.DEV) {
       console.info('[GPT][v2]', {
@@ -58,6 +72,7 @@ export async function detectFoodGptV(base64: string): Promise<GptVisionResult> {
 
     return result;
   } catch (error) {
+    console.error('[PHOTO][JSON_PARSE_ERR]', requestId, error);
     console.error('[GPT][vision] error:', error);
     // Return empty result on error - don't break the pipeline
     return { names: [] };

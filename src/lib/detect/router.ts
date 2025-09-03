@@ -75,6 +75,10 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
   const { estimatePortionWithDefaults } = await import('@/lib/portion/estimate');
   const { supabase } = await import('@/integrations/supabase/client');
   
+  // Timing breadcrumbs (prevents silent hangs)
+  const requestId = crypto.randomUUID();
+  console.time(`[PHOTO][${requestId}][gpt-detection]`);
+  
   console.info('[DETECT][GPT] Starting GPT detection...');
   
   // Check diagnostic flags
@@ -90,6 +94,7 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
     const { system, user } = buildMealPrompt();
     
     // Call GPT-V2 structured endpoint
+    console.time(`[PHOTO][${requestId}][edge]`);
     const { data, error } = await supabase.functions.invoke('gpt-food-detector-v2', {
       body: { 
         image_base64: imageBase64,
@@ -98,6 +103,7 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
         attempt: attemptType
       }
     });
+    console.timeEnd(`[PHOTO][${requestId}][edge]`);
 
     if (error) {
       console.error('[DETECT][GPT] Error:', error);
@@ -167,6 +173,8 @@ export async function detectWithGpt(imageBase64: string, context?: { mode?: stri
     }
     
     console.info('[REPORT][V2][GPT]', `items=${itemsWithPortions.length}`, `filtered=${rawItems.length - processedItems.length}`, `grams=${itemsWithPortions.map(i => i.grams).join(',')}`);
+    
+    console.timeEnd(`[PHOTO][${requestId}][gpt-detection]`); // full detection timing
     
     return itemsWithPortions;
   } catch (error) {
