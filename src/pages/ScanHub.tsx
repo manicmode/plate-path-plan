@@ -633,6 +633,14 @@ export default function ScanHub() {
           }}
           report={healthReportData}
           items={healthDetectedItems}
+          onOpenHealthModal={(analysisData) => {
+            console.log('[HC][OPEN]', { from: 'photo_item', data: analysisData });
+            setAnalysisData(analysisData);
+            setHealthModalStep('report'); // Skip loading, go directly to report
+            setHealthCheckModalOpen(true);
+            // Close the health report viewer when opening the full modal
+            setHealthReportViewerOpen(false);
+          }}
         />
       )}
     </div>

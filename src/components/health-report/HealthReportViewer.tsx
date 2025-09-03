@@ -16,13 +16,16 @@ interface HealthReportViewerProps {
   onClose: () => void;
   report: HealthReportData;
   items: ReviewItem[];
+  // Modal opening functions for photo item clicks
+  onOpenHealthModal?: (analysisData: any) => void;
 }
 
 export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   isOpen,
   onClose,
   report,
-  items
+  items,
+  onOpenHealthModal
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -129,14 +132,21 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   };
 
   const handleItemClick = async (index: number) => {
-    console.log('🔴 CLICK TEST - Item clicked:', index);
-    
     const item = report.itemAnalysis[index];
     console.info('[HEALTH][PHOTO_ITEM]->[FULL_REPORT]', { name: item?.name });
 
+    if (!onOpenHealthModal) {
+      console.warn('[HEALTH][PHOTO_ITEM] No modal opener provided');
+      toast({
+        title: "Feature Unavailable",
+        description: "Health modal is not available in this context",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Force enable generic foods for photo items
     const ENABLE_GENERIC = true;
-    let product = null;
 
     if (ENABLE_GENERIC) {
       const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
@@ -151,65 +161,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         // Create product model from generic food data
         const genericProduct = productFromGeneric(g);
         
-        // Create HealthAnalysisResult from generic food
-        const healthAnalysisResult = {
-          itemName: genericProduct.name,
-          productName: genericProduct.name,
-          title: genericProduct.name,
-          healthScore: 85, // Good score for whole foods
-          ingredientsText: `${genericProduct.name} (whole food)`,
-          ingredientFlags: [],
-          flags: [],
-          nutritionData: {
-            calories: genericProduct.nutrients.calories || 0,
-            protein: genericProduct.nutrients.protein_g || 0,
-            carbs: genericProduct.nutrients.carbs_g || 0,
-            fat: genericProduct.nutrients.fat_g || 0,
-            fiber: genericProduct.nutrients.fiber_g || 0,
-            sugar: genericProduct.nutrients.sugar_g || 0,
-            sodium: genericProduct.nutrients.sodium_mg || 0,
-          },
-          nutritionDataPerServing: {
-            energyKcal: genericProduct.nutrients.calories || 0,
-            protein_g: genericProduct.nutrients.protein_g || 0,
-            carbs_g: genericProduct.nutrients.carbs_g || 0,
-            fat_g: genericProduct.nutrients.fat_g || 0,
-            fiber_g: genericProduct.nutrients.fiber_g || 0,
-            sugar_g: genericProduct.nutrients.sugar_g || 0,
-            sodium_mg: genericProduct.nutrients.sodium_mg || 0,
-          },
-          serving_size: genericProduct.serving?.label || `${genericProduct.serving?.grams}g`,
-          healthProfile: {
-            isOrganic: false,
-            isGMO: false,
-            allergens: [],
-            preservatives: [],
-            additives: []
-          },
-          personalizedWarnings: [],
-          suggestions: [
-            'Whole foods like this are excellent nutritional choices',
-            'Consider pairing with other nutrient-dense foods for a complete meal'
-          ],
-          overallRating: 'excellent' as const
-        };
-
         console.info('[HC][STEP] report', { source: 'photo_item' });
         
-        // Use renderHealthReport to open the full health report modal
-        const { renderHealthReport } = await import('@/lib/health/renderHealthReport');
-        renderHealthReport({
-          result: healthAnalysisResult,
-          onScanAnother: () => {
-            console.log('[HEALTH][SCAN_ANOTHER] from photo item');
-          },
-          onClose: () => {
-            console.log('[HEALTH][CLOSE] from photo item');
-          },
-          analysisData: {
-            source: 'photo_item',
-            imageUrl: undefined
-          }
+        // Use the modal opening function provided by parent
+        onOpenHealthModal({
+          source: 'photo_item',
+          product: genericProduct,
+          productName: genericProduct.name,
+          captureTs: Date.now()
         });
       } else {
         console.warn('[GENERIC][RESOLVE] no match found for:', item.name);
