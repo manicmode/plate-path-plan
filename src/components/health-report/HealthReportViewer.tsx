@@ -151,6 +151,9 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         console.info('[HEALTH][GENERIC] matched', { slug: g.slug });
 
         const genericPM = productFromGeneric(g);
+        
+        console.log('[HEALTH][DEBUG] Base data:', base);
+        console.log('[HEALTH][DEBUG] Generic data:', genericPM);
 
         // Merge: prefer detected serving grams if present, else generic's;
         // Fill missing nutrients from generic.
@@ -171,6 +174,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             sodium_mg: base?.nutrients?.sodium_mg ?? genericPM.nutrients?.sodium_mg ?? null,
           },
         };
+        
+        console.log('[HEALTH][DEBUG] Final merged product:', product);
       } else {
         console.warn('[HEALTH][GENERIC] no_match', { name: item.name });
       }
