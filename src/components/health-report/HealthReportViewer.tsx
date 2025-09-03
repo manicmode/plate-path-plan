@@ -258,6 +258,12 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                     {report.overallScore}
                   </span>
                 </div>
+                
+                {/* Overall Score Label */}
+                <div className="text-white/80 text-sm font-medium">
+                  Overall Score
+                </div>
+                
                 <div className="space-y-2">
                   <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full ${verdictStyle.bg}`}>
                     {getScoreIcon(report.overallScore)}
