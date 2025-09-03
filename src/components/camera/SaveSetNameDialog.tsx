@@ -90,15 +90,27 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
             
             <div className="flex gap-3 pt-2">
               <Button
-                onClick={handleSave}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[DEBUG] Save Set button clicked');
+                  handleSave();
+                }}
                 disabled={!setName.trim() || isSaving}
                 className="flex-1"
               >
                 {isSaving ? 'Saving...' : 'Save Set'}
               </Button>
               <Button
+                type="button"
                 variant="outline"
-                onClick={onClose}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[DEBUG] Cancel button clicked');
+                  onClose();
+                }}
                 disabled={isSaving}
                 className="flex-1"
               >
