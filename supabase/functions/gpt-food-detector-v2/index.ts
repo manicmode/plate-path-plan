@@ -449,51 +449,17 @@ Example for salmon plate:
       about_to_parse: true
     });
     
-    // Parse JSON response (handle both array and object formats)
-    let parsedResult;
-    let beforeFilterCount = 0;
+    let items: any[] = [];
     try {
-      parsedResult = JSON.parse(content);
-      const itemCount = Array.isArray(parsedResult) ? parsedResult.length : (parsedResult.items || []).length;
-      console.info('[GPT][parsed]', {
-        request_id: requestId,
-        image_hash: imageHash,
-        items_before_filters: itemCount,
-        parse_success: true,
-        parsed_type: Array.isArray(parsedResult) ? 'array' : 'object'
-      });
-    } catch (parseError) {
-      console.error('[GPT-V2] Failed to parse JSON:', {
-        request_id: requestId,
-        image_hash: imageHash,
-        error: parseError.message,
-        raw_content: content,
-        parse_success: false
-      });
-      console.info('[GPT][parsed]', {
-        request_id: requestId,
-        image_hash: imageHash,
-        items_before_filters: 0,
-        parse_success: false,
-        error: 'parse_failed'
-      });
-      return new Response(JSON.stringify({
-        items: [],
-        _debug: { 
-          from: 'gpt-v2', 
-          error: 'json_parse_error', 
-          raw_content: content,
-          request_id: requestId,
-          image_hash: imageHash
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const parsed = JSON.parse(content);
+      items = parsed.items || parsed.foods || parsed.detections || (Array.isArray(parsed) ? parsed : []);
+      console.info('[PARSE][SUCCESS]', { contentLength: content.length, itemCount: items.length });
+    } catch (error: any) {
+      console.error('[PARSE][ERROR]', { error: error?.message, sample: content?.substring(0, 200) ?? null });
+      return new Response(JSON.stringify({ items: [] }), { status: 200, headers: corsHeadersJson });
     }
-
-    // Handle both array format [...] and object format {items: [...]}
-    let items = Array.isArray(parsedResult) ? parsedResult : (parsedResult.items || []);
-    beforeFilterCount = items.length;
+    
+    let beforeFilterCount = items.length;
     
     // If strict attempt returned 0 items, try relaxed approach
     if (items.length === 0 && attemptType === 'strict') {
