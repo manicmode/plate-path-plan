@@ -4,16 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { scheduleNudges, NudgeCandidate } from '@/nudges/scheduler';
-import { selectNudgesForUser, SelectedNudge } from '@/nudges/scheduler';
-import { logNudgeEvent } from '@/nudges/logEvent';
-import NudgeQARunner from '@/scripts/nudgeQARunner';
-
-interface WindowBoundary {
-  hour: number;
-  timeUntil: number;
-  description: string;
-}
 
 export function NudgeQADashboard() {
   const { user } = useAuth();
@@ -21,11 +11,6 @@ export function NudgeQADashboard() {
   const [localStorageData, setLocalStorageData] = useState<any>({});
   const [dbEvents, setDbEvents] = useState<any[]>([]);
   const [isInWindow, setIsInWindow] = useState(false);
-  const [eligibleNudges, setEligibleNudges] = useState<NudgeCandidate[]>([]);
-  const [nextBoundary, setNextBoundary] = useState<WindowBoundary | null>(null);
-  const [isRunningQA, setIsRunningQA] = useState(false);
-  const [qaResults, setQAResults] = useState<any[]>([]);
-  const [stressSimulated, setStressSimulated] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -35,29 +20,6 @@ export function NudgeQADashboard() {
       
       const hour = pt.getHours();
       setIsInWindow(hour >= 19 && hour < 24);
-      
-      // Calculate next boundary
-      const boundaries = [0, 9, 10, 19, 20, 21, 23, 24];
-      let nextHour = boundaries.find(h => h > hour);
-      if (!nextHour) {
-        nextHour = 24;
-      }
-      
-      const nextBoundaryTime = new Date(pt);
-      if (nextHour === 24) {
-        nextBoundaryTime.setDate(nextBoundaryTime.getDate() + 1);
-        nextBoundaryTime.setHours(0, 0, 0, 0);
-      } else {
-        nextBoundaryTime.setHours(nextHour, 0, 0, 0);
-      }
-      
-      const msUntil = nextBoundaryTime.getTime() - pt.getTime();
-      
-      setNextBoundary({
-        hour: nextHour,
-        timeUntil: msUntil,
-        description: nextHour === 24 ? 'Midnight refresh' : `${nextHour}:00 boundary refresh`
-      });
     };
     
     updateTime();
@@ -73,8 +35,7 @@ export function NudgeQADashboard() {
         
         setLocalStorageData({
           activeNudges: activeNudges ? JSON.parse(activeNudges) : [],
-          shownRunIds: shownRunIds ? JSON.parse(shownRunIds) : [],
-          isRehydrated: !!activeNudges && JSON.parse(activeNudges).length > 0
+          shownRunIds: shownRunIds ? JSON.parse(shownRunIds) : []
         });
       };
       
@@ -83,31 +44,6 @@ export function NudgeQADashboard() {
       return () => clearInterval(interval);
     }
   }, [user?.id]);
-
-  // Check eligible nudges every 30 seconds
-  useEffect(() => {
-    const checkEligibility = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const result = await scheduleNudges({
-          userId: user.id,
-          now: new Date(),
-          maxPerRun: 10, // Get all candidates
-          qaMode: true,
-          qaMock: stressSimulated ? { stressTagsLast48h: true } : undefined
-        });
-        
-        setEligibleNudges(result.reasons || []);
-      } catch (error) {
-        console.error('Error checking nudge eligibility:', error);
-      }
-    };
-    
-    checkEligibility();
-    const interval = setInterval(checkEligibility, 30000);
-    return () => clearInterval(interval);
-  }, [user?.id, stressSimulated]);
 
   const queryTodaysEvents = async () => {
     try {
@@ -126,48 +62,10 @@ export function NudgeQADashboard() {
   };
 
   const simulateStressContext = async () => {
-    setStressSimulated(!stressSimulated);
+    console.log("🧠 Simulating stress context for breathing nudge eligibility");
     
-    if (!stressSimulated) {
-      console.log("🧠 Simulating stress context for breathing nudge eligibility");
-      
-      // Create a test mood log with stress tags
-      if (user?.id) {
-        try {
-          const { data, error } = await supabase
-            .from('mood_logs')
-            .insert({
-              user_id: user.id,
-              mood_score: 3,
-              tags: ['stressed', 'anxious'],
-              reflection: 'QA Test - simulated stress for breathing nudge testing',
-              created_at: new Date().toISOString()
-            });
-            
-          if (!error) {
-            console.log("✅ Created test mood log with stress tags");
-          }
-        } catch (error) {
-          console.error('Error creating test mood log:', error);
-        }
-      }
-    } else {
-      console.log("❌ Disabled stress simulation");
-    }
-  };
-
-  const runComprehensiveQA = async () => {
-    setIsRunningQA(true);
-    try {
-      const qaRunner = new NudgeQARunner();
-      await qaRunner.runComprehensiveQA();
-      setQAResults([{ message: "QA completed - check console for detailed results", timestamp: new Date() }]);
-    } catch (error) {
-      console.error('QA Runner failed:', error);
-      setQAResults([{ message: `QA failed: ${error}`, timestamp: new Date() }]);
-    } finally {
-      setIsRunningQA(false);
-    }
+    // This would normally create mood logs with stress tags
+    alert("In a real scenario, this would create mood logs with 'stressed', 'anxious', or 'overwhelmed' tags");
   };
 
   const logCurrentState = () => {
@@ -176,12 +74,6 @@ export function NudgeQADashboard() {
       isInWindow,
       localStorageData,
       recentEvents: dbEvents.slice(0, 5),
-      eligibleNudges: eligibleNudges.map(n => ({
-        id: n.id,
-        allowed: n.allowed,
-        reasons: n.reasons
-      })),
-      nextBoundary,
       timestamp: new Date().toISOString()
     };
     
@@ -201,7 +93,7 @@ export function NudgeQADashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <h4 className="font-medium">PT Time</h4>
               <p className="text-2xl font-mono">{ptTime}</p>
@@ -215,46 +107,6 @@ export function NudgeQADashboard() {
                 {isInWindow ? '✅ Active' : '❌ Inactive'}
               </p>
             </div>
-            <div>
-              <h4 className="font-medium">Next Boundary</h4>
-              {nextBoundary && (
-                <>
-                  <p className="text-sm font-medium">{nextBoundary.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {Math.floor(nextBoundary.timeUntil / 60000)}m {Math.floor((nextBoundary.timeUntil % 60000) / 1000)}s
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Nudge Eligibility</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {eligibleNudges.map((nudge, i) => (
-              <div key={i} className={`p-3 rounded border ${nudge.allowed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">{nudge.id}</h4>
-                  <Badge variant={nudge.allowed ? "default" : "secondary"}>
-                    {nudge.allowed ? "Eligible" : "Blocked"}
-                  </Badge>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {nudge.reasons.map((reason, ri) => (
-                    <div key={ri} className="text-xs flex items-center gap-2">
-                      <span>{reason.pass ? '✅' : '❌'}</span>
-                      <span className="font-mono">{reason.gate}</span>
-                      <span className="text-muted-foreground">{reason.detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </CardContent>
       </Card>
@@ -265,12 +117,6 @@ export function NudgeQADashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium">Persistence Status</h4>
-              <Badge variant={localStorageData.isRehydrated ? "default" : "secondary"}>
-                {localStorageData.isRehydrated ? "Rehydrated" : "Fresh Run"}
-              </Badge>
-            </div>
             <div>
               <h4 className="font-medium">Active Nudges ({localStorageData.activeNudges?.length || 0})</h4>
               <pre className="text-xs bg-gray-100 p-2 rounded max-h-32 overflow-auto">
@@ -317,18 +163,11 @@ export function NudgeQADashboard() {
           <CardTitle>QA Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button onClick={runComprehensiveQA} disabled={isRunningQA} className="w-full">
-            {isRunningQA ? 'Running Comprehensive QA...' : '🧪 Run Comprehensive QA'}
-          </Button>
           <Button onClick={logCurrentState} className="w-full">
             📊 Log Current State to Console
           </Button>
-          <Button 
-            onClick={simulateStressContext} 
-            variant={stressSimulated ? "destructive" : "outline"} 
-            className="w-full"
-          >
-            {stressSimulated ? '❌ Disable Stress Simulation' : '🧠 Simulate Stress Context'}
+          <Button onClick={simulateStressContext} variant="outline" className="w-full">
+            🧠 Simulate Stress Context
           </Button>
           <Button 
             onClick={() => window.location.reload()} 
@@ -339,26 +178,6 @@ export function NudgeQADashboard() {
           </Button>
         </CardContent>
       </Card>
-
-      {qaResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>QA Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {qaResults.map((result, i) => (
-                <div key={i} className="text-sm p-2 bg-gray-100 rounded">
-                  <span className="font-medium">{result.message}</span>
-                  <span className="text-muted-foreground text-xs ml-2">
-                    {result.timestamp?.toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

@@ -263,114 +263,15 @@ export const QA_QUERIES = {
   `
 };
 
-// Global QA function exposure (gated by feature flag + auth, not DEV)
+// Expose to window for console access
 if (typeof window !== 'undefined') {
-  const globalWindow = window as any;
+  (window as any).NudgeQARunner = NudgeQARunner;
+  (window as any).runNudgeQA = () => new NudgeQARunner().runComprehensiveQA();
+  (window as any).QA_QUERIES = QA_QUERIES;
   
-  // Import the gating utility
-  import('@/utils/qaGating').then(({ isQaEnabled, initQaAccess }) => {
-    
-    // Initialize QA access check
-    initQaAccess().then(enabled => {
-      if (enabled) {
-        // Primary QA functions - full functionality
-        globalWindow.runNudgeQA = () => new NudgeQARunner().runComprehensiveQA();
-        
-        globalWindow.nudgeQA = {
-          run: () => new NudgeQARunner().runComprehensiveQA(),
-          
-          checkPersistence: () => {
-            const keys = Object.keys(localStorage).filter(k => 
-              k.startsWith('nudgeRun:') || k.startsWith('active_nudges_') || k.startsWith('shown_runids_')
-            );
-            console.log('📦 Nudge persistence check:');
-            keys.forEach(key => {
-              const value = localStorage.getItem(key);
-              console.log(`  ${key}: ${value}`);
-            });
-            return keys.map(k => ({ key: k, value: localStorage.getItem(k) }));
-          },
-          
-          simulateStress: () => {
-            console.log('🧠 To test breathing nudge eligibility:');
-            console.log('  1. Go to /qa/nudges dashboard');
-            console.log('  2. Use the "Add Stress Tags" button to simulate mood with stress');
-            console.log('  3. Or manually log mood with tags: stressed, anxious, overwhelmed');
-            return { 
-              message: 'Use mood logging to add stress tags',
-              tags: ['stressed', 'anxious', 'overwhelmed', 'tense', 'worried'] 
-            };
-          },
-          
-          dbQueries: {
-            todayEvents: () => {
-              const query = QA_QUERIES.todaysPTEvents;
-              console.log('📊 Copy this query to Supabase SQL editor:');
-              console.log(query);
-              return query;
-            },
-            
-            eventTotals: () => {
-              const query = QA_QUERIES.eventTotals;
-              console.log('📈 Event totals query:');
-              console.log(query);
-              return query;
-            }
-          },
-          
-          debugRoute: () => {
-            console.log('🔍 Route debugging:');
-            console.log('  Current path:', window.location.pathname);
-            console.log('  Expected routes:');
-            console.log('    - /qa/nudges (always available)');
-            console.log('    - /nudge-qa (redirect)');
-            console.log('    - /debug/nudges (redirect)');
-            
-            if (!['/qa/nudges', '/nudge-qa', '/debug/nudges'].includes(window.location.pathname)) {
-              console.log('  💡 Navigate to: /qa/nudges');
-            }
-            
-            return {
-              currentPath: window.location.pathname,
-              expectedRoutes: ['/qa/nudges', '/nudge-qa', '/debug/nudges']
-            };
-          }
-        };
-        
-        // Additional references for backwards compatibility
-        globalWindow.NudgeQARunner = NudgeQARunner;
-        globalWindow.QA_QUERIES = QA_QUERIES;
-        
-        console.log('🧪 Nudge QA Tools Loaded! Available commands:');
-        console.log('  - window.runNudgeQA() → Full QA validation');
-        console.log('  - window.nudgeQA.checkPersistence() → Check localStorage');
-        console.log('  - window.nudgeQA.simulateStress() → Stress test guidance');
-        console.log('  - window.nudgeQA.dbQueries.todayEvents() → SQL for events');
-        console.log('  - window.nudgeQA.debugRoute() → Route debugging');
-        console.log('  📍 Dashboard available at: /qa/nudges');
-      } else {
-        // Disabled functions that show warnings
-        globalWindow.runNudgeQA = () => console.warn('❌ QA disabled - requires admin role + qa_routes_enabled feature flag');
-        globalWindow.nudgeQA = undefined;
-        
-        // Belt-and-suspenders fallback
-        globalWindow.runNudgeQAMin = () => {
-          console.warn('❌ QA disabled - requires admin role + qa_routes_enabled feature flag');
-          console.log('🔍 QA Eligibility Check:');
-          console.log('  - User authenticated: checking...');
-          console.log('  - Feature flag enabled: checking...');
-          console.log('  - Admin role: checking...');
-          console.log('  - Contact an administrator for QA access');
-        };
-        
-        console.log('⚠️ QA Tools Disabled - Admin access required');
-      }
-    });
-    
-  }).catch(error => {
-    console.warn('Failed to load QA gating:', error);
-    globalWindow.runNudgeQA = () => console.error('QA tools failed to initialize');
-  });
+  console.log("🔧 QA Tools available:");
+  console.log("  - window.runNudgeQA() - Run comprehensive QA");
+  console.log("  - window.QA_QUERIES - Database validation queries");
 }
 
 export default NudgeQARunner;
