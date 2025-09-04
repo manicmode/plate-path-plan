@@ -393,10 +393,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       console.log('[LEGACY][FLOW] open index=0', initialModalItems[0]?.name);
     }
 
-    // Close the review screen AFTER starting the flow
-    requestAnimationFrame(() => {
+    // Don't close the review screen immediately - let the confirm modal fully initialize first
+    setTimeout(() => {
       onClose();
-    });
+    }, 100);
   };
 
   const handleDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
