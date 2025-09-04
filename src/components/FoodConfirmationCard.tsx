@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => 
   </div>
 );
 
+
 interface FoodItem {
   id?: string;
   name: string;
@@ -41,16 +42,18 @@ interface FoodItem {
   sugar: number;
   sodium: number;
   image?: string;
-  imageUrl?: string;
+  imageUrl?: string; // Add imageUrl property
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
-  source?: string;
-  confidence?: number;
+  source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
+  confidence?: number; // Confidence score for the nutrition estimation
+  // Additional data for flag detection from health report prefill
   allergens?: string[];
   additives?: string[];
   categories?: string[];
   _provider?: string;
+  // Portion scaling context
   basePer100?: {
     calories: number;
     protein_g: number;
@@ -62,7 +65,7 @@ interface FoodItem {
   } | null;
   portionGrams?: number | null;
   factor?: number;
-  grams?: number;
+  // Nutrition data for store-based reading
   nutrition?: {
     perGram?: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>>;
   };
@@ -72,34 +75,15 @@ interface FoodConfirmationCardProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (foodItem: FoodItem) => void;
-  onSkip?: () => void;
-  onCancelAll?: () => void;
+  onSkip?: () => void; // Skip functionality (now "Don't Log")
+  onCancelAll?: () => void; // Cancel all items functionality
   foodItem: FoodItem | null;
-  showSkip?: boolean;
-  currentIndex?: number;
-  totalItems?: number;
-  isProcessingFood?: boolean;
-  onVoiceAnalyzingComplete?: () => void;
+  showSkip?: boolean; // Whether to show "Don't Log" button
+  currentIndex?: number; // Current item index for multi-item flow
+  totalItems?: number; // Total items for multi-item flow
+  isProcessingFood?: boolean; // Whether the parent is processing the food item
+  onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
-
-// Empty fallbacks that don't change the hook count
-const EMPTY_PG: Record<string, number> = Object.freeze({});
-const EMPTY_ITEM: FoodItem = Object.freeze({ 
-  id: '__nil__', 
-  name: 'Unknown Item',
-  calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0,
-  portionGrams: 100,
-  grams: 0, 
-  nutrition: { perGram: EMPTY_PG },
-  image: undefined,
-  imageUrl: undefined,
-  basePer100: null,
-  factor: 1,
-  barcode: undefined,
-  ingredientsText: undefined,
-  ingredientsAvailable: false,
-  source: undefined
-});
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
@@ -109,47 +93,143 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   onConfirm,
   onSkip,
   onCancelAll,
-  foodItem: _foodItem,
+  foodItem,
   showSkip = false,
   currentIndex,
   totalItems,
   isProcessingFood = false,
   onVoiceAnalyzingComplete
 }) => {
-  // State hooks MUST come first - never conditional
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
+  const [isChecked, setIsChecked] = useState(false);
+  const [showManualIngredientEntry, setShowManualIngredientEntry] = useState(false);
+  const [manualIngredients, setManualIngredients] = useState('');
+  const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
-  const [mealQuality, setMealQuality] = useState<any>(null);
-  const [ingredientFlags, setIngredientFlags] = useState<any[]>([]);
-  const [currentFoodItemInternal, setCurrentFoodItemInternal] = useState<FoodItem | null>(null);
-  const [isReminderOpen, setIsReminderOpen] = useState(false);
-  const [showIngredientEntry, setShowIngredientEntry] = useState(false);
-  const [isProcessingIngredients, setIsProcessingIngredients] = useState(false);
+  const [showQualityDetails, setShowQualityDetails] = useState(false);
   const { toast } = useToast();
+  const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
+  const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
+  const { playFoodLogConfirm } = useSound();
 
-  // NEVER short-circuit before hooks; normalize props first
-  const item = _foodItem ?? EMPTY_ITEM;
-  const id = item.id ?? '__nil__';
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  // Selector must be stable across renders
-  const selectPerGram = useCallback(
-    (s: any) => s.byId?.[id]?.perGram,
-    [id]
+  // Set body flag when reminder is open for CSS portal handling
+  useEffect(() => {
+    if (reminderOpen) {
+      document.body.setAttribute('data-reminder-open', 'true');
+    } else {
+      document.body.removeAttribute('data-reminder-open');
+    }
+    return () => document.body.removeAttribute('data-reminder-open');
+  }, [reminderOpen]);
+
+  // Lock body scroll when confirm dialog is open
+  useEffect(() => {
+    document.body.dataset.modalOpen = isOpen ? "true" : "false";
+    console.log("[SCROLL][LOCK]", { rev: CONFIRM_FIX_REV, modal: "confirm", isOpen });
+    return () => { delete document.body.dataset.modalOpen; };
+  }, [isOpen]);
+
+  // Derive display values with broad fallback
+  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
+  
+  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
+  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
+
+  // Check if this is an unknown product that needs manual entry
+  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
+  const hasBarcode = !!(currentFoodItem as any)?.barcode;
+
+  useEffect(() => {
+    const url = imgUrl ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    console.log('[CONFIRM][MOUNT]', {
+      rev: CONFIRM_FIX_REV,
+      name: displayName,
+      imageUrlKind: validImg ? "http" : "none",
+      url: (imgUrl || "").slice(0, 120),
+    });
+  }, [imgUrl, displayName]);
+
+  // Update currentFoodItem when foodItem prop changes
+  React.useEffect(() => {
+    // Clear current food item first to prevent showing old data
+    if (foodItem !== currentFoodItem) {
+      setCurrentFoodItem(null);
+      
+      // Brief delay to ensure clean transition in multi-item flow
+      const timer = setTimeout(() => {
+        setCurrentFoodItem(foodItem);
+        setIsChecked(false); // Reset checkbox when new food item is loaded
+        setManualIngredients(''); // Reset manual ingredients
+        
+        // Auto-check ingredients if available
+        if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
+          checkIngredients(foodItem.ingredientsText);
+        }
+      }, 100); // 100ms delay for smooth transition
+      
+      return () => clearTimeout(timer);
+    } else {
+      setCurrentFoodItem(foodItem);
+      setIsChecked(false);
+      setManualIngredients('');
+      
+      if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
+        checkIngredients(foodItem.ingredientsText);
+      }
+    }
+  }, [foodItem, currentFoodItem, checkIngredients]);
+
+  // Trigger coach response when flagged ingredients are detected
+  React.useEffect(() => {
+    if (flaggedIngredients.length > 0 && currentFoodItem) {
+      // Mock coach message callback for demo
+      const handleCoachMessage = (message: any) => {};
+      
+      triggerCoachResponseForIngredients(flaggedIngredients, handleCoachMessage);
+    }
+  }, [flaggedIngredients, currentFoodItem, triggerCoachResponseForIngredients]);
+
+  // Hide voice analyzing overlay when confirmation modal is fully mounted and open
+  React.useEffect(() => {
+    if (isOpen && currentFoodItem && onVoiceAnalyzingComplete) {
+      // Ensure the modal is fully rendered and stable before hiding the overlay
+      const timer = setTimeout(() => {
+        onVoiceAnalyzingComplete();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
+
+  if (!currentFoodItem) return null;
+
+  // FORCE: read from store by exact item.id first
+  const storePerGram = useNutritionStore(
+    s => s.byId[currentFoodItem.id || '']?.perGram
   );
 
-  // Always call the store hook – even for the __nil__ id
-  const storePerGram = useNutritionStore(selectPerGram);
+  // Fallback only if store is missing
+  const perGram = storePerGram ?? currentFoodItem.nutrition?.perGram ?? {};
 
-  // Prefer store; fallback to props; always defined
-  const perGram = storePerGram ?? item.nutrition?.perGram ?? EMPTY_PG;
+  if (process.env.NODE_ENV === 'development') {
+    const pgSum = Object.values(perGram).reduce((a: number, v: any) => a + (+v || 0), 0);
+    console.log('[SST][CARD_BIND]', { id: currentFoodItem.id, pgSum, fromStore: !!storePerGram });
+  }
 
-  const grams = (item.portionGrams ?? 100) * (portionPercentage[0] / 100);
-
+  const portionMultiplier = portionPercentage[0] / 100;
+  
+  // Compute macros strictly from perGram if available
   const macros = useMemo(() => {
-    const v = (k: keyof typeof perGram) => (perGram[k] ?? 0) * grams;
-    return {
+    const g = (currentFoodItem.portionGrams ?? 100) * portionMultiplier;
+    const v = (k: keyof typeof perGram) => (perGram?.[k] ?? 0) * g;
+    
+    return Object.keys(perGram).length > 0 ? {
       calories: Math.round(v('calories')),
       protein: Math.round(v('protein') * 10) / 10,
       carbs: Math.round(v('carbs') * 10) / 10,
@@ -157,32 +237,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       sugar: Math.round(v('sugar') * 10) / 10,
       fiber: Math.round(v('fiber') * 10) / 10,
       sodium: Math.round(v('sodium')),
-    };
-  }, [perGram, grams]);
-
-  // From here down you can branch/render however you like
-  const hasNutrition = Object.keys(perGram).length > 0;
-
-  // Dev probe (safe)
-  if (process.env.NODE_ENV === 'development') {
-    const pgSum = Object.values(perGram).reduce((a: number, b: any) => a + (+b || 0), 0);
-    console.log('[SST][CARD_BIND]', { id, pgSum, fromStore: !!storePerGram });
-  }
-
-  // Now safe to check if we should render anything
-  if (!isOpen || id === '__nil__') {
-    return null;
-  }
-
+    } : null;
+  }, [perGram, currentFoodItem.portionGrams, portionMultiplier]);
+  
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
 
   // Calculate effective nutrients - use macros from store first, then basePer100, then fallback
-  const base = item.basePer100;
-  const gramsFactor = item.factor ?? 1;
-  const sliderFraction = portionPercentage[0] / 100;
+  const base = currentFoodItem.basePer100; // per-100g baseline
+  const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
+  const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  const effective = hasNutrition ? macros : (base
+  const effective = macros || (base
     ? {
         calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
         protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
@@ -193,46 +259,35 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
       }
     : {
-        calories: Math.round(item.calories * sliderFraction),
-        protein: Math.round(item.protein * sliderFraction * 10) / 10,
-        carbs: Math.round(item.carbs * sliderFraction * 10) / 10,
-        fat: Math.round(item.fat * sliderFraction * 10) / 10,
-        fiber: Math.round(item.fiber * sliderFraction * 10) / 10,
-        sugar: Math.round(item.sugar * sliderFraction * 10) / 10,
-        sodium: Math.round(item.sodium * sliderFraction),
+        // fallback: if no perGram and no basePer100 was provided, keep existing behavior
+        calories: Math.round(currentFoodItem.calories * portionMultiplier),
+        protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
+        carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
+        fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
+        fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
       });
 
   const adjustedFood = {
-    ...item,
+    ...currentFoodItem,
     ...effective,
   };
 
-  const currentFoodItem = adjustedFood;
-
-  // Set up the internal state
-  useEffect(() => {
-    setCurrentFoodItemInternal(currentFoodItem);
-  }, [currentFoodItem]);
-
-  // Voice analyzing complete callback
-  useEffect(() => {
-    if (isOpen && currentFoodItem) {
-      const timer = setTimeout(() => {
-        onVoiceAnalyzingComplete?.();
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
-
   const getHealthScore = (food: FoodItem) => {
-    let score = 70;
-    if (food.fiber > 5) score += 10;
-    if (food.protein > 15) score += 5;
-    if (food.sodium < 300) score += 10;
-    if (food.sugar < 10) score += 5;
-    if (food.sodium > 800) score -= 15;
-    if (food.sugar > 20) score -= 10;
-    if (food.calories > 500) score -= 5;
+    let score = 70; // Base score
+    
+    // Positive factors
+    if (food.fiber > 5) score += 10; // High fiber
+    if (food.protein > 15) score += 5; // Good protein
+    if (food.sodium < 300) score += 10; // Low sodium
+    if (food.sugar < 10) score += 5; // Low sugar
+    
+    // Negative factors
+    if (food.sodium > 800) score -= 15; // High sodium
+    if (food.sugar > 20) score -= 10; // High sugar
+    if (food.calories > 500) score -= 5; // High calorie
+    
     return Math.max(0, Math.min(100, score));
   };
 
@@ -243,16 +298,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const getHealthFlags = (food: FoodItem) => {
-    const ingredientsText = food.ingredientsText || '';
+    // Use the deterministic flagger system
+    const ingredientsText = (food as any).ingredientsText || food.ingredientsText || '';
     const nutritionThresholds: NutritionThresholds = {
       sodium_mg_100g: food.sodium,
       sugar_g_100g: food.sugar,
-      satfat_g_100g: food.fat * 0.3,
+      satfat_g_100g: food.fat * 0.3, // Rough estimate - 30% of total fat as saturated
       fiber_g_100g: food.fiber,
       protein_g_100g: food.protein,
     };
 
     const flags = detectFlags(ingredientsText, nutritionThresholds);
+    
+    console.debug('[FLAGS][INPUT]', {
+      hasIngredients: !!ingredientsText,
+      allergens: (food as any).allergens?.length || 0,
+      additives: (food as any).additives?.length || 0
+    });
+    
+    console.debug('[FLAGS][RESULT]', { count: flags?.length || 0 });
     
     return flags.map(flag => ({
       emoji: flag.severity === 'good' ? '✅' : flag.severity === 'warning' ? '⚠️' : '🚫',
@@ -262,277 +326,931 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }));
   };
 
-  const healthScore = getHealthScore(currentFoodItem);
-  const healthBadge = getHealthBadge(healthScore);
-  const healthFlags = getHealthFlags(currentFoodItem);
+  // Meal Quality Evaluation Functions
+  const evaluateMealQuality = async (nutritionLogId: string) => {
+    if (!nutritionLogId) return;
+    
+    setIsEvaluatingQuality(true);
+    try {
+      
+      
+      const { data, error } = await supabase.functions.invoke('evaluate-meal-quality', {
+        body: { nutrition_log_id: nutritionLogId }
+      });
+
+      if (error) {
+        console.error('Error evaluating meal quality:', error);
+        return;
+      }
+
+      
+      setQualityData(data);
+      
+      // Show toast if score is particularly good or concerning
+      if (data.quality_score >= 85) {
+        toast({
+          title: "🌟 Excellent Food Choice!",
+          description: `Quality score: ${data.quality_score}/100 - ${data.quality_verdict}`,
+          duration: 4000,
+        });
+      } else if (data.quality_score < 50) {
+        toast({
+          title: "⚠️ Consider Healthier Options",
+          description: `Quality score: ${data.quality_score}/100 - Consider the flagged ingredients`,
+          duration: 4000,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to evaluate meal quality:', error);
+    } finally {
+      setIsEvaluatingQuality(false);
+    }
+  };
+
+  const getProcessingLevelBadge = (level: string) => {
+    switch (level) {
+      case 'whole':
+        return { label: 'Whole Food', color: 'bg-green-500', textColor: 'text-white' };
+      case 'minimally_processed':
+        return { label: 'Minimally Processed', color: 'bg-green-400', textColor: 'text-white' };
+      case 'processed':
+        return { label: 'Processed', color: 'bg-yellow-500', textColor: 'text-white' };
+      case 'ultra_processed':
+        return { label: 'Ultra-Processed', color: 'bg-red-500', textColor: 'text-white' };
+      default:
+        return { label: 'Unknown', color: 'bg-gray-400', textColor: 'text-white' };
+    }
+  };
+
+  const getQualityScoreColor = (score: number) => {
+    if (score >= 85) return 'text-green-600';
+    if (score >= 70) return 'text-blue-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  // Map technical source names to user-friendly labels
+  const getFriendlySourceLabel = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'branded-database':
+      case 'branded_database':
+        return 'Branded database';
+      case 'usda':
+      case 'openfoodfacts':
+      case 'open_food_facts':
+        return 'Food database';
+      case 'gpt-individual':
+      case 'gpt-fallback':
+      case 'ai-estimate':
+      case 'ai_estimate':
+      case 'multi-ai-fallback':
+        return 'AI estimate';
+      default:
+        return 'Database lookup';
+    }
+  };
 
   const handleConfirm = async () => {
-    if (!currentFoodItem) return;
+    // Prevent double-processing
+    if (isConfirming || isProcessingFood) {
+      
+      return;
+    }
     
+    // Set confirming state immediately to disable button and prevent double-clicks
     setIsConfirming(true);
     
     try {
-      const finalFood = {
-        ...currentFoodItem,
-        portionGrams: Math.round((currentFoodItem.portionGrams || 100) * (portionPercentage[0] / 100)),
-        factor: portionPercentage[0] / 100
-      };
-
-      await onConfirm(finalFood);
-    } catch (error) {
-      console.error('Error confirming food:', error);
-      toast({
-        title: "Error",
-        description: "Failed to confirm food item. Please try again.",
-        variant: "destructive",
+      
+      
+      // Add 10-second timeout wrapper around onConfirm
+      const confirmPromise = new Promise<void>((resolve, reject) => {
+        try {
+          // Persist only HTTP(S) image URLs; anything else becomes undefined.
+          const payload = {
+            ...adjustedFood,
+            image: typeof adjustedFood.image === 'string' && /^https?:\/\//i.test(adjustedFood.image)
+              ? adjustedFood.image
+              : undefined,
+          };
+          onConfirm(payload);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
       });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('CONFIRM_TIMEOUT: Food logging took too long (10s limit)'));
+        }, 10000);
+      });
+      
+      // Race the confirm call with timeout
+      await Promise.race([confirmPromise, timeoutPromise]);
+      
+      // Success animation delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Play food log confirmation sound
+      SoundGate.markConfirm();
+      
+      playFoodLogConfirm().catch(error => {
+        console.warn('🔊 Food log sound failed:', error);
+      });
+      
+      // Evaluate meal quality after logging
+      // Note: We need the nutrition_log_id, which should be returned from onConfirm
+      // For now, we'll simulate this - in a real implementation, onConfirm should return the created log ID
+      setTimeout(async () => {
+        // This is a temporary solution - in production, onConfirm should return the nutrition log ID
+        try {
+          const { data: recentLogs, error } = await supabase
+            .from('nutrition_logs')
+            .select('id')
+            .eq('food_name', adjustedFood.name)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (recentLogs && recentLogs.length > 0) {
+            await evaluateMealQuality(recentLogs[0].id);
+          }
+        } catch (error) {
+          console.error('Failed to find recent nutrition log for quality evaluation:', error);
+        }
+      }, 1000);
+      
+      // Show success toast with animation
+      toast({
+        title: `✅ ${adjustedFood.name} logged successfully`,
+        description: `${adjustedFood.calories} calories added to your nutrition log.`,
+        duration: 3000,
+      });
+      
+      // Don't call onClose() for multi-item flows to prevent jumping to home
+      if (!totalItems || totalItems <= 1) {
+        onClose();
+      }
+      
+    } catch (error) {
+      console.error('❌ Food confirmation failed:', error);
+      
+      // Handle timeout errors
+      if (error.message?.includes('CONFIRM_TIMEOUT')) {
+        toast({
+          title: "⏰ Logging Timeout",
+          description: "Food logging took too long. Please try again.",
+          duration: 4000,
+        });
+      } else {
+        toast({
+          title: "❌ Logging Failed",
+          description: "Failed to log food item. Please try again.",
+          duration: 4000,
+        });
+      }
     } finally {
       setIsConfirming(false);
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <AccessibleDialogContent 
-        title={currentFoodItem.name}
-        className="max-w-4xl max-h-[90vh] overflow-y-auto p-0"
-      >
-        <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                {currentFoodItem.image || currentFoodItem.imageUrl ? (
-                  <img 
-                    src={currentFoodItem.image || currentFoodItem.imageUrl} 
-                    alt={currentFoodItem.name}
-                    className="w-16 h-16 rounded-lg object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (nextElement) {
-                        nextElement.style.display = 'flex';
-                      }
-                    }}
-                  />
-                ) : null}
-                <FallbackEmoji className="w-16 h-16 rounded-lg" />
+  const handleEdit = () => {
+    setIsEditOpen(true);
+  };
+
+  const handleEditSave = (updatedFood: FoodItem, logTime: Date, note: string) => {
+    setCurrentFoodItem(updatedFood);
+    toast({
+      title: "Changes Saved",
+      description: "Food details updated successfully.",
+    });
+  };
+
+  const handleManualIngredientSubmit = async (ingredientsText: string) => {
+    setManualIngredients(ingredientsText);
+    
+    // Update the current food item with manual ingredients
+    if (currentFoodItem) {
+      setCurrentFoodItem({
+        ...currentFoodItem,
+        ingredientsText,
+        ingredientsAvailable: true
+      });
+    }
+    
+    // Check the manually entered ingredients
+    await checkIngredients(ingredientsText);
+    
+    setShowManualIngredientEntry(false);
+    toast({
+      title: "Ingredients Added",
+      description: "Successfully checked for harmful ingredients.",
+    });
+  };
+
+  const isFromBarcode = currentFoodItem?.barcode ? true : false;
+  const hasIngredients = currentFoodItem?.ingredientsAvailable && 
+    (currentFoodItem?.ingredientsText?.length || 0) > 0;
+  const needsManualIngredients = isFromBarcode && !hasIngredients;
+
+  const healthScore = getHealthScore(currentFoodItem);
+  const healthBadge = getHealthBadge(healthScore);
+  const healthFlags = getHealthFlags(currentFoodItem);
+
+  const getPortionLabel = (percentage: number) => {
+    if (percentage === 0) return 'None';
+    if (percentage === 25) return 'Quarter';
+    if (percentage === 50) return 'Half';
+    if (percentage === 75) return 'Three-quarters';
+    if (percentage === 100) return 'Full portion';
+    return `${percentage}%`;
+  };
+
+  // Show loading state during transition in multi-item flow
+  if (!currentFoodItem && isOpen) {
+    return (
+      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
+        <AccessibleDialogContent 
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          title="Loading next item"
+          description="Please wait while the next food item is being loaded."
+        >
+          <div className="p-6 flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
+                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">
-                  {currentFoodItem.name}
-                </h2>
-                {currentIndex !== undefined && totalItems !== undefined && (
-                  <p className="text-sm text-muted-foreground">
-                    Item {currentIndex + 1} of {totalItems}
-                  </p>
-                )}
-              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading next item...
+              </p>
+              {totalItems > 1 && (
+                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                  Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                </p>
+              )}
             </div>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogClose>
           </div>
-        </DialogHeader>
+        </AccessibleDialogContent>
+      </Dialog>
+    );
+  }
 
-        <div className="p-6">
-          <Tabs defaultValue="nutrition" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
-              <TabsTrigger value="health">Health</TabsTrigger>
-              <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="nutrition" className="mt-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-sm font-medium mb-3 block">
-                        Portion Size: {portionPercentage[0]}%
-                      </label>
-                      <Slider
-                        value={portionPercentage}
-                        onValueChange={setPortionPercentage}
-                        max={200}
-                        min={25}
-                        step={25}
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>25%</span>
-                        <span>100%</span>
-                        <span>200%</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-3 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">{effective.calories}</div>
-                        <div className="text-sm text-muted-foreground">Calories</div>
-                      </div>
-                      <div className="text-center p-3 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{effective.protein}g</div>
-                        <div className="text-sm text-muted-foreground">Protein</div>
-                      </div>
-                      <div className="text-center p-3 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{effective.carbs}g</div>
-                        <div className="text-sm text-muted-foreground">Carbs</div>
-                      </div>
-                      <div className="text-center p-3 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">{effective.fat}g</div>
-                        <div className="text-sm text-muted-foreground">Fat</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="flex justify-between">
-                        <span>Fiber:</span>
-                        <span className="font-medium">{effective.fiber}g</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Sugar:</span>
-                        <span className="font-medium">{effective.sugar}g</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Sodium:</span>
-                        <span className="font-medium">{effective.sodium}mg</span>
-                      </div>
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        // Prevent closing parent when reminder is open
+        if (reminderOpen && !open) return;
+        if (totalItems && totalItems > 1) return;
+        onClose();
+      }}>
+        <AccessibleDialogContent 
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          title="Confirm Food Log"
+          description="We'll save these items to your log."
+          showCloseButton={!reminderOpen}
+          data-dialog-root="confirm-food-log"
+        >
+          <div className="p-6">
+            {/* Unknown Product Alert */}
+            {isUnknownProduct && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
+                      Product Not Found
+                    </h3>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                      Barcode {hasBarcode ? `${(currentFoodItem as any).barcode}` : ''} was not found in our database. Please add the product details manually.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setIsEditOpen(true)}
+                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Add Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Add Ingredients
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </div>
+              </div>
+            )}
 
-            <TabsContent value="health" className="mt-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Badge variant={healthBadge.variant as any} className="text-sm">
-                        {healthBadge.emoji} {healthBadge.label}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Health Score: {healthScore}/100
-                      </span>
+            <div className="text-center mb-4 relative">
+              {/* Edit Button - Top Right Only */}
+              <div className="absolute -top-2 -right-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="h-8 px-2 text-xs border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+              </div>
+
+              {/* Save/Confirm button with visual feedback */}
+              <button
+                onClick={() => setIsChecked(!isChecked)}
+                className={`absolute -top-2.5 -left-2.5 w-10 h-10 rounded-full border-2 transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                  isChecked 
+                    ? 'bg-green-500 border-green-500 text-white shadow-lg transform scale-110' 
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-800/30'
+                }`}
+              >
+                <span className="text-lg">
+                  {isChecked ? '✅' : '💾'}
+                </span>
+              </button>
+              
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                {totalItems > 1 && (
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                    Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                  </div>
+                )}
+                Confirm Food Log
+              </h1>
+            </div>
+
+            {/* Food Item Display */}
+            <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
+              {validImg ? (
+                <img
+                  key={imgUrl}             // force refresh when URL changes
+                  src={imgUrl}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                  onLoad={() => console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, event: "load" })}
+                  onError={(e) => { console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, error: "onError->fallback", src: (e.target as HTMLImageElement)?.src }); setImageError(true); }}
+                  className="h-16 w-16 rounded-xl object-cover"
+                />
+              ) : (
+                <FallbackEmoji className="h-16 w-16 rounded-xl" />
+              )}
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                  {displayName}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {adjustedFood.calories} calories
+                </p>
+              </div>
+            </div>
+
+            {/* Portion Size Slider */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {currentFoodItem.portionGrams ? `Per portion (${currentFoodItem.portionGrams}g)` : 'Per portion (unknown size)'}
+                </label>
+                <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  {getPortionLabel(portionPercentage[0])}
+                </span>
+              </div>
+              <Slider
+                value={portionPercentage}
+                onValueChange={(values) => {
+                  setPortionPercentage(values);
+                  // Add forensics logging for portion changes
+                  const pct = values[0];
+                  const scaledCalories = Math.round((currentFoodItem?.calories || 0) * (pct / 100));
+                  console.log('[LOG] portion_change', { pct, calories: scaledCalories });
+                }}
+                max={100}
+                min={0}
+                step={25}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span>0%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
+              </div>
+            </div>
+
+            {/* Manual Ingredient Entry Alert for Barcode Items */}
+            {needsManualIngredients && (
+              <div className="mb-4">
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-1">
+                        No ingredients detected
+                      </h4>
+                      <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                        We found nutrition info but no ingredients list. Add ingredients manually to check for harmful additives, allergens, and other concerning ingredients.
+                      </p>
+                      <Button
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        size="sm"
+                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Ingredients
+                      </Button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                    {healthFlags.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Health Insights</h4>
-                        <div className="space-y-1">
-                          {healthFlags.map((flag, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <span>{flag.emoji}</span>
-                              <span className={flag.positive ? 'text-green-600' : 'text-amber-600'}>
-                                {flag.label}
+            {/* Ingredient Status for Barcode Items */}
+            {isFromBarcode && hasIngredients && (
+              <div className="mb-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Ingredients detected and analyzed
+                    </span>
+                    {flaggedIngredients.length > 0 && (
+                      <Badge variant="destructive" className="text-xs ml-2">
+                        {flaggedIngredients.length} flagged
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabs for Nutrition and Health */}
+            <Tabs defaultValue="nutrition" className="mb-6">
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
+                <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
+                <TabsTrigger value="ingredients" className="rounded-lg">Ingredients</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="nutrition" className="space-y-3 mt-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                    <div className="text-lg">🥩</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.protein}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+                    <div className="text-lg">🍞</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.carbs}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                    <div className="text-lg">🧈</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.fat}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-gray-600 dark:text-gray-400">Fiber</span>
+                    <span className="font-medium">{adjustedFood.fiber}g</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-gray-600 dark:text-gray-400">Sugar</span>
+                    <span className="font-medium">{adjustedFood.sugar}g</span>
+                  </div>
+                </div>
+
+                {/* Nutrition Source Display - User-friendly labels, no confidence % */}
+                {currentFoodItem.source && (
+                  <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                      📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="health" className="space-y-4 mt-4">
+                {/* Meal Quality Section */}
+                {qualityData ? (
+                  <div className="space-y-4">
+                    {/* Quality Score Display */}
+                    <div className="text-center">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                          <Award className="h-6 w-6 text-purple-600" />
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Meal Quality Analysis
+                          </h3>
+                        </div>
+                        
+                        {/* Score Circle and Verdict */}
+                        <div className="flex items-center justify-center gap-4">
+                          <div className="relative w-20 h-20">
+                            <Progress 
+                              value={qualityData.quality_score} 
+                              className="w-20 h-20 rounded-full"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-xl font-bold ${getQualityScoreColor(qualityData.quality_score)}`}>
+                                {qualityData.quality_score}
                               </span>
                             </div>
+                          </div>
+                          <div className="text-center">
+                            <Badge 
+                              className={`text-sm font-medium px-3 py-1 ${
+                                qualityData.quality_verdict === 'Excellent' ? 'bg-green-500 text-white' :
+                                qualityData.quality_verdict === 'Good' ? 'bg-blue-500 text-white' :
+                                qualityData.quality_verdict === 'Moderate' ? 'bg-yellow-500 text-white' :
+                                'bg-red-500 text-white'
+                              }`}
+                            >
+                              {qualityData.quality_verdict}
+                            </Badge>
+                            {qualityData.processing_level && (
+                              <div className="mt-2">
+                                <Badge 
+                                  className={`text-xs ${getProcessingLevelBadge(qualityData.processing_level).color} ${getProcessingLevelBadge(qualityData.processing_level).textColor}`}
+                                >
+                                  {getProcessingLevelBadge(qualityData.processing_level).label}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quality Reasons - Expandable */}
+                    {qualityData.quality_reasons && qualityData.quality_reasons.length > 0 && (
+                      <Collapsible open={showQualityDetails} onOpenChange={setShowQualityDetails}>
+                        <CollapsibleTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                          >
+                            <span>Quality Analysis Details</span>
+                            {showQualityDetails ? 
+                              <ChevronUp className="h-4 w-4" /> : 
+                              <ChevronDown className="h-4 w-4" />
+                            }
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {qualityData.quality_reasons.map((reason: string, index: number) => (
+                            <div 
+                              key={index}
+                              className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
+                                reason.includes('High') && (reason.includes('protein') || reason.includes('fiber')) ||
+                                reason.includes('Excellent') || reason.includes('Good') || reason.includes('Whole food')
+                                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                                  : reason.includes('Low') || reason.includes('Contains') || reason.includes('High sodium') || reason.includes('High sugar')
+                                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                                  : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200'
+                              }`}
+                            >
+                              <span className="text-base">
+                                {reason.includes('High') && (reason.includes('protein') || reason.includes('fiber')) ||
+                                 reason.includes('Excellent') || reason.includes('Good') || reason.includes('Whole food') ? '✅' :
+                                 reason.includes('Low') || reason.includes('Contains') || reason.includes('High sodium') || reason.includes('High sugar') ? '⚠️' : 'ℹ️'}
+                              </span>
+                              <span className="font-medium">{reason}</span>
+                            </div>
                           ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Loading or Initial State */}
+                    {isEvaluatingQuality ? (
+                      <div className="text-center py-6">
+                        <div className="animate-spin h-8 w-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Analyzing meal quality...
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Fallback to original health score display */}
+                        <div className="text-center">
+                          <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
+                            <span>{healthBadge.emoji}</span>
+                            <span>{healthBadge.label}</span>
+                            <span className="text-xs">({healthScore}/100)</span>
+                          </Badge>
+                        </div>
+                        
+                         {/* Health Flags - Improved Layout */}
+                         <div className="space-y-2">
+                           {healthFlags.length > 0 ? (
+                             healthFlags.map((flag, index) => (
+                               <div 
+                                 key={index}
+                                 className={`flex items-center space-x-3 p-3 rounded-lg ${
+                                   flag.positive 
+                                     ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                                     : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                                 }`}
+                               >
+                                 <span className="text-lg">{flag.emoji}</span>
+                                 <div className="flex-1">
+                                   <span className={`text-sm font-medium ${
+                                     flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
+                                   }`}>
+                                     {flag.label}
+                                   </span>
+                                   {flag.description && (
+                                     <p className={`text-xs mt-1 ${
+                                       flag.positive ? 'text-green-700 dark:text-green-300' : 'text-orange-700 dark:text-orange-300'
+                                     }`}>
+                                       {flag.description}
+                                     </p>
+                                   )}
+                                 </div>
+                               </div>
+                             ))
+                           ) : (
+                             <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                               <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                                 No specific health flags detected
+                               </span>
+                             </div>
+                           )}
+                          </div>
+                          
+                         {/* 🧪 Ingredients section with collapsed view */}
+                         {currentFoodItem?.ingredientsText && (
+                           <div className="mt-4">
+                             <details className="group bg-gray-50 dark:bg-gray-700 rounded-lg">
+                               <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900 dark:text-white list-none">
+                                 <div className="flex items-center justify-between">
+                                   <span>View Ingredients</span>
+                                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                                 </div>
+                               </summary>
+                               <div className="p-3 pt-0 border-t border-gray-200 dark:border-gray-600">
+                                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                   {currentFoodItem.ingredientsText}
+                                 </p>
+                               </div>
+                             </details>
+                           </div>
+                         )}
+                         
+                        {/* Health Check Button for Barcode Items */}
+                        {isFromBarcode && (
+                          <div className="mt-4">
+                            <Button
+                               onClick={async () => {
+                                 try {
+                                   const { openHealthReportFromBarcode } = await import('@/features/health/openHealthReport');
+                                   const barcode = currentFoodItem?.barcode;
+                                   if (barcode) {
+                                     const result = await openHealthReportFromBarcode(barcode, 'scanner-manual');
+                                     if (result.success) {
+                                       window.location.href = `${result.route}?mode=${result.params.mode}&barcode=${result.params.barcode}&source=${result.params.source}`;
+                                     }
+                                   }
+                                 } catch (error) {
+                                   console.error('Failed to open health report:', error);
+                                 }
+                               }}
+                              className="w-full"
+                              variant="outline"
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              View Full Health Report
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="ingredients" className="space-y-4 mt-4">
+                {hasIngredients ? (
+                  <div className="space-y-3">
+                    {/* Flagged Ingredients Alert */}
+                    {flaggedIngredients.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                              ⚠️ {flaggedIngredients.length} Concerning Ingredient{flaggedIngredients.length > 1 ? 's' : ''} Found
+                            </p>
+                            <div className="space-y-1">
+                              {flaggedIngredients.slice(0, 3).map((ingredient, index) => (
+                                <div key={index} className="text-xs text-red-700 dark:text-red-300">
+                                  <span className="font-medium">{ingredient.name}</span> - {ingredient.description}
+                                </div>
+                              ))}
+                              {flaggedIngredients.length > 3 && (
+                                <p className="text-xs text-red-700 dark:text-red-300">
+                                  +{flaggedIngredients.length - 3} more flagged ingredients
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ingredients Text Display */}
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Ingredients List:
+                      </h4>
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {currentFoodItem?.ingredientsText || manualIngredients}
+                      </p>
+                    </div>
+
+                    {flaggedIngredients.length === 0 && (
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <span className="text-sm text-green-800 dark:text-green-200">
+                            ✅ No concerning ingredients detected
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="ingredients" className="mt-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Ingredients</h4>
-                      {currentFoodItem.barcode && (
-                        <Badge variant="outline" className="text-xs">
-                          Barcode: {currentFoodItem.barcode}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {currentFoodItem.ingredientsAvailable && currentFoodItem.ingredientsText ? (
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {currentFoodItem.ingredientsText}
-                      </p>
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-muted-foreground mb-4">
-                          No ingredients information available
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowIngredientEntry(true)}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Ingredients
-                        </Button>
-                      </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      No ingredients information available
+                    </p>
+                    {isFromBarcode && (
+                      <Button
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Ingredients Manually
+                      </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                )}
+              </TabsContent>
+            </Tabs>
 
-          <div className="flex gap-3 mt-6">
-            <Button 
-              onClick={handleConfirm}
-              disabled={isConfirming}
-              className="flex-1"
-            >
-              {isConfirming ? "Confirming..." : "Confirm & Log"}
-            </Button>
-            
-            {showSkip && (
-              <Button 
-                variant="outline" 
-                onClick={onSkip}
-                className="flex-1"
-              >
-                Don't Log
-              </Button>
-            )}
-            
-            {onCancelAll && (
-              <Button 
-                variant="ghost" 
-                onClick={onCancelAll}
-                className="px-4"
-              >
-                Cancel All
-              </Button>
-            )}
-          </div>
+            {/* Reminder Toggle */}
+            <ReminderToggle
+              foodName={displayName}
+              foodData={{
+                food_name: displayName,
+                calories: adjustedFood.calories,
+                protein: adjustedFood.protein,
+                carbs: adjustedFood.carbs,
+                fat: adjustedFood.fat,
+                fiber: adjustedFood.fiber,
+                sugar: adjustedFood.sugar,
+                sodium: adjustedFood.sodium,
+              }}
+              className="mb-4"
+              onReminderOpen={() => {
+                setReminderOpen(true);
+                // Assert close button counts when reminder opens
+                setTimeout(() => {
+                  const confirmCount = document.querySelectorAll('[data-dialog-root="confirm-food-log"] button[aria-label="Close"]').length;
+                  const reminderCount = document.querySelectorAll('[data-dialog-root="reminder-modal"] button[aria-label="Close"]').length;
+                  console.log('[A11Y][CLOSE-COUNT]', { rev: CONFIRM_FIX_REV, confirm: confirmCount, reminder: reminderCount });
+                }, 100);
+              }}
+              onReminderClose={() => setReminderOpen(false)}
+            />
 
-          {currentFoodItem.source && (
-            <div className="mt-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                Nutrition data from: {currentFoodItem.source}
-              </p>
+            {/* Bottom Action Buttons - New Clean Layout */}
+            <div className="space-y-3">
+              {totalItems && totalItems > 1 ? (
+                // Multi-Item Layout
+                <>
+                  <div className="flex space-x-3">
+                    {/* Don't Log - Left Half */}
+                    {showSkip && onSkip && (
+                      <Button
+                        variant="outline"
+                        onClick={onSkip}
+                        className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                      >
+                        <MinusCircle className="h-4 w-4 mr-2" />
+                        Don't Log
+                      </Button>
+                    )}
+                    
+                    {/* Cancel All - Right Half */}
+                    <Button
+                      variant="outline"
+                      onClick={onCancelAll}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel All
+                    </Button>
+                  </div>
+                  
+                  {/* Log Item - Full Width Primary */}
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={isConfirming || isProcessingFood || portionPercentage[0] === 0}
+                    aria-busy={isConfirming || isProcessingFood}
+                    className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
+                      !isConfirming && !isProcessingFood && portionPercentage[0] > 0
+                        ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    } ${(isConfirming || isProcessingFood) ? 'animate-pulse pointer-events-none' : ''}`}
+                  >
+                    {isConfirming || isProcessingFood ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                        Logging...
+                      </>
+                    ) : (
+                      `Log Item ${(currentIndex || 0) + 1} of ${totalItems}`
+                    )}
+                  </Button>
+                </>
+              ) : (
+                // Single-Item Layout
+                <>
+                  {/* Cancel - Full Width Red Text */}
+                  <DialogClose asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  
+                  {/* Log Food - Full Width Primary */}
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={isConfirming || portionPercentage[0] === 0}
+                    aria-busy={isConfirming}
+                    className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
+                      !isConfirming && portionPercentage[0] > 0
+                        ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    } ${isConfirming ? 'animate-pulse pointer-events-none' : ''}`}
+                  >
+                    {isConfirming ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                        Logging...
+                      </>
+                    ) : (
+                      'Log Food'
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        </AccessibleDialogContent>
+      </Dialog>
 
-        {showIngredientEntry && (
-          <ManualIngredientEntry
-            isOpen={showIngredientEntry}
-            onClose={() => setShowIngredientEntry(false)}
-            onIngredientsSubmit={(ingredients) => {
-              setCurrentFoodItemInternal(prev => prev ? {
-                ...prev,
-                ingredientsText: ingredients,
-                ingredientsAvailable: true
-              } : null);
-              setShowIngredientEntry(false);
-            }}
-            productName={currentFoodItem.name}
-          />
-        )}
-      </AccessibleDialogContent>
-    </Dialog>
+      {/* Edit Screen */}
+      <FoodEditScreen
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSave={handleEditSave}
+        foodItem={currentFoodItem}
+      />
+
+      {/* Manual Ingredient Entry */}
+      <ManualIngredientEntry
+        isOpen={showManualIngredientEntry}
+        onClose={() => setShowManualIngredientEntry(false)}
+        onIngredientsSubmit={handleManualIngredientSubmit}
+        productName={currentFoodItem?.name || ''}
+      />
+    </>
   );
 };
 
