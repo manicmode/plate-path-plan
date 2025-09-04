@@ -85,6 +85,7 @@ const getCurrentMealTime = () => {
 };
 
 const Home = () => {
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
 
@@ -982,21 +983,67 @@ const Home = () => {
     );
   }
 
+  // Runtime gap correction effect - Home page only
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>("#app-header");
+    const target = document.querySelector<HTMLElement>("#home-correction");
+    if (!header || !target) return;
+
+    const compute = () => {
+      // bottom of sticky header in viewport
+      const headerBottom = header.getBoundingClientRect().bottom;
+
+      // top of our first content container in viewport
+      const targetTop = target.getBoundingClientRect().top;
+
+      // positive gap means content is pushed down; we subtract it
+      const gap = Math.round(targetTop - headerBottom);
+
+      // apply negative margin equal to gap (floor at 0 to avoid overshoot)
+      const correction = gap > 0 ? -gap : 0;
+
+      target.style.setProperty("--home-top-correct", `${correction}px`);
+    };
+
+    // initial + whenever window size, safe-area, or fonts change
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(document.documentElement);
+    ro.observe(header);
+    ro.observe(target);
+
+    window.addEventListener("orientationchange", compute);
+    window.addEventListener("scroll", compute, { passive: true }); // header can change height on scroll in some UIs
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", compute);
+      window.removeEventListener("scroll", compute);
+    };
+  }, []);
+
   return (
-    <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-24 sm:pb-28">
-      {/* Scheduled Nudges */}
-      {!nudgesLoading && selectedNudges.map((nudge) => {
-        const Component = nudge.definition.render;
-        return (
-          <div key={nudge.runId}>
-            <Component
-              runId={nudge.runId}
-              onDismiss={() => dismissNudge(nudge)}
-              onCta={() => ctaNudge(nudge)}
-            />
-          </div>
-        );
-      })}
+    <div className="home-root">
+      {/* correction wrapper — this is the element we'll nudge up */}
+      <div
+        id="home-correction"
+        ref={anchorRef}
+        style={{ marginTop: "var(--home-top-correct, 0px)" }}
+      >
+        <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-24 sm:pb-28">
+          {/* Scheduled Nudges */}
+          {!nudgesLoading && selectedNudges.map((nudge) => {
+            const Component = nudge.definition.render;
+            return (
+              <div key={nudge.runId}>
+                <Component
+                  runId={nudge.runId}
+                  onDismiss={() => dismissNudge(nudge)}
+                  onCta={() => ctaNudge(nudge)}
+                />
+              </div>
+            );
+          })}
 
       {/* Celebration Popup */}
       <CelebrationPopup 
@@ -1943,6 +1990,8 @@ const Home = () => {
         onClose={() => setIsComingSoonOpen(false)}
         feature="Influencers"
       />
+        </div>
+      </div>
     </div>
   );
 };
