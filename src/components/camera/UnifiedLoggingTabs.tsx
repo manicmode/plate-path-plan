@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { RecentMealsTab } from './RecentMealsTab';
 import { RecentSetsTab } from './RecentSetsTab';
 import { ActivityTemplatesTab } from './ActivityTemplatesTab';
@@ -26,6 +26,12 @@ export const UnifiedLoggingTabs = ({ onFoodSelect, onBarcodeSelect, onBack }: Un
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
+      </div>
+
+      {/* RECENT Title */}
+      <div className="flex items-center justify-center gap-2 mb-6">
+        <Clock className="h-5 w-5 text-primary" />
+        <h1 className="text-xl font-semibold text-primary">RECENT</h1>
       </div>
 
       {/* Triple Toggle Tabs */}

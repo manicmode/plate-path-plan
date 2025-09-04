@@ -63,12 +63,6 @@ export const RecentMealsTab = ({ onFoodSelect, onBarcodeSelect }: RecentMealsTab
 
   return (
     <div className="space-y-6">
-      {/* RECENT Title */}
-      <div className="flex items-center justify-center gap-2">
-        <Clock className="h-5 w-5 text-foreground" />
-        <h2 className="text-lg font-semibold text-center">RECENT</h2>
-      </div>
-
       {/* Today's Foods */}
       {todaysFoods.length > 0 && (
         <div className="space-y-3">
