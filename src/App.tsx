@@ -14,10 +14,8 @@ import { FF } from '@/featureFlags';
 // Import camera diagnostic shim (dev-only, off by default)
 import '@/diagnostics/cameraInq';
 
-// Import QA tools in dev mode
-if (import.meta.env.DEV) {
-  import('@/scripts/nudgeQARunner');
-}
+// Import QA tools unconditionally (gated by feature flag + auth)
+import('@/scripts/nudgeQARunner');
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -292,27 +290,29 @@ function AppContent() {
                                 </React.Suspense>
                               }
                             />
-                            <Route 
-                              path="/qa/nudges"
-                              element={
-                                <ProtectedRoute>
-                                  <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                                    <NudgeQAPage />
-                                  </React.Suspense>
-                                </ProtectedRoute>
-                              }
-                            />
-                            {/* Additional QA route variants for easier access */}
-                            <Route 
-                              path="/nudge-qa"
-                              element={<Navigate to="/qa/nudges" replace />}
-                            />
-                            <Route 
-                              path="/debug/nudges"
-                              element={<Navigate to="/qa/nudges" replace />}
-                            />
                          </>
                        )}
+
+                       {/* QA routes - always registered, gated by feature flag + auth */}
+                       <Route 
+                         path="/qa/nudges"
+                         element={
+                           <ProtectedRoute>
+                             <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                               <NudgeQAPage />
+                             </React.Suspense>
+                           </ProtectedRoute>
+                         }
+                       />
+                       {/* QA route variants for easier access */}
+                       <Route 
+                         path="/nudge-qa"
+                         element={<Navigate to="/qa/nudges" replace />}
+                       />
+                       <Route 
+                         path="/debug/nudges"
+                         element={<Navigate to="/qa/nudges" replace />}
+                       />
 
                      <Route path="/exercise-hub" element={
                        <ProtectedRoute>
