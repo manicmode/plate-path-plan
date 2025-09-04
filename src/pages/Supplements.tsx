@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone } from 'lucide-react';
+import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone, ArrowLeft } from 'lucide-react';
 import { useMySupplements } from '@/hooks/useMySupplements';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -133,6 +133,17 @@ const Supplements = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
+      {/* Back Navigation */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/')}
+          className="text-muted-foreground hover:text-foreground p-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      </div>
+
       <div className="text-center space-y-2 sm:space-y-4">
         <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow`}>
           <Pill className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
