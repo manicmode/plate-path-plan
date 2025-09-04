@@ -339,6 +339,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           ) : showWebScanner ? (
             <WebBarcodeScanner
               onBarcodeDetected={(barcode) => {
+                console.log('[BARCODE][SCAN:DETECTED]', { raw: barcode, format: 'web-scanner' });
                 Sound.play('beep');
                 onBarcodeDetected(barcode);
               }}

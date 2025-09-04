@@ -165,13 +165,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   useEffect(() => {
     const url = imgUrl ?? '';
     const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    const isBarcode = !!(currentFoodItem as any)?.barcode || !!(currentFoodItem as any)?._provider;
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
       imageUrlKind: validImg ? "http" : "none",
       url: (imgUrl || "").slice(0, 120),
     });
-  }, [imgUrl, displayName]);
+    
+    if (isBarcode && isOpen) {
+      console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name });
+    }
+  }, [imgUrl, displayName, isOpen, currentFoodItem]);
 
   // Stabilize: directly sync from prop without null flip
   useEffect(() => {

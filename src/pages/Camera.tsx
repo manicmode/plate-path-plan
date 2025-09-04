@@ -1264,6 +1264,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     try {
       setIsLoadingBarcode(true);
       setInputSource('barcode');
+      console.log('[BARCODE][MODE]', { inputSource: 'barcode', route: location?.pathname });
       console.log('=== BARCODE LOOKUP START ===');
       console.log('Barcode detected:', barcode);
 
@@ -1292,8 +1293,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       // Validate barcode format
       const cleanBarcode = barcode.trim().replace(/\s+/g, '');
       if (!/^\d{8,14}$/.test(cleanBarcode)) {
+        console.warn('[BARCODE][EARLY_RETURN]', { reason: 'invalid_format', code: barcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
         throw new Error('Invalid barcode format. Please check the barcode number.');
       }
+      
+      console.log('[BARCODE][LOOKUP:REQUEST]', { code: barcode, normalized: cleanBarcode });
 
 // Global barcode search is intentionally forced OFF for now.
 // Runtime is hardcoded to false; the profile toggle is ignored until rollout.
@@ -1343,9 +1347,12 @@ console.log('Global search enabled:', enableGlobalSearch);
         status = response.error ? response.error.status || 'error' : 200;
         hit = !!response.data?.ok && !!response.data.product;
         
+        console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: !response.error, found: hit, itemName: response.data?.product?.name, provider: 'enhanced-health-scanner' });
+        
         if (response.error) {
           console.error('=== FUNCTION INVOCATION ERROR ===');
           console.error('Error object:', response.error);
+          console.warn('[BARCODE][EARLY_RETURN]', { reason: 'function_error', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
           
           // Handle specific error types with immediate fallback to manual entry
           if (response.error.message?.includes('404') || 
@@ -1380,6 +1387,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         if (!data?.ok || !data.product) {
           const reason = data?.reason || 'unknown';
           console.log('=== BARCODE LOOKUP FAILED ===', reason);
+          console.warn('[BARCODE][EARLY_RETURN]', { reason: 'lookup_failed', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
           
           // Add logging for failed barcode lookup
           console.log('[LOG] off_result', { status: 404, hit: false });
@@ -1414,6 +1422,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           // Map the response using robust nutrition handling
           const mapped = mapToLogFood(cleanBarcode, data);
           const p = data.product as LogProduct; // Keep for ingredients/health data
+          
+          console.log('[BARCODE][MAP:ITEM]', { id: mapped?.name, name: mapped?.name, grams: mapped?.servingGrams });
           
           // Transform to RecognizedFood format with mapped nutrition
           const recognizedFood: RecognizedFood = {
@@ -1459,6 +1469,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
           console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
           setRecognizedFoods([recognizedFood]);
+          console.log('[BARCODE][OPEN_CONFIRM]', { id: recognizedFood?.name, name: recognizedFood?.name, via: 'confirm-card' });
           setShowConfirmation(true);
           addRecentBarcode({
             barcode: cleanBarcode,
@@ -1521,6 +1532,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
           console.log('=== SETTING FALLBACK RECOGNIZED FOOD (PROCESSING ERROR) ===', fallbackFood);
           setRecognizedFoods([fallbackFood]);
+          console.log('[BARCODE][OPEN_CONFIRM]', { id: fallbackFood?.name, name: fallbackFood?.name, via: 'confirm-card-fallback' });
           setShowConfirmation(true);
           addRecentBarcode({
             barcode: cleanBarcode,
@@ -1540,6 +1552,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         if (error.name === 'AbortError') {
           status = 'timeout';
           console.error('Function timeout detected');
+          console.warn('[BARCODE][EARLY_RETURN]', { reason: 'timeout', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
           
           toast.error("Request timed out", {
             description: "Try manual entry instead",
@@ -1557,6 +1570,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           return;
         } else {
           status = 'error';
+          console.warn('[BARCODE][ERROR]', error);
         }
         console.error('=== BARCODE LOOKUP ERROR ===', error);
         
@@ -1589,6 +1603,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
            console.log('=== SETTING FALLBACK RECOGNIZED FOOD ===', fallbackFood);
            setRecognizedFoods([fallbackFood]);
+           console.log('[BARCODE][OPEN_CONFIRM]', { id: fallbackFood?.name, name: fallbackFood?.name, via: 'confirm-card-error' });
            setShowConfirmation(true);
            addRecentBarcode({
              barcode: cleanBarcode,
@@ -1622,6 +1637,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       } finally {
         clearTimeout(timeout);
         console.log('[LOG] off_result', { status, hit });
+        console.log('[BARCODE][FINALLY]', { stopLoader: true });
         setIsLoadingBarcode(false);
       }
     } catch (outerError) {
@@ -3350,6 +3366,18 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
       {/* Food Confirmation Card */}
+      {(() => {
+        const cur = recognizedFoods[0] || null;
+        console.log('[CONFIRM][RENDER_GUARD][BARCODE]', { 
+          hasItems: recognizedFoods?.length > 0, 
+          hasCur: !!cur, 
+          curHydrated: false, // No hydration in current barcode flow
+          hydrating: isLoadingBarcode, 
+          isHydrating: isLoadingBarcode,
+          showConfirmation 
+        });
+        return null;
+      })()}
       <FoodConfirmationCard
         isOpen={showConfirmation}
         isProcessingFood={isProcessingFood}

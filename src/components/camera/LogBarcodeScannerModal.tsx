@@ -226,7 +226,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       try {
         const file = await openPhotoCapture('image/*','environment');
         const val = await decodeBarcodeFromFile(file);
-        if (val) onBarcodeDetected(val);
+        if (val) {
+          console.log('[BARCODE][SCAN:DETECTED]', { raw: val, format: 'photo-fallback' });
+          onBarcodeDetected(val);
+        }
       } catch {}
       onOpenChange(false); // close the scanner UI since we're one-shot
       return null; // prevent live pipeline from starting  
@@ -287,7 +290,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       try {
         const file = await openPhotoCapture('image/*','environment');
         const val = await decodeBarcodeFromFile(file);
-        if (val) onBarcodeDetected(val);
+        if (val) {
+          console.log('[BARCODE][SCAN:DETECTED]', { raw: val, format: 'photo-fallback-2' });
+          onBarcodeDetected(val);
+        }
         onOpenChange(false);
         return null;
       } catch (fallbackErr) {
@@ -434,6 +440,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
         playBeep();
+        console.log('[BARCODE][SCAN:DETECTED]', { raw: result.raw, format: 'manual-capture' });
         onBarcodeDetected(result.raw);
         onOpenChange(false);
         } else if (lookupResult.data && !lookupResult.data.ok) {

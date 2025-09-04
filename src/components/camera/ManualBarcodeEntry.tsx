@@ -32,6 +32,7 @@ export const ManualBarcodeEntry: React.FC<ManualBarcodeEntryProps> = ({
 
     // Basic validation for common barcode formats
     const cleanBarcode = barcodeValue.trim().replace(/\s+/g, '');
+    console.log('[BARCODE][MANUAL:SUBMIT]', { code: cleanBarcode });
     
     // Check for valid barcode patterns (UPC, EAN, etc.)
     if (!/^\d{8,14}$/.test(cleanBarcode)) {
