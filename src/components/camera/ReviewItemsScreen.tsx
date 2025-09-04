@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
+import { toLegacyFoodItem } from '@/lib/confirm/legacyItemAdapter';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import '@/styles/review.css';
@@ -191,30 +192,33 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
-    // Transform items to rich FoodItem objects for legacy modal
-    const richFoodItems = selectedItems.map(item => ({
-      id: item.id,
-      name: item.name,
-      calories: 100, // Default values - ReviewItemsScreen doesn't have nutrition analysis
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      fiber: 0,
-      sugar: 0,
-      sodium: 0,
-      image: undefined,
-      imageUrl: undefined,
-      ingredientsText: '',
-      source: 'review_items',
-      confidence: 0.9,
-      // Portion scaling data for slider
-      basePer100: null,
-      portionGrams: item.grams || 100,
-      factor: (item.grams || 100) / 100,
-      allergens: [],
-      additives: [],
-      categories: [],
-    }));
+    // Transform items using legacy adapter with basic nutrition defaults
+    const richFoodItems = selectedItems.map((item, index) => {
+      // Enhance item with basic analysis structure for the adapter
+      const enrichedItem = {
+        ...item,
+        analysis: {
+          healthScore: 70, // Default moderate score
+          flags: [],
+          ingredients: [],
+          nutrition: {
+            calories: 100, // Default calories
+            protein: 0,
+            carbs: 0, 
+            fat: 0,
+            sugar: 0,
+            fiber: 0,
+            sodium: 0,
+          },
+          source: 'review_items',
+          confidence: 0.9, // Default confidence for review items
+          dataSourceLabel: 'Manual Review'
+        },
+        source: 'review_items'
+      };
+      
+      return toLegacyFoodItem(enrichedItem, index);
+    });
 
     // Set flow active to prevent ScanHub navigation
     setConfirmFlowActive(true);
@@ -595,20 +599,34 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         onSave={handleSaveSetWithName}
       />
 
-      {/* Legacy Rich Food Confirmation Modal */}
-      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
-        <FoodConfirmationCard
-          isOpen={confirmModalOpen}
-          onClose={handleConfirmModalReject}
-          onConfirm={handleConfirmModalComplete}
-          onSkip={handleConfirmModalSkip}
-          onCancelAll={handleConfirmModalReject}
-          foodItem={confirmModalItems[currentConfirmIndex]}
-          showSkip={true}
-          currentIndex={currentConfirmIndex}
-          totalItems={confirmModalItems.length}
-        />
-      )}
+  {/* Legacy Rich Food Confirmation Modal */}
+  {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
+    <>
+      {process.env.NODE_ENV === 'development' && (() => {
+        const item = confirmModalItems[currentConfirmIndex];
+        console.log('[CONFIRM][BINDINGS]', {
+          name: item.name,
+          grams: item.grams,
+          perGram: item.nutrition.perGram,
+          healthScore: item.analysis.healthScore,
+          flags: item.analysis.flags?.length,
+          ingredients: item.analysis.ingredients?.length,
+        });
+        return null;
+      })()}
+      <FoodConfirmationCard
+        isOpen={confirmModalOpen}
+        onClose={handleConfirmModalReject}
+        onConfirm={handleConfirmModalComplete}
+        onSkip={handleConfirmModalSkip}
+        onCancelAll={handleConfirmModalReject}
+        foodItem={confirmModalItems[currentConfirmIndex]}
+        showSkip={true}
+        currentIndex={currentConfirmIndex}
+        totalItems={confirmModalItems.length}
+      />
+    </>
+  )}
     </Dialog.Root>
   );
 };
