@@ -662,18 +662,18 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     <Button
                       onClick={handleSaveSet}
                       disabled={selectedCount === 0 || isSavingSet || isSetSaved}
-                      className={`w-full h-12 font-semibold text-base transition-all duration-300 ${
+                      className={`w-full h-12 font-semibold text-base ${
                         isSetSaved 
-                          ? 'bg-green-600 text-white border-2 border-green-400 shadow-lg cursor-not-allowed' 
+                          ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
                           : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
                       }`}
                     >
                       {isSetSaved ? (
                         <>
-                          <svg className="w-6 h-6 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
-                          ✓ SET SAVED!
+                          Set Saved
                         </>
                       ) : (
                         <>
