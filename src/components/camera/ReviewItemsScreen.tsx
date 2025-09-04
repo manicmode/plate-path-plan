@@ -27,41 +27,7 @@ import { ReminderForm } from '@/components/reminder/ReminderForm';
 import { hashMealSet } from '@/utils/reminders';
 import { Switch } from '@/components/ui/switch';
 
-// Lightweight loader component for confirm modal
-function ConfirmLoading() {
-  return (
-    <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-neutral-900/90 rounded-2xl border border-white/10 p-6 mx-4 max-w-sm w-full">
-        <VisuallyHidden asChild>
-          <h2 id="confirm-loading-title">Preparing nutrition</h2>
-        </VisuallyHidden>
-        <VisuallyHidden asChild>
-          <p id="confirm-loading-desc">We're loading nutrition details for your items.</p>
-        </VisuallyHidden>
-
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-white/10 rounded w-3/4 mx-auto" />
-          <div className="h-8 bg-white/10 rounded w-1/2 mx-auto" />
-          <div className="space-y-2">
-            <div className="h-3 bg-white/10 rounded w-full" />
-            <div className="h-3 bg-white/10 rounded w-5/6" />
-            <div className="h-3 bg-white/10 rounded w-4/6" />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="h-8 bg-white/10 rounded" />
-            <div className="h-8 bg-white/10 rounded" />
-            <div className="h-8 bg-white/10 rounded" />
-          </div>
-        </div>
-
-        <div className="text-center mt-4">
-          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-          <p className="text-xs text-white/70">Loading nutrition data…</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Remove ConfirmLoading overlay - causes pointer event issues
 
 
 export interface ReviewItem {
@@ -111,9 +77,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [hydrating, setHydrating] = useState(false);
   
-  // NEW: First item readiness tracking for flash prevention
+  // First item readiness tracking for flash prevention
   const [firstReady, setFirstReady] = useState(false);
-  const hydratingRef = useRef(false);
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
@@ -319,42 +284,42 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const selectedItems = useMemo(() => items.filter(i => i.selected), [items]);
   const mealSetId = useMemo(() => hashMealSet(selectedItems), [selectedItems]);
 
-  // NEW: Subscribe to the first item's nutrition readiness in the store
+  // Subscribe to the first item's nutrition readiness in the store
   useEffect(() => {
     const first = modalItems?.[0];
-    if (!first) return;
+    if (!first?.id) return;
 
-    const id = first.id;
-    
-    // Subscribe to store changes and check if first item is ready
-    const unsubscribe = useNutritionStore.subscribe(
-      (state) => {
-        const perGram = state.byId[id]?.perGram;
-        const ready = !!perGram && perGramSum(perGram) > 0;
-        if (ready) setFirstReady(true);
-      }
-    );
+    const check = () => {
+      const pg = useNutritionStore.getState().byId[first.id]?.perGram;
+      return !!pg && perGramSum(pg) > 0;
+    };
 
-    // Also check immediately (in case hydration already wrote)
-    const pg = useNutritionStore.getState().byId[id]?.perGram;
-    if (pg && perGramSum(pg) > 0) setFirstReady(true);
+    // immediate check
+    if (check()) setFirstReady(true);
+
+    // subscribe to changes
+    const unsubscribe = useNutritionStore.subscribe(() => {
+      if (check()) setFirstReady(true);
+    });
 
     return unsubscribe;
   }, [modalItems]);
 
-  // NEW: Start hydration but DO NOT open the modal yet
+  // Start hydration but DO NOT open the modal yet
   useEffect(() => {
-    if (!modalItems?.length || hydratingRef.current) return;
-    hydratingRef.current = true;
+    if (!modalItems?.length) return;
+    let cancelled = false;
 
     (async () => {
-      // Hydration logic (unchanged from your existing code)
-      const names = modalItems.map(m => m.name);
-      console.log('[HYDRATE][OPEN][START]', { names });
-
       try {
+        // Hydration logic (unchanged from your existing code)
+        const names = modalItems.map(m => m.name);
+        console.log('[HYDRATE][OPEN][START]', { names });
+
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
+
+        if (cancelled) return;
 
         console.log('[HYDRATE][OPEN][END]', {
           count: results?.length,
@@ -422,15 +387,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         console.error('[HYDRATE][OPEN][ERROR]', e);
       }
     })();
-  }, [modalItems]);
 
-  // NEW: Open the modal only when first item is ready
-  useEffect(() => {
-    if (firstReady && modalItems.length > 0) {
-      setConfirmModalItems(modalItems);
-      setConfirmModalOpen(true);
-    }
-  }, [firstReady, modalItems]);
+    return () => { cancelled = true; };
+  }, [modalItems]);
   
   // Auto-open when items are set
   React.useEffect(() => {
@@ -916,30 +875,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                         <div className="text-[15px] font-semibold text-white">Set Reminder</div>
                         <div className="text-xs text-white/60">Get reminded to eat this set again</div>
                       </div>
-                      <label className="relative inline-flex cursor-pointer items-center">
-                        <input
-                          type="checkbox"
-                          className="peer sr-only"
-                          checked={(() => {
-                            const selected = items.filter(it => it.selected);
-                            const id = hashMealSet(selected);
-                            return isOn(id);
-                          })()}
-                          onChange={(e) => {
-                            const selected = items.filter(it => it.selected);
-                            const id = hashMealSet(selected);
-                        if (e.target.checked) {
-                          setShowMealSetReminder(true);
-                        } else {
-                              removeReminder(id);
-                              toast.success('Meal set reminder removed');
-                            }
-                          }}
-                        />
-                        <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
-                          <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
-                        </div>
-                      </label>
+                       <Switch
+                         checked={isOn(mealSetId)}
+                         onCheckedChange={(checked) => {
+                           if (checked) setShowMealSetReminder(true);
+                           else {
+                             removeReminder(mealSetId);
+                             toast.success('Meal set reminder removed');
+                           }
+                         }}
+                       />
                     </div>
                   </div>
                   
@@ -954,13 +899,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                       </Button>
                       
           <Button
-            onClick={() => {/* no-op; hydration kick-off already in useEffect */}}
+            onClick={() => {
+              if (!firstReady) return;
+              setConfirmModalItems(modalItems);
+              setConfirmModalOpen(true);
+            }}
             disabled={!firstReady}
             className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
           >
             {firstReady ? '🔎 Review & Log' : (
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 Preparing nutrition…
               </div>
             )}
@@ -1039,9 +988,27 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               const item = confirmModalItems[currentConfirmIndex];
               const isHydrated = Boolean(item?.__hydrated);
 
-              // While hydrating, show loader **instead** of the card
+              // Show loading state while hydrating
               if (!isHydrated || hydrating) {
-                return <ConfirmLoading />;
+                return (
+                  <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                    <div className="bg-neutral-900/90 rounded-2xl border border-white/10 p-6 mx-4 max-w-sm w-full">
+                      <div className="animate-pulse space-y-4">
+                        <div className="h-6 bg-white/10 rounded w-3/4 mx-auto" />
+                        <div className="h-8 bg-white/10 rounded w-1/2 mx-auto" />
+                        <div className="space-y-2">
+                          <div className="h-3 bg-white/10 rounded w-full" />
+                          <div className="h-3 bg-white/10 rounded w-5/6" />
+                          <div className="h-3 bg-white/10 rounded w-4/6" />
+                        </div>
+                      </div>
+                      <div className="text-center mt-4">
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+                        <p className="text-xs text-white/70">Loading nutrition data…</p>
+                      </div>
+                    </div>
+                  </div>
+                );
               } else {
                 return item && (
                   <FoodConfirmationCard
@@ -1063,56 +1030,53 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       )}
 
       {/* Meal Set Reminder Dialog */}
-      {showMealSetReminder && (
-        <Dialog.Root open onOpenChange={setShowMealSetReminder}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[700]" />
-            <Dialog.Content
-              className="fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[460px]
-                         -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 shadow-lg z-[710]"
-              aria-describedby="mealset-reminder-desc"
-            >
-              <VisuallyHidden asChild>
-                <Dialog.Title>Set Meal Set Reminder</Dialog.Title>
-              </VisuallyHidden>
-              <ReminderForm
-                prefilledData={{
-                  label: `Meal set: ${selectedItems.map(i => i.name).join(', ')}`,
-                  type: 'meal',
-                  food_item_data: {
+      <Dialog.Root open={showMealSetReminder} onOpenChange={setShowMealSetReminder} modal={false}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[700]" />
+          <Dialog.Content
+            className="fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[460px]
+                       -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-0 shadow-lg z-[710]"
+            aria-describedby="mealset-reminder-desc"
+          >
+            <Dialog.Title className="sr-only">Set Meal Set Reminder</Dialog.Title>
+            <Dialog.Description className="sr-only">Select a schedule and time for your meal set reminder.</Dialog.Description>
+            <ReminderForm
+              prefilledData={{
+                label: `Meal set: ${selectedItems.map(i => i.name).join(', ')}`,
+                type: 'meal',
+                food_item_data: {
+                  itemIds: selectedItems.map(i => i.id),
+                  names: selectedItems.map(i => i.name),
+                }
+              }}
+              onSubmit={async (reminderData) => {
+                const reminder = {
+                  id: mealSetId,
+                  type: 'meal_set' as const,
+                  title: reminderData.label,
+                  schedule: {
+                    freq: reminderData.frequency_type === 'daily' ? 'DAILY' as const : 
+                          reminderData.frequency_type === 'weekly' ? 'WEEKLY' as const : 'MONTHLY' as const,
+                    hour: parseInt(reminderData.reminder_time.split(':')[0]),
+                    minute: parseInt(reminderData.reminder_time.split(':')[1]),
+                    days: reminderData.custom_days
+                  },
+                  payload: {
                     itemIds: selectedItems.map(i => i.id),
                     names: selectedItems.map(i => i.name),
-                  }
-                }}
-                onSubmit={async (reminderData) => {
-                  const reminder = {
-                    id: mealSetId,
-                    type: 'meal_set' as const,
-                    title: reminderData.label,
-                    schedule: {
-                      freq: reminderData.frequency_type === 'daily' ? 'DAILY' as const : 
-                            reminderData.frequency_type === 'weekly' ? 'WEEKLY' as const : 'MONTHLY' as const,
-                      hour: parseInt(reminderData.reminder_time.split(':')[0]),
-                      minute: parseInt(reminderData.reminder_time.split(':')[1]),
-                      days: reminderData.custom_days
-                    },
-                    payload: {
-                      itemIds: selectedItems.map(i => i.id),
-                      names: selectedItems.map(i => i.name),
-                    },
-                    isActive: reminderData.is_active,
-                  };
-                  
-                  upsertReminder(reminder);
-                  setShowMealSetReminder(false);
-                  toast.success('Meal set reminder created');
-                }}
-                onCancel={() => setShowMealSetReminder(false)}
-              />
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
+                  },
+                  isActive: reminderData.is_active,
+                };
+                
+                upsertReminder(reminder);
+                setShowMealSetReminder(false);
+                toast.success('Meal set reminder created');
+              }}
+              onCancel={() => setShowMealSetReminder(false)}
+            />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 };
