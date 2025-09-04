@@ -577,6 +577,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       const imageBase64 = await compressImageIfNeeded(file);
       const imageDataUrl = `data:${file.type};base64,${imageBase64}`;
       
+      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/') || !imageDataUrl.includes('base64,')) {
+        throw new Error('Failed to create valid image data URL');
+      }
+      
       console.log('Image processed successfully');
       setSelectedImage(imageDataUrl);
       selectedImageRef.current = imageDataUrl;
@@ -653,7 +657,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         setShowSmartLoader(false);
       }, 250);
       
-    } catch (e: any) {
+      } catch (e: any) {
       console.warn('[FLOW][CONFIRM:ERROR]', e);
       console.error("[LOG][ANALYZE][ERROR]", e);
       setShowSmartLoader(false);
@@ -668,9 +672,14 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   const convertToBase64 = (imageDataUrl: string): string => {
     if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.includes(',')) {
-      throw new Error('[convertToBase64] invalid data URL input');
+      console.error('[convertToBase64] invalid data URL input', {
+        type: typeof imageDataUrl,
+        hasComma: imageDataUrl?.includes(','),
+        preview: imageDataUrl?.substring(0, 50)
+      });
+      throw new Error('Invalid image data URL format');
     }
-    return imageDataUrl.split(',')[1];
+    return imageDataUrl.split(',')[1]!;
   };
 
   // Barcode detection utilities
@@ -847,6 +856,20 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
     if (typeof imageForAnalysis !== 'string' || !imageForAnalysis.includes(',')) {
       console.error('[ANALYZE][BAD_SOURCE] expected data URL string');
+      toast.error('Invalid image format. Please try again.');
+      setShowManualFoodEntry(true);
+      setShowSmartLoader(false);
+      return;
+    }
+
+    if (!imageForAnalysis.startsWith('data:image/') || !imageForAnalysis.includes('base64,')) {
+      console.error('[ANALYZE][INVALID_DATA_URL]', {
+        type: typeof imageForAnalysis,
+        hasComma: imageForAnalysis.includes(',')
+      });
+      toast.error('Invalid image format. Please try again.');
+      setShowManualFoodEntry(true);
+      setShowSmartLoader(false);
       return;
     }
 
@@ -918,27 +941,23 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         
         console.info('[DETECT][log] starting GPT_ONLY');
         
-        // Use the unified detection router
-        const imageBase64 = convertToBase64(selectedImage);
-        setProcessingStep('Detecting food items...');
-        setIsAnalyzing(true);
-        
         try {
+          const imageBase64 = convertToBase64(imageForAnalysis);
           const { run } = await import('@/lib/detect/router');
+          
+          setProcessingStep('Detecting food items...');
+          setIsAnalyzing(true);
           
           // Force log mode for GPT-only detection
           const items = await run(imageBase64, { mode: 'log' });
           
           console.log('[FLOW][ANALYZE:RESULT]', { itemsCount: items?.length, isArray: Array.isArray(items) });
-          console.log('[CAMERA][DETECT] items_detected=', items.length);
           
-          if (items.length === 0) {
+          if (!items || !Array.isArray(items) || items.length === 0) {
             console.warn('[FLOW][ZERO_ITEMS_FALLBACK]');
-            toast.error('No foods detected in this image. Try a clearer photo with visible food items, or add foods manually.');
+            toast.error('No foods detected in this image. Try a clearer photo or add foods manually.');
             setShowManualFoodEntry(true);
-            setSelectedImage(null);
-            selectedImageRef.current = null;
-            setIsAnalyzing(false);
+            setShowSmartLoader(false);
             return;
           }
 
@@ -956,19 +975,17 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             portionRange: item.portionRange
           }));
 
-          console.log('[CAMERA][DETECT] Generated review items:', reviewItems.length);
-          console.info('[REVIEW][mode]', 'GPT_ONLY', 'count=', reviewItems.length);
-          
-          // Open review screen with atomic handoff
-          console.log('[FLOW][REVIEW:OPEN]', { count: items.length });
+          console.log('[FLOW][REVIEW:OPEN]', { itemsCount: items.length });
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
-          setInputSource('photo'); // Flag for detection source
+          setShowSmartLoader(false);
+
         } catch (error) {
-          console.error('Detection failed:', error);
-          toast.error('Food detection failed. Please try again or use manual entry.');
-        } finally {
-          setIsAnalyzing(false);
+          console.error('[FLOW][ANALYZE:ERROR]', error);
+          toast.error('Failed to analyze image. Please try again.');
+          setShowManualFoodEntry(true);
+          setShowSmartLoader(false);
+          return;
         }
       })();
       
