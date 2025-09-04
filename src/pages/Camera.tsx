@@ -539,7 +539,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     const file = event.target.files?.[0];
     if (!file) return;
 
-    await processImageFile(file);
+    await handleConfirmImage(file);
   };
 
   const processImageFile = async (file: File) => {
@@ -878,8 +878,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.log('[CAMERA][DETECT] items_detected=', items.length);
           
           if (items.length === 0) {
-            // No foods detected - show toast and don't render any legacy panel
-            toast.error('No foods detected. Try a clearer photo or add manually.');
+            toast.error('No foods detected in this image. Try a clearer photo with visible food items, or add foods manually.');
+            setShowManualFoodEntry(true);
+            setSelectedImage(null);
             setIsAnalyzing(false);
             return;
           }
@@ -2768,9 +2769,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   const handleRetryPhoto = () => {
     resetErrorState();
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    setShowCamera(true);
   };
 
   const handleRetryAnalysis = () => {
@@ -3196,7 +3195,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
       {/* Photo Analysis Card - Handle nutrition capture mode */}
-      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && !showMultiAIDetection && (
+      {false && selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && !showMultiAIDetection && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle>
