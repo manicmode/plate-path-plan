@@ -428,41 +428,32 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
     setIsSavingSet(true);
     try {
-      const itemsSnapshot = selectedItems.map(item => ({
+      const itemsForSave = selectedItems.map(item => ({
         name: item.name,
         canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100,
-        score: 0, // No score available in ReviewItemsScreen
-        calories: 0, // No calories available in ReviewItemsScreen  
-        healthRating: 'unknown'
+        grams: item.grams || 100
       }));
 
-      const { data, error } = await supabase
-        .from('saved_meal_set_reports')
-        .insert({
-          name: setName.trim(),
-          overall_score: null, // No overall score available
-          items_snapshot: itemsSnapshot,
-          report_snapshot: null, // No report data available
-          user_id: user.id,
-          image_url: null
-        } as any)
-        .select('id')
-        .single();
+      // Import the meal sets functions
+      const { createMealSet } = await import('@/lib/mealSets');
+      
+      // Save using the correct meal sets API
+      const savedSet = await createMealSet({
+        name: setName.trim(),
+        items: itemsForSave
+      });
 
-      if (error) throw error;
-
-      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
+      toast.success(`✅ Saved "${setName}" with ${selectedItems.length} items!`, {
         action: {
-          label: 'View',
-          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
+          label: 'View Saved Sets',
+          onClick: () => navigate('/camera?reset=true&tab=saved')
         }
       });
       
       setShowSaveSetDialog(false);
     } catch (error) {
       console.error('Failed to save set:', error);
-      toast.error('Failed to save set');
+      toast.error('Failed to save set. Please try again.');
     } finally {
       setIsSavingSet(false);
     }
