@@ -214,14 +214,10 @@ function AppContent() {
           <ClientSecurityValidator />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
-              {/* QA routes - OUTSIDE OnboardingGate, highest priority */}
+              {/* QA routes - SIMPLE TEST FIRST */}
               <Route 
                 path="/qa/nudges"
-                element={
-                  <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                    <NudgeQAPage />
-                  </React.Suspense>
-                }
+                element={<div style={{padding: 50, background: 'green', color: 'white', fontSize: 24}}>🎉 QA ROUTE WORKS! 🎉</div>}
               />
               <Route 
                 path="/nudge-qa"
@@ -230,6 +226,10 @@ function AppContent() {
               <Route 
                 path="/debug/nudges"
                 element={<Navigate to="/qa/nudges" replace />}
+              />
+              <Route 
+                path="/test-route"
+                element={<div style={{padding: 50, background: 'blue', color: 'white'}}>TEST ROUTE WORKS</div>}
               />
               
               {/* Everything else wrapped in OnboardingGate */}
