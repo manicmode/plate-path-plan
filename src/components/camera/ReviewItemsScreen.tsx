@@ -115,87 +115,92 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     });
   }, [items.filter(item => item.selected && item.name.trim()).map(i => `${i.id}-${i.name}-${i.grams}`).join('|')]);
 
-  // Resolve the actual first card id used by the modal
-  const firstCardId = useMemo(
-    () => confirmModalItems?.[0]?.id ?? null,
-    [confirmModalItems?.[0]?.id]
+  // Confirm modal state
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [hydrating, setHydrating] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
+
+  // Replace existing hydration effect with:
+  useEffect(() => {
+    if (!confirmModalOpen || !items.length) return;
+    
+    console.log('[HYDRATE][BEGIN]', { itemsCount: items.length });
+    
+    // Create modalItems synchronously to establish firstCardId immediately
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    const initialModalItems = selectedItems.map((item, index) => {
+      const canonicalId = item.id; // Use existing item.id as canonical
+      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+    });
+    
+    // Set modal items BEFORE async hydration
+    setConfirmModalItems(initialModalItems);
+    console.log('[REVIEW][MODAL_ITEMS]', { count: initialModalItems.length, firstId: initialModalItems[0]?.id });
+    
+    // Run async hydration
+    (async () => {
+      try {
+        const names = initialModalItems.map(m => m.name);
+        const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
+        const results = await resolveGenericFoodBatch(names);
+        
+        console.log('[HYDRATE][WRITE]', { foundCount: results?.filter(Boolean).length });
+        
+        const storeUpdates: Record<string, any> = {};
+        const enrichedItems = initialModalItems.map((m, i) => {
+          const r = results?.[i];
+          if (!r) return { ...m, __hydrated: false };
+          
+          const canonicalId = m.id; // Use same ID from modal item
+          const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
+          const merged = toLegacyFoodItem(enrichedInput, i, true);
+          
+          // Write to store using canonical ID
+          storeUpdates[canonicalId] = {
+            perGram: merged.nutrition?.perGram || {},
+            healthScore: 0,
+            flags: [],
+            ingredients: [],
+            __hydrated: true,
+            updatedAt: Date.now(),
+          };
+          
+          return { ...merged, id: canonicalId, __hydrated: true };
+        });
+        
+        if (Object.keys(storeUpdates).length) {
+          useNutritionStore.getState().upsertMany(storeUpdates);
+          console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
+        }
+        
+        setConfirmModalItems(enrichedItems);
+        console.log('[HYDRATE][END]', { hydratedCount: enrichedItems.filter(i => i.__hydrated).length });
+        
+      } catch (e) {
+        console.error('[HYDRATE][ERROR]', e);
+      }
+    })();
+  }, [confirmModalOpen, items.length]); // Depend on items.length, not items directly
+
+  // Derive firstCardId from confirmModalItems
+  const firstCardId = confirmModalItems[0]?.id;
+
+  // Subscribe to store for readiness
+  const firstReady = useNutritionStore(
+    s => firstCardId ? (
+      Object.values(s.byId[firstCardId]?.perGram || {}).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) > 0
+    ) : false
   );
 
-  const [firstReady, setFirstReady] = useState(false);
-
-  // Ensure hydrate() kicks off before the user clicks
   useEffect(() => {
-    if (!hydrationStartedRef.current) {
-      hydrationStartedRef.current = true;
-      
-      // Start hydration
-      (async () => {
-        if (!modalItems?.length) {
-          setPhase('idle');
-          return;
-        }
-
-        setPhase('hydrating');
-
-        try {
-          // Hydrate each item
-          for (const item of modalItems) {
-            if (needsHydration(item)) {
-              try {
-                const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
-                const [result] = await resolveGenericFoodBatch([item.name]);
-                
-                if (result?.nutrients) {
-                  const id = generateFoodId(item);
-                  const perGram = result.nutrients;
-                  useNutritionStore.getState().upsert(id, {
-                    perGram,
-                    healthScore: 0,
-                    flags: [],
-                    __hydrated: true,
-                    updatedAt: Date.now()
-                  });
-                  
-                  // Mark item as hydrated
-                  (item as any).__hydrated = true;
-                  (item as any).nutrition = { perGram };
-                }
-              } catch (err) {
-                console.error('Failed to hydrate item:', item.name, err);
-              }
-            }
-          }
-          
-          // Set enriched modal items
-          setConfirmModalItems(modalItems);
-        } catch (error) {
-          console.error('Hydration failed:', error);
-        }
-      })();
+    if (firstCardId) {
+      console.log('[READY][FIRST_ID]', { firstCardId });
     }
-  }, []);
-
-  // Subscribe to the nutrition store for just the first card id
-  useEffect(() => {
-    setFirstReady(false);
-    if (!firstCardId) return;
-
-    // immediate check
-    const st = useNutritionStore.getState();
-    if (perGramReady(st.byId[firstCardId])) {
-      setFirstReady(true);
-    }
-
-    // subscribe to changes for that id
-    const unsub = useNutritionStore.subscribe(
-      (state) => {
-        const entry = state.byId[firstCardId];
-        const ok = perGramReady(entry);
-        setFirstReady(prev => (prev === ok ? prev : ok));
-      }
-    );
-    return unsub;
   }, [firstCardId]);
+
+  useEffect(() => {
+    console.log('[READY][FIRST_READY]', { firstCardId, ready: firstReady });
+  }, [firstCardId, firstReady]);
 
   // Wait helper so the button doesn't freeze forever
   function waitUntilReadyOr(ms: number) {
@@ -217,13 +222,37 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     });
   }
 
-  async function handleOpenConfirmFlow() {
-    setOpening(true);
-    // wait up to 1200ms; if not ready, we still open (loader was the old flash—now gated)
-    await waitUntilReadyOr(1200);
-    setPhase('open');
-    setOpening(false);
-  }
+  const openConfirmFlow = async () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to continue');
+      return;
+    }
+    
+    console.log('[CONFIRM][CLICK]', { selectedCount: selectedItems.length });
+    setIsHydrating(true);
+    
+    try {
+      setConfirmFlowActive(true);
+      setConfirmModalOpen(true); // This triggers hydration effect
+      setCurrentConfirmIndex(0);
+      
+      console.log('[CONFIRM][WAIT]');
+      await new Promise(r => setTimeout(r, 500)); // Allow hydration to start
+      
+      setIsHydrating(false);
+      console.log('[CONFIRM][OPEN]');
+      
+      requestAnimationFrame(() => {
+        onClose();
+      });
+      
+    } catch (error) {
+      console.error('[CONFIRM][ERROR]', error);
+      setIsHydrating(false);
+      toast.error('Failed to load nutrition data');
+    }
+  };
 
   // Meal set ID for reminders
   const selectedItems = useMemo(() => items.filter(i => i.selected), [items]);
@@ -584,14 +613,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                       
                       <Button
                         className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base relative"
-                        disabled={opening}
-                        onClick={handleOpenConfirmFlow}
+                        disabled={isHydrating}
+                        onClick={openConfirmFlow}
                       >
-                        {opening && (
-                          <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
-                        )}
-                        <span className={opening ? 'opacity-80' : ''}>
-                          {opening ? 'Preparing nutrition…' : '🔎 Review & Log'}
+                         {isHydrating && (
+                           <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
+                         )}
+                         <span className={isHydrating ? 'opacity-80' : ''}>
+                           {isHydrating ? 'Preparing nutrition…' : '🔎 Review & Log'}
                         </span>
                       </Button>
                     </div>
@@ -649,31 +678,66 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         onSave={handleSaveSetWithName}
       />
 
-      {/* Phase-based Food Confirmation Modal */}
-      {phase === 'open' && (
-        <>
-          {(() => {
-            const cur = confirmModalItems[currentConfirmIndex];
-            const storeEntry = useNutritionStore.getState().byId[cur?.id ?? ''];
-            const ready = cur?.__hydrated && perGramReady(storeEntry);
-
-            if (!ready) return null; // no flash; modal stays closed until ready/open
-            return (
-              <FoodConfirmationCard
-                isOpen={true}
-                onClose={() => setPhase('ready')}
-                onConfirm={handleConfirmModalComplete}
-                onSkip={handleConfirmModalSkip}
-                onCancelAll={() => setPhase('ready')}
-                foodItem={cur}
-                showSkip
-                currentIndex={currentConfirmIndex}
-                totalItems={confirmModalItems.length}
-              />
-            );
-          })()}
-        </>
-      )}
+      {/* Legacy Rich Food Confirmation Modal */}
+      {confirmModalOpen && (() => {
+        const cur = confirmModalItems[currentConfirmIndex];
+        const hasItems = confirmModalItems.length > 0;
+        const shouldShowLoader = hydrating || isHydrating || !cur || !cur.__hydrated;
+        
+        console.log('[CONFIRM][RENDER_GUARD]', { 
+          hasItems, 
+          currentIndex: currentConfirmIndex, 
+          hasCur: !!cur, 
+          curHydrated: cur?.__hydrated,
+          shouldShowLoader 
+        });
+        
+        if (shouldShowLoader) {
+          return (
+            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-card rounded-lg border shadow-lg p-6 mx-4 max-w-sm w-full">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 bg-muted rounded w-3/4 mx-auto"></div>
+                  <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded w-full"></div>
+                    <div className="h-3 bg-muted rounded w-5/6"></div>
+                    <div className="h-3 bg-muted rounded w-4/6"></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                  </div>
+                </div>
+                <div className="text-center mt-4">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading nutrition data...</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        if (cur) {
+          console.log('[CONFIRM][MOUNT]', { name: cur.name, id: cur.id });
+          return (
+            <FoodConfirmationCard
+              isOpen={confirmModalOpen}
+              onClose={handleConfirmModalReject}
+              onConfirm={handleConfirmModalComplete}
+              onSkip={handleConfirmModalSkip}
+              onCancelAll={handleConfirmModalReject}
+              foodItem={cur}
+              showSkip={true}
+              currentIndex={currentConfirmIndex}
+              totalItems={confirmModalItems.length}
+            />
+          );
+        }
+        
+        return null;
+      })()}
 
       {/* Meal Set Reminder Dialog - Using exact same structure as item reminders */}
       <Dialog.Root open={showMealSetReminder} onOpenChange={setShowMealSetReminder}>
