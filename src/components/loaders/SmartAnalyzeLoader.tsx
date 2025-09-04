@@ -125,9 +125,9 @@ export function SmartAnalyzeLoader({
   const prefersReducedMotion = reduceMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   return (
-    <div className="fixed inset-0 z-[760] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[760] flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div
-        className="w-[min(92vw,520px)] rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-5 shadow-2xl"
+        className="w-[min(92vw,520px)] rounded-3xl border border-white/8 bg-gradient-to-b from-white/6 to-white/3 p-5 shadow-2xl"
         role="status"
         aria-live="polite"
       >
