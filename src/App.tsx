@@ -297,11 +297,9 @@ function AppContent() {
                        <Route 
                          path="/qa/nudges"
                          element={
-                           <ProtectedRoute>
-                             <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                               <NudgeQAPage />
-                             </React.Suspense>
-                           </ProtectedRoute>
+                           <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                             <NudgeQAPage />
+                           </React.Suspense>
                          }
                        />
                        {/* QA route variants for easier access */}
