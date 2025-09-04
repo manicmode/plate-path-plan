@@ -1,14 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { selectNudgesForUser, SelectedNudge } from '@/nudges/scheduler';
 import { logNudgeEvent } from '@/nudges/logEvent';
 import { NUDGE_SCHEDULER_ENABLED, isUserInRollout } from '@/lib/flags';
+
+const NUDGE_STORAGE_KEY = 'active_nudges';
+const SHOWN_RUNIDS_KEY = 'shown_runids';
 
 export function useNudgeScheduler() {
   const { user } = useAuth();
   const [selectedNudges, setSelectedNudges] = useState<SelectedNudge[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Persistence helpers
+  const getStoredNudges = useCallback((): SelectedNudge[] => {
+    if (!user?.id) return [];
+    try {
+      const stored = localStorage.getItem(`${NUDGE_STORAGE_KEY}_${user.id}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }, [user?.id]);
+
+  const storeNudges = useCallback((nudges: SelectedNudge[]) => {
+    if (!user?.id) return;
+    try {
+      localStorage.setItem(`${NUDGE_STORAGE_KEY}_${user.id}`, JSON.stringify(nudges));
+    } catch (error) {
+      console.error('Error storing nudges:', error);
+    }
+  }, [user?.id]);
+
+  const getShownRunIds = useCallback((): Set<string> => {
+    if (!user?.id) return new Set();
+    try {
+      const stored = localStorage.getItem(`${SHOWN_RUNIDS_KEY}_${user.id}`);
+      return new Set(stored ? JSON.parse(stored) : []);
+    } catch {
+      return new Set();
+    }
+  }, [user?.id]);
+
+  const addShownRunId = useCallback((runId: string) => {
+    if (!user?.id) return;
+    try {
+      const existing = getShownRunIds();
+      existing.add(runId);
+      // Keep only last 100 to prevent localStorage bloat
+      const asArray = Array.from(existing);
+      const trimmed = asArray.slice(-100);
+      localStorage.setItem(`${SHOWN_RUNIDS_KEY}_${user.id}`, JSON.stringify(trimmed));
+    } catch (error) {
+      console.error('Error storing shown runIds:', error);
+    }
+  }, [user?.id, getShownRunIds]);
+
   // Debug logging on boot
   useEffect(() => {
     const logBoot = async () => {
@@ -20,6 +67,16 @@ export function useNudgeScheduler() {
     };
     logBoot();
   }, []);
+
+  // Rehydrate from localStorage on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    const stored = getStoredNudges();
+    if (stored.length > 0) {
+      setSelectedNudges(stored);
+      setLoading(false);
+    }
+  }, [user?.id, getStoredNudges]);
 
   const loadNudges = async () => {
     if (!user?.id) {
@@ -36,11 +93,13 @@ export function useNudgeScheduler() {
       
       if (!isEnabled) {
         setSelectedNudges([]);
+        storeNudges([]);
         return;
       }
 
       const nudges = await selectNudgesForUser(user.id, 2) as SelectedNudge[];
       setSelectedNudges(nudges);
+      storeNudges(nudges);
 
       // Log nudge selection
       const { nlog } = await import('@/lib/debugNudge');
@@ -50,16 +109,18 @@ export function useNudgeScheduler() {
         }
       }
 
-      // Log 'shown' events for selected nudges
+      // Log 'shown' events for NEW nudges only (not already shown)
+      const shownRunIds = getShownRunIds();
       for (const nudge of nudges) {
-        if ('runId' in nudge && 'reason' in nudge) {
+        if ('runId' in nudge && 'reason' in nudge && !shownRunIds.has(nudge.runId)) {
           await logNudgeEvent({
             nudgeId: nudge.id,
             event: 'shown',
             reason: nudge.reason,
             runId: nudge.runId
           });
-          nlog("NUDGE][RENDER", { id: nudge.id });
+          addShownRunId(nudge.runId);
+          nlog("NUDGE][RENDER", { id: nudge.id, runId: nudge.runId });
         }
       }
     } catch (error) {
@@ -82,8 +143,10 @@ export function useNudgeScheduler() {
       const { nlog } = await import('@/lib/debugNudge');
       nlog("NUDGE][SEEN", { id: nudge.id, action: 'dismissed' });
       
-      // Remove from local state
-      setSelectedNudges(prev => prev.filter(n => n.runId !== nudge.runId));
+      // Remove from local state and storage
+      const updated = selectedNudges.filter(n => n.runId !== nudge.runId);
+      setSelectedNudges(updated);
+      storeNudges(updated);
     } catch (error) {
       console.error('Error dismissing nudge:', error);
     }
@@ -98,8 +161,10 @@ export function useNudgeScheduler() {
         runId: nudge.runId
       });
       
-      // Remove from local state
-      setSelectedNudges(prev => prev.filter(n => n.runId !== nudge.runId));
+      // Remove from local state and storage
+      const updated = selectedNudges.filter(n => n.runId !== nudge.runId);
+      setSelectedNudges(updated);
+      storeNudges(updated);
     } catch (error) {
       console.error('Error logging CTA for nudge:', error);
     }
@@ -109,25 +174,49 @@ export function useNudgeScheduler() {
     loadNudges();
   }, [user?.id]);
 
-  // Refresh nudges daily
+  // Window-boundary refresh logic
   useEffect(() => {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    
-    const msUntilMidnight = tomorrow.getTime() - now.getTime();
-    
-    const timeout = setTimeout(() => {
-      loadNudges(); // Refresh at midnight
+    const calculateNextRefresh = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
       
-      // Set up daily interval
-      const interval = setInterval(loadNudges, 24 * 60 * 60 * 1000);
-      return () => clearInterval(interval);
-    }, msUntilMidnight);
-    
+      // Define all nudge window boundaries
+      const boundaries = [0, 9, 10, 19, 20, 21, 23, 24]; // All unique start/end hours
+      
+      // Find next boundary hour
+      let nextBoundary = boundaries.find(hour => hour > currentHour);
+      if (!nextBoundary) {
+        nextBoundary = 24; // Next day midnight
+      }
+      
+      const nextRefresh = new Date(now);
+      if (nextBoundary === 24) {
+        nextRefresh.setDate(nextRefresh.getDate() + 1);
+        nextRefresh.setHours(0, 0, 0, 0);
+      } else {
+        nextRefresh.setHours(nextBoundary, 0, 0, 0);
+      }
+      
+      return nextRefresh.getTime() - now.getTime();
+    };
+
+    const scheduleRefresh = () => {
+      const msUntilNext = calculateNextRefresh();
+      
+      return setTimeout(() => {
+        loadNudges(); // Refresh at window boundary
+        
+        // Schedule hourly refreshes
+        const hourlyInterval = setInterval(loadNudges, 60 * 60 * 1000);
+        
+        // Clean up on next schedule
+        return () => clearInterval(hourlyInterval);
+      }, msUntilNext);
+    };
+
+    const timeout = scheduleRefresh();
     return () => clearTimeout(timeout);
-  }, []);
+  }, [user?.id]);
 
   return {
     selectedNudges,

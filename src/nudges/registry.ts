@@ -46,7 +46,7 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
     cooldownDays: 1,
     dailyCap: 1,
     maxPer7d: 7,
-    window: { startHour: 19, endHour: 22 }, // 19:00-22:00 (7-10pm local time)
+    window: { startHour: 19, endHour: 24 }, // 19:00-24:00 (7pm-midnight local time)
     isEligible: async (ctx: UserNudgeContext) => {
       // Use local date comparison instead of UTC
       const { getLocalDateKey } = await import('@/lib/time/localDay');
@@ -54,14 +54,14 @@ export const NUDGE_REGISTRY: NudgeDefinition[] = [
       
       const now = new Date();
       const hour = now.getHours();
-      const inWindow = hour >= 19 && hour < 22;
+      const inWindow = hour >= 19 && hour < 24;
 
       const lastLogKey = ctx.lastMoodLog ? getLocalDateKey(ctx.lastMoodLog) : null;
       const todayKey = getLocalDateKey(now);
       const alreadyLoggedToday = lastLogKey === todayKey;
 
       nlog("NUDGE][DAILY_CHECKIN", {
-        window: "19:00-22:00",
+        window: "19:00-24:00",
         inWindow,
         lastLogKey,
         todayKey,
