@@ -58,6 +58,7 @@ interface ReviewItemsScreenProps {
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
   afterLogSuccess?: () => void; // Called after successful logging for custom navigation/cleanup
+  context?: 'health-scan' | 'logging'; // NEW: Context to determine save behavior
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -67,7 +68,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onLogImmediately,
   items: initialItems,
   prefilledItems,
-  afterLogSuccess
+  afterLogSuccess,
+  context = 'logging' // Default to logging context
 }) => {
   // State
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -428,27 +430,63 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
     setIsSavingSet(true);
     try {
-      const itemsForSave = selectedItems.map(item => ({
-        name: item.name,
-        canonicalName: item.canonicalName || item.name,
-        grams: item.grams || 100
-      }));
+      if (context === 'health-scan') {
+        // Save to saved_meal_set_reports for health scan context
+        const itemsSnapshot = selectedItems.map(item => ({
+          name: item.name,
+          canonicalName: item.canonicalName || item.name,
+          grams: item.grams || 100,
+          score: 0, // No score available in ReviewItemsScreen
+          calories: 0, // No calories available in ReviewItemsScreen  
+          healthRating: 'unknown'
+        }));
 
-      // Import the meal sets functions
-      const { createMealSet } = await import('@/lib/mealSets');
-      
-      // Save using the correct meal sets API
-      const savedSet = await createMealSet({
-        name: setName.trim(),
-        items: itemsForSave
-      });
+        const { data, error } = await supabase
+          .from('saved_meal_set_reports')
+          .insert({
+            name: setName.trim(),
+            overall_score: null, // No overall score available
+            items_snapshot: itemsSnapshot,
+            report_snapshot: null, // No report data available
+            user_id: user.id,
+            image_url: null
+          } as any)
+          .select('id')
+          .single();
 
-      toast.success(`✅ Saved "${setName}" with ${selectedItems.length} items!`, {
-        action: {
-          label: 'View Saved Sets',
-          onClick: () => navigate('/camera?reset=true&tab=saved')
-        }
-      });
+        if (error) throw error;
+
+        toast.success(`✅ Saved "${setName}" to Saved Reports!`, {
+          action: {
+            label: 'View Saved Reports',
+            onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
+          }
+        });
+        
+      } else {
+        // Save to meal_sets for logging context (fast logging)
+        const itemsForSave = selectedItems.map(item => ({
+          name: item.name,
+          canonicalName: item.canonicalName || item.name,
+          grams: item.grams || 100
+        }));
+
+        // Import the meal sets functions
+        const { createMealSet } = await import('@/lib/mealSets');
+        
+        // Save using the meal sets API for fast logging
+        const savedSet = await createMealSet({
+          name: setName.trim(),
+          items: itemsForSave
+        });
+
+        toast.success(`✅ Saved "${setName}" for fast logging!`, {
+          action: {
+            label: 'View Saved Sets',
+            onClick: () => navigate('/camera?reset=true&tab=saved')
+          }
+        });
+      }
       
       setShowSaveSetDialog(false);
     } catch (error) {

@@ -2298,6 +2298,19 @@ console.log('Global search enabled:', enableGlobalSearch);
     
     // Clear detection state and return - do NOT trigger legacy modal
     setIsAnalyzing(false);
+    setShowSmartLoader(false);
+    
+    // Ensure main camera UI is visible by clearing other modal states
+    setShowError(false);
+    setShowManualEdit(false);
+    setShowVoiceAnalyzing(false);
+    setShowProcessingNextItem(false);
+    setShowVoiceEntry(false);
+    setShowTransition(false);
+    
+    // Reset selected image states if needed
+    setSelectedImage(null);
+    selectedImageRef.current = null;
   };
 
   const processCurrentItem = async (items: SummaryItem[], index: number) => {
@@ -3410,6 +3423,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           onClose={handleReviewClose}
           onNext={handleReviewNext}
           items={reviewItems}
+          context="logging"
         />
       )}
 
