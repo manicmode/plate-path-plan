@@ -271,7 +271,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         frequency_type: 'daily',
         frequency_value: 1,
         reminder_time: '12:30',
-        schedule: 'DTSTART;TZID=UTC:20250101T123000\nRRULE:FREQ=DAILY',
         is_active: true,
         food_item_data: mealSetData,
         channel: 'app',
