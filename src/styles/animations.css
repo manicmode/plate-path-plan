@@ -1,9 +1,14 @@
 /* Custom animations for barcode scanner */
 
 @keyframes scan {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(0%); }
-  100% { transform: translateX(100%); }
+  0%   { transform: translateY(-36%); opacity: 0.2; }
+  50%  { transform: translateY(36%);  opacity: 0.9; }
+  100% { transform: translateY(-36%); opacity: 0.2; }
+}
+
+@keyframes fade { 
+  0%, 100% { opacity: 0; } 
+  10%, 90% { opacity: 1; } 
 }
 
 @keyframes scale {

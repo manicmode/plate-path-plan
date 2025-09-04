@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Check, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
 import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
@@ -532,22 +533,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
       >
         <div className="relative w-full h-full bg-black overflow-hidden">
-          {/* Video Element */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-
           {/* Framing Mask - darkens everything except the scan area */}
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"
-            style={{
-              maskImage: 'radial-gradient(ellipse 45% 25% at center, transparent 60%, black 85%)',
-              WebkitMaskImage: 'radial-gradient(ellipse 45% 25% at center, transparent 60%, black 85%)'
-            }}
+            className="absolute inset-0 bg-black/30"
           />
 
           {/* Unified Scan Overlay */}
@@ -566,7 +554,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           <div className="absolute inset-0 flex flex-col">
             {/* Header */}
             <div className="relative flex items-center p-4 pt-8 bg-gradient-to-b from-black/70 to-transparent mt-[env(safe-area-inset-top)]">
-              <h2 className="text-white text-xl font-semibold text-center w-full">Scan a barcode</h2>
+              {/* Title */}
+              <h2 className="text-white text-lg font-semibold text-center w-full">Scan a barcode</h2>
+              
               <Button
                 variant="ghost"
                 size="sm"
@@ -592,54 +582,79 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               )}
             </div>
 
-            {/* Status Chip */}
-            <div className="px-4 pb-2">
-              <div className="inline-flex items-center px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-                <div className="text-xs text-white/80">
-                  {isLookingUp ? (
-                    <>
-                      <div className="inline-block w-2 h-2 bg-cyan-400 rounded-full mr-2 animate-pulse" />
-                      Looking up product...
-                    </>
-                  ) : isDecoding ? (
-                    <>
-                      <div className="inline-block w-2 h-2 bg-cyan-400 rounded-full mr-2 animate-pulse" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <div className="inline-block w-2 h-2 bg-green-400 rounded-full mr-2" />
-                      Ready to scan
-                    </>
-                  )}
-                </div>
-              </div>
+            {/* Status row – fixed height, centered */}
+            <div className="flex h-[28px] items-center justify-center px-4">
+              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/15 text-emerald-300 border border-emerald-300/30">
+                {isLookingUp ? (
+                  <>
+                    <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                    Looking up product...
+                  </>
+                ) : isDecoding ? (
+                  <>
+                    <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>● Ready to scan</>
+                )}
+              </span>
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
-              {/* Centered scan frame */}
-              <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
-                {/* Corner indicators with glow effect */}
-                <div className={`absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 transition-all duration-300 ${
-                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
-                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
-                <div className={`absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 transition-all duration-300 ${
-                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
-                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
-                <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 transition-all duration-300 ${
-                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
-                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
-                <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 transition-all duration-300 ${
-                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
-                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
-                
-                {/* Scanning line animation */}
-                {phase === 'scanning' && (
-                  <div className="absolute inset-x-4 top-1/2 h-0.5 transform -translate-y-1/2">
-                    <div className="h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-[scan_2.4s_ease-in-out_infinite] shadow-lg shadow-cyan-400/50 blur-[1px]" />
-                  </div>
-                )}
+            <div className="flex-1 flex flex-col items-center justify-center px-4">
+              {/* Helper text */}
+              <p className="text-white/70 text-sm text-center mb-6">
+                Align the code in the frame— we'll auto-detect.
+              </p>
+              
+              {/* Frame wrapper – fixed height so nothing jumps */}
+              <div className="relative mx-auto h-[320px] w-[260px] rounded-3xl overflow-hidden bg-black">
+                {/* Video feed */}
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted
+                  className="h-full w-full object-cover"
+                />
+
+                {/* Vignette overlay */}
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      'radial-gradient(ellipse at 50% 42%, ' +
+                      'rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.08) 35%, ' +
+                      'rgba(0,0,0,0.18) 58%, rgba(0,0,0,0.36) 72%, ' +
+                      'rgba(0,0,0,0.58) 86%, rgba(0,0,0,0.72) 100%)'
+                  }}
+                />
+
+                {/* Corners */}
+                <div className="absolute inset-10">
+                  <div className={cn(
+                    "absolute left-0 top-0 h-5 w-5 border-t-2 border-l-2 rounded-tl-md transition-all duration-180",
+                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
+                  )} />
+                  <div className={cn(
+                    "absolute right-0 top-0 h-5 w-5 border-t-2 border-r-2 rounded-tr-md transition-all duration-180",
+                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
+                  )} />
+                  <div className={cn(
+                    "absolute left-0 bottom-0 h-5 w-5 border-b-2 border-l-2 rounded-bl-md transition-all duration-180",
+                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
+                  )} />
+                  <div className={cn(
+                    "absolute right-0 bottom-0 h-5 w-5 border-b-2 border-r-2 rounded-br-md transition-all duration-180",
+                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
+                  )} />
+                </div>
+
+                {/* Scan line */}
+                <div className="absolute left-12 right-12 top-1/2 h-px
+                                bg-gradient-to-r from-transparent via-cyan-300 to-transparent
+                                animate-[scan_2.4s_ease-in-out_infinite]" />
                 
                 {/* Success checkmark */}
                 {showSuccess && (
@@ -647,40 +662,36 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                     <Check className="h-4 w-4 text-white" />
                   </div>
                 )}
-              </div>
-              
-              {/* Helper text */}
-              <div className="mt-4 text-center">
-                <p className="text-white/80 text-sm font-medium">
-                  Align the code in the frame— we'll auto-detect
-                </p>
-                
-                {/* Slow hint */}
-                {showSlowHint && (
-                  <div className="mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-white/60 text-xs">
-                      Hold steady • Try turning on flash
-                    </p>
-                  </div>
-                )}
-                
-                {/* Supported formats tooltip */}
-                <div className="relative mt-2">
-                  <button
-                    onClick={() => setShowTooltip(!showTooltip)}
-                    className="inline-flex items-center text-white/50 hover:text-white/70 text-xs transition-colors"
-                  >
-                    <Info className="h-3 w-3 mr-1" />
-                    Supported formats
-                  </button>
                   
-                  {showTooltip && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-white/80 whitespace-nowrap border border-white/20">
-                      UPC-A, EAN-13, EAN-8, Code-128, QR codes
-                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45 border-l border-t border-white/20"></div>
-                    </div>
+                {/* HINT (no layout shift) */}
+                <div
+                  aria-live="polite"
+                  className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 h-5 flex items-center justify-center text-[12px] text-white/80"
+                >
+                  {showSlowHint && (
+                    <span className="animate-[fade_2.2s_ease-in-out_infinite] bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
+                      Hold steady • Try turning on flash
+                    </span>
                   )}
                 </div>
+              </div>
+                
+              {/* Supported formats tooltip */}
+              <div className="relative mt-4">
+                <button
+                  onClick={() => setShowTooltip(!showTooltip)}
+                  className="inline-flex items-center text-white/50 hover:text-white/70 text-xs transition-colors"
+                >
+                  <Info className="h-3 w-3 mr-1" />
+                  Supported formats
+                </button>
+                
+                {showTooltip && (
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-white/80 whitespace-nowrap border border-white/20">
+                    UPC-A, EAN-13, EAN-8, Code-128, QR codes
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45 border-l border-t border-white/20"></div>
+                  </div>
+                )}
               </div>
             </div>
 
