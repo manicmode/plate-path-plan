@@ -96,6 +96,8 @@ const GameAndChallengePage_Min = lazy(() =>
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
 const SupplementDetail = lazy(() => import('@/pages/SupplementDetail'));
+const HabitCentralV2 = lazy(() => import('@/pages/HabitCentralV2'));
+const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
 const Hydration = lazy(() => import('@/pages/Hydration'));
 const ProgressCalories = lazy(() => import('@/pages/ProgressCalories'));
 const ProgressProtein = lazy(() => import('@/pages/ProgressProtein'));
@@ -287,17 +289,36 @@ function AppContent() {
                        </>
                      )}
 
-                    <Route path="/exercise-hub" element={
-                      <ProtectedRoute>
-                        <ExerciseHub />
-                      </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/profile" element={
-                      <ProtectedRoute>
-                        <Profile />
-                      </ProtectedRoute>
+                     <Route path="/exercise-hub" element={
+                       <ProtectedRoute>
+                         <ExerciseHub />
+                       </ProtectedRoute>
                      } />
+                     
+                     {/* Hub Routes */}
+                     <Route path="/supplement-hub" element={
+                       <ProtectedRoute>
+                         <SupplementHub />
+                       </ProtectedRoute>
+                     } />
+                     
+                     <Route path="/habit-central" element={
+                       <ProtectedRoute>
+                         <HabitCentralV2 />
+                       </ProtectedRoute>
+                     } />
+                     
+                     <Route path="/influencer-hub" element={
+                       <ProtectedRoute>
+                         <InfluencerHub />
+                       </ProtectedRoute>
+                     } />
+                     
+                     <Route path="/profile" element={
+                       <ProtectedRoute>
+                         <Profile />
+                       </ProtectedRoute>
+                      } />
                       <Route path="/game-and-challenge" element={
                         <ProtectedRoute>
                           <GameAndChallengePage_Min />

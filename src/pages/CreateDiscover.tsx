@@ -158,7 +158,7 @@ export default function CreateDiscover() {
         title: "Habit created ✓",
         description: "Your custom habit is now active!",
         action: (
-          <Button variant="outline" size="sm" onClick={() => navigate('/habit')}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/habit-central')}>
             Go to My Habits
           </Button>
         )

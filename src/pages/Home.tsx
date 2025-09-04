@@ -1868,7 +1868,7 @@ const Home = () => {
                 } else if (tileId === 'habit-central') {
                   // Store entry point for back navigation
                   sessionStorage.setItem('habitCentralEntryPoint', '/home');
-                  navigate('/habit', { state: { from: '/home' } });
+                  navigate('/habit-central', { state: { from: '/home' } });
                 }
               };
 
