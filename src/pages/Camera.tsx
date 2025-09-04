@@ -41,6 +41,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
+import { UnifiedPhotoCaptureModal } from '@/components/camera/UnifiedPhotoCaptureModal';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
@@ -200,6 +201,9 @@ const CameraPage = () => {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   const [showSavedSetsSheet, setShowSavedSetsSheet] = useState(false);
+  
+  // Unified camera modal state
+  const [showCamera, setShowCamera] = useState(false);
   
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
@@ -525,6 +529,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     const file = event.target.files?.[0];
     if (!file) return;
 
+    await processImageFile(file);
+  };
+
+  const processImageFile = async (file: File) => {
     console.log('Image selected:', {
       name: file.name,
       size: file.size,
@@ -561,6 +569,17 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       console.error('Error processing image:', error);
       toast.error('Failed to process image. Please try again.');
     }
+  };
+
+  // Handler for unified photo capture modal
+  const handleConfirmImage = async (fileOrBlob: File | Blob) => {
+    const file = fileOrBlob instanceof File
+      ? fileOrBlob
+      : new File([fileOrBlob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+    // Reuse existing logging upload path
+    await processImageFile(file);
+    setShowCamera(false);
   };
 
   const convertToBase64 = (imageDataUrl: string): string => {
@@ -2850,7 +2869,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                 <div className="grid grid-cols-2 gap-4">
                   {/* Upload Photo Tab */}
                   <Button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowCamera(true)}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
@@ -3349,6 +3368,15 @@ console.log('Global search enabled:', enableGlobalSearch);
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
         }}
+      />
+
+      {/* Unified Photo Capture Modal */}
+      <UnifiedPhotoCaptureModal
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onConfirm={handleConfirmImage}
+        title="Position food in the frame"
+        subtitle="Capture, upload, or exit"
       />
       
     </div>
