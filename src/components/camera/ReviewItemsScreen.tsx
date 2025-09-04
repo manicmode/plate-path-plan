@@ -365,9 +365,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
       });
       
-      // Hydrate nutrition data first
-      setConfirmModalItems(initialModalItems);
-      
       // Wait for proper nutrition data to be loaded
       const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
       const names = initialModalItems.map(m => m.name);
@@ -396,13 +393,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         throw new Error('Could not load nutrition data');
       }
       
-      // Small delay to prevent flicker
-      await new Promise(r => setTimeout(r, 500));
-      
       // Set flow active to prevent ScanHub navigation
       setConfirmFlowActive(true);
       
-      // Update items with enriched data and open modal
+      // ONLY NOW set the modal items and open modal - after data is ready
       setConfirmModalItems(enrichedItems);
       setCurrentConfirmIndex(0);
       setConfirmModalOpen(true);
@@ -839,7 +833,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       />
 
       {/* Legacy Rich Food Confirmation Modal */}
-      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !hydrating && (
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !isHydrating && (
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
