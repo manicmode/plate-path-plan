@@ -23,7 +23,8 @@ import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
-import { MealSetReminderToggle } from '@/components/reminder/MealSetReminderToggle';
+import { DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ReminderForm } from '@/components/reminder/ReminderForm';
 
 // --- helper: deterministic small hash ---
 function hash(str: string) {
@@ -104,6 +105,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const remindersStore = useRemindersStore();
   const existing = remindersStore.get(setId);
   const [setReminderOn, setSetReminderOn] = useState(!!existing?.enabled);
+  const [showReminderModal, setShowReminderModal] = useState(false);
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
@@ -284,26 +286,44 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   }, [selectedItems, remindersStore]);
 
   const onToggleSetReminder = async (next: boolean) => {
-    setSetReminderOn(next);
-
     if (next) {
-      const reminder = {
-        id: setId,
-        kind: 'meal_set' as const,
-        title: `Meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
-        // sensible default: remind at 12:00 every weekday (adjust to your UX)
-        cron: '0 12 * * 1-5',
-        enabled: true,
-        createdAt: Date.now(),
-      };
-      remindersStore.upsert(reminder);
-      console.log('[REM][Upsert]', reminder);
-      try { await scheduleReminder(reminder); } catch {}
+      // Open modal for configuration instead of direct scheduling
+      setShowReminderModal(true);
     } else {
+      // Directly cancel when toggling off
+      setSetReminderOn(false);
       remindersStore.remove(setId);
       console.log('[REM][Remove]', setId);
       try { await cancelReminder(setId); } catch {}
     }
+  };
+
+  const handleReminderSubmit = async (reminderData: any) => {
+    try {
+      const reminder = {
+        ...reminderData,
+        id: setId,
+        kind: 'meal_set' as const,
+        title: `Meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
+        enabled: true,
+        createdAt: Date.now(),
+      };
+      
+      remindersStore.upsert(reminder);
+      console.log('[REM][Upsert]', reminder);
+      await scheduleReminder(reminder);
+      
+      setSetReminderOn(true);
+      setShowReminderModal(false);
+    } catch (error) {
+      console.error('Failed to create reminder:', error);
+      setSetReminderOn(false);
+    }
+  };
+
+  const handleReminderCancel = () => {
+    setShowReminderModal(false);
+    setSetReminderOn(false); // Reset toggle when user cancels
   };
 
   const handleSaveSet = async () => {
@@ -1018,6 +1038,36 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           )}
         </>
       )}
+      
+      {/* Meal Set Reminder Modal */}
+      <Dialog.Root open={showReminderModal} onOpenChange={setShowReminderModal}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[120]" />
+          <Dialog.Content className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+            <div className="w-full max-w-md">
+              <VisuallyHidden.Root>
+                <Dialog.Title>Create Meal Set Reminder</Dialog.Title>
+              </VisuallyHidden.Root>
+              <ReminderForm
+                prefilledData={{
+                  label: `Eat meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
+                  type: 'meal',
+                  food_item_data: {
+                    meal_set: true,
+                    items: selectedItems.map(item => ({
+                      name: item.name,
+                      canonicalName: item.canonicalName || item.name,
+                      grams: item.grams || 100
+                    }))
+                  }
+                }}
+                onSubmit={handleReminderSubmit}
+                onCancel={handleReminderCancel}
+              />
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 };
