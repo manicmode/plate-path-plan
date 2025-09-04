@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import { toLegacyFoodItem } from '@/lib/confirm/legacyItemAdapter';
+import { needsHydration, perGramSum, MACROS } from '@/lib/confirm/hydrationUtils';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -51,118 +52,103 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [hydrating, setHydrating] = useState(false);
 
-  // Helper to detect if item needs hydration (missing or zero nutrition)
-  const needsHydrationFor = (m: any) => {
-    if (!m?.nutrition?.perGram) return true;
-    const pg = m.nutrition.perGram;
-    const sum = ['calories','protein','carbs','fat','sugar','fiber','sodium']
-      .map(k => Number(pg[k] || 0))
-      .reduce((a,b) => a+b, 0);
-    return !Object.keys(pg).length || sum === 0;
-  };
-
-  // Navigation with hydration gate
+  // Navigation with forced hydration per item
   const gotoIndex = (next: number) => {
+    const nextItem = confirmModalItems[next];
+    // Show loader BEFORE we flip the content, so there's no snap
+    const mustHydrate = needsHydration(nextItem) && !nextItem?.__hydrated;
+
+    setHydrating(mustHydrate);
     setCurrentConfirmIndex(next);
-    const item = confirmModalItems[next];
-    const needsHydration = item && needsHydrationFor(item) && !(item as any).__hydrated;
-    
-    if (needsHydration) {
-      setHydrating(true);
-      // Fallback timeout so UI doesn't stall forever
-      setTimeout(() => setHydrating(false), 2500);
-    } else {
-      setHydrating(false);
+
+    if (mustHydrate) {
+      console.log('[HYDRATE][ITEM][START]', { name: nextItem.name, idx: next });
+      // Timeout fallback so loader doesn't stick forever
+      const fallback = setTimeout(() => setHydrating(false), 2500);
+
+      (async () => {
+        try {
+          const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
+          const [result] = await resolveGenericFoodBatch([nextItem.name]);
+          
+          if (result) {
+            setConfirmModalItems(prev => {
+              const copy = [...prev];
+              
+              // Create enriched item with nutrition from GenericFood
+              const enrichedItem = {
+                ...copy[next],
+                nutrients: result.nutrients,
+                serving: result.serving
+              };
+              
+              const merged = toLegacyFoodItem(enrichedItem, next);
+              const improved = perGramSum(merged?.nutrition?.perGram) > perGramSum(copy[next]?.nutrition?.perGram);
+              copy[next] = improved ? { ...merged, __hydrated: true } : copy[next];
+              return copy;
+            });
+          }
+        } catch (err) {
+          console.error('[HYDRATE][ITEM][ERROR]', err);
+        } finally {
+          clearTimeout(fallback);
+          setHydrating(false);
+          console.log('[HYDRATE][ITEM][END]', { idx: next });
+        }
+      })();
     }
   };
 
-  // Drop loader when hydration completes for current item
+  // Force hydration on open (even if adapter thinks it's "complete")
+  useEffect(() => {
+    if (!confirmModalOpen || !confirmModalItems.length) return;
+
+    // FORCE call — merge only if it improves data
+    (async () => {
+      const names = confirmModalItems.map(m => m.name);
+      console.log('[HYDRATE][OPEN][START]', { names });
+
+      try {
+        const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
+        const results = await resolveGenericFoodBatch(names);
+        console.log('[HYDRATE][OPEN][END]', {
+          count: results?.length,
+          foundCount: results?.filter(Boolean).length,
+          first: results?.[0] ? { slug: results[0].slug, hasNutrients: !!results[0].nutrients } : null
+        });
+
+        setConfirmModalItems(prev => prev.map((m, i) => {
+          const r = results?.[i];
+          if (!r) return m;
+          
+          // Create enriched item with nutrition from GenericFood
+          const enrichedItem = {
+            ...m,
+            nutrients: r.nutrients,
+            serving: r.serving
+          };
+          
+          const merged = toLegacyFoodItem(enrichedItem, i);
+          const improved = perGramSum(merged?.nutrition?.perGram) > perGramSum(m?.nutrition?.perGram);
+          return improved ? { ...merged, __hydrated: true } : m;
+        }));
+      } catch (e) {
+        console.error('[HYDRATE][OPEN][ERROR]', e);
+      }
+    })();
+  }, [confirmModalOpen, confirmModalItems.length]);
+
+  // Hard assertions for debugging
   useEffect(() => {
     const item = confirmModalItems[currentConfirmIndex];
     if (!item) return;
-    if (!needsHydrationFor(item) || (item as any).__hydrated) {
-      setHydrating(false);
-    }
-  }, [confirmModalItems, currentConfirmIndex]);
-
-  // Enrichment effect - hydrate after modal opens
-  useEffect(() => {
-    if (!confirmModalOpen || !confirmModalItems?.length) return;
-
-    const needIdxs = confirmModalItems
-      .map((m, i) => needsHydrationFor(m) ? i : -1)
-      .filter(i => i >= 0);
-
-    if (!needIdxs.length) {
-      console.log('[HYDRATE][SKIP] All items already hydrated');
-      return;
-    }
-
-    console.log('[HYDRATE][START]', {
-      count: needIdxs.length,
-      names: needIdxs.map(i => confirmModalItems[i].name)
+    console.log('[CONFIRM][BINDINGS]', {
+      name: item.name,
+      pg: item?.nutrition?.perGram,
+      pgSum: perGramSum(item?.nutrition?.perGram),
+      hydrated: !!item?.__hydrated
     });
-
-    // Non-blocking enrichment
-    (async () => {
-      try {
-        const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
-        
-        const names = needIdxs.map(i => confirmModalItems[i].name);
-        const hydrated = await resolveGenericFoodBatch(names);
-        
-        console.log('[HYDRATE][END]', {
-          resultCount: hydrated?.length,
-          foundCount: hydrated?.filter(Boolean).length,
-          first: hydrated?.[0] ? { slug: hydrated[0].slug, hasNutrients: !!hydrated[0].nutrients } : null
-        });
-
-        const patched = [...confirmModalItems];
-        needIdxs.forEach((idx, j) => {
-          const genericFood = hydrated?.[j];
-          if (!genericFood) return;
-
-          // Merge nutrition data with zero filtering
-          const enrichedItem = {
-            ...patched[idx],
-            analysis: {
-              ...patched[idx].analysis,
-              healthScore: patched[idx].analysis?.healthScore || 70,
-              ingredients: genericFood.nutrients ? Object.keys(genericFood.nutrients) : patched[idx].analysis?.ingredients || [],
-              source: 'generic_db',
-              dataSourceLabel: 'Nutrition Database'
-            },
-            nutrition: {
-              ...patched[idx].nutrition,
-              perGram: {
-                calories: Math.max(0, (genericFood.nutrients?.calories || 0) / 100),
-                protein: Math.max(0, (genericFood.nutrients?.protein_g || 0) / 100),
-                carbs: Math.max(0, (genericFood.nutrients?.carbs_g || 0) / 100),
-                fat: Math.max(0, (genericFood.nutrients?.fat_g || 0) / 100),
-                sugar: Math.max(0, (genericFood.nutrients?.fiber_g || 0) / 100), // Use fiber as sugar fallback
-                fiber: Math.max(0, (genericFood.nutrients?.fiber_g || 0) / 100),
-                sodium: Math.max(0, (genericFood.nutrients?.sodium_mg || 0) / 100),
-              }
-            }
-          };
-
-          patched[idx] = toLegacyFoodItem(enrichedItem, idx);
-          (patched[idx] as any).__hydrated = true;
-        });
-        
-        setConfirmModalItems(patched);
-        console.log('[HYDRATE][SUCCESS] Enhanced items:', needIdxs.length);
-      } catch (e) {
-        console.warn('[HYDRATE][ERROR]', e);
-        // Mark failed items as hydrated to prevent retry loop
-        const patched = [...confirmModalItems];
-        needIdxs.forEach(idx => {
-          (patched[idx] as any).__hydrated = true;
-        });
-        setConfirmModalItems(patched);
-      }
-    })();
-  }, [confirmModalOpen]);
+  }, [confirmModalItems, currentConfirmIndex]);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -861,19 +847,25 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           })()}
           
           {hydrating ? (
-            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm">
-              <div className="fixed inset-4 z-[600] bg-card rounded-lg border shadow-lg">
-                <div className="p-6 text-center">
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
-                    <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-muted rounded w-full"></div>
-                      <div className="h-3 bg-muted rounded w-5/6"></div>
-                      <div className="h-3 bg-muted rounded w-4/6"></div>
-                    </div>
+            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-card rounded-lg border shadow-lg p-6 mx-4 max-w-sm w-full">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 bg-muted rounded w-3/4 mx-auto"></div>
+                  <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded w-full"></div>
+                    <div className="h-3 bg-muted rounded w-5/6"></div>
+                    <div className="h-3 bg-muted rounded w-4/6"></div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4">Loading nutrition data...</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                  </div>
+                </div>
+                <div className="text-center mt-4">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading nutrition data...</p>
                 </div>
               </div>
             </div>
