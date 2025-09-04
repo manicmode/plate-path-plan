@@ -81,15 +81,8 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
   ) || `item-${typeof index === 'string' ? index : index + 1}`;
   
-  // Use provided ID or generate one - CRITICAL: same source as write path
-  const resolvedId = raw.foodId ?? raw.id ?? raw.storeId ?? generateFoodId(raw);
-  
-  // Hard diagnostics for ID read path
-  if (process.env.NODE_ENV === 'development') {
-    const a = useNutritionStore.getState().get(resolvedId);
-    const pgSum = a?.perGram ? Object.values(a.perGram).reduce((s:number,v:any)=>s+(+v||0),0) : 0;
-    console.log('[SST][ADAPTER_READ]', { id: resolvedId, name, has: !!a, pgSum });
-  }
+  // DO NOT recompute the id; use the one passed in
+  const resolvedId = typeof index === 'string' ? index : (raw.foodId ?? raw.id ?? raw.storeId ?? generateFoodId(raw));
   
   // Flag sanity check
   console.log('[SST][FLAGS]', { ENABLE_SST_CONFIRM_READ: enableSST });
@@ -111,76 +104,102 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   const per100 = n.per100g ?? n['per_100g'] ?? raw.meta?.per100g;
   const perServing = n.perServing ?? n['per_serving'] ?? raw.meta?.perPortion;
 
+  // Pull any existing analysis from the store (for final diagnostics)
+  const storeAnalysis = useNutritionStore.getState().get(resolvedId);
+  
   // Phase 1: Read from store first if SST enabled using the unified ID
   let perGram: LegacyNutrition['perGram'] = {};
-  let storeAnalysis: NutritionAnalysis | undefined;
   
   if (enableSST) {
-    storeAnalysis = useNutritionStore.getState().get(resolvedId);
     if (storeAnalysis?.perGram && Object.values(storeAnalysis.perGram).some(v => (v ?? 0) > 0)) {
       perGram = { ...storeAnalysis.perGram };
       console.log('[SST][read]', { id: resolvedId, name, source: 'store', perGram });
     }
   }
-  
-  // choose a basis (per-100g or per-serving grams)
-  let baseFrom:
-    | { basis: 'per100g'; div: number; src: any }
-    | { basis: 'perServing'; div: number; src: any }
-    | undefined;
+
+  // Robust alias map to handle generic_foods.json variants
+  const nutrientAliases: Record<string, string[]> = {
+    calories: ['calories', 'energy_kcal', 'energy.kcal', 'kcal', 'energy'],
+    protein: ['protein', 'protein_g', 'proteins'],
+    carbs:   ['carbohydrates_total_g','carbohydrates_g','carbohydrates','carbohydrate','carbohydrate_g','carbs','carbs_g','total_carbohydrate_g'],
+    fat:     ['fat_total_g','total_fat_g','fat','fat_g','fats','lipids','total_fat'],
+    sugar:   ['sugar_g','sugars','sugars_g','sugar','sugars_total_g','total_sugars_g'],
+    fiber:   ['fiber_g','dietary_fiber_g','fibre_g','fiber','fibre','total_dietary_fiber_g'],
+    sodium:  ['sodium_mg','sodium','salt_mg','salt','sodium_milligrams'],
+  };
+
+  // Determine basis & source
+  let sourceData: any = null;
+  let divisor = 1;
+  let basis: 'per100g' | 'perServing' | 'rawNutrients' | 'unknown' = 'unknown';
 
   if (!Object.keys(perGram).length) {
-    if (per100) {
-      baseFrom = { basis: 'per100g' as const, div: 100, src: per100 };
-    } else if (perServing && (raw.analysis?.servingGrams || raw.meta?.servingGrams || raw.serving?.grams)) {
+    if (per100 && typeof per100 === 'object') {
+      sourceData = per100; divisor = 100; basis = 'per100g';
+    } else if (perServing && typeof perServing === 'object') {
       const servingGrams =
-        raw.analysis?.servingGrams || raw.meta?.servingGrams || raw.serving?.grams;
-      baseFrom = { basis: 'perServing' as const, div: servingGrams, src: perServing };
+        raw.analysis?.servingGrams || raw.meta?.servingGrams || raw.serving?.grams || raw.nutrients?.serving?.grams;
+      if (servingGrams && servingGrams > 0) {
+        sourceData = perServing; divisor = servingGrams; basis = 'perServing';
+      }
+    } else if (raw.nutrients && typeof raw.nutrients === 'object') {
+      sourceData = raw.nutrients; divisor = 100; basis = 'rawNutrients';
     }
 
-    const nutrientAliases: Record<string, string[]> = {
-      calories: ['calories', 'energy_kcal', 'energy.kcal', 'kcal'],
-      protein: ['protein', 'protein_g', 'proteins'],
-      carbs: [
-        'carbohydrates_total_g', 'carbohydrates_g', 'carbohydrates',
-        'carbohydrate', 'carbohydrate_g', 'carbs', 'carbs_g'
-      ],
-      fat: ['fat_total_g', 'total_fat_g', 'fat', 'fat_g', 'fats', 'lipids'],
-      sugar: ['sugar_g', 'sugars', 'sugars_g', 'sugar', 'sugars_total_g'],
-      fiber: ['fiber_g', 'dietary_fiber_g', 'fibre_g', 'fiber', 'fibre'],
-      sodium: ['sodium_mg', 'sodium', 'salt_mg', 'salt'],
-    };
+    if (sourceData && divisor > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[SST][BASIS]', { item: name, basis, divisor, sourceKeys: Object.keys(sourceData).slice(0, 8) });
+      }
 
-    if (baseFrom) {
-      for (const [key, aliases] of Object.entries(nutrientAliases)) {
+      for (const [nutrientKey, aliases] of Object.entries(nutrientAliases)) {
         let value: number | undefined;
+        let foundKey: string | undefined;
 
         for (const alias of aliases) {
-          const candidate = pick<number>(
-            baseFrom.src?.[alias],
-            n?.[alias],
-            raw.nutrients?.[alias],
-            (raw as any)[alias],
-          );
-          if (typeof candidate === 'number' && candidate > 0) {
-            value = candidate;
-            break;
-          }
+          const v1 = sourceData[alias];
+          if (typeof v1 === 'number' && v1 > 0) { value = v1; foundKey = alias; break; }
+
+          const v2 = sourceData?.nutrients?.[alias];
+          if (typeof v2 === 'number' && v2 > 0) { value = v2; foundKey = `nutrients.${alias}`; break; }
         }
 
-        if (value !== undefined) {
-          const pg = value / baseFrom.div;
-          perGram[key as keyof typeof perGram] = pg;
-          console.log('[SST][PERGRAM][CALC]', {
-            item: name, key, value, divisor: baseFrom.div, perGram: pg, basis: baseFrom.basis
-          });
+        if (value !== undefined && foundKey) {
+          perGram[nutrientKey as keyof typeof perGram] = value / divisor;
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[SST][PERGRAM][CALC]', {
+              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: value / divisor, basis
+            });
+          }
         } else {
-          console.warn('[SST][PERGRAM][MISS]', {
-            item: name, key, basis: baseFrom.basis, sample: Object.keys(baseFrom.src || {}).slice(0, 6)
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[SST][PERGRAM][MISS]', {
+              item: name, nutrient: nutrientKey, basis,
+              availableKeys: Object.keys(sourceData).filter(k => typeof (sourceData as any)[k] === 'number').slice(0, 8)
+            });
+          }
         }
       }
+    } else if (process.env.NODE_ENV === 'development') {
+      console.warn('[SST][NO_BASIS]', {
+        item: name, hasPer100: !!per100, hasPerServing: !!perServing, hasRawNutrients: !!raw.nutrients,
+        rawKeys: raw.nutrients ? Object.keys(raw.nutrients).slice(0, 8) : []
+      });
     }
+  }
+
+  // Final adapter diagnostics
+  if (process.env.NODE_ENV === 'development') {
+    const pgSum = Object.values(perGram || {}).reduce((sum, v: any) => sum + (+v || 0), 0);
+    console.log('[SST][ADAPTER_READ]', {
+      passedId: resolvedId,
+      generatedId: generateFoodId(raw),
+      idsMatch: resolvedId === generateFoodId(raw),
+      name,
+      hasStoreData: !!storeAnalysis?.perGram,
+      storePerGram: storeAnalysis?.perGram,
+      computedPerGram: perGram,
+      pgSum,
+    });
   }
 
   // Use store data if available and SST enabled
@@ -220,15 +239,15 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
   // Build basePer100 for FoodConfirmationCard portion scaling
   let basePer100 = null;
-  if (baseFrom) {
+  if (sourceData && divisor > 0) {
     basePer100 = {
-      calories: pick<number>(baseFrom.src?.calories, n?.calories) || 0,
-      protein_g: pick<number>(baseFrom.src?.protein, baseFrom.src?.protein_g, n?.protein, n?.protein_g) || 0,
-      carbs_g: pick<number>(baseFrom.src?.carbs, baseFrom.src?.carbs_g, n?.carbs, n?.carbs_g) || 0,
-      fat_g: pick<number>(baseFrom.src?.fat, baseFrom.src?.fat_g, n?.fat, n?.fat_g) || 0,
-      fiber_g: pick<number>(baseFrom.src?.fiber, baseFrom.src?.fiber_g, n?.fiber, n?.fiber_g) || 0,
-      sugar_g: pick<number>(baseFrom.src?.sugar, baseFrom.src?.sugar_g, n?.sugar, n?.sugar_g) || 0,
-      sodium_mg: pick<number>(baseFrom.src?.sodium, baseFrom.src?.sodium_mg, n?.sodium, n?.sodium_mg) || 0,
+      calories: pick<number>(sourceData?.calories, n?.calories) || 0,
+      protein_g: pick<number>(sourceData?.protein, sourceData?.protein_g, n?.protein, n?.protein_g) || 0,
+      carbs_g: pick<number>(sourceData?.carbs, sourceData?.carbs_g, n?.carbs, n?.carbs_g) || 0,
+      fat_g: pick<number>(sourceData?.fat, sourceData?.fat_g, n?.fat, n?.fat_g) || 0,
+      fiber_g: pick<number>(sourceData?.fiber, sourceData?.fiber_g, n?.fiber, n?.fiber_g) || 0,
+      sugar_g: pick<number>(sourceData?.sugar, sourceData?.sugar_g, n?.sugar, n?.sugar_g) || 0,
+      sodium_mg: pick<number>(sourceData?.sodium, sourceData?.sodium_mg, n?.sodium, n?.sodium_mg) || 0,
     };
   }
 
@@ -274,8 +293,8 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
       fiber: pick<number>(n.fiber, n.fiber_g, raw.fiber),
       sodium: pick<number>(n.sodium, n.sodium_mg, raw.sodium),
       perGram,
-      basis: baseFrom?.basis ?? 'perGram',
-      servingGrams: baseFrom?.basis === 'perServing' ? baseFrom.div : undefined,
+      basis: basis === 'unknown' || basis === 'rawNutrients' ? 'perGram' : basis,
+      servingGrams: basis === 'perServing' ? divisor : undefined,
     },
     analysis: {
       healthScore,

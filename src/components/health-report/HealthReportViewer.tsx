@@ -129,19 +129,17 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           const r = results?.[i];
           if (!r) return m;
 
-          // when computing storeId for each item you enrich:
-          const storeId = m.foodId ?? m.id ?? generateFoodId(m);
-          
-          const merged = toLegacyFoodItem(
-            { ...m, nutrients: r.nutrients, serving: r.serving, id: storeId },
-            storeId,
-            /*strict=*/ true
-          );
+          const storeId = m.id; // ✅ REUSE the modal item's existing id (no regeneration)
+
+          const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
+          const merged = toLegacyFoodItem(enrichedInput, storeId, /*strict=*/ true); // ✅ pass same id
+          // DO NOT mutate merged.id afterward
+
           storeUpdates[storeId] = {
             perGram: merged.nutrition?.perGram || {},
-            healthScore: merged.analysis?.healthScore ?? 0,
-            flags: merged.analysis?.flags ?? [],
-            ingredients: merged.analysis?.ingredients ?? [],
+            healthScore: merged.analysis?.healthScore || 0,
+            flags: merged.analysis?.flags || [],
+            ingredients: merged.analysis?.ingredients || [],
             imageUrl: merged.analysis?.imageUrl,
             source: 'generic_foods',
             confidence: 0.9,
@@ -154,26 +152,21 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
         if (Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
-          console.log('[SST][WRITE][CONFIRM]', {
-            count: Object.keys(storeUpdates).length,
-            ids: Object.keys(storeUpdates),
-          });
+          console.log('[SST][WRITE][CONFIRM]', { ids: Object.keys(storeUpdates) });
 
-          const wroteIds = Object.keys(storeUpdates);
-          const readIds = enriched.map(i => i.id);
-
+          const wrote = Object.keys(storeUpdates);
+          const read  = enriched.map(it => it.id);
           console.log('[SST][IDS_COMPARE]', {
-            wrote: wroteIds,
-            read: readIds,
-            missingInStore: readIds.filter(id => !wroteIds.includes(id)),
-            extraInStore: wroteIds.filter(id => !readIds.includes(id)),
+            wrote, read,
+            missingInStore: read.filter(id => !wrote.includes(id)),
+            extraInStore:   wrote.filter(id => !read.includes(id)),
           });
 
-          const state = useNutritionStore.getState();
-          console.log('[SST][STORE_AFTER_WRITE]', wroteIds.map(id => ({
+          const byId = useNutritionStore.getState().byId;
+          console.log('[SST][STORE_AFTER_WRITE]', wrote.map(id => ({
             id,
-            hasPerGram: !!state.byId[id]?.perGram,
-            pgSum: Object.values(state.byId[id]?.perGram || {}).reduce((a: number, b: any) => a + (+b || 0), 0),
+            hasPerGram: !!byId[id]?.perGram,
+            pgSum: Object.values(byId[id]?.perGram || {}).reduce((a: number, b: any) => a + (+b || 0), 0),
           })));
         }
 

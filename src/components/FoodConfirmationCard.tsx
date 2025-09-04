@@ -207,12 +207,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   useEffect(() => {
     if (!currentFoodItem?.id) return;
     const data = useNutritionStore.getState().byId[currentFoodItem.id];
-    const keys = data?.perGram ? Object.keys(data.perGram) : [];
-    const pgSum = keys.reduce((a, k) => a + (+(data!.perGram as any)[k] || 0), 0);
-    console.log('[SST][CARD_BIND]', {
-      id: currentFoodItem.id, name: currentFoodItem.name,
-      fromStore: !!data, perGramKeys: keys, pgSum
-    });
+    const perGram = data?.perGram || {};
+    if (process.env.NODE_ENV === 'development') {
+      const pgSum = Object.values(perGram || {}).reduce((a: number, v: any) => a + (+v || 0), 0);
+      console.log('[SST][CARD_BIND]', {
+        id: currentFoodItem.id,
+        fromStore: !!data?.perGram,
+        perGramKeys: Object.keys(perGram || {}),
+        pgSum
+      });
+    }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
 
   if (!currentFoodItem) return null;
