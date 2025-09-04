@@ -3,6 +3,12 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
+
+function perGramReady(entry?: { perGram?: Record<string, number> }) {
+  if (!entry?.perGram) return false;
+  // any non-zero nutrient is considered ready
+  return Object.values(entry.perGram).some(v => (v ?? 0) > 0);
+}
 import { toast } from 'sonner';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
@@ -73,6 +79,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   
+  // Button loading state
+  const [opening, setOpening] = useState(false);
+  const hydrationStartedRef = useRef(false);
+  
   // Meal set reminder state
   const [showMealSetReminder, setShowMealSetReminder] = useState(false);
   
@@ -105,80 +115,115 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     });
   }, [items.filter(item => item.selected && item.name.trim()).map(i => `${i.id}-${i.name}-${i.grams}`).join('|')]);
 
-  // Phase management - start hydration when items change
+  // Resolve the actual first card id used by the modal
+  const firstCardId = useMemo(
+    () => confirmModalItems?.[0]?.id ?? null,
+    [confirmModalItems?.[0]?.id]
+  );
+
+  const [firstReady, setFirstReady] = useState(false);
+
+  // Ensure hydrate() kicks off before the user clicks
   useEffect(() => {
-    if (!modalItems?.length) {
-      setPhase('idle');
-      return;
-    }
+    if (!hydrationStartedRef.current) {
+      hydrationStartedRef.current = true;
+      
+      // Start hydration
+      (async () => {
+        if (!modalItems?.length) {
+          setPhase('idle');
+          return;
+        }
 
-    setPhase('hydrating');
+        setPhase('hydrating');
 
-    (async () => {
-      try {
-        // Hydrate each item
-        for (const item of modalItems) {
-          if (needsHydration(item)) {
-            try {
-              const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
-              const [result] = await resolveGenericFoodBatch([item.name]);
-              
-              if (result?.nutrients) {
-                const id = generateFoodId(item);
-                const perGram = result.nutrients;
-                useNutritionStore.getState().upsert(id, {
-                  perGram,
-                  healthScore: 0,
-                  flags: [],
-                  __hydrated: true,
-                  updatedAt: Date.now()
-                });
+        try {
+          // Hydrate each item
+          for (const item of modalItems) {
+            if (needsHydration(item)) {
+              try {
+                const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
+                const [result] = await resolveGenericFoodBatch([item.name]);
                 
-                // Mark item as hydrated
-                (item as any).__hydrated = true;
-                (item as any).nutrition = { perGram };
+                if (result?.nutrients) {
+                  const id = generateFoodId(item);
+                  const perGram = result.nutrients;
+                  useNutritionStore.getState().upsert(id, {
+                    perGram,
+                    healthScore: 0,
+                    flags: [],
+                    __hydrated: true,
+                    updatedAt: Date.now()
+                  });
+                  
+                  // Mark item as hydrated
+                  (item as any).__hydrated = true;
+                  (item as any).nutrition = { perGram };
+                }
+              } catch (err) {
+                console.error('Failed to hydrate item:', item.name, err);
               }
-            } catch (err) {
-              console.error('Failed to hydrate item:', item.name, err);
             }
           }
+          
+          // Set enriched modal items
+          setConfirmModalItems(modalItems);
+        } catch (error) {
+          console.error('Hydration failed:', error);
         }
-        
-        // Set enriched modal items
-        setConfirmModalItems(modalItems);
-      } catch (error) {
-        console.error('Hydration failed:', error);
-      }
-    })();
-  }, [modalItems]);
+      })();
+    }
+  }, []);
 
-  // Subscribe to first item nutrition readiness
+  // Subscribe to the nutrition store for just the first card id
   useEffect(() => {
-    const firstItem = modalItems?.[0];
-    if (!firstItem?.id || phase !== 'hydrating') return;
+    setFirstReady(false);
+    if (!firstCardId) return;
 
-    const checkReady = () => {
-      const pg = useNutritionStore.getState().byId[firstItem.id]?.perGram;
-      return !!pg && perGramSum(pg) > 0;
-    };
-
-    // Check immediately
-    if (checkReady()) {
-      setPhase('ready');
-      return;
+    // immediate check
+    const st = useNutritionStore.getState();
+    if (perGramReady(st.byId[firstCardId])) {
+      setFirstReady(true);
     }
 
-    // Subscribe to changes
-    const unsubscribe = useNutritionStore.subscribe(
-      () => {
-        if (checkReady()) {
-          setPhase('ready');
-        }
+    // subscribe to changes for that id
+    const unsub = useNutritionStore.subscribe(
+      (state) => {
+        const entry = state.byId[firstCardId];
+        const ok = perGramReady(entry);
+        setFirstReady(prev => (prev === ok ? prev : ok));
       }
     );
+    return unsub;
+  }, [firstCardId]);
 
-    return unsubscribe;
-  }, [modalItems, phase]);
+  // Wait helper so the button doesn't freeze forever
+  function waitUntilReadyOr(ms: number) {
+    return new Promise<void>(resolve => {
+      if (firstReady) return resolve();
+      const unsub = useNutritionStore.subscribe(
+        (state) => {
+          const entry = state.byId[firstCardId ?? ''];
+          if (perGramReady(entry)) {
+            unsub();
+            resolve();
+          }
+        }
+      );
+      setTimeout(() => {
+        unsub();
+        resolve(); // graceful fallback — will still gate the card (no flash)
+      }, ms);
+    });
+  }
+
+  async function handleOpenConfirmFlow() {
+    setOpening(true);
+    // wait up to 1200ms; if not ready, we still open (loader was the old flash—now gated)
+    await waitUntilReadyOr(1200);
+    setPhase('open');
+    setOpening(false);
+  }
 
   // Meal set ID for reminders
   const selectedItems = useMemo(() => items.filter(i => i.selected), [items]);
@@ -538,19 +583,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                       </Button>
                       
                       <Button
-                        onClick={() => {
-                          if (phase !== 'ready') return;
-                          setPhase('open');
-                        }}
-                        disabled={phase !== 'ready'}
-                        className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                        className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base relative"
+                        disabled={opening}
+                        onClick={handleOpenConfirmFlow}
                       >
-                        {phase === 'ready' ? '🔎 Review & Log' : (
-                          <div className="flex items-center gap-2">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                            Preparing nutrition…
-                          </div>
+                        {opening && (
+                          <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
                         )}
+                        <span className={opening ? 'opacity-80' : ''}>
+                          {opening ? 'Preparing nutrition…' : '🔎 Review & Log'}
+                        </span>
                       </Button>
                     </div>
                     
@@ -608,30 +650,41 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       />
 
       {/* Phase-based Food Confirmation Modal */}
-      {phase === 'open' && confirmModalItems[currentConfirmIndex] && (
-        <FoodConfirmationCard
-          isOpen={true}
-          onClose={() => setPhase('ready')}
-          onConfirm={handleConfirmModalComplete}
-          onSkip={handleConfirmModalSkip}
-          onCancelAll={() => setPhase('ready')}
-          foodItem={confirmModalItems[currentConfirmIndex]}
-          showSkip
-          currentIndex={currentConfirmIndex}
-          totalItems={confirmModalItems.length}
-        />
+      {phase === 'open' && (
+        <>
+          {(() => {
+            const cur = confirmModalItems[currentConfirmIndex];
+            const storeEntry = useNutritionStore.getState().byId[cur?.id ?? ''];
+            const ready = cur?.__hydrated && perGramReady(storeEntry);
+
+            if (!ready) return null; // no flash; modal stays closed until ready/open
+            return (
+              <FoodConfirmationCard
+                isOpen={true}
+                onClose={() => setPhase('ready')}
+                onConfirm={handleConfirmModalComplete}
+                onSkip={handleConfirmModalSkip}
+                onCancelAll={() => setPhase('ready')}
+                foodItem={cur}
+                showSkip
+                currentIndex={currentConfirmIndex}
+                totalItems={confirmModalItems.length}
+              />
+            );
+          })()}
+        </>
       )}
 
-      {/* Meal Set Reminder Dialog - Using standard Dialog with blur overlay */}
+      {/* Meal Set Reminder Dialog - Using exact same structure as item reminders */}
       <Dialog.Root open={showMealSetReminder} onOpenChange={setShowMealSetReminder}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[700]" />
-          <Dialog.Content
-            className="fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[460px]
-                       -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-0 shadow-lg z-[710]"
-          >
-            <Dialog.Title className="sr-only">Create Reminder</Dialog.Title>
-            <Dialog.Description className="sr-only">Get reminded to eat this meal set again.</Dialog.Description>
+          <Dialog.Overlay className="fixed inset-0 z-[700] bg-black/40 backdrop-blur-sm" />
+          <Dialog.Content className="fixed z-[710] left-1/2 top-1/2 w-[92vw] max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-5 shadow-xl">
+            <Dialog.Title className="text-base font-semibold mb-1">Create Reminder</Dialog.Title>
+            <Dialog.Description className="text-sm text-muted-foreground mb-4">
+              Get reminded to eat this meal set again.
+            </Dialog.Description>
+
             <ReminderForm
               prefilledData={{
                 label: `Meal set: ${selectedItems.map(i => i.name).join(', ')}`,
