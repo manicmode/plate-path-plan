@@ -248,8 +248,8 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
   const verdictStyle = getVerdictDisplay(report.overallScore);
 
-  const handleSaveReportSet = () => {
-    console.log('[DEBUG] handleSaveReportSet called', { userId: user?.id, isSaved });
+  const handleSaveReportSet = async () => {
+    console.log('[DEBUG] handleSaveReportSet called', { userId: user?.id, isSaved, itemsCount: items.length });
     if (!user?.id) {
       toast({
         title: "Authentication Required",
@@ -259,7 +259,82 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       return;
     }
 
-    setShowSaveNameDialog(true);
+    // If it's a single item, save as individual report
+    if (items.length === 1) {
+      await handleSaveIndividualReport();
+    } else {
+      // Multiple items, save as meal set
+      setShowSaveNameDialog(true);
+    }
+  };
+
+  const handleSaveIndividualReport = async () => {
+    if (!user?.id || items.length !== 1) return;
+    
+    setIsSaving(true);
+    try {
+      const item = items[0];
+      const itemReport = report.itemAnalysis.find(a => a.name === item.name);
+      
+      // Calculate individual nutrition from the item's grams and the overall report
+      const itemGrams = item.grams || 100;
+      const totalGrams = items.reduce((sum, i) => sum + (i.grams || 100), 0);
+      const itemRatio = itemGrams / totalGrams;
+      
+      const reportSnapshot = {
+        nutritionData: {
+          calories: itemReport?.calories || Math.round(report.totalCalories * itemRatio),
+          protein: Math.round(report.macroBalance.protein * itemRatio * 10) / 10,
+          carbs: Math.round(report.macroBalance.carbs * itemRatio * 10) / 10,
+          fat: Math.round(report.macroBalance.fat * itemRatio * 10) / 10,
+          fiber: 0, // Not available in current report structure
+          sugar: 0, // Not available in current report structure  
+          sodium: 0 // Not available in current report structure
+        },
+        healthData: {
+          score: itemReport?.score || 0,
+          verdict: itemReport?.healthRating || 'unknown',
+          flags: itemReport?.benefits || []
+        }
+      };
+
+      console.log('[SAVE][INDIVIDUAL]', { item: item.name, snapshot: reportSnapshot });
+
+      const { data, error } = await supabase
+        .from('saved_health_reports')
+        .insert({
+          title: item.name,
+          quality_score: Math.round(itemReport?.score || 0),
+          report_snapshot: reportSnapshot,
+          user_id: user.id,
+          source: 'health_report'
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('[SAVE][INDIVIDUAL][ERROR]', error);
+        throw error;
+      }
+
+      console.log('[SAVE][INDIVIDUAL][SUCCESS]', { id: data.id });
+      setIsSaved(true);
+      toast({
+        title: "Report Saved ✓",
+        description: `${item.name} saved to Individual Reports`,
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('Failed to save individual report:', error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save the health report. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveWithName = async (setName: string) => {
@@ -894,23 +969,23 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
                          ? 'bg-green-700 text-white cursor-default' 
                          : 'bg-green-600 hover:bg-green-700 text-white'
                      }`}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Saving Report Set...
-                      </>
-                    ) : isSaved ? (
-                      <>
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        ✅ Report Set Saved
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-5 h-5 mr-2" />
-                        💾 Save Report Set
-                      </>
-                    )}
+                   >
+                     {isSaving ? (
+                       <>
+                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                         {items.length === 1 ? 'Saving Report...' : 'Saving Report Set...'}
+                       </>
+                     ) : isSaved ? (
+                       <>
+                         <CheckCircle className="w-5 h-5 mr-2" />
+                         ✅ {items.length === 1 ? 'Report Saved' : 'Report Set Saved'}
+                       </>
+                     ) : (
+                       <>
+                         <Save className="w-5 h-5 mr-2" />
+                         💾 {items.length === 1 ? 'Save Report' : 'Save Report Set'}
+                       </>
+                     )}
                   </Button>
                 </div>
                 
