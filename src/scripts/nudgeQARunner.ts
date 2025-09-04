@@ -274,4 +274,52 @@ if (typeof window !== 'undefined') {
   console.log("  - window.QA_QUERIES - Database validation queries");
 }
 
+// Dev-only initialization
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  // Initialize QA tools automatically in dev mode
+  const initQATools = () => {
+    // Enhanced global QA functions
+    (window as any).nudgeQA = {
+      run: () => new NudgeQARunner().runComprehensiveQA(),
+      checkEligibility: async () => {
+        const { scheduleNudges } = await import('@/nudges/scheduler');
+        const { useAuth } = await import('@/contexts/auth');
+        
+        console.log("🔍 Checking current nudge eligibility...");
+        // This would need user context, simplified for demo
+        return { message: "Use the dashboard at /qa/nudges for full eligibility checking" };
+      },
+      simulateStress: () => {
+        console.log("🧠 To simulate stress context, use the dashboard at /qa/nudges");
+        console.log("Or manually create mood logs with tags: ['stressed', 'anxious', 'overwhelmed']");
+      },
+      checkPersistence: () => {
+        const userId = 'current-user'; // Would need real user context
+        const activeNudges = localStorage.getItem(`active_nudges_${userId}`);
+        const shownRunIds = localStorage.getItem(`shown_runids_${userId}`);
+        
+        console.log("📦 localStorage persistence check:");
+        console.log("  Active nudges:", activeNudges ? JSON.parse(activeNudges) : 'none');
+        console.log("  Shown runIds:", shownRunIds ? JSON.parse(shownRunIds) : 'none');
+        
+        return { activeNudges, shownRunIds };
+      }
+    };
+    
+    console.log("🎯 Enhanced QA tools loaded (dev mode only):");
+    console.log("  - window.nudgeQA.run() - Full QA suite");
+    console.log("  - window.nudgeQA.checkEligibility() - Check nudge eligibility");  
+    console.log("  - window.nudgeQA.simulateStress() - Help with stress simulation");
+    console.log("  - window.nudgeQA.checkPersistence() - Check localStorage");
+    console.log("  - Navigate to /qa/nudges for full dashboard");
+  };
+  
+  // Initialize after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQATools);
+  } else {
+    initQATools();
+  }
+}
+
 export default NudgeQARunner;
