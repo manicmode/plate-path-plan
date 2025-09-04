@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { RecentMealsTab } from './RecentMealsTab';
 import { RecentSetsTab } from './RecentSetsTab';
-import { ActivityTemplatesTab } from './ActivityTemplatesTab';
+import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 
 interface UnifiedLoggingTabsProps {
   onFoodSelect: (food: any) => void;
@@ -48,7 +48,7 @@ export const UnifiedLoggingTabs = ({ onFoodSelect, onBarcodeSelect, onBack }: Un
         </TabsContent>
 
         <TabsContent value="activity" className="mt-4">
-          <ActivityTemplatesTab />
+          <ActivityLoggingSection />
         </TabsContent>
       </Tabs>
     </div>
