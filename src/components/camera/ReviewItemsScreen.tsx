@@ -16,6 +16,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import { toLegacyFoodItem } from '@/lib/confirm/legacyItemAdapter';
 import { needsHydration, perGramSum, MACROS } from '@/lib/confirm/hydrationUtils';
+import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import '@/styles/review.css';
@@ -69,6 +70,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [hydrating, setHydrating] = useState(false);
+  
+  // Feature flags for safe rollout
+  const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
+  const nutritionStore = useNutritionStore();
 
   // Navigation with forced hydration per item
   const gotoIndex = (next: number) => {
@@ -292,8 +297,25 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
-    // Transform items using legacy adapter uniformly
-    const initialModalItems = selectedItems.map((item, index) => toLegacyFoodItem(item, index));
+    // Transform items using legacy adapter with SST enabled
+    const initialModalItems = selectedItems.map((item, index) => toLegacyFoodItem(item, index, ENABLE_SST_CONFIRM_READ));
+    
+    // Phase 0: Probe nutrition data sources
+    if (import.meta.env.DEV) {
+      initialModalItems.forEach(item => {
+        const storeData = nutritionStore.get(item.id);
+        console.log('[SST][CONFIRM]', {
+          id: item.id,
+          name: item.name,
+          perGram: storeData?.perGram || item.nutrition?.perGram,
+          source: storeData?.perGram ? 'store' : 'raw'
+        });
+        console.assert(
+          !!(storeData?.perGram || item.nutrition?.perGram),
+          '[SST][MISS] Confirm flow lacks analysis for', item.id, item.name
+        );
+      });
+    }
 
     // Set flow active to prevent ScanHub navigation
     setConfirmFlowActive(true);

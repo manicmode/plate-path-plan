@@ -1,6 +1,8 @@
 // Legacy Food Item Adapter for FoodConfirmationCard
 // Maps various data formats from detection/report pipelines to legacy card expectations
 
+import { useNutritionStore, generateFoodId, type NutritionAnalysis } from '@/stores/nutritionStore';
+
 export type LegacyNutrition = {
   calories?: number;
   protein?: number; 
@@ -74,10 +76,26 @@ type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
 
-export function toLegacyFoodItem(raw: AnyItem, index: number): LegacyFoodItem {
+export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
   ) || `item-${index + 1}`;
+  
+  // Generate stable ID for SST
+  const id = generateFoodId(raw);
+  
+  // Phase 0: Probe current state (dev-only)
+  if (import.meta.env.DEV) {
+    const storeAnalysis = enableSST ? useNutritionStore.getState().get(id) : undefined;
+    console.log('[SST][ADAPTER]', {
+      id,
+      name,
+      enableSST,
+      hasStoreData: !!storeAnalysis?.perGram,
+      storePerGram: storeAnalysis?.perGram,
+      rawNutrition: !!raw.nutrition
+    });
+  }
 
   const baseGrams = Math.round(
     pick<number>(
@@ -96,57 +114,74 @@ export function toLegacyFoodItem(raw: AnyItem, index: number): LegacyFoodItem {
   const per100 = n.per100g ?? n['per_100g'] ?? raw.meta?.per100g;
   const perServing = n.perServing ?? n['per_serving'] ?? raw.meta?.perPortion;
 
-  // Build per-gram basis for recompute
-  const perGram: LegacyNutrition['perGram'] = {};
-  let baseFrom = null;
-
-  if (per100) {
-    baseFrom = { basis: 'per100g' as const, div: 100, src: per100 };
-  } else if (perServing && (raw.analysis?.servingGrams || raw.meta?.servingGrams)) {
-    const servingGrams = raw.analysis?.servingGrams || raw.meta?.servingGrams;
-    baseFrom = { basis: 'perServing' as const, div: servingGrams, src: perServing };
-  }
-
-  if (baseFrom) {
-    for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
-      const v = pick<number>(baseFrom.src?.[k], n?.[k]);
-      if (typeof v === 'number' && v > 0) {
-        perGram[k] = v / baseFrom.div;
-      }
-    }
-  } else {
-    // Fallback: use current nutrition values as basis for the current grams
-    for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
-      const v = pick<number>(n?.[k], raw?.[k]);
-      if (typeof v === 'number' && v > 0 && baseGrams) {
-        perGram[k] = v / baseGrams;
-      }
+  // Phase 1: Read from store first if SST enabled
+  let perGram: LegacyNutrition['perGram'] = {};
+  let storeAnalysis: NutritionAnalysis | undefined;
+  let baseFrom: { basis: 'per100g' | 'perServing', div: number, src: any } | null = null;
+  
+  if (enableSST) {
+    storeAnalysis = useNutritionStore.getState().get(id);
+    if (storeAnalysis?.perGram && Object.values(storeAnalysis.perGram).some(v => (v ?? 0) > 0)) {
+      perGram = { ...storeAnalysis.perGram };
+      console.log('[SST][read]', { id, name, source: 'store', perGram });
     }
   }
+  
+  // Fallback: compute per-gram from raw data if not in store
+  if (!Object.keys(perGram).length) {
+    if (per100) {
+      baseFrom = { basis: 'per100g' as const, div: 100, src: per100 };
+    } else if (perServing && (raw.analysis?.servingGrams || raw.meta?.servingGrams)) {
+      const servingGrams = raw.analysis?.servingGrams || raw.meta?.servingGrams;
+      baseFrom = { basis: 'perServing' as const, div: servingGrams, src: perServing };
+    }
 
-  const healthScore = pick<number>(
+    if (baseFrom) {
+      for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
+        const v = pick<number>(baseFrom.src?.[k], n?.[k]);
+        if (typeof v === 'number' && v > 0) {
+          perGram[k] = v / baseFrom.div;
+        }
+      }
+    } else {
+      // Fallback: use current nutrition values as basis for the current grams
+      for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
+        const v = pick<number>(n?.[k], raw?.[k]);
+        if (typeof v === 'number' && v > 0 && baseGrams) {
+          perGram[k] = v / baseGrams;
+        }
+      }
+    }
+    
+    if (import.meta.env.DEV && Object.keys(perGram).length) {
+      console.log('[SST][COMPUTE]', { id, name, source: 'raw', perGram });
+    }
+  }
+
+  // Use store data if available and SST enabled
+  const healthScore = storeAnalysis?.healthScore ?? pick<number>(
     raw.analysis?.healthScore, 
     raw.healthScore, 
     raw.score,
     raw.meta?.healthScore
   );
   
-  const flags = pick<any[]>(
+  const flags = storeAnalysis?.flags ?? pick<any[]>(
     raw.analysis?.flags, 
     raw.flags, 
     raw.healthFlags,
     raw.meta?.flags
   ) ?? [];
   
-  const ingredients = pick<string[]>(
+  const ingredients = storeAnalysis?.ingredients ?? pick<string[]>(
     raw.analysis?.ingredients, 
     raw.ingredients, 
     raw.ingredientList,
     raw.meta?.ingredients
   ) ?? [];
   
-  const confidence = pick<number>(raw.confidence, raw.analysis?.confidence);
-  const imageUrl = pick<string>(
+  const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
+  const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
     raw.image, 
     raw.imageUrl, 
     raw.productImageUrl, 
@@ -173,7 +208,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number): LegacyFoodItem {
   }
 
   return {
-    id: String(raw.id ?? raw.uid ?? `idx-${index}`),
+    id,
     name,
     grams: baseGrams,
     baseGrams,
@@ -214,7 +249,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number): LegacyFoodItem {
       fiber: pick<number>(n.fiber, n.fiber_g, raw.fiber),
       sodium: pick<number>(n.sodium, n.sodium_mg, raw.sodium),
       perGram,
-      basis: baseFrom?.basis,
+      basis: baseFrom?.basis ?? 'perGram',
       servingGrams: baseFrom?.basis === 'perServing' ? baseFrom.div : undefined,
     },
     analysis: {
@@ -235,7 +270,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number): LegacyFoodItem {
 
 // Helper function to recompute nutrition based on portion grams
 export function computePortionNutrition(item: LegacyFoodItem, grams: number) {
-  const pg = item.nutrition.perGram || {};
+  const pg = item.nutrition?.perGram || {};
   const out: any = {};
   
   for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {

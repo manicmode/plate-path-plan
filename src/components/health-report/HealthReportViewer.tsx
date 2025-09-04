@@ -22,6 +22,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import { toLegacyFoodItem } from '@/lib/confirm/legacyItemAdapter';
 import { needsHydration, perGramSum, MACROS } from '@/lib/confirm/hydrationUtils';
+import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 
 interface HealthReportViewerProps {
   isOpen: boolean;
@@ -51,6 +52,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [hydrating, setHydrating] = useState(false);
+  
+  // Feature flags for safe rollout  
+  const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads
+  const nutritionStore = useNutritionStore();
 
   // Navigation with forced hydration per item
   const gotoIndex = (next: number) => {
@@ -336,8 +341,25 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     console.log('[HR][CTA][MDOWN]', { itemsLength: items?.length });
     if (!items?.length) return;
 
-    // Transform items using legacy adapter uniformly
-    const initialModalItems = items.map((item, index) => toLegacyFoodItem(item, index));
+    // Transform items using legacy adapter with SST enabled
+    const initialModalItems = items.map((item, index) => toLegacyFoodItem(item, index, ENABLE_SST_CONFIRM_READ));
+    
+    // Phase 0: Probe nutrition data sources
+    if (import.meta.env.DEV) {
+      initialModalItems.forEach(item => {
+        const storeData = nutritionStore.get(item.id);
+        console.log('[SST][REPORT]', {
+          id: item.id,
+          name: item.name,
+          perGram: storeData?.perGram || item.nutrition?.perGram,
+          source: storeData?.perGram ? 'store' : 'raw'
+        });
+        console.assert(
+          !!(storeData?.perGram || item.nutrition?.perGram),
+          '[SST][MISS] Report flow lacks analysis for', item.id, item.name
+        );
+      });
+    }
 
     // Synchronous atomic open (higher priority than startTransition)
     flushSync(() => {
