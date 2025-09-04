@@ -1025,11 +1025,11 @@ const Home = () => {
   return (
     <div className="home-root">
       {/* correction wrapper — this is the element we'll nudge up */}
-      <div
-        id="home-correction"
-        ref={anchorRef}
-        style={{ marginTop: "var(--home-top-correct, 0px)" }}
-      >
+        <div
+          id="home-correction"
+          ref={anchorRef}
+          style={{ marginTop: "-80px" }}
+        >
         <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-24 sm:pb-28">
           {/* Scheduled Nudges */}
           {!nudgesLoading && selectedNudges.map((nudge) => {
