@@ -3595,37 +3595,37 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       )}
 
       {/* Unified Photo Capture Modal */}
-        <UnifiedPhotoCaptureModal
-          isOpen={showCamera}
-          onClose={() => setShowCamera(false)}
-          onConfirm={handleConfirmImage}
-          
-          // bottom prompt (already in place)
-          title="Position food in the frame"
-          subtitle="Capture, upload, or exit"
+      <UnifiedPhotoCaptureModal
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onConfirm={handleConfirmImage}
+        
+        // bottom prompt (already in place)
+        title="Position food in the frame"
+        subtitle="Capture, upload, or exit"
 
-          // NEW — top banner for logging
-          bannerEmoji="🍽️"
-          bannerTitle="Log your meal"
-          bannerSubtext="We'll analyze the photo and prep your review"
+        // NEW — top banner for logging
+        bannerEmoji="🍽️"
+        bannerTitle="Log your meal"
+        bannerSubtext="We'll analyze the photo and prep your review"
+      />
+
+      {/* Smart Analyze Loader */}
+      {showSmartLoader && (
+        <SmartAnalyzeLoader
+          phase={analyzePhase}
+          done={analyzeDone}
+          onCancel={() => {
+            cancelAnalyzeFlow();
+            setShowSmartLoader(false);
+          }}
+          title="Preparing your review…"
+          subtitle="We're analyzing your photo and loading nutrition data"
         />
-
-        {/* Smart Analyze Loader */}
-        {showSmartLoader && (
-          <SmartAnalyzeLoader
-            phase={analyzePhase}
-            done={analyzeDone}
-            onCancel={() => {
-              cancelAnalyzeFlow();
-              setShowSmartLoader(false);
-            }}
-            title="Preparing your review…"
-            subtitle="We're analyzing your photo and loading nutrition data"
-          />
-        )}
-      
-      </div>
-    );
-  }
+      )}
+    
+    </div>
+  );
+};
 
 export default CameraPage;
