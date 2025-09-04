@@ -1388,8 +1388,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         
         setIsLoadingBarcode(false);
       }
-          
-          console.log('[BARCODE][MAP:ITEM]', { id: mapped?.name, name: mapped?.name, grams: mapped?.servingGrams });
+      
+      } finally {
           
           // Transform to RecognizedFood format with mapped nutrition
           const recognizedFood: RecognizedFood = {
@@ -3527,4 +3527,6 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       </div>
     );
   };
+  
+export default CameraPage;
   export default CameraPage;
