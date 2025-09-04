@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
+import { useRemindersStore, scheduleReminder, cancelReminder } from '@/stores/remindersStore';
 import LoadingDots from '@/components/ui/LoadingDots';
-import { Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
-import { toast } from 'sonner';
+import { Bell, Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
@@ -23,6 +24,21 @@ import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
 import { MealSetReminderToggle } from '@/components/reminder/MealSetReminderToggle';
+
+// --- helper: deterministic small hash ---
+function hash(str: string) {
+  let h = 0; for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
+  return Math.abs(h).toString(36);
+}
+
+// build canonical signature: lowercased names + grams sorted
+function buildMealSetId(items: Array<{name:string; grams?:number}>) {
+  const sig = items
+    .map(x => `${(x.name||'').trim().toLowerCase()}@${Math.round(x.grams||0)}`)
+    .sort()
+    .join('|');
+  return `set-${hash(sig)}`;
+}
 
 export interface ReviewItem {
   name: string;
@@ -75,9 +91,27 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [preparing, setPreparing] = useState(false);
   const minSpinnerMs = 600; // smoothness guard
   
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
+  const [isLogging, setIsLogging] = useState(false);
+  const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
+  const [isSavingSet, setIsSavingSet] = useState(false);
+  
+  // Meal set reminder state - moved after items state
+  const selectedItems = useMemo(() => items.filter(item => item.selected && item.name.trim()), [items]);
+  const setId = useMemo(() => buildMealSetId(selectedItems), [selectedItems]);
+  const remindersStore = useRemindersStore();
+  const existing = remindersStore.get(setId);
+  const [setReminderOn, setSetReminderOn] = useState(!!existing?.enabled);
+  
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
   const nutritionStore = useNutritionStore();
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { playFoodLogConfirm } = useSound();
+  const { toast } = useToast();
 
   // Navigation with forced hydration per item
   const gotoIndex = (next: number) => {
@@ -241,14 +275,80 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     });
   }, [confirmModalItems, currentConfirmIndex]);
   
-  const [items, setItems] = useState<ReviewItem[]>([]);
-  const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
-  const [isLogging, setIsLogging] = useState(false);
-  const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
-  const [isSavingSet, setIsSavingSet] = useState(false);
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { playFoodLogConfirm } = useSound();
+  // If user changes items (names/grams), recompute and reset toggle
+  useEffect(() => {
+    const newId = buildMealSetId(selectedItems);
+    const r = remindersStore.get(newId);
+    setSetReminderOn(!!r?.enabled);
+  }, [selectedItems, remindersStore]);
+
+  const onToggleSetReminder = async (next: boolean) => {
+    setSetReminderOn(next);
+
+    if (next) {
+      const reminder = {
+        id: setId,
+        kind: 'meal_set' as const,
+        title: `Meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
+        // sensible default: remind at 12:00 every weekday (adjust to your UX)
+        cron: '0 12 * * 1-5',
+        enabled: true,
+        createdAt: Date.now(),
+      };
+      remindersStore.upsert(reminder);
+      console.log('[REM][Upsert]', reminder);
+      try { await scheduleReminder(reminder); } catch {}
+    } else {
+      remindersStore.remove(setId);
+      console.log('[REM][Remove]', setId);
+      try { await cancelReminder(setId); } catch {}
+    }
+  };
+
+  const handleSaveSet = async () => {
+    const selectedCount = selectedItems.length;
+    if (selectedCount === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one item to save',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsSavingSet(true);
+    try {
+      const payload = {
+        id: setId,
+        items: selectedItems.map(i => ({ 
+          name: i.name, 
+          grams: i.grams || 100,
+          canonicalName: i.canonicalName || i.name
+        })),
+        reminderEnabled: setReminderOn,
+        createdAt: Date.now()
+      };
+      
+      // TODO: Replace with real API call
+      // await fetch('/api/saved-sets', { method:'POST', body: JSON.stringify(payload) })
+      console.log('[SETS][Save]', payload);
+      
+      toast({
+        title: 'Success',
+        description: 'Meal set saved successfully!'
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving set:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save meal set',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSavingSet(false);
+    }
+  };
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -298,7 +398,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const handleLogImmediately = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to log');
+      toast({
+        title: 'Error',
+        description: 'Please select at least one item to log',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -333,7 +437,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         console.info('[LOG][DETAILED][CONFIRM][DONE]');
       }
       
-      toast.success(`Logged ✓`);
+      toast({
+        title: 'Success',
+        description: 'Logged ✓'
+      });
       onClose();
       
       // Use custom afterLogSuccess callback if provided, otherwise navigate to home
@@ -344,7 +451,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       }
     } catch (error) {
       console.error('Failed to log items:', error);
-      toast.error('Failed to log items. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to log items. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLogging(false);
     }
@@ -354,7 +465,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const openConfirmFlow = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to continue');
+      toast({
+        title: 'Error',
+        description: 'Please select at least one item to continue',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -412,7 +527,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     } catch (error) {
       console.error('[HYDRATE][ERROR]', error);
       setPreparing(false);
-      toast.error('Failed to load nutrition data');
+      toast({
+        title: 'Error',
+        description: 'Failed to load nutrition data',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -545,9 +664,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setOpenWheelForId(null);
   };
 
-  const handleSaveSet = () => {
+  const handleSaveSetAction = () => {
     if (!user?.id) {
-      toast.error('Please log in to save sets');
+      toast({
+        title: 'Error',
+        description: 'Please log in to save sets',
+        variant: 'destructive'
+      });
       return;
     }
     setShowSaveSetDialog(true);
@@ -556,7 +679,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const handleSaveSetWithName = async (setName: string) => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to save');
+      toast({
+        title: 'Error',
+        description: 'Please select at least one item to save',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -586,17 +713,19 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
       if (error) throw error;
 
-      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
-        action: {
-          label: 'View',
-          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
-        }
+      toast({
+        title: 'Success',
+        description: `Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`
       });
       
       setShowSaveSetDialog(false);
     } catch (error) {
       console.error('Failed to save set:', error);
-      toast.error('Failed to save set');
+      toast({
+        title: 'Error',
+        description: 'Failed to save set',
+        variant: 'destructive'
+      });
     } finally {
       setIsSavingSet(false);
     }
@@ -740,17 +869,27 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
                   {/* Meal set reminder toggle */}
                   {selectedCount > 0 && (
-                    <MealSetReminderToggle
-                      mealSetName={items.filter(item => item.selected && item.name.trim()).map(i => i.name).join(', ')}
-                      mealSetData={{
-                        items: items.filter(item => item.selected && item.name.trim()).map(item => ({
-                          name: item.name,
-                          canonicalName: item.canonicalName || item.name,
-                          grams: item.grams || 100
-                        }))
-                      }}
-                      className="mb-4"
-                    />
+                    <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-emerald-500/20 rounded-lg">
+                          <Bell className="h-4 w-4 text-emerald-400" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Set Reminder</div>
+                          <div className="text-xs text-white/60">Get reminded to eat this set again</div>
+                        </div>
+                      </div>
+                      <button
+                        role="switch"
+                        aria-checked={setReminderOn}
+                        onClick={() => onToggleSetReminder(!setReminderOn)}
+                        className={`relative h-6 w-11 rounded-full transition ${setReminderOn ? 'bg-emerald-500' : 'bg-white/20'}`}
+                      >
+                        <span className={`absolute top-0.5 transition ${setReminderOn ? 'left-6' : 'left-0.5'}`}>
+                          <span className="block h-5 w-5 rounded-full bg-white shadow" />
+                        </span>
+                      </button>
+                    </div>
                   )}
                   
                   <div className="space-y-3">
@@ -778,7 +917,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     </div>
                     
                     <Button
-                      onClick={handleSaveSet}
+                      onClick={handleSaveSetAction}
                       disabled={selectedCount === 0 || isSavingSet}
                       className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
                     >
