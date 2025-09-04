@@ -1,29 +1,8 @@
-// Clean up App.tsx imports - remove duplicates and organize properly
 import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { supabase } from '@/lib/supabase';
 import AppErrorBoundary from '@/components/system/AppErrorBoundary';
-import { requestIdle } from '@/utils/safeIdle';
-import { ROUTES } from '@/routes/constants';
-import { APP_CONFIG } from '@/config/app';
-import { verifyHubRoutes } from '@/utils/hubRouteCheck';
-import { FF } from '@/featureFlags';
-
-// Import camera diagnostic shim (dev-only, off by default)
-import '@/diagnostics/cameraInq';
-
-// Import QA tools unconditionally (gated by feature flag + auth)
-import('@/scripts/nudgeQARunner');
-
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-
-const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
-const DebugPipeline = React.lazy(() => import('@/pages/DebugPipeline'));
-const NudgeQAPage = React.lazy(() => import('@/pages/NudgeQAPage'));
-
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
@@ -34,446 +13,123 @@ import { HapticsProvider } from '@/contexts/HapticsContext';
 import Layout from '@/components/Layout';
 import { SmartLoadingScreen } from '@/components/SmartLoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AdminRoute } from '@/components/auth/AdminRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
-import { MysteryBox } from '@/components/analytics/MysteryBox';
-import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
-import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
-import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
-import { SplashScreen } from '@/components/SplashScreen';
 import { useColdStart } from '@/hooks/useColdStart';
-import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
-import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
+import { SplashScreen } from '@/components/SplashScreen';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
-import { useAuthCallback } from '@/hooks/useAuthCallback';
-import { useVersionCheck } from '@/hooks/useVersionCheck';
-import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
-import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
-import AuthUrlHandler from '@/auth/AuthUrlHandler';
 
-import OnboardingGate from '@/routes/OnboardingGate';
+// Import QA tools unconditionally
+import('@/scripts/nudgeQARunner');
 
-// Core page components
-import HomeRouteWrapper from '@/routes/HomeRouteWrapper';
-const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
-const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
+// Core pages
 const Index = lazy(() => import('@/pages/Index'));
+const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
-const Friends = lazy(() => import('@/pages/Friends'));
-const CoachMain = lazy(() => import('@/pages/CoachMain'));
-const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
-const Onboarding = lazy(() => import('@/pages/Onboarding'));
-const SavedLogs = lazy(() => import('@/pages/SavedLogs'));
-const SavedReports = lazy(() => import('@/pages/SavedReports'));
-// Disabled ReviewItemsPage - using global confirm flow instead
-// const ReviewItemsPage = lazy(() => import('@/pages/ReviewItemsPage'));
-
-// Health Scan components
-const ScanHub = lazy(() => import('@/pages/ScanHub'));
-const HealthScanPhoto = lazy(() => import('@/pages/health-scan/HealthScanPhoto'));
-const HealthReport = lazy(() => import('@/pages/health-scan/HealthReport'));
-const HealthReportStandalone = lazy(() => import('@/pages/HealthReportStandalone'));
-
-// Less critical components - lazy load without prefetch
-const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
-const AIRoutineViewer = lazy(() => import('@/pages/AIRoutineViewer'));
-const IntelligentWorkoutPage = lazy(() => import('@/pages/IntelligentWorkoutPage'));
-const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
-const GuidedMeditation = lazy(() => import('@/pages/GuidedMeditation'));
-const RecoveryPlayer = lazy(() => import('@/pages/RecoveryPlayer'));
-const BreathingPage = lazy(() => import('@/pages/recovery/BreathingPage'));
-const StretchingPage = lazy(() => import('@/pages/recovery/StretchingPage'));
-const MuscleRecoveryPage = lazy(() => import('@/pages/recovery/MuscleRecoveryPage'));
-const SleepPage = lazy(() => import('@/pages/recovery/SleepPage'));
-const YogaPage = lazy(() => import('@/pages/recovery/YogaPage'));
-const RecoveryAnalytics = lazy(() => import('@/pages/RecoveryAnalytics'));
-const RecoveryAnalyticsPage = lazy(() => import('@/pages/RecoveryAnalyticsPage'));
-const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
-const GameAndChallengePage_Min = lazy(() => 
-  import('@/pages/GameAndChallengePage')
-    .then(module => ({ default: module.GameAndChallengePage_Min }))
-    .catch(() => ({ default: () => React.createElement('div', { style: { padding: 16 } }, 'Arena temporarily unavailable — try again shortly.') }))
-);
-const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
-const Supplements = lazy(() => import('@/pages/Supplements'));
-const SupplementDetail = lazy(() => import('@/pages/SupplementDetail'));
-const HabitCentralV2 = lazy(() => import('@/pages/HabitCentralV2'));
-const InfluencerHub = lazy(() => import('@/pages/InfluencerHub'));
-const Hydration = lazy(() => import('@/pages/Hydration'));
-const ProgressCalories = lazy(() => import('@/pages/ProgressCalories'));
-const ProgressProtein = lazy(() => import('@/pages/ProgressProtein'));
-const ProgressCarbs = lazy(() => import('@/pages/ProgressCarbs'));
-const ProgressFat = lazy(() => import('@/pages/ProgressFat'));
-const ProgressHydration = lazy(() => import('@/pages/ProgressHydration'));
-const ProgressSupplements = lazy(() => import('@/pages/ProgressSupplements'));
-const MyReports = lazy(() => import('@/pages/MyReports'));
-const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
-const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-
-// Prefetch critical components after initial load
-const prefetchCriticalComponents = () => {
-  // Prefetch main navigation components after the app has loaded
-  setTimeout(() => {
-    import('@/pages/Home');
-    import('@/pages/Camera');
-    import('@/pages/Analytics');
-    import('@/pages/CoachMain');
-    import('@/pages/Explore');
-    import('@/pages/Profile');
-  }, 1000);
-};
-
-// Route sentinel component for bisection testing
-const RouteSentinel = () => {
-  console.log('[Sentinel] router mounted');
-  return <div data-test="router-sentinel" style={{padding:24}}>ROUTER OK</div>;
-};
+const NudgeQAPage = lazy(() => import('@/pages/NudgeQAPage'));
 
 function AppContent() {
-  const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   const { isColdStart, completeSplash } = useColdStart();
-  const { isProcessing } = useAuthCallback();
-  const { checkForUpdates } = useVersionCheck(); // Add version checking
-  useBodyScanTimelineReminder();
-  useBodyScanSharingReminder();
-  
-  // Mobile detection for debugging
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  // STEP 2: Forensics performance marker and theme tracing + Feature Flag Logging
-  useEffect(() => { 
-    performance.mark('react:mounted'); 
-    console.log('[boot] react:mounted'); 
-    console.log('[boot+100ms] html.class after mount:', document.documentElement.className);
-    setTimeout(() => console.log('[boot+100ms] html.class delayed:', document.documentElement.className), 100);
-    
-    // Log feature flags for debugging
-    console.log('[FF]', {
-      DEV: import.meta.env.DEV,
-      PHOTO_SANDBOX_ALLOW_PROD: (import.meta.env.VITE_PHOTO_SANDBOX_ALLOW_PROD ?? 'false') === 'true'
-    });
-    
-    // Bootstrap sound system - ensure unlock on first user gesture
-    const unlockSound = () => {
-      import('@/lib/sound/soundManager').then(({ Sound }) => {
-        Sound.ensureUnlocked();
-      });
-    };
-    
-    // Listen for first user interaction to unlock audio
-    window.addEventListener('pointerdown', unlockSound, { once: true, passive: true });
-    window.addEventListener('click', unlockSound, { once: true, passive: true });
-    window.addEventListener('touchstart', unlockSound, { once: true, passive: true });
-    
-    // Defer heavy work behind initial paint
-    requestIdle(() => {
-      // Move version check to idle callback to not block initial render
-      try {
-        checkForUpdates();
-      } catch (error) {
-        console.warn('Version check failed:', error);
-      }
-    });
-    
-    return () => {
-      window.removeEventListener('pointerdown', unlockSound);
-      window.removeEventListener('click', unlockSound);
-      window.removeEventListener('touchstart', unlockSound);
-    };
-  }, []);
 
-  // Prefetch critical components after app has loaded
-  React.useEffect(() => {
-    prefetchCriticalComponents();
-    // Run hub route verification in development
-    if (process.env.NODE_ENV === 'development') {
-      verifyHubRoutes();
-    }
+  useEffect(() => {
+    console.log('[App] mounted');
   }, []);
 
   return (
     <>
-      <AuthUrlHandler />
-      {/* Cold Start Splash Screen - shows immediately with highest priority */}
       <SplashScreen 
         isVisible={isColdStart} 
         onComplete={completeSplash} 
       />
       
-      {/* Auth Processing Overlay - shows during magic link processing */}
-      {isProcessing && <AuthProcessingOverlay />}
-      
-      {/* Main App Content - only render after splash completes */}
       {!isColdStart && (
-        <>
-          <BodyScanReminderChecker />
-          <ClientSecurityValidator />
-          <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-            <OnboardingGate>
-              <Routes>
-                {/* Fullscreen pages without Layout */}
-                <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/onboarding" element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              } />
-              <Route path="/recovery-player" element={
-                <ProtectedRoute>
-                  <RecoveryPlayer />
-                </ProtectedRoute>
-              } />
-              
-              {/* Regular pages with Layout */}
-              <Route path="*" element={
+        <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
+          <Routes>
+            {/* QA ROUTES - TOP PRIORITY */}
+            <Route 
+              path="/qa/nudges" 
+              element={
+                <Suspense fallback={<div style={{padding:24}}>Loading QA...</div>}>
+                  <NudgeQAPage />
+                </Suspense>
+              } 
+            />
+            <Route path="/nudge-qa" element={<Navigate to="/qa/nudges" replace />} />
+            <Route path="/debug/nudges" element={<Navigate to="/qa/nudges" replace />} />
+            <Route 
+              path="/test" 
+              element={<div style={{padding:50, background:'blue', color:'white', fontSize:20}}>✅ TEST WORKS!</div>} 
+            />
+            
+            {/* Main app routes with Layout */}
+            <Route path="/" element={<Index />} />
+            <Route path="/home" element={
+              <ProtectedRoute>
                 <Layout>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/home" element={
-                      <ProtectedRoute>
-                        <HomeRouteWrapper />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/camera" element={
-                      <ProtectedRoute>
-                        <Camera />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/saved-logs" element={
-                      <ProtectedRoute>
-                        <SavedLogs />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/analytics" element={
-                      <ProtectedRoute>
-                        <Analytics />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/coach" element={
-                      <ProtectedRoute>
-                        <CoachMain />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/explore" element={
-                      <ProtectedRoute>
-                        <Explore />
-                      </ProtectedRoute>
-                      } />
-                      <Route path="/friends" element={
-                        <ProtectedRoute>
-                          <Friends />
-                        </ProtectedRoute>
-                      } />
-
-                       {/* DEV-only routes */}
-                       {import.meta.env.DEV && (
-                         <>
-                           <Route
-                             path="/debug/photo"
-                             element={
-                               <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
-                                 <PhotoSandbox />
-                               </React.Suspense>
-                             }
-                           />
-                            <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                            <Route 
-                              path="/debug/pipeline"
-                              element={
-                                <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
-                                  <DebugPipeline />
-                                </React.Suspense>
-                              }
-                            />
-                         </>
-                       )}
-
-                       {/* QA routes - always registered, gated by feature flag + auth */}
-                       <Route 
-                         path="/qa/nudges"
-                         element={
-                           <ProtectedRoute>
-                             <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                               <NudgeQAPage />
-                             </React.Suspense>
-                           </ProtectedRoute>
-                         }
-                       />
-                       {/* QA route variants for easier access */}
-                       <Route 
-                         path="/nudge-qa"
-                         element={<Navigate to="/qa/nudges" replace />}
-                       />
-                       <Route 
-                         path="/debug/nudges"
-                         element={<Navigate to="/qa/nudges" replace />}
-                       />
-
-                     <Route path="/exercise-hub" element={
-                       <ProtectedRoute>
-                         <ExerciseHub />
-                       </ProtectedRoute>
-                     } />
-                     
-                     {/* Hub Routes */}
-                     <Route path="/supplement-hub" element={
-                       <ProtectedRoute>
-                         <SupplementHub />
-                       </ProtectedRoute>
-                     } />
-                     
-                     <Route path="/habit-central" element={
-                       <ProtectedRoute>
-                         <HabitCentralV2 />
-                       </ProtectedRoute>
-                     } />
-                     
-                     <Route path="/influencer-hub" element={
-                       <ProtectedRoute>
-                         <InfluencerHub />
-                       </ProtectedRoute>
-                     } />
-                     
-                     <Route path="/profile" element={
-                       <ProtectedRoute>
-                         <Profile />
-                       </ProtectedRoute>
-                      } />
-                      <Route path="/game-and-challenge" element={
-                        <ProtectedRoute>
-                          <GameAndChallengePage_Min />
-                        </ProtectedRoute>
-                      } />
-                      
-                    <Route path="/supplements" element={
-                      <ProtectedRoute>
-                        <Supplements />
-                      </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/hydration" element={
-                      <ProtectedRoute>
-                        <Hydration />
-                      </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/scan" element={
-                      <ProtectedRoute>
-                        <ScanHub />
-                      </ProtectedRoute>
-                    } />
-                    
-                    {/* Health Scan Routes - before wildcard */}
-                    <Route path="/health-scan/photo" element={
-                      <ProtectedRoute>
-                        <HealthScanPhoto />
-                      </ProtectedRoute>
-                    } />
-                     <Route path="/health-scan/report" element={
-                       <ProtectedRoute>
-                         <HealthReport />
-                       </ProtectedRoute>
-                     } />
-                     
-                     <Route path="/scan/saved-reports" element={
-                       <ProtectedRoute>
-                         <SavedReports />
-                       </ProtectedRoute>
-                     } />
-                    
-                    <Route path="/health-scan-photo" element={
-                      FF.FEATURE_HEALTH_SCAN_PHOTO ? (
-                        <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthScanPhoto />
-                        </Suspense>
-                      ) : (
-                        <div className="min-h-screen flex items-center justify-center bg-background">
-                          <div className="text-center p-8">
-                            <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
-                            <p className="text-muted-foreground mb-6">
-                              Health Scan photo capture is not currently available.
-                            </p>
-                            <Button onClick={() => window.history.back()}>Go Back</Button>
-                          </div>
-                        </div>
-                      )
-                    } />
-                    <Route path="/health-report" element={
-                      FF.FEATURE_HEALTH_REPORT_V1 ? (
-                        <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-                          <HealthReport />
-                        </Suspense>
-                      ) : (
-                        <div className="min-h-screen flex items-center justify-center bg-background">
-                          <div className="text-center p-8">
-                            <h1 className="text-2xl font-bold mb-4">Feature Not Available</h1>
-                            <p className="text-muted-foreground mb-6">
-                              Health Report is not currently available.
-                            </p>
-                            <Button onClick={() => window.history.back()}>Go Back</Button>
-                          </div>
-                        </div>
-                      )
-                     } />
-              
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                  <Home />
                 </Layout>
-              } />
-            </Routes>
-          </OnboardingGate>
+              </ProtectedRoute>
+            } />
+            <Route path="/camera" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Camera />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Analytics />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 fallback */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </Suspense>
-          
-          <DailyMoodModal 
-            isOpen={showMoodModal} 
-            onClose={() => setShowMoodModal(false)} 
-          />
-          
-          <Toaster />
-        </>
       )}
+      
+      <Toaster />
     </>
   );
 }
-
-// Temporary stubs for hook-order isolation
-const WorkoutCompletionProviderSafe: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
 
 function App() {
   return (
     <BrowserRouter>
       <AppErrorBoundary>
-        <React.Suspense fallback={<div style={{padding:16}}>Loading…</div>}>
-          <ErrorBoundary>
-            <ThemeProvider>
-              <HapticsProvider>
-                <SoundProvider>
-                  <TooltipProvider>
-                    <IngredientAlertProvider>
-                      <BadgeProvider>
-                        <ChatModalProvider>
-                          <RewardsProvider>
-                            <LevelUpProvider>
-                              <WorkoutCompletionProviderSafe>
-                                <AppContent />
-                                <WorkoutCompletionModal />
-                              </WorkoutCompletionProviderSafe>
-                            </LevelUpProvider>
-                          </RewardsProvider>
-                        </ChatModalProvider>
-                      </BadgeProvider>
-                    </IngredientAlertProvider>
-                  </TooltipProvider>
-                </SoundProvider>
-              </HapticsProvider>
-            </ThemeProvider>
-          </ErrorBoundary>
-        </React.Suspense>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <HapticsProvider>
+              <SoundProvider>
+                <TooltipProvider>
+                  <IngredientAlertProvider>
+                    <BadgeProvider>
+                      <ChatModalProvider>
+                        <RewardsProvider>
+                          <LevelUpProvider>
+                            <AppContent />
+                          </LevelUpProvider>
+                        </RewardsProvider>
+                      </ChatModalProvider>
+                    </BadgeProvider>
+                  </IngredientAlertProvider>
+                </TooltipProvider>
+              </SoundProvider>
+            </HapticsProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </AppErrorBoundary>
     </BrowserRouter>
   );
