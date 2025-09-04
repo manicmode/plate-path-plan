@@ -147,8 +147,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const r = results?.[i];
           if (!r) return m;
 
-          // UNIFY: use the same ID source for both write and read
-          const storeId = m.foodId ?? m.id ?? generateFoodId(m);
+    // when computing storeId for each item you enrich:
+    const storeId = m.foodId ?? m.id ?? generateFoodId(m);
           
           const merged = toLegacyFoodItem(
             { ...m, nutrients: r.nutrients, serving: r.serving, id: storeId },
@@ -176,6 +176,23 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             count: Object.keys(storeUpdates).length,
             ids: Object.keys(storeUpdates),
           });
+
+          const wroteIds = Object.keys(storeUpdates);
+          const readIds = enriched.map(i => i.id);
+
+          console.log('[SST][IDS_COMPARE]', {
+            wrote: wroteIds,
+            read: readIds,
+            missingInStore: readIds.filter(id => !wroteIds.includes(id)),
+            extraInStore: wroteIds.filter(id => !readIds.includes(id)),
+          });
+
+          const state = useNutritionStore.getState();
+          console.log('[SST][STORE_AFTER_WRITE]', wroteIds.map(id => ({
+            id,
+            hasPerGram: !!state.byId[id]?.perGram,
+            pgSum: Object.values(state.byId[id]?.perGram || {}).reduce((a: number, b: any) => a + (+b || 0), 0),
+          })));
         }
 
         setConfirmModalItems(enriched);

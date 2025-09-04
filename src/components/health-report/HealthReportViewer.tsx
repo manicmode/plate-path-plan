@@ -129,7 +129,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
           const r = results?.[i];
           if (!r) return m;
 
-          // UNIFY: use the same ID source for both write and read
+          // when computing storeId for each item you enrich:
           const storeId = m.foodId ?? m.id ?? generateFoodId(m);
           
           const merged = toLegacyFoodItem(
@@ -158,6 +158,23 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             count: Object.keys(storeUpdates).length,
             ids: Object.keys(storeUpdates),
           });
+
+          const wroteIds = Object.keys(storeUpdates);
+          const readIds = enriched.map(i => i.id);
+
+          console.log('[SST][IDS_COMPARE]', {
+            wrote: wroteIds,
+            read: readIds,
+            missingInStore: readIds.filter(id => !wroteIds.includes(id)),
+            extraInStore: wroteIds.filter(id => !readIds.includes(id)),
+          });
+
+          const state = useNutritionStore.getState();
+          console.log('[SST][STORE_AFTER_WRITE]', wroteIds.map(id => ({
+            id,
+            hasPerGram: !!state.byId[id]?.perGram,
+            pgSum: Object.values(state.byId[id]?.perGram || {}).reduce((a: number, b: any) => a + (+b || 0), 0),
+          })));
         }
 
         setConfirmModalItems(enriched);

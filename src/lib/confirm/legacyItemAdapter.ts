@@ -131,43 +131,53 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
   if (!Object.keys(perGram).length) {
     if (per100) {
-      baseFrom = { basis: 'per100g', div: 100, src: per100 };
-    } else if (perServing) {
+      baseFrom = { basis: 'per100g' as const, div: 100, src: per100 };
+    } else if (perServing && (raw.analysis?.servingGrams || raw.meta?.servingGrams || raw.serving?.grams)) {
       const servingGrams =
-        raw.analysis?.servingGrams ||
-        raw.meta?.servingGrams ||
-        raw.serving?.grams;
-      if (servingGrams && servingGrams > 0) {
-        baseFrom = { basis: 'perServing', div: servingGrams, src: perServing };
-      }
+        raw.analysis?.servingGrams || raw.meta?.servingGrams || raw.serving?.grams;
+      baseFrom = { basis: 'perServing' as const, div: servingGrams, src: perServing };
     }
 
+    const nutrientAliases: Record<string, string[]> = {
+      calories: ['calories', 'energy_kcal', 'energy.kcal', 'kcal'],
+      protein: ['protein', 'protein_g', 'proteins'],
+      carbs: [
+        'carbohydrates_total_g', 'carbohydrates_g', 'carbohydrates',
+        'carbohydrate', 'carbohydrate_g', 'carbs', 'carbs_g'
+      ],
+      fat: ['fat_total_g', 'total_fat_g', 'fat', 'fat_g', 'fats', 'lipids'],
+      sugar: ['sugar_g', 'sugars', 'sugars_g', 'sugar', 'sugars_total_g'],
+      fiber: ['fiber_g', 'dietary_fiber_g', 'fibre_g', 'fiber', 'fibre'],
+      sodium: ['sodium_mg', 'sodium', 'salt_mg', 'salt'],
+    };
+
     if (baseFrom) {
-      const keys = ['calories','protein','carbs','fat','sugar','fiber','sodium'] as const;
-      for (const k of keys) {
-        // Handle generic_foods shapes: protein_g, carbs_g, fat_g, fiber_g, sugar_g, sodium_mg
-        const srcKey =
-          k === 'protein' ? 'protein_g' :
-          k === 'carbs'   ? 'carbs_g'   :
-          k === 'fat'     ? 'fat_g'     :
-          k === 'fiber'   ? 'fiber_g'   :
-          k === 'sugar'   ? 'sugar_g'   :
-          k === 'sodium'  ? 'sodium_mg' :
-          k;
+      for (const [key, aliases] of Object.entries(nutrientAliases)) {
+        let value: number | undefined;
 
-        const v =
-          baseFrom.src?.[k] ??
-          baseFrom.src?.[srcKey] ??
-          n?.[k] ??
-          raw.nutrients?.[srcKey];
-
-        if (typeof v === 'number' && v > 0) {
-          perGram[k] = v / baseFrom.div;
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[SST][PERGRAM][CALC]', {
-              item: raw.name, key: k, value: v, divisor: baseFrom.div, perGram: perGram[k]
-            });
+        for (const alias of aliases) {
+          const candidate = pick<number>(
+            baseFrom.src?.[alias],
+            n?.[alias],
+            raw.nutrients?.[alias],
+            (raw as any)[alias],
+          );
+          if (typeof candidate === 'number' && candidate > 0) {
+            value = candidate;
+            break;
           }
+        }
+
+        if (value !== undefined) {
+          const pg = value / baseFrom.div;
+          perGram[key as keyof typeof perGram] = pg;
+          console.log('[SST][PERGRAM][CALC]', {
+            item: name, key, value, divisor: baseFrom.div, perGram: pg, basis: baseFrom.basis
+          });
+        } else {
+          console.warn('[SST][PERGRAM][MISS]', {
+            item: name, key, basis: baseFrom.basis, sample: Object.keys(baseFrom.src || {}).slice(0, 6)
+          });
         }
       }
     }

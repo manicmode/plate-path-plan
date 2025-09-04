@@ -21,6 +21,7 @@ import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
+import { useNutritionStore } from '@/stores/nutritionStore';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -201,6 +202,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
+
+  // Card binds store-first (diagnostic only, no UI change)
+  useEffect(() => {
+    if (!currentFoodItem?.id) return;
+    const data = useNutritionStore.getState().byId[currentFoodItem.id];
+    const keys = data?.perGram ? Object.keys(data.perGram) : [];
+    const pgSum = keys.reduce((a, k) => a + (+(data!.perGram as any)[k] || 0), 0);
+    console.log('[SST][CARD_BIND]', {
+      id: currentFoodItem.id, name: currentFoodItem.name,
+      fromStore: !!data, perGramKeys: keys, pgSum
+    });
+  }, [currentFoodItem?.id, currentFoodItem?.name]);
 
   if (!currentFoodItem) return null;
 
