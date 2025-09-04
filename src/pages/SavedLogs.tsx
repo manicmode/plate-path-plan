@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, ArrowLeft } from 'lucide-react';
+import { Search, ArrowLeft, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -95,21 +95,19 @@ export default function SavedLogs() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
+          <div className="relative flex items-center justify-center mb-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate('/camera')}
-              className="text-muted-foreground hover:text-foreground"
+              className="absolute left-0 text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Logging
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
-              <span className="text-2xl">📁</span>
+              <Save className="h-6 w-6 text-cyan-400" />
               Saved
             </h1>
-            <div className="w-24" /> {/* Spacer for center alignment */}
           </div>
           
           {/* Search */}
