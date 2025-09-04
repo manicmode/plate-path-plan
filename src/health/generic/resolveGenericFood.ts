@@ -32,3 +32,12 @@ export function resolveGenericFood(name: string): GenericFood | null {
   console.log('[GENERIC][DEBUG] No match found for:', q);
   return null;
 }
+
+// Batch resolver for multiple food items
+export function resolveGenericFoodBatch(names: string[]): GenericFood[] {
+  console.log('[GENERIC][BATCH] Resolving batch:', names.length, 'items');
+  const results = names.map(name => resolveGenericFood(name));
+  const foundCount = results.filter(Boolean).length;
+  console.log('[GENERIC][BATCH] Found', foundCount, 'of', names.length, 'items');
+  return results;
+}
