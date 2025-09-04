@@ -272,38 +272,47 @@ function AppContent() {
                         </ProtectedRoute>
                       } />
 
-                      {/* DEV-only routes */}
-                      {import.meta.env.DEV && (
-                        <>
-                          <Route
-                            path="/debug/photo"
-                            element={
-                              <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
-                                <PhotoSandbox />
-                              </React.Suspense>
-                            }
-                          />
-                           <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                           <Route 
-                             path="/debug/pipeline"
+                       {/* DEV-only routes */}
+                       {import.meta.env.DEV && (
+                         <>
+                           <Route
+                             path="/debug/photo"
                              element={
-                               <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
-                                 <DebugPipeline />
+                               <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
+                                 <PhotoSandbox />
                                </React.Suspense>
                              }
                            />
-                           <Route 
-                             path="/qa/nudges"
-                             element={
-                               <ProtectedRoute>
-                                 <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                                   <NudgeQAPage />
-                                 </React.Suspense>
-                               </ProtectedRoute>
-                             }
-                           />
-                        </>
-                      )}
+                            <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                            <Route 
+                              path="/debug/pipeline"
+                              element={
+                                <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
+                                  <DebugPipeline />
+                                </React.Suspense>
+                              }
+                            />
+                            <Route 
+                              path="/qa/nudges"
+                              element={
+                                <ProtectedRoute>
+                                  <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                                    <NudgeQAPage />
+                                  </React.Suspense>
+                                </ProtectedRoute>
+                              }
+                            />
+                            {/* Additional QA route variants for easier access */}
+                            <Route 
+                              path="/nudge-qa"
+                              element={<Navigate to="/qa/nudges" replace />}
+                            />
+                            <Route 
+                              path="/debug/nudges"
+                              element={<Navigate to="/qa/nudges" replace />}
+                            />
+                         </>
+                       )}
 
                      <Route path="/exercise-hub" element={
                        <ProtectedRoute>

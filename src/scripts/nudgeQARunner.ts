@@ -263,63 +263,85 @@ export const QA_QUERIES = {
   `
 };
 
-// Expose to window for console access
-if (typeof window !== 'undefined') {
-  (window as any).NudgeQARunner = NudgeQARunner;
-  (window as any).runNudgeQA = () => new NudgeQARunner().runComprehensiveQA();
-  (window as any).QA_QUERIES = QA_QUERIES;
-  
-  console.log("🔧 QA Tools available:");
-  console.log("  - window.runNudgeQA() - Run comprehensive QA");
-  console.log("  - window.QA_QUERIES - Database validation queries");
-}
-
-// Dev-only initialization
+// Global QA function exposure (simplified and reliable)
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
-  // Initialize QA tools automatically in dev mode
-  const initQATools = () => {
-    // Enhanced global QA functions
-    (window as any).nudgeQA = {
-      run: () => new NudgeQARunner().runComprehensiveQA(),
-      checkEligibility: async () => {
-        const { scheduleNudges } = await import('@/nudges/scheduler');
-        const { useAuth } = await import('@/contexts/auth');
-        
-        console.log("🔍 Checking current nudge eligibility...");
-        // This would need user context, simplified for demo
-        return { message: "Use the dashboard at /qa/nudges for full eligibility checking" };
-      },
-      simulateStress: () => {
-        console.log("🧠 To simulate stress context, use the dashboard at /qa/nudges");
-        console.log("Or manually create mood logs with tags: ['stressed', 'anxious', 'overwhelmed']");
-      },
-      checkPersistence: () => {
-        const userId = 'current-user'; // Would need real user context
-        const activeNudges = localStorage.getItem(`active_nudges_${userId}`);
-        const shownRunIds = localStorage.getItem(`shown_runids_${userId}`);
-        
-        console.log("📦 localStorage persistence check:");
-        console.log("  Active nudges:", activeNudges ? JSON.parse(activeNudges) : 'none');
-        console.log("  Shown runIds:", shownRunIds ? JSON.parse(shownRunIds) : 'none');
-        
-        return { activeNudges, shownRunIds };
-      }
-    };
+  const globalWindow = window as any;
+  
+  // Primary QA functions
+  globalWindow.runNudgeQA = () => new NudgeQARunner().runComprehensiveQA();
+  
+  globalWindow.nudgeQA = {
+    run: () => new NudgeQARunner().runComprehensiveQA(),
     
-    console.log("🎯 Enhanced QA tools loaded (dev mode only):");
-    console.log("  - window.nudgeQA.run() - Full QA suite");
-    console.log("  - window.nudgeQA.checkEligibility() - Check nudge eligibility");  
-    console.log("  - window.nudgeQA.simulateStress() - Help with stress simulation");
-    console.log("  - window.nudgeQA.checkPersistence() - Check localStorage");
-    console.log("  - Navigate to /qa/nudges for full dashboard");
+    checkPersistence: () => {
+      const keys = Object.keys(localStorage).filter(k => 
+        k.startsWith('nudgeRun:') || k.startsWith('active_nudges_') || k.startsWith('shown_runids_')
+      );
+      console.log('📦 Nudge persistence check:');
+      keys.forEach(key => {
+        const value = localStorage.getItem(key);
+        console.log(`  ${key}: ${value}`);
+      });
+      return keys.map(k => ({ key: k, value: localStorage.getItem(k) }));
+    },
+    
+    simulateStress: () => {
+      console.log('🧠 To test breathing nudge eligibility:');
+      console.log('  1. Go to /qa/nudges dashboard');
+      console.log('  2. Use the "Add Stress Tags" button to simulate mood with stress');
+      console.log('  3. Or manually log mood with tags: stressed, anxious, overwhelmed');
+      return { 
+        message: 'Use mood logging to add stress tags',
+        tags: ['stressed', 'anxious', 'overwhelmed', 'tense', 'worried'] 
+      };
+    },
+    
+    dbQueries: {
+      todayEvents: () => {
+        const query = QA_QUERIES.todaysPTEvents;
+        console.log('📊 Copy this query to Supabase SQL editor:');
+        console.log(query);
+        return query;
+      },
+      
+      eventTotals: () => {
+        const query = QA_QUERIES.eventTotals;
+        console.log('📈 Event totals query:');
+        console.log(query);
+        return query;
+      }
+    },
+    
+    debugRoute: () => {
+      console.log('🔍 Route debugging:');
+      console.log('  Current path:', window.location.pathname);
+      console.log('  Expected routes:');
+      console.log('    - /qa/nudges (dev only)');
+      console.log('    - /nudge-qa (if exists)');
+      
+      if (window.location.pathname !== '/qa/nudges') {
+        console.log('  💡 Navigate to: /qa/nudges');
+      }
+      
+      return {
+        currentPath: window.location.pathname,
+        expectedRoutes: ['/qa/nudges']
+      };
+    }
   };
   
-  // Initialize after DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initQATools);
-  } else {
-    initQATools();
-  }
+  // Additional references for backwards compatibility
+  globalWindow.NudgeQARunner = NudgeQARunner;
+  globalWindow.QA_QUERIES = QA_QUERIES;
+  
+  // Immediate confirmation (not waiting for DOM)
+  console.log('🧪 Nudge QA Tools Loaded! Available commands:');
+  console.log('  - window.runNudgeQA() → Full QA validation');
+  console.log('  - window.nudgeQA.checkPersistence() → Check localStorage');
+  console.log('  - window.nudgeQA.simulateStress() → Stress test guidance');
+  console.log('  - window.nudgeQA.dbQueries.todayEvents() → SQL for events');
+  console.log('  - window.nudgeQA.debugRoute() → Route debugging');
+  console.log('  📍 Dashboard available at: /qa/nudges');
 }
 
 export default NudgeQARunner;
