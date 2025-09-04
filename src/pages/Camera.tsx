@@ -235,6 +235,12 @@ const CameraPage = () => {
   // Smart analyze flow hook
   const { run: runAnalyzeFlow, cancel: cancelAnalyzeFlow } = useAnalyzeFlow();
   
+  // Helper function to get data URL for analysis
+  function getDataUrlForAnalysis(): string | null {
+    const s = selectedImageRef?.current ?? selectedImage ?? null;
+    return typeof s === 'string' ? s : null;
+  }
+  
   // Add loading timeout hook for global timeout management
   const { hasTimedOut, showRecovery, retry, forceSkip } = useLoadingTimeout(
     isAnalyzing || isMultiAILoading || isProcessingFood,
@@ -619,7 +625,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
     try {
       // If we have a file, use the existing flow
-      if (file) {
+      if (maybeFile) {
         // Wrapper function for the existing analyzeImage logic
         const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
           // Process the image file first
@@ -632,7 +638,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           return [];
         };
 
-        await runAnalyzeFlow(file, (phase) => setAnalyzePhase(phase), analyzeImageForFile);
+        await runAnalyzeFlow(maybeFile as File, (phase) => setAnalyzePhase(phase), analyzeImageForFile);
       } else {
         // We have a staged image, just run analysis
         await analyzeImage();
@@ -644,17 +650,20 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         setShowSmartLoader(false);
       }, 250);
       
-    } catch (err: any) {
-      console.error("[LOG][ANALYZE][ERROR]", err);
+    } catch (e: any) {
+      console.error("[LOG][ANALYZE][ERROR]", e);
       setShowSmartLoader(false);
       
-      if (err.message !== 'Analysis cancelled') {
+      if (e.message !== 'Analysis cancelled') {
         toast.error('Analysis failed. Please try again or use manual entry.');
       }
     }
   };
 
   const convertToBase64 = (imageDataUrl: string): string => {
+    if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.includes(',')) {
+      throw new Error('[convertToBase64] invalid data URL input');
+    }
     return imageDataUrl.split(',')[1];
   };
 
@@ -824,17 +833,19 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
   };
 
   const analyzeImage = async () => {
-    const imageForAnalysis = selectedImage ?? selectedImageRef.current;
+    const imageForAnalysis = getDataUrlForAnalysis();
     if (!imageForAnalysis) {
       console.warn('No image available for analysis');
       return;
     }
 
-    // Safety: ensure we have a data URL string (the pipeline expects it)
-    if (typeof imageForAnalysis !== 'string') {
+    if (typeof imageForAnalysis !== 'string' || !imageForAnalysis.includes(',')) {
       console.error('[ANALYZE][BAD_SOURCE] expected data URL string');
       return;
     }
+
+    console.log('[FLOW][ANALYZE:ENTER]');
+    console.log('[FLOW][SOURCE]', { type: typeof imageForAnalysis });
 
     // Handle nutrition-capture mode separately
     if (currentMode === 'nutrition-capture') {
@@ -942,6 +953,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           console.info('[REVIEW][mode]', 'GPT_ONLY', 'count=', reviewItems.length);
           
           // Open review screen with atomic handoff
+          console.log('[FLOW][REVIEW:OPEN]', { count: items.length });
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
           setInputSource('photo'); // Flag for detection source
@@ -3445,6 +3457,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             mapped: true
           }));
           
+          console.log('[FLOW][REVIEW:OPEN]', { count: reviewItems.length });
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
         }}
