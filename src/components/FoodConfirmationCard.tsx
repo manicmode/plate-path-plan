@@ -85,6 +85,7 @@ interface FoodConfirmationCardProps {
   totalItems?: number; // Total items for multi-item flow
   isProcessingFood?: boolean; // Whether the parent is processing the food item
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
+  skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
@@ -100,7 +101,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   currentIndex,
   totalItems,
   isProcessingFood = false,
-  onVoiceAnalyzingComplete
+  onVoiceAnalyzingComplete,
+  skipNutritionGuard = false
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -230,7 +232,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
   }
 
-  if (!isNutritionReady) {
+  const canRender = skipNutritionGuard || isNutritionReady;
+  if (!canRender) {
+    console.log('[RENDER_GUARD] nutrition not ready (barcode bypass off)', { isNutritionReady, skipNutritionGuard });
     return <span data-guard="not-ready" />;
   }
 

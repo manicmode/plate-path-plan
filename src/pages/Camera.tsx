@@ -61,6 +61,7 @@ import '@/utils/devDetectionTest';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
 
 interface RecognizedFood {
+  id?: string; // Stable identifier for nutrition store
   name: string;
   calories: number;
   protein: number;
@@ -1426,7 +1427,11 @@ console.log('Global search enabled:', enableGlobalSearch);
           console.log('[BARCODE][MAP:ITEM]', { id: mapped?.name, name: mapped?.name, grams: mapped?.servingGrams });
           
           // Transform to RecognizedFood format with mapped nutrition
+          // Add a stable temp ID for barcode items
+          const tmpId = `bc:${cleanBarcode}:${Date.now()}`;
+          
           const recognizedFood: RecognizedFood = {
+            id: tmpId,
             name: mapped.name,
             calories: mapped.calories || 0,
             protein: mapped.protein_g || 0,
@@ -1505,7 +1510,11 @@ console.log('Global search enabled:', enableGlobalSearch);
           
           // Always try to open confirm modal with fallback data, even on nutrition processing error
           const mapped = mapToLogFood('', null);
+          // Add a stable temp ID for barcode fallback items  
+          const tmpId = `bc:${cleanBarcode}:${Date.now()}:fallback`;
+          
           const fallbackFood: RecognizedFood = {
+            id: tmpId,
             name: mapped.name,
             calories: 0,
             protein: 0,
@@ -1577,7 +1586,11 @@ console.log('Global search enabled:', enableGlobalSearch);
         // Always try to open confirm modal with fallback data, even on error
         try {
           const mapped = mapToLogFood('', null);
+          // Add a stable temp ID for barcode error fallback items
+          const tmpId = `bc:${cleanBarcode}:${Date.now()}:error`;
+          
           const fallbackFood: RecognizedFood = {
+            id: tmpId,
             name: mapped.name,
             calories: 0,
             protein: 0,
@@ -3413,6 +3426,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowProcessingNextItem(false);
         }}
         totalItems={pendingItems.length}
+        skipNutritionGuard={inputSource === 'barcode'}
       />
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
