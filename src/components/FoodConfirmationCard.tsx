@@ -207,12 +207,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
-  if (!currentFoodItem) return null;
-
-  // FORCE: read from store by exact item.id first
+  // FORCE: read from store by exact item.id first (must be before early returns)
   const storePerGram = useNutritionStore(
-    s => s.byId[currentFoodItem.id || '']?.perGram
+    s => s.byId[currentFoodItem?.id || '']?.perGram
   );
+
+  if (!currentFoodItem) return null;
 
   // Fallback only if store is missing
   const perGram = storePerGram ?? currentFoodItem.nutrition?.perGram ?? {};
