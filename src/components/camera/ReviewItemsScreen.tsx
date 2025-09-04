@@ -89,6 +89,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   
   // Hydration flag and modal state for flash prevention
   const [preparing, setPreparing] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const minSpinnerMs = 600; // smoothness guard
   
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -517,6 +518,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       setConfirmModalItems(enrichedItems);
       setCurrentConfirmIndex(0);
       setConfirmModalOpen(true);
+      setHydrated(true); // Mark as hydrated when real data is ready
       setPreparing(false);
 
       // Close the review screen AFTER starting the flow  
@@ -527,6 +529,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     } catch (error) {
       console.error('[HYDRATE][ERROR]', error);
       setPreparing(false);
+      setHydrated(false); // Reset hydrated state on error
       toast({
         title: 'Error',
         description: 'Failed to load nutrition data',
@@ -975,29 +978,44 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
-            console.log('[CONFIRM][BINDINGS]', {
-              name: item.name,
-              grams: item.grams,
-              perGram: item.nutrition?.perGram,
-              healthScore: item.analysis?.healthScore,
-              flags: item.analysis?.flags?.length,
-              ingredients: item.analysis?.ingredients?.length,
-              hydrated: (item as any).__hydrated
+            console.log('[CONFIRM][MODAL_RENDER]', {
+              isOpen: true,
+              itemId: item?.id,
+              itemName: item?.name,
+              calories: item?.calories,
+              hasNutrition: !!item?.nutrition,
+              perGram: item?.nutrition?.perGram ? Object.keys(item.nutrition.perGram) : [],
+              hydrated
             });
             return null;
           })()}
-          
-          <FoodConfirmationCard
-            isOpen={confirmModalOpen}
-            onClose={handleConfirmModalReject}
-            onConfirm={handleConfirmModalComplete}
-            onSkip={handleConfirmModalSkip}
-            onCancelAll={handleConfirmModalReject}
-            foodItem={confirmModalItems[currentConfirmIndex]}
-            showSkip={true}
-            currentIndex={currentConfirmIndex}
-            totalItems={confirmModalItems.length}
-          />
+
+          {!hydrated ? (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50">
+              <div className="flex h-64 items-center justify-center">
+                <div className="animate-pulse text-center">
+                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />
+                  <p className="mt-4 text-sm text-white/70">Loading nutrition…</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <FoodConfirmationCard
+              isOpen={true}
+              onClose={() => {
+                setConfirmModalOpen(false);
+                setCurrentConfirmIndex(0);
+                setHydrated(false); // Reset hydrated state when closing
+              }}
+              onConfirm={handleConfirmModalComplete}
+              onSkip={handleConfirmModalSkip}
+              onCancelAll={handleConfirmModalReject}
+              foodItem={confirmModalItems[currentConfirmIndex]}
+              showSkip={true}
+              currentIndex={currentConfirmIndex}
+              totalItems={confirmModalItems.length}
+            />
+          )}
         </>
       )}
     </>
