@@ -1570,27 +1570,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             }
           });
 
-    } catch (error) {
-      console.error('[BARCODE][ERROR]', error);
-      
-      toast.error('Network error during barcode lookup', {
-        description: 'Please try again or enter manually',
-        action: {
-          label: "Enter Manually",
-          onClick: () => {
-            setShowBarcodeNotFound(true);
-            setFailedBarcode(barcode);
-          }
-        }
-      });
-    } finally {
-      setIsLoadingBarcode(false);
-    }
-  };
-
   const handleVoiceRecording = async () => {
     console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
-          const mapped = mapToLogFood('', null);
+    
+    if (isRecording) {
           const fallbackFood: RecognizedFood = {
             name: mapped.name,
             calories: 0,
@@ -1633,8 +1616,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
               sodium: fallbackFood.sodium
             }
           });
-        }
-      } catch (error: any) {
+
+  // Manual barcode entry handler  
+  const handleManualBarcodeSubmit = async (barcode: string) => {
         if (error.name === 'AbortError') {
           status = 'timeout';
           console.error('Function timeout detected');
@@ -1720,14 +1704,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setShowBarcodeNotFound(true);
           setFailedBarcode(cleanBarcode);
         }
-      } finally {
-        console.log('[BARCODE][FINALLY]', { stopLoader: true });
-        setIsLoadingBarcode(false);
-      }
-    } catch (outerError) {
-      console.error('=== OUTER BARCODE ERROR ===', outerError);
-      setIsLoadingBarcode(false);
-    }
+
+  // Manual barcode entry handler  
+  const handleManualBarcodeSubmit = async (barcode: string) => {
+    await handleBarcodeDetected(barcode);
   };
 
   const handleVoiceRecording = async () => {
@@ -3646,6 +3626,6 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       
       </div>
     );
-  };
-  
+  }
+
 export default CameraPage;
