@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb } from 'lucide-react';
+import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Check, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
 import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
@@ -70,6 +70,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
+  const [showSlowHint, setShowSlowHint] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Autoscan refs
   const inFlightRef = useRef(false);
@@ -138,7 +141,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           if (count >= 3) {
             console.log('[LOG] stable_lock', { code: last });
             setPhase('captured');
+            setShowSuccess(true);
             stopAutoscan();
+            
+            // Haptic feedback
+            if ('vibrate' in navigator) {
+              navigator.vibrate(50); // Light haptic
+            }
             
             const lookupResult = await handleOffLookup(last);
         if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
@@ -147,6 +156,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           onOpenChange(false);
             } else {
               setPhase('scanning');
+              setShowSuccess(false);
               startAutoscan(); // Resume if no match
             }
             return;
@@ -213,11 +223,22 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         // Simply update the stream reference directly
         updateStreamRef(stream);
       }
+      
+      // Show slow hint after 2 seconds if no barcode detected
+      const slowHintTimer = setTimeout(() => {
+        if (phase === 'scanning' && !isDecoding && !isLookingUp) {
+          setShowSlowHint(true);
+          // Auto-hide after 3 seconds
+          setTimeout(() => setShowSlowHint(false), 3000);
+        }
+      }, 2000);
+      
+      return () => clearTimeout(slowHintTimer);
     }
     return () => {
       stopAutoscan();
     };
-  }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef]);
+  }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef, phase, isDecoding, isLookingUp]);
 
   const startCamera = async () => {
     // iOS fallback: use photo capture for barcode
@@ -453,6 +474,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
         playBeep();
+        setShowSuccess(true);
+        
+        // Haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        
         console.log('[BARCODE][SCAN:DETECTED]', { raw: result.raw, format: 'manual-capture' });
         onBarcodeDetected(result.raw);
         onOpenChange(false);
@@ -511,9 +539,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             playsInline
             muted
             className="w-full h-full object-cover"
+          />
+
+          {/* Framing Mask - darkens everything except the scan area */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"
             style={{
-              filter: phase !== 'scanning' ? 'brightness(0.3)' : 'none',
-              transition: 'filter 0.2s ease'
+              maskImage: 'radial-gradient(ellipse 45% 25% at center, transparent 60%, black 85%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 45% 25% at center, transparent 60%, black 85%)'
             }}
           />
 
@@ -533,7 +566,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           <div className="absolute inset-0 flex flex-col">
             {/* Header */}
             <div className="relative flex items-center p-4 pt-8 bg-gradient-to-b from-black/70 to-transparent mt-[env(safe-area-inset-top)]">
-              <h2 className="text-white text-xl font-semibold text-center w-full">Scan Barcode</h2>
+              <h2 className="text-white text-xl font-semibold text-center w-full">Scan a barcode</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -542,44 +575,112 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               >
                 <X className="h-6 w-6" />
               </Button>
+              
+              {/* Floating Torch Button */}
+              {supportsTorch && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleTorch}
+                  className={`absolute right-16 text-white hover:bg-white/20 transition-colors duration-200 ${
+                    torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
+                  }`}
+                  title={`Turn flash ${torchOn ? 'off' : 'on'}`}
+                >
+                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                </Button>
+              )}
             </div>
 
-            {/* Banner */}
+            {/* Status Chip */}
             <div className="px-4 pb-2">
-              <div className="bg-gradient-to-r from-cyan-600/90 to-blue-600/90 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/10 shadow-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="text-2xl">📊</div>
-                  <div className="flex-1">
-                    <h3 className="text-white font-semibold text-lg">Scan to log</h3>
-                    <p className="text-white/90 text-sm">We'll find the product and add it to your journal</p>
-                  </div>
+              <div className="inline-flex items-center px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+                <div className="text-xs text-white/80">
+                  {isLookingUp ? (
+                    <>
+                      <div className="inline-block w-2 h-2 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                      Looking up product...
+                    </>
+                  ) : isDecoding ? (
+                    <>
+                      <div className="inline-block w-2 h-2 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <div className="inline-block w-2 h-2 bg-green-400 rounded-full mr-2" />
+                      Ready to scan
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Center Content */}
-            <div className="flex-1 flex items-center justify-center px-4 -mt-16">
+            <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
               {/* Centered scan frame */}
               <div className="relative w-[82vw] max-w-[680px] aspect-[7/4] pointer-events-none">
-                {/* Corner indicators */}
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
-                
-                {/* Grid overlay */}
-                <div className="absolute inset-4 opacity-20">
-                  <div className="w-full h-full grid grid-cols-6 grid-rows-3 gap-0">
-                    {Array.from({ length: 18 }).map((_, i) => (
-                      <div key={i} className="border border-cyan-400/30"></div>
-                    ))}
-                  </div>
-                </div>
+                {/* Corner indicators with glow effect */}
+                <div className={`absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 transition-all duration-300 ${
+                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
+                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
+                <div className={`absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 transition-all duration-300 ${
+                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
+                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
+                <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 transition-all duration-300 ${
+                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
+                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
+                <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 transition-all duration-300 ${
+                  showSuccess ? 'border-green-400 shadow-lg shadow-green-400/50' : 'border-cyan-400 shadow-lg shadow-cyan-400/30'
+                } ${phase === 'scanning' ? 'animate-pulse' : ''}`}></div>
                 
                 {/* Scanning line animation */}
-                {(isDecoding || isLookingUp) && (
-                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-cyan-400 transform -translate-y-1/2 animate-pulse shadow-lg shadow-cyan-400/50" />
+                {phase === 'scanning' && (
+                  <div className="absolute inset-x-4 top-1/2 h-0.5 transform -translate-y-1/2">
+                    <div className="h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-[scan_2.4s_ease-in-out_infinite] shadow-lg shadow-cyan-400/50 blur-[1px]" />
+                  </div>
                 )}
+                
+                {/* Success checkmark */}
+                {showSuccess && (
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 rounded-full p-1.5 animate-[scale_180ms_ease-out] shadow-lg shadow-green-500/50">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Helper text */}
+              <div className="mt-4 text-center">
+                <p className="text-white/80 text-sm font-medium">
+                  Align the code in the frame— we'll auto-detect
+                </p>
+                
+                {/* Slow hint */}
+                {showSlowHint && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <p className="text-white/60 text-xs">
+                      Hold steady • Try turning on flash
+                    </p>
+                  </div>
+                )}
+                
+                {/* Supported formats tooltip */}
+                <div className="relative mt-2">
+                  <button
+                    onClick={() => setShowTooltip(!showTooltip)}
+                    className="inline-flex items-center text-white/50 hover:text-white/70 text-xs transition-colors"
+                  >
+                    <Info className="h-3 w-3 mr-1" />
+                    Supported formats
+                  </button>
+                  
+                  {showTooltip && (
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-white/80 whitespace-nowrap border border-white/20">
+                      UPC-A, EAN-13, EAN-8, Code-128, QR codes
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45 border-l border-t border-white/20"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -587,23 +688,17 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
             
             {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-6 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-3 pt-16">
-              {/* Instructions text */}
-              <div className="text-center text-white/90 mb-4">
-                <p className="text-sm font-medium">Align barcode in frame and tap to scan</p>
-                <p className="text-xs text-white/70 mt-1">Supports UPC-A, EAN-13, and EAN-8 codes</p>
-              </div>
-              
+            <footer className="absolute bottom-6 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-4 pt-16">
               {/* Main Action Button */}
               <Button
                 onClick={handleSnapAndDecode}
                 disabled={isDecoding || isLookingUp || !stream}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50 transition-all duration-200"
               >
                 {isDecoding ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Decoding...
+                    Scanning...
                   </>
                 ) : isLookingUp ? (
                   <>
@@ -612,36 +707,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <Zap className="h-5 w-5 mr-2" />
-                    Snap & Decode
+                    <Camera className="h-5 w-5 mr-2" />
+                    Scan & Log
                   </>
                 )}
               </Button>
 
-              {/* Secondary Actions */}
-              <div className="flex gap-3">
-                {/* Torch Toggle */}
-                <Button
-                  variant="outline"
-                  onClick={toggleTorch}
-                  disabled={!supportsTorch}
-                  title={!supportsTorch ? "Flash not available on this camera" : `Turn flash ${torchOn ? 'off' : 'on'}`}
-                  className={`flex-1 border-white/30 text-white hover:bg-white/20 h-12 transition-all duration-200 ${
-                    torchOn ? 'bg-yellow-500/30 border-yellow-400/50 text-yellow-300' : 'bg-white/10'
-                  } ${!supportsTorch ? 'opacity-50' : ''}`}
-                >
-                  <Lightbulb className={`h-5 w-5 mr-2 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-                  {torchOn ? 'Flash On' : 'Flash'}
-                </Button>
-                
-                {/* Manual Entry */}
-                <Button
-                  variant="outline"
+              {/* Secondary Action - Link Style */}
+              <div className="text-center">
+                <button
                   onClick={onManualEntry}
-                  className="flex-1 border-white/30 text-white hover:bg-white/20 h-12"
+                  className="text-white/70 hover:text-white text-sm underline underline-offset-2 transition-colors duration-200"
                 >
-                  ✏️ Enter Manually
-                </Button>
+                  Enter manually instead
+                </button>
               </div>
             </footer>
           </div>

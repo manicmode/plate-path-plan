@@ -7,6 +7,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "./styles/animations.css";
 import { enablePerfHUD, enableResourceMonitoring } from '@/lib/perf';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";

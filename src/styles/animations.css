@@ -1,0 +1,30 @@
+/* Custom animations for barcode scanner */
+
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes scale {
+  0% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulse-corners {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
+
+/* Animation utilities */
+.animate-scan {
+  animation: scan 2.4s ease-in-out infinite;
+}
+
+.animate-scale {
+  animation: scale 180ms ease-out;
+}
+
+.animate-pulse-corners {
+  animation: pulse-corners 900ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
