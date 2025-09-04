@@ -301,6 +301,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     ...effective,
   };
 
+  console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
+    inputSource: 'undefined', // keeping minimal as requested  
+    showConfirmation: isOpen,
+    hasItem: !!currentFoodItem,
+    itemId: currentFoodItem?.id,
+    itemName: currentFoodItem?.name,
+    kcal: currentFoodItem?.calories,
+  });
+
   console.log('[CONFIRM][BIND]', { 
     title, 
     calories: effective.calories, 

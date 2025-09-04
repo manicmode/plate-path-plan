@@ -50,6 +50,32 @@ console.log('[BCF][ENV]', {
   projectUrl: import.meta.env.VITE_SUPABASE_URL
 });
 
+// Test instructions for diagnostics run
+console.log(`[BCF][TEST_INSTRUCTIONS]
+1) DevTools → Console: enable "Preserve log" + "Log XMLHttpRequests".
+   DevTools → Network: enable "Preserve log" + "Disable cache".
+   Clear Console & Network.
+2) In Console's filter box paste:
+   BCF|BARCODE|ERROR|FALLBACK|LOOKUP|OPEN_CONFIRM|PING
+3) Live Scan:
+   - Open barcode scanner on Log page.
+   - Scan: 012345678905  (UPC-A)
+   - Scan: 4006381333931 (EAN-13)
+   After each, wait ~5–10s.
+   Paste back ALL filtered console lines plus, for each request:
+     • Method & full URL
+     • Request JSON body
+     • Response status
+     • Response JSON
+4) Manual Entry:
+   - Enter the same two codes and submit.
+   Paste the same Console + Network details.
+5) Auth sanity (run in Console and paste output):
+   ;(async () => {
+     const { data } = await supabase.auth.getUser();
+     console.log('[AUTH_CHECK]', { userId: data?.user?.id ?? null, isLoggedIn: !!data?.user?.id });
+   })()`);
+
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};
 

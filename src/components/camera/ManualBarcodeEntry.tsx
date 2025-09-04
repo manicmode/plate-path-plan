@@ -34,9 +34,17 @@ export const ManualBarcodeEntry: React.FC<ManualBarcodeEntryProps> = ({
     const cleanBarcode = barcodeValue.trim().replace(/\s+/g, '');
     console.log('[BARCODE][MANUAL:SUBMIT]', { code: cleanBarcode });
     
+    // Diagnostic logs for manual entry 
+    console.log('[BCF][INVOKE:REQUEST]', {
+      fn: 'enhanced-health-scanner',
+      source: 'manual-entry',
+      barcode: cleanBarcode
+    });
+    
     // Check for valid barcode patterns (UPC, EAN, etc.)
     if (!/^\d{8,14}$/.test(cleanBarcode)) {
       toast.error('Please enter a valid barcode (8-14 digits)');
+      console.error('[BCF][INVOKE:ERROR]', { type: 'validation', message: 'Invalid barcode format' });
       return;
     }
 
