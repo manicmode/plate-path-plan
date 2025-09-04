@@ -15,11 +15,13 @@ import { submitTextLookup, FEATURE_TEXT_LOOKUP_V2 } from '@/lib/food/textLookup'
 interface ManualFoodEntryProps {
   isOpen: boolean;
   onClose: () => void;
+  onResults?: (items: any[]) => void;
 }
 
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
-  onClose
+  onClose,
+  onResults
 }) => {
   const { saveFood } = useNutritionPersistence();
   const [foodName, setFoodName] = useState('');
@@ -55,27 +57,47 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         return;
       }
 
-      // Use first result for auto-confirm
-      const foodItem = items[0];
-      
-      // Apply portion scaling
+      // Apply portion scaling to all items
       const portionScale = amountPercentage[0] / 100;
+      const scaledItems = items.map((item: any) => ({
+        ...item,
+        servingGrams: Math.round((item.servingGrams || 100) * portionScale),
+        calories: Math.round(item.calories * portionScale),
+        protein_g: Math.round(item.protein_g * portionScale * 10) / 10,
+        carbs_g: Math.round(item.carbs_g * portionScale * 10) / 10,
+        fat_g: Math.round(item.fat_g * portionScale * 10) / 10,
+        fiber_g: Math.round((item.fiber_g || 2) * portionScale * 10) / 10,
+        sugar_g: Math.round((item.sugar_g || 3) * portionScale * 10) / 10,
+        source: 'manual'
+      }));
+
+      console.log(`✅ [Manual Entry] Found ${scaledItems.length} items, scaled by ${portionScale}x`);
+
+      // Use shared router if available, otherwise fallback to legacy path
+      if (onResults) {
+        onResults(scaledItems);
+        onClose();
+        return;
+      }
+
+      // Legacy fallback - use first result for auto-confirm
+      const foodItem = scaledItems[0];
       
-      // Create food item with scaled nutrition
+      // Create food item for legacy save
       const foodData = {
         id: `manual-${foodItem.provider}-${Date.now()}`,
         name: trimmedName,
-        calories: Math.round(foodItem.calories * portionScale),
-        protein: Math.round(foodItem.protein_g * portionScale * 10) / 10,
-        carbs: Math.round(foodItem.carbs_g * portionScale * 10) / 10,
-        fat: Math.round(foodItem.fat_g * portionScale * 10) / 10,
-        fiber: Math.round((foodItem.fiber_g || 2) * portionScale * 10) / 10,
-        sugar: Math.round((foodItem.sugar_g || 3) * portionScale * 10) / 10,
+        calories: foodItem.calories,
+        protein: foodItem.protein_g,
+        carbs: foodItem.carbs_g,
+        fat: foodItem.fat_g,
+        fiber: foodItem.fiber_g,
+        sugar: foodItem.sugar_g,
         sodium: Math.round((foodItem.meta?.sodium || 50) * portionScale),
         saturated_fat: Math.round((foodItem.meta?.saturated_fat || 1) * portionScale * 10) / 10,
         confidence: Math.round((foodItem.confidence || 0.7) * 100),
         timestamp: new Date(),
-        confirmed: true, // Auto-confirm manual entries
+        confirmed: true,
         image: foodItem.imageUrl || undefined,
         source: foodItem.provider,
         brand: foodItem.brand || undefined,

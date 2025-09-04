@@ -166,16 +166,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [isOpen]);
 
   // Derive display values with broad fallback
-  // Enhanced display values for barcode items
-  const preferItem = bypassHydration && (currentFoodItem as any)?.source === 'barcode';
+  // Enhanced display values for barcode and text items
+  const preferItem = bypassHydration && ((currentFoodItem as any)?.source === 'barcode' || (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech');
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
+  const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   const title = currentFoodItem?.name ?? 'Unknown Product';
   const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : (currentFoodItem?.portionGrams ?? null);
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
   
-  // Use serving text for barcode items when available, otherwise use grams
-  const subtitle = isBarcodeItem
+  // Use serving text for barcode and text items when available, otherwise use grams
+  const subtitle = (isBarcodeItem || isTextItem)
     ? (servingText ? `Per portion (${servingText})` : `Per portion (${grams} g)`)
     : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   

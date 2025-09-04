@@ -5,7 +5,7 @@ export interface BBox {
   h: number; 
 }
 
-export type DetectorSource = 'vision' | 'gpt' | 'fusion'
+export type DetectorSource = 'vision' | 'gpt' | 'fusion' | 'manual' | 'speech' | 'barcode'
 
 export interface DetectedFood {
   id: string

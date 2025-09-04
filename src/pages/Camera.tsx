@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -206,9 +206,63 @@ const CameraPage = () => {
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
   const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
   const [showSpeakToLog, setShowSpeakToLog] = useState(false);
+  const [bypassHydration, setBypassHydration] = useState(false);
   
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
+  
+  // Single router for any recognized items array (barcode/photo/manual/speech)
+  const routeRecognizedItems = useCallback((items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
+    if (!items || items.length === 0) {
+      console.warn('[ROUTE_ITEMS] No items returned');
+      return;
+    }
+
+    console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
+
+    if (items.length === 1) {
+      const item = items[0];
+      setRecognizedFoods([item]);
+      
+      // Allow confirm-card to bypass hydration gate for text-sourced items
+      if (sourceHint === 'speech' || sourceHint === 'manual' || sourceHint === 'barcode' || 
+          item.source === 'speech' || item.source === 'manual' || item.source === 'barcode') {
+        setBypassHydration(true);
+      } else {
+        setBypassHydration(false);
+      }
+      
+      setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : sourceHint === 'barcode' ? 'barcode' : 'photo');
+      setShowConfirmation(true);
+      
+      console.log('[ROUTE_ITEMS] Opening confirmation for single item:', item.name);
+    } else {
+      // Transform to ReviewItem format for multiple items
+      const reviewItems = items.map((item: any, index: number) => ({
+        id: item.id || `${sourceHint}-${index}`,
+        name: item.name,
+        canonicalName: item.name,
+        portion: `${item.servingGrams || 100}g`,
+        selected: true,
+        grams: item.servingGrams || 100,
+        mapped: true,
+        needsDetails: false
+      }));
+      
+      setReviewItems(reviewItems);
+      
+      // Set bypass hint for when user picks items from review
+      if (sourceHint === 'speech' || sourceHint === 'manual' || sourceHint === 'barcode') {
+        setBypassHydration(true);
+      } else {
+        setBypassHydration(false);
+      }
+      
+      setShowReviewScreen(true);
+      
+      console.log('[ROUTE_ITEMS] Opening review for multiple items:', items.length);
+    }
+  }, [setRecognizedFoods, setShowConfirmation, setInputSource, setReviewItems, setShowReviewScreen]);
   const [showSavedSetsSheet, setShowSavedSetsSheet] = useState(false);
   
   // Unified camera modal state
@@ -3461,7 +3515,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         }}
         totalItems={pendingItems.length}
         skipNutritionGuard={inputSource === 'barcode'}
-        bypassHydration={inputSource === 'barcode'}
+        bypassHydration={bypassHydration}
       />
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
@@ -3539,38 +3593,17 @@ console.log('Global search enabled:', enableGlobalSearch);
       <ManualFoodEntry
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
+        onResults={(items) => routeRecognizedItems(items, 'manual')}
       />
 
       {/* Speak to Log Modal */}
       <SpeakToLogModal
         isOpen={showSpeakToLog}
         onClose={() => setShowSpeakToLog(false)}
-        onResults={(items) => {
-          if (items.length === 1) {
-            // Single item - go to confirmation
-            setRecognizedFoods([items[0]]);
-            setShowConfirmation(true);
-            setInputSource('voice');
-          } else {
-            // Multiple items - go to review  
-            const reviewItems = items.map((item: any, index: number) => ({
-              id: item.id,
-              name: item.name,
-              canonicalName: item.name,
-              portion: `${item.servingGrams}g`,
-              selected: true,
-              grams: item.servingGrams,
-              mapped: true,
-              needsDetails: false
-            }));
-            setReviewItems(reviewItems);
-            setShowReviewScreen(true);
-          }
-        }}
+        onResults={(items) => routeRecognizedItems(items, 'speech')}
       />
-
       {/* Debug Panel - Dev only */}
-      <DebugPanel 
+      <DebugPanel
         isVisible={showConfirmation && (recognizedFoods[0] as any)?.servingDebug}
         debugInfo={(recognizedFoods[0] as any)?.servingDebug}
       />
