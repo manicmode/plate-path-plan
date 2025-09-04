@@ -3081,13 +3081,10 @@ console.log('Global search enabled:', enableGlobalSearch);
                   </Button>
                   
                   {/* Speak to Log Tab */}
-                  <Button
-                    onClick={handleVoiceRecording}
-                    disabled={isVoiceProcessing || !!processingStep}
-                    className={`h-24 w-full flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300 ${isRecording 
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'gradient-primary'
-                    }`}
+                   <Button
+                     onClick={() => setShowSpeakToLog(true)}
+                     disabled={isVoiceProcessing || !!processingStep}
+                     className="h-24 w-full flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300 gradient-primary"
                     size="lg"
                   >
                     {isRecording ? (
@@ -3135,13 +3132,9 @@ console.log('Global search enabled:', enableGlobalSearch);
                   
                   
                   {/* Manual Entry Tab */}
-                  <Button
-                    onClick={() => {
-                      setShowManualEdit(true);
-                      setInputSource('manual');
-                      resetErrorState();
-                    }}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+                   <Button
+                     onClick={() => setShowManualFoodEntry(true)}
+                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Edit3 className="h-6 w-6" />
@@ -3555,10 +3548,23 @@ console.log('Global search enabled:', enableGlobalSearch);
         onResults={(items) => {
           if (items.length === 1) {
             // Single item - go to confirmation
-            handleFoodDetected([items[0]]);
+            setRecognizedFoods([items[0]]);
+            setShowConfirmation(true);
+            setInputSource('voice');
           } else {
-            // Multiple items - go to review
-            handleFoodDetected(items);
+            // Multiple items - go to review  
+            const reviewItems = items.map((item: any, index: number) => ({
+              id: item.id,
+              name: item.name,
+              canonicalName: item.name,
+              portion: `${item.servingGrams}g`,
+              selected: true,
+              grams: item.servingGrams,
+              mapped: true,
+              needsDetails: false
+            }));
+            setReviewItems(reviewItems);
+            setShowReviewScreen(true);
           }
         }}
       />
