@@ -17,21 +17,20 @@ export const UnifiedLoggingTabs = ({ onFoodSelect, onBarcodeSelect, onBack }: Un
 
   return (
     <div className="w-full">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with back button and RECENT title */}
+      <div className="flex items-center gap-4 mb-6">
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground p-2"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-      </div>
-
-      {/* RECENT Title */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <Clock className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-semibold text-primary">RECENT</h1>
+        
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-semibold text-primary">RECENT</h1>
+        </div>
       </div>
 
       {/* Triple Toggle Tabs */}
