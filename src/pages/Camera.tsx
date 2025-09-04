@@ -1270,6 +1270,21 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       console.log('=== BARCODE LOOKUP START ===');
       console.log('Barcode detected:', barcode);
 
+      // One-off connectivity probe after setting barcode mode
+      try {
+        console.log('[BCF][INVOKE:REQUEST]', {
+          fn: 'enhanced-health-scanner',
+          url: (supabase as any)?.functions?.url,
+          projectUrl: (supabase as any)?.rest?.url,
+          hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+        });
+        
+        const ping = await supabase.functions.invoke('enhanced-health-scanner', { body: { __ping: true } });
+        console.log('[BCF][PING:RESPONSE]', { status: ping?.data?.status || ping?.error || ping });
+      } catch (e) {
+        console.error('[BCF][PING:ERROR]', e);
+      }
+
       // Fire-and-forget health ping for dev logging (ignore failures)
       try {
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhanced-health-scanner`, {
@@ -1333,6 +1348,13 @@ console.log('Global search enabled:', enableGlobalSearch);
       }
       
       console.log('=== STEP 2: CALLING BARCODE LOOKUP FUNCTION ===');
+      
+      console.log('[BCF][INVOKE:REQUEST]', {
+        fn: 'enhanced-health-scanner',
+        url: (supabase as any)?.functions?.url,
+        projectUrl: (supabase as any)?.rest?.url,
+        hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+      });
       
       // Create timeout controller
       const controller = new AbortController();
@@ -1557,10 +1579,17 @@ console.log('Global search enabled:', enableGlobalSearch);
           });
         }
       } catch (error: any) {
+        console.error('[BCF][INVOKE:ERROR]', {
+          name: error?.name,
+          message: error?.message,
+          stack: error?.stack
+        });
+        clearTimeout(timeout);
         if (error.name === 'AbortError') {
           status = 'timeout';
           console.error('Function timeout detected');
           console.warn('[BARCODE][EARLY_RETURN]', { reason: 'timeout', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
+          console.warn('[BCF][FALLBACK:UNKNOWN_PRODUCT]', { barcode: cleanBarcode, reason: 'invoke-timeout' });
           
           toast.error("Request timed out", {
             description: "Try manual entry instead",
@@ -1579,6 +1608,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         } else {
           status = 'error';
           console.warn('[BARCODE][ERROR]', error);
+          console.warn('[BCF][FALLBACK:UNKNOWN_PRODUCT]', { barcode: cleanBarcode, reason: 'invoke-error' });
         }
         console.error('=== BARCODE LOOKUP ERROR ===', error);
         

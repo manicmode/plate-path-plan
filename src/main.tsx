@@ -43,6 +43,13 @@ devLog('GUARD][NEW] wired', true);
 logActiveCSP('APP_MOUNT');
 validateSupabaseCSP();
 
+// Environment sanity check for diagnostics
+console.log('[BCF][ENV]', {
+  nodeEnv: import.meta.env.MODE,
+  anonKeyLen: (import.meta.env.VITE_SUPABASE_ANON_KEY||'').length,
+  projectUrl: import.meta.env.VITE_SUPABASE_URL
+});
+
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};
 

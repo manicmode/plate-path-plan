@@ -345,6 +345,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       setIsLookingUp(true);
       
+      console.log('[BCF][INVOKE:REQUEST]', {
+        fn: 'enhanced-health-scanner',
+        url: (supabase as any)?.functions?.url,
+        projectUrl: (supabase as any)?.rest?.url,
+        hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+      });
+      
       // Use same endpoint as Health Scan
       const { data: result, error } = await supabase.functions.invoke('enhanced-health-scanner', {
         body: { mode: 'barcode', barcode, source: 'log' }
@@ -384,6 +391,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       
     } catch (error: any) {
       clearTimeout(timeout);
+      console.error('[BCF][INVOKE:ERROR]', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack
+      });
       if (error.name === 'AbortError') {
         status = 'timeout';
         console.log(`[LOG] off_timeout:`, error);
@@ -391,6 +403,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         status = 'error';
         console.log(`[LOG] off_error:`, error);
       }
+      console.warn('[BCF][FALLBACK:UNKNOWN_PRODUCT]', { barcode, reason: 'invoke-failed' });
     } finally {
       setIsLookingUp(false);
     }
