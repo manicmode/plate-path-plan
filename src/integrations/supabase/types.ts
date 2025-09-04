@@ -2543,6 +2543,33 @@ export type Database = {
         }
         Relationships: []
       }
+      food_text_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          items: Json
+          normalized_q: string
+          q: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          items?: Json
+          normalized_q: string
+          q: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          items?: Json
+          normalized_q?: string
+          q?: string
+        }
+        Relationships: []
+      }
       habit: {
         Row: {
           category: string | null
