@@ -135,26 +135,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
-  // Derive display values with broad fallback
-  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
-  
-  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
-  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
-
-  // Check if this is an unknown product that needs manual entry
-  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
-  const hasBarcode = !!(currentFoodItem as any)?.barcode;
-
-  useEffect(() => {
-    const url = imgUrl ?? '';
-    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
-    console.log('[CONFIRM][MOUNT]', {
-      rev: CONFIRM_FIX_REV,
-      name: displayName,
-      imageUrlKind: validImg ? "http" : "none",
-      url: (imgUrl || "").slice(0, 120),
-    });
-  }, [imgUrl, displayName]);
+  // Derive display values with broad fallback - moved after safeItem definition
+  // (displayName now calculated after safeItem is defined)
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -207,26 +189,63 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
-  // FORCE: read from store by exact item.id first (must be before early returns)
+  // FORCE: read from store by exact item.id first (make hooks unconditional)
+  const EMPTY_ITEM: FoodItem = {
+    id: '',
+    name: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0,
+    portionGrams: 100,
+    nutrition: { perGram: {} }
+  };
+
+  const EMPTY_PG: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>> = {};
+  
+  // Always call hooks with safe fallbacks - never conditional
   const storePerGram = useNutritionStore(
-    s => s.byId[currentFoodItem?.id || '']?.perGram
+    s => s.byId[(currentFoodItem?.id || '')]?.perGram
   );
 
-  if (!currentFoodItem) return null;
+  // Derive safe values after all hooks
+  const safeItem = currentFoodItem || EMPTY_ITEM;
+  const perGram = storePerGram ?? safeItem.nutrition?.perGram ?? EMPTY_PG;
 
-  // Fallback only if store is missing
-  const perGram = storePerGram ?? currentFoodItem.nutrition?.perGram ?? {};
+  // Derive display values with broad fallback
+  const displayName = (safeItem as any)?.itemName ?? safeItem?.name ?? (safeItem as any)?.productName ?? (safeItem as any)?.title ?? "Food item";
+  
+  const imgUrl = safeItem?.image ?? safeItem?.imageUrl ?? null;
+  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
+
+  // Check if this is an unknown product that needs manual entry
+  const isUnknownProduct = (safeItem as any)?.isUnknownProduct;
+  const hasBarcode = !!(safeItem as any)?.barcode;
+
+  useEffect(() => {
+    const url = imgUrl ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    console.log('[CONFIRM][MOUNT]', {
+      rev: CONFIRM_FIX_REV,
+      name: displayName,
+      imageUrlKind: validImg ? "http" : "none",
+      url: (imgUrl || "").slice(0, 120),
+    });
+  }, [imgUrl, displayName]);
 
   if (process.env.NODE_ENV === 'development') {
     const pgSum = Object.values(perGram).reduce((a: number, v: any) => a + (+v || 0), 0);
-    console.log('[SST][CARD_BIND]', { id: currentFoodItem.id, pgSum, fromStore: !!storePerGram });
+    console.log('[SST][CARD_BIND]', { id: safeItem.id, pgSum, fromStore: !!storePerGram });
   }
 
   const portionMultiplier = portionPercentage[0] / 100;
   
   // Compute macros strictly from perGram if available
   const macros = useMemo(() => {
-    const g = (currentFoodItem.portionGrams ?? 100) * portionMultiplier;
+    const g = (safeItem.portionGrams ?? 100) * portionMultiplier;
     const v = (k: keyof typeof perGram) => (perGram?.[k] ?? 0) * g;
     
     return Object.keys(perGram).length > 0 ? {
@@ -238,14 +257,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       fiber: Math.round(v('fiber') * 10) / 10,
       sodium: Math.round(v('sodium')),
     } : null;
-  }, [perGram, currentFoodItem.portionGrams, portionMultiplier]);
+  }, [perGram, safeItem.portionGrams, portionMultiplier]);
   
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
 
   // Calculate effective nutrients - use macros from store first, then basePer100, then fallback
-  const base = currentFoodItem.basePer100; // per-100g baseline
-  const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
+  const base = safeItem.basePer100; // per-100g baseline
+  const gramsFactor = safeItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
   const effective = macros || (base
@@ -260,17 +279,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }
     : {
         // fallback: if no perGram and no basePer100 was provided, keep existing behavior
-        calories: Math.round(currentFoodItem.calories * portionMultiplier),
-        protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
-        carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
-        fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
-        fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
-        sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
-        sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
+        calories: Math.round(safeItem.calories * portionMultiplier),
+        protein: Math.round(safeItem.protein * portionMultiplier * 10) / 10,
+        carbs: Math.round(safeItem.carbs * portionMultiplier * 10) / 10,
+        fat: Math.round(safeItem.fat * portionMultiplier * 10) / 10,
+        fiber: Math.round(safeItem.fiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(safeItem.sugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(safeItem.sodium * portionMultiplier),
       });
 
   const adjustedFood = {
-    ...currentFoodItem,
+    ...safeItem,
     ...effective,
   };
 
