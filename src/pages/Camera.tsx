@@ -626,7 +626,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           await processImageFile(file);
           
           // Then run the analysis (this will use the selectedImage state)
-          await analyzeImage(file);
+          await analyzeImage();
           
           // Return empty array since analyzeImage handles its own flow
           return [];
@@ -823,16 +823,18 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     }
   };
 
-  const analyzeImage = async (providedFile?: File | Blob) => {
-    const imageForAnalysis = providedFile ?? selectedImage ?? selectedImageRef.current;
+  const analyzeImage = async () => {
+    const imageForAnalysis = selectedImage ?? selectedImageRef.current;
     if (!imageForAnalysis) {
       console.warn('No image available for analysis');
       return;
     }
-    console.log('[ANALYZE][SOURCE]', {
-      sourceType: providedFile ? 'provided' : 'state',
-      hasImage: !!imageForAnalysis
-    });
+
+    // Safety: ensure we have a data URL string (the pipeline expects it)
+    if (typeof imageForAnalysis !== 'string') {
+      console.error('[ANALYZE][BAD_SOURCE] expected data URL string');
+      return;
+    }
 
     // Handle nutrition-capture mode separately
     if (currentMode === 'nutrition-capture') {
@@ -3282,7 +3284,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
             {/* Bottom row: Analyze Food/Extract Nutrition (full width) */}
             <Button
-              onClick={() => analyzeImage()}
+              onClick={analyzeImage}
               disabled={isAnalyzing}
               className="w-full gradient-primary"
             >
