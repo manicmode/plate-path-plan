@@ -139,6 +139,8 @@ function guessDefaultGrams(name: string){
   return /salmon|chicken|beef/i.test(name) ? 120 : /asparagus|tomato|lettuce/i.test(name) ? 80 : 100
 }
 
+type ImageSource = File | Blob | string;
+
 const CameraPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -540,11 +542,8 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // ✅ Stage image into refs/state, then trigger confirm ➜ loader ➜ analyze ➜ review
     await processImageFile(file);
-    // Ensure refs/state are committed before confirm reads them
-    await new Promise((r) => setTimeout(r, 0));
-    await handleConfirmImage(); // note: no params
+    await handleConfirmImage(file);
   };
 
   const processImageFile = async (file: File) => {
@@ -589,27 +588,29 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Handler for unified photo capture modal
   const handleConfirmImage = async (maybeFile?: File | Blob) => {
-    // Prefer explicit blob (if the function is ever called with one),
-    // else fall back to staged state, else the ref.
-    const imageToUse: string | File | Blob | null =
-      maybeFile ??
-      selectedImage ??
-      selectedImageRef.current ??
-      null;
-
-    if (!imageToUse) {
-      console.warn('No selected image to analyze');
+    const imageSource = maybeFile ?? selectedImage ?? selectedImageRef.current;
+    if (!imageSource) {
+      console.warn('[FLOW][CONFIRM:EARLY_RETURN]', {
+        reason: 'no-image-source',
+        hasFile: !!maybeFile,
+        hasState: !!selectedImage,
+        hasRef: !!selectedImageRef.current
+      });
       return;
     }
+    console.log('[FLOW][CONFIRM:START]', {
+      sourceType: maybeFile ? 'file' : 'state',
+      hasImageSource: !!imageSource
+    });
 
     // Convert to File if we have a string (data URL) or Blob
     const file = maybeFile instanceof File
       ? maybeFile
       : maybeFile instanceof Blob
       ? new File([maybeFile], `log-${Date.now()}.jpg`, { type: "image/jpeg" })
-      : typeof imageToUse === 'string'
+      : typeof imageSource === 'string'
       ? null // Will be handled by existing analyze flow
-      : new File([imageToUse as Blob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
+      : new File([imageSource as Blob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
 
     setShowCamera(false);
     setShowSmartLoader(true);
@@ -625,7 +626,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           await processImageFile(file);
           
           // Then run the analysis (this will use the selectedImage state)
-          await analyzeImage();
+          await analyzeImage(file);
           
           // Return empty array since analyzeImage handles its own flow
           return [];
@@ -822,16 +823,20 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     }
   };
 
-  const analyzeImage = async () => {
-    if (!selectedImage) {
-      console.error('No selected image to analyze');
-      toast.error('No image selected');
+  const analyzeImage = async (providedFile?: File | Blob) => {
+    const imageForAnalysis = providedFile ?? selectedImage ?? selectedImageRef.current;
+    if (!imageForAnalysis) {
+      console.warn('No image available for analysis');
       return;
     }
+    console.log('[ANALYZE][SOURCE]', {
+      sourceType: providedFile ? 'provided' : 'state',
+      hasImage: !!imageForAnalysis
+    });
 
     // Handle nutrition-capture mode separately
     if (currentMode === 'nutrition-capture') {
-      return completeNutritionCapture(selectedImage);
+      return completeNutritionCapture(typeof imageForAnalysis === 'string' ? imageForAnalysis : selectedImage);
     }
 
     console.log('=== Starting image analysis ===');
@@ -3277,7 +3282,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
             {/* Bottom row: Analyze Food/Extract Nutrition (full width) */}
             <Button
-              onClick={analyzeImage}
+              onClick={() => analyzeImage()}
               disabled={isAnalyzing}
               className="w-full gradient-primary"
             >
