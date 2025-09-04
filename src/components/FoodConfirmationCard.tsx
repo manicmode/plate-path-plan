@@ -168,9 +168,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive display values with broad fallback
   // Enhanced display values for barcode items
   const preferItem = bypassHydration && (currentFoodItem as any)?.source === 'barcode';
+  const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const title = currentFoodItem?.name ?? 'Unknown Product';
   const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : (currentFoodItem?.portionGrams ?? null);
-  const subtitle = servingG ? `${servingG} g per portion` : 'Per portion (unknown size)';
+  const servingText = (currentFoodItem as any)?.servingText as string | undefined;
+  const grams = Math.round(servingG ?? 100);
+  
+  // Use serving text for barcode items when available, otherwise use grams
+  const subtitle = isBarcodeItem
+    ? (servingText ? `Per portion (${servingText})` : `Per portion (${grams} g)`)
+    : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
+  
   const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : (currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null);
   
   const displayName = title;
@@ -609,7 +617,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     if (percentage === 25) return 'Quarter';
     if (percentage === 50) return 'Half';
     if (percentage === 75) return 'Three-quarters';
-    if (percentage === 100) return 'Full portion';
+    if (percentage === 100) {
+      // For barcode items, use the actual serving size
+      return isBarcodeItem ? 'Full portion' : 'Full portion';
+    }
     return `${percentage}%`;
   };
 
