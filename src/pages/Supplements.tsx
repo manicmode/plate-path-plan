@@ -137,7 +137,7 @@ const Supplements = () => {
       <div className="flex items-center gap-4 mb-6">
         <Button 
           variant="ghost" 
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
           className="text-muted-foreground hover:text-foreground p-2"
         >
           <ArrowLeft className="h-4 w-4" />
