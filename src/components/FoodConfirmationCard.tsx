@@ -120,6 +120,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  // Debug (temporary): verify stable inputs to hooks
+  console.log('[HOOK_ORDER_INIT] FoodConfirmationCard mount');
+
+  // Derive a stable ID from props (not from transient state)
+  const foodId = foodItem?.id ?? null;
+
+  // Zustand selector MUST run unconditionally on every render
+  const storeAnalysis = useNutritionStore(
+    s => (foodId ? s.byId[foodId] : undefined)
+  );
+
+  // Optional helpers (no new hooks below guards)
+  const perGram = storeAnalysis?.perGram || {};
+  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+  const isNutritionReady = perGramSum > 0;
+
+  console.log('[HOOK_ORDER]', { foodId, hasPropFood: !!foodItem, hasCurFood: !!currentFoodItem, perGramSum });
+
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
     if (reminderOpen) {
@@ -158,35 +176,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
   }, [imgUrl, displayName]);
 
-  // Update currentFoodItem when foodItem prop changes
-  React.useEffect(() => {
-    // Clear current food item first to prevent showing old data
-    if (foodItem !== currentFoodItem) {
-      setCurrentFoodItem(null);
-      
-      // Brief delay to ensure clean transition in multi-item flow
-      const timer = setTimeout(() => {
-        setCurrentFoodItem(foodItem);
-        setIsChecked(false); // Reset checkbox when new food item is loaded
-        setManualIngredients(''); // Reset manual ingredients
-        
-        // Auto-check ingredients if available
-        if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
-          checkIngredients(foodItem.ingredientsText);
-        }
-      }, 100); // 100ms delay for smooth transition
-      
-      return () => clearTimeout(timer);
-    } else {
-      setCurrentFoodItem(foodItem);
-      setIsChecked(false);
-      setManualIngredients('');
-      
-      if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
-        checkIngredients(foodItem.ingredientsText);
-      }
-    }
-  }, [foodItem, currentFoodItem, checkIngredients]);
+  // Stabilize: directly sync from prop without null flip
+  useEffect(() => {
+    setCurrentFoodItem(foodItem);
+  }, [foodItem]);
 
   // Trigger coach response when flagged ingredients are detected
   React.useEffect(() => {
@@ -230,22 +223,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
 
-  // If perGram is still empty, don't render the macro UI yet (lets loader cover it)
-  if (!currentFoodItem) return null;
-  
-  // Gate rendering based on nutrition readiness to prevent flash
-  const storeAnalysis = useNutritionStore(
-    s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
-  );
-  const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;
-  
-  // Check if nutrition data is actually ready (not placeholder values)
-  const isNutritionReady = perGram && Object.keys(perGram).length > 0 && 
-    Object.values(perGram).some(val => (Number(val) || 0) > 0);
-  
-  if (!isNutritionReady) {
-    return null; // the ConfirmLoading component is visible while nutrition loads
+  // Guard content rendering ONLY; hooks already executed
+  if (!currentFoodItem) {
+    console.log('[RENDER_GUARD] no currentFoodItem');
+    return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
   }
+
+  if (!isNutritionReady) {
+    console.log('[RENDER_GUARD] nutrition not ready', { foodId, perGramSum });
+    return <span data-guard="not-ready" />;
+  }
+
+  console.log('[RENDER_READY]', { foodId, hasCurFood: !!currentFoodItem, isNutritionReady: isNutritionReady });
 
   const portionMultiplier = portionPercentage[0] / 100;
   
