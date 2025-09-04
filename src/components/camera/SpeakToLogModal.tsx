@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mic, MicOff, X, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitTextLookup } from '@/lib/food/textLookup';
+import TextLookupLoading from '@/components/common/TextLookupLoading';
 
 interface SpeakToLogModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTextLookupLoading, setIsTextLookupLoading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -100,12 +102,15 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
     }
 
     setIsProcessing(true);
+    setIsTextLookupLoading(true);
 
     try {
       console.log('[SPEECH] Processing transcript:', cleanTranscript);
       
       // Use unified text lookup
       const { items } = await submitTextLookup(cleanTranscript, { source: 'speech' });
+      
+      setIsTextLookupLoading(false);
 
       if (!items || items.length === 0) {
         toast.error('No food items recognized. Please try speaking more clearly.');
@@ -120,10 +125,12 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
       onClose();
       
     } catch (error) {
+      setIsTextLookupLoading(false);
       console.error('[SPEECH] Processing error:', error);
       toast.error('Failed to process speech. Please try again.');
     } finally {
       setIsProcessing(false);
+      setIsTextLookupLoading(false);
     }
   };
 
@@ -240,6 +247,9 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
           </div>
         </CardContent>
       </Card>
+      
+      {/* Text Lookup Loading Overlay */}
+      {isTextLookupLoading && <TextLookupLoading label="Listening & finding matches…" />}
     </div>
   );
 };

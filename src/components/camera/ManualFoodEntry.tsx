@@ -11,6 +11,7 @@ import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { sanitizeText } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
 import { submitTextLookup, FEATURE_TEXT_LOOKUP_V2 } from '@/lib/food/textLookup';
+import TextLookupLoading from '@/components/common/TextLookupLoading';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [amountPercentage, setAmountPercentage] = useState([100]);
   const [mealType, setMealType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTextLookupLoading, setIsTextLookupLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +41,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
 
     setIsLoading(true);
+    setIsTextLookupLoading(true);
 
     try {
       console.log('🧠 [Manual Entry] Looking up food with unified text lookup...', {
@@ -50,6 +53,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       // Use unified text lookup system
       const { items } = await submitTextLookup(trimmedName, { source: 'manual' });
+      
+      setIsTextLookupLoading(false);
 
       if (!items || items.length === 0) {
         console.error('❌ [Manual Entry] No food items found');
@@ -145,6 +150,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setMealType('');
 
     } catch (error) {
+      setIsTextLookupLoading(false);
       console.error('❌ [Manual Entry] Error:', error);
       console.error('❌ [Manual Entry] Error details:', {
         message: (error as Error).message,
@@ -154,6 +160,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       toast.error('Manual entry failed: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
+      setIsTextLookupLoading(false);
     }
   };
 
@@ -281,6 +288,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           </form>
         </CardContent>
       </Card>
+      
+      {/* Text Lookup Loading Overlay */}
+      {isTextLookupLoading && <TextLookupLoading label="Searching brands & generics…" />}
     </div>
   );
 };
