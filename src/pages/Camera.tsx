@@ -1422,24 +1422,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
         try {
           // Use new barcode mapper for direct food item creation
-          const barcodeResponse = {
-            upc: cleanBarcode,
-            name: data.product?.name || data.product?.product_name,
-            brand: data.product?.brand || data.product?.brands,
-            image_url: data.product?.image_url || data.product?.imageUrl,
-            serving_grams: data.product?.serving_grams || data.product?.servingGrams,
-            nutrition: {
-              calories: data.product?.nutrition?.calories || data.product?.calories,
-              protein_g: data.product?.nutrition?.protein_g || data.product?.protein_g,
-              carbs_g: data.product?.nutrition?.carbs_g || data.product?.carbs_g,
-              fat_g: data.product?.nutrition?.fat_g || data.product?.fat_g,
-              fiber_g: data.product?.nutrition?.fiber_g || data.product?.fiber_g,
-              sugar_g: data.product?.nutrition?.sugar_g || data.product?.sugar_g,
-            }
-          };
-
-          console.log('[BARCODE][MAP:ITEM]', { upc: cleanBarcode, result: barcodeResponse });
-          const mapped = mapBarcodeToRecognizedFood(barcodeResponse);
+          const mapped = mapBarcodeToRecognizedFood(data.product || data);
 
           // Also get legacy mapped data for additional properties
           const legacyMapped = mapToLogFood(cleanBarcode, data);
@@ -3402,6 +3385,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           showConfirmation,
           hasItem: !!cur,
           itemId: cur?.id,
+          itemName: cur?.name,
+          kcal: cur?.calories,
         });
         return null;
       })()}

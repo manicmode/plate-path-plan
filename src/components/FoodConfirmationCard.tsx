@@ -132,10 +132,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     s => (foodId ? s.byId[foodId] : undefined)
   );
 
-  // Optional helpers (no new hooks below guards)
+  // Optional helpers (no new hooks below guards) 
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-  const isNutritionReady = bypassHydration ? true : (perGramSum > 0);
+  
+  const useHydration = !bypassHydration;
+  const isNutritionReady = useHydration ? (perGramSum > 0) : true;
 
   
 
@@ -157,9 +159,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [isOpen]);
 
   // Derive display values with broad fallback
-  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
+  // Enhanced display values for barcode items
+  const preferItem = bypassHydration && (currentFoodItem as any)?.source === 'barcode';
+  const title = currentFoodItem?.name || 'Unknown Product';
+  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : currentFoodItem.portionGrams;
+  const subtitle = servingG ? `${servingG} g per portion` : 'Per portion (unknown size)';
+  const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : currentFoodItem.image;
   
-  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
+  const displayName = title;
+  
+  const imgUrl = imageUrl ?? currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
   const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
 
   // Check if this is an unknown product that needs manual entry
@@ -236,7 +245,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const canRender = skipNutritionGuard || isNutritionReady;
   if (!canRender) {
-    console.log('[RENDER_GUARD] nutrition not ready (barcode bypass off)', { isNutritionReady, skipNutritionGuard });
+    console.log('[RENDER_GUARD] nutrition not ready (barcode bypass off)', { isNutritionReady, skipNutritionGuard, useHydration });
     return <span data-guard="not-ready" />;
   }
 
@@ -250,16 +259,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  // For barcode items with bypassHydration, use foodItem values directly
-  const calories = bypassHydration ? (currentFoodItem as any)?.calories ?? 0 : currentFoodItem.calories;
-  const protein = bypassHydration ? (currentFoodItem as any)?.protein_g ?? 0 : currentFoodItem.protein;
-  const carbs = bypassHydration ? (currentFoodItem as any)?.carbs_g ?? 0 : currentFoodItem.carbs;
-  const fat = bypassHydration ? (currentFoodItem as any)?.fat_g ?? 0 : currentFoodItem.fat;
-  const fiber = bypassHydration ? (currentFoodItem as any)?.fiber_g ?? 0 : currentFoodItem.fiber;
-  const sugar = bypassHydration ? (currentFoodItem as any)?.sugar_g ?? 0 : currentFoodItem.sugar;
-  const sodium = bypassHydration ? (currentFoodItem as any)?.sodium_mg ?? 0 : currentFoodItem.sodium;
+  // Get base nutrition values - prefer item data for barcode
+  const baseCalories = preferItem ? ((currentFoodItem as any)?.calories ?? 0) : currentFoodItem.calories;
+  const baseProtein = preferItem ? ((currentFoodItem as any)?.protein_g ?? 0) : currentFoodItem.protein;
+  const baseCarbs = preferItem ? ((currentFoodItem as any)?.carbs_g ?? 0) : currentFoodItem.carbs;
+  const baseFat = preferItem ? ((currentFoodItem as any)?.fat_g ?? 0) : currentFoodItem.fat;
+  const baseFiber = preferItem ? ((currentFoodItem as any)?.fiber_g ?? 0) : currentFoodItem.fiber;
+  const baseSugar = preferItem ? ((currentFoodItem as any)?.sugar_g ?? 0) : currentFoodItem.sugar;
+  const baseSodium = preferItem ? ((currentFoodItem as any)?.sodium_mg ?? 0) : currentFoodItem.sodium;
 
-  const effective = base && !bypassHydration
+  const effective = base && !preferItem
     ? {
         calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
         protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
@@ -271,19 +280,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }
     : {
         // Use direct values with portion scaling
-        calories: Math.round(calories * portionMultiplier),
-        protein: Math.round(protein * portionMultiplier * 10) / 10,
-        carbs: Math.round(carbs * portionMultiplier * 10) / 10,
-        fat: Math.round(fat * portionMultiplier * 10) / 10,
-        fiber: Math.round(fiber * portionMultiplier * 10) / 10,
-        sugar: Math.round(sugar * portionMultiplier * 10) / 10,
-        sodium: Math.round(sodium * portionMultiplier),
+        calories: Math.round(baseCalories * portionMultiplier),
+        protein: Math.round(baseProtein * portionMultiplier * 10) / 10,
+        carbs: Math.round(baseCarbs * portionMultiplier * 10) / 10,
+        fat: Math.round(baseFat * portionMultiplier * 10) / 10,
+        fiber: Math.round(baseFiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(baseSugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(baseSodium * portionMultiplier),
       };
 
   const adjustedFood = {
     ...currentFoodItem,
     ...effective,
   };
+
+  console.log('[CONFIRM][BIND]', { 
+    title, 
+    calories: effective.calories, 
+    protein: effective.protein, 
+    carbs: effective.carbs, 
+    fat: effective.fat, 
+    servingG,
+    preferItem,
+    bypassHydration
+  });
 
   const getHealthScore = (food: FoodItem) => {
     let score = 70; // Base score
@@ -726,14 +746,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {bypassHydration 
-                    ? ((currentFoodItem as any)?.servingGrams 
-                        ? `Per portion (${(currentFoodItem as any).servingGrams}g)` 
-                        : 'Per portion (unknown size)')
-                    : (currentFoodItem.portionGrams 
-                        ? `Per portion (${currentFoodItem.portionGrams}g)` 
-                        : 'Per portion (unknown size)')
-                  }
+                  {subtitle}
                 </label>
                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                   {getPortionLabel(portionPercentage[0])}
