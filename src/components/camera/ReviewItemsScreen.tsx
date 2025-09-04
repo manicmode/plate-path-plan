@@ -19,7 +19,7 @@ import { needsHydration, perGramSum, MACROS } from '@/lib/confirm/hydrationUtils
 import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
-import '@/styles/review.css';
+import { scoreFood } from '@/health/scoring';
 
 export interface ReviewItem {
   name: string;
@@ -143,20 +143,38 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         // CRITICAL: write resolver output to the shared store FIRST
         const storeUpdates: Record<string, any> = {};
 
-        const enriched = confirmModalItems.map((m, i) => {
+        const enrichedItems = confirmModalItems.map((m, i) => {
           const r = results?.[i];
           if (!r) return m;
 
-          const storeId = m.id; // ✅ REUSE the modal item's existing id (no regeneration)
+          const storeId = m.id;
 
+          // 1) merge nutrients for adapter
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
-          const merged = toLegacyFoodItem(enrichedInput, storeId, /*strict=*/ true); // ✅ pass same id
-          // DO NOT mutate merged.id afterward
+          const merged = toLegacyFoodItem(enrichedInput, storeId, /*strict=*/ true);
 
+          // 2) compute legacy health analysis with the same function Health Report uses
+          const perGram = merged.nutrition?.perGram ?? {};
+          const portionGrams = merged.portionGrams ?? 100;
+          const legacyAnalysis = scoreFood({
+            nutrients: {
+              calories: (perGram.calories || 0) * portionGrams,
+              protein_g: (perGram.protein || 0) * portionGrams,
+              carbs_g: (perGram.carbs || 0) * portionGrams,
+              fat_g: (perGram.fat || 0) * portionGrams,
+              fiber_g: (perGram.fiber || 0) * portionGrams,
+              sugars_g: (perGram.sugar || 0) * portionGrams,
+              sodium_mg: (perGram.sodium || 0) * portionGrams,
+            },
+            name: merged.name,
+            source: 'barcode'
+          });
+
+          // 3) write BOTH nutrients + legacy analysis into the shared store
           storeUpdates[storeId] = {
             perGram: merged.nutrition?.perGram || {},
-            healthScore: merged.analysis?.healthScore || 0,
-            flags: merged.analysis?.flags || [],
+            healthScore: legacyAnalysis,
+            flags: [], // Will be computed by detectFlags in the card
             ingredients: merged.analysis?.ingredients || [],
             imageUrl: merged.analysis?.imageUrl,
             source: 'generic_foods',
@@ -165,7 +183,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             updatedAt: Date.now(),
           };
 
-          return { ...merged, __hydrated: true };
+          // 4) ensure the modal item carries the same analysis fields for immediate render
+          return {
+            ...merged,
+            analysis: {
+              ...(merged.analysis ?? {}),
+              healthScore: legacyAnalysis,
+              flags: [], // Will be computed by detectFlags in the card
+              ingredients: merged.analysis?.ingredients || [],
+            },
+            __hydrated: true,
+          };
         });
 
         if (Object.keys(storeUpdates).length) {
@@ -173,7 +201,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           console.log('[SST][WRITE][CONFIRM]', { ids: Object.keys(storeUpdates) });
 
           const wrote = Object.keys(storeUpdates);
-          const read  = enriched.map(it => it.id);
+          const read  = enrichedItems.map(it => it.id);
           console.log('[SST][IDS_COMPARE]', {
             wrote, read,
             missingInStore: read.filter(id => !wrote.includes(id)),
@@ -185,10 +213,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             id,
             hasPerGram: !!byId[id]?.perGram,
             pgSum: Object.values(byId[id]?.perGram || {}).reduce((a: number, b: any) => a + (+b || 0), 0),
+            healthScore: byId[id]?.healthScore,
+            flags: (byId[id]?.flags ?? []).map((f:any) => f.label),
           })));
         }
 
-        setConfirmModalItems(enriched);
+        setConfirmModalItems(enrichedItems);
       } catch (e) {
         console.error('[HYDRATE][OPEN][ERROR]', e);
       }
