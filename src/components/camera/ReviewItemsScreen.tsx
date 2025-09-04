@@ -414,12 +414,24 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setOpenWheelForId(null);
   };
 
-  const handleSaveSet = () => {
-    if (!user?.id) {
-      toast.error('Please log in to save sets');
-      return;
+  const handleSaveSet = async () => {
+    console.log('[SAVE_SET_CLICK]', { hasUserProp: !!user?.id });
+
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      console.log('[SAVE_SET_CLICK][AUTH]', { hasUserProp: !!user?.id, getUserId: currentUser?.id });
+
+      if (!currentUser?.id) {
+        // Navigate to auth route for sign-in
+        navigate('/auth?return=/camera');
+        return;
+      }
+
+      setShowSaveSetDialog(true);
+    } catch (error) {
+      console.error('[SAVE_SET_CLICK_ERROR]', error);
+      toast.error('Unable to verify authentication. Please try again.');
     }
-    setShowSaveSetDialog(true);
   };
 
   const handleSaveSetWithName = async (setName: string) => {
@@ -466,6 +478,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
       } else {
         // LOGGING CONTEXT: save to meal_sets via our API
+        console.log('[MEAL_SET][UI:SAVE_CLICK]', { itemsCount: selectedItems.length });
+
         const itemsForSave = selectedItems.map(i => ({
           name: i.name,
           canonicalName: i.canonicalName || i.name,
@@ -476,21 +490,22 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         const savedSet = await createMealSet({ name: setName.trim(), items: itemsForSave });
 
         console.log('[MEAL_SET][UI:SAVE_OK]', { id: savedSet?.id });
-
         setIsSetSaved(true);
-        toast.success(`"${setName}" saved successfully!`, {
-          action: { label: 'View Saved Sets', onClick: () => navigate('/camera?reset=true&tab=saved') },
-        });
-
-        // Brief visual confirmation, then clear the "Saved" state
+        toast.success(`"${setName}" saved successfully!`);
         setTimeout(() => setIsSetSaved(false), 1500);
       }
 
       setShowSaveSetDialog(false);
 
-    } catch (e) {
+    } catch (e: any) {
       console.error('[MEAL_SET][UI:SAVE_FAIL]', e);
-      toast.error(e instanceof Error ? e.message : 'Failed to save set');
+      const msg = (e?.message || '').toLowerCase();
+      if (msg.includes('authentication') || msg.includes('auth')) {
+        setShowSaveSetDialog(false);
+        navigate('/auth?return=/camera');
+      } else {
+        toast.error(e instanceof Error ? e.message : 'Failed to save set');
+      }
     } finally {
       setIsSavingSet(false);
     }
