@@ -40,7 +40,7 @@ import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
-import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
+import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
 import { UnifiedPhotoCaptureModal } from '@/components/camera/UnifiedPhotoCaptureModal';
 import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
 import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
@@ -52,7 +52,7 @@ import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
-import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
+
 // Import smoke tests for development
 import '@/utils/smokeTests';
 // Import dev detection test utility
@@ -3153,22 +3153,14 @@ console.log('Global search enabled:', enableGlobalSearch);
         </Card>
       )}
 
-      {/* Recent Foods Tab */}
+      {/* Unified Logging Tabs */}
       {activeTab === 'recent' && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setActiveTab('main')}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                ← Back
-              </Button>
-            </div>
-            <RecentFoodsTab 
-              onFoodSelect={handleTabFoodSelect} 
-              onBarcodeSelect={handleTabBarcodeSelect} 
+            <UnifiedLoggingTabs
+              onFoodSelect={handleTabFoodSelect}
+              onBarcodeSelect={handleTabBarcodeSelect}
+              onBack={() => setActiveTab('main')}
             />
           </CardContent>
         </Card>
@@ -3477,10 +3469,6 @@ console.log('Global search enabled:', enableGlobalSearch);
         debugInfo={(recognizedFoods[0] as any)?.servingDebug}
       />
 
-      {/* Activity Logging Section - Exercise, Recovery, Habits */}
-      <div className="mt-8">
-        <ActivityLoggingSection />
-      </div>
 
       {/* Saved Sets Sheet */}
       <SavedSetsSheet 
