@@ -49,6 +49,7 @@ export function useAnalyzeFlow() {
       onPhase?.("buildingReview");
       await new Promise(resolve => setTimeout(resolve, 300));
       if (signal.aborted) throw new Error('Analysis cancelled');
+      console.log('[FLOW][PHASES_COMPLETE]');
 
       return [];
     } catch (error) {
@@ -57,6 +58,8 @@ export function useAnalyzeFlow() {
         throw new Error('Analysis cancelled');
       }
       throw error;
+    } finally {
+      console.log('[FLOW][CLEANUP:FINALLY]', { willHideLoader: true });
     }
   };
 

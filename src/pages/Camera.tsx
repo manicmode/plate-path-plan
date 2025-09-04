@@ -549,6 +549,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     if (!file) return;
 
     await processImageFile(file);
+    console.log('[FLOW][SELECT:AFTER_STAGE]', { hasRef: !!selectedImageRef?.current, hasState: !!selectedImage });
     await handleConfirmImage(file);
   };
 
@@ -594,6 +595,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Handler for unified photo capture modal
   const handleConfirmImage = async (maybeFile?: File | Blob) => {
+    console.log('[FLOW][CONFIRM:ENTER]', { hasFile: !!maybeFile });
     const imageSource = maybeFile ?? selectedImage ?? selectedImageRef.current;
     if (!imageSource) {
       console.warn('[FLOW][CONFIRM:EARLY_RETURN]', {
@@ -619,6 +621,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       : new File([imageSource as Blob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
 
     setShowCamera(false);
+    console.log('[FLOW][CONFIRM:START_LOADER]');
     setShowSmartLoader(true);
     setAnalyzeDone(false);
     setAnalyzePhase("uploading");
@@ -651,12 +654,15 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       }, 250);
       
     } catch (e: any) {
+      console.warn('[FLOW][CONFIRM:ERROR]', e);
       console.error("[LOG][ANALYZE][ERROR]", e);
       setShowSmartLoader(false);
       
       if (e.message !== 'Analysis cancelled') {
         toast.error('Analysis failed. Please try again or use manual entry.');
       }
+    } finally {
+      console.log('[FLOW][CONFIRM:FINALLY]', { hideLoader: true });
     }
   };
 
@@ -844,8 +850,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       return;
     }
 
-    console.log('[FLOW][ANALYZE:ENTER]');
-    console.log('[FLOW][SOURCE]', { type: typeof imageForAnalysis });
+    console.log('[FLOW][ANALYZE:ENTER]', { hasDataUrl: typeof imageForAnalysis === 'string' && imageForAnalysis.includes(',') });
 
     // Handle nutrition-capture mode separately
     if (currentMode === 'nutrition-capture') {
@@ -924,9 +929,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           // Force log mode for GPT-only detection
           const items = await run(imageBase64, { mode: 'log' });
           
+          console.log('[FLOW][ANALYZE:RESULT]', { itemsCount: items?.length, isArray: Array.isArray(items) });
           console.log('[CAMERA][DETECT] items_detected=', items.length);
           
           if (items.length === 0) {
+            console.warn('[FLOW][ZERO_ITEMS_FALLBACK]');
             toast.error('No foods detected in this image. Try a clearer photo with visible food items, or add foods manually.');
             setShowManualFoodEntry(true);
             setSelectedImage(null);
