@@ -77,6 +77,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
   const [isSavingSet, setIsSavingSet] = useState(false);
+  const [isSetSaved, setIsSetSaved] = useState(false);
   
   // Phase-based confirm modal state
   const [phase, setPhase] = useState<Phase>('idle');
@@ -489,6 +490,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       }
       
       setShowSaveSetDialog(false);
+      setIsSetSaved(true); // Mark as saved
     } catch (error) {
       console.error('Failed to save set:', error);
       toast.error('Failed to save set. Please try again.');
@@ -659,11 +661,26 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     
                     <Button
                       onClick={handleSaveSet}
-                      disabled={selectedCount === 0 || isSavingSet}
-                      className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
+                      disabled={selectedCount === 0 || isSavingSet || isSetSaved}
+                      className={`w-full h-12 font-semibold text-base ${
+                        isSetSaved 
+                          ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
+                          : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+                      }`}
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      {isSavingSet ? 'Saving...' : 'Save Set'}
+                      {isSetSaved ? (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          Set Saved
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          {isSavingSet ? 'Saving...' : 'Save Set'}
+                        </>
+                      )}
                     </Button>
                   </div>
                   
