@@ -67,9 +67,9 @@ export const SaveSetNameDialog: React.FC<SaveSetNameDialogProps> = ({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[450] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[900] bg-black/50 backdrop-blur-sm" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[460] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background p-6 shadow-lg"
+          className="fixed left-1/2 top-1/2 z-[910] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background border shadow-lg p-6"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <Dialog.Title className="text-lg font-semibold mb-4">Save This Set</Dialog.Title>
