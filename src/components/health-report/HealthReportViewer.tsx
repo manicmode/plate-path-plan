@@ -484,8 +484,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     // Transform items using legacy adapter with SST enabled
     const initialModalItems = items.map((item, index) => {
       const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
-      // Don't inject fake perGram/calories - card will wait for store
-      return toLegacyFoodItem({ ...item, id, nutrition: { perGram: {} } }, index, ENABLE_SST_CONFIRM_READ);
+      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
     });
 
     // Hard ID diagnostics for modal items

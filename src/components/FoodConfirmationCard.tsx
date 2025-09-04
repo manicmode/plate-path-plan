@@ -22,8 +22,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
-import LegacyConfirmSkeleton from '@/components/confirm/LegacyConfirmSkeleton';
-import { isNutritionReady } from '@/lib/confirm/readiness';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -211,16 +209,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
-  // Store-first read for readiness check
-  const storeAnalysis = useNutritionStore(
-    s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
-  );
-
-  const perGram = storeAnalysis?.perGram;
-  const storeHealthScore = storeAnalysis?.healthScore ?? currentFoodItem?.analysis?.healthScore;
-
-  const ready = isNutritionReady(perGram, storeHealthScore);
-
   // Card binds store-first (diagnostic only, no UI change)
   useEffect(() => {
     if (!currentFoodItem?.id) return;
@@ -236,16 +224,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       });
       console.log('[SST][HEALTH_BIND]', {
         id: currentFoodItem.id,
-        score: storeHealthScore,
-        flags: storeAnalysis?.flags?.map((f: any) => f.label || f),
+        score: currentFoodItem.analysis?.healthScore,
+        flags: currentFoodItem.analysis?.flags?.map((f: any) => f.label || f),
       });
     }
-  }, [currentFoodItem?.id, currentFoodItem?.name, storeHealthScore, storeAnalysis]);
+  }, [currentFoodItem?.id, currentFoodItem?.name]);
 
   if (!currentFoodItem) return null;
-
-  // While NOT ready -> show skeleton (no 0g/100cal flash)
-  if (!ready) return <LegacyConfirmSkeleton />;
 
   const portionMultiplier = portionPercentage[0] / 100;
   
