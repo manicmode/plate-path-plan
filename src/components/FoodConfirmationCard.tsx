@@ -232,15 +232,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     if (process.env.NODE_ENV === 'development') {
       const pgSum = Object.values(perGram || {}).reduce((a: number, v: any) => a + (+v || 0), 0);
       console.log('[SST][CARD_BIND]', {
-        id: currentFoodItem.id,
+        id: currentFoodItem?.id,
         fromStore: !!data?.perGram,
         perGramKeys: Object.keys(perGram || {}),
         pgSum
       });
       console.log('[SST][HEALTH_BIND]', {
-        id: currentFoodItem.id,
-        score: currentFoodItem.analysis?.healthScore,
-        flags: currentFoodItem.analysis?.flags?.map((f: any) => f.label || f),
+        id: currentFoodItem?.id,
+        score: currentFoodItem?.analysis?.healthScore,
+        flags: currentFoodItem?.analysis?.flags?.map((f: any) => f.label || f),
       });
     }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
