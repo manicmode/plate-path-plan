@@ -544,6 +544,19 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               </Button>
             </div>
 
+            {/* Banner */}
+            <div className="px-4 pb-2">
+              <div className="bg-gradient-to-r from-cyan-600/90 to-blue-600/90 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/10 shadow-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">📊</div>
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold text-lg">Scan to log</h3>
+                    <p className="text-white/90 text-sm">We'll find the product and add it to your journal</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Center Content */}
             <div className="flex-1 flex items-center justify-center px-4 -mt-16">
               {/* Centered scan frame */}
