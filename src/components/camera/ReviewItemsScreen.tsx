@@ -290,11 +290,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       toast.success(`Logged ✓`);
       onClose();
       
-      // Use custom afterLogSuccess callback if provided, otherwise navigate to nutrition
+      // Use custom afterLogSuccess callback if provided, otherwise navigate to home
       if (afterLogSuccess) {
         afterLogSuccess();
       } else {
-        navigate('/nutrition');
+        navigate('/home');
       }
     } catch (error) {
       console.error('Failed to log items:', error);
@@ -401,7 +401,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       if (isLast) {
         // End flow only after the last confirm
         setConfirmFlowActive(false);
-        finishConfirmFlow();
+        finishConfirmFlow('confirmed');
       } else {
         // Move to next item using hydration-aware navigation
         gotoIndex(currentConfirmIndex + 1);
@@ -423,7 +423,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       timestamp: Date.now()
     });
     setConfirmFlowActive(false);
-    finishConfirmFlow();
+    finishConfirmFlow('canceled');
   };
 
   const handleConfirmModalSkip = () => {
@@ -432,7 +432,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
     if (isLast) {
       setConfirmFlowActive(false);
-      finishConfirmFlow();
+      finishConfirmFlow('skipped');
     } else {
       // Move to next item using hydration-aware navigation
       gotoIndex(currentConfirmIndex + 1);
@@ -441,18 +441,24 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   // Ground-truth close function
-  const finishConfirmFlow = () => {
+  const finishConfirmFlow = (reason: 'confirmed' | 'canceled' | 'skipped' = 'confirmed') => {
     setConfirmModalOpen(false);
 
     (async () => {
       const { toast } = await import('sonner');
-      toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
+      
+      if (reason === 'canceled') {
+        toast.info('Logging canceled');
+      } else if (reason === 'skipped') {
+        toast.info(`Skipped ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''}`);
+      } else {
+        toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
+      }
     })();
 
     if (afterLogSuccess) {
       afterLogSuccess();
     } else {
-      // FIX: route to a real page; /nutrition does not exist
       navigate('/home', { replace: true });
     }
   };
