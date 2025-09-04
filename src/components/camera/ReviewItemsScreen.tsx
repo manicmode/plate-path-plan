@@ -497,7 +497,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         console.log('[MEAL_SET][UI:SAVE_OK]', { id: savedSet?.id });
         setIsSetSaved(true);
         toast.success(`"${setName}" saved successfully!`);
-        setTimeout(() => setIsSetSaved(false), 1500);
+        // Keep the saved state - don't revert it
+        // setTimeout(() => setIsSetSaved(false), 1500);
       }
 
       setShowSaveSetDialog(false);
