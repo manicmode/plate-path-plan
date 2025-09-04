@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { DialogClose } from '@/components/ui/dialog';
 import { X, Clock, Calendar, Repeat } from 'lucide-react';
 import { Reminder } from '@/hooks/useReminders';
+import { LinkedChips } from "@/components/reminder/LinkedChips";
 
 const CONFIRM_FIX_REV = "2025-08-31T15:35Z-r10";
 
@@ -229,15 +230,15 @@ export const ReminderForm: React.FC<ReminderFormProps> = ({
 
           {/* Food Item Info */}
           {formData.food_item_data && (
-            <div className="p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                🍽️ Linked to: {formData.food_item_data.food_name}
-              </p>
-              {formData.food_item_data.calories && (
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {formData.food_item_data.calories} calories
-                </p>
-              )}
+            <div className="mt-3 rounded-xl bg-muted/10 p-3">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <span aria-hidden>🍽️</span>
+                <span>Linked to:</span>
+              </div>
+              <LinkedChips
+                foodName={formData.food_item_data?.food_name ?? null}
+                names={Array.isArray(formData.food_item_data?.names) ? formData.food_item_data?.names : null}
+              />
             </div>
           )}
 

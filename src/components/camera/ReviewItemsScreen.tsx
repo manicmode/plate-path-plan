@@ -4,6 +4,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
 import ConfirmLoaderMinimal from '@/components/ConfirmLoaderMinimal';
+import { useReminders } from "@/hooks/useReminders";
 
 function perGramReady(entry?: { perGram?: Record<string, number> }) {
   if (!entry?.perGram) return false;
@@ -93,6 +94,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const { playFoodLogConfirm } = useSound();
   const { isOn, upsertReminder, removeReminder } = useReminderStore();
   const { upsertSet } = useSavedSetsStore();
+  const { createReminder } = useReminders();
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
@@ -722,8 +724,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[700] bg-black/40 backdrop-blur-sm" />
           <Dialog.Content className="fixed z-[710] left-1/2 top-1/2 w-[92vw] max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-5 shadow-xl">
-            <Dialog.Title className="text-base font-semibold mb-1">Create Reminder</Dialog.Title>
-            <Dialog.Description className="text-sm text-muted-foreground mb-4">
+            <Dialog.Title className="sr-only">Create Reminder</Dialog.Title>
+            <Dialog.Description className="sr-only">
               Get reminded to eat this meal set again.
             </Dialog.Description>
 
@@ -737,27 +739,52 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 }
               }}
               onSubmit={async (reminderData) => {
-                const reminder = {
-                  id: mealSetId,
-                  type: 'meal_set' as const,
-                  title: reminderData.label,
-                  schedule: {
-                    freq: reminderData.frequency_type === 'daily' ? 'DAILY' as const : 
-                          reminderData.frequency_type === 'weekly' ? 'WEEKLY' as const : 'MONTHLY' as const,
-                    hour: parseInt(reminderData.reminder_time.split(':')[0]),
-                    minute: parseInt(reminderData.reminder_time.split(':')[1]),
-                    days: reminderData.custom_days
+                const reminderPayload = {
+                  label: reminderData.label,
+                  type: reminderData.type,
+                  reminder_time: reminderData.reminder_time,
+                  frequency_type: reminderData.frequency_type,
+                  frequency_value: reminderData.frequency_value ?? null,
+                  custom_days: reminderData.custom_days ?? null,
+                  schedule: `FREQ=${reminderData.frequency_type.toUpperCase()};BYDAY=${(reminderData.custom_days || []).join(',')}`,
+                  is_active: reminderData.is_active,
+                  food_item_data: { 
+                    itemIds: selectedItems.map(i => i.id), 
+                    names: selectedItems.map(i => i.name) 
                   },
-                  payload: {
-                    itemIds: selectedItems.map(i => i.id),
-                    names: selectedItems.map(i => i.name),
-                  },
-                  isActive: reminderData.is_active,
                 };
-                
-                upsertReminder(reminder);
+
+                try {
+                  const created = await createReminder(reminderPayload);
+                  
+                  // Convert to reminderStore format with object-based schedule
+                  const storeFormat = {
+                    id: created?.id ?? crypto.randomUUID(),
+                    type: 'meal_set' as const,
+                    title: reminderData.label,
+                    schedule: {
+                      freq: reminderData.frequency_type === 'daily' ? 'DAILY' as const : 
+                            reminderData.frequency_type === 'weekly' ? 'WEEKLY' as const : 'MONTHLY' as const,
+                      hour: parseInt(reminderData.reminder_time.split(':')[0]),
+                      minute: parseInt(reminderData.reminder_time.split(':')[1]),
+                      days: reminderData.custom_days
+                    },
+                    payload: {
+                      itemIds: selectedItems.map(i => i.id),
+                      names: selectedItems.map(i => i.name),
+                    },
+                    isActive: reminderData.is_active,
+                  };
+                  
+                  upsertReminder(storeFormat);
+                  console.log("[REM][SUBMIT][MEAL_SET]", { payload: reminderPayload });
+                  toast.success("Reminder created");
+                } catch (e) {
+                  console.error("[REM][ERROR][CREATE]", e);
+                  toast.error("Failed to create reminder");
+                }
+
                 setShowMealSetReminder(false);
-                toast.success('Meal set reminder created');
               }}
               onCancel={() => setShowMealSetReminder(false)}
             />
