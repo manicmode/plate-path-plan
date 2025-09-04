@@ -999,8 +999,8 @@ const Home = () => {
       // positive gap means content is pushed down; we subtract it
       const gap = Math.round(targetTop - headerBottom);
 
-      // apply aggressive negative margin - deduct gap plus extra 16px
-      const correction = gap > 0 ? -(gap + 16) : -16;
+      // apply very aggressive negative margin - deduct gap plus extra 48px to force content up
+      const correction = gap > 0 ? -(gap + 48) : -48;
 
       target.style.setProperty("--home-top-correct", `${correction}px`);
     };
