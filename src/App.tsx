@@ -217,20 +217,38 @@ function AppContent() {
               <Routes>
                 {/* Fullscreen pages without Layout */}
                 <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/onboarding" element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              } />
-              <Route path="/recovery-player" element={
-                <ProtectedRoute>
-                  <RecoveryPlayer />
-                </ProtectedRoute>
-              } />
-              
-              {/* Regular pages with Layout */}
-              <Route path="*" element={
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/onboarding" element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery-player" element={
+                  <ProtectedRoute>
+                    <RecoveryPlayer />
+                  </ProtectedRoute>
+                } />
+                
+                {/* QA routes - top level, always accessible */}
+                <Route 
+                  path="/qa/nudges"
+                  element={
+                    <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                      <NudgeQAPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route 
+                  path="/nudge-qa"
+                  element={<Navigate to="/qa/nudges" replace />}
+                />
+                <Route 
+                  path="/debug/nudges"
+                  element={<Navigate to="/qa/nudges" replace />}
+                />
+                
+                {/* Regular pages with Layout */}
+                <Route path="*" element={
                 <Layout>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -291,26 +309,7 @@ function AppContent() {
                               }
                             />
                          </>
-                       )}
-
-                       {/* QA routes - always registered, gated by feature flag + auth */}
-                       <Route 
-                         path="/qa/nudges"
-                         element={
-                           <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                             <NudgeQAPage />
-                           </React.Suspense>
-                         }
-                       />
-                       {/* QA route variants for easier access */}
-                       <Route 
-                         path="/nudge-qa"
-                         element={<Navigate to="/qa/nudges" replace />}
-                       />
-                       <Route 
-                         path="/debug/nudges"
-                         element={<Navigate to="/qa/nudges" replace />}
-                       />
+                        )}
 
                      <Route path="/exercise-hub" element={
                        <ProtectedRoute>
