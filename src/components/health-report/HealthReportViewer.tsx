@@ -143,14 +143,14 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             nutrients: {
               calories: (perGram.calories || 0) * portionGrams,
               protein_g: (perGram.protein || 0) * portionGrams,
-              carbohydrates_g: (perGram.carbs || 0) * portionGrams,
+              carbs_g: (perGram.carbs || 0) * portionGrams,
               fat_g: (perGram.fat || 0) * portionGrams,
               fiber_g: (perGram.fiber || 0) * portionGrams,
               sugars_g: (perGram.sugar || 0) * portionGrams,
               sodium_mg: (perGram.sodium || 0) * portionGrams,
             },
             name: merged.name,
-            source: 'generic_foods'
+            source: 'db'
           });
           
           // 3) write BOTH nutrients + legacy analysis into the shared store
