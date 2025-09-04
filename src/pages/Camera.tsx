@@ -3371,13 +3371,20 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
       {/* Unified Photo Capture Modal */}
-      <UnifiedPhotoCaptureModal
-        isOpen={showCamera}
-        onClose={() => setShowCamera(false)}
-        onConfirm={handleConfirmImage}
-        title="Position food in the frame"
-        subtitle="Capture, upload, or exit"
-      />
+        <UnifiedPhotoCaptureModal
+          isOpen={showCamera}
+          onClose={() => setShowCamera(false)}
+          onConfirm={handleConfirmImage}
+          
+          // bottom prompt (already in place)
+          title="Position food in the frame"
+          subtitle="Capture, upload, or exit"
+
+          // NEW — top banner for logging
+          bannerEmoji="🍽️"
+          bannerTitle="Log your meal"
+          bannerSubtext="We'll analyze the photo and prep your review"
+        />
       
     </div>
   );

@@ -17,6 +17,11 @@ export type UnifiedPhotoCaptureModalProps = {
   title?: string;        // default: "Photo Capture"
   subtitle?: string;     // default: "Capture, upload, or exit"
 
+  // NEW — top banner content (for Logging)
+  bannerEmoji?: string;      // default: "🍽️"
+  bannerTitle?: string;      // default: "Log your meal"
+  bannerSubtext?: string;    // default: "Capture or upload a food photo"
+
   // Optional: override labels/icons if we ever need variants
   labels?: {
     close?: string;      // default: "Close"
@@ -25,14 +30,17 @@ export type UnifiedPhotoCaptureModalProps = {
   };
 };
 
-export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  title = "Photo Capture",
-  subtitle = "Capture, upload, or exit",
-  labels = {}
-}) => {
+export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> = (props) => {
+  // Default values (put near the component top):
+  const {
+    isOpen, onClose, onConfirm,
+    title = "Position food in the frame",
+    subtitle = "Capture, upload, or exit",
+    bannerEmoji = "🍽️",
+    bannerTitle = "Log your meal",
+    bannerSubtext = "Capture or upload a food photo",
+    labels = {}
+  } = props;
   // Stable IDs for accessibility
   const titleId = useId();
   const descId = useId();
@@ -193,6 +201,32 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
             muted
             className="w-full h-full object-cover"
           />
+
+          {/* TOP BANNER — Logging variant */}
+          <div
+            className="pointer-events-none absolute left-1/2 top-6 sm:top-8 z-[5] -translate-x-1/2"
+            aria-live="polite"
+          >
+            <div className="
+                pointer-events-auto
+                flex items-start gap-3 rounded-2xl border border-white/10
+                bg-gradient-to-b from-white/10 to-white/5
+                backdrop-blur-md px-4 py-3 shadow-lg
+                text-left text-white
+              "
+              role="status"
+            >
+              <div className="text-2xl leading-none">{bannerEmoji}</div>
+              <div className="space-y-0.5">
+                <div className="text-sm font-semibold tracking-wide">
+                  {bannerTitle}
+                </div>
+                <div className="text-xs text-white/80">
+                  {bannerSubtext}
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
