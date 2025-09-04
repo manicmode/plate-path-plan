@@ -94,7 +94,10 @@ export default function SavedLogs() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Saved</h1>
+          <h1 className="text-2xl font-bold text-cyan-400 text-center mb-4 flex items-center justify-center gap-2">
+            <span className="text-2xl">📁</span>
+            Saved
+          </h1>
           
           {/* Search */}
           <div className="relative">
