@@ -141,6 +141,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   
 
+  // Diagnostic log for home loading crash
+  console.log('[CONFIRM][GUARD][HOME_LOAD]', {
+    hasItem: !!currentFoodItem,
+    isOpen,
+    inputSource: 'undefined' // keeping minimal as requested
+  });
+
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
     if (reminderOpen) {
@@ -161,10 +168,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive display values with broad fallback
   // Enhanced display values for barcode items
   const preferItem = bypassHydration && (currentFoodItem as any)?.source === 'barcode';
-  const title = currentFoodItem?.name || 'Unknown Product';
-  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : currentFoodItem.portionGrams;
+  const title = currentFoodItem?.name ?? 'Unknown Product';
+  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : (currentFoodItem?.portionGrams ?? null);
   const subtitle = servingG ? `${servingG} g per portion` : 'Per portion (unknown size)';
-  const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : currentFoodItem.image;
+  const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : (currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null);
   
   const displayName = title;
   
