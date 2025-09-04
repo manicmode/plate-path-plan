@@ -42,6 +42,8 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { UnifiedPhotoCaptureModal } from '@/components/camera/UnifiedPhotoCaptureModal';
+import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
+import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
@@ -215,12 +217,20 @@ const CameraPage = () => {
   const [currentMode, setCurrentMode] = useState<'photo' | 'voice' | 'manual' | 'barcode' | 'nutrition-capture' | 'confirm'>('photo');
   const [nutritionCaptureData, setNutritionCaptureData] = useState<any>(null);
   
+  // Smart analyze loader states
+  const [showSmartLoader, setShowSmartLoader] = useState(false);
+  const [analyzePhase, setAnalyzePhase] = useState<"uploading"|"preprocessing"|"detecting"|"hydrating"|"buildingReview"|undefined>(undefined);
+  const [analyzeDone, setAnalyzeDone] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
   const { user } = useAuth();
+  
+  // Smart analyze flow hook
+  const { run: runAnalyzeFlow, cancel: cancelAnalyzeFlow } = useAnalyzeFlow();
   
   // Add loading timeout hook for global timeout management
   const { hasTimedOut, showRecovery, retry, forceSkip } = useLoadingTimeout(
@@ -577,9 +587,40 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       ? fileOrBlob
       : new File([fileOrBlob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
 
-    // Reuse existing logging upload path
-    await processImageFile(file);
     setShowCamera(false);
+    setShowSmartLoader(true);
+    setAnalyzeDone(false);
+    setAnalyzePhase("uploading");
+
+    try {
+      // Wrapper function for the existing analyzeImage logic
+      const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
+        // Process the image file first
+        await processImageFile(file);
+        
+        // Then run the analysis (this will use the selectedImage state)
+        await analyzeImage();
+        
+        // Return empty array since analyzeImage handles its own flow
+        return [];
+      };
+
+      await runAnalyzeFlow(file, (phase) => setAnalyzePhase(phase), analyzeImageForFile);
+
+      setAnalyzeDone(true);
+      // Let the loader breathe a touch for UX
+      setTimeout(() => {
+        setShowSmartLoader(false);
+      }, 250);
+      
+    } catch (err: any) {
+      console.error("[LOG][ANALYZE][ERROR]", err);
+      setShowSmartLoader(false);
+      
+      if (err.message !== 'Analysis cancelled') {
+        toast.error('Analysis failed. Please try again or use manual entry.');
+      }
+    }
   };
 
   const convertToBase64 = (imageDataUrl: string): string => {
@@ -3385,8 +3426,22 @@ console.log('Global search enabled:', enableGlobalSearch);
           bannerTitle="Log your meal"
           bannerSubtext="We'll analyze the photo and prep your review"
         />
+
+        {/* Smart Analyze Loader */}
+        {showSmartLoader && (
+          <SmartAnalyzeLoader
+            phase={analyzePhase}
+            done={analyzeDone}
+            onCancel={() => {
+              cancelAnalyzeFlow();
+              setShowSmartLoader(false);
+            }}
+            title="Preparing your review…"
+            subtitle="We're analyzing your photo and loading nutrition data"
+          />
+        )}
       
-    </div>
-  );
-};
-export default CameraPage;
+      </div>
+    );
+  };
+  export default CameraPage;
