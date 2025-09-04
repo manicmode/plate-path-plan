@@ -17,12 +17,12 @@ export const UnifiedLoggingTabs = ({ onFoodSelect, onBarcodeSelect, onBack }: Un
 
   return (
     <div className="w-full">
-      {/* Header with back button and RECENT title */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Header with back button and centered RECENT title */}
+      <div className="relative flex items-center justify-center mb-6">
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="text-muted-foreground hover:text-foreground p-2"
+          className="absolute left-0 text-muted-foreground hover:text-foreground p-2"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
