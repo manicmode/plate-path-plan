@@ -423,11 +423,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
       if (!currentUser?.id) {
         // Navigate to auth route for sign-in
+        console.log('[SAVE_SET_CLICK] No user, navigating to auth');
         navigate('/auth?return=/camera');
         return;
       }
 
+      console.log('[SAVE_SET_CLICK] About to open dialog, current showSaveSetDialog:', showSaveSetDialog);
       setShowSaveSetDialog(true);
+      console.log('[SAVE_SET_CLICK] setShowSaveSetDialog(true) called');
     } catch (error) {
       console.error('[SAVE_SET_CLICK_ERROR]', error);
       toast.error('Unable to verify authentication. Please try again.');
