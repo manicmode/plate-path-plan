@@ -28,7 +28,16 @@ export const MealSetReminderToggle: React.FC<MealSetReminderToggleProps> = ({
 
   // Lock body scroll when reminder modal is open
   useEffect(() => {
-    if (showReminderForm) document.body.dataset.modalOpen = "true";
+    if (showReminderForm) {
+      document.body.dataset.modalOpen = "true";
+    } else {
+      delete document.body.dataset.modalOpen;
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      delete document.body.dataset.modalOpen;
+    };
   }, [showReminderForm]);
 
   const handleToggleChange = (checked: boolean) => {
@@ -78,17 +87,11 @@ export const MealSetReminderToggle: React.FC<MealSetReminderToggleProps> = ({
               </p>
             </div>
           </div>
-          <label className="relative inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={createReminder}
-              onChange={(e) => handleToggleChange(e.target.checked)}
-            />
-            <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
-              <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
-            </div>
-          </label>
+          <Switch
+            checked={createReminder}
+            onCheckedChange={handleToggleChange}
+            className="data-[state=checked]:bg-emerald-500"
+          />
         </div>
       </div>
 
