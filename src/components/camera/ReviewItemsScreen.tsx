@@ -21,7 +21,7 @@ import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
-import { useReminders } from '@/hooks/useReminders';
+import { MealSetReminderToggle } from '@/components/reminder/MealSetReminderToggle';
 
 export interface ReviewItem {
   name: string;
@@ -244,46 +244,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
   const [isSavingSet, setIsSavingSet] = useState(false);
-  const [reminderEnabled, setReminderEnabled] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { playFoodLogConfirm } = useSound();
-  const { createReminder } = useReminders();
-
-  // Handle meal set reminder creation
-  const handleCreateMealSetReminder = async () => {
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    if (selectedItems.length === 0) return;
-
-    try {
-      const mealSetName = selectedItems.map(i => i.name).join(', ');
-      const mealSetData = {
-        items: selectedItems.map(item => ({
-          name: item.name,
-          canonicalName: item.canonicalName || item.name,
-          grams: item.grams || 100
-        }))
-      };
-
-      await createReminder({
-        label: `Eat ${mealSetName}`,
-        type: 'meal',
-        frequency_type: 'daily',
-        frequency_value: 1,
-        reminder_time: '12:30',
-        is_active: true,
-        food_item_data: mealSetData,
-        channel: 'app',
-        payload: { meal_set: true }
-      });
-      
-      toast.success('Meal set reminder created! 🔔');
-    } catch (error) {
-      console.error('Failed to create reminder:', error);
-      toast.error('Failed to create reminder');
-      setReminderEnabled(false);
-    }
-  };
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -781,30 +744,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
                   {/* Meal set reminder toggle */}
                   {selectedCount > 0 && (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 mb-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-[15px] font-semibold text-white">Set Reminder</div>
-                          <div className="text-xs text-white/60">Get reminded to eat this set again</div>
-                        </div>
-                        <label className="relative inline-flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            className="peer sr-only"
-                            checked={reminderEnabled}
-                            onChange={(e) => {
-                              setReminderEnabled(e.target.checked);
-                              if (e.target.checked) {
-                                handleCreateMealSetReminder();
-                              }
-                            }}
-                          />
-                          <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
-                            <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
-                          </div>
-                        </label>
-                      </div>
-                    </div>
+                    <MealSetReminderToggle
+                      mealSetName={items.filter(item => item.selected && item.name.trim()).map(i => i.name).join(', ')}
+                      mealSetData={{
+                        items: items.filter(item => item.selected && item.name.trim()).map(item => ({
+                          name: item.name,
+                          canonicalName: item.canonicalName || item.name,
+                          grams: item.grams || 100
+                        }))
+                      }}
+                      className="mb-4"
+                    />
                   )}
                   
                   <div className="space-y-3">
