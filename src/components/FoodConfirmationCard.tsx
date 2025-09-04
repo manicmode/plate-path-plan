@@ -124,6 +124,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const storeAnalysis = useNutritionStore(
     s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
   );
+  const storePerGram = storeAnalysis?.perGram;
+  const hasPerGram = !!storePerGram && Object.keys(storePerGram).length > 0;
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -216,6 +218,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // CONDITIONAL RENDERING AFTER ALL HOOKS ARE CALLED
   if (!currentFoodItem) return null;
+
+  // Early visual guard: show skeleton if no per-gram data exists
+  if (!hasPerGram) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <AccessibleDialogContent
+          title="Loading Nutrition Data"
+          description="We're preparing your food information..."
+          className="sm:max-w-md z-[120]"
+          showCloseButton={false}
+        >
+          <div className="p-6">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+              <div className="mb-2 text-sm opacity-70">Loading nutrition data…</div>
+              <div className="h-20 rounded-lg bg-white/10 animate-pulse" />
+            </div>
+          </div>
+        </AccessibleDialogContent>
+      </Dialog>
+    );
+  }
 
   // Check nutrition readiness - simplified without early return during hooks
   const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;

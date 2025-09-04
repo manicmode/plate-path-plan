@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
+import LoadingDots from '@/components/ui/LoadingDots';
+import { Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
@@ -71,7 +72,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [hydrating, setHydrating] = useState(false);
   
   // Hydration flag and modal state for flash prevention
-  const [isHydrating, setIsHydrating] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const minSpinnerMs = 600; // smoothness guard
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
@@ -356,7 +358,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
-    setIsHydrating(true);
+    setPreparing(true);
     
     try {
       // Transform items using legacy adapter with SST enabled
@@ -400,7 +402,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       setConfirmModalItems(enrichedItems);
       setCurrentConfirmIndex(0);
       setConfirmModalOpen(true);
-      setIsHydrating(false);
+      setPreparing(false);
 
       // Close the review screen AFTER starting the flow  
       requestAnimationFrame(() => {
@@ -409,7 +411,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       
     } catch (error) {
       console.error('[HYDRATE][ERROR]', error);
-      setIsHydrating(false);
+      setPreparing(false);
       toast.error('Failed to load nutrition data');
     }
   };
@@ -629,11 +631,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   return (
     <>
-      {/* Show loader while hydrating */}
-      {isHydrating && <LegacyConfirmLoader />}
+      {/* Show loader while preparing */}
+      {preparing && <LegacyConfirmLoader />}
       
       {/* Keep existing modal structure */}
-      {!isHydrating && (
+      {!preparing && (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black z-[400]" />
@@ -761,21 +763,18 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                         {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                       </Button>
                       
-                       <Button
-                         onMouseDown={handleDetailsMouseDown}
-                         onClick={handleDetailsClick}
-                         disabled={selectedCount === 0 || isHydrating}
-                         className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base disabled:opacity-50"
-                       >
-                         {isHydrating ? (
-                           <>
-                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                             Loading...
-                           </>
-                         ) : (
-                           '🔎 Review & Log'
-                         )}
-                       </Button>
+                         <Button
+                          onMouseDown={handleDetailsMouseDown}
+                          onClick={handleDetailsClick}
+                          disabled={selectedCount === 0 || preparing}
+                          className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base disabled:opacity-50 relative"
+                        >
+                          {preparing ? (
+                            <LoadingDots label="Preparing cards" />
+                          ) : (
+                            '🔍 Review & Log'
+                          )}
+                        </Button>
                     </div>
                     
                     <Button
@@ -833,7 +832,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       />
 
       {/* Legacy Rich Food Confirmation Modal */}
-      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !isHydrating && (
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !preparing && (
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
