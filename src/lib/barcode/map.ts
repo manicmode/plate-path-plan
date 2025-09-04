@@ -116,7 +116,25 @@ export type RecognizedFood = {
 
 export function mapBarcodeToRecognizedFood(raw: BarcodeLookupResponse): RecognizedFood {
   const upc = pick<string>(raw, ['upc', 'barcode', 'ean', 'code']) || 'unknown';
-  const name = pick<string>(raw, ['name', 'product_name', 'title', 'description']) || `Product ${upc}`;
+  
+  // Harden name derivation with stricter candidate list and string enforcement
+  const nameCandidates = ['product_name', 'generic_name', 'name', 'title', 'description'];
+  let name = '';
+  
+  for (const field of nameCandidates) {
+    const candidate = pick<any>(raw, [field]);
+    if (candidate && typeof candidate === 'string' && candidate.trim().length > 0) {
+      name = candidate.trim();
+      break;
+    }
+  }
+  
+  // Fallback to brand-based name or product UPC if all candidates fail
+  if (!name) {
+    const brand = pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']);
+    name = brand && typeof brand === 'string' ? `${brand} Product` : `Product ${upc}`;
+  }
+  
   const brand = pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']) ?? null;
   const imageUrl = pick<string>(raw, ['image_url', 'images.front', 'image', 'photo']) ?? null;
 

@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
+import { extractName } from '@/lib/debug/extractName';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -170,7 +171,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const preferItem = bypassHydration && ((currentFoodItem as any)?.source === 'barcode' || (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech');
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
-  const title = currentFoodItem?.name ?? 'Unknown Product';
+  
+  // Normalize name at render level with extractName utility
+  const rawName = currentFoodItem?.name ?? 'Unknown Product';
+  const title = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : (currentFoodItem?.portionGrams ?? null);
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
@@ -198,12 +202,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
+      nameType: typeof currentFoodItem?.name, // Add diagnostic logging
       imageUrlKind: validImg ? "http" : "none",
       url: (imgUrl || "").slice(0, 120),
     });
     
     if (isBarcode && isOpen) {
-      console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name });
+      console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name, nameType: typeof currentFoodItem?.name });
     }
   }, [imgUrl, displayName, isOpen, currentFoodItem]);
 

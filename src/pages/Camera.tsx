@@ -1519,6 +1519,12 @@ console.log('Global search enabled:', enableGlobalSearch);
           // Merge the clean barcode mapping with legacy data for extra properties
           const recognizedFood = {
             ...mapped,
+            // Defensive name override - ensure we always have a valid string name
+            name: typeof mapped.name === 'string' && mapped.name.trim() 
+              ? mapped.name.trim() 
+              : (legacyMapped.name && typeof legacyMapped.name === 'string' && legacyMapped.name.trim())  
+                ? legacyMapped.name.trim()
+                : `Product ${cleanBarcode}`,
             // Override with legacy properties not in the new mapper
             ingredientsText: legacyMapped.ingredientsText,
             ingredientsAvailable: !!legacyMapped.ingredientsText,
