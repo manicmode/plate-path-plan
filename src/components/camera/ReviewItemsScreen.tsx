@@ -402,40 +402,48 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
       });
       
-      // Hydrate nutrition data - reuse existing hydration logic
+      // Hydrate nutrition data first
       setConfirmModalItems(initialModalItems);
-      setCurrentConfirmIndex(0);
       
-      // Trigger existing hydration effect by setting confirmModalOpen
-      setConfirmModalOpen(true);
+      // Wait for proper nutrition data to be loaded
+      const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
+      const names = initialModalItems.map(m => m.name);
+      const results = await resolveGenericFoodBatch(names);
       
-      // Wait for hydration effect to complete
-      await new Promise(resolve => {
-        const checkHydration = () => {
-          const items = initialModalItems;
-          const hydrated = items.every(item => (item as any).__hydrated);
-          if (hydrated) {
-            resolve(void 0);
-          } else {
-            setTimeout(checkHydration, 100);
-          }
+      // Process and enrich items with proper nutrition data
+      const enrichedItems = initialModalItems.map((item, index) => {
+        const result = results?.[index];
+        if (!result) return item;
+        
+        const enrichedInput = { ...item, nutrients: result.nutrients, serving: result.serving };
+        const merged = toLegacyFoodItem(enrichedInput, item.id, true);
+        
+        return {
+          ...merged,
+          __hydrated: true,
         };
-        checkHydration();
       });
       
-      // Small floor so UI doesn't flicker even on fast paths
+      // Only proceed if we have properly hydrated items
+      const hasValidNutrition = enrichedItems.some(item => 
+        item.nutrition?.perGram && Object.values(item.nutrition.perGram).some(val => val > 0)
+      );
+      
+      if (!hasValidNutrition) {
+        throw new Error('Could not load nutrition data');
+      }
+      
+      // Small delay to prevent flicker
       await new Promise(r => setTimeout(r, 500));
       
       // Set flow active to prevent ScanHub navigation
       setConfirmFlowActive(true);
       
-      // Open legacy confirm modal
-      setConfirmModalItems(initialModalItems);
+      // Update items with enriched data and open modal
+      setConfirmModalItems(enrichedItems);
       setCurrentConfirmIndex(0);
+      setConfirmModalOpen(true);
       setIsHydrating(false);
-      
-      // Modal was already opened above in the hydration step
-      // setConfirmModalOpen(true) was called earlier
 
       // Close the review screen AFTER starting the flow  
       requestAnimationFrame(() => {
@@ -809,14 +817,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                         {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                       </Button>
                       
-                      <Button
-                        onMouseDown={handleDetailsMouseDown}
-                        onClick={handleDetailsClick}
-                        disabled={selectedCount === 0}
-                        className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                      >
-                        🔎 Review & Log
-                      </Button>
+                       <Button
+                         onMouseDown={handleDetailsMouseDown}
+                         onClick={handleDetailsClick}
+                         disabled={selectedCount === 0 || isHydrating}
+                         className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base disabled:opacity-50"
+                       >
+                         {isHydrating ? (
+                           <>
+                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                             Loading...
+                           </>
+                         ) : (
+                           '🔎 Review & Log'
+                         )}
+                       </Button>
                     </div>
                     
                     <Button
@@ -874,7 +889,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       />
 
       {/* Legacy Rich Food Confirmation Modal */}
-      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !hydrating && (
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
@@ -885,48 +900,22 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               healthScore: item.analysis?.healthScore,
               flags: item.analysis?.flags?.length,
               ingredients: item.analysis?.ingredients?.length,
-              hydrated: (item as any).__hydrated,
-              hydrating: hydrating
+              hydrated: (item as any).__hydrated
             });
             return null;
           })()}
           
-          {hydrating ? (
-            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-card rounded-lg border shadow-lg p-6 mx-4 max-w-sm w-full">
-                <div className="animate-pulse space-y-4">
-                  <div className="h-6 bg-muted rounded w-3/4 mx-auto"></div>
-                  <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-muted rounded w-full"></div>
-                    <div className="h-3 bg-muted rounded w-5/6"></div>
-                    <div className="h-3 bg-muted rounded w-4/6"></div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="h-8 bg-muted rounded"></div>
-                    <div className="h-8 bg-muted rounded"></div>
-                    <div className="h-8 bg-muted rounded"></div>
-                  </div>
-                </div>
-                <div className="text-center mt-4">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-                  <p className="text-sm text-muted-foreground">Loading nutrition data...</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <FoodConfirmationCard
-              isOpen={confirmModalOpen}
-              onClose={handleConfirmModalReject}
-              onConfirm={handleConfirmModalComplete}
-              onSkip={handleConfirmModalSkip}
-              onCancelAll={handleConfirmModalReject}
-              foodItem={confirmModalItems[currentConfirmIndex]}
-              showSkip={true}
-              currentIndex={currentConfirmIndex}
-              totalItems={confirmModalItems.length}
-            />
-          )}
+          <FoodConfirmationCard
+            isOpen={confirmModalOpen}
+            onClose={handleConfirmModalReject}
+            onConfirm={handleConfirmModalComplete}
+            onSkip={handleConfirmModalSkip}
+            onCancelAll={handleConfirmModalReject}
+            foodItem={confirmModalItems[currentConfirmIndex]}
+            showSkip={true}
+            currentIndex={currentConfirmIndex}
+            totalItems={confirmModalItems.length}
+          />
         </>
       )}
     </>
