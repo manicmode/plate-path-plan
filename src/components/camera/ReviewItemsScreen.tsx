@@ -527,22 +527,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           {count > 0 && (
             <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
               <div className="space-y-3">
-                <Button
-                  onClick={handleLogImmediately}
-                  disabled={selectedCount === 0 || isLogging}
-                  className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
-                >
-                  {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
-                </Button>
-                
                 <div className="grid grid-cols-2 gap-3">
                   <Button
-                    onClick={handleSaveSet}
-                    disabled={selectedCount === 0 || isSavingSet}
-                    className="h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
+                    onClick={handleLogImmediately}
+                    disabled={selectedCount === 0 || isLogging}
+                    className="h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
                   >
-                    <Save className="w-4 h-4 mr-2" />
-                    {isSavingSet ? 'Saving...' : 'Save Set'}
+                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                   </Button>
                   
                   <Button
@@ -551,9 +542,18 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                     disabled={selectedCount === 0}
                     className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
                   >
-                    🔎 Details
+                    🔎 Review & Log
                   </Button>
                 </div>
+                
+                <Button
+                  onClick={handleSaveSet}
+                  disabled={selectedCount === 0 || isSavingSet}
+                  className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSavingSet ? 'Saving...' : 'Save Set'}
+                </Button>
               </div>
               
               {/* Cancel button full width */}
