@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Bell } from 'lucide-react';
 import { ReminderForm } from './ReminderForm';
@@ -107,14 +107,10 @@ export const MealSetReminderToggle: React.FC<MealSetReminderToggleProps> = ({
           showCloseButton={false}
           data-dialog-root="reminder-modal"
           aria-labelledby="reminder-title"
-          aria-describedby="reminder-description"
         >
-          {/* A11y-only title and description to satisfy Radix without adding visible headers */}
+          {/* A11y-only title to satisfy Radix without adding a visible header */}
           <VisuallyHidden>
             <DialogTitle id="reminder-title">Create Meal Set Reminder</DialogTitle>
-            <DialogDescription id="reminder-description">
-              Set up a reminder to eat this meal set again at your preferred time.
-            </DialogDescription>
           </VisuallyHidden>
           <ReminderForm
             prefilledData={{
