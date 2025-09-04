@@ -1364,8 +1364,18 @@ console.log('Global search enabled:', enableGlobalSearch);
       let status: string | number = 'error';
       
       try {
+        // Add JWT header for authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
+        console.log('[BARCODE][AUTH]', {
+          hasToken: !!session?.access_token,
+          tokenPreview: session?.access_token?.slice(0, 20)
+        });
+
         const response = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' }
+          body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' },
+          headers
         });
         
         status = response.error ? response.error.status || 'error' : 200;

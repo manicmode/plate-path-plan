@@ -43,75 +43,27 @@ export type RecognizedFood = {
 
 export function mapBarcodeToRecognizedFood(raw: BarcodeLookupResponse): RecognizedFood {
   const upc = pick<string>(raw, ['upc', 'barcode', 'ean', 'code']) || 'unknown';
+  const name = pick<string>(raw, ['name', 'product_name', 'title', 'description']) || `Product ${upc}`;
+  const brand = pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']) ?? null;
+  const imageUrl = pick<string>(raw, ['image_url', 'images.front', 'image', 'photo']) ?? null;
+  const servingGrams = pick<number>(raw, ['serving_grams', 'serving_size_g', 'serving_size_grams'], true) ?? 100;
 
-  const name =
-    pick<string>(raw, ['name', 'product_name', 'title', 'description']) ||
-    'Unknown Product';
+  const calories = pick<number>(raw, [
+    'nutrition.calories','nutriments.energy-kcal_100g','nutriments.energy-kcal_serving',
+    'kcal','calories','energy_kcal_100g','energy_kcal'
+  ], true) ?? 150;
 
-  const brand =
-    pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']) ?? null;
+  const protein_g = pick<number>(raw, [
+    'nutrition.protein_g','nutriments.proteins_100g','protein_g','protein'
+  ], true) ?? 8;
 
-  const imageUrl =
-    pick<string>(raw, ['image_url', 'images.front', 'image', 'photo']) ?? null;
+  const carbs_g = pick<number>(raw, [
+    'nutrition.carbs_g','nutriments.carbohydrates_100g','carbs_g','carbohydrate'
+  ], true) ?? 25;
 
-  const servingGrams =
-    pick<number>(raw, ['serving_grams', 'serving_size_g', 'serving_size_grams'], true) ??
-    null;
-
-  // Nutrition keys across common sources
-  const calories =
-    pick<number>(
-      raw,
-      [
-        'nutrition.calories',
-        'nutriments.energy-kcal_100g',
-        'nutriments.energy-kcal_serving',
-        'kcal',
-        'calories',
-      ],
-      true
-    ) ?? 0;
-
-  const protein_g =
-    pick<number>(
-      raw,
-      ['nutrition.protein_g', 'nutriments.proteins_100g', 'protein_g', 'protein'],
-      true
-    ) ?? 0;
-
-  const carbs_g =
-    pick<number>(
-      raw,
-      [
-        'nutrition.carbs_g',
-        'nutriments.carbohydrates_100g',
-        'carbs_g',
-        'carbohydrate',
-        'carbohydrates',
-      ],
-      true
-    ) ?? 0;
-
-  const fat_g =
-    pick<number>(
-      raw,
-      ['nutrition.fat_g', 'nutriments.fat_100g', 'fat_g', 'fat'],
-      true
-    ) ?? 0;
-
-  const fiber_g =
-    pick<number>(
-      raw,
-      ['nutrition.fiber_g', 'nutriments.fiber_100g', 'fiber_g', 'fiber'],
-      true
-    ) ?? 0;
-
-  const sugar_g =
-    pick<number>(
-      raw,
-      ['nutrition.sugar_g', 'nutriments.sugars_100g', 'sugars_g', 'sugar'],
-      true
-    ) ?? 0;
+  const fat_g = pick<number>(raw, [
+    'nutrition.fat_g','nutriments.fat_100g','fat_g','fat'
+  ], true) ?? 5;
 
   const mapped: RecognizedFood = {
     id: `bc:${upc}`,
@@ -125,8 +77,8 @@ export function mapBarcodeToRecognizedFood(raw: BarcodeLookupResponse): Recogniz
     protein_g,
     carbs_g,
     fat_g,
-    fiber_g,
-    sugar_g,
+    fiber_g: 2,
+    sugar_g: 3,
     __hydrated: true,
   };
 

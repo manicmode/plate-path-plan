@@ -1,25 +1,45 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders } from '../_shared/cors.ts';
 
-// Helper for json response
-function json200(obj: any) { 
-  return new Response(JSON.stringify(obj), { 
-    status: 200, 
-    headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } 
-  }); 
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+
+  console.log('[CORS][DEBUG]', { requestOrigin: origin, ts: new Date().toISOString() });
+
+  const allowed = [
+    'https://plate-path-plan.lovable.app',
+    /^https:\/\/.*\.lovable\.dev$/,
+    /^https:\/\/.*\.lovable\.app$/
+  ];
+  const isAllowed = allowed.some(a => typeof a === 'string' ? a === origin : a.test(origin));
+
+  const cors = {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://plate-path-plan.lovable.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-auth',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true'
+  };
+
+  console.log('[CORS][HEADERS]', { origin, isAllowed, returnedOrigin: cors['Access-Control-Allow-Origin'] });
+  return cors;
 }
 
 serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
+  const cors = getCorsHeaders(req);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { status: 200, headers: cors });
   }
 
   try {
+    const authHeader = req.headers.get('authorization');
+    console.log('[AUTH][DEBUG]', {
+      hasAuth: !!authHeader,
+      authPreview: authHeader?.slice(0, 30),
+      origin: req.headers.get('origin')
+    });
+
     const { mode, barcode, imageBase64, source } = await req.json().catch(() => ({}));
     
     console.log('[ENHANCED-HEALTH-SCANNER]', { mode, hasBarcode: !!barcode, hasImage: !!imageBase64, source });
@@ -56,7 +76,7 @@ serve(async (req) => {
         };
         const normalizedScore = to10(p.nutriscore_score ?? 0);
 
-        return json200({
+        return new Response(JSON.stringify({
           ok: true,
           fallback: false,
           mode: 'extract',
@@ -70,21 +90,30 @@ serve(async (req) => {
             image_url: p.image_front_url || p.image_url || '',
             code: barcode
           }
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...cors }
         });
       }
 
-      return json200({
+      return new Response(JSON.stringify({
         ok: false, fallback: true, error: 'Product not found', barcode
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...cors }
       });
     }
 
     // Handle mode: "scan" - remove placeholder data
     if (mode === 'scan') {
-      return json200({
+      return new Response(JSON.stringify({
         ok: false,
         fallback: true,
         mode: 'scan',
         error: 'Image analysis not implemented'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...cors }
       });
     }
 
@@ -113,7 +142,7 @@ serve(async (req) => {
 
         console.log('[EDGE][BARCODE]', { hasNutriments: !!p.nutriments, score: normalizedScore });
 
-        return json200({
+        return new Response(JSON.stringify({
           ok: true,
           fallback: false,
           mode: 'barcode',
@@ -127,34 +156,39 @@ serve(async (req) => {
             image_url: p.image_front_url || p.image_url || '',
             code: barcode
           }
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...cors }
         });
       }
 
       // OFF miss
-      return json200({
+      return new Response(JSON.stringify({
         ok: false, fallback: true, error: 'Product not found', barcode
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...cors }
       });
     }
 
     // Default response for unknown modes - never return 4xx
-    return json200({
+    return new Response(JSON.stringify({
       ok: false,
       error: 'Unknown mode or insufficient data',
       fallback: true
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...cors }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('[ENHANCED-HEALTH-SCANNER] Error:', error);
-    return new Response(
-      JSON.stringify({ 
-        ok: false,
-        error: error.message,
-        product: null
-      }), 
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return new Response(JSON.stringify({ 
+      error: error?.message || 'unknown error',
+      ok: false
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors }
+    });
   }
 });
