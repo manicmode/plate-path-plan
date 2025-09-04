@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, FileText, Save, Clock, Droplets, Pill } from 'lucide-react';
+import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, FileText, Save, Clock, Droplets, Pill, UtensilsCrossed } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -2856,8 +2856,15 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-8">Log Your Food</h1>
+      <div className="flex justify-center">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-center gap-2 text-cyan-400">
+              <UtensilsCrossed className="h-5 w-5" />
+              Log Your Food
+            </CardTitle>
+          </CardHeader>
+        </Card>
       </div>
 
       {/* Processing Status */}
