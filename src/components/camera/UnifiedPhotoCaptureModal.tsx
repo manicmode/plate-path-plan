@@ -203,28 +203,19 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
           />
 
           {/* TOP BANNER — Logging variant */}
-          <div
-            className="pointer-events-none absolute left-1/2 top-6 sm:top-8 z-[5] -translate-x-1/2"
-            aria-live="polite"
-          >
-            <div className="
-                pointer-events-auto
-                flex items-start gap-3 rounded-2xl border border-white/10
-                bg-gradient-to-b from-white/10 to-white/5
-                backdrop-blur-md px-4 py-3 shadow-lg
-                text-left text-white
-              "
-              role="status"
-            >
-              <div className="text-2xl leading-none">{bannerEmoji}</div>
-              <div className="space-y-0.5">
-                <div className="text-sm font-semibold tracking-wide">
+          <div className="absolute top-6 left-4 right-4 z-[5] mt-[env(safe-area-inset-top)]">
+            <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xl">{bannerEmoji}</span>
+                </div>
+                <h2 className="text-white text-xl font-bold text-center">
                   {bannerTitle}
-                </div>
-                <div className="text-xs text-white/80">
-                  {bannerSubtext}
-                </div>
+                </h2>
               </div>
+              <p className="text-white/80 text-sm text-center">
+                {bannerSubtext}
+              </p>
             </div>
           </div>
 
