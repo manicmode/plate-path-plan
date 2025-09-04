@@ -2856,16 +2856,6 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-center">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-center gap-2 text-cyan-400">
-              <UtensilsCrossed className="h-5 w-5" />
-              Log Your Food
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
 
       {/* Processing Status */}
       <ProcessingStatus 
@@ -2986,6 +2976,12 @@ console.log('Global search enabled:', enableGlobalSearch);
       {/* Main Camera UI */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-center gap-2 text-cyan-400">
+              <UtensilsCrossed className="h-5 w-5" />
+              Log Your Food
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-8">
             <div className="text-center space-y-6">
               <div className="space-y-4">
