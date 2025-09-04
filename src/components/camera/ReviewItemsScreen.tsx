@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
+import ConfirmLoader from '@/components/ConfirmLoader';
 
 function perGramReady(entry?: { perGram?: Record<string, number> }) {
   if (!entry?.perGram) return false;
@@ -694,28 +695,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         
         if (shouldShowLoader) {
           return (
-            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-card rounded-lg border shadow-lg p-6 mx-4 max-w-sm w-full">
-                <div className="animate-pulse space-y-4">
-                  <div className="h-6 bg-muted rounded w-3/4 mx-auto"></div>
-                  <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-muted rounded w-full"></div>
-                    <div className="h-3 bg-muted rounded w-5/6"></div>
-                    <div className="h-3 bg-muted rounded w-4/6"></div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="h-8 bg-muted rounded"></div>
-                    <div className="h-8 bg-muted rounded"></div>
-                    <div className="h-8 bg-muted rounded"></div>
-                  </div>
-                </div>
-                <div className="text-center mt-4">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-                  <p className="text-sm text-muted-foreground">Loading nutrition data...</p>
-                </div>
-              </div>
-            </div>
+            <ConfirmLoader
+              title="Preparing nutrition details…"
+              subtitle="Analyzing per-gram data and applying your settings."
+              itemName={cur?.name ?? null}
+            />
           );
         }
         
