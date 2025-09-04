@@ -1028,7 +1028,7 @@ const Home = () => {
         <div
           id="home-correction"
           ref={anchorRef}
-          style={{ marginTop: "-32px" }}
+          style={{ marginTop: "-40px" }}
         >
         <div data-home-content className="space-y-12 sm:space-y-16 animate-fade-in pb-24 sm:pb-28">
           {/* Scheduled Nudges */}
