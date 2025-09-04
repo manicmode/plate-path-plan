@@ -223,6 +223,7 @@ const CameraPage = () => {
   const [analyzeDone, setAnalyzeDone] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedImageRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
@@ -539,7 +540,11 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     const file = event.target.files?.[0];
     if (!file) return;
 
-    await handleConfirmImage(file);
+    // ✅ Stage image into refs/state, then trigger confirm ➜ loader ➜ analyze ➜ review
+    await processImageFile(file);
+    // Ensure refs/state are committed before confirm reads them
+    await new Promise((r) => setTimeout(r, 0));
+    await handleConfirmImage(); // note: no params
   };
 
   const processImageFile = async (file: File) => {
@@ -568,6 +573,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       
       console.log('Image processed successfully');
       setSelectedImage(imageDataUrl);
+      selectedImageRef.current = imageDataUrl;
       setShowVoiceEntry(false);
       setVoiceText('');
       setVisionResults(null);
@@ -582,10 +588,28 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
   };
 
   // Handler for unified photo capture modal
-  const handleConfirmImage = async (fileOrBlob: File | Blob) => {
-    const file = fileOrBlob instanceof File
-      ? fileOrBlob
-      : new File([fileOrBlob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
+  const handleConfirmImage = async (maybeFile?: File | Blob) => {
+    // Prefer explicit blob (if the function is ever called with one),
+    // else fall back to staged state, else the ref.
+    const imageToUse: string | File | Blob | null =
+      maybeFile ??
+      selectedImage ??
+      selectedImageRef.current ??
+      null;
+
+    if (!imageToUse) {
+      console.warn('No selected image to analyze');
+      return;
+    }
+
+    // Convert to File if we have a string (data URL) or Blob
+    const file = maybeFile instanceof File
+      ? maybeFile
+      : maybeFile instanceof Blob
+      ? new File([maybeFile], `log-${Date.now()}.jpg`, { type: "image/jpeg" })
+      : typeof imageToUse === 'string'
+      ? null // Will be handled by existing analyze flow
+      : new File([imageToUse as Blob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
 
     setShowCamera(false);
     setShowSmartLoader(true);
@@ -593,19 +617,25 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     setAnalyzePhase("uploading");
 
     try {
-      // Wrapper function for the existing analyzeImage logic
-      const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
-        // Process the image file first
-        await processImageFile(file);
-        
-        // Then run the analysis (this will use the selectedImage state)
-        await analyzeImage();
-        
-        // Return empty array since analyzeImage handles its own flow
-        return [];
-      };
+      // If we have a file, use the existing flow
+      if (file) {
+        // Wrapper function for the existing analyzeImage logic
+        const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
+          // Process the image file first
+          await processImageFile(file);
+          
+          // Then run the analysis (this will use the selectedImage state)
+          await analyzeImage();
+          
+          // Return empty array since analyzeImage handles its own flow
+          return [];
+        };
 
-      await runAnalyzeFlow(file, (phase) => setAnalyzePhase(phase), analyzeImageForFile);
+        await runAnalyzeFlow(file, (phase) => setAnalyzePhase(phase), analyzeImageForFile);
+      } else {
+        // We have a staged image, just run analysis
+        await analyzeImage();
+      }
 
       setAnalyzeDone(true);
       // Let the loader breathe a touch for UX
@@ -780,6 +810,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       setCurrentMode('photo');
       setNutritionCaptureData(null);
       setSelectedImage(null);
+      selectedImageRef.current = null;
 
     } catch (e) {
       console.error('[CAMERA][NUTRITION_CAPTURE][ERROR]', e);
@@ -881,6 +912,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             toast.error('No foods detected in this image. Try a clearer photo with visible food items, or add foods manually.');
             setShowManualFoodEntry(true);
             setSelectedImage(null);
+            selectedImageRef.current = null;
             setIsAnalyzing(false);
             return;
           }
@@ -2697,6 +2729,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   const resetState = () => {
     setSelectedImage(null);
+    selectedImageRef.current = null;
     setRecognizedFoods([]);
     setShowConfirmation(false);
     setShowVoiceEntry(false);
