@@ -239,8 +239,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   );
   const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;
   
-  if (!perGram || Object.keys(perGram).length === 0) {
-    return null; // the Loader is visible while isHydrating=true
+  // Check if nutrition data is actually ready (not placeholder values)
+  const isNutritionReady = perGram && Object.keys(perGram).length > 0 && 
+    Object.values(perGram).some(val => (Number(val) || 0) > 0);
+  
+  if (!isNutritionReady) {
+    return null; // the ConfirmLoading component is visible while nutrition loads
   }
 
   const portionMultiplier = portionPercentage[0] / 100;
