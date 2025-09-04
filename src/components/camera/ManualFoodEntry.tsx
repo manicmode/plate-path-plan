@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { sanitizeText } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
+import { submitTextLookup, FEATURE_TEXT_LOOKUP_V2 } from '@/lib/food/textLookup';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -38,52 +39,47 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     setIsLoading(true);
 
     try {
-      console.log('🧠 [Manual Entry] Estimating nutrition with GPT...', {
+      console.log('🧠 [Manual Entry] Looking up food with unified text lookup...', {
         foodName: trimmedName,
         amountPercentage: amountPercentage[0],
-        mealType
+        mealType,
+        useV2: FEATURE_TEXT_LOOKUP_V2
       });
 
-      // Call GPT nutrition estimator
-      const { data, error } = await supabase.functions.invoke('gpt-nutrition-estimator', {
-        body: {
-          foodName: trimmedName,
-          amountPercentage: amountPercentage[0],
-          mealType: mealType || null
-        }
-      });
+      // Use unified text lookup system
+      const { items } = await submitTextLookup(trimmedName, { source: 'manual' });
 
-      if (error) {
-        console.error('❌ [Manual Entry] GPT estimation failed:', error);
-        toast.error('Failed to estimate nutrition. Please try again.');
+      if (!items || items.length === 0) {
+        console.error('❌ [Manual Entry] No food items found');
+        toast.error('No nutrition data found for this food. Please try a different name.');
         return;
       }
 
-      if (!data?.nutrition) {
-        console.error('❌ [Manual Entry] No nutrition data received');
-        toast.error('Unable to estimate nutrition data');
-        return;
-      }
-
-      const { nutrition } = data;
+      // Use first result for auto-confirm
+      const foodItem = items[0];
       
-      // Create food item with GPT-estimated nutrition
+      // Apply portion scaling
+      const portionScale = amountPercentage[0] / 100;
+      
+      // Create food item with scaled nutrition
       const foodData = {
-        id: `manual-gpt-${Date.now()}`,
+        id: `manual-${foodItem.provider}-${Date.now()}`,
         name: trimmedName,
-        calories: Math.round(nutrition.calories),
-        protein: Math.round(nutrition.protein * 10) / 10,
-        carbs: Math.round(nutrition.carbs * 10) / 10,
-        fat: Math.round(nutrition.fat * 10) / 10,
-        fiber: Math.round(nutrition.fiber * 10) / 10,
-        sugar: Math.round(nutrition.sugar * 10) / 10,
-        sodium: Math.round(nutrition.sodium),
-        saturated_fat: Math.round(nutrition.saturated_fat * 10) / 10,
-        confidence: Math.round(nutrition.confidence),
+        calories: Math.round(foodItem.calories * portionScale),
+        protein: Math.round(foodItem.protein_g * portionScale * 10) / 10,
+        carbs: Math.round(foodItem.carbs_g * portionScale * 10) / 10,
+        fat: Math.round(foodItem.fat_g * portionScale * 10) / 10,
+        fiber: Math.round((foodItem.fiber_g || 2) * portionScale * 10) / 10,
+        sugar: Math.round((foodItem.sugar_g || 3) * portionScale * 10) / 10,
+        sodium: Math.round((foodItem.meta?.sodium || 50) * portionScale),
+        saturated_fat: Math.round((foodItem.meta?.saturated_fat || 1) * portionScale * 10) / 10,
+        confidence: Math.round((foodItem.confidence || 0.7) * 100),
         timestamp: new Date(),
-        confirmed: true, // Auto-confirm GPT entries
-        image: undefined,
-        source: 'gpt'
+        confirmed: true, // Auto-confirm manual entries
+        image: foodItem.imageUrl || undefined,
+        source: foodItem.provider,
+        brand: foodItem.brand || undefined,
+        barcode: foodItem.barcode || undefined
       };
 
       console.log('✅ [Manual Entry] GPT nutrition estimated:', foodData);
@@ -116,7 +112,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       toast.success(
         <div className="flex items-center gap-2">
           <Check className="h-4 w-4 text-emerald-500" />
-          <span><strong>{trimmedName}</strong> added — estimated {nutrition.calories} kcal</span>
+          <span><strong>{trimmedName}</strong> added — {foodData.calories} kcal ({foodItem.provider.toUpperCase()})</span>
         </div>
       );
 

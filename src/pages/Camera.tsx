@@ -20,6 +20,7 @@ import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
+import { SpeakToLogModal } from '@/components/camera/SpeakToLogModal';
 import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
@@ -204,6 +205,7 @@ const CameraPage = () => {
   // Manual entry states
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
   const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
+  const [showSpeakToLog, setShowSpeakToLog] = useState(false);
   
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
@@ -3544,6 +3546,21 @@ console.log('Global search enabled:', enableGlobalSearch);
       <ManualFoodEntry
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
+      />
+
+      {/* Speak to Log Modal */}
+      <SpeakToLogModal
+        isOpen={showSpeakToLog}
+        onClose={() => setShowSpeakToLog(false)}
+        onResults={(items) => {
+          if (items.length === 1) {
+            // Single item - go to confirmation
+            handleFoodDetected([items[0]]);
+          } else {
+            // Multiple items - go to review
+            handleFoodDetected(items);
+          }
+        }}
       />
 
       {/* Debug Panel - Dev only */}
