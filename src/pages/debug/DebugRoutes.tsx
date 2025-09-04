@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { FF } from '@/featureFlags';
-import { NudgesQA } from './NudgesQA';
 import { ScanHubDebug } from './ScanHubDebug';
 import CameraDebug from './CameraDebug';
 const PhotoSandbox = React.lazy(() => import('./PhotoSandbox'));
@@ -20,7 +19,6 @@ export default function DebugRoutes() {
     <Routes>
       {import.meta.env.DEV && (
         <>
-          <Route path="nudges-qa" element={<NudgesQA />} />
           <Route path="scan-hub" element={<ScanHubDebug />} />
           <Route path="camera" element={<CameraDebug />} />
         </>

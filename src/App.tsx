@@ -14,15 +14,12 @@ import { FF } from '@/featureFlags';
 // Import camera diagnostic shim (dev-only, off by default)
 import '@/diagnostics/cameraInq';
 
-// Import QA tools unconditionally (gated by feature flag + auth)
-import('@/scripts/nudgeQARunner');
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
 const DebugPipeline = React.lazy(() => import('@/pages/DebugPipeline'));
-const NudgeQAPage = React.lazy(() => import('@/pages/NudgeQAPage'));
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -214,25 +211,7 @@ function AppContent() {
           <ClientSecurityValidator />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
-              {/* QA routes - SIMPLE TEST FIRST */}
-              <Route 
-                path="/qa/nudges"
-                element={<div style={{padding: 50, background: 'green', color: 'white', fontSize: 24}}>🎉 QA ROUTE WORKS! 🎉</div>}
-              />
-              <Route 
-                path="/nudge-qa"
-                element={<Navigate to="/qa/nudges" replace />}
-              />
-              <Route 
-                path="/debug/nudges"
-                element={<Navigate to="/qa/nudges" replace />}
-              />
-              <Route 
-                path="/test-route"
-                element={<div style={{padding: 50, background: 'blue', color: 'white'}}>TEST ROUTE WORKS</div>}
-              />
-              
-              {/* Everything else wrapped in OnboardingGate */}
+              {/* Everything wrapped in OnboardingGate */}
               <Route path="*" element={
                 <OnboardingGate>
                   <Routes>

@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { REGISTRY, NudgeDefinition, UserNudgeContext } from './registry';
 import { getLastShownDates, get7DayCounts } from './logEvent';
-import { withQAMocks, QAMock } from './qaContext';
 
 export type SchedulerOptions = {
   dryRun?: boolean;
@@ -43,14 +42,12 @@ export async function scheduleNudges(options: {
   userId: string;
   now?: Date;
   maxPerRun?: number;
-  qaMode?: boolean;
-  qaMock?: QAMock;
 }): Promise<ScheduleResult> {
-  const { userId, now = new Date(), maxPerRun = 1, qaMode = false, qaMock } = options;
+  const { userId, now = new Date(), maxPerRun = 1 } = options;
   
   const schedulerOptions: SchedulerOptions = {
-    dryRun: qaMode,
-    ignoreFeatureFlags: qaMode,
+    dryRun: false,
+    ignoreFeatureFlags: false,
     returnReasons: true,
     qaNow: now,
   };
@@ -60,7 +57,6 @@ export async function scheduleNudges(options: {
     userId,
     10, // Get all for analysis
     now,
-    qaMock,
     schedulerOptions
   ) as NudgeCandidate[];
   
@@ -70,11 +66,6 @@ export async function scheduleNudges(options: {
     // Apply priority adjustments for context
     allowedCandidates.forEach(candidate => {
       let score = candidate.definition.priority;
-      
-      // Context boost so urgent nudges win overlaps
-      if (candidate.definition.id === 'hydration_reminder' && (qaMock?.waterLogsToday !== undefined ? qaMock.waterLogsToday < 4 : false)) {
-        score += 15;
-      }
       
       // Gently taper Daily Check-In near noon so it doesn't beat midday context nudges
       if (candidate.definition.id === 'daily_checkin' && now.getHours() >= 11) {
@@ -109,39 +100,20 @@ export async function selectNudgesForUser(
   userId: string, 
   limit = 2,
   currentTime = new Date(),
-  qaMock?: QAMock,
   options?: SchedulerOptions
 ): Promise<SelectedNudge[] | NudgeCandidate[]> {
   try {
     // Use QA time if provided, otherwise use currentTime
     const now = options?.qaNow || currentTime;
     
-    // Load nudge history (synthetic for QA, real for production)
-    let lastShownDates: Record<string, Date> = {};
-    let weeklyShownCounts: Record<string, number> = {};
-    
-    if (qaMock?.qaHistory) {
-      // Use synthetic history from QA scenario
-      const history = qaMock.qaHistory;
-      for (const [nudgeId, dateStr] of Object.entries(history.lastShownByNudge || {})) {
-        lastShownDates[nudgeId] = new Date(dateStr);
-      }
-      weeklyShownCounts = history.shownThisWeek || {};
-    } else {
-      // Load real history from database
-      const [realLastShownDates, realWeeklyShownCounts] = await Promise.all([
-        getLastShownDates(userId),
-        get7DayCounts(userId)
-      ]);
-      lastShownDates = realLastShownDates;
-      weeklyShownCounts = realWeeklyShownCounts;
-    }
+    // Load nudge history from database
+    const [lastShownDates, weeklyShownCounts] = await Promise.all([
+      getLastShownDates(userId),
+      get7DayCounts(userId)
+    ]);
 
-    // Build user context (with QA mocks if provided)
-    let context = await buildUserContext(userId, now);
-    if (qaMock) {
-      context = withQAMocks(context, qaMock);
-    }
+    // Build user context
+    const context = await buildUserContext(userId, now);
 
     // Check feature flags and filters
     const eligibleNudges: Array<{ definition: NudgeDefinition; reason: string }> = [];
@@ -155,22 +127,22 @@ export async function selectNudgesForUser(
         let flagEnabled = false;
         
         if (options?.ignoreFeatureFlags) {
-          // In QA mode, use flags from scenario or default to enabled
-          flagEnabled = qaMock?.qaFlags?.[definition.enabledFlag] ?? true;
+          // Use default enabled for ignored flags
+          flagEnabled = true;
         } else {
           const { data: flagData } = await supabase
             .from('feature_flags')
             .select('enabled')
             .eq('key', definition.enabledFlag)
             .maybeSingle();
-          
-          flagEnabled = qaMock ? true : (flagData?.enabled || false);
+           
+          flagEnabled = flagData?.enabled || false;
         }
         
         reasons.push({
           gate: 'featureFlag',
           pass: flagEnabled,
-          detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (QA mode)' : '')
+          detail: definition.enabledFlag + (options?.ignoreFeatureFlags ? ' (ignored)' : '')
         });
 
         // Log feature flag decisions
@@ -187,19 +159,18 @@ export async function selectNudgesForUser(
         reasons.push({ gate: 'featureFlag', pass: true, detail: 'no flag required' });
       }
 
-      // Check time window (use QA time if available)
+      // Check time window
       if (definition.window) {
         const currentHour = now.getHours();
         const inWindow = currentHour >= definition.window.startHour && currentHour < definition.window.endHour;
-        const windowPass = inWindow || qaMock?.bypassQuietHours;
         
         reasons.push({
           gate: 'timeWindow',
-          pass: windowPass,
+          pass: inWindow,
           detail: `${definition.window.startHour}h-${definition.window.endHour}h, current: ${currentHour}h`
         });
         
-        if (!windowPass) {
+        if (!inWindow) {
           allowed = false;
         }
       } else {
@@ -231,28 +202,21 @@ export async function selectNudgesForUser(
         });
       }
 
-      // Check daily cap (use QA history if available)
-      let todayCount = 0;
+      // Check daily cap
+      // Query real database using local day bounds
+      const { getLocalDayBounds } = await import('@/lib/time/localDay');
+      const { startIsoUtc, endIsoUtc } = getLocalDayBounds(now);
       
-      if (qaMock?.qaHistory) {
-        // Use synthetic history
-        todayCount = qaMock.qaHistory.shownToday?.[definition.id] || 0;
-      } else {
-        // Query real database using local day bounds
-        const { getLocalDayBounds } = await import('@/lib/time/localDay');
-        const { startIsoUtc, endIsoUtc } = getLocalDayBounds(now);
-        
-        const { data: todayShownCount } = await supabase
-          .from('nudge_events')
-          .select('id', { count: 'exact' })
-          .eq('user_id', userId)
-          .eq('nudge_id', definition.id)
-          .eq('event', 'shown')
-          .gte('ts', startIsoUtc)
-          .lt('ts', endIsoUtc);
+      const { data: todayShownCount } = await supabase
+        .from('nudge_events')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('nudge_id', definition.id)
+        .eq('event', 'shown')
+        .gte('ts', startIsoUtc)
+        .lt('ts', endIsoUtc);
 
-        todayCount = todayShownCount?.length || 0;
-      }
+      const todayCount = todayShownCount?.length || 0;
       
       const dailyCapPass = todayCount < definition.dailyCap;
       

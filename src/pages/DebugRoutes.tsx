@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import DebugImageProbe from './DebugImageProbe';
 import { NudgesAudit } from './debug/NudgesAudit';
-import { NudgesQA } from './debug/NudgesQA';
 import { lazy, Suspense } from 'react';
 
 const HealthScanFallbacks = lazy(() => import('./debug/HealthScanFallbacks'));
@@ -26,10 +25,6 @@ export default function DebugRoutes() {
   
   if (currentPath === '/debug/nudges') {
     return <NudgesAudit />;
-  }
-
-  if (currentPath === '/debug/nudges-qa') {
-    return <NudgesQA />;
   }
 
   if (currentPath === '/debug/camera') {
