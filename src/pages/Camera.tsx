@@ -43,7 +43,6 @@ const CameraPage = () => {
   const [showReviewScreen, setShowReviewScreen] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [inputSource, setInputSource] = useState<'photo' | 'barcode' | 'voice' | null>(null);
-  const [activeTab, setActiveTab] = useState('recent');
   
   // Barcode scanning states
   const [showLogBarcodeScanner, setShowLogBarcodeScanner] = useState(false);
@@ -58,7 +57,6 @@ const CameraPage = () => {
   
   // Analysis flow states
   const [showSmartLoader, setShowSmartLoader] = useState(false);
-  const [analyzePhase, setAnalyzePhase] = useState<'analyzing' | 'searching' | 'complete'>('analyzing');
   const [analyzeDone, setAnalyzeDone] = useState(false);
   
   // Voice recording states
@@ -157,7 +155,6 @@ const CameraPage = () => {
       
       // Start smart loader
       setShowSmartLoader(true);
-      setAnalyzePhase('analyzing');
       setAnalyzeDone(false);
       
       // Analyze the image
@@ -200,7 +197,6 @@ const CameraPage = () => {
       setReviewItems(reviewItems);
       
       // Update analyze flow
-      setAnalyzePhase('complete');
       setAnalyzeDone(true);
       
       // Show review screen after a delay
@@ -419,19 +415,14 @@ const CameraPage = () => {
       <UnifiedLoggingTabs 
         onFoodSelect={(food) => {
           console.log('[SAVED] Adding food:', food);
-          // Handle food selection
         }}
         onBarcodeSelect={(barcode) => {
           console.log('[SAVED] Adding barcode:', barcode);
-          // Handle barcode selection
         }}
         onBack={() => {
           console.log('[TABS] Back pressed');
-          // Handle back action
         }}
       />
-
-      {/* Saved Foods Tab Content - This would be controlled by the UnifiedLoggingTabs internally */
 
       {/* Activity Logging Section */}
       <div className="mt-8">
@@ -456,6 +447,9 @@ const CameraPage = () => {
       {showTransition && (
         <TransitionScreen
           isOpen={showTransition}
+          currentIndex={1}
+          totalItems={reviewItems.length}
+          itemName={reviewItems[0]?.name || 'Food Item'}
           onComplete={handleTransitionComplete}
           duration={3500}
         />
