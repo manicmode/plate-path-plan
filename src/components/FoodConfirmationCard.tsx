@@ -126,6 +126,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   );
   const storePerGram = storeAnalysis?.perGram;
   const hasPerGram = !!storePerGram && Object.keys(storePerGram).length > 0;
+  
+  // Enhanced nutrition readiness check
+  const isNutritionReady = hasPerGram && storePerGram && Object.values(storePerGram).some(val => val > 0);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -219,8 +222,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // CONDITIONAL RENDERING AFTER ALL HOOKS ARE CALLED
   if (!currentFoodItem) return null;
 
-  // Early visual guard: show skeleton if no per-gram data exists
-  if (!hasPerGram) {
+  // Enhanced visual guard: show skeleton if nutrition is not ready
+  if (!isNutritionReady) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <AccessibleDialogContent
@@ -231,8 +234,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         >
           <div className="p-6">
             <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <div className="mb-2 text-sm opacity-70">Loading nutrition data…</div>
-              <div className="h-20 rounded-lg bg-white/10 animate-pulse" />
+              <div className="mb-4 flex items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />
+              </div>
+              <div className="text-center">
+                <div className="mb-2 text-sm opacity-70">Loading nutrition data…</div>
+                <div className="space-y-2">
+                  <div className="h-4 rounded-lg bg-white/10 animate-pulse" />
+                  <div className="h-4 rounded-lg bg-white/10 animate-pulse w-3/4 mx-auto" />
+                  <div className="h-4 rounded-lg bg-white/10 animate-pulse w-1/2 mx-auto" />
+                </div>
+              </div>
             </div>
           </div>
         </AccessibleDialogContent>
@@ -242,7 +254,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Check nutrition readiness - simplified without early return during hooks
   const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;
-  const isNutritionReady = perGram && Object.keys(perGram).length > 0;
   
   // For now, render regardless of nutrition readiness to prevent hooks issues
   // The loader will be shown at parent level when isHydrating=true

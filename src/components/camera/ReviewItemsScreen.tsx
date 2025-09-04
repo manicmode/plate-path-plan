@@ -509,6 +509,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       const results = await resolveGenericFoodBatch(names);
       
       // Process and enrich items with proper nutrition data
+      const storeUpdates: Record<string, any> = {};
       const enrichedItems = initialModalItems.map((item, index) => {
         const result = results?.[index];
         if (!result) return item;
@@ -516,13 +517,30 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         const enrichedInput = { ...item, nutrients: result.nutrients, serving: result.serving };
         const merged = toLegacyFoodItem(enrichedInput, item.id, true);
         
+        // Store nutrition data for FoodConfirmationCard to read
+        storeUpdates[item.id] = {
+          perGram: merged.nutrition?.perGram ?? {},
+          healthScore: merged.analysis?.healthScore ?? 0,
+          flags: merged.analysis?.flags ?? [],
+          ingredients: merged.analysis?.ingredients ?? [],
+          imageUrl: merged.analysis?.imageUrl,
+          source: 'db',
+          confidence: 0.9,
+          __hydrated: true,
+          updatedAt: Date.now(),
+        };
+        
         return {
           ...merged,
           __hydrated: true,
         };
       });
       
-      // Only proceed if we have properly hydrated items
+      // Write to nutrition store before validating
+      useNutritionStore.getState().upsertMany(storeUpdates);
+      console.log('[FLOW] store_written', { ids: Object.keys(storeUpdates) });
+      
+      // Only proceed if we have properly hydrated items with valid nutrition
       const hasValidNutrition = enrichedItems.some(item => 
         item.nutrition?.perGram && Object.values(item.nutrition.perGram).some(val => val > 0)
       );
@@ -531,14 +549,34 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         throw new Error('Could not load nutrition data');
       }
       
+      // Wait for store data to be readable by components
+      const firstId = enrichedItems[0]?.id;
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const data = useNutritionStore.getState().byId[firstId];
+          const pg = data?.perGram;
+          const isReady = pg && Object.keys(pg).length > 0 && Object.values(pg).some(val => val > 0);
+          if (isReady) {
+            console.log('[FLOW] nutrition_validated', { firstId, perGram: pg });
+            resolve();
+          } else {
+            requestAnimationFrame(check);
+          }
+        };
+        check();
+      });
+      
       // Set flow active to prevent ScanHub navigation
       setConfirmFlowActive(true);
       
-      // ONLY NOW set the modal items and open modal - after data is ready
+      // ONLY set modal items and mark as hydrated after store validation
       setConfirmModalItems(enrichedItems);
       setCurrentConfirmIndex(0);
       setConfirmModalOpen(true);
-      setHydrated(true); // Mark as hydrated when real data is ready
+      
+      // Brief delay to ensure store state propagates fully
+      await new Promise(r => setTimeout(r, 100));
+      setHydrated(true);
       setPreparing(false);
 
       // Close the review screen AFTER starting the flow  
@@ -998,6 +1036,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
+            const storeData = useNutritionStore.getState().byId[item?.id];
             console.log('[CONFIRM][MODAL_RENDER]', {
               isOpen: true,
               itemId: item?.id,
@@ -1005,7 +1044,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               calories: item?.calories,
               hasNutrition: !!item?.nutrition,
               perGram: item?.nutrition?.perGram ? Object.keys(item.nutrition.perGram) : [],
-              hydrated
+              storePerGram: storeData?.perGram ? Object.keys(storeData.perGram) : [],
+              hydrated,
+              isNutritionReady: !!(storeData?.perGram && Object.values(storeData.perGram).some(v => v > 0))
             });
             return null;
           })()}
