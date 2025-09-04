@@ -1260,8 +1260,112 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     };
   };
 
-  // Barcode lookup function - Enhanced with ingredient detection
+  // Barcode lookup function - Clean implementation
   const handleBarcodeDetected = async (barcode: string) => {
+    try {
+      setIsLoadingBarcode(true);
+      setInputSource('barcode');
+      console.log('[BARCODE][MODE]', { inputSource: 'barcode', route: location?.pathname });
+
+      // Complete state reset
+      setRecognizedFoods([]);
+      setVisionResults(null);
+      setVoiceResults(null);
+      setShowSummaryPanel(false);
+      setSummaryItems([]);
+      setReviewItems([]);
+      setShowReviewScreen(false);
+      setShowError(false);
+      setErrorMessage('');
+
+      // Validate barcode format
+      const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+      if (!/^\d{8,14}$/.test(cleanBarcode)) {
+        console.warn('[BARCODE][EARLY_RETURN]', { reason: 'invalid_format', code: barcode });
+        throw new Error('Invalid barcode format. Please check the barcode number.');
+      }
+      
+      console.log('[BARCODE][LOOKUP:REQUEST]', { code: barcode, normalized: cleanBarcode });
+
+      // Use working barcode pipeline
+      const result = await analyzeBarcode({ code: cleanBarcode });
+      
+      if (!result.ok) {
+        console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: false, found: false, reason: result.reason });
+        
+        toast.info('Barcode not found. Would you like to add this product?', {
+          description: "Try scanning again or enter manually",
+          action: {
+            label: "Enter Manually",
+            onClick: () => {
+              setShowBarcodeNotFound(true);
+              setFailedBarcode(cleanBarcode);
+            }
+          }
+        });
+        
+        return;
+      }
+      
+      // Transform successful result
+      const report = result.report;
+      console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: true, found: true, itemName: report?.productName });
+      console.log('[BARCODE][MAP:ITEM]', { id: report?.productName, name: report?.productName, grams: 100 });
+      
+      const mappedItem = {
+        id: Date.now().toString(),
+        name: report.productName || 'Unknown Product',
+        brand: report.brand || '',
+        grams: 100,
+        nutrition: {
+          calories: report.nutrition?.calories || 0,
+          protein: report.nutrition?.protein || 0,
+          carbs: report.nutrition?.carbs || 0,
+          fat: report.nutrition?.fat || 0,
+          fiber: report.nutrition?.fiber || 0,
+          sugar: report.nutrition?.sugar || 0,
+          sodium: report.nutrition?.sodium || 0,
+          perGram: {
+            calories: (report.nutrition?.calories || 0) / 100,
+            protein: (report.nutrition?.protein || 0) / 100,
+            carbs: (report.nutrition?.carbs || 0) / 100,
+            fat: (report.nutrition?.fat || 0) / 100,
+            fiber: (report.nutrition?.fiber || 0) / 100,
+            sugar: (report.nutrition?.sugar || 0) / 100,
+            sodium: (report.nutrition?.sodium || 0) / 100
+          }
+        },
+        source: 'barcode',
+        sourceData: {
+          barcode: cleanBarcode,
+          originalProduct: report
+        },
+        __hydrated: true
+      };
+
+      console.log('[BARCODE][OPEN_CONFIRM]', { id: mappedItem.id, name: mappedItem.name, via: 'confirm-card' });
+      
+      // Open confirmation modal
+      setConfirmModalItems([mappedItem]);
+      setConfirmModalOpen(true);
+
+    } catch (error) {
+      console.error('[BARCODE][ERROR]', error);
+      
+      toast.error('Network error during barcode lookup', {
+        description: 'Please try again or enter manually',
+        action: {
+          label: "Enter Manually",
+          onClick: () => {
+            setShowBarcodeNotFound(true);
+            setFailedBarcode(barcode);
+          }
+        }
+      });
+    } finally {
+      setIsLoadingBarcode(false);
+    }
+  };
     try {
       setIsLoadingBarcode(true);
       setInputSource('barcode');
@@ -1465,11 +1569,27 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
               sodium: recognizedFood.sodium
             }
           });
-          
-        } catch (nutritionProcessingError) {
-          console.error('=== NUTRITION PROCESSING ERROR ===', nutritionProcessingError);
-          
-          // Always try to open confirm modal with fallback data, even on nutrition processing error
+
+    } catch (error) {
+      console.error('[BARCODE][ERROR]', error);
+      
+      toast.error('Network error during barcode lookup', {
+        description: 'Please try again or enter manually',
+        action: {
+          label: "Enter Manually",
+          onClick: () => {
+            setShowBarcodeNotFound(true);
+            setFailedBarcode(barcode);
+          }
+        }
+      });
+    } finally {
+      setIsLoadingBarcode(false);
+    }
+  };
+
+  const handleVoiceRecording = async () => {
+    console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
           const mapped = mapToLogFood('', null);
           const fallbackFood: RecognizedFood = {
             name: mapped.name,
@@ -3529,4 +3649,3 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
   };
   
 export default CameraPage;
-  export default CameraPage;
