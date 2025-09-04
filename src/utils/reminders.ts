@@ -1,12 +1,17 @@
 // Utilities for reminder system
 
-export function hashMealSet(items: Array<{ name: string; grams?: number }>) {
+export function hashMealSet(items: Array<{ id?: string; name: string; grams?: number }>) {
   const key = items
-    .map(i => `${(i.name || '').trim().toLowerCase()}|${Math.round(i.grams || 0)}`)
+    .map(i => `${(i.name || '').toLowerCase().trim()}@${i.grams ?? ''}`)
     .sort()
-    .join('||');
+    .join('|');
+  
+  // Simple stable hash
   let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) - h) + key.charCodeAt(i);
+    h |= 0;
+  }
   return `mealset-${Math.abs(h).toString(36)}`;
 }
 
