@@ -126,7 +126,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   useEffect(() => {
     if (!confirmModalOpen || !confirmModalItems.length) return;
 
-    // FORCE call — merge only if it improves data
     (async () => {
       const names = confirmModalItems.map(m => m.name);
       console.log('[HYDRATE][OPEN][START]', { names });
@@ -134,27 +133,51 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       try {
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
+
         console.log('[HYDRATE][OPEN][END]', {
           count: results?.length,
           foundCount: results?.filter(Boolean).length,
           first: results?.[0] ? { slug: results[0].slug, hasNutrients: !!results[0].nutrients } : null
         });
 
-        setConfirmModalItems(prev => prev.map((m, i) => {
+        // CRITICAL: write resolver output to the shared store FIRST
+        const storeUpdates: Record<string, any> = {};
+
+        const enriched = confirmModalItems.map((m, i) => {
           const r = results?.[i];
           if (!r) return m;
-          
-          // Create enriched item with nutrition from GenericFood
-          const enrichedItem = {
-            ...m,
-            nutrients: r.nutrients,
-            serving: r.serving
+
+          const merged = toLegacyFoodItem(
+            { ...m, nutrients: r.nutrients, serving: r.serving },
+            m.foodId ?? m.id ?? `idx-${i}`,
+            /*strict=*/ true
+          );
+
+          const storeId = generateFoodId(merged);
+          storeUpdates[storeId] = {
+            perGram: merged.nutrition?.perGram || {},
+            healthScore: merged.analysis?.healthScore ?? 0,
+            flags: merged.analysis?.flags ?? [],
+            ingredients: merged.analysis?.ingredients ?? [],
+            imageUrl: merged.analysis?.imageUrl,
+            source: 'generic_foods',
+            confidence: 0.9,
+            __hydrated: true,
+            updatedAt: Date.now(),
           };
-          
-          const merged = toLegacyFoodItem(enrichedItem, i);
-          const improved = perGramSum(merged?.nutrition?.perGram) > perGramSum(m?.nutrition?.perGram);
-          return improved ? { ...merged, __hydrated: true } : m;
-        }));
+
+          return { ...merged, __hydrated: true };
+        });
+
+        if (Object.keys(storeUpdates).length) {
+          useNutritionStore.getState().upsertMany(storeUpdates);
+          console.log('[SST][WRITE][CONFIRM]', {
+            count: Object.keys(storeUpdates).length,
+            ids: Object.keys(storeUpdates),
+          });
+        }
+
+        setConfirmModalItems(enriched);
       } catch (e) {
         console.error('[HYDRATE][OPEN][ERROR]', e);
       }
@@ -420,18 +443,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   // Ground-truth close function
   const finishConfirmFlow = () => {
     setConfirmModalOpen(false);
-    
-    // Import toast dynamically to avoid circular deps
+
     (async () => {
       const { toast } = await import('sonner');
       toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
     })();
-    
-    // Use custom afterLogSuccess callback if provided, otherwise navigate to nutrition
+
     if (afterLogSuccess) {
       afterLogSuccess();
     } else {
-      navigate('/nutrition');
+      // FIX: route to a real page; /nutrition does not exist
+      navigate('/home', { replace: true });
     }
   };
 

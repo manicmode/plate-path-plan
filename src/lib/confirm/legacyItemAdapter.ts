@@ -117,7 +117,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false)
   // Phase 1: Read from store first if SST enabled
   let perGram: LegacyNutrition['perGram'] = {};
   let storeAnalysis: NutritionAnalysis | undefined;
-  let baseFrom: { basis: 'per100g' | 'perServing', div: number, src: any } | null = null;
   
   if (enableSST) {
     storeAnalysis = useNutritionStore.getState().get(id);
@@ -127,34 +126,53 @@ export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false)
     }
   }
   
-  // Fallback: compute per-gram from raw data if not in store
+  // choose a basis (per-100g or per-serving grams)
+  let baseFrom:
+    | { basis: 'per100g'; div: number; src: any }
+    | { basis: 'perServing'; div: number; src: any }
+    | undefined;
+
   if (!Object.keys(perGram).length) {
     if (per100) {
-      baseFrom = { basis: 'per100g' as const, div: 100, src: per100 };
-    } else if (perServing && (raw.analysis?.servingGrams || raw.meta?.servingGrams)) {
-      const servingGrams = raw.analysis?.servingGrams || raw.meta?.servingGrams;
-      baseFrom = { basis: 'perServing' as const, div: servingGrams, src: perServing };
+      baseFrom = { basis: 'per100g', div: 100, src: per100 };
+    } else if (perServing) {
+      const servingGrams =
+        raw.analysis?.servingGrams ||
+        raw.meta?.servingGrams ||
+        raw.serving?.grams;
+      if (servingGrams && servingGrams > 0) {
+        baseFrom = { basis: 'perServing', div: servingGrams, src: perServing };
+      }
     }
 
     if (baseFrom) {
-      for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
-        const v = pick<number>(baseFrom.src?.[k], n?.[k]);
+      const keys = ['calories','protein','carbs','fat','sugar','fiber','sodium'] as const;
+      for (const k of keys) {
+        // Handle generic_foods shapes: protein_g, carbs_g, fat_g, fiber_g, sugar_g, sodium_mg
+        const srcKey =
+          k === 'protein' ? 'protein_g' :
+          k === 'carbs'   ? 'carbs_g'   :
+          k === 'fat'     ? 'fat_g'     :
+          k === 'fiber'   ? 'fiber_g'   :
+          k === 'sugar'   ? 'sugar_g'   :
+          k === 'sodium'  ? 'sodium_mg' :
+          k;
+
+        const v =
+          baseFrom.src?.[k] ??
+          baseFrom.src?.[srcKey] ??
+          n?.[k] ??
+          raw.nutrients?.[srcKey];
+
         if (typeof v === 'number' && v > 0) {
           perGram[k] = v / baseFrom.div;
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[SST][PERGRAM][CALC]', {
+              item: raw.name, key: k, value: v, divisor: baseFrom.div, perGram: perGram[k]
+            });
+          }
         }
       }
-    } else {
-      // Fallback: use current nutrition values as basis for the current grams
-      for (const k of ['calories', 'protein', 'carbs', 'fat', 'sugar', 'fiber', 'sodium'] as const) {
-        const v = pick<number>(n?.[k], raw?.[k]);
-        if (typeof v === 'number' && v > 0 && baseGrams) {
-          perGram[k] = v / baseGrams;
-        }
-      }
-    }
-    
-    if (import.meta.env.DEV && Object.keys(perGram).length) {
-      console.log('[SST][COMPUTE]', { id, name, source: 'raw', perGram });
     }
   }
 
