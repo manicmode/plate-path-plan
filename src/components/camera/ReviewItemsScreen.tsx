@@ -21,9 +21,7 @@ import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
-import { hashMealSet } from '@/lib/sets/hashMealSet';
-import { useReminderStore } from '@/stores/reminderStore';
-import { useSavedSetsStore } from '@/stores/savedSets';
+import { useReminders } from '@/hooks/useReminders';
 
 export interface ReviewItem {
   name: string;
@@ -246,11 +244,47 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [isLogging, setIsLogging] = useState(false);
   const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
   const [isSavingSet, setIsSavingSet] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { playFoodLogConfirm } = useSound();
-  const { isOn, upsertReminder } = useReminderStore();
-  const { upsertSet } = useSavedSetsStore();
+  const { createReminder } = useReminders();
+
+  // Handle meal set reminder creation
+  const handleCreateMealSetReminder = async () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) return;
+
+    try {
+      const mealSetName = selectedItems.map(i => i.name).join(', ');
+      const mealSetData = {
+        items: selectedItems.map(item => ({
+          name: item.name,
+          canonicalName: item.canonicalName || item.name,
+          grams: item.grams || 100
+        }))
+      };
+
+      await createReminder({
+        label: `Eat ${mealSetName}`,
+        type: 'meal',
+        frequency_type: 'daily',
+        frequency_value: 1,
+        reminder_time: '12:30',
+        schedule: 'DTSTART;TZID=UTC:20250101T123000\nRRULE:FREQ=DAILY',
+        is_active: true,
+        food_item_data: mealSetData,
+        channel: 'app',
+        payload: { meal_set: true }
+      });
+      
+      toast.success('Meal set reminder created! 🔔');
+    } catch (error) {
+      console.error('Failed to create reminder:', error);
+      toast.error('Failed to create reminder');
+      setReminderEnabled(false);
+    }
+  };
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -738,43 +772,33 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               {/* Footer (sticky) - only show if we have items */}
               {count > 0 && (
                 <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
-                  {/* Add meal set reminder toggle before Save Set button */}
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-[15px] font-semibold text-white">Set Reminder</div>
-                        <div className="text-xs text-white/60">Get reminded to eat this set again</div>
-                      </div>
-                      <label className="relative inline-flex cursor-pointer items-center">
-                        <input
-                          type="checkbox"
-                          className="peer sr-only"
-                          checked={!!isOn(hashMealSet(items.filter(item => item.selected)))}
-                          onChange={(e) => {
-                            const selectedItems = items.filter(item => item.selected);
-                            const mealSetId = hashMealSet(selectedItems);
-                            upsertReminder({
-                              id: mealSetId,
-                              type: 'meal_set',
-                              title: 'Repeat this meal set',
-                              schedule: {
-                                freq: 'DAILY',
-                                hour: 12,
-                                minute: 30,
-                              },
-                              payload: { 
-                                itemIds: selectedItems.map(i => i.id), 
-                                names: selectedItems.map(i => i.name) 
-                              },
-                            });
-                          }}
-                        />
-                        <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
-                          <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+                  {/* Meal set reminder toggle */}
+                  {selectedCount > 0 && (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-[15px] font-semibold text-white">Set Reminder</div>
+                          <div className="text-xs text-white/60">Get reminded to eat this set again</div>
                         </div>
-                      </label>
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={reminderEnabled}
+                            onChange={(e) => {
+                              setReminderEnabled(e.target.checked);
+                              if (e.target.checked) {
+                                handleCreateMealSetReminder();
+                              }
+                            }}
+                          />
+                          <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
+                            <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+                          </div>
+                        </label>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">

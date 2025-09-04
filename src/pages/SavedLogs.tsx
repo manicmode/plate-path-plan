@@ -8,20 +8,22 @@ import { SavedLogsSets } from '@/components/saved/SavedLogsSets';
 import { listMealSets } from '@/lib/mealSets';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { useAuth } from '@/contexts/auth';
+import { useReminders } from '@/hooks/useReminders';
 import { toast } from 'sonner';
 
 export default function SavedLogs() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { reminders } = useReminders();
   const [searchTerm, setSearchTerm] = useState('');
   const [mealSetsCount, setMealSetsCount] = useState(0);
   
   // Parse URL type parameter
   const urlParams = new URLSearchParams(location.search);
   const urlType = urlParams.get('type');
-  const [activeTab, setActiveTab] = useState<'meals' | 'sets'>(
-    urlType === 'sets' ? 'sets' : 'meals'
+  const [activeTab, setActiveTab] = useState<'meals' | 'sets' | 'reminders'>(
+    urlType === 'sets' ? 'sets' : urlType === 'reminders' ? 'reminders' : 'meals'
   );
 
   // Load meal sets count
@@ -29,9 +31,12 @@ export default function SavedLogs() {
     listMealSets().then(sets => setMealSetsCount(sets.length)).catch(() => {});
   }, []);
 
+  // Count meal reminders
+  const mealRemindersCount = reminders.filter(r => r.type === 'meal').length;
+
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
-    const newTab = value as 'meals' | 'sets';
+    const newTab = value as 'meals' | 'sets' | 'reminders';
     setActiveTab(newTab);
     
     const params = new URLSearchParams(location.search);
@@ -111,12 +116,15 @@ export default function SavedLogs() {
         {/* Tabs */}
         <div className="p-6">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="meals" className="text-sm">
                 Meals
               </TabsTrigger>
               <TabsTrigger value="sets" className="text-sm">
                 Meal Sets ({mealSetsCount})
+              </TabsTrigger>
+              <TabsTrigger value="reminders" className="text-sm">
+                Reminders ({mealRemindersCount})
               </TabsTrigger>
             </TabsList>
             
@@ -131,6 +139,49 @@ export default function SavedLogs() {
                 onQuickLog={oneTapLog}
                 onCountChange={setMealSetsCount}
               />
+            </TabsContent>
+            
+            <TabsContent value="reminders" className="mt-6">
+              <div className="space-y-4">
+                {reminders
+                  .filter(r => r.type === 'meal')
+                  .filter(r => !searchTerm || r.label.toLowerCase().includes(searchTerm.toLowerCase()))
+                  .map(reminder => (
+                    <div key={reminder.id} className="p-4 border border-border rounded-lg bg-card">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-foreground">{reminder.label}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {reminder.frequency_type} at {reminder.reminder_time}
+                          </p>
+                          {reminder.food_item_data?.items && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {reminder.food_item_data.items.length} items: {' '}
+                              {reminder.food_item_data.items.map((item: any) => item.name).join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            reminder.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {reminder.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                
+                {reminders.filter(r => r.type === 'meal').length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-4">🔔</div>
+                    <p className="text-muted-foreground">No meal reminders set</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create reminders from the Review screen when logging meals
+                    </p>
+                  </div>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </div>
