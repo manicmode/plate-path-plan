@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { flushSync } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { X, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info, Save, Utensils, Loader2, ChevronRight, Zap } from 'lucide-react';
@@ -48,6 +49,57 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
+
+  // Enrichment effect - hydrate after modal opens
+  useEffect(() => {
+    if (!confirmModalOpen || !confirmModalItems?.length) return;
+
+    const needsHydration = confirmModalItems.some(m => !m?.nutrition?.perGram || Object.keys(m.nutrition.perGram || {}).length === 0);
+    if (!needsHydration) return;
+
+    // Non-blocking enrichment
+    (async () => {
+      try {
+        const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
+        
+        const enhanced = confirmModalItems.map((m, idx) => {
+          const genericFood = resolveGenericFood(m.name);
+          if (!genericFood) return m;
+
+          // Merge nutrition data
+          const enrichedItem = {
+            ...m,
+            analysis: {
+              ...m.analysis,
+              healthScore: m.analysis?.healthScore || 70,
+              ingredients: genericFood.nutrients ? Object.keys(genericFood.nutrients) : m.analysis?.ingredients || [],
+              source: 'generic_db',
+              dataSourceLabel: 'Nutrition Database'
+            },
+            nutrition: {
+              ...m.nutrition,
+              perGram: {
+                calories: (genericFood.nutrients?.calories || 0) / 100,
+                protein: (genericFood.nutrients?.protein_g || 0) / 100,
+                carbs: (genericFood.nutrients?.carbs_g || 0) / 100,
+                fat: (genericFood.nutrients?.fat_g || 0) / 100,
+                sugar: 0, // Sugar not consistently available in generic foods
+                fiber: (genericFood.nutrients?.fiber_g || 0) / 100,
+                sodium: (genericFood.nutrients?.sodium_mg || 0) / 100,
+              }
+            }
+          };
+
+          return toLegacyFoodItem(enrichedItem, idx);
+        });
+
+        setConfirmModalItems(enhanced);
+        console.log('[CONFIRM][HYDRATE] enriched', { count: enhanced.length });
+      } catch (e) {
+        console.warn('[CONFIRM][HYDRATE][ERROR]', e);
+      }
+    })();
+  }, [confirmModalOpen]);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -235,41 +287,13 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
     console.log('[HR][CTA][MDOWN]', { itemsLength: items?.length });
     if (!items?.length) return;
 
-    // Transform items with rich analysis data using legacy adapter
-    const richFoodItems = items.map((item, index) => {
-      const analysis = report.itemAnalysis.find(a => a.name === item.name);
-      
-      // Enhance item with analysis data for the adapter
-      const enrichedItem = {
-        ...item,
-        analysis: {
-          healthScore: analysis?.score,
-          flags: analysis?.concerns || [], // Use concerns as flags fallback
-          ingredients: analysis?.benefits || [], // Use benefits as ingredients fallback
-          nutrition: {
-            calories: analysis?.calories || 100,
-            // Health report analysis doesn't have detailed nutrition breakdown
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            sugar: 0,
-            fiber: 0,
-            sodium: 0,
-          },
-          source: 'health_report',
-          confidence: 0.9,
-          dataSourceLabel: 'Health Report Analysis'
-        },
-        source: 'health_report'
-      };
-      
-      return toLegacyFoodItem(enrichedItem, index);
-    });
+    // Transform items using legacy adapter uniformly
+    const initialModalItems = items.map((item, index) => toLegacyFoodItem(item, index));
 
     // Synchronous atomic open (higher priority than startTransition)
     flushSync(() => {
       setConfirmFlowActive(true);
-      setConfirmModalItems(richFoodItems);
+      setConfirmModalItems(initialModalItems);
       setCurrentConfirmIndex(0);
       setConfirmModalOpen(true);
     });
@@ -290,8 +314,6 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
 
   const handleConfirmModalComplete = async (foodItem: any) => {
-    setConfirmFlowActive(false);
-
     try {
       playFoodLogConfirm();
       lightTap();
@@ -301,6 +323,7 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
 
     console.log('[CONFIRM][SUCCESS]', {
       itemName: foodItem.name,
+      index: currentConfirmIndex,
       timestamp: Date.now()
     });
 
@@ -317,20 +340,16 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       await oneTapLog([logEntry]);
       
       // Check if there are more items
-      const nextIndex = currentConfirmIndex + 1;
-      if (nextIndex < confirmModalItems.length) {
-        // Move to next item
-        setCurrentConfirmIndex(nextIndex);
+      const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
+      
+      if (isLast) {
+        // End flow only after the last confirm
+        setConfirmFlowActive(false);
+        finishConfirmFlow();
       } else {
-        // All items processed
-        setConfirmModalOpen(false);
-        
-        // Import toast dynamically to avoid circular deps
-        const { toast } = await import('sonner');
-        toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
-        
-        // Navigate to home
-        navigate('/home', { replace: true });
+        // Move to next item, keep flow active
+        setCurrentConfirmIndex(currentConfirmIndex + 1);
+        setConfirmFlowActive(true);
       }
       
     } catch (error) {
@@ -347,20 +366,35 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
       totalItems: confirmModalItems?.length,
       timestamp: Date.now()
     });
-    setConfirmModalOpen(false);
     setConfirmFlowActive(false);
+    finishConfirmFlow();
   };
 
   const handleConfirmModalSkip = () => {
-    // Skip current item, move to next
-    const nextIndex = currentConfirmIndex + 1;
-    if (nextIndex < confirmModalItems.length) {
-      setCurrentConfirmIndex(nextIndex);
-    } else {
-      // No more items, close modal
-      setConfirmModalOpen(false);
+    const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
+    console.log('[CONFIRM][SKIP]', { index: currentConfirmIndex });
+
+    if (isLast) {
       setConfirmFlowActive(false);
+      finishConfirmFlow();
+    } else {
+      setCurrentConfirmIndex(currentConfirmIndex + 1);
+      setConfirmFlowActive(true);
     }
+  };
+
+  // Ground-truth close function
+  const finishConfirmFlow = () => {
+    setConfirmModalOpen(false);
+    
+    // Import toast dynamically to avoid circular deps
+    (async () => {
+      const { toast } = await import('sonner');
+      toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
+    })();
+    
+    // Navigate to home
+    navigate('/home', { replace: true });
   };
 
   const handleItemClick = async (index: number) => {
@@ -463,6 +497,10 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
             if (confirmModalOpen) e.preventDefault();
           }}
         >
+          <VisuallyHidden.Root>
+            <Dialog.Title>Your Health Report</Dialog.Title>
+            <Dialog.Description>Nutritional analysis and health insights for your meal</Dialog.Description>
+          </VisuallyHidden.Root>
           <div className="flex h-full w-full flex-col">
             {/* Header */}
             <header className="sticky top-0 z-10 bg-gradient-to-r from-red-900/60 to-purple-900/60 backdrop-blur-sm px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/10">
@@ -740,34 +778,34 @@ export const HealthReportViewer: React.FC<HealthReportViewerProps> = ({
         onSave={handleSaveWithName}
       />
 
-  // Legacy Rich Food Confirmation Modal
-  {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
-    <>
-      {process.env.NODE_ENV === 'development' && (() => {
-        const item = confirmModalItems[currentConfirmIndex];
-        console.log('[CONFIRM][BINDINGS]', {
-          name: item.name,
-          grams: item.grams,
-          perGram: item.nutrition.perGram,
-          healthScore: item.analysis.healthScore,
-          flags: item.analysis.flags?.length,
-          ingredients: item.analysis.ingredients?.length,
-        });
-        return null;
-      })()}
-      <FoodConfirmationCard
-        isOpen={confirmModalOpen}
-        onClose={handleConfirmModalReject}
-        onConfirm={handleConfirmModalComplete}
-        onSkip={handleConfirmModalSkip}
-        onCancelAll={handleConfirmModalReject}
-        foodItem={confirmModalItems[currentConfirmIndex]}
-        showSkip={true}
-        currentIndex={currentConfirmIndex}
-        totalItems={confirmModalItems.length}
-      />
-    </>
-  )}
+      {/* Legacy Rich Food Confirmation Modal */}
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
+        <>
+          {process.env.NODE_ENV === 'development' && (() => {
+            const item = confirmModalItems[currentConfirmIndex];
+            console.log('[CONFIRM][BINDINGS]', {
+              name: item.name,
+              grams: item.grams,
+              perGram: item.nutrition.perGram,
+              healthScore: item.analysis.healthScore,
+              flags: item.analysis.flags?.length,
+              ingredients: item.analysis.ingredients?.length,
+            });
+            return null;
+          })()}
+          <FoodConfirmationCard
+            isOpen={confirmModalOpen}
+            onClose={handleConfirmModalReject}
+            onConfirm={handleConfirmModalComplete}
+            onSkip={handleConfirmModalSkip}
+            onCancelAll={handleConfirmModalReject}
+            foodItem={confirmModalItems[currentConfirmIndex]}
+            showSkip={true}
+            currentIndex={currentConfirmIndex}
+            totalItems={confirmModalItems.length}
+          />
+        </>
+      )}
     </Dialog.Root>
   );
 };

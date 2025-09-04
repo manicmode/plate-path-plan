@@ -67,6 +67,57 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
+
+  // Enrichment effect - hydrate after modal opens
+  useEffect(() => {
+    if (!confirmModalOpen || !confirmModalItems?.length) return;
+
+    const needsHydration = confirmModalItems.some(m => !m?.nutrition?.perGram || Object.keys(m.nutrition.perGram || {}).length === 0);
+    if (!needsHydration) return;
+
+    // Non-blocking enrichment
+    (async () => {
+      try {
+        const { resolveGenericFood } = await import('@/health/generic/resolveGenericFood');
+        
+        const enhanced = confirmModalItems.map((m, idx) => {
+          const genericFood = resolveGenericFood(m.name);
+          if (!genericFood) return m;
+
+          // Merge nutrition data
+          const enrichedItem = {
+            ...m,
+            analysis: {
+              ...m.analysis,
+              healthScore: m.analysis?.healthScore || 70,
+              ingredients: genericFood.nutrients ? Object.keys(genericFood.nutrients) : m.analysis?.ingredients || [],
+              source: 'generic_db',
+              dataSourceLabel: 'Nutrition Database'
+            },
+            nutrition: {
+              ...m.nutrition,
+              perGram: {
+                calories: (genericFood.nutrients?.calories || 0) / 100,
+                protein: (genericFood.nutrients?.protein_g || 0) / 100,
+                carbs: (genericFood.nutrients?.carbs_g || 0) / 100,
+                fat: (genericFood.nutrients?.fat_g || 0) / 100,
+                sugar: 0, // Sugar not consistently available in generic foods
+                fiber: (genericFood.nutrients?.fiber_g || 0) / 100,
+                sodium: (genericFood.nutrients?.sodium_mg || 0) / 100,
+              }
+            }
+          };
+
+          return toLegacyFoodItem(enrichedItem, idx);
+        });
+
+        setConfirmModalItems(enhanced);
+        console.log('[CONFIRM][HYDRATE] enriched', { count: enhanced.length });
+      } catch (e) {
+        console.warn('[CONFIRM][HYDRATE][ERROR]', e);
+      }
+    })();
+  }, [confirmModalOpen]);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
@@ -192,33 +243,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       return;
     }
 
-    // Transform items using legacy adapter with basic nutrition defaults
-    const richFoodItems = selectedItems.map((item, index) => {
-      // Enhance item with basic analysis structure for the adapter
-      const enrichedItem = {
-        ...item,
-        analysis: {
-          healthScore: 70, // Default moderate score
-          flags: [],
-          ingredients: [],
-          nutrition: {
-            calories: 100, // Default calories
-            protein: 0,
-            carbs: 0, 
-            fat: 0,
-            sugar: 0,
-            fiber: 0,
-            sodium: 0,
-          },
-          source: 'review_items',
-          confidence: 0.9, // Default confidence for review items
-          dataSourceLabel: 'Manual Review'
-        },
-        source: 'review_items'
-      };
-      
-      return toLegacyFoodItem(enrichedItem, index);
-    });
+    // Transform items using legacy adapter uniformly
+    const initialModalItems = selectedItems.map((item, index) => toLegacyFoodItem(item, index));
 
     // Set flow active to prevent ScanHub navigation
     setConfirmFlowActive(true);
@@ -228,13 +254,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
     
     // Open legacy confirm modal immediately
-    setConfirmModalItems(richFoodItems);
+    setConfirmModalItems(initialModalItems);
     setCurrentConfirmIndex(0);
     setConfirmModalOpen(true);
 
     if (import.meta.env.VITE_LOG_DEBUG === 'true') {
       console.log('[REV][FLOW] beginConfirmSequence()');
-      console.log('[LEGACY][FLOW] open index=0', richFoodItems[0]?.name);
+      console.log('[LEGACY][FLOW] open index=0', initialModalItems[0]?.name);
     }
 
     // Close the review screen AFTER starting the flow
@@ -250,8 +276,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleConfirmModalComplete = async (foodItem: any) => {
-    setConfirmFlowActive(false);
-
     try {
       playFoodLogConfirm();
       lightTap();
@@ -261,6 +285,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
     console.log('[CONFIRM][SUCCESS]', {
       itemName: foodItem.name,
+      index: currentConfirmIndex,
       timestamp: Date.now()
     });
 
@@ -277,20 +302,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       await oneTapLog([logEntry]);
       
       // Check if there are more items
-      const nextIndex = currentConfirmIndex + 1;
-      if (nextIndex < confirmModalItems.length) {
-        // Move to next item
-        setCurrentConfirmIndex(nextIndex);
+      const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
+      
+      if (isLast) {
+        // End flow only after the last confirm
+        setConfirmFlowActive(false);
+        finishConfirmFlow();
       } else {
-        // All items processed
-        setConfirmModalOpen(false);
-        
-        // Import toast dynamically to avoid circular deps
-        const { toast } = await import('sonner');
-        toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
-        
-        // Navigate to home
-        navigate('/home', { replace: true });
+        // Move to next item, keep flow active
+        setCurrentConfirmIndex(currentConfirmIndex + 1);
+        setConfirmFlowActive(true);
       }
       
     } catch (error) {
@@ -307,19 +328,38 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       totalItems: confirmModalItems?.length,
       timestamp: Date.now()
     });
-    setConfirmModalOpen(false);
     setConfirmFlowActive(false);
+    finishConfirmFlow();
   };
 
   const handleConfirmModalSkip = () => {
-    // Skip current item, move to next
-    const nextIndex = currentConfirmIndex + 1;
-    if (nextIndex < confirmModalItems.length) {
-      setCurrentConfirmIndex(nextIndex);
-    } else {
-      // No more items, close modal
-      setConfirmModalOpen(false);
+    const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
+    console.log('[CONFIRM][SKIP]', { index: currentConfirmIndex });
+
+    if (isLast) {
       setConfirmFlowActive(false);
+      finishConfirmFlow();
+    } else {
+      setCurrentConfirmIndex(currentConfirmIndex + 1);
+      setConfirmFlowActive(true);
+    }
+  };
+
+  // Ground-truth close function
+  const finishConfirmFlow = () => {
+    setConfirmModalOpen(false);
+    
+    // Import toast dynamically to avoid circular deps
+    (async () => {
+      const { toast } = await import('sonner');
+      toast.success(`Logged ${confirmModalItems.length} item${confirmModalItems.length > 1 ? 's' : ''} ✓`);
+    })();
+    
+    // Use custom afterLogSuccess callback if provided, otherwise navigate to nutrition
+    if (afterLogSuccess) {
+      afterLogSuccess();
+    } else {
+      navigate('/nutrition');
     }
   };
 
@@ -599,34 +639,34 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         onSave={handleSaveSetWithName}
       />
 
-  {/* Legacy Rich Food Confirmation Modal */}
-  {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
-    <>
-      {process.env.NODE_ENV === 'development' && (() => {
-        const item = confirmModalItems[currentConfirmIndex];
-        console.log('[CONFIRM][BINDINGS]', {
-          name: item.name,
-          grams: item.grams,
-          perGram: item.nutrition.perGram,
-          healthScore: item.analysis.healthScore,
-          flags: item.analysis.flags?.length,
-          ingredients: item.analysis.ingredients?.length,
-        });
-        return null;
-      })()}
-      <FoodConfirmationCard
-        isOpen={confirmModalOpen}
-        onClose={handleConfirmModalReject}
-        onConfirm={handleConfirmModalComplete}
-        onSkip={handleConfirmModalSkip}
-        onCancelAll={handleConfirmModalReject}
-        foodItem={confirmModalItems[currentConfirmIndex]}
-        showSkip={true}
-        currentIndex={currentConfirmIndex}
-        totalItems={confirmModalItems.length}
-      />
-    </>
-  )}
+      {/* Legacy Rich Food Confirmation Modal */}
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
+        <>
+          {process.env.NODE_ENV === 'development' && (() => {
+            const item = confirmModalItems[currentConfirmIndex];
+            console.log('[CONFIRM][BINDINGS]', {
+              name: item.name,
+              grams: item.grams,
+              perGram: item.nutrition.perGram,
+              healthScore: item.analysis.healthScore,
+              flags: item.analysis.flags?.length,
+              ingredients: item.analysis.ingredients?.length,
+            });
+            return null;
+          })()}
+          <FoodConfirmationCard
+            isOpen={confirmModalOpen}
+            onClose={handleConfirmModalReject}
+            onConfirm={handleConfirmModalComplete}
+            onSkip={handleConfirmModalSkip}
+            onCancelAll={handleConfirmModalReject}
+            foodItem={confirmModalItems[currentConfirmIndex]}
+            showSkip={true}
+            currentIndex={currentConfirmIndex}
+            totalItems={confirmModalItems.length}
+          />
+        </>
+      )}
     </Dialog.Root>
   );
 };
