@@ -12,6 +12,7 @@ import { sanitizeText } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
 import { submitTextLookup, FEATURE_TEXT_LOOKUP_V2 } from '@/lib/food/textLookup';
 import TextLookupLoading from '@/components/common/TextLookupLoading';
+import NeonScanOverlay from '@/components/common/NeonScanOverlay';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -30,6 +31,19 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [mealType, setMealType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTextLookupLoading, setIsTextLookupLoading] = useState(false);
+  
+  // Portion input state
+  type PortionUnit = 'g' | 'oz' | 'ml';
+  const [portionValue, setPortionValue] = useState<number | ''>('');
+  const [portionUnit, setPortionUnit] = useState<PortionUnit>('g');
+
+  function portionToGrams(value: number, unit: PortionUnit) {
+    const OZ_TO_G = 28.349523125;
+    if (unit === 'g') return value;
+    if (unit === 'oz') return value * OZ_TO_G;
+    if (unit === 'ml') return value; // treat ml ~ g for water-like density
+    return value;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +65,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         useV2: FEATURE_TEXT_LOOKUP_V2
       });
 
-      // Use unified text lookup system
-      const { items } = await submitTextLookup(trimmedName, { source: 'manual' });
+      // Use unified text lookup system with portion override
+      const portionOverrideGrams = 
+        portionValue === '' ? undefined : portionToGrams(Number(portionValue), portionUnit);
+      
+      const { items } = await submitTextLookup(trimmedName, { 
+        source: 'manual',
+        portionOverrideGrams 
+      });
       
       setIsTextLookupLoading(false);
 
@@ -219,6 +239,37 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               />
             </div>
 
+            {/* Portion Input */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Portion Amount (Optional)</Label>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={portionValue}
+                  onChange={(e) => setPortionValue(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="e.g., 150"
+                  disabled={isLoading}
+                  className="text-base"
+                />
+                <Select value={portionUnit} onValueChange={(value: PortionUnit) => setPortionUnit(value)} disabled={isLoading}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="g">g</SelectItem>
+                    <SelectItem value="oz">oz</SelectItem>
+                    <SelectItem value="ml">ml</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {portionValue && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Will override default serving size with {portionValue} {portionUnit}
+                </div>
+              )}
+            </div>
+
             {/* Amount Eaten Slider */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Amount Eaten</Label>
@@ -290,7 +341,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       </Card>
       
       {/* Text Lookup Loading Overlay */}
-      {isTextLookupLoading && <TextLookupLoading label="Searching brands & generics…" />}
+      {isTextLookupLoading && <NeonScanOverlay label="Searching brands • generics • restaurants…" />}
     </div>
   );
 };

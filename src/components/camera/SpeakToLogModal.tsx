@@ -5,6 +5,7 @@ import { Mic, MicOff, X, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import TextLookupLoading from '@/components/common/TextLookupLoading';
+import NeonScanOverlay from '@/components/common/NeonScanOverlay';
 
 interface SpeakToLogModalProps {
   isOpen: boolean;
@@ -249,7 +250,7 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
       </Card>
       
       {/* Text Lookup Loading Overlay */}
-      {isTextLookupLoading && <TextLookupLoading label="Listening & finding matches…" />}
+      {isTextLookupLoading && <NeonScanOverlay label="Listening & finding matches…" />}
     </div>
   );
 };

@@ -11,6 +11,7 @@ export type TextLookupSource = 'manual' | 'speech';
 export interface TextLookupOptions {
   source: TextLookupSource;
   bypassCache?: boolean;
+  portionOverrideGrams?: number;
 }
 
 // Telemetry counters
@@ -62,7 +63,8 @@ export async function submitTextLookup(
       body: { 
         q: trimmed, 
         source: options.source,
-        bypassCache: options.bypassCache 
+        bypassCache: options.bypassCache,
+        portionOverrideGrams: options.portionOverrideGrams
       },
       headers
     });

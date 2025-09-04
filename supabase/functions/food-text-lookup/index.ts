@@ -145,6 +145,16 @@ function extractQuantity(s: string): { grams: number | null, servingText?: strin
   return { grams: null };
 }
 
+function lev(a: string, b: string): number {
+  const A = a.toLowerCase(), B = b.toLowerCase();
+  const dp = Array.from({ length: A.length + 1 }, () => new Array(B.length + 1).fill(0));
+  for (let i = 0; i <= A.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= B.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= A.length; i++) for (let j = 1; j <= B.length; j++)
+    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1] + (A[i-1]===B[j-1] ? 0 : 1));
+  return dp[A.length][B.length];
+}
+
 function cleanQuery(q: string): string {
   return normalize(q);
 }
@@ -156,8 +166,11 @@ function normalizeQuery(q: string): string {
 function matchGeneric(query: string): { key: string, def: GenericDef } | null {
   for (const [key, def] of Object.entries(BASIC_GENERICS)) {
     for (const s of def.synonyms) {
-      const re = new RegExp(`\\b${s.replace(/\s+/g, '\\s+')}\\b`, 'i');
-      if (re.test(query)) return { key, def };
+      const exact = new RegExp(`\\b${s.replace(/\s+/g,'\\s+')}\\b`, 'i');
+      if (exact.test(query)) return { key, def };
+      // fuzzy: allow small typos (e.g., "chcken" ≤ 2 edits)
+      const dist = Math.min(...s.split(' ').map(w => Math.min(...query.split(' ').map(qw => lev(w,qw)))));
+      if (dist <= 2) return { key, def };
     }
   }
   return null;
@@ -324,16 +337,16 @@ async function resolveOFF(q: string): Promise<RecognizedFood[] | null> {
   }
 }
 
-async function resolveGeneric(q: string): Promise<RecognizedFood[] | null> {
-  console.log('[RESOLVER][GENERIC] Searching:', q);
+async function resolveGeneric(query: string): Promise<RecognizedFood[] | null> {
+  console.log('[RESOLVER][GENERIC] Searching:', query);
   
-  // 1) try DB if present
+  // 1) Try DB if present
   try {
-    const { data } = await supabase.from('food_generics').select('*').ilike('name', `%${q}%`).limit(5);
+    const { data } = await supabase.from('food_generics').select('*').ilike('name', `%${query}%`).limit(5);
     if (data?.length) {
       return data.map((g: any) => {
         const parsed = parseServingFromText(g?.serving_text);
-        const grams = parsed.grams ?? coerce(g?.serving_grams) ?? extractQuantity(q).grams ?? 100;
+        const grams = parsed.grams ?? coerce(g?.serving_grams) ?? extractQuantity(query).grams ?? 100;
         const per = derivePerPortion(g, grams);
         return {
           id: crypto.randomUUID(),
@@ -356,11 +369,11 @@ async function resolveGeneric(q: string): Promise<RecognizedFood[] | null> {
     }
   } catch (_) { /* ignore */ }
 
-  // 2) built-in lexicon fallback
-  const hit = matchGeneric(q);
+  // 2) Built-in lexicon fallback with fuzzy matching
+  const hit = matchGeneric(query);
   if (hit) {
     const { def, key } = hit;
-    const qty = extractQuantity(q);
+    const qty = extractQuantity(query);
     const grams = qty.grams ?? def.defaultServingG;
     const scale = grams / 100;
 
@@ -379,7 +392,7 @@ async function resolveGeneric(q: string): Promise<RecognizedFood[] | null> {
       carbs_g:   +(def.per100g.c * scale).toFixed(1),
       fat_g:     +(def.per100g.f * scale).toFixed(1),
       __hydrated: true,
-      confidence: 0.8
+      confidence: 0.80
     }];
   }
 
@@ -597,7 +610,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { q, source, bypassCache } = await req.json();
+    const { q, source, bypassCache, portionOverrideGrams } = await req.json();
     const query = cleanQuery(q || '');
     
     if (!query) {
@@ -673,10 +686,28 @@ serve(async (req: Request) => {
 
     // Annotate source field and deduplicate/cap results
     if (results) {
-      results = results.map(r => ({ 
-        ...r, 
-        source: (source === 'speech' ? 'speech' : 'manual') as const 
-      }));
+      results = results.map(r => {
+        // Apply portion override if provided
+        if (portionOverrideGrams && portionOverrideGrams > 0) {
+          const scale = portionOverrideGrams / (r.servingGrams || 100);
+          return {
+            ...r,
+            source: (source === 'speech' ? 'speech' : 'manual') as const,
+            servingGrams: portionOverrideGrams,
+            servingText: `${portionOverrideGrams} g`,
+            calories: Math.round(r.calories * scale),
+            protein_g: +(r.protein_g * scale).toFixed(1),
+            carbs_g: +(r.carbs_g * scale).toFixed(1),
+            fat_g: +(r.fat_g * scale).toFixed(1),
+            fiber_g: r.fiber_g ? +(r.fiber_g * scale).toFixed(1) : undefined,
+            sugar_g: r.sugar_g ? +(r.sugar_g * scale).toFixed(1) : undefined,
+          };
+        }
+        return { 
+          ...r, 
+          source: (source === 'speech' ? 'speech' : 'manual') as const 
+        };
+      });
       
       // Deduplicate and cap results
       results = dedupeAndCap(results);
