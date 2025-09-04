@@ -14,11 +14,17 @@ import { FF } from '@/featureFlags';
 // Import camera diagnostic shim (dev-only, off by default)
 import '@/diagnostics/cameraInq';
 
+// Import QA tools in dev mode
+if (import.meta.env.DEV) {
+  import('@/scripts/nudgeQARunner');
+}
+
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const PhotoSandbox = React.lazy(() => import('@/pages/debug/PhotoSandbox'));
 const DebugPipeline = React.lazy(() => import('@/pages/DebugPipeline'));
+const NudgeQAPage = React.lazy(() => import('@/pages/NudgeQAPage'));
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -266,28 +272,38 @@ function AppContent() {
                         </ProtectedRoute>
                       } />
 
-                     {/* DEV-only Photo Sandbox route - force mount */}
-                     {import.meta.env.DEV && (
-                       <>
-                         <Route
-                           path="/debug/photo"
-                           element={
-                             <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
-                               <PhotoSandbox />
-                             </React.Suspense>
-                           }
-                         />
-                          <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                          <Route 
-                            path="/debug/pipeline"
+                      {/* DEV-only routes */}
+                      {import.meta.env.DEV && (
+                        <>
+                          <Route
+                            path="/debug/photo"
                             element={
-                              <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
-                                <DebugPipeline />
+                              <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Photo Sandbox…</div>}>
+                                <PhotoSandbox />
                               </React.Suspense>
                             }
                           />
-                       </>
-                     )}
+                           <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                           <Route 
+                             path="/debug/pipeline"
+                             element={
+                               <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
+                                 <DebugPipeline />
+                               </React.Suspense>
+                             }
+                           />
+                           <Route 
+                             path="/qa/nudges"
+                             element={
+                               <ProtectedRoute>
+                                 <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                                   <NudgeQAPage />
+                                 </React.Suspense>
+                               </ProtectedRoute>
+                             }
+                           />
+                        </>
+                      )}
 
                      <Route path="/exercise-hub" element={
                        <ProtectedRoute>
