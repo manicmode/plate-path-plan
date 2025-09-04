@@ -41,6 +41,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
+import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 import { UnifiedPhotoCaptureModal } from '@/components/camera/UnifiedPhotoCaptureModal';
 import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
 import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
@@ -3471,6 +3472,7 @@ console.log('Global search enabled:', enableGlobalSearch);
 
 
       {/* Saved Sets Sheet */}
+      {/* Saved Sets Sheet */}
       <SavedSetsSheet 
         isOpen={showSavedSetsSheet}
         onClose={() => setShowSavedSetsSheet(false)}
@@ -3491,6 +3493,11 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowReviewScreen(true);
         }}
       />
+
+      {/* Activity Logging Section - Exercise, Recovery, Habits */}
+      <div className="mt-8">
+        <ActivityLoggingSection />
+      </div>
 
       {/* Unified Photo Capture Modal */}
         <UnifiedPhotoCaptureModal
