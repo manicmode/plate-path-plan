@@ -48,6 +48,7 @@ import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
 import { mapVisionNameToFood } from '@/lyf_v1_frozen/mapToNutrition';
+import { analyzeBarcode } from '@/pipelines/barcodePipeline';
 import { FF } from '@/featureFlags';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
@@ -1299,102 +1300,17 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       
       console.log('[BARCODE][LOOKUP:REQUEST]', { code: barcode, normalized: cleanBarcode });
 
-// Global barcode search is intentionally forced OFF for now.
-// Runtime is hardcoded to false; the profile toggle is ignored until rollout.
-const enableGlobalSearch = false;
-console.log('Global search enabled:', enableGlobalSearch);
-
-      console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
-      
-      // Test function deployment with health check
       try {
-        const healthResponse = await supabase.functions.invoke('barcode-lookup-global', {
-          body: { health: true }
-        });
-        console.log('Health check response:', healthResponse);
-      } catch (healthError) {
-        console.error('Health check failed:', healthError);
-        if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
-          toast.error("Service temporarily unavailable", {
-            description: "Please enter product manually below",
-            action: {
-              label: "Enter Manually",
-              onClick: () => {
-                setShowBarcodeNotFound(true);
-                setFailedBarcode(cleanBarcode);
-              }
-            }
-          });
-          setIsLoadingBarcode(false);
-          return;
-        }
-      }
-      
-      console.log('=== STEP 2: CALLING BARCODE LOOKUP FUNCTION ===');
-      
-      // Create timeout controller
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4500);
-      
-      let hit = false;
-      let status: string | number = 'error';
-      
-      try {
-        const response = await supabase.functions.invoke('enhanced-health-scanner', {
-          body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' }
-        });
+        // Use working barcode pipeline instead of failing edge function
+        const result = await analyzeBarcode({ code: cleanBarcode });
         
-        status = response.error ? response.error.status || 'error' : 200;
-        hit = !!response.data?.ok && !!response.data.product;
-        
-        console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: !response.error, found: hit, itemName: response.data?.product?.name, provider: 'enhanced-health-scanner' });
-        
-        if (response.error) {
-          console.error('=== FUNCTION INVOCATION ERROR ===');
-          console.error('Error object:', response.error);
-          console.warn('[BARCODE][EARLY_RETURN]', { reason: 'function_error', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
+        if (!result.ok) {
+          console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: false, found: false, reason: result.reason });
+          console.warn('[BARCODE][EARLY_RETURN]', { reason: result.reason, code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
           
-          // Handle specific error types with immediate fallback to manual entry
-          if (response.error.message?.includes('404') || 
-              response.error.message?.includes('Not Found') ||
-              response.error.message?.includes('FunctionsError')) {
-            console.error('Function deployment issue detected - 404 error');
-            
-            toast.error("Service temporarily unavailable", {
-              description: "Enter product details manually",
-              action: {
-                label: "Enter Manually",
-                onClick: () => {
-                  setShowBarcodeNotFound(true);
-                  setFailedBarcode(cleanBarcode);
-                }
-              }
-            });
-            
-            setShowBarcodeNotFound(true);
-            setFailedBarcode(cleanBarcode);
-            return;
-          }
-          
-          throw new Error(response.error.message || 'Failed to lookup barcode');
-        }
-
-        const data = response.data;
-        console.log('=== LOOKUP SUCCESS ===');
-        console.log('Response data:', data);
-        
-        // Handle enhanced-health-scanner response structure
-        if (!data?.ok || !data.product) {
-          const reason = data?.reason || 'unknown';
-          console.log('=== BARCODE LOOKUP FAILED ===', reason);
-          console.warn('[BARCODE][EARLY_RETURN]', { reason: 'lookup_failed', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
-          
-          // Add logging for failed barcode lookup
-          console.log('[LOG] off_result', { status: 404, hit: false });
-          
-          const msg = reason === 'off_miss' && /^\d{8}$/.test(cleanBarcode)
-            ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
-            : 'Barcode not found in database. Would you like to add this product?';
+          const msg = result.reason === 'not_found' && /^\d{8}$/.test(cleanBarcode)
+            ? 'This 8-digit code is not in database. Try another side or enter manually.'
+            : 'Barcode not found. Would you like to add this product?';
           
           toast.info(msg, {
             description: "Try scanning again or enter manually",
@@ -1411,17 +1327,67 @@ console.log('Global search enabled:', enableGlobalSearch);
           setFailedBarcode(cleanBarcode);
           return;
         }
-
-        // Use null-safe mapper to handle varied response shapes
-        console.log('=== PROCESSING FOOD DATA ===');
         
-        // Log successful OFF result 
-        console.log('[LOG] off_result', { status: 200, hit: true });
+        // Transform successful barcode result to confirmation modal format
+        const report = result.report;
+        console.log('[BARCODE][LOOKUP:RESPONSE]', { ok: true, found: true, itemName: report?.productName });
+        console.log('[BARCODE][MAP:ITEM]', { id: report?.productName, name: report?.productName, grams: 100 });
+        
+        const mappedItem = {
+          id: Date.now().toString(),
+          name: report.productName || 'Unknown Product',
+          brand: report.brand || '',
+          grams: 100,
+          nutrition: {
+            calories: report.nutrition?.calories || 0,
+            protein: report.nutrition?.protein || 0,
+            carbs: report.nutrition?.carbs || 0,
+            fat: report.nutrition?.fat || 0,
+            fiber: report.nutrition?.fiber || 0,
+            sugar: report.nutrition?.sugar || 0,
+            sodium: report.nutrition?.sodium || 0,
+            perGram: report.nutrition?.perGram || {
+              calories: (report.nutrition?.calories || 0) / 100,
+              protein: (report.nutrition?.protein || 0) / 100,
+              carbs: (report.nutrition?.carbs || 0) / 100,
+              fat: (report.nutrition?.fat || 0) / 100,
+              fiber: (report.nutrition?.fiber || 0) / 100,
+              sugar: (report.nutrition?.sugar || 0) / 100,
+              sodium: (report.nutrition?.sodium || 0) / 100
+            }
+          },
+          source: 'barcode',
+          sourceData: {
+            barcode: cleanBarcode,
+            originalProduct: report
+          },
+          __hydrated: true // Mark as already hydrated
+        };
 
-        try {
-          // Map the response using robust nutrition handling
-          const mapped = mapToLogFood(cleanBarcode, data);
-          const p = data.product as LogProduct; // Keep for ingredients/health data
+        console.log('[BARCODE][OPEN_CONFIRM]', { id: mappedItem.id, name: mappedItem.name, via: 'confirm-card' });
+        
+        // Open confirmation modal
+        setConfirmModalItems([mappedItem]);
+        setConfirmModalOpen(true);
+        setIsLoadingBarcode(false);
+
+      } catch (error) {
+        console.error('[BARCODE][ERROR]', error);
+        console.warn('[BARCODE][EARLY_RETURN]', { reason: 'network_error', code: cleanBarcode, state: { inputSource, isAnalyzing, hasItems: 0 }});
+        
+        toast.error('Network error during barcode lookup', {
+          description: 'Please try again or enter manually',
+          action: {
+            label: "Enter Manually",
+            onClick: () => {
+              setShowBarcodeNotFound(true);
+              setFailedBarcode(cleanBarcode);
+            }
+          }
+        });
+        
+        setIsLoadingBarcode(false);
+      }
           
           console.log('[BARCODE][MAP:ITEM]', { id: mapped?.name, name: mapped?.name, grams: mapped?.servingGrams });
           
@@ -1635,8 +1601,6 @@ console.log('Global search enabled:', enableGlobalSearch);
           setFailedBarcode(cleanBarcode);
         }
       } finally {
-        clearTimeout(timeout);
-        console.log('[LOG] off_result', { status, hit });
         console.log('[BARCODE][FINALLY]', { stopLoader: true });
         setIsLoadingBarcode(false);
       }
@@ -2317,9 +2281,10 @@ console.log('Global search enabled:', enableGlobalSearch);
     setIsAnalyzing(false);
     setShowSmartLoader(false);
     
-    // Ensure main camera UI is visible by clearing other modal states
+    // Ensure main camera UI remains visible - do not reset main logging window
     setShowError(false);
     setShowManualEdit(false);
+    // CRITICAL: Never hide the Log Your Food window during state transitions
     setShowVoiceAnalyzing(false);
     setShowProcessingNextItem(false);
     setShowVoiceEntry(false);
@@ -3003,7 +2968,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         </div>
       )}
 
-      {/* Main Camera UI */}
+      {/* Main Camera UI - NEVER hide this during loading states */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
