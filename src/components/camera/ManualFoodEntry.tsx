@@ -158,7 +158,19 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   };
 
   const handleNameChange = (value: string) => {
-    setFoodName(sanitizeText(value));
+    // Ensure spaces are preserved and handle edge cases
+    const sanitizedValue = value
+      .replace(/[<>]/g, '') // Remove XSS characters only
+      .slice(0, 1000); // Limit length
+    setFoodName(sanitizedValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Ensure space key works properly
+    if (e.key === ' ' || e.code === 'Space') {
+      e.stopPropagation();
+      // Let the default behavior proceed
+    }
   };
 
   if (!isOpen) return null;
@@ -190,10 +202,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 id="name"
                 value={foodName}
                 onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="e.g., Apple, Banana, Chicken sandwich..."
+                onKeyDown={handleKeyDown}
+                placeholder="e.g., grilled chicken 150g, banana, cheese sandwich..."
                 required
                 disabled={isLoading}
                 className="text-base"
+                autoComplete="off"
+                spellCheck="false"
               />
             </div>
 
