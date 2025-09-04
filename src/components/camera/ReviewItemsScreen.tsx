@@ -435,6 +435,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleSaveSetWithName = async (setName: string) => {
+    console.log('[DEBUG][SAVE_SET_WITH_NAME] Called with:', { setName, context, itemsLength: items.length });
+    
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to save');
@@ -444,7 +446,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setIsSavingSet(true);
 
     try {
-      console.log('[MEAL_SET][UI:SAVE_CLICK]', { itemsCount: selectedItems.length });
+      console.log('[MEAL_SET][UI:SAVE_CLICK]', { itemsCount: selectedItems.length, context });
 
       if (context === 'health-scan') {
         // EXISTING HEALTH-SCAN BRANCH: leave as-is
