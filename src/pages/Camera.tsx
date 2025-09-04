@@ -3495,9 +3495,11 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
       {/* Activity Logging Section - Exercise, Recovery, Habits */}
-      <div className="mt-8">
-        <ActivityLoggingSection />
-      </div>
+      {activeTab !== 'recent' && (
+        <div className="mt-8">
+          <ActivityLoggingSection />
+        </div>
+      )}
 
       {/* Unified Photo Capture Modal */}
         <UnifiedPhotoCaptureModal
