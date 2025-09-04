@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
+import { useNutritionStore } from '@/stores/nutritionStore';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -64,6 +65,10 @@ interface FoodItem {
   } | null;
   portionGrams?: number | null;
   factor?: number;
+  // Nutrition data for store-based reading
+  nutrition?: {
+    perGram?: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>>;
+  };
 }
 
 interface FoodConfirmationCardProps {
@@ -204,17 +209,46 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   if (!currentFoodItem) return null;
 
+  // FORCE: read from store by exact item.id first
+  const storePerGram = useNutritionStore(
+    s => s.byId[currentFoodItem.id || '']?.perGram
+  );
+
+  // Fallback only if store is missing
+  const perGram = storePerGram ?? currentFoodItem.nutrition?.perGram ?? {};
+
+  if (process.env.NODE_ENV === 'development') {
+    const pgSum = Object.values(perGram).reduce((a: number, v: any) => a + (+v || 0), 0);
+    console.log('[SST][CARD_BIND]', { id: currentFoodItem.id, pgSum, fromStore: !!storePerGram });
+  }
+
   const portionMultiplier = portionPercentage[0] / 100;
+  
+  // Compute macros strictly from perGram if available
+  const macros = useMemo(() => {
+    const g = (currentFoodItem.portionGrams ?? 100) * portionMultiplier;
+    const v = (k: keyof typeof perGram) => (perGram?.[k] ?? 0) * g;
+    
+    return Object.keys(perGram).length > 0 ? {
+      calories: Math.round(v('calories')),
+      protein: Math.round(v('protein') * 10) / 10,
+      carbs: Math.round(v('carbs') * 10) / 10,
+      fat: Math.round(v('fat') * 10) / 10,
+      sugar: Math.round(v('sugar') * 10) / 10,
+      fiber: Math.round(v('fiber') * 10) / 10,
+      sodium: Math.round(v('sodium')),
+    } : null;
+  }, [perGram, currentFoodItem.portionGrams, portionMultiplier]);
   
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
 
-  // Calculate effective nutrients using basePer100 * factor * sliderFraction if available
+  // Calculate effective nutrients - use macros from store first, then basePer100, then fallback
   const base = currentFoodItem.basePer100; // per-100g baseline
   const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  const effective = base
+  const effective = macros || (base
     ? {
         calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
         protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
@@ -225,7 +259,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
       }
     : {
-        // fallback: if no basePer100 was provided, keep existing behavior
+        // fallback: if no perGram and no basePer100 was provided, keep existing behavior
         calories: Math.round(currentFoodItem.calories * portionMultiplier),
         protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
         carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
@@ -233,7 +267,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
         sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
         sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
-      };
+      });
 
   const adjustedFood = {
     ...currentFoodItem,

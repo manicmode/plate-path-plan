@@ -105,8 +105,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 serving: result.serving
               };
               
-              const merged = toLegacyFoodItem(enrichedItem, next);
-              const improved = perGramSum(merged?.nutrition?.perGram) > perGramSum(copy[next]?.nutrition?.perGram);
+               const merged = toLegacyFoodItem(enrichedItem, `item-${next}`);
+               const improved = perGramSum(merged?.nutrition?.perGram) > perGramSum(copy[next]?.nutrition?.perGram);
               copy[next] = improved ? { ...merged, __hydrated: true } : copy[next];
               return copy;
             });
@@ -147,14 +147,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const r = results?.[i];
           if (!r) return m;
 
-          // UNIFY: use the same ID source for both write and read
+          // UNIFY: use the same ID the modal will read with
           const storeId = m.foodId ?? m.id ?? generateFoodId(m);
           
           const merged = toLegacyFoodItem(
-            { ...m, nutrients: r.nutrients, serving: r.serving, id: storeId },
+            { ...m, nutrients: r.nutrients, serving: r.serving },
             storeId,
             /*strict=*/ true
           );
+
           storeUpdates[storeId] = {
             perGram: merged.nutrition?.perGram || {},
             healthScore: merged.analysis?.healthScore ?? 0,
@@ -176,6 +177,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             count: Object.keys(storeUpdates).length,
             ids: Object.keys(storeUpdates),
           });
+
+          // Add decisive probe to verify pipeline
+          setTimeout(() => {
+            const byId = useNutritionStore.getState().byId;
+            const report = enriched.map(m => ({
+              id: m.id, 
+              has: !!byId[m.id], 
+              pgSum: byId[m.id] ? Object.values(byId[m.id].perGram||{}).reduce((a:any,b:any)=>a+(+b||0),0) : 0
+            }));
+            console.log('[SST][STORE_AFTER_WRITE]', report);
+          }, 50);
         }
 
         setConfirmModalItems(enriched);
@@ -324,7 +336,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     // Transform items using legacy adapter with SST enabled
     const initialModalItems = selectedItems.map((item, index) => {
       const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
-      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
+      return toLegacyFoodItem({ ...item }, id, ENABLE_SST_CONFIRM_READ);
     });
     
     // Hard ID diagnostics for modal items
