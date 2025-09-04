@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
-import ConfirmLoader from '@/components/ConfirmLoader';
+import ConfirmLoaderMinimal from '@/components/ConfirmLoaderMinimal';
 
 function perGramReady(entry?: { perGram?: Record<string, number> }) {
   if (!entry?.perGram) return false;
@@ -694,13 +694,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         });
         
         if (shouldShowLoader) {
-          return (
-            <ConfirmLoader
-              title="Preparing nutrition details…"
-              subtitle="Analyzing per-gram data and applying your settings."
-              itemName={cur?.name ?? null}
-            />
-          );
+          return <ConfirmLoaderMinimal />;
         }
         
         if (cur) {
