@@ -120,9 +120,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // Debug (temporary): verify stable inputs to hooks
-  console.log('[HOOK_ORDER_INIT] FoodConfirmationCard mount');
-
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
 
@@ -136,7 +133,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
   const isNutritionReady = perGramSum > 0;
 
-  console.log('[HOOK_ORDER]', { foodId, hasPropFood: !!foodItem, hasCurFood: !!currentFoodItem, perGramSum });
+  
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -225,16 +222,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Guard content rendering ONLY; hooks already executed
   if (!currentFoodItem) {
-    console.log('[RENDER_GUARD] no currentFoodItem');
     return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
   }
 
   if (!isNutritionReady) {
-    console.log('[RENDER_GUARD] nutrition not ready', { foodId, perGramSum });
     return <span data-guard="not-ready" />;
   }
-
-  console.log('[RENDER_READY]', { foodId, hasCurFood: !!currentFoodItem, isNutritionReady: isNutritionReady });
 
   const portionMultiplier = portionPercentage[0] / 100;
   
