@@ -230,7 +230,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
 
+  // If perGram is still empty, don't render the macro UI yet (lets loader cover it)
   if (!currentFoodItem) return null;
+  
+  // Gate rendering based on nutrition readiness to prevent flash
+  const storeAnalysis = useNutritionStore(
+    s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
+  );
+  const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;
+  
+  if (!perGram || Object.keys(perGram).length === 0) {
+    return null; // the Loader is visible while isHydrating=true
+  }
 
   const portionMultiplier = portionPercentage[0] / 100;
   

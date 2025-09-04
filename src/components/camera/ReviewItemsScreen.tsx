@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import LegacyConfirmLoader from '@/components/confirm/LegacyConfirmLoader';
 import { setConfirmFlowActive } from '@/lib/confirmFlowState';
 import { toLegacyFoodItem } from '@/lib/confirm/legacyItemAdapter';
 import { needsHydration, perGramSum, MACROS } from '@/lib/confirm/hydrationUtils';
@@ -20,6 +21,9 @@ import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
+import { hashMealSet } from '@/lib/sets/hashMealSet';
+import { useReminderStore } from '@/stores/reminderStore';
+import { useSavedSetsStore } from '@/stores/savedSets';
 
 export interface ReviewItem {
   name: string;
@@ -43,8 +47,6 @@ interface ReviewItemsScreenProps {
   items: ReviewItem[];
   prefilledItems?: ReviewItem[]; // For prefilling from health report
   afterLogSuccess?: () => void; // Called after successful logging for custom navigation/cleanup
-  // Remove old interface props - using global confirm flow now
-  // onStartConfirmFlow?: (items: any[], origin: string) => void;
 }
 
 export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
@@ -55,7 +57,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   items: initialItems,
   prefilledItems,
   afterLogSuccess
-  // onStartConfirmFlow - removed, using global flow
 }) => {
   // Add mount logging for forensic breadcrumbs
   useEffect(() => {
@@ -70,6 +71,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [confirmModalItems, setConfirmModalItems] = useState<any[]>([]);
   const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
   const [hydrating, setHydrating] = useState(false);
+  
+  // Hydration flag and modal state for flash prevention
+  const [isHydrating, setIsHydrating] = useState(false);
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
@@ -236,6 +240,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       hydrated: !!item?.__hydrated
     });
   }, [confirmModalItems, currentConfirmIndex]);
+  
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
@@ -244,6 +249,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { playFoodLogConfirm } = useSound();
+  const { isOn, upsertReminder } = useReminderStore();
+  const { upsertSet } = useSavedSetsStore();
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -345,6 +352,70 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   };
 
+  // Open confirm flow with hydration gate
+  const openConfirmFlow = async () => {
+    const selectedItems = items.filter(item => item.selected && item.name.trim());
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one item to continue');
+      return;
+    }
+
+    setIsHydrating(true);
+    
+    try {
+      // Transform items using legacy adapter with SST enabled
+      const initialModalItems = selectedItems.map((item, index) => {
+        const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
+        return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
+      });
+      
+      // Hydrate nutrition data - reuse existing hydration logic
+      setConfirmModalItems(initialModalItems);
+      setCurrentConfirmIndex(0);
+      
+      // Trigger existing hydration effect by setting confirmModalOpen
+      setConfirmModalOpen(true);
+      
+      // Wait for hydration effect to complete
+      await new Promise(resolve => {
+        const checkHydration = () => {
+          const items = initialModalItems;
+          const hydrated = items.every(item => (item as any).__hydrated);
+          if (hydrated) {
+            resolve(void 0);
+          } else {
+            setTimeout(checkHydration, 100);
+          }
+        };
+        checkHydration();
+      });
+      
+      // Small floor so UI doesn't flicker even on fast paths
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Set flow active to prevent ScanHub navigation
+      setConfirmFlowActive(true);
+      
+      // Open legacy confirm modal
+      setConfirmModalItems(initialModalItems);
+      setCurrentConfirmIndex(0);
+      setIsHydrating(false);
+      
+      // Modal was already opened above in the hydration step
+      // setConfirmModalOpen(true) was called earlier
+
+      // Close the review screen AFTER starting the flow  
+      requestAnimationFrame(() => {
+        onClose();
+      });
+      
+    } catch (error) {
+      console.error('[HYDRATE][ERROR]', error);
+      setIsHydrating(false);
+      toast.error('Failed to load nutrition data');
+    }
+  };
+
   const handleDetailsMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -355,76 +426,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       console.log('[REV][CTA][MDOWN]');
     }
 
-    const selectedItems = items.filter(item => item.selected && item.name.trim());
-    if (selectedItems.length === 0) {
-      toast.error('Please select at least one item to continue');
-      return;
-    }
-
-    // Transform items using legacy adapter with SST enabled
-    const initialModalItems = selectedItems.map((item, index) => {
-      const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
-      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
-    });
-    
-    // Hard ID diagnostics for modal items
-    const modalIds = selectedItems.map((raw, i) => {
-      const id = (raw as any).foodId ?? raw.id ?? generateFoodId(raw);
-      return { i, id, name: raw.name };
-    });
-    console.log('[SST][MODAL_IDS]', modalIds);
-
-    // Verify store has perGram for these ids after previous writes
-    setTimeout(() => {
-      const byId = useNutritionStore.getState().byId;
-      const probe = modalIds.map(m => ({
-        i: m.i, 
-        id: m.id,
-        name: m.name,
-        has: !!byId[m.id],
-        pgSum: byId[m.id] ? Object.values(byId[m.id].perGram||{}).reduce((a:any,b:any)=>a+(+b||0),0) : 0
-      }));
-      console.log('[SST][STORE_PROBE]', probe);
-    }, 200);
-    
-    // Phase 0: Probe nutrition data sources
-    if (import.meta.env.DEV) {
-      initialModalItems.forEach(item => {
-        const storeData = nutritionStore.get(item.id);
-        console.log('[SST][CONFIRM]', {
-          id: item.id,
-          name: item.name,
-          perGram: storeData?.perGram || item.nutrition?.perGram,
-          source: storeData?.perGram ? 'store' : 'raw'
-        });
-        console.assert(
-          !!(storeData?.perGram || item.nutrition?.perGram),
-          '[SST][MISS] Confirm flow lacks analysis for', item.id, item.name
-        );
-      });
-    }
-
-    // Set flow active to prevent ScanHub navigation
-    setConfirmFlowActive(true);
-    
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[REV][FLOW] active=true');
-    }
-    
-    // Open legacy confirm modal immediately
-    setConfirmModalItems(initialModalItems);
-    setCurrentConfirmIndex(0);
-    setConfirmModalOpen(true);
-
-    if (import.meta.env.VITE_LOG_DEBUG === 'true') {
-      console.log('[REV][FLOW] beginConfirmSequence()');
-      console.log('[LEGACY][FLOW] open index=0', initialModalItems[0]?.name);
-    }
-
-    // Close the review screen AFTER starting the flow
-    requestAnimationFrame(() => {
-      onClose();
-    });
+    openConfirmFlow();
   };
 
   const handleDetailsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -628,161 +630,206 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   }, [isOpen]);
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black z-[400]" />
-        <Dialog.Content
-          className="fixed inset-0 z-[500] bg-[#0B0F14] text-white"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => {
-            if (confirmModalOpen) e.preventDefault();
-          }}
-          role="dialog"
-          aria-labelledby="review-title"
-          aria-describedby=""
-        >
-          <VisuallyHidden.Root>
-            <Dialog.Title id="review-title">Confirm Food Log</Dialog.Title>
-          </VisuallyHidden.Root>
-          <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
-
-          <div className="flex h-full w-full flex-col">
-            {/* Header (sticky) */}
-            <header className="sticky top-0 z-10 bg-[#0B0F14] px-5 pt-4 pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-white">
-                Review Detected Items ({count})
-              </h2>
-              <p className="text-sm text-gray-400">
-                Check and edit the food items detected in your image.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-white hover:bg-white/10"
+    <>
+      {/* Show loader while hydrating */}
+      {isHydrating && <LegacyConfirmLoader />}
+      
+      {/* Keep existing modal structure */}
+      {!isHydrating && (
+        <Dialog.Root open={isOpen} onOpenChange={onClose}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black z-[400]" />
+            <Dialog.Content
+              className="fixed inset-0 z-[500] bg-[#0B0F14] text-white"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onPointerDownOutside={(e) => e.preventDefault()}
+              onInteractOutside={(e) => e.preventDefault()}
+              onEscapeKeyDown={(e) => {
+                if (confirmModalOpen) e.preventDefault();
+              }}
+              role="dialog"
+              aria-labelledby="review-title"
+              aria-describedby=""
             >
-              <X className="h-4 w-4" />
-            </Button>
-          </header>
+              <VisuallyHidden.Root>
+                <Dialog.Title id="review-title">Confirm Food Log</Dialog.Title>
+              </VisuallyHidden.Root>
+              <Dialog.Description id="review-description" className="sr-only">Confirm items and portion sizes</Dialog.Description>
 
-          {/* ScrollArea (flex-1, overflow-y-auto) */}
-          <div className="flex-1 overflow-y-auto px-5 pb-24">
-            {count === 0 ? (
-              // Empty state
-              <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                <div className="text-6xl">🍽️</div>
-                <h3 className="text-xl font-semibold text-white">No food detected</h3>
-                <p className="text-gray-400 text-center">
-                  Try again, upload from gallery, or add manually.
-                </p>
-                <div className="flex flex-col gap-3 w-full max-w-sm pt-4">
-                  <Button
-                    onClick={onClose}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Try Again
-                  </Button>
-                  <Button
-                    onClick={handleAddItem}
-                    variant="outline"
-                    className="w-full border-gray-600 text-white hover:bg-white/10"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Manually
-                  </Button>
+              <div className="flex h-full w-full flex-col">
+                {/* Header (sticky) */}
+                <header className="sticky top-0 z-10 bg-[#0B0F14] px-5 pt-4 pb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">
+                    Review Detected Items ({count})
+                  </h2>
+                  <p className="text-sm text-gray-400">
+                    Check and edit the food items detected in your image.
+                  </p>
                 </div>
-              </div>
-            ) : (
-              // Items list
-              <>
-                <div className="space-y-2 pt-4">
-                  {items.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      item={item}
-                      canRemove={items.length > 1}
-                      onChange={handleItemChange}
-                      onRemove={handleRemoveItem}
-                      onOpenWheel={handleOpenWheel}
-                    />
-                  ))}
-                </div>
-
-                {/* Add food button */}
-                <div className="flex justify-center mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={handleAddItem}
-                    className="flex items-center space-x-2 border-dashed border-2 border-gray-600 text-white hover:bg-white/10"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Food</span>
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Footer (sticky) - only show if we have items */}
-          {count > 0 && (
-            <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={handleLogImmediately}
-                    disabled={selectedCount === 0 || isLogging}
-                    className="h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
-                  >
-                    {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
-                  </Button>
-                  
-                  <Button
-                    onMouseDown={handleDetailsMouseDown}
-                    onClick={handleDetailsClick}
-                    disabled={selectedCount === 0}
-                    className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
-                  >
-                    🔎 Review & Log
-                  </Button>
-                </div>
-                
                 <Button
-                  onClick={handleSaveSet}
-                  disabled={selectedCount === 0 || isSavingSet}
-                  className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isSavingSet ? 'Saving...' : 'Save Set'}
-                </Button>
-              </div>
-              
-              {/* Cancel button full width */}
-              <div className="pt-2">
-                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={onClose}
-                  variant="outline"
-                  size="lg"
-                  className="w-full h-12 rounded-xl border-white/20 bg-transparent text-white"
+                  className="text-white hover:bg-white/10"
                 >
-                  Cancel
+                  <X className="h-4 w-4" />
                 </Button>
+              </header>
+
+              {/* ScrollArea (flex-1, overflow-y-auto) */}
+              <div className="flex-1 overflow-y-auto px-5 pb-24">
+                {count === 0 ? (
+                  // Empty state
+                  <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                    <div className="text-6xl">🍽️</div>
+                    <h3 className="text-xl font-semibold text-white">No food detected</h3>
+                    <p className="text-gray-400 text-center">
+                      Try again, upload from gallery, or add manually.
+                    </p>
+                    <div className="flex flex-col gap-3 w-full max-w-sm pt-4">
+                      <Button
+                        onClick={onClose}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Try Again
+                      </Button>
+                      <Button
+                        onClick={handleAddItem}
+                        variant="outline"
+                        className="w-full border-gray-600 text-white hover:bg-white/10"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Manually
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Items list
+                  <>
+                    <div className="space-y-2 pt-4">
+                      {items.map((item) => (
+                        <ReviewItemCard
+                          key={item.id}
+                          item={item}
+                          canRemove={items.length > 1}
+                          onChange={handleItemChange}
+                          onRemove={handleRemoveItem}
+                          onOpenWheel={handleOpenWheel}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Add food button */}
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={handleAddItem}
+                        className="flex items-center space-x-2 border-dashed border-2 border-gray-600 text-white hover:bg-white/10"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Food</span>
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {selectedCount > 0 && (
-                <p className="text-center text-xs text-gray-400 mt-2">
-                  {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-                </p>
-              )}
-            </footer>
-          )}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
+              {/* Footer (sticky) - only show if we have items */}
+              {count > 0 && (
+                <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
+                  {/* Add meal set reminder toggle before Save Set button */}
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[15px] font-semibold text-white">Set Reminder</div>
+                        <div className="text-xs text-white/60">Get reminded to eat this set again</div>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={!!isOn(hashMealSet(items.filter(item => item.selected)))}
+                          onChange={(e) => {
+                            const selectedItems = items.filter(item => item.selected);
+                            const mealSetId = hashMealSet(selectedItems);
+                            upsertReminder({
+                              id: mealSetId,
+                              type: 'meal_set',
+                              title: 'Repeat this meal set',
+                              schedule: {
+                                freq: 'DAILY',
+                                hour: 12,
+                                minute: 30,
+                              },
+                              payload: { 
+                                itemIds: selectedItems.map(i => i.id), 
+                                names: selectedItems.map(i => i.name) 
+                              },
+                            });
+                          }}
+                        />
+                        <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
+                          <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={handleLogImmediately}
+                        disabled={selectedCount === 0 || isLogging}
+                        className="h-12 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold text-base disabled:opacity-50"
+                      >
+                        {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
+                      </Button>
+                      
+                      <Button
+                        onMouseDown={handleDetailsMouseDown}
+                        onClick={handleDetailsClick}
+                        disabled={selectedCount === 0}
+                        className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                      >
+                        🔎 Review & Log
+                      </Button>
+                    </div>
+                    
+                    <Button
+                      onClick={handleSaveSet}
+                      disabled={selectedCount === 0 || isSavingSet}
+                      className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {isSavingSet ? 'Saving...' : 'Save Set'}
+                    </Button>
+                  </div>
+                  
+                  {/* Cancel button full width */}
+                  <div className="pt-2">
+                    <Button
+                      onClick={onClose}
+                      variant="outline"
+                      size="lg"
+                      className="w-full h-12 rounded-xl border-white/20 bg-transparent text-white"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
 
+                  {selectedCount > 0 && (
+                    <p className="text-center text-xs text-gray-400 mt-2">
+                      {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </footer>
+              )}
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
 
       {/* Number Wheel Sheet */}
       <NumberWheelSheet
@@ -859,6 +906,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           )}
         </>
       )}
-    </Dialog.Root>
+    </>
   );
 };
