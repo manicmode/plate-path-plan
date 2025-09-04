@@ -86,6 +86,7 @@ interface FoodConfirmationCardProps {
   isProcessingFood?: boolean; // Whether the parent is processing the food item
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
+  bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
@@ -102,7 +103,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   totalItems,
   isProcessingFood = false,
   onVoiceAnalyzingComplete,
-  skipNutritionGuard = false
+  skipNutritionGuard = false,
+  bypassHydration = false
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -133,7 +135,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Optional helpers (no new hooks below guards)
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-  const isNutritionReady = perGramSum > 0;
+  const isNutritionReady = bypassHydration ? true : (perGramSum > 0);
 
   
 
@@ -243,12 +245,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
 
-  // Calculate effective nutrients using basePer100 * factor * sliderFraction if available
+  // Calculate effective nutrients - prefer foodItem data for barcode items
   const base = currentFoodItem.basePer100; // per-100g baseline
   const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  const effective = base
+  // For barcode items with bypassHydration, use foodItem values directly
+  const calories = bypassHydration ? (currentFoodItem as any)?.calories ?? 0 : currentFoodItem.calories;
+  const protein = bypassHydration ? (currentFoodItem as any)?.protein_g ?? 0 : currentFoodItem.protein;
+  const carbs = bypassHydration ? (currentFoodItem as any)?.carbs_g ?? 0 : currentFoodItem.carbs;
+  const fat = bypassHydration ? (currentFoodItem as any)?.fat_g ?? 0 : currentFoodItem.fat;
+  const fiber = bypassHydration ? (currentFoodItem as any)?.fiber_g ?? 0 : currentFoodItem.fiber;
+  const sugar = bypassHydration ? (currentFoodItem as any)?.sugar_g ?? 0 : currentFoodItem.sugar;
+  const sodium = bypassHydration ? (currentFoodItem as any)?.sodium_mg ?? 0 : currentFoodItem.sodium;
+
+  const effective = base && !bypassHydration
     ? {
         calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
         protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
@@ -259,14 +270,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
       }
     : {
-        // fallback: if no basePer100 was provided, keep existing behavior
-        calories: Math.round(currentFoodItem.calories * portionMultiplier),
-        protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
-        carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
-        fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
-        fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
-        sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
-        sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
+        // Use direct values with portion scaling
+        calories: Math.round(calories * portionMultiplier),
+        protein: Math.round(protein * portionMultiplier * 10) / 10,
+        carbs: Math.round(carbs * portionMultiplier * 10) / 10,
+        fat: Math.round(fat * portionMultiplier * 10) / 10,
+        fiber: Math.round(fiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(sugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(sodium * portionMultiplier),
       };
 
   const adjustedFood = {
@@ -715,7 +726,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {currentFoodItem.portionGrams ? `Per portion (${currentFoodItem.portionGrams}g)` : 'Per portion (unknown size)'}
+                  {bypassHydration 
+                    ? ((currentFoodItem as any)?.servingGrams 
+                        ? `Per portion (${(currentFoodItem as any).servingGrams}g)` 
+                        : 'Per portion (unknown size)')
+                    : (currentFoodItem.portionGrams 
+                        ? `Per portion (${currentFoodItem.portionGrams}g)` 
+                        : 'Per portion (unknown size)')
+                  }
                 </label>
                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                   {getPortionLabel(portionPercentage[0])}

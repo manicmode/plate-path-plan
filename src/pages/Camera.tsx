@@ -7,6 +7,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { mapToLogFood } from '@/features/logging/utils/barcodeToLogFood';
+import { mapBarcodeToRecognizedFood } from '@/lib/barcode/map';
 import { useAuth } from '@/contexts/auth';
 import { SavedSetsSheet } from '@/components/camera/SavedSetsSheet';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
@@ -1420,62 +1421,77 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('[LOG] off_result', { status: 200, hit: true });
 
         try {
-          // Map the response using robust nutrition handling
-          const mapped = mapToLogFood(cleanBarcode, data);
+          // Use new barcode mapper for direct food item creation
+          const barcodeResponse = {
+            upc: cleanBarcode,
+            name: data.product?.name || data.product?.product_name,
+            brand: data.product?.brand || data.product?.brands,
+            image_url: data.product?.image_url || data.product?.imageUrl,
+            serving_grams: data.product?.serving_grams || data.product?.servingGrams,
+            nutrition: {
+              calories: data.product?.nutrition?.calories || data.product?.calories,
+              protein_g: data.product?.nutrition?.protein_g || data.product?.protein_g,
+              carbs_g: data.product?.nutrition?.carbs_g || data.product?.carbs_g,
+              fat_g: data.product?.nutrition?.fat_g || data.product?.fat_g,
+              fiber_g: data.product?.nutrition?.fiber_g || data.product?.fiber_g,
+              sugar_g: data.product?.nutrition?.sugar_g || data.product?.sugar_g,
+            }
+          };
+
+          console.log('[BARCODE][MAP:ITEM]', { upc: cleanBarcode, result: barcodeResponse });
+          const mapped = mapBarcodeToRecognizedFood(barcodeResponse);
+
+          // Also get legacy mapped data for additional properties
+          const legacyMapped = mapToLogFood(cleanBarcode, data);
           const p = data.product as LogProduct; // Keep for ingredients/health data
           
-          console.log('[BARCODE][MAP:ITEM]', { id: mapped?.name, name: mapped?.name, grams: mapped?.servingGrams });
-          
-          // Transform to RecognizedFood format with mapped nutrition
-          // Add a stable temp ID for barcode items
-          const tmpId = `bc:${cleanBarcode}:${Date.now()}`;
-          
-          const recognizedFood: RecognizedFood = {
-            id: tmpId,
-            name: mapped.name,
-            calories: mapped.calories || 0,
-            protein: mapped.protein_g || 0,
-            carbs: mapped.carbs_g || 0,
-            fat: mapped.fat_g || 0,
-            fiber: mapped.fiber_g || 0,
-            sugar: mapped.sugar_g || 0,
-            sodium: mapped.sodium_mg || 0,
+          // Merge the clean barcode mapping with legacy data for extra properties
+          const recognizedFood = {
+            ...mapped,
+            // Override with legacy properties not in the new mapper
+            ingredientsText: legacyMapped.ingredientsText,
+            ingredientsAvailable: !!legacyMapped.ingredientsText,
+            allergens: legacyMapped.allergens,
+            additives: legacyMapped.additives,
+            categories: legacyMapped.categories,
+            _provider: legacyMapped._provider,
+            // Keep nutrition as numbers for the existing RecognizedFood interface
+            calories: mapped.calories,
+            protein: mapped.protein_g,
+            carbs: mapped.carbs_g,
+            fat: mapped.fat_g,
+            fiber: mapped.fiber_g,
+            sugar: mapped.sugar_g,
+            sodium: 0, // Add if available in future
             confidence: 95,
             serving: mapped.servingGrams ? `Per serving (${mapped.servingGrams}g)` : 'Per 100g',
-            // Use mapped ingredients data (now properly extracted from OFF response)
-            ingredientsText: mapped.ingredientsText,
-            ingredientsAvailable: !!mapped.ingredientsText,
-            // Store image data for modal
-            image: mapped.imageUrl || p?.imageUrl,
-            // Pass through additional flag detection data
-            allergens: mapped.allergens,
-            additives: mapped.additives,
-            categories: mapped.categories,
-            _provider: mapped._provider
+            image: mapped.imageUrl || p?.imageUrl
           };
 
           // Add telemetry logging
           console.debug('[SCAN][NORMALIZE]', { 
             name: mapped.name, 
-            hasIngredients: !!mapped.ingredientsText,
-            allergens: mapped.allergens?.length || 0,
-            additives: mapped.additives?.length || 0
+            hasIngredients: !!legacyMapped.ingredientsText,
+            allergens: legacyMapped.allergens?.length || 0,
+            additives: legacyMapped.additives?.length || 0
           });
 
           // Add forensics logging
           console.log('[LOG] confirm_open', {
             name: mapped.name,
             barcode: cleanBarcode,
-            hasIngredients: !!mapped.ingredientsText,
-            allergens: mapped.allergens?.length || 0,
-            additives: mapped.additives?.length || 0,
+            hasIngredients: !!legacyMapped.ingredientsText,
+            allergens: legacyMapped.allergens?.length || 0,
+            additives: legacyMapped.additives?.length || 0,
             score: p?.health?.score
           });
 
-          console.log('=== SETTING RECOGNIZED FOOD ===', recognizedFood);
+          setInputSource('barcode');
           setRecognizedFoods([recognizedFood]);
-          console.log('[BARCODE][OPEN_CONFIRM]', { id: recognizedFood?.name, name: recognizedFood?.name, via: 'confirm-card' });
+          setSelectedImage(null);
+          setPendingItems([]);
           setShowConfirmation(true);
+          console.log('[BARCODE][OPEN_CONFIRM]', { id: mapped.id, name: mapped.name });
           addRecentBarcode({
             barcode: cleanBarcode,
             productName: recognizedFood.name,
@@ -3381,13 +3397,11 @@ console.log('Global search enabled:', enableGlobalSearch);
       {/* Food Confirmation Card */}
       {(() => {
         const cur = recognizedFoods[0] || null;
-        console.log('[CONFIRM][RENDER_GUARD][BARCODE]', { 
-          hasItems: recognizedFoods?.length > 0, 
-          hasCur: !!cur, 
-          curHydrated: false, // No hydration in current barcode flow
-          hydrating: isLoadingBarcode, 
-          isHydrating: isLoadingBarcode,
-          showConfirmation 
+        console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
+          inputSource,
+          showConfirmation,
+          hasItem: !!cur,
+          itemId: cur?.id,
         });
         return null;
       })()}
@@ -3427,6 +3441,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         }}
         totalItems={pendingItems.length}
         skipNutritionGuard={inputSource === 'barcode'}
+        bypassHydration={inputSource === 'barcode'}
       />
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
