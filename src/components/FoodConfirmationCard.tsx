@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
-import { useNutritionStore } from '@/stores/nutritionStore';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -65,10 +64,6 @@ interface FoodItem {
   } | null;
   portionGrams?: number | null;
   factor?: number;
-  // Nutrition data for store-based reading
-  nutrition?: {
-    perGram?: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>>;
-  };
 }
 
 interface FoodConfirmationCardProps {
@@ -135,8 +130,26 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
-  // Derive display values with broad fallback - moved after safeItem definition
-  // (displayName now calculated after safeItem is defined)
+  // Derive display values with broad fallback
+  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
+  
+  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
+  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
+
+  // Check if this is an unknown product that needs manual entry
+  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
+  const hasBarcode = !!(currentFoodItem as any)?.barcode;
+
+  useEffect(() => {
+    const url = imgUrl ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    console.log('[CONFIRM][MOUNT]', {
+      rev: CONFIRM_FIX_REV,
+      name: displayName,
+      imageUrlKind: validImg ? "http" : "none",
+      url: (imgUrl || "").slice(0, 120),
+    });
+  }, [imgUrl, displayName]);
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -189,85 +202,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
-  // FORCE: read from store by exact item.id first (make hooks unconditional)
-  const EMPTY_ITEM: FoodItem = {
-    id: '',
-    name: '',
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    fiber: 0,
-    sugar: 0,
-    sodium: 0,
-    portionGrams: 100,
-    nutrition: { perGram: {} }
-  };
-
-  const EMPTY_PG: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>> = {};
-  
-  // Always call hooks with safe fallbacks - never conditional
-  const storePerGram = useNutritionStore(
-    s => s.byId[(currentFoodItem?.id || '')]?.perGram
-  );
-
-  // Derive safe values after all hooks
-  const safeItem = currentFoodItem || EMPTY_ITEM;
-  const perGram = storePerGram ?? safeItem.nutrition?.perGram ?? EMPTY_PG;
-
-  // Derive display values with broad fallback
-  const displayName = (safeItem as any)?.itemName ?? safeItem?.name ?? (safeItem as any)?.productName ?? (safeItem as any)?.title ?? "Food item";
-  
-  const imgUrl = safeItem?.image ?? safeItem?.imageUrl ?? null;
-  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
-
-  // Check if this is an unknown product that needs manual entry
-  const isUnknownProduct = (safeItem as any)?.isUnknownProduct;
-  const hasBarcode = !!(safeItem as any)?.barcode;
-
-  useEffect(() => {
-    const url = imgUrl ?? '';
-    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
-    console.log('[CONFIRM][MOUNT]', {
-      rev: CONFIRM_FIX_REV,
-      name: displayName,
-      imageUrlKind: validImg ? "http" : "none",
-      url: (imgUrl || "").slice(0, 120),
-    });
-  }, [imgUrl, displayName]);
-
-  if (process.env.NODE_ENV === 'development') {
-    const pgSum = Object.values(perGram).reduce((a: number, v: any) => a + (+v || 0), 0);
-    console.log('[SST][CARD_BIND]', { id: safeItem.id, pgSum, fromStore: !!storePerGram });
-  }
+  if (!currentFoodItem) return null;
 
   const portionMultiplier = portionPercentage[0] / 100;
-  
-  // Compute macros strictly from perGram if available
-  const macros = useMemo(() => {
-    const g = (safeItem.portionGrams ?? 100) * portionMultiplier;
-    const v = (k: keyof typeof perGram) => (perGram?.[k] ?? 0) * g;
-    
-    return Object.keys(perGram).length > 0 ? {
-      calories: Math.round(v('calories')),
-      protein: Math.round(v('protein') * 10) / 10,
-      carbs: Math.round(v('carbs') * 10) / 10,
-      fat: Math.round(v('fat') * 10) / 10,
-      sugar: Math.round(v('sugar') * 10) / 10,
-      fiber: Math.round(v('fiber') * 10) / 10,
-      sodium: Math.round(v('sodium')),
-    } : null;
-  }, [perGram, safeItem.portionGrams, portionMultiplier]);
   
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
 
-  // Calculate effective nutrients - use macros from store first, then basePer100, then fallback
-  const base = safeItem.basePer100; // per-100g baseline
-  const gramsFactor = safeItem.factor ?? 1; // portionGrams/100 at 100% slider
+  // Calculate effective nutrients using basePer100 * factor * sliderFraction if available
+  const base = currentFoodItem.basePer100; // per-100g baseline
+  const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  const effective = macros || (base
+  const effective = base
     ? {
         calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
         protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
@@ -278,18 +225,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
       }
     : {
-        // fallback: if no perGram and no basePer100 was provided, keep existing behavior
-        calories: Math.round(safeItem.calories * portionMultiplier),
-        protein: Math.round(safeItem.protein * portionMultiplier * 10) / 10,
-        carbs: Math.round(safeItem.carbs * portionMultiplier * 10) / 10,
-        fat: Math.round(safeItem.fat * portionMultiplier * 10) / 10,
-        fiber: Math.round(safeItem.fiber * portionMultiplier * 10) / 10,
-        sugar: Math.round(safeItem.sugar * portionMultiplier * 10) / 10,
-        sodium: Math.round(safeItem.sodium * portionMultiplier),
-      });
+        // fallback: if no basePer100 was provided, keep existing behavior
+        calories: Math.round(currentFoodItem.calories * portionMultiplier),
+        protein: Math.round(currentFoodItem.protein * portionMultiplier * 10) / 10,
+        carbs: Math.round(currentFoodItem.carbs * portionMultiplier * 10) / 10,
+        fat: Math.round(currentFoodItem.fat * portionMultiplier * 10) / 10,
+        fiber: Math.round(currentFoodItem.fiber * portionMultiplier * 10) / 10,
+        sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
+        sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
+      };
 
   const adjustedFood = {
-    ...safeItem,
+    ...currentFoodItem,
     ...effective,
   };
 

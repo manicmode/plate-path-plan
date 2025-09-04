@@ -76,13 +76,13 @@ type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
 
-export function toLegacyFoodItem(raw: AnyItem, id: string, enableSST = false): LegacyFoodItem {
+export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
-  ) || `item-${id}`;
+  ) || `item-${typeof index === 'string' ? index : index + 1}`;
   
-  // DO NOT recompute id inside this function - use the passed id
-  const resolvedId = id;
+  // Use provided ID or generate one - CRITICAL: same source as write path
+  const resolvedId = raw.foodId ?? raw.id ?? raw.storeId ?? generateFoodId(raw);
   
   // Hard diagnostics for ID read path
   if (process.env.NODE_ENV === 'development') {
