@@ -213,42 +213,45 @@ function AppContent() {
           <BodyScanReminderChecker />
           <ClientSecurityValidator />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
-            <OnboardingGate>
-              <Routes>
-                {/* Fullscreen pages without Layout */}
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/onboarding" element={
-                  <ProtectedRoute>
-                    <Onboarding />
-                  </ProtectedRoute>
-                } />
-                <Route path="/recovery-player" element={
-                  <ProtectedRoute>
-                    <RecoveryPlayer />
-                  </ProtectedRoute>
-                } />
-                
-                {/* QA routes - top level, always accessible */}
-                <Route 
-                  path="/qa/nudges"
-                  element={
-                    <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
-                      <NudgeQAPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route 
-                  path="/nudge-qa"
-                  element={<Navigate to="/qa/nudges" replace />}
-                />
-                <Route 
-                  path="/debug/nudges"
-                  element={<Navigate to="/qa/nudges" replace />}
-                />
-                
-                {/* Regular pages with Layout */}
-                <Route path="*" element={
+            <Routes>
+              {/* QA routes - OUTSIDE OnboardingGate, highest priority */}
+              <Route 
+                path="/qa/nudges"
+                element={
+                  <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Nudge QA…</div>}>
+                    <NudgeQAPage />
+                  </React.Suspense>
+                }
+              />
+              <Route 
+                path="/nudge-qa"
+                element={<Navigate to="/qa/nudges" replace />}
+              />
+              <Route 
+                path="/debug/nudges"
+                element={<Navigate to="/qa/nudges" replace />}
+              />
+              
+              {/* Everything else wrapped in OnboardingGate */}
+              <Route path="*" element={
+                <OnboardingGate>
+                  <Routes>
+                    {/* Fullscreen pages without Layout */}
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/onboarding" element={
+                      <ProtectedRoute>
+                        <Onboarding />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/recovery-player" element={
+                      <ProtectedRoute>
+                        <RecoveryPlayer />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Regular pages with Layout */}
+                    <Route path="*" element={
                 <Layout>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -418,13 +421,15 @@ function AppContent() {
                       )
                      } />
               
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Layout>
-              } />
-            </Routes>
-          </OnboardingGate>
-        </Suspense>
+                     <Route path="*" element={<NotFound />} />
+                   </Routes>
+                 </Layout>
+               } />
+                   </Routes>
+                 </OnboardingGate>
+               } />
+             </Routes>
+           </Suspense>
           
           <DailyMoodModal 
             isOpen={showMoodModal} 
