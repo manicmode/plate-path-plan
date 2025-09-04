@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
-import { useRemindersStore, scheduleReminder, cancelReminder } from '@/stores/remindersStore';
-import LoadingDots from '@/components/ui/LoadingDots';
-import { Bell, Plus, ArrowRight, Zap, Info, X, Save } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Plus, ArrowRight, Zap, Info, X, Save, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
@@ -23,23 +21,9 @@ import { useNutritionStore, generateFoodId } from '@/stores/nutritionStore';
 import { useSound } from '@/contexts/SoundContext';
 import { lightTap } from '@/lib/haptics';
 import { scoreFood } from '@/health/scoring';
-import { DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { ReminderForm } from '@/components/reminder/ReminderForm';
-
-// --- helper: deterministic small hash ---
-function hash(str: string) {
-  let h = 0; for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
-  return Math.abs(h).toString(36);
-}
-
-// build canonical signature: lowercased names + grams sorted
-function buildMealSetId(items: Array<{name:string; grams?:number}>) {
-  const sig = items
-    .map(x => `${(x.name||'').trim().toLowerCase()}@${Math.round(x.grams||0)}`)
-    .sort()
-    .join('|');
-  return `set-${hash(sig)}`;
-}
+import { hashMealSet } from '@/lib/sets/hashMealSet';
+import { useReminderStore } from '@/stores/reminderStore';
+import { useSavedSetsStore } from '@/stores/savedSets';
 
 export interface ReviewItem {
   name: string;
@@ -89,32 +73,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const [hydrating, setHydrating] = useState(false);
   
   // Hydration flag and modal state for flash prevention
-  const [preparing, setPreparing] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-  const minSpinnerMs = 600; // smoothness guard
-  
-  const [items, setItems] = useState<ReviewItem[]>([]);
-  const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
-  const [isLogging, setIsLogging] = useState(false);
-  const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
-  const [isSavingSet, setIsSavingSet] = useState(false);
-  
-  // Meal set reminder state - moved after items state
-  const selectedItems = useMemo(() => items.filter(item => item.selected && item.name.trim()), [items]);
-  const setId = useMemo(() => buildMealSetId(selectedItems), [selectedItems]);
-  const remindersStore = useRemindersStore();
-  const existing = remindersStore.get(setId);
-  const [setReminderOn, setSetReminderOn] = useState(!!existing?.enabled);
-  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
   
   // Feature flags for safe rollout
   const ENABLE_SST_CONFIRM_READ = true; // Phase 1: unified reads  
   const nutritionStore = useNutritionStore();
-  
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { playFoodLogConfirm } = useSound();
-  const { toast } = useToast();
 
   // Navigation with forced hydration per item
   const gotoIndex = (next: number) => {
@@ -278,98 +241,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     });
   }, [confirmModalItems, currentConfirmIndex]);
   
-  // If user changes items (names/grams), recompute and reset toggle
-  useEffect(() => {
-    const newId = buildMealSetId(selectedItems);
-    const r = remindersStore.get(newId);
-    setSetReminderOn(!!r?.enabled);
-  }, [selectedItems, remindersStore]);
-
-  const onToggleSetReminder = async (next: boolean) => {
-    if (next) {
-      // Open modal for configuration instead of direct scheduling
-      setShowReminderModal(true);
-    } else {
-      // Directly cancel when toggling off
-      setSetReminderOn(false);
-      remindersStore.remove(setId);
-      console.log('[REM][Remove]', setId);
-      try { await cancelReminder(setId); } catch {}
-    }
-  };
-
-  const handleReminderSubmit = async (reminderData: any) => {
-    try {
-      const reminder = {
-        ...reminderData,
-        id: setId,
-        kind: 'meal_set' as const,
-        title: `Meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
-        enabled: true,
-        createdAt: Date.now(),
-      };
-      
-      remindersStore.upsert(reminder);
-      console.log('[REM][Upsert]', reminder);
-      await scheduleReminder(reminder);
-      
-      setSetReminderOn(true);
-      setShowReminderModal(false);
-    } catch (error) {
-      console.error('Failed to create reminder:', error);
-      setSetReminderOn(false);
-    }
-  };
-
-  const handleReminderCancel = () => {
-    setShowReminderModal(false);
-    setSetReminderOn(false); // Reset toggle when user cancels
-  };
-
-  const handleSaveSet = async () => {
-    const selectedCount = selectedItems.length;
-    if (selectedCount === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one item to save',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    setIsSavingSet(true);
-    try {
-      const payload = {
-        id: setId,
-        items: selectedItems.map(i => ({ 
-          name: i.name, 
-          grams: i.grams || 100,
-          canonicalName: i.canonicalName || i.name
-        })),
-        reminderEnabled: setReminderOn,
-        createdAt: Date.now()
-      };
-      
-      // TODO: Replace with real API call
-      // await fetch('/api/saved-sets', { method:'POST', body: JSON.stringify(payload) })
-      console.log('[SETS][Save]', payload);
-      
-      toast({
-        title: 'Success',
-        description: 'Meal set saved successfully!'
-      });
-      onClose();
-    } catch (error) {
-      console.error('Error saving set:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save meal set',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSavingSet(false);
-    }
-  };
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
+  const [isLogging, setIsLogging] = useState(false);
+  const [showSaveSetDialog, setShowSaveSetDialog] = useState(false);
+  const [isSavingSet, setIsSavingSet] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { playFoodLogConfirm } = useSound();
+  const { isOn, upsertReminder } = useReminderStore();
+  const { upsertSet } = useSavedSetsStore();
 
   // Initialize items when modal opens
   useEffect(() => {
@@ -419,11 +300,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const handleLogImmediately = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one item to log',
-        variant: 'destructive'
-      });
+      toast.error('Please select at least one item to log');
       return;
     }
 
@@ -458,10 +335,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         console.info('[LOG][DETAILED][CONFIRM][DONE]');
       }
       
-      toast({
-        title: 'Success',
-        description: 'Logged ✓'
-      });
+      toast.success(`Logged ✓`);
       onClose();
       
       // Use custom afterLogSuccess callback if provided, otherwise navigate to home
@@ -472,11 +346,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       }
     } catch (error) {
       console.error('Failed to log items:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to log items. Please try again.',
-        variant: 'destructive'
-      });
+      toast.error('Failed to log items. Please try again.');
     } finally {
       setIsLogging(false);
     }
@@ -486,15 +356,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const openConfirmFlow = async () => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one item to continue',
-        variant: 'destructive'
-      });
+      toast.error('Please select at least one item to continue');
       return;
     }
 
-    setPreparing(true);
+    setIsHydrating(true);
     
     try {
       // Transform items using legacy adapter with SST enabled
@@ -503,81 +369,40 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
       });
       
-      // Wait for proper nutrition data to be loaded
-      const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
-      const names = initialModalItems.map(m => m.name);
-      const results = await resolveGenericFoodBatch(names);
+      // Hydrate nutrition data - reuse existing hydration logic
+      setConfirmModalItems(initialModalItems);
+      setCurrentConfirmIndex(0);
       
-      // Process and enrich items with proper nutrition data
-      const storeUpdates: Record<string, any> = {};
-      const enrichedItems = initialModalItems.map((item, index) => {
-        const result = results?.[index];
-        if (!result) return item;
-        
-        const enrichedInput = { ...item, nutrients: result.nutrients, serving: result.serving };
-        const merged = toLegacyFoodItem(enrichedInput, item.id, true);
-        
-        // Store nutrition data for FoodConfirmationCard to read
-        storeUpdates[item.id] = {
-          perGram: merged.nutrition?.perGram ?? {},
-          healthScore: merged.analysis?.healthScore ?? 0,
-          flags: merged.analysis?.flags ?? [],
-          ingredients: merged.analysis?.ingredients ?? [],
-          imageUrl: merged.analysis?.imageUrl,
-          source: 'db',
-          confidence: 0.9,
-          __hydrated: true,
-          updatedAt: Date.now(),
-        };
-        
-        return {
-          ...merged,
-          __hydrated: true,
-        };
-      });
+      // Trigger existing hydration effect by setting confirmModalOpen
+      setConfirmModalOpen(true);
       
-      // Write to nutrition store before validating
-      useNutritionStore.getState().upsertMany(storeUpdates);
-      console.log('[FLOW] store_written', { ids: Object.keys(storeUpdates) });
-      
-      // Only proceed if we have properly hydrated items with valid nutrition
-      const hasValidNutrition = enrichedItems.some(item => 
-        item.nutrition?.perGram && Object.values(item.nutrition.perGram).some(val => val > 0)
-      );
-      
-      if (!hasValidNutrition) {
-        throw new Error('Could not load nutrition data');
-      }
-      
-      // Wait for store data to be readable by components
-      const firstId = enrichedItems[0]?.id;
-      await new Promise<void>((resolve) => {
-        const check = () => {
-          const data = useNutritionStore.getState().byId[firstId];
-          const pg = data?.perGram;
-          const isReady = pg && Object.keys(pg).length > 0 && Object.values(pg).some(val => val > 0);
-          if (isReady) {
-            console.log('[FLOW] nutrition_validated', { firstId, perGram: pg });
-            resolve();
+      // Wait for hydration effect to complete
+      await new Promise(resolve => {
+        const checkHydration = () => {
+          const items = initialModalItems;
+          const hydrated = items.every(item => (item as any).__hydrated);
+          if (hydrated) {
+            resolve(void 0);
           } else {
-            requestAnimationFrame(check);
+            setTimeout(checkHydration, 100);
           }
         };
-        check();
+        checkHydration();
       });
+      
+      // Small floor so UI doesn't flicker even on fast paths
+      await new Promise(r => setTimeout(r, 500));
       
       // Set flow active to prevent ScanHub navigation
       setConfirmFlowActive(true);
       
-      // ONLY set modal items and mark as hydrated after store validation
-      setConfirmModalItems(enrichedItems);
+      // Open legacy confirm modal
+      setConfirmModalItems(initialModalItems);
       setCurrentConfirmIndex(0);
-      setConfirmModalOpen(true);
+      setIsHydrating(false);
       
-      // Brief delay to ensure store state propagates fully
-      await new Promise(r => setTimeout(r, 100));
-      setHydrated(true);
-      setPreparing(false);
+      // Modal was already opened above in the hydration step
+      // setConfirmModalOpen(true) was called earlier
 
       // Close the review screen AFTER starting the flow  
       requestAnimationFrame(() => {
@@ -586,13 +411,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       
     } catch (error) {
       console.error('[HYDRATE][ERROR]', error);
-      setPreparing(false);
-      setHydrated(false); // Reset hydrated state on error
-      toast({
-        title: 'Error',
-        description: 'Failed to load nutrition data',
-        variant: 'destructive'
-      });
+      setIsHydrating(false);
+      toast.error('Failed to load nutrition data');
     }
   };
 
@@ -725,13 +545,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setOpenWheelForId(null);
   };
 
-  const handleSaveSetAction = () => {
+  const handleSaveSet = () => {
     if (!user?.id) {
-      toast({
-        title: 'Error',
-        description: 'Please log in to save sets',
-        variant: 'destructive'
-      });
+      toast.error('Please log in to save sets');
       return;
     }
     setShowSaveSetDialog(true);
@@ -740,11 +556,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   const handleSaveSetWithName = async (setName: string) => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     if (selectedItems.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one item to save',
-        variant: 'destructive'
-      });
+      toast.error('Please select at least one item to save');
       return;
     }
 
@@ -774,19 +586,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: `Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`
+      toast.success(`Saved "${setName}" ✓ • View in Saved Reports → Meal Sets`, {
+        action: {
+          label: 'View',
+          onClick: () => navigate('/scan/saved-reports?tab=meal-sets')
+        }
       });
       
       setShowSaveSetDialog(false);
     } catch (error) {
       console.error('Failed to save set:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save set',
-        variant: 'destructive'
-      });
+      toast.error('Failed to save set');
     } finally {
       setIsSavingSet(false);
     }
@@ -821,11 +631,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   return (
     <>
-      {/* Show loader while preparing */}
-      {preparing && <LegacyConfirmLoader />}
+      {/* Show loader while hydrating */}
+      {isHydrating && <LegacyConfirmLoader />}
       
       {/* Keep existing modal structure */}
-      {!preparing && (
+      {!isHydrating && (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black z-[400]" />
@@ -928,30 +738,43 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               {/* Footer (sticky) - only show if we have items */}
               {count > 0 && (
                 <footer className="sticky bottom-0 z-10 bg-[#0B0F14] px-5 py-4">
-                  {/* Meal set reminder toggle */}
-                  {selectedCount > 0 && (
-                    <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-emerald-500/20 rounded-lg">
-                          <Bell className="h-4 w-4 text-emerald-400" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-white">Set Reminder</div>
-                          <div className="text-xs text-white/60">Get reminded to eat this set again</div>
-                        </div>
+                  {/* Add meal set reminder toggle before Save Set button */}
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[15px] font-semibold text-white">Set Reminder</div>
+                        <div className="text-xs text-white/60">Get reminded to eat this set again</div>
                       </div>
-                      <button
-                        role="switch"
-                        aria-checked={setReminderOn}
-                        onClick={() => onToggleSetReminder(!setReminderOn)}
-                        className={`relative h-6 w-11 rounded-full transition ${setReminderOn ? 'bg-emerald-500' : 'bg-white/20'}`}
-                      >
-                        <span className={`absolute top-0.5 transition ${setReminderOn ? 'left-6' : 'left-0.5'}`}>
-                          <span className="block h-5 w-5 rounded-full bg-white shadow" />
-                        </span>
-                      </button>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={!!isOn(hashMealSet(items.filter(item => item.selected)))}
+                          onChange={(e) => {
+                            const selectedItems = items.filter(item => item.selected);
+                            const mealSetId = hashMealSet(selectedItems);
+                            upsertReminder({
+                              id: mealSetId,
+                              type: 'meal_set',
+                              title: 'Repeat this meal set',
+                              schedule: {
+                                freq: 'DAILY',
+                                hour: 12,
+                                minute: 30,
+                              },
+                              payload: { 
+                                itemIds: selectedItems.map(i => i.id), 
+                                names: selectedItems.map(i => i.name) 
+                              },
+                            });
+                          }}
+                        />
+                        <div className="h-6 w-11 rounded-full bg-white/20 peer-checked:bg-emerald-500 transition-colors">
+                          <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+                        </div>
+                      </label>
                     </div>
-                  )}
+                  </div>
                   
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -963,22 +786,18 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                         {isLogging ? '⏳ Logging...' : `⚡ One-Tap Log (${selectedCount})`}
                       </Button>
                       
-                         <Button
-                          onMouseDown={handleDetailsMouseDown}
-                          onClick={handleDetailsClick}
-                          disabled={selectedCount === 0 || preparing}
-                          className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base disabled:opacity-50 relative"
-                        >
-                          {preparing ? (
-                            <LoadingDots label="Preparing cards" />
-                          ) : (
-                            '🔍 Review & Log'
-                          )}
-                        </Button>
+                      <Button
+                        onMouseDown={handleDetailsMouseDown}
+                        onClick={handleDetailsClick}
+                        disabled={selectedCount === 0}
+                        className="h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold text-base"
+                      >
+                        🔎 Review & Log
+                      </Button>
                     </div>
                     
                     <Button
-                      onClick={handleSaveSetAction}
+                      onClick={handleSaveSet}
                       disabled={selectedCount === 0 || isSavingSet}
                       className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold text-base"
                     >
@@ -1032,42 +851,50 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       />
 
       {/* Legacy Rich Food Confirmation Modal */}
-      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && !preparing && (
+      {confirmModalOpen && confirmModalItems[currentConfirmIndex] && (
         <>
           {process.env.NODE_ENV === 'development' && (() => {
             const item = confirmModalItems[currentConfirmIndex];
-            const storeData = useNutritionStore.getState().byId[item?.id];
-            console.log('[CONFIRM][MODAL_RENDER]', {
-              isOpen: true,
-              itemId: item?.id,
-              itemName: item?.name,
-              calories: item?.calories,
-              hasNutrition: !!item?.nutrition,
-              perGram: item?.nutrition?.perGram ? Object.keys(item.nutrition.perGram) : [],
-              storePerGram: storeData?.perGram ? Object.keys(storeData.perGram) : [],
-              hydrated,
-              isNutritionReady: !!(storeData?.perGram && Object.values(storeData.perGram).some(v => v > 0))
+            console.log('[CONFIRM][BINDINGS]', {
+              name: item.name,
+              grams: item.grams,
+              perGram: item.nutrition?.perGram,
+              healthScore: item.analysis?.healthScore,
+              flags: item.analysis?.flags?.length,
+              ingredients: item.analysis?.ingredients?.length,
+              hydrated: (item as any).__hydrated,
+              hydrating: hydrating
             });
             return null;
           })()}
-
-          {!hydrated ? (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50">
-              <div className="flex h-64 items-center justify-center">
-                <div className="animate-pulse text-center">
-                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />
-                  <p className="mt-4 text-sm text-white/70">Loading nutrition…</p>
+          
+          {hydrating ? (
+            <div className="fixed inset-0 z-[600] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-card rounded-lg border shadow-lg p-6 mx-4 max-w-sm w-full">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 bg-muted rounded w-3/4 mx-auto"></div>
+                  <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded w-full"></div>
+                    <div className="h-3 bg-muted rounded w-5/6"></div>
+                    <div className="h-3 bg-muted rounded w-4/6"></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                    <div className="h-8 bg-muted rounded"></div>
+                  </div>
+                </div>
+                <div className="text-center mt-4">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading nutrition data...</p>
                 </div>
               </div>
             </div>
           ) : (
             <FoodConfirmationCard
-              isOpen={true}
-              onClose={() => {
-                setConfirmModalOpen(false);
-                setCurrentConfirmIndex(0);
-                setHydrated(false); // Reset hydrated state when closing
-              }}
+              isOpen={confirmModalOpen}
+              onClose={handleConfirmModalReject}
               onConfirm={handleConfirmModalComplete}
               onSkip={handleConfirmModalSkip}
               onCancelAll={handleConfirmModalReject}
@@ -1079,36 +906,6 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           )}
         </>
       )}
-      
-      {/* Meal Set Reminder Modal */}
-      <Dialog.Root open={showReminderModal} onOpenChange={setShowReminderModal}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[120]" />
-          <Dialog.Content className="fixed inset-0 z-[130] flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-              <VisuallyHidden.Root>
-                <Dialog.Title>Create Meal Set Reminder</Dialog.Title>
-              </VisuallyHidden.Root>
-              <ReminderForm
-                prefilledData={{
-                  label: `Eat meal set: ${selectedItems.map(i=>i.name).join(', ')}`,
-                  type: 'meal',
-                  food_item_data: {
-                    meal_set: true,
-                    items: selectedItems.map(item => ({
-                      name: item.name,
-                      canonicalName: item.canonicalName || item.name,
-                      grams: item.grams || 100
-                    }))
-                  }
-                }}
-                onSubmit={handleReminderSubmit}
-                onCancel={handleReminderCancel}
-              />
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
     </>
   );
 };

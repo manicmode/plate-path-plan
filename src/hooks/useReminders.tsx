@@ -61,7 +61,7 @@ export const useReminders = () => {
     }
   };
 
-  const createReminder = async (reminderData: Omit<Reminder, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'last_triggered_at' | 'next_trigger_at' | 'next_run_at' | 'schedule'>) => {
+  const createReminder = async (reminderData: Omit<Reminder, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'last_triggered_at' | 'next_trigger_at' | 'next_run_at'>) => {
     if (!user) return;
 
     try {

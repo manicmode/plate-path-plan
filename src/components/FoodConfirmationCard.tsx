@@ -30,6 +30,7 @@ const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => 
   </div>
 );
 
+
 interface FoodItem {
   id?: string;
   name: string;
@@ -101,7 +102,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isProcessingFood = false,
   onVoiceAnalyzingComplete
 }) => {
-  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -112,23 +112,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
-  const [reminderOpen, setReminderOpen] = useState(false);
-  const [imageError, setImageError] = useState(false);
-  
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
-  // Store access for nutrition readiness check
-  const storeAnalysis = useNutritionStore(
-    s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
-  );
-  const storePerGram = storeAnalysis?.perGram;
-  const hasPerGram = !!storePerGram && Object.keys(storePerGram).length > 0;
-  
-  // Enhanced nutrition readiness check
-  const isNutritionReady = hasPerGram && storePerGram && Object.values(storePerGram).some(val => val > 0);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -146,6 +136,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     console.log("[SCROLL][LOCK]", { rev: CONFIRM_FIX_REV, modal: "confirm", isOpen });
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
+
+  // Derive display values with broad fallback
+  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
+  
+  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
+  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
+
+  // Check if this is an unknown product that needs manual entry
+  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
+  const hasBarcode = !!(currentFoodItem as any)?.barcode;
+
+  useEffect(() => {
+    const url = imgUrl ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
+    console.log('[CONFIRM][MOUNT]', {
+      rev: CONFIRM_FIX_REV,
+      name: displayName,
+      imageUrlKind: validImg ? "http" : "none",
+      url: (imgUrl || "").slice(0, 120),
+    });
+  }, [imgUrl, displayName]);
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -219,59 +230,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
 
-  // CONDITIONAL RENDERING AFTER ALL HOOKS ARE CALLED
+  // If perGram is still empty, don't render the macro UI yet (lets loader cover it)
   if (!currentFoodItem) return null;
-
-  // Enhanced visual guard: show skeleton if nutrition is not ready
-  if (!isNutritionReady) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <AccessibleDialogContent
-          title="Loading Nutrition Data"
-          description="We're preparing your food information..."
-          className="sm:max-w-md z-[120]"
-          showCloseButton={false}
-        >
-          <div className="p-6">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <div className="mb-4 flex items-center justify-center">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />
-              </div>
-              <div className="text-center">
-                <div className="mb-2 text-sm opacity-70">Loading nutrition data…</div>
-                <div className="space-y-2">
-                  <div className="h-4 rounded-lg bg-white/10 animate-pulse" />
-                  <div className="h-4 rounded-lg bg-white/10 animate-pulse w-3/4 mx-auto" />
-                  <div className="h-4 rounded-lg bg-white/10 animate-pulse w-1/2 mx-auto" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </AccessibleDialogContent>
-      </Dialog>
-    );
-  }
-
-  // Check nutrition readiness - simplified without early return during hooks
+  
+  // Gate rendering based on nutrition readiness to prevent flash
+  const storeAnalysis = useNutritionStore(
+    s => currentFoodItem?.id ? s.byId[currentFoodItem.id] : undefined
+  );
   const perGram = storeAnalysis?.perGram ?? (currentFoodItem as any)?.nutrition?.perGram;
   
-  // For now, render regardless of nutrition readiness to prevent hooks issues
-  // The loader will be shown at parent level when isHydrating=true
-  
+  if (!perGram || Object.keys(perGram).length === 0) {
+    return null; // the Loader is visible while isHydrating=true
+  }
+
   const portionMultiplier = portionPercentage[0] / 100;
   
   // Helper for scaling
   function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
-
-  // Derive display values with broad fallback
-  const displayName = (currentFoodItem as any)?.itemName ?? currentFoodItem?.name ?? (currentFoodItem as any)?.productName ?? (currentFoodItem as any)?.title ?? "Food item";
-  
-  const imgUrl = currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
-  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
-
-  // Check if this is an unknown product that needs manual entry
-  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
-  const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
   // Calculate effective nutrients using basePer100 * factor * sliderFraction if available
   const base = currentFoodItem.basePer100; // per-100g baseline
@@ -362,6 +337,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     
     setIsEvaluatingQuality(true);
     try {
+      
+      
       const { data, error } = await supabase.functions.invoke('evaluate-meal-quality', {
         body: { nutrition_log_id: nutritionLogId }
       });
@@ -371,6 +348,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         return;
       }
 
+      
       setQualityData(data);
       
       // Show toast if score is particularly good or concerning
@@ -440,6 +418,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const handleConfirm = async () => {
     // Prevent double-processing
     if (isConfirming || isProcessingFood) {
+      
       return;
     }
     
@@ -447,6 +426,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     setIsConfirming(true);
     
     try {
+      
+      
       // Add 10-second timeout wrapper around onConfirm
       const confirmPromise = new Promise<void>((resolve, reject) => {
         try {
@@ -484,7 +465,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       });
       
       // Evaluate meal quality after logging
+      // Note: We need the nutrition_log_id, which should be returned from onConfirm
+      // For now, we'll simulate this - in a real implementation, onConfirm should return the created log ID
       setTimeout(async () => {
+        // This is a temporary solution - in production, onConfirm should return the nutrition log ID
         try {
           const { data: recentLogs, error } = await supabase
             .from('nutrition_logs')
@@ -517,7 +501,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       console.error('❌ Food confirmation failed:', error);
       
       // Handle timeout errors
-      if ((error as Error).message?.includes('CONFIRM_TIMEOUT')) {
+      if (error.message?.includes('CONFIRM_TIMEOUT')) {
         toast({
           title: "⏰ Logging Timeout",
           description: "Food logging took too long. Please try again.",
@@ -710,7 +694,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               {validImg ? (
                 <img
-                  key={imgUrl}
+                  key={imgUrl}             // force refresh when URL changes
                   src={imgUrl}
                   referrerPolicy="no-referrer"
                   loading="lazy"
@@ -871,7 +855,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
                     <span>{healthBadge.emoji}</span>
                     <span>{healthBadge.label}</span>
-                    <span className="text-xs">({healthScore}/100)</span>
+                    <span className="text-xs">({healthScore}/10)</span>
                   </Badge>
                 </div>
                 
