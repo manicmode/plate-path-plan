@@ -76,26 +76,23 @@ type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
 
-export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false): LegacyFoodItem {
+export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
-  ) || `item-${index + 1}`;
+  ) || `item-${typeof index === 'string' ? index : index + 1}`;
   
-  // Generate stable ID for SST
-  const id = generateFoodId(raw);
+  // Use provided ID or generate one - CRITICAL: same source as write path
+  const resolvedId = raw.foodId ?? raw.id ?? raw.storeId ?? generateFoodId(raw);
   
-  // Phase 0: Probe current state (dev-only)
-  if (import.meta.env.DEV) {
-    const storeAnalysis = enableSST ? useNutritionStore.getState().get(id) : undefined;
-    console.log('[SST][ADAPTER]', {
-      id,
-      name,
-      enableSST,
-      hasStoreData: !!storeAnalysis?.perGram,
-      storePerGram: storeAnalysis?.perGram,
-      rawNutrition: !!raw.nutrition
-    });
+  // Hard diagnostics for ID read path
+  if (process.env.NODE_ENV === 'development') {
+    const a = useNutritionStore.getState().get(resolvedId);
+    const pgSum = a?.perGram ? Object.values(a.perGram).reduce((s:number,v:any)=>s+(+v||0),0) : 0;
+    console.log('[SST][ADAPTER_READ]', { id: resolvedId, name, has: !!a, pgSum });
   }
+  
+  // Flag sanity check
+  console.log('[SST][FLAGS]', { ENABLE_SST_CONFIRM_READ: enableSST });
 
   const baseGrams = Math.round(
     pick<number>(
@@ -114,15 +111,15 @@ export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false)
   const per100 = n.per100g ?? n['per_100g'] ?? raw.meta?.per100g;
   const perServing = n.perServing ?? n['per_serving'] ?? raw.meta?.perPortion;
 
-  // Phase 1: Read from store first if SST enabled
+  // Phase 1: Read from store first if SST enabled using the unified ID
   let perGram: LegacyNutrition['perGram'] = {};
   let storeAnalysis: NutritionAnalysis | undefined;
   
   if (enableSST) {
-    storeAnalysis = useNutritionStore.getState().get(id);
+    storeAnalysis = useNutritionStore.getState().get(resolvedId);
     if (storeAnalysis?.perGram && Object.values(storeAnalysis.perGram).some(v => (v ?? 0) > 0)) {
       perGram = { ...storeAnalysis.perGram };
-      console.log('[SST][read]', { id, name, source: 'store', perGram });
+      console.log('[SST][read]', { id: resolvedId, name, source: 'store', perGram });
     }
   }
   
@@ -226,7 +223,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number, enableSST = false)
   }
 
   return {
-    id,
+    id: resolvedId,
     name,
     grams: baseGrams,
     baseGrams,

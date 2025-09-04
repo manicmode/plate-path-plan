@@ -147,13 +147,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const r = results?.[i];
           if (!r) return m;
 
+          // UNIFY: use the same ID source for both write and read
+          const storeId = m.foodId ?? m.id ?? generateFoodId(m);
+          
           const merged = toLegacyFoodItem(
-            { ...m, nutrients: r.nutrients, serving: r.serving },
-            m.foodId ?? m.id ?? `idx-${i}`,
+            { ...m, nutrients: r.nutrients, serving: r.serving, id: storeId },
+            storeId,
             /*strict=*/ true
           );
-
-          const storeId = generateFoodId(merged);
           storeUpdates[storeId] = {
             perGram: merged.nutrition?.perGram || {},
             healthScore: merged.analysis?.healthScore ?? 0,
@@ -321,7 +322,30 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
 
     // Transform items using legacy adapter with SST enabled
-    const initialModalItems = selectedItems.map((item, index) => toLegacyFoodItem(item, index, ENABLE_SST_CONFIRM_READ));
+    const initialModalItems = selectedItems.map((item, index) => {
+      const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
+      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
+    });
+    
+    // Hard ID diagnostics for modal items
+    const modalIds = selectedItems.map((raw, i) => {
+      const id = (raw as any).foodId ?? raw.id ?? generateFoodId(raw);
+      return { i, id, name: raw.name };
+    });
+    console.log('[SST][MODAL_IDS]', modalIds);
+
+    // Verify store has perGram for these ids after previous writes
+    setTimeout(() => {
+      const byId = useNutritionStore.getState().byId;
+      const probe = modalIds.map(m => ({
+        i: m.i, 
+        id: m.id,
+        name: m.name,
+        has: !!byId[m.id],
+        pgSum: byId[m.id] ? Object.values(byId[m.id].perGram||{}).reduce((a:any,b:any)=>a+(+b||0),0) : 0
+      }));
+      console.log('[SST][STORE_PROBE]', probe);
+    }, 200);
     
     // Phase 0: Probe nutrition data sources
     if (import.meta.env.DEV) {
