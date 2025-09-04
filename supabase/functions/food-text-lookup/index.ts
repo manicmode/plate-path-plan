@@ -43,27 +43,191 @@ const corsHeaders = {
 // Cache TTL
 const CACHE_TTL_HOURS = 24;
 
+// Generic food definitions
+type GenericDef = {
+  synonyms: string[];
+  per100g: { kcal: number, p: number, c: number, f: number };
+  defaultServingG: number;
+};
+
+const BASIC_GENERICS: Record<string, GenericDef> = {
+  'chicken breast cooked': {
+    synonyms: ['chicken', 'grilled chicken', 'chicken breast', 'roast chicken'],
+    per100g: { kcal: 165, p: 31, c: 0, f: 3.6 },
+    defaultServingG: 150
+  },
+  'oatmeal dry': {
+    synonyms: ['oats', 'oatmeal', 'rolled oats'],
+    per100g: { kcal: 379, p: 13.2, c: 67.7, f: 6.5 },
+    defaultServingG: 40
+  },
+  'banana': {
+    synonyms: ['banana'],
+    per100g: { kcal: 89, p: 1.1, c: 22.8, f: 0.3 },
+    defaultServingG: 118
+  },
+  'white rice cooked': {
+    synonyms: ['rice', 'white rice', 'cooked rice', 'steamed rice'],
+    per100g: { kcal: 130, p: 2.7, c: 28.7, f: 0.3 },
+    defaultServingG: 150
+  },
+  'egg large': {
+    synonyms: ['egg', 'eggs'],
+    per100g: { kcal: 155, p: 13, c: 1.1, f: 11 },
+    defaultServingG: 50
+  },
+  'avocado': {
+    synonyms: ['avocado'],
+    per100g: { kcal: 160, p: 2, c: 9, f: 15 },
+    defaultServingG: 100
+  },
+  'almond butter': {
+    synonyms: ['almond butter'],
+    per100g: { kcal: 614, p: 21, c: 19, f: 55 },
+    defaultServingG: 32
+  }
+};
+
+// Restaurant chain aliases and seed data
+const CHAIN_ALIASES: Record<string, string> = {
+  'in n out': 'In-N-Out Burger',
+  'in-n-out': 'In-N-Out Burger',
+  'innout': 'In-N-Out Burger',
+  'in and out burger': 'In-N-Out Burger',
+  'in & out': 'In-N-Out Burger'
+};
+
+const RESTAURANT_SEED: Record<string, Array<{
+  name: string; servingText: string; kcal?: number; p?: number; c?: number; f?: number;
+}>> = {
+  'In-N-Out Burger': [
+    { name: 'Double-Double', servingText: '1 burger', kcal: 670, p: 37, c: 39, f: 41 },
+    { name: 'Cheeseburger', servingText: '1 burger', kcal: 480, p: 22, c: 39, f: 27 },
+    { name: 'Hamburger', servingText: '1 burger', kcal: 390, p: 16, c: 39, f: 19 }
+  ]
+};
+
 // Helper functions
+function normalize(q: string): string {
+  let s = (q || '').toLowerCase().trim();
+
+  // insert space between letters and digits: "chicken150g" -> "chicken 150g"
+  s = s.replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2');
+
+  // normalize units
+  s = s.replace(/\bgrams?\b/g, 'g')
+       .replace(/\bmilliliters?\b/g, 'ml')
+       .replace(/\bou?nces?\b/g, 'oz');
+
+  // handle common punctuation as separators
+  s = s.replace(/[,_]/g, ' ');
+
+  // collapse whitespace
+  s = s.replace(/\s+/g, ' ');
+  return s;
+}
+
+// extract an amount like "150 g", "1 oz", "1/2 cup", plain number defaulting to g
+function extractQuantity(s: string): { grams: number | null, servingText?: string } {
+  const OZ_TO_G = 28.349523125;
+  // 150 g / 150g
+  let m = s.match(/(\d+(?:\.\d+)?)\s*g\b/);
+  if (m) return { grams: parseFloat(m[1]), servingText: `${m[1]} g` };
+
+  // 1 oz
+  m = s.match(/(\d+(?:\.\d+)?)\s*oz\b/);
+  if (m) return { grams: parseFloat(m[1]) * OZ_TO_G, servingText: `${m[1]} oz` };
+
+  // simple "200" → assume grams if a generic food is present
+  m = s.match(/\b(\d{2,3})\b/);
+  if (m) return { grams: parseFloat(m[1]), servingText: `${m[1]} g` };
+
+  return { grams: null };
+}
+
 function cleanQuery(q: string): string {
-  return q.trim().toLowerCase().replace(/\s+/g, ' ');
+  return normalize(q);
 }
 
 function normalizeQuery(q: string): string {
   return cleanQuery(q).replace(/[^\w\s]/g, '');
 }
 
+function matchGeneric(query: string): { key: string, def: GenericDef } | null {
+  for (const [key, def] of Object.entries(BASIC_GENERICS)) {
+    for (const s of def.synonyms) {
+      const re = new RegExp(`\\b${s.replace(/\s+/g, '\\s+')}\\b`, 'i');
+      if (re.test(query)) return { key, def };
+    }
+  }
+  return null;
+}
+
+function normalizeChainName(q: string): string | null {
+  const s = q.toLowerCase();
+  for (const [alias, proper] of Object.entries(CHAIN_ALIASES)) {
+    if (s.includes(alias)) return proper;
+  }
+  // also catch exact proper name
+  if (s.includes('in-n-out') || s.includes('in n out')) return 'In-N-Out Burger';
+  return null;
+}
+
 function classifyQuery(q: string): 'likely_brand' | 'likely_generic' | 'likely_restaurant' | 'unknown' {
-  const brandHints = /(kellogg|nestle|trader\s*joe|tj\'?s|costco|kirkland|heinz|barilla|oreo|clif|chobani|fage|cheerios|quaker|gatorade|pringles|lays|doritos|ben.?&.?jerry|whole.?foods)/i;
   const restaurantHints = /(mcdonald|in.?n.?out|chipotle|subway|taco\s*bell|kfc|starbucks|burger\s*king|wendy|panera|domino|papa john|five guys|shake shack)/i;
-  
   if (restaurantHints.test(q)) return 'likely_restaurant';
+
+  // quantity strongly implies generic
+  if (/\b(\d+(?:\.\d+)?)\s*(g|oz|ml)\b/.test(q)) return 'likely_generic';
+
+  const brandHints = /(kellogg|nestle|trader\s*joe|tj'?s|kirkland|heinz|barilla|oreo|clif|chobani|fage|cheerios|quaker|gatorade|pringles|lays|doritos|ben.?&.?jerry|whole.?foods)/i;
   if (brandHints.test(q)) return 'likely_brand';
+
   if (q.split(' ').length <= 3) return 'likely_generic';
   return 'unknown';
 }
 
+function dedupeAndCap(items: RecognizedFood[], cap = 5) {
+  const seen = new Map<string, RecognizedFood>();
+  for (const it of items) {
+    const key = (it.barcode || `${it.provider}:${it.brand ?? ''}:${it.name}` || it.id).toLowerCase();
+    const prev = seen.get(key);
+    if (!prev || (it.confidence ?? 0) > (prev.confidence ?? 0)) seen.set(key, it);
+  }
+  return Array.from(seen.values()).slice(0, cap);
+}
+
 function pickNonZero(v: number | null | undefined, d: number): number {
   return (v && v > 0) ? v : d;
+}
+
+function coerce(v: any): number | null {
+  if (typeof v === 'number' && !isNaN(v) && v > 0) return v;
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    return (!isNaN(n) && n > 0) ? n : null;
+  }
+  return null;
+}
+
+function parseServingFromText(text: string | null | undefined): { grams: number | null; text?: string } {
+  if (!text) return { grams: null };
+  
+  const str = String(text);
+  
+  // Try to extract grams
+  let match = str.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\b/i);
+  if (match) return { grams: parseFloat(match[1]), text: str };
+
+  // Try oz to grams
+  match = str.match(/(\d+(?:\.\d+)?)\s*(?:oz|ounces?)\b/i);
+  if (match) return { grams: parseFloat(match[1]) * 28.35, text: str };
+
+  // Try ml (assume 1g/ml for liquids)
+  match = str.match(/(\d+(?:\.\d+)?)\s*(?:ml|milliliters?)\b/i);
+  if (match) return { grams: parseFloat(match[1]), text: str };
+
+  return { grams: null, text: str };
 }
 
 // Cache management
@@ -162,13 +326,120 @@ async function resolveOFF(q: string): Promise<RecognizedFood[] | null> {
 
 async function resolveGeneric(q: string): Promise<RecognizedFood[] | null> {
   console.log('[RESOLVER][GENERIC] Searching:', q);
-  // Placeholder - could query USDA or generic foods table
+  
+  // 1) try DB if present
+  try {
+    const { data } = await supabase.from('food_generics').select('*').ilike('name', `%${q}%`).limit(5);
+    if (data?.length) {
+      return data.map((g: any) => {
+        const parsed = parseServingFromText(g?.serving_text);
+        const grams = parsed.grams ?? coerce(g?.serving_grams) ?? extractQuantity(q).grams ?? 100;
+        const per = derivePerPortion(g, grams);
+        return {
+          id: crypto.randomUUID(),
+          source: 'manual',
+          provider: 'generic',
+          name: g.name,
+          brand: null,
+          barcode: null,
+          imageUrl: g.image_url ?? null,
+          servingGrams: per.grams ?? grams ?? 100,
+          servingText: parsed.text ?? g?.serving_text,
+          calories: pickNonZero(per.calories, 150),
+          protein_g: pickNonZero(per.protein_g, 8),
+          carbs_g: pickNonZero(per.carbs_g, 25),
+          fat_g: pickNonZero(per.fat_g, 5),
+          __hydrated: true,
+          confidence: 0.78
+        };
+      });
+    }
+  } catch (_) { /* ignore */ }
+
+  // 2) built-in lexicon fallback
+  const hit = matchGeneric(q);
+  if (hit) {
+    const { def, key } = hit;
+    const qty = extractQuantity(q);
+    const grams = qty.grams ?? def.defaultServingG;
+    const scale = grams / 100;
+
+    return [{
+      id: crypto.randomUUID(),
+      source: 'manual',
+      provider: 'generic',
+      name: key,
+      brand: null,
+      barcode: null,
+      imageUrl: null,
+      servingGrams: grams,
+      servingText: qty.servingText ?? `${grams} g`,
+      calories: Math.round(def.per100g.kcal * scale),
+      protein_g: +(def.per100g.p * scale).toFixed(1),
+      carbs_g:   +(def.per100g.c * scale).toFixed(1),
+      fat_g:     +(def.per100g.f * scale).toFixed(1),
+      __hydrated: true,
+      confidence: 0.8
+    }];
+  }
+
   return null;
 }
 
 async function resolveRestaurant(q: string): Promise<RecognizedFood[] | null> {
+  const chain = normalizeChainName(q);
   console.log('[RESOLVER][RESTAURANT] Searching:', q);
-  // Placeholder - could query restaurant menu items table
+
+  // 1) Try DB if present
+  try {
+    const { data } = await supabase
+      .from('restaurant_menu_items')
+      .select('*')
+      .ilike('name', `%${q}%`)
+      .limit(5);
+    if (data?.length) {
+      return data.map((r: any) => {
+        const parsed = parseServingFromText(r?.serving_text);
+        const grams = parsed.grams ?? coerce(r?.serving_grams) ?? null;
+        const per = derivePerPortion(r, grams);
+        return {
+          id: crypto.randomUUID(),
+          source: 'manual',
+          provider: 'restaurant',
+          name: r.name,
+          brand: r.chain ?? chain,
+          servingGrams: per.grams ?? grams ?? 100,
+          servingText: parsed.text ?? r?.serving_text ?? '1 item',
+          calories: pickNonZero(per.calories, r.energy_kcal_serving ?? 500),
+          protein_g: pickNonZero(per.protein_g, r.proteins_serving ?? 20),
+          carbs_g:   pickNonZero(per.carbohydrates_serving ?? per.carbs_g, 40),
+          fat_g:     pickNonZero(per.fat_serving ?? per.fat_g, 20),
+          __hydrated: true,
+          confidence: 0.78
+        };
+      });
+    }
+  } catch (_) { /* ignore */ }
+
+  // 2) Seed fallback if we detected a chain by alias
+  if (chain && RESTAURANT_SEED[chain]) {
+    return RESTAURANT_SEED[chain].map((m) => ({
+      id: crypto.randomUUID(),
+      source: 'manual' as const,
+      provider: 'restaurant' as const,
+      name: m.name,
+      brand: chain,
+      servingGrams: 0,
+      servingText: m.servingText,
+      calories: m.kcal ?? 500,
+      protein_g: m.p ?? 20,
+      carbs_g:   m.c ?? 40,
+      fat_g:     m.f ?? 20,
+      __hydrated: true,
+      confidence: 0.75
+    }));
+  }
+
   return null;
 }
 
@@ -370,12 +641,15 @@ serve(async (req: Request) => {
       }
     }
 
-    // Annotate source field
+    // Annotate source field and deduplicate/cap results
     if (results) {
       results = results.map(r => ({ 
         ...r, 
         source: (source === 'speech' ? 'speech' : 'manual') as const 
       }));
+      
+      // Deduplicate and cap results
+      results = dedupeAndCap(results);
     }
 
     const response = {
