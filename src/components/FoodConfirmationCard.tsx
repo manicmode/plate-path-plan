@@ -131,6 +131,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
@@ -158,12 +159,43 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     (currentFoodItem as any)?.barcode
   );
 
+  // Detect manual/voice sources for v3 handling
+  const isManualVoiceSource = !!(
+    (currentFoodItem as any)?.__source === 'manual' || 
+    (currentFoodItem as any)?.__source === 'voice' ||
+    (currentFoodItem as any)?.source === 'manual' || 
+    (currentFoodItem as any)?.source === 'speech'
+  );
+
   const useHydration = !bypassHydration;
   // Don't block barcode items on hydration; everything else keeps existing guard
   const isNutritionReady = (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
+  
+  // Log mount and hydration states
+  useEffect(() => {
+    if (isOpen && currentFoodItem) {
+      const source = (currentFoodItem as any)?.__source || (currentFoodItem as any)?.source || 'unknown';
+      console.log('[CONFIRM][MOUNT]', {
+        source,
+        useHydration,
+        isNutritionReady,
+        isManualVoice: isManualVoiceSource
+      });
+      
+      if (!isNutritionReady && useHydration) {
+        console.log('[CONFIRM][HYDRATE:PENDING]');
+      }
+    }
+  }, [isOpen, currentFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
+
+  // Log when hydration completes
+  useEffect(() => {
+    if (isNutritionReady && useHydration && isOpen) {
+      console.log('[CONFIRM][HYDRATE:READY]');
+    }
+  }, [isNutritionReady, useHydration, isOpen]);
 
   
-
   // Temporary diagnostics for barcode flow
   console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
     isOpen,
@@ -303,16 +335,65 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [currentFoodItem?.id, currentFoodItem?.name]);
 
+  // Handle candidate selection with logging and hydration
+  const handleCandidateSelect = async (candidate: any, index: number) => {
+    console.log('[CONFIRM][ALT:SELECT]', {
+      from: currentFoodItem?.name,
+      to: candidate.name,
+      index
+    });
+    
+    setSelectedCandidate(candidate);
+    
+    // For v3 candidates, use their pre-calculated values
+    if (candidate.servingG) {
+      console.log('[CONFIRM][ALT:HYDRATE:READY]', {
+        name: candidate.name,
+        servingG: candidate.servingG
+      });
+      
+      setCurrentFoodItem({
+        ...currentFoodItem!,
+        name: candidate.name,
+        calories: candidate.calories,
+        protein: candidate.protein,
+        carbs: candidate.carbs,
+        fat: candidate.fat,
+        fiber: candidate.fiber,
+        sugar: candidate.sugar,
+        sodium: candidate.sodium,
+        imageUrl: candidate.imageUrl,
+        portionGrams: candidate.servingG
+      });
+    } else {
+      // Fallback for legacy candidates - would need hydration
+      const portionEstimate = originalText ? 
+        inferPortion(candidate.name, originalText, undefined, candidate.classId) :
+        { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
+      
+      setCurrentFoodItem({
+        ...currentFoodItem!,
+        name: candidate.name,
+        calories: candidate.calories,
+        protein: candidate.protein,
+        carbs: candidate.carbs,
+        fat: candidate.fat,
+        fiber: candidate.fiber,
+        sugar: candidate.sugar,
+        sodium: candidate.sodium,
+        imageUrl: candidate.imageUrl,
+        portionGrams: portionEstimate.grams
+      });
+    }
+  };
+
   // Guard content rendering ONLY; hooks already executed
   if (!currentFoodItem) {
     return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
   }
 
-  const canRender = skipNutritionGuard || isNutritionReady;
-  if (!canRender) {
-    console.log('[RENDER_GUARD] nutrition not ready (barcode bypass off)', { isNutritionReady, skipNutritionGuard, useHydration });
-    return <span data-guard="not-ready" />;
-  }
+  // REMOVED: No longer block dialog when nutrition isn't ready
+  // Instead, show loading state inside the dialog
 
   const portionMultiplier = portionPercentage[0] / 100;
   
@@ -740,8 +821,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           if (totalItems && totalItems > 1) return;
           
           // Don't block explicit user Cancel - only prevent ESC/outside clicks with forceConfirm
+          console.log('[CANCEL][CLICK]');
           onClose();
-        }}
+          console.log('[CANCEL][DONE]');
+        }
       >
         <AccessibleDialogContent 
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
@@ -838,52 +921,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   {(((currentFoodItem as any)?.__altCandidates || candidates || []).slice(0, 6)).map((candidate: any, index: number) => (
                     <button
                       key={candidate.id}
-                       onClick={() => {
-                         if (FOOD_TEXT_DEBUG) {
-                           console.log('[TEXT][PICK]', {
-                             name: candidate.name,
-                             servingG: candidate.servingG || candidate.servingGrams || 100,
-                             reason: 'user-swap'
-                           });
-                         }
-                         
-                         setSelectedCandidate(candidate);
-                         // For v3 candidates, use their pre-calculated values
-                         if (candidate.servingG) {
-                           setCurrentFoodItem({
-                             ...currentFoodItem!,
-                             name: candidate.name,
-                             calories: candidate.calories,
-                             protein: candidate.protein,
-                             carbs: candidate.carbs,
-                             fat: candidate.fat,
-                             fiber: candidate.fiber,
-                             sugar: candidate.sugar,
-                             sodium: candidate.sodium,
-                             imageUrl: candidate.imageUrl,
-                             portionGrams: candidate.servingG
-                           });
-                         } else {
-                           // Fallback for legacy candidates
-                           const portionEstimate = originalText ? 
-                             inferPortion(candidate.name, originalText, undefined, candidate.classId) :
-                             { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
-                           
-                           setCurrentFoodItem({
-                             ...currentFoodItem!,
-                             name: candidate.name,
-                             calories: candidate.calories,
-                             protein: candidate.protein,
-                             carbs: candidate.carbs,
-                             fat: candidate.fat,
-                             fiber: candidate.fiber,
-                             sugar: candidate.sugar,
-                             sodium: candidate.sodium,
-                             imageUrl: candidate.imageUrl,
-                             portionGrams: portionEstimate.grams
-                           });
-                         }
-                       }}
+                      onClick={() => handleCandidateSelect(candidate, index)}
                       className={`p-3 rounded-lg border-2 text-left transition-all ${
                         index === 0 
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
@@ -1013,6 +1051,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             )}
 
+            {/* Loading State for Nutrition Hydration */}
+            {(!isNutritionReady && useHydration && !skipNutritionGuard) && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Loading nutrition data...
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Please wait while we fetch detailed nutrition information
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tabs for Nutrition and Health */}
             <Tabs defaultValue="nutrition" className="mb-6">
               <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
@@ -1022,7 +1077,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsList>
               
               <TabsContent value="nutrition" className="space-y-3 mt-4">
-                <div className="grid grid-cols-3 gap-3">
+                {/* Show skeleton when nutrition is loading */}
+                {(!isNutritionReady && useHydration && !skipNutritionGuard) ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                          <div className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded mx-auto mb-2 animate-pulse"></div>
+                          <div className="w-8 h-4 bg-gray-200 dark:bg-gray-600 rounded mx-auto mb-1 animate-pulse"></div>
+                          <div className="w-12 h-3 bg-gray-200 dark:bg-gray-600 rounded mx-auto animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[...Array(2)].map((_, i) => (
+                        <div key={i} className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div className="w-8 h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                          <div className="w-6 h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
                   <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
                     <div className="text-lg">🥩</div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -1064,6 +1142,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
               </TabsContent>
               

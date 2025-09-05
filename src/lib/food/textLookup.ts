@@ -88,26 +88,17 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       throw new Error('No food candidates found');
     }
 
-    // Build primary item from best candidate
-    const primary = candidates[0];
+    // Create food item with v3 structure and realistic portions
     const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
     
-    if (FOOD_TEXT_DEBUG) {
-      console.log('[TEXT][PICK]', {
-        name: primary.name,
-        servingG: portionEstimate.grams,
-        reason: 'best-score'
-      });
-    }
-
-    // Create food item with v3 structure
     const foodItem = {
       id: primary.id || `v3-${Date.now()}`,
       name: primary.name,
+      // Scale nutrition to realistic portion immediately  
       calories: Math.round((primary.calories || 0) * portionEstimate.grams / 100),
       protein: Math.round((primary.protein || 0) * portionEstimate.grams / 100 * 10) / 10,
       carbs: Math.round((primary.carbs || 0) * portionEstimate.grams / 100 * 10) / 10,
-      fat: Math.round((primary.fat || 0) * portionEstimate.grams / 100 * 10) / 10,
+      fat: Math.round((primary.fat || 0) * portionEstimate.grams / 100 * 10) / 10,  
       fiber: Math.round((primary.fiber || 0) * portionEstimate.grams / 100 * 10) / 10,
       sugar: Math.round((primary.sugar || 0) * portionEstimate.grams / 100 * 10) / 10,
       sodium: Math.round((primary.sodium || 0) * portionEstimate.grams / 100),
@@ -123,7 +114,7 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
         return {
           id: c.id || `alt-${Date.now()}-${Math.random()}`,
           name: c.name,
-          servingG: altPortion.grams,
+          servingG: altPortion.grams, // Pre-calculated portion
           calories: Math.round((c.calories || 0) * altPortion.grams / 100),
           protein: Math.round((c.protein || 0) * altPortion.grams / 100 * 10) / 10,
           carbs: Math.round((c.carbs || 0) * altPortion.grams / 100 * 10) / 10,
