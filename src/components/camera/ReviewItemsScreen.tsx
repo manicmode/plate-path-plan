@@ -198,6 +198,34 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     ) : false
   );
 
+  // Watchdog effect to prevent stuck loader
+  useEffect(() => {
+    if (!confirmModalOpen) return;
+    
+    const start = Date.now();
+    let cancelled = false;
+    
+    const tick = () => {
+      const cur = confirmModalItems[currentConfirmIndex];
+      const stuck = (hydrating || isHydrating || !cur || !cur.__hydrated);
+      
+      if (!stuck || cancelled) return;
+      
+      if (Date.now() - start > 12000) {
+        console.warn('[CONFIRM][LOADER_TIMEOUT] closing stuck loader');
+        setConfirmModalOpen(false);
+        setConfirmFlowActive(false);
+        toast.error('Something took too long. Back to Review.');
+        return;
+      }
+      
+      requestAnimationFrame(tick);
+    };
+    
+    tick();
+    return () => { cancelled = true; };
+  }, [confirmModalOpen, currentConfirmIndex, confirmModalItems, isHydrating, hydrating]);
+
   useEffect(() => {
     if (firstCardId) {
       console.log('[READY][FIRST_ID]', { firstCardId });
@@ -347,12 +375,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
       
       if (isLast) {
-        // End flow only after the last confirm
+        // End flow after the last confirm
+        setConfirmModalOpen(false);
         setConfirmFlowActive(false);
         finishConfirmFlow('confirmed');
       } else {
         // Move to next item
-        setCurrentConfirmIndex(currentConfirmIndex + 1);
+        setCurrentConfirmIndex((i) => i + 1);
         setConfirmFlowActive(true);
       }
       
@@ -363,6 +392,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleConfirmModalReject = () => {
+    setConfirmModalOpen(false);
     setConfirmFlowActive(false);
     finishConfirmFlow('canceled');
   };
@@ -371,11 +401,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const isLast = currentConfirmIndex + 1 >= confirmModalItems.length;
 
     if (isLast) {
+      setConfirmModalOpen(false);
       setConfirmFlowActive(false);
       finishConfirmFlow('skipped');
     } else {
       // Move to next item
-      setCurrentConfirmIndex(currentConfirmIndex + 1);
+      setCurrentConfirmIndex((i) => i + 1);
       setConfirmFlowActive(true);
     }
   };
