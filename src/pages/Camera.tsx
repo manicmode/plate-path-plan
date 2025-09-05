@@ -1606,6 +1606,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           setRecognizedFoods([recognizedFood]);
           setSelectedImage(null);
           setPendingItems([]);
+          setBypassHydration(true); // ensures FoodConfirmationCard prefers barcode servingGrams
           
           // Temporary diagnostic: Before opening confirm
           console.log('[BARCODE][OPEN_CONFIRM]', {
@@ -3035,6 +3036,27 @@ console.log('Global search enabled:', enableGlobalSearch);
     setVh();
     window.addEventListener('resize', setVh);
     return () => window.removeEventListener('resize', setVh);
+  }, []);
+
+  // Kill any stray camera tracks when modals close or route unmounts
+  useEffect(() => {
+    if (!showLogBarcodeScanner && !showCamera) {
+      try {
+        const videos = document.querySelectorAll('video');
+        videos.forEach(video => stopMedia(video));
+        console.log('[CAMERA][CLEANUP]', 'modal-closed');
+      } catch {}
+    }
+  }, [showLogBarcodeScanner, showCamera]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        const videos = document.querySelectorAll('video');
+        videos.forEach(video => stopMedia(video));
+        console.log('[CAMERA][CLEANUP]', 'route-unmount');
+      } catch {}
+    };
   }, []);
 
   const handleRetryPhoto = () => {
