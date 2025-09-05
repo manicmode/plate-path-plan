@@ -4,24 +4,26 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') || '';
 
-  console.log('[CORS][DEBUG]', { requestOrigin: origin, ts: new Date().toISOString() });
-
   const allowed = [
-    'https://plate-path-plan.lovable.app',
-    /^https:\/\/.*\.lovable\.dev$/,
-    /^https:\/\/.*\.lovable\.app$/
+    'https://plate-path-plan.lovable.app',               // prod
+    /^https:\/\/.*\.lovable\.dev$/,                      // preview
+    /^https:\/\/.*\.lovable\.app$/,                      // other prod subdomains
+    'http://localhost:5173',
+    'http://localhost:5174'
   ];
-  const isAllowed = allowed.some(a => typeof a === 'string' ? a === origin : a.test(origin));
 
-  const cors = {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://plate-path-plan.lovable.app',
+  const isAllowed = allowed.some(rule =>
+    typeof rule === 'string' ? rule === origin : rule.test(origin)
+  );
+
+  const allowOrigin = isAllowed ? origin : 'https://plate-path-plan.lovable.app';
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-auth',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Credentials': 'true'
-  };
-
-  console.log('[CORS][HEADERS]', { origin, isAllowed, returnedOrigin: cors['Access-Control-Allow-Origin'] });
-  return cors;
+  } as HeadersInit;
 }
 
 serve(async (req) => {
@@ -33,12 +35,14 @@ serve(async (req) => {
   }
 
   try {
+    // Auth (let Supabase verify JWT)
     const authHeader = req.headers.get('authorization');
-    console.log('[AUTH][DEBUG]', {
-      hasAuth: !!authHeader,
-      authPreview: authHeader?.slice(0, 30),
-      origin: req.headers.get('origin')
-    });
+    if (!authHeader) {
+      return new Response(JSON.stringify({ ok: false, error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...cors }
+      });
+    }
 
     const { mode, barcode, imageBase64, source } = await req.json().catch(() => ({}));
     

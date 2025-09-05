@@ -1379,10 +1379,16 @@ console.log('Global search enabled:', enableGlobalSearch);
 
       console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
       
+      // Always include the current session token in function calls
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+      console.log('[BARCODE][AUTH]', { hasSession: !!session, hasToken: !!session?.access_token, tokenStart: session?.access_token?.slice(0, 16) });
+      
       // Test function deployment with health check
       try {
         const healthResponse = await supabase.functions.invoke('barcode-lookup-global', {
-          body: { health: true }
+          body: { health: true },
+          headers
         });
         console.log('Health check response:', healthResponse);
       } catch (healthError) {
@@ -1420,15 +1426,6 @@ console.log('Global search enabled:', enableGlobalSearch);
       let status: string | number = 'error';
       
       try {
-        // Add JWT header for authentication
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
-
-        console.log('[BARCODE][AUTH]', {
-          hasToken: !!session?.access_token,
-          tokenPreview: session?.access_token?.slice(0, 20)
-        });
-
         const response = await supabase.functions.invoke('enhanced-health-scanner', {
           body: { mode: 'barcode', barcode: cleanBarcode, source: 'log' },
           headers

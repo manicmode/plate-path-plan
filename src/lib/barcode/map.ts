@@ -114,53 +114,49 @@ export type RecognizedFood = {
   __hydrated?: boolean;
 };
 
-export function mapBarcodeToRecognizedFood(raw: BarcodeLookupResponse): RecognizedFood {
-  const upc = pick<string>(raw, ['upc', 'barcode', 'ean', 'code']) || 'unknown';
-  
-  // Harden name derivation with stricter candidate list and string enforcement
-  const nameCandidates = ['product_name', 'generic_name', 'name', 'title', 'description'];
-  let name = '';
-  
-  for (const field of nameCandidates) {
-    const candidate = pick<any>(raw, [field]);
-    if (candidate && typeof candidate === 'string' && candidate.trim().length > 0) {
-      name = candidate.trim();
-      break;
-    }
-  }
-  
-  // Fallback to brand-based name or product UPC if all candidates fail
-  if (!name) {
-    const brand = pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']);
-    name = brand && typeof brand === 'string' ? `${brand} Product` : `Product ${upc}`;
-  }
-  
-  const brand = pick<string>(raw, ['brand', 'brands', 'manufacturer', 'brand_name']) ?? null;
-  const imageUrl = pick<string>(raw, ['image_url', 'images.front', 'image', 'photo']) ?? null;
+export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
+  const upc =
+    pick<string>(raw, ['upc','barcode','ean','code']) || 'unknown';
 
-  // Try structured grams first; else parse serving_size text; else null → later fallback.
-  const structuredGrams =
-    pick<number>(raw, ['serving_grams','serving_size_g','serving_size_grams'], true) ??
-    pick<number>(raw, ['nutrition.serving_size_g','nutriments.serving_size_g'], true) ??
-    null;
+  const name =
+    pick<string>(raw, ['name','product_name','title','description']) || `Barcode ${upc}`;
 
-  const servingSizeText =
-    pick<string>(raw, ['serving_size','nutrition.serving_size','product.serving_size']) ??
-    pick<string>(raw, ['nutriments.serving_size']) ??
-    null;
+  const brand =
+    pick<string>(raw, ['brand','brands','manufacturer','brand_name']) ?? null;
 
-  const parsed = parseServingFromText(servingSizeText);
-  const gramsCandidate = structuredGrams ?? parsed.grams;
+  const imageUrl =
+    pick<string>(raw, ['image_url','images.front','image','photo']) ?? null;
 
-  const per = derivePerPortion(raw, gramsCandidate);
+  // Prefer provided serving grams; otherwise default to 100g so math never zeros out
+  const servingGrams =
+    pick<number>(raw, ['serving_grams','serving_size_g','serving_size_grams'], true) ?? 100;
 
-  // Sensible fallbacks if provider lacks data
-  const servingGrams = per.grams ?? 100;
-  const calories  = per.calories   ?? 150;
-  const protein_g = per.protein_g  ?? 8;
-  const carbs_g   = per.carbs_g    ?? 25;
-  const fat_g     = per.fat_g      ?? 5;
+  // Extract per 100g first; fall back to per-serving fields; then sane defaults
+  const kcal =
+    pick<number>(raw, ['nutriments.energy-kcal_100g','energy-kcal_100g','nutrition.calories_100g'], true) ??
+    pick<number>(raw, ['nutriments.energy-kcal_serving','nutrition.calories','kcal','calories'], true) ?? 150;
 
+  const protein =
+    pick<number>(raw, ['nutriments.proteins_100g','proteins_100g','nutrition.protein_g'], true) ??
+    pick<number>(raw, ['protein_g','protein'], true) ?? 8;
+
+  const carbs =
+    pick<number>(raw, ['nutriments.carbohydrates_100g','carbohydrates_100g','nutrition.carbs_g'], true) ??
+    pick<number>(raw, ['carbs_g','carbohydrate','carbohydrates'], true) ?? 20;
+
+  const fat =
+    pick<number>(raw, ['nutriments.fat_100g','fat_100g','nutrition.fat_g'], true) ??
+    pick<number>(raw, ['fat_g','fat','total_fat'], true) ?? 4;
+
+  const fiber =
+    pick<number>(raw, ['nutriments.fiber_100g','fiber_100g','nutrition.fiber_g'], true) ??
+    pick<number>(raw, ['fiber_g','fiber'], true) ?? 2;
+
+  const sugar =
+    pick<number>(raw, ['nutriments.sugars_100g','sugars_100g','nutrition.sugar_g'], true) ??
+    pick<number>(raw, ['sugar_g','sugar'], true) ?? 5;
+
+  // Build RecognizedFood — UI copies these into legacy fields for display
   const mapped: RecognizedFood = {
     id: `bc:${upc}`,
     source: 'barcode',
@@ -169,11 +165,13 @@ export function mapBarcodeToRecognizedFood(raw: BarcodeLookupResponse): Recogniz
     brand,
     imageUrl,
     servingGrams,
-    // Optional: surface text so UI can show "Per portion (2/3 cup • 55 g)"
-    servingText: parsed.text ?? servingSizeText ?? undefined,
-    calories, protein_g, carbs_g, fat_g,
-    fiber_g: 2, sugar_g: 3,
-    __hydrated: true,
+    calories: kcal,
+    protein_g: protein,
+    carbs_g: carbs,
+    fat_g: fat,
+    fiber_g: fiber,
+    sugar_g: sugar,
+    __hydrated: true
   };
 
   console.log('[BARCODE][MAP:ITEM]', mapped);

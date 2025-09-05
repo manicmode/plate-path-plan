@@ -1,8 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+
+  const allowed = [
+    'https://plate-path-plan.lovable.app',               // prod
+    /^https:\/\/.*\.lovable\.dev$/,                      // preview
+    /^https:\/\/.*\.lovable\.app$/,                      // other prod subdomains
+    'http://localhost:5173',
+    'http://localhost:5174'
+  ];
+
+  const isAllowed = allowed.some(rule =>
+    typeof rule === 'string' ? rule === origin : rule.test(origin)
+  );
+
+  const allowOrigin = isAllowed ? origin : 'https://plate-path-plan.lovable.app';
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-auth',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true'
+  } as HeadersInit;
 }
 
 interface ProductNutrition {
@@ -98,17 +118,21 @@ function generateBarcodeVariants(barcode: string): string[] {
 }
 
 serve(async (req) => {
-  console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
-  console.log('Request method:', req.method);
-  console.log('Request URL:', req.url);
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-  console.log('Function started at:', new Date().toISOString());
-  
+  const cors = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { status: 200, headers: cors });
   }
 
   try {
+    // Auth (let Supabase verify JWT)
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...cors }
+      });
+    }
     const body = await req.json();
     console.log('Request body:', body);
     
@@ -227,7 +251,7 @@ serve(async (req) => {
       console.log('SUCCESS: Product found');
       return new Response(
         JSON.stringify({ success: true, product }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json', ...cors } }
       );
     } else {
       console.log('ERROR: Product not found');
@@ -248,7 +272,7 @@ serve(async (req) => {
         }),
         { 
           status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { 'Content-Type': 'application/json', ...cors } 
         }
       );
     }
@@ -264,7 +288,7 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...cors },
       }
     );
   }
