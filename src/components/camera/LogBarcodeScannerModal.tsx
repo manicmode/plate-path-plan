@@ -855,178 +855,176 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={(v) => v ? null : requestClose('onOpenChange')}>
       <DialogContent 
-        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden fixed inset-0 translate-x-0 translate-y-0"
+        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden fixed inset-0 translate-x-0 translate-y-0 flex flex-col"
         onEscapeKeyDown={onEscapeKeyDown}
         onPointerDownOutside={onPointerDownOutside}
       >
         <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
         <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
         
-        <div className="grid h-full grid-rows-[auto_1fr_auto]">
-          {/* Top Header - Title, Status, and Mode Toggle */}
-          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),8px)] pb-4 text-center">
-            <h2 className="text-white text-lg font-semibold mb-2">Scan a barcode</h2>
-            
-            {/* Status chip */}
-            <div className="flex justify-center mb-4" aria-live="polite">
-              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
-                {isLookingUp ? (
-                  <>
-                    <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
-                    Looking up product...
-                  </>
-                ) : isDecoding ? (
-                  <>
-                    <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
-                    Scanning...
-                  </>
-                ) : mode === 'auto' ? (
-                  <>● Scanning active</>
-                ) : (
-                  <>● Tap to scan</>
-                )}
-              </span>
-            </div>
-
-            {/* Mode Toggle */}
-            <div className="flex justify-center">
-              <div className="flex bg-white/10 rounded-full p-1">
-                <button
-                  onClick={() => setMode('auto')}
-                  className={cn(
-                    "px-4 py-2 text-sm rounded-full transition-all",
-                    mode === 'auto'
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                      : "text-white/80 hover:text-white"
-                  )}
-                  aria-pressed={mode === 'auto'}
-                >
-                  Auto
-                </button>
-                <button
-                  onClick={() => setMode('tap')}
-                  className={cn(
-                    "px-4 py-2 text-sm rounded-full transition-all",
-                    mode === 'tap'
-                      ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
-                      : "text-white/80 hover:text-white"
-                  )}
-                  aria-pressed={mode === 'tap'}
-                >
-                  Tap
-                </button>
-              </div>
-            </div>
-            
-            {/* Top-right controls */}
-            <div className="absolute right-4 top-[max(env(safe-area-inset-top),8px)] flex gap-2">
-              {/* Torch Button */}
-              {supportsTorch && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTorch}
-                  className={`text-white hover:bg-white/20 transition-colors duration-200 ${
-                    torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
-                  }`}
-                  title={`Turn flash ${torchOn ? 'off' : 'on'}`}
-                >
-                  {torchOn ? <Zap className="h-5 w-5 text-yellow-300" /> : <ZapOff className="h-5 w-5 text-white" />}
-                </Button>
+        {/* Top Header - Title, Status, and Mode Toggle */}
+        <header className="flex-none px-4 pt-[max(env(safe-area-inset-top),12px)] pb-4 text-center relative z-[120]">
+          <h2 className="text-white text-lg font-semibold mb-2">Scan a barcode</h2>
+          
+          {/* Status chip */}
+          <div className="flex justify-center mb-4" aria-live="polite">
+            <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
+              {isLookingUp ? (
+                <>
+                  <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                  Looking up product...
+                </>
+              ) : isDecoding ? (
+                <>
+                  <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                  Scanning...
+                </>
+              ) : mode === 'auto' ? (
+                <>● Scanning active</>
+              ) : (
+                <>● Tap to scan</>
               )}
-              
-              {/* Close Button */}
+            </span>
+          </div>
+
+          {/* Mode Toggle */}
+          <div className="flex justify-center">
+            <div className="flex bg-white/10 rounded-full p-1">
+              <button
+                onClick={() => setMode('auto')}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'auto'
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'auto'}
+              >
+                Auto
+              </button>
+              <button
+                onClick={() => setMode('tap')}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'tap'
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'tap'}
+              >
+                Tap
+              </button>
+            </div>
+          </div>
+          
+          {/* Top-right controls */}
+          <div className="absolute right-4 top-[max(env(safe-area-inset-top),12px)] flex gap-2">
+            {/* Torch Button */}
+            {supportsTorch && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => requestClose('header_exit')}
-                className="text-white hover:bg-white/20"
-                aria-label="Close scanner"
-                data-role="scanner-exit"
+                onClick={toggleTorch}
+                className={`text-white hover:bg-white/20 transition-colors duration-200 ${
+                  torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
+                }`}
+                title={`Turn flash ${torchOn ? 'off' : 'on'}`}
               >
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-          </header>
-
-          {/* Camera Stage */}
-          <main className="row-start-2 grid place-items-center px-4">
-            <BarcodeViewport
-              videoRef={videoRef}
-              trackRef={trackRef}
-              onCapture={handleBarcodeCapture}
-              currentZoom={currentZoom}
-              useCSSZoom={useCSSZoom}
-              onZoomToggle={handleZoomToggle}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerEnd={handlePointerEnd}
-              onVideoClick={handleVideoClick}
-            />
-          </main>
-
-          {/* Footer / CTA */}
-          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
-            {/* Only show Scan & Log button in Tap mode */}
-            {mode === 'tap' && (
-              <Button
-                onClick={handleSnapAndDecode}
-                disabled={isDecoding || isLookingUp || !stream}
-                className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-60 transition-all duration-200"
-              >
-                {isDecoding ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Scanning...
-                  </>
-                ) : isLookingUp ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Looking up product...
-                  </>
-                ) : (
-                  <span className="inline-flex items-center gap-2">📷 Scan & Log</span>
-                )}
+                {torchOn ? <Zap className="h-5 w-5 text-yellow-300" /> : <ZapOff className="h-5 w-5 text-white" />}
               </Button>
             )}
             
-            <div className={cn("text-center", mode === 'tap' && "mt-3")}>
-              <button
-                onClick={onManualEntry}
-                className="text-white/80 hover:text-white underline underline-offset-2 transition-colors duration-200"
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => requestClose('header_exit')}
+              className="text-white hover:bg-white/20"
+              aria-label="Close scanner"
+              data-role="scanner-exit"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Camera Stage */}
+        <main className="flex-1 flex items-center justify-center px-4">
+          <BarcodeViewport
+            videoRef={videoRef}
+            trackRef={trackRef}
+            onCapture={handleBarcodeCapture}
+            currentZoom={currentZoom}
+            useCSSZoom={useCSSZoom}
+            onZoomToggle={handleZoomToggle}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerEnd={handlePointerEnd}
+            onVideoClick={handleVideoClick}
+          />
+        </main>
+
+        {/* Footer / CTA */}
+        <footer className="flex-none px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
+          {/* Only show Scan & Log button in Tap mode */}
+          {mode === 'tap' && (
+            <Button
+              onClick={handleSnapAndDecode}
+              disabled={isDecoding || isLookingUp || !stream}
+              className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-60 transition-all duration-200"
+            >
+              {isDecoding ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Scanning...
+                </>
+              ) : isLookingUp ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Looking up product...
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-2">📷 Scan & Log</span>
+              )}
+            </Button>
+          )}
+          
+          <div className={cn("text-center", mode === 'tap' && "mt-3")}>
+            <button
+              onClick={onManualEntry}
+              className="text-white/80 hover:text-white underline underline-offset-2 transition-colors duration-200"
+            >
+              Enter manually instead
+            </button>
+          </div>
+        </footer>
+
+        {/* Red Pill Overlay - only visible when actively scanning in Auto mode */}
+        <ScanOverlay show={pillVisible} />
+
+        {/* Frozen Overlay */}
+        {phase !== 'scanning' && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="text-white text-center">
+              <div className="animate-pulse text-lg">Processing...</div>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-6">
+            <div className="text-center">
+              <p className="text-white text-lg mb-4">{error}</p>
+              <Button
+                onClick={startCameraAndScan}
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
               >
-                Enter manually instead
-              </button>
+                Retry Camera Access
+              </Button>
             </div>
-          </footer>
-
-          {/* Red Pill Overlay - only visible when actively scanning in Auto mode */}
-          <ScanOverlay show={pillVisible} />
-
-          {/* Frozen Overlay */}
-          {phase !== 'scanning' && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="animate-pulse text-lg">Processing...</div>
-              </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-6">
-              <div className="text-center">
-                <p className="text-white text-lg mb-4">{error}</p>
-                <Button
-                  onClick={startCameraAndScan}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                >
-                  Retry Camera Access
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

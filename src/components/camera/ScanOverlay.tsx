@@ -12,7 +12,7 @@ export function ScanOverlay({ show, className = "" }: ScanOverlayProps) {
       data-camera-overlay
       className={[
         "fixed inset-0 pointer-events-none transition-opacity duration-180 ease-out",
-        "bg-transparent",             // transparent - no overlay
+        "bg-black/0",                 // completely transparent overlay
         "will-change-opacity",        
         "translate-z-0",              // force its own layer
         show ? "opacity-100" : "opacity-0",
