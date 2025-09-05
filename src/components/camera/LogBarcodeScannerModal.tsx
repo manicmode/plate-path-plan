@@ -858,89 +858,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
         <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
         
-        <div className="grid h-full grid-rows-[auto_1fr_auto]">
-          {/* Header */}
-          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 relative">
-            <h2 className="text-white text-lg font-semibold text-center">Scan a barcode</h2>
-            
-            {/* Mode Switch */}
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex">
-              <div className="flex bg-white/10 rounded-full p-1">
-                <button
-                  onClick={() => {
-                    setMode('auto');
-                    setPaused(false);
-                  }}
-                  className={cn(
-                    "px-3 py-1 text-xs rounded-full transition-all",
-                    mode === 'auto'
-                      ? "bg-white text-black font-medium"
-                      : "text-white/80 hover:text-white"
-                  )}
-                  aria-pressed={mode === 'auto'}
-                >
-                  Auto
-                </button>
-                <button
-                  onClick={() => {
-                    setMode('tap');
-                    setPaused(true);
-                  }}
-                  className={cn(
-                    "px-3 py-1 text-xs rounded-full transition-all",
-                    mode === 'tap'
-                      ? "bg-white text-black font-medium"
-                      : "text-white/80 hover:text-white"
-                  )}
-                  aria-pressed={mode === 'tap'}
-                >
-                  Tap
-                </button>
-              </div>
-              
-              {/* Pause/Resume for Auto mode */}
-              {mode === 'auto' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPaused(!paused)}
-                  className="ml-2 text-white hover:bg-white/20"
-                  title={paused ? 'Resume scanning' : 'Pause scanning'}
-                >
-                  {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                </Button>
-              )}
-            </div>
-            
-            {/* Close Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => requestClose('header_exit')}
-              className="absolute right-4 text-white hover:bg-white/20"
-              aria-label="Close scanner"
-              data-role="scanner-exit"
-            >
-              <X className="h-6 w-6" />
-            </Button>
-            
-            {/* Torch Button */}
-            {supportsTorch && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleTorch}
-                className={`absolute right-16 text-white hover:bg-white/20 transition-colors duration-200 ${
-                  torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
-                }`}
-                title={`Turn flash ${torchOn ? 'off' : 'on'}`}
-              >
-                {torchOn ? <Zap className="h-5 w-5 text-yellow-300" /> : <ZapOff className="h-5 w-5 text-white" />}
-              </Button>
-            )}
+        <div className="grid h-full grid-rows-[auto_auto_1fr_auto]">
+          {/* Top Header - Title and Status */}
+          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 text-center">
+            <h2 className="text-white text-lg font-semibold">Scan a barcode</h2>
             
             {/* Status chip */}
-            <div className="mt-2 flex h-[28px] items-center justify-center" aria-live="polite">
+            <div className="mt-2 flex justify-center" aria-live="polite">
               <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
                 {isLookingUp ? (
                   <>
@@ -961,10 +885,89 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 )}
               </span>
             </div>
+            
+            {/* Top-right controls */}
+            <div className="absolute right-4 top-[max(env(safe-area-inset-top),12px)] flex gap-2">
+              {/* Torch Button */}
+              {supportsTorch && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleTorch}
+                  className={`text-white hover:bg-white/20 transition-colors duration-200 ${
+                    torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
+                  }`}
+                  title={`Turn flash ${torchOn ? 'off' : 'on'}`}
+                >
+                  {torchOn ? <Zap className="h-5 w-5 text-yellow-300" /> : <ZapOff className="h-5 w-5 text-white" />}
+                </Button>
+              )}
+              
+              {/* Close Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => requestClose('header_exit')}
+                className="text-white hover:bg-white/20"
+                aria-label="Close scanner"
+                data-role="scanner-exit"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
           </header>
 
-          {/* Centered Stage */}
-          <main className="row-start-2 grid place-items-center px-4">
+          {/* Mode Toggle Section */}
+          <section className="row-start-2 px-4 pb-4 flex justify-center">
+            <div className="flex bg-white/10 rounded-full p-1">
+              <button
+                onClick={() => {
+                  setMode('auto');
+                  setPaused(false);
+                }}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'auto'
+                    ? "bg-white text-black font-medium"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'auto'}
+              >
+                Auto
+              </button>
+              <button
+                onClick={() => {
+                  setMode('tap');
+                  setPaused(true);
+                }}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'tap'
+                    ? "bg-white text-black font-medium"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'tap'}
+              >
+                Tap
+              </button>
+            </div>
+            
+            {/* Pause/Resume for Auto mode */}
+            {mode === 'auto' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPaused(!paused)}
+                className="ml-3 text-white hover:bg-white/20"
+                title={paused ? 'Resume scanning' : 'Pause scanning'}
+              >
+                {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              </Button>
+            )}
+          </section>
+
+          {/* Camera Stage */}
+          <main className="row-start-3 grid place-items-center px-4">
             <div className="-translate-y-[clamp(8px,3vh,28px)]">
               <BarcodeViewport
                 videoRef={videoRef}
@@ -982,7 +985,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           </main>
 
           {/* Footer / CTA */}
-          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
+          <footer className="row-start-4 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
             {/* Only show Scan & Log button in Tap mode */}
             {mode === 'tap' && (
               <Button
