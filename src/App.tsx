@@ -162,7 +162,7 @@ function AppContent() {
           const k = 'sfx:welcome:played';
           if (!sessionStorage.getItem(k)) {
             await SFX().unlock();
-            SFX().play('welcome').catch(()=>{});
+            SFX().play('welcome');
             sessionStorage.setItem(k, '1');
           }
         } catch {}

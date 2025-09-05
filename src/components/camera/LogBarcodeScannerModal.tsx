@@ -43,13 +43,15 @@ interface LogBarcodeScannerModalProps {
   onOpenChange: (open: boolean) => void;
   onBarcodeDetected: (barcode: string) => void;
   onManualEntry: () => void;
+  blockCamera?: boolean;
 }
 
 export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   open,
   onOpenChange,
   onBarcodeDetected,
-  onManualEntry
+  onManualEntry,
+  blockCamera = false
 }) => {
   // SSR guard - don't render on server
   if (typeof window === 'undefined') return null;
@@ -254,7 +256,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const lookupResult = await handleOffLookup(decoded.code);
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        SFX().play('scan_success').catch(()=>{});
+        SFX().play('scan_success');
         playBeep(); // legacy fallback
         onBarcodeDetected(decoded.code);
         onOpenChange(false);
@@ -279,7 +281,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const viewportRef = useRef<any>(null);
 
   useLayoutEffect(() => {
-    if (open) {
+    if (open && !blockCamera) {
       logPerfOpen('LogBarcodeScannerModal');
       logOwnerAcquire('LogBarcodeScannerModal');
       camOwnerMount(OWNER);
@@ -297,7 +299,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       camHardStop('unmount');
       cleanup();
     };
-  }, [open]);
+  }, [open, blockCamera]);
 
   useEffect(() => {
     if (open && stream) {
@@ -449,7 +451,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
     }
 
-    detachVideo(videoRef.current);
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.srcObject = null; }
 
     try { updateStreamRef?.(null); } catch {}
 

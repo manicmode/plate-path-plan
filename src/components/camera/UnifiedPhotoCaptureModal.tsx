@@ -28,6 +28,8 @@ export type UnifiedPhotoCaptureModalProps = {
     capture?: string;    // default: "Capture"
     upload?: string;     // default: "Upload"
   };
+  
+  blockCamera?: boolean;
 };
 
 export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> = (props) => {
@@ -39,7 +41,8 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
     bannerEmoji = "🍽️",
     bannerTitle = "Log your meal",
     bannerSubtext = "Capture or upload a food photo",
-    labels = {}
+    labels = {},
+    blockCamera = false
   } = props;
   // Stable IDs for accessibility
   const titleId = useId();
@@ -106,7 +109,7 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
   useLayoutEffect(() => {
     mountedRef.current = true;
     
-    if (isOpen) {
+    if (isOpen && !blockCamera) {
       startCamera();
     } else {
       releaseCamera();
@@ -116,7 +119,7 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
       mountedRef.current = false;
       releaseCamera();
     };
-  }, [isOpen, startCamera, releaseCamera]);
+  }, [isOpen, blockCamera, startCamera, releaseCamera]);
 
   // Cleanup on unmount
   useEffect(() => () => releaseCamera(), [releaseCamera]);

@@ -187,7 +187,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
   
-  const servingLabel = (import.meta.env.VITE_BARCODE_V2 === '1' && isBarcodeSource && servingG)
+  const servingLabel = (isBarcodeSource && servingG)
     ? `Per serving (${servingG} g)`
     : 'Per portion (100 g)';
   

@@ -524,7 +524,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const playCameraClickSound = () => { SFX().play('shutter').catch(()=>{}); };
+  const playCameraClickSound = () => { SFX().play('shutter'); };
 
   // Helper function to crop center ROI for barcode detection
   const cropCenterROI = (srcCanvas: HTMLCanvasElement): HTMLCanvasElement => {
@@ -1191,7 +1191,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         if (!error && data && !data.fallback) {
           console.log("✅ Barcode path success:", data);
-          SFX().play('scan_success').catch(()=>{});
+          SFX().play('scan_success');
           playBeep(); // legacy fallback
           onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
           return;

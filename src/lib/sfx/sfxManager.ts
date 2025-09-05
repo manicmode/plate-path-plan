@@ -5,6 +5,7 @@ export type SfxKey = 'welcome' | 'shutter' | 'scan_success' | 'scan_error';
 class SfxManager {
   private ctx: AudioContext | null = null;
   private unlocked = false;
+  private pendingKey: SfxKey | null = null;
 
   private ensureCtx() {
     if (typeof window === 'undefined') return null;
@@ -26,7 +27,7 @@ class SfxManager {
     } catch { /* ignore */ }
   }
 
-  private playTone(freqA: number, freqB: number, dur = 0.18, startGain = 0.0001, peak = 0.09) {
+  private playTone(freqA: number, freqB: number, dur = 0.22, startGain = 0.0001, peak = 0.28) {
     const ctx = this.ensureCtx();
     if (!ctx || ctx.state !== 'running') return;
     try {
@@ -34,12 +35,12 @@ class SfxManager {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = 'sine';
+      osc.type = 'triangle'; // more audible on iOS
       osc.frequency.setValueAtTime(freqA, now);
-      if (freqB !== freqA) osc.frequency.exponentialRampToValueAtTime(freqB, now + Math.min(0.12, dur));
+      if (freqB !== freqA) osc.frequency.linearRampToValueAtTime(freqB, now + Math.min(0.12, dur));
 
       gain.gain.setValueAtTime(startGain, now);
-      gain.gain.exponentialRampToValueAtTime(peak, now + 0.02);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
       osc.connect(gain).connect(ctx.destination);
@@ -48,14 +49,18 @@ class SfxManager {
     } catch { /* ignore */ }
   }
 
-  async play(key: SfxKey) {
+  play(key: SfxKey): void {
     try { navigator.vibrate?.(key === 'scan_success' ? 30 : key === 'shutter' ? 20 : 10); } catch {}
     const ctx = this.ensureCtx();
     if (!ctx) return;
-    if (!this.unlocked) {
-      try { await ctx.resume(); this.unlocked = ctx.state === 'running'; } catch {}
+
+    if (!this.unlocked || ctx.state !== 'running') {
+      this.pendingKey = key;
+      ctx.resume()
+        .then(() => { this.unlocked = ctx.state === 'running'; if (this.unlocked && this.pendingKey) { const k = this.pendingKey; this.pendingKey = null; this.play(k); } })
+        .catch(() => {});
+      return;
     }
-    if (!this.unlocked) return;
     
     console.log('[SFX][PLAY]', {
       key,
@@ -66,10 +71,10 @@ class SfxManager {
     
     // console.debug?.('[sfx] play', key);
     switch (key) {
-      case 'welcome':      this.playTone(523.25, 659.25, 0.22); break; // C5->E5
-      case 'shutter':      this.playTone(440, 392,   0.10);      break; // A4->G4 blip
-      case 'scan_success': this.playTone(740, 880,   0.18);      break; // F5->A5
-      case 'scan_error':   this.playTone(300, 260,   0.22);      break; // down beep
+      case 'welcome':      this.playTone(523.25, 659.25); break;
+      case 'shutter':      this.playTone(440,   392, 0.12); break;
+      case 'scan_success': this.playTone(740,   880); break;
+      case 'scan_error':   this.playTone(300,   260); break;
     }
   }
 

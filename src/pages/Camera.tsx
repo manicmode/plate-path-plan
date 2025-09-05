@@ -226,6 +226,10 @@ const CameraPage = () => {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   
+  // Add confirmOpenRef for blocking camera while confirm is open
+  const confirmOpenRef = useRef(false);
+  useEffect(() => { confirmOpenRef.current = showConfirmation; }, [showConfirmation]);
+  
   // Single router for any recognized items array (barcode/photo/manual/speech)
   const routeRecognizedItems = useCallback((items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
     if (!items || items.length === 0) {
@@ -249,6 +253,8 @@ const CameraPage = () => {
       
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : sourceHint === 'barcode' ? 'barcode' : 'photo');
       setShowConfirmation(true);
+      setShowLogBarcodeScanner(false);
+      setShowCamera(false);
       
       console.log('[ROUTE_ITEMS] Opening confirmation for single item:', item.name);
     } else {
@@ -1615,6 +1621,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           });
           
           setShowConfirmation(true);
+          setShowLogBarcodeScanner(false);
+          setShowCamera(false);
           try {
             const videos = document.querySelectorAll('video');
             videos.forEach(v => stopMedia(v as HTMLVideoElement));
@@ -3641,6 +3649,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowLogBarcodeScanner(false);
           setShowManualBarcodeEntry(true);
         }}
+        blockCamera={showConfirmation}
       />
 
       {/* Barcode Not Found Modal */}
@@ -3757,6 +3766,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           bannerEmoji="🍽️"
           bannerTitle="Log your meal"
           bannerSubtext="We'll analyze the photo and prep your review"
+          
+          blockCamera={showConfirmation}
         />
 
         {/* Smart Analyze Loader - Modified to overlay instead of replace */}
