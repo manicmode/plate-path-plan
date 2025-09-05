@@ -49,6 +49,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onBarcodeDetected,
   onManualEntry
 }) => {
+  // SSR guard - don't render on server
+  if (typeof window === 'undefined') return null;
+  // Don't mount internals when closed
+  if (!open) return null;
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);

@@ -19,5 +19,5 @@ export const FF = {
   FEATURE_ONE_TAP_LOG: true, // One-tap logging functionality
   FEATURE_USE_GPT_FIRST: (import.meta.env.VITE_FEATURE_USE_GPT_FIRST ?? 'false') === 'true', // GPT-first detection with Vision fallback
   FEATURE_USE_GPT_ONLY: (import.meta.env.VITE_FEATURE_USE_GPT_ONLY ?? 'false') === 'true', // GPT-only detection (no Vision fallback)
-  FEATURE_AUTO_CAPTURE: true // Auto-capture barcode scanning with stable detection
+  FEATURE_AUTO_CAPTURE: false // Auto-capture barcode scanning with stable detection
 } as const;
