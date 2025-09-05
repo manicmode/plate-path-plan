@@ -152,6 +152,20 @@ const CameraPage = () => {
   
   // Use the scroll-to-top hook
   useScrollToTop();
+  
+  // Test-only hooks for E2E testing (behind ?e2e=1)
+  useEffect(() => {
+    const isE2E = new URLSearchParams(location.search).get('e2e') === '1';
+    if (isE2E && typeof window !== 'undefined') {
+      (window as any).__appTestHooks = {
+        handleBarcodeDetected: (barcode: string) => {
+          console.log('[E2E] Test hook barcode detected:', barcode);
+          handleBarcodeDetected(barcode);
+        }
+      };
+    }
+  }, [location.search]);
+  
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisRequestId, setAnalysisRequestId] = useState<string | null>(null);
@@ -1513,9 +1527,29 @@ console.log('Global search enabled:', enableGlobalSearch);
         // Log successful OFF result 
         console.log('[LOG] off_result', { status: 200, hit: true });
 
+        // Temporary diagnostic: Raw barcode response
+        console.log('[BARCODE][RAW]', {
+          hasProduct: !!data?.product,
+          servingCandidates: {
+            serving_grams: data?.product?.serving_grams,
+            serving_size_g: data?.product?.serving_size_g,
+            serving_size_grams: data?.product?.serving_size_grams,
+          }
+        });
+
         try {
           // Use new barcode mapper for direct food item creation
           const mapped = mapBarcodeToRecognizedFood(data.product || data);
+
+          // Temporary diagnostic: Mapped item
+          console.log('[BARCODE][MAP:ITEM]', {
+            name: mapped?.name,
+            servingGrams: mapped?.servingGrams,
+            calories: mapped?.calories,
+            protein_g: mapped?.protein_g,
+            carbs_g: mapped?.carbs_g,
+            fat_g: mapped?.fat_g,
+          });
 
           // Also get legacy mapped data for additional properties
           const legacyMapped = mapToLogFood(cleanBarcode, data);
@@ -1572,6 +1606,13 @@ console.log('Global search enabled:', enableGlobalSearch);
           setRecognizedFoods([recognizedFood]);
           setSelectedImage(null);
           setPendingItems([]);
+          
+          // Temporary diagnostic: Before opening confirm
+          console.log('[BARCODE][OPEN_CONFIRM]', {
+            source: 'barcode',
+            servingGrams: mapped?.servingGrams,
+          });
+          
           setShowConfirmation(true);
           try {
             const vid = document.querySelector('video#log-barcode-camera') as HTMLVideoElement | null;

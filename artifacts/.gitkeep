@@ -1,0 +1,2 @@
+# This file ensures the artifacts directory is tracked by git
+# E2E test artifacts will be saved here

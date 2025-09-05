@@ -142,11 +142,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   
 
-  // Diagnostic log for home loading crash
-  console.log('[CONFIRM][GUARD][HOME_LOAD]', {
-    hasItem: !!currentFoodItem,
+  // Temporary diagnostics for barcode flow
+  console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
     isOpen,
-    inputSource: 'undefined' // keeping minimal as requested
+    hasItem: !!currentFoodItem,
+    isBarcode: (currentFoodItem as any)?.source === 'barcode',
+    skipNutritionGuard,
+    bypassHydration,
+    perGramSum,
+    isNutritionReady,
   });
 
   // Set body flag when reminder is open for CSS portal handling
@@ -328,15 +332,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     kcal: currentFoodItem?.calories,
   });
 
-  console.log('[CONFIRM][BIND]', { 
-    title, 
-    calories: effective.calories, 
-    protein: effective.protein, 
-    carbs: effective.carbs, 
-    fat: effective.fat, 
+  // Temporary diagnostic: Bind values
+  console.log('[CONFIRM][BIND]', {
+    title,
     servingG,
     preferItem,
-    bypassHydration
+    kcal: effective?.calories,
+    protein: effective?.protein,
+    carbs: effective?.carbs,
+    fat: effective?.fat,
   });
 
   const getHealthScore = (food: FoodItem) => {

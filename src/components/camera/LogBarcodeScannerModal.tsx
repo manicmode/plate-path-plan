@@ -427,6 +427,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (s) {
       stoppedKinds.push(...s.getTracks().map(t => t.kind));
       s.getTracks().forEach(t => t.stop());
+      
+      // Temporary diagnostic: Camera teardown logging
+      console.log('[CAMERA][STOP]', {
+        tracks: s.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState })),
+      });
     }
 
     if (stoppedKinds.length > 0) {
