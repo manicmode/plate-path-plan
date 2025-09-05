@@ -63,6 +63,8 @@ export default function BarcodeViewport({
   className = "",
   forceDisableAutoRef // Add ref to disable auto capture
 }: BarcodeViewportProps) {
+  // First-gesture unlock state
+  const [hasGesture, setHasGesture] = useState(false);
   const rafRef = useRef<number | null>(null);
   const capturingRef = useRef(false);
   const lastCaptureRef = useRef(0);
@@ -240,8 +242,17 @@ export default function BarcodeViewport({
         ? { code: pref.code }
         : await decodeFrame(videoRef.current!);
       
-      // PLAY SOUND (works for both manual & auto)
-      sfx.play('scan_success');
+      // PLAY SOUND (works for both manual & auto) with fallback
+      const ok = await sfx.play('scan_success');
+      if (!ok) {
+        const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+        const { Sound } = await import('@/lib/sound/soundManager');
+        await Sound.ensureUnlocked();
+        Sound.play('beep');
+        if (FEATURE_SFX_DEBUG) {
+          console.log('[SFX][FALLBACK][BEEP]', { key: 'scan_success' });
+        }
+      }
       onCapture(decoded);
     } catch (error) {
       console.warn('Capture failed:', error);
@@ -433,7 +444,25 @@ export default function BarcodeViewport({
           useCSSZoom ? `scale-[${currentZoom.toFixed(1)}]` : ''
         }`}
         style={{ transformOrigin: 'center center' }}
-        onPointerDown={onPointerDown}
+        onPointerDown={async (e) => {
+          // First gesture unlock for SFX
+          if (!hasGesture) {
+            setHasGesture(true);
+            try {
+              await SFX().unlock();
+              const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+              if (FEATURE_SFX_DEBUG) {
+                console.log('[SFX][UNLOCK@VIEWPORT]', { ok: true });
+              }
+            } catch (error) {
+              const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+              if (FEATURE_SFX_DEBUG) {
+                console.log('[SFX][UNLOCK@VIEWPORT]', { ok: false, error });
+              }
+            }
+          }
+          onPointerDown(e);
+        }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}

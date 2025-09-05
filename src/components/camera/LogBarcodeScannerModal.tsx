@@ -370,8 +370,16 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const lookupResult = await handleOffLookup(decoded.code);
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        SFX().play('scan_success');
-        playBeep(); // legacy fallback
+        const ok = await SFX().play('scan_success');
+        if (!ok) {
+          const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+          const { Sound } = await import('@/lib/sound/soundManager');
+          await Sound.ensureUnlocked();
+          Sound.play('beep');
+          if (FEATURE_SFX_DEBUG) {
+            console.log('[SFX][FALLBACK][BEEP]', { key: 'scan_success' });
+          }
+        }
         onAutoCapture(decoded.code);
         onOpenChange(false);
       } else {

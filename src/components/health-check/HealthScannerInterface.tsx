@@ -524,7 +524,18 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const playCameraClickSound = () => { SFX().play('shutter'); };
+  const playCameraClickSound = async () => { 
+    const ok = await SFX().play('shutter');
+    if (!ok) {
+      const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+      const { Sound } = await import('@/lib/sound/soundManager');
+      await Sound.ensureUnlocked();
+      Sound.play('shutter');
+      if (FEATURE_SFX_DEBUG) {
+        console.log('[SFX][FALLBACK][SHUTTER]', { key: 'shutter' });
+      }
+    }
+  };
 
   // Helper function to crop center ROI for barcode detection
   const cropCenterROI = (srcCanvas: HTMLCanvasElement): HTMLCanvasElement => {
@@ -761,7 +772,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     if (DEBUG) console.log('[SCANNER][CAPTURE] freeze');
     mark('[HS] analyze_start');
     setPhase('captured');
-    playCameraClickSound();
+    await playCameraClickSound();
     setIsScanning(true);
     
     try {
@@ -1191,8 +1202,16 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         if (!error && data && !data.fallback) {
           console.log("✅ Barcode path success:", data);
-          SFX().play('scan_success');
-          playBeep(); // legacy fallback
+          const ok = await SFX().play('scan_success');
+          if (!ok) {
+            const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+            const { Sound } = await import('@/lib/sound/soundManager');
+            await Sound.ensureUnlocked();
+            Sound.play('beep');
+            if (FEATURE_SFX_DEBUG) {
+              console.log('[SFX][FALLBACK][BEEP]', { key: 'scan_success' });
+            }
+          }
           onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
           return;
         } else {

@@ -24,13 +24,14 @@ class SfxManager {
     return this.ctx;
   }
 
-  unlock() {
+  async unlock(): Promise<void> {
     const ctx = this.ensureCtx();
     if (!ctx) return;
+    
     if (ctx.state !== 'running') {
-      ctx.resume().then(() => {
-        this.unlocked = (ctx.state === 'running');
-      }).catch(() => {});
+      await ctx.resume();
+      // After resume, state should be 'running' if successful
+      this.unlocked = (ctx.state as string) === 'running';
     } else {
       this.unlocked = true;
     }
@@ -54,14 +55,58 @@ class SfxManager {
     osc.stop(now + d);
   }
 
-  play(key: SfxKey): void {
+  async play(key: SfxKey): Promise<boolean> {
     try { navigator.vibrate?.(key === 'scan_success' ? 30 : key === 'shutter' ? 20 : 10); } catch {}
+    
+    const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+    
     const ctx = this.ensureCtx();
-    if (!ctx) return;
-    // Ensure unlock at call site; if still locked, prime and bail (next gesture will succeed)
-    if (!this.unlocked) { this.unlock(); console.log('[SFX][FINAL]', { key, ctxState: ctx.state, unlocked: this.unlocked, hasMaster: !!this.masterGain }); return; }
-    console.log('[SFX][FINAL]', { key, ctxState: ctx.state, unlocked: this.unlocked, hasMaster: !!this.masterGain });
-    // tones
+    if (!ctx) return false;
+    
+    if (FEATURE_SFX_DEBUG) {
+      console.log('[SFX][PLAY_ATTEMPT]', { key, unlocked: this.unlocked, state: ctx.state });
+    }
+    
+    // If not unlocked or context suspended, await unlock in the same gesture
+    if (!this.unlocked || ctx.state !== 'running') {
+      try {
+        await this.unlock();
+        // After unlock, check if we're now ready (re-get context state)
+        const currentCtx = this.ensureCtx();
+        if (!this.unlocked || !currentCtx || currentCtx.state !== 'running') {
+          if (FEATURE_SFX_DEBUG) {
+            console.log('[SFX][BLOCKED]', { reason: 'unlock-failed', key, state: currentCtx?.state });
+          }
+          return false;
+        }
+      } catch (error) {
+        if (FEATURE_SFX_DEBUG) {
+          console.log('[SFX][BLOCKED]', { reason: 'unlock-error', key, error: (error as Error)?.message });
+        }
+        return false;
+      }
+    }
+    
+    // Now attempt to play
+    try {
+      this._playNow(key);
+      if (FEATURE_SFX_DEBUG) {
+        console.log('[SFX][PLAY_RESULT]', { key, ok: true });
+      }
+      return true;
+    } catch (error) {
+      if (FEATURE_SFX_DEBUG) {
+        console.log('[SFX][PLAY_RESULT]', { key, ok: false, error: (error as Error)?.message });
+      }
+      return false;
+    }
+  }
+
+  private _playNow(key: SfxKey): void {
+    const ctx = this.ensureCtx();
+    if (!ctx || !this.masterGain || !this.unlocked) return;
+    
+    // Play tones
     switch (key) {
       case 'scan_success': this.playTone(800, 0.15); break;
       case 'shutter': this.playTone(600, 0.12); break;

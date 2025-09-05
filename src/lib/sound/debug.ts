@@ -1,0 +1,1 @@
+export const FEATURE_SFX_DEBUG = (import.meta.env.VITE_SFX_DEBUG === '1');
