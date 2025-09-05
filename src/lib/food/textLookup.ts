@@ -6,6 +6,7 @@ import { ENABLE_FOOD_TEXT_V3, FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { parseQuery } from '@/lib/food/text/parse';
 import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
+import { canonicalFor } from '@/lib/food/text/canonicalMap';
 
 // Feature flag for rollback capability
 export const FEATURE_TEXT_LOOKUP_V2 = true;
@@ -94,6 +95,9 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
     // Create food item with v3 structure and realistic portions
     const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
     
+    // Attach canonical nutrition key for generics
+    const canonicalKey = canonicalFor(facets.core[0] || 'food', facets);
+    
     const foodItem = {
       id: primary.id || `v3-${Date.now()}`,
       name: primary.name,
@@ -111,6 +115,9 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       portionGrams: portionEstimate.grams,
       source: source === 'speech' ? 'voice' : 'manual',
       confidence: primary.confidence,
+      // Attach nutrition key and generic marker
+      nutritionKey: canonicalKey,
+      isGeneric: !!canonicalKey,
       // v3 specific fields
       __altCandidates: candidates.slice(1, 6).map(c => {
         const altPortion = inferPortion(c.name, query, facets, c.classId);

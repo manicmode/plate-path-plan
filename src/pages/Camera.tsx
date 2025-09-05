@@ -68,6 +68,7 @@ import '@/utils/smokeTests';
 // Import dev detection test utility
 import '@/utils/devDetectionTest';
 // jsQR removed - barcode scanning now handled by ZXing in HealthScannerInterface
+import { fetchMacrosByCanonicalKey, legacyHydrateByName } from '@/lib/food/nutrition/hydrateCanonical';
 
 interface RecognizedFood {
   id?: string; // Stable identifier for nutrition store
@@ -278,6 +279,60 @@ const CameraPage = () => {
   // Add confirmOpenRef for blocking camera while confirm is open
   const confirmOpenRef = useRef(false);
   
+  // Nutrition hydration helper for v3 items
+  const ensureNutritionHydrated = useCallback(async (item: any, signal?: AbortSignal) => {
+    // If item already has per-gram macros, do nothing
+    if (item?.perGramKeys?.length > 0 || item?.pgSum > 0) return;
+
+    console.log('[NUTRITION][HYDRATE]', { 
+      key: (item as any)?.nutritionKey, 
+      ready: !!item?.perGram 
+    });
+
+    // If we have a nutritionKey (generic), fetch and attach per-gram macros
+    if ((item as any).nutritionKey) {
+      try {
+        const res = await fetchMacrosByCanonicalKey((item as any).nutritionKey);
+        if (signal?.aborted) return;
+        
+        if (res?.perGram) {
+          item.perGram = res.perGram;
+          item.perGramKeys = Object.keys(res.perGram);
+          item.pgSum = 1; // truthy
+          item.dataSource = 'canonical'; // for the UI badge ("Database lookup")
+          console.log('[NUTRITION][CANONICAL_SUCCESS]', { 
+            key: (item as any).nutritionKey,
+            perGramKeys: item.perGramKeys
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn('[NUTRITION][CANONICAL_ERROR]', error);
+      }
+    }
+
+    // Fallback: call legacy text lookup hydration if still empty
+    if (!(item?.perGramKeys?.length > 0)) {
+      try {
+        const legacy = await legacyHydrateByName(item.name || item.title);
+        if (signal?.aborted) return;
+        
+        if (legacy?.perGram) {
+          item.perGram = legacy.perGram;
+          item.perGramKeys = Object.keys(legacy.perGram);
+          item.pgSum = 1;
+          item.dataSource = 'legacy_text_lookup';
+          console.log('[NUTRITION][LEGACY_SUCCESS]', { 
+            name: item.name,
+            perGramKeys: item.perGramKeys
+          });
+        }
+      } catch (error) {
+        console.warn('[NUTRITION][LEGACY_ERROR]', error);
+      }
+    }
+  }, []);
+
   // Single router for any recognized items array (barcode/photo/manual/speech)
   const routeRecognizedItems = useCallback(async (items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
     if (!items || items.length === 0) {
@@ -287,35 +342,57 @@ const CameraPage = () => {
 
     console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
 
-  // Determine the source type
-  const isBarcode = sourceHint === 'barcode';
-  const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
+    // Determine the source type
+    const isBarcode = sourceHint === 'barcode';
+    const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
 
-  // Durable forceConfirm flag - manual/voice must ALWAYS show confirmation
-  let forceConfirm = isManualLike;
+    // Durable forceConfirm flag - manual/voice must ALWAYS show confirmation
+    let forceConfirm = isManualLike;
 
-  if (isManualLike) {
-  // For manual/voice inputs, get candidates and pass to confirmation
-    if (items.length === 1) {
-      const item = items[0];
-      
-      setRecognizedFoods([item]);
-      setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
-      setShowConfirmation(true);
-      setShowLogBarcodeScanner(false);
-      setShowCamera(false);
-      setForceConfirm(forceConfirm);
-      
-      console.log('[CONFIRM][OPEN]', {
-        inputSource: sourceHint,
-        forceConfirm,
-        showConfirmation: true,
-        itemName: item.name,
-        hasAltCandidates: !!(item as any).__altCandidates?.length
-      });
-      return;
+    if (isManualLike) {
+      // For manual/voice inputs, hydrate nutrition before opening confirmation
+      if (items.length === 1) {
+        const item = items[0];
+        
+        // Create abort controller for hydration
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        
+        try {
+          // Ensure nutrition is hydrated before opening confirmation
+          await ensureNutritionHydrated(item, controller.signal);
+          
+          if (controller.signal.aborted) return;
+          
+          setRecognizedFoods([item]);
+          setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
+          setShowConfirmation(true);
+          setShowLogBarcodeScanner(false);
+          setShowCamera(false);
+          setForceConfirm(forceConfirm);
+          
+          console.log('[CONFIRM][OPEN]', {
+            inputSource: sourceHint,
+            forceConfirm,
+            showConfirmation: true,
+            itemName: item.name,
+            hasAltCandidates: !!(item as any).__altCandidates?.length,
+            nutritionReady: !!(item.perGramKeys?.length > 0)
+          });
+        } catch (error) {
+          console.error('[NUTRITION][HYDRATE_ERROR]', error);
+          // Still open confirmation even if hydration fails
+          setRecognizedFoods([item]);
+          setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
+          setShowConfirmation(true);
+          setShowLogBarcodeScanner(false);
+          setShowCamera(false);
+          setForceConfirm(forceConfirm);
+        }
+        
+        return;
+      }
     }
-  }
 
     if (items.length === 1) {
       const item = items[0];

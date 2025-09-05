@@ -77,6 +77,13 @@ interface FoodItem {
     flags?: Array<{ id?: string; label: string; level?: 'warn'|'info'|'good'|'danger'|'warning' }>;
     ingredients?: string[];
   };
+  // V3 nutrition hydration fields
+  perGram?: any;
+  perGramKeys?: string[];
+  pgSum?: number;
+  dataSource?: string;
+  nutritionKey?: string;
+  isGeneric?: boolean;
 }
 
 interface FoodConfirmationCardProps {
@@ -168,8 +175,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   );
 
   const useHydration = !bypassHydration;
-  // Don't block barcode items on hydration; everything else keeps existing guard
-  const isNutritionReady = (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
+  // Check if nutrition is ready from various sources
+  const perGramReady =
+    !!currentFoodItem?.perGram ||
+    (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
+    (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
+  
+  const isNutritionReady = perGramReady || (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
   
   // Log mount and hydration states
   useEffect(() => {
@@ -196,15 +208,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [isNutritionReady, useHydration, isOpen]);
 
   
-  // Temporary diagnostics for barcode flow
-  console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
-    isOpen,
-    hasItem: !!currentFoodItem,
-    isBarcode: (currentFoodItem as any)?.source === 'barcode',
-    skipNutritionGuard,
-    bypassHydration,
-    perGramSum,
+  // Log render guard state for diagnostics
+  console.log('[CONFIRM][RENDER_GUARD]', {
+    perGramReady,
+    fromStore: !!storeAnalysis?.perGram,
+    pgSum: currentFoodItem?.pgSum,
     isNutritionReady,
+    isManualVoice: isManualVoiceSource
   });
 
   // Set body flag when reminder is open for CSS portal handling
@@ -392,8 +402,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
   }
 
-  // REMOVED: No longer block dialog when nutrition isn't ready
-  // Instead, show loading state inside the dialog
+  // Always render dialog, show loading state if nutrition isn't ready
 
   const portionMultiplier = portionPercentage[0] / 100;
   
