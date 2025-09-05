@@ -70,7 +70,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   );
   
   // Active flag computation - drives camera lifecycle
-  const active = open && mode === 'auto' && documentVisible;
+  const active = open && documentVisible; // Camera should be active in both modes
   
   // Lifecycle refs for proper cleanup
   const isActiveRef = useRef(false);
@@ -101,8 +101,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
-  // Red pill visibility tied to active state
-  const pillVisible = active;
+  // Red pill visibility - only in Auto mode when actively scanning
+  const pillVisible = active && mode === 'auto';
   
   // Overlay visibility management
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -337,8 +337,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     onBarcodeDetected(code);
   }, [onBarcodeDetected]);
 
-  // Handle barcode capture from viewport
+  // Handle barcode capture from viewport - only in Auto mode
   const handleBarcodeCapture = useCallback(async (decoded: { code: string }) => {
+    // Only allow auto-capture in Auto mode
+    if (mode !== 'auto') return;
+    
     console.log('[SCANNER] Auto-capture detected:', decoded.code);
     setPhase('captured');
     setShowSuccess(true);
@@ -359,7 +362,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       setPhase('scanning');
       setShowSuccess(false);
     }
-  }, [onAutoCapture, onOpenChange]);
+  }, [mode, onAutoCapture, onOpenChange]);
 
   // Force capture for manual button
   const handleManualCapture = useCallback(() => {
