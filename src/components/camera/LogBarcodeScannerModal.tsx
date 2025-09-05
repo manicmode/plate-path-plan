@@ -25,6 +25,7 @@ import BarcodeViewport from '@/components/scanner/BarcodeViewport';
 import { FF } from '@/featureFlags';
 import { cameraPool } from '@/lib/camera/cameraPool';
 import { useLocation } from 'react-router-dom';
+import { ScanGuard } from '@/types/scan';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -165,11 +166,17 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Scan loop guard and RAF cancel
   const scanRunningRef = useRef(false);
 
-  const { snapAndDecode, updateStreamRef } = useSnapAndDecode({
-    activeScanRef,
-    scanGenRef,
-    abortControllerRef: decodeAbortRef
-  });
+  // Create scan guard
+  const createScanGuard = useCallback((): ScanGuard => ({
+    gen: scanGenRef.current,
+    signal: decodeAbortRef.current?.signal ?? new AbortController().signal,
+    isOpen: () => open && document.visibilityState === 'visible'
+  }), [open]);
+
+  const { snapAndDecode, updateStreamRef } = useSnapAndDecode(
+    createScanGuard(),
+    (stream) => setStream(stream)
+  );
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   // Safe zoom application with fallback to CSS zoom
@@ -545,8 +552,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         track.onended = () => allTracksRef.current.delete(track);
       });
       
-      // Register with camera pool
-      cameraPool.add(mediaStream);
+      // Register with camera pool using generation
+      cameraPool.add(mediaStream, scanGenRef.current);
       
       await attachStreamToVideo(videoRef.current, mediaStream);
       
@@ -644,7 +651,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     
     // Stop all streams by current generation
     const currentGen = scanGenRef.current;
-    cameraPool.stopAll(`gen-${currentGen}-${reason}`);
+    cameraPool.stopByGen(currentGen, reason);
+    cameraPool.stopAll(`fallback-${reason}`);
 
     const count = s?.getTracks()?.length ?? 0;
 
@@ -895,18 +903,15 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const video = videoRef.current;
       
-        const result = await snapAndDecode({
-          videoEl: video,
-          budgetMs: BUDGET_MS,
-          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-          logPrefix: '[TAP]',
-          signal: decodeAbortRef.current?.signal,
-          gen: scanGenRef.current
-        });
+      const result = await snapAndDecode(
+        video,
+        '[TAP]',
+        createScanGuard()
+      );
 
       // If decoded digits, try OFF lookup
-      if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
-        const lookupResult = await handleOffLookup(result.raw);
+      if (result && result.value && /^\d{8,14}$/.test(result.value)) {
+        const lookupResult = await handleOffLookup(result.value);
         
         if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
           SFX().play('scan_success');
@@ -918,12 +923,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             navigator.vibrate(50);
           }
           
-          console.log('[BARCODE][SCAN:DETECTED]', { raw: result.raw, format: 'tap-capture' });
-          onBarcodeDetected(result.raw);
+          console.log('[BARCODE][SCAN:DETECTED]', { raw: result.value, format: 'tap-capture' });
+          onBarcodeDetected(result.value);
           requestClose('successful_scan');
         } else if (lookupResult.data && !lookupResult.data.ok) {
           const reason = lookupResult.data.reason || 'unknown';
-          const msg = reason === 'off_miss' && /^\d{8}$/.test(result.raw)
+          const msg = reason === 'off_miss' && /^\d{8}$/.test(result.value)
             ? 'This 8-digit code is not in OpenFoodFacts. Try another side or enter manually.'
             : 'No product match. Try again or enter manually.';
           toast(msg);

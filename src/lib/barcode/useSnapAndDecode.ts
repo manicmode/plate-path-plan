@@ -1,5 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { freezeFrameAndDecode, unfreezeVideo, chooseBarcode, toggleTorch, isTorchSupported } from '@/lib/scan/freezeDecode';
+import { ScanGuard } from '@/types/scan';
+import { ScanResult } from '@/types/barcode';
+import { cameraPool } from '@/lib/camera/cameraPool';
 
 export type DecodeOutcome = {
   ok: boolean;
@@ -11,121 +14,98 @@ export type DecodeOutcome = {
   reason?: string;
 };
 
-export function useSnapAndDecode(guardRefs?: {
-  activeScanRef: React.MutableRefObject<boolean>;
-  scanGenRef: React.MutableRefObject<number>;
-  abortControllerRef?: React.MutableRefObject<AbortController | null>;
-}) {
+export function useSnapAndDecode(
+  guard?: ScanGuard,
+  updateStreamRef?: (stream: MediaStream | null) => void
+) {
   const [torchEnabled, setTorchEnabled] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const inFlightRef = useRef(false);
 
   // Method to set the stream reference from outside
-  const updateStreamRef = (stream: MediaStream | null) => {
+  const internalUpdateStreamRef = useCallback((stream: MediaStream | null) => {
     streamRef.current = stream;
-  };
+    updateStreamRef?.(stream);
+  }, [updateStreamRef]);
 
-  const ensurePreviewPlaying = (video: HTMLVideoElement, signal?: AbortSignal, gen?: number) => {
-    // Guard: check if we should still be active
-    if (guardRefs && !guardRefs.activeScanRef.current) {
-      console.log('[SNAP] preview resume blocked: inactive');
+  const ensurePreviewPlaying = useCallback(async (video: HTMLVideoElement, scanGuard: ScanGuard) => {
+    if (scanGuard.signal.aborted || !scanGuard.isOpen()) {
+      console.log('[SNAP] preview resume blocked: guard failed');
       return;
     }
     
-    // Guard: check abort signal and generation
-    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
-      console.log('[SNAP] preview resume blocked: aborted or gen mismatch');
-      return;
-    }
-    
-    const track = video.srcObject && (video.srcObject as MediaStream).getVideoTracks?.()?.[0];
-    if (!track || track.readyState === 'ended') {
-      // Stream ended, restart camera - but only if still active
-      if (guardRefs && !guardRefs.activeScanRef.current) {
-        console.log('[SNAP] restart blocked: inactive');
-        return;
-      }
-      
-      if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
-        console.log('[SNAP] restart blocked: aborted or gen mismatch');
+    if (!video.srcObject) {
+      if (scanGuard.signal.aborted || !scanGuard.isOpen()) {
+        console.log('[SNAP] restart blocked: guard failed');
         return;
       }
       
       console.log('[SNAP] restarting camera stream');
-      restartCamera(video, signal, gen).catch(() => {});
+      await restartCameraStream(video, { facingMode: 'environment' }, scanGuard);
       return;
     }
+    
+    if (scanGuard.signal.aborted || !scanGuard.isOpen()) return;
+    
     if (video.paused) {
       video.play().catch(() => {});
     }
-  };
+  }, []);
 
-  const restartCamera = async (video: HTMLVideoElement, signal?: AbortSignal, gen?: number) => {
-    // Guard: abort if no longer active
-    if (guardRefs && !guardRefs.activeScanRef.current) {
-      console.log('[SNAP] restart camera aborted: inactive');
+  const restartCameraStream = useCallback(async (video: HTMLVideoElement, opts: { facingMode: string }, scanGuard: ScanGuard) => {
+    if (scanGuard.signal.aborted || !scanGuard.isOpen()) {
+      console.log('[SNAP] restartCameraStream blocked: guard failed');
       return;
     }
-    
-    // Guard: check abort signal and generation
-    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
-      console.log('[SNAP] restart camera aborted: aborted or gen mismatch');
-      return;
-    }
-    
-    const myGen = guardRefs?.scanGenRef.current || gen;
-    
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+        video: opts,
+        audio: false
       });
-      
-      // Check again after async getUserMedia
-      if (signal?.aborted || (guardRefs && (!guardRefs.activeScanRef.current || guardRefs.scanGenRef.current !== myGen))) {
-        console.log('[SNAP] restart camera aborted after getUserMedia: inactive, aborted, or gen changed');
-        try { stream.getTracks().forEach(t => t.stop()); } catch {}
+
+      // Check guards after async operation
+      if (scanGuard.signal.aborted || !scanGuard.isOpen()) {
+        console.log('[SNAP] restartCameraStream blocked after getUserMedia: guard failed');
+        stream.getTracks().forEach(t => t.stop());
         return;
       }
+
+      // Register with pool using generation
+      cameraPool.add(stream, scanGuard.gen);
+
+      streamRef.current = stream;
+      internalUpdateStreamRef(stream);
       
       video.srcObject = stream;
-      streamRef.current = stream;
       await video.play();
+
+      // Final guard check
+      if (scanGuard.signal.aborted || !scanGuard.isOpen()) {
+        stream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        return;
+      }
     } catch (error) {
-      console.error('Failed to restart camera:', error);
+      console.error('[SNAP] Failed to restart camera:', error);
     }
-  };
+  }, [internalUpdateStreamRef]);
 
-  const snapAndDecode = async (opts: {
-    videoEl: HTMLVideoElement;
-    budgetMs?: number;
-    roi?: { wPct: number; hPct: number };
-    logPrefix?: string;
-    signal?: AbortSignal;
-    gen?: number;
-  }): Promise<DecodeOutcome> => {
-    const {
-      videoEl,
-      budgetMs = 900,
-      roi = { wPct: 0.7, hPct: 0.35 },
-      logPrefix = '[SNAP]',
-      signal,
-      gen
-    } = opts;
-
-    // Guard: check abort signal and generation
-    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
-      console.log(`${logPrefix} decode_cancelled: aborted or gen mismatch`);
-      return { ok: false, reason: 'aborted', attempts: 0, ms: 0 };
+  const snapAndDecode = useCallback(async (
+    videoEl: HTMLVideoElement,
+    logPrefix = '[SNAP]',
+    scanGuard?: ScanGuard
+  ): Promise<ScanResult | null> => {
+    // Guard: check if scan session is still active
+    if (scanGuard && (scanGuard.signal.aborted || !scanGuard.isOpen())) {
+      console.log(`${logPrefix} blocked: guard failed`);
+      return null;
     }
 
     // Single-flight guard
     if (inFlightRef.current) {
       console.log(`${logPrefix} decode_cancelled: busy`);
-      return { ok: false, reason: 'busy', attempts: 0, ms: 0 };
+      return null;
     }
     
     inFlightRef.current = true;
@@ -152,9 +132,10 @@ export function useSnapAndDecode(guardRefs?: {
         });
       }
 
-      // Log ROI info
+      // Log ROI info  
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
+      const roi = { wPct: 0.7, hPct: 0.35 };
       const roiW = Math.round(vw * roi.wPct);
       const roiH = Math.round(vh * roi.hPct);
       const dpr = window.devicePixelRatio || 1;
@@ -167,7 +148,7 @@ export function useSnapAndDecode(guardRefs?: {
       attempts++;
       const result = await freezeFrameAndDecode(videoEl, {
         roi: { widthPct: roi.wPct, heightPct: roi.hPct },
-        budgetMs,
+        budgetMs: 900,
         logPrefix
       });
 
@@ -190,13 +171,8 @@ export function useSnapAndDecode(guardRefs?: {
         }
 
         return {
-          ok: true,
-          raw: chosenBarcode,
-          format: result.result?.format,
-          checksumOk: result.result?.checkDigitValid,
-          attempts,
-          ms,
-          reason: 'decoded'
+          value: chosenBarcode,
+          format: result.result?.format || 'unknown'
         };
       } else {
         console.log(`${logPrefix} barcode_result:`, {
@@ -206,12 +182,7 @@ export function useSnapAndDecode(guardRefs?: {
           reason: 'not_found'
         });
 
-        return {
-          ok: false,
-          attempts,
-          ms,
-          reason: 'not_found'
-        };
+        return null;
       }
     } catch (error) {
       const ms = Math.round(performance.now() - startTime);
@@ -223,12 +194,7 @@ export function useSnapAndDecode(guardRefs?: {
         reason: 'error'
       });
 
-      return {
-        ok: false,
-        attempts,
-        ms,
-        reason: 'error'
-      };
+      return null;
     } finally {
       // CRITICAL: Always unfreeze video and restore preview
       try { 
@@ -239,10 +205,10 @@ export function useSnapAndDecode(guardRefs?: {
       
       // Ensure video is playing - but only if still active
       try {
-        if (!guardRefs || guardRefs.activeScanRef.current) {
-          ensurePreviewPlaying(videoEl, signal, gen);
+        if (scanGuard && !scanGuard.signal.aborted && scanGuard.isOpen()) {
+          await ensurePreviewPlaying(videoEl, scanGuard);
         } else {
-          console.log(`${logPrefix} preview resume skipped: inactive`);
+          console.log(`${logPrefix} preview resume skipped: guard failed`);
         }
       } catch (e) {
         console.warn(`${logPrefix} preview restart error:`, e);
@@ -251,7 +217,7 @@ export function useSnapAndDecode(guardRefs?: {
       inFlightRef.current = false;
       console.log(`${logPrefix} preview_resume`);
     }
-  };
+  }, [ensurePreviewPlaying]);
 
   const setTorch = async (on: boolean): Promise<void> => {
     if (!streamRef.current) return;
@@ -272,8 +238,8 @@ export function useSnapAndDecode(guardRefs?: {
   return {
     snapAndDecode,
     setTorch,
-    isTorchSupported: getTorchSupported(),
     torchEnabled,
-    updateStreamRef
+    isTorchSupported: getTorchSupported(),
+    updateStreamRef: internalUpdateStreamRef
   };
 }
