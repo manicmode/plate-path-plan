@@ -23,6 +23,7 @@ import { SFX } from '@/lib/sfx/sfxManager';
 import BarcodeViewport, { AutoToggleChip } from '@/components/scanner/BarcodeViewport';
 import { FF } from '@/featureFlags';
 import { cameraPool } from '@/lib/camera/cameraPool';
+import { useLocation } from 'react-router-dom';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -69,6 +70,22 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const unregisterFromPoolRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef(0); // late-resolve guard
   const tearingDownRef = useRef(false);
+  const imageCaptureRef = useRef<any>(null);
+  const barcodeDetectorRef = useRef<any>(null);
+  const allTracksRef = useRef<Set<MediaStreamTrack>>(new Set());
+  const isMountedRef = useRef(false);
+  
+  const location = useLocation();
+  
+  // Reset scan state on route changes
+  useEffect(() => {
+    return () => {
+      setPhase('scanning');
+      setOverlayVisible(false);
+      setShowSuccess(false);
+      setError(null);
+    };
+  }, [location.pathname]);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
@@ -327,6 +344,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const viewportRef = useRef<any>(null);
 
+  // Mount/unmount tracking
+  useEffect(() => { 
+    isMountedRef.current = true; 
+    return () => { 
+      isMountedRef.current = false; 
+    }; 
+  }, []);
+  
   useLayoutEffect(() => {
     if (open && !blockCamera) {
       logPerfOpen('LogBarcodeScannerModal');
@@ -358,9 +383,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   }, [open, stream, updateStreamRef]);
 
   const startCamera = async () => {
-    // New session id (invalidates any earlier async work)
     const mySession = ++sessionIdRef.current;
-    // block re-acquire if modal closed mid-flight
+    
     if (!open) return;
     if (typeof window !== 'undefined' && (window as any).__confirmOpen) {
       console.log('[CAMERA][BLOCKED_WHILE_CONFIRM]');
@@ -419,6 +443,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       
       const mediaStream = await getCamera();
       
+      if (!mediaStream) return;
+      if (sessionIdRef.current !== mySession) { 
+        mediaStream.getTracks().forEach(t => t.stop()); 
+        return; 
+      }
+      
+      // Track every track for guaranteed cleanup
+      mediaStream.getTracks().forEach(track => {
+        allTracksRef.current.add(track);
+        track.onended = () => allTracksRef.current.delete(track);
+      });
+      
       // Defensive strip: remove any audio tracks that slipped in
       const s = mediaStream;
       s.getAudioTracks?.().forEach(t => { try { t.stop(); } catch {} try { s.removeTrack(t); } catch {} });
@@ -439,6 +475,17 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           }
           return;
         }
+        
+        // Optional decode APIs
+        const vt = mediaStream.getVideoTracks()[0];
+        if (vt) {
+          try { imageCaptureRef.current = new (window as any).ImageCapture(vt); } catch {}
+          try { barcodeDetectorRef.current = ('BarcodeDetector' in window) ? new (window as any).BarcodeDetector() : null; } catch {}
+        }
+        
+        unregisterFromPoolRef.current?.();
+        unregisterFromPoolRef.current = cameraPool.add(mediaStream);
+        
         // start autoscan loop
         scanActiveRef.current = true;
         abortRef.current = new AbortController();
@@ -499,25 +546,50 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const cleanup = async () => {
     if (tearingDownRef.current) return;
     tearingDownRef.current = true;
-    // 1) stop loop/decoders *first*
-    stopAutoscan();
-    // 2) give RAF/decoder a beat to unwind
-    await new Promise(r => requestAnimationFrame(() => r(null)));
-    // 3) stop tracks & detach video
-    const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
-    torchOff(track);
+    
+    console.log('[CAMERA][CLEANUP_START]', { tracked: allTracksRef.current.size, raf: !!rafIdRef.current });
 
-    const s = (videoRef.current?.srcObject as MediaStream) || undefined;
-    let tracksStopped = 0;
-    if (s) {
-      try { s.getTracks().forEach(t => { t.stop(); tracksStopped++; }); } catch {}
-    }
+    scanActiveRef.current = false;
+    abortRef.current?.abort();
 
-    if (videoRef.current) { 
-      try { videoRef.current.pause(); } catch {}
-      videoRef.current.srcObject = null; 
-    }
-    console.log('[CAMERA][TEARDOWN:COMPLETE]', { videos: 1, tracksStopped });
+    // Cancel decoders FIRST
+    imageCaptureRef.current = null;
+    try { barcodeDetectorRef.current?.disconnect?.(); } catch {}
+    barcodeDetectorRef.current = null;
+
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+
+    // Reset torch/zoom (WebKit latch)
+    const resets: Promise<void>[] = [];
+    allTracksRef.current.forEach(track => {
+      if (track.readyState === 'live') {
+        resets.push(track.applyConstraints({ advanced: [{ torch: false, zoom: 1 } as any] }).catch(() => {}));
+      }
+    });
+
+    const tracksToStop = new Set<MediaStreamTrack>();
+    const s = (videoRef.current?.srcObject as MediaStream) || null;
+    if (s) s.getTracks().forEach(t => tracksToStop.add(t));
+    allTracksRef.current.forEach(t => tracksToStop.add(t));
+
+    Promise.all(resets).finally(() => {
+      tracksToStop.forEach(track => {
+        console.log('[TRACK][STOPPING]', { id: track.id, state: track.readyState });
+        try { track.stop(); } catch {}
+        allTracksRef.current.delete(track);
+      });
+      if (videoRef.current) {
+        try { videoRef.current.pause(); } catch {}
+        videoRef.current.srcObject = null;
+        try { videoRef.current.load(); } catch {}
+      }
+      unregisterFromPoolRef.current?.();
+      unregisterFromPoolRef.current = null;
+      cameraPool.stopAll('[MODAL_CLEANUP]');
+      console.log('[CAMERA][TEARDOWN:COMPLETE]', { stopped: tracksToStop.size, remaining: allTracksRef.current.size });
+    });
 
     try { updateStreamRef?.(null); } catch {}
 

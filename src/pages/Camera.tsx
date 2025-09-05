@@ -32,6 +32,8 @@ import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
 import { cameraPool } from '@/lib/camera/cameraPool';
+import { installCameraDev } from '@/lib/camera/cameraDev';
+import '@/lib/camera/cameraVerify';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -153,7 +155,10 @@ const CameraPage = () => {
   const location = useLocation();
   
   // Use the scroll-to-top hook
-  useScrollToTop();
+  // Install dev instrumentation
+  useEffect(() => {
+    installCameraDev();
+  }, []);
   
   // Test-only hooks for E2E testing (behind ?e2e=1)
   useEffect(() => {
@@ -230,10 +235,6 @@ const CameraPage = () => {
   
   // Add confirmOpenRef for blocking camera while confirm is open
   const confirmOpenRef = useRef(false);
-  useEffect(() => { 
-    confirmOpenRef.current = showConfirmation; 
-    if (typeof window !== 'undefined') (window as any).__confirmOpen = showConfirmation;
-  }, [showConfirmation]);
   
   // Single router for any recognized items array (barcode/photo/manual/speech)
   const routeRecognizedItems = useCallback((items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
@@ -293,6 +294,17 @@ const CameraPage = () => {
   
   // Unified camera modal state
   const [showCamera, setShowCamera] = useState(false);
+  
+  // Camera pool cleanup - must be after showCamera declaration
+  useEffect(() => { 
+    confirmOpenRef.current = showConfirmation; 
+    if (typeof window !== 'undefined') (window as any).__confirmOpen = showConfirmation;
+    if ((!showLogBarcodeScanner && !showCamera) || showConfirmation) {
+      try {
+        cameraPool.stopAll(showConfirmation ? 'confirm_open' : 'modal_closed');
+      } catch {}
+    }
+  }, [showConfirmation, showLogBarcodeScanner, showCamera]);
   
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
