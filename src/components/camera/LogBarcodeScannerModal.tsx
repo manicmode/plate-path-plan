@@ -964,6 +964,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             onPointerMove={handlePointerMove}
             onPointerEnd={handlePointerEnd}
             onVideoClick={handleVideoClick}
+            mode={mode}
           />
         </main>
 

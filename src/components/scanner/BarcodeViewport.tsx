@@ -43,6 +43,7 @@ interface BarcodeViewportProps {
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerEnd: () => void;
   onVideoClick: () => void;
+  mode?: 'auto' | 'tap'; // Add mode prop
   className?: string;
 }
 
@@ -57,6 +58,7 @@ export default function BarcodeViewport({
   onPointerMove,
   onPointerEnd,
   onVideoClick,
+  mode = 'tap', // Add mode prop with default
   className = ""
 }: BarcodeViewportProps) {
   const rafRef = useRef<number | null>(null);
@@ -73,15 +75,21 @@ export default function BarcodeViewport({
   const autoIvRef = useRef<number | ReturnType<typeof setInterval> | null>(null);
   
   const [hintText, setHintText] = useState(() => {
-    const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
-    return allowAuto 
-      ? "Auto on (via override): Align the code — we'll capture automatically. You can also tap Scan."
+    return mode === 'auto' 
+      ? "Align the code for Auto detection"
       : "Align the code — then tap Scan.";
   });
   const [isCapturing, setIsCapturing] = useState(false);
 
   const { snapAndDecode } = useSnapAndDecode();
   const sfx = SFX();
+  
+  // Update hint text when mode changes
+  useEffect(() => {
+    setHintText(mode === 'auto' 
+      ? "Align the code for Auto detection"
+      : "Align the code — then tap Scan.");
+  }, [mode]);
   
   const ROI = { 
     left: 0.1, right: 0.9, top: 0.18, bottom: 0.82,
@@ -117,7 +125,7 @@ export default function BarcodeViewport({
       
       // Update hint text immediately
       if (v) {
-        setHintText("Align the code — we'll capture automatically. You can also tap Scan.");
+        setHintText(mode === 'auto' ? "Align the code for Auto detection" : "Align the code — we'll capture automatically. You can also tap Scan.");
       } else {
         setHintText("Align the code — then tap Scan.");
       }
@@ -235,15 +243,15 @@ export default function BarcodeViewport({
       onCapture(decoded);
     } catch (error) {
       console.warn('Capture failed:', error);
-      setHintText(autoOn ? 'Hold steady or tap Scan.' : 'Align the code — then tap Scan.');
+      setHintText(mode === 'auto' ? 'Hold steady.' : 'Align the code — then tap Scan.');
     } finally {
       setTimeout(() => { 
         capturingRef.current = false;
         setIsCapturing(false);
         
         // Reset hint text
-        if (autoOn) {
-          setHintText("Align the code — we'll capture automatically. You can also tap Scan.");
+        if (mode === 'auto') {
+          setHintText("Align the code for Auto detection");
         } else {
           setHintText("Align the code — then tap Scan.");
         }
@@ -355,8 +363,8 @@ export default function BarcodeViewport({
         
         // Reset after 3 seconds
         setTimeout(() => {
-          if (autoOn) {
-            setHintText("Align the code — we'll capture automatically. You can also tap Scan.");
+          if (mode === 'auto') {
+            setHintText("Align the code for Auto detection");
           } else {
             setHintText("Align the code — then tap Scan.");
           }
