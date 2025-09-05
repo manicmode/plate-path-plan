@@ -11,7 +11,10 @@ export type DecodeOutcome = {
   reason?: string;
 };
 
-export function useSnapAndDecode() {
+export function useSnapAndDecode(guardRefs?: {
+  activeScanRef: React.MutableRefObject<boolean>;
+  scanGenRef: React.MutableRefObject<number>;
+}) {
   const [torchEnabled, setTorchEnabled] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const inFlightRef = useRef(false);
@@ -22,9 +25,19 @@ export function useSnapAndDecode() {
   };
 
   const ensurePreviewPlaying = (video: HTMLVideoElement) => {
+    // Guard: check if we should still be active
+    if (guardRefs && !guardRefs.activeScanRef.current) {
+      console.log('[SNAP] preview resume blocked: inactive');
+      return;
+    }
+    
     const track = video.srcObject && (video.srcObject as MediaStream).getVideoTracks?.()?.[0];
     if (!track || track.readyState === 'ended') {
-      // Stream ended, restart camera
+      // Stream ended, restart camera - but only if still active
+      if (guardRefs && !guardRefs.activeScanRef.current) {
+        console.log('[SNAP] restart blocked: inactive');
+        return;
+      }
       console.log('[SNAP] restarting camera stream');
       restartCamera(video).catch(() => {});
       return;
@@ -35,6 +48,14 @@ export function useSnapAndDecode() {
   };
 
   const restartCamera = async (video: HTMLVideoElement) => {
+    // Guard: abort if no longer active
+    if (guardRefs && !guardRefs.activeScanRef.current) {
+      console.log('[SNAP] restart camera aborted: inactive');
+      return;
+    }
+    
+    const myGen = guardRefs?.scanGenRef.current;
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
@@ -43,6 +64,14 @@ export function useSnapAndDecode() {
           height: { ideal: 1080 }
         }
       });
+      
+      // Check again after async getUserMedia
+      if (guardRefs && (!guardRefs.activeScanRef.current || guardRefs.scanGenRef.current !== myGen)) {
+        console.log('[SNAP] restart camera aborted after getUserMedia: inactive or gen changed');
+        try { stream.getTracks().forEach(t => t.stop()); } catch {}
+        return;
+      }
+      
       video.srcObject = stream;
       streamRef.current = stream;
       await video.play();
@@ -179,9 +208,13 @@ export function useSnapAndDecode() {
         console.warn(`${logPrefix} unfreeze error:`, e);
       }
       
-      // Ensure video is playing
+      // Ensure video is playing - but only if still active
       try {
-        ensurePreviewPlaying(videoEl);
+        if (!guardRefs || guardRefs.activeScanRef.current) {
+          ensurePreviewPlaying(videoEl);
+        } else {
+          console.log(`${logPrefix} preview resume skipped: inactive`);
+        }
       } catch (e) {
         console.warn(`${logPrefix} preview restart error:`, e);
       }

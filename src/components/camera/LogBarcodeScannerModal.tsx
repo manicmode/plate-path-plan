@@ -72,6 +72,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Active flag computation - drives camera lifecycle
   const active = open && documentVisible; // Camera should be active in both modes
   
+  // Generation token system to prevent late async resumes
+  const scanGenRef = useRef(0); // bump to invalidate all pending async work
+  const activeScanRef = useRef(false); // single source of truth for active state
+  const isDecodingRef = useRef(false);
+  
   // Lifecycle refs for proper cleanup
   const isActiveRef = useRef(false);
   const decodeAbortRef = useRef<AbortController | null>(null);
@@ -79,6 +84,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Unified cleanup refs
   const cleanedRef = useRef(false);
   const isMountedRef = useRef(false);
+  
+  // Compute desired scanning state from props
+  const computeActiveScan = useCallback(() => {
+    return open && documentVisible;
+  }, [open, documentVisible]);
   
   console.log('[SCANNER][MOUNT]', { mode, active });
   const startTimeRef = useRef<number>(Date.now());
@@ -155,7 +165,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Scan loop guard and RAF cancel
   const scanRunningRef = useRef(false);
 
-  const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
+  const { snapAndDecode, updateStreamRef } = useSnapAndDecode({
+    activeScanRef,
+    scanGenRef
+  });
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   // Safe zoom application with fallback to CSS zoom
@@ -383,15 +396,46 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Lifecycle-driven camera management
+  // Generation token lifecycle management
   useEffect(() => {
-    if (active) {
-      startCameraAndScan();
+    const desired = computeActiveScan();
+
+    if (desired) {
+      // start session
+      activeScanRef.current = true;
+      const myGen = ++scanGenRef.current; // new session
+      startCameraAndLoop(myGen);
+      return () => {
+        // close session early before actual teardown to kill late async
+        activeScanRef.current = false;
+        ++scanGenRef.current; // invalidate any pending work
+        shutdownCamera('effect-cleanup');
+      };
     } else {
+      // ensure off
+      activeScanRef.current = false;
+      ++scanGenRef.current; // invalidate any pending work
       shutdownCamera('inactive');
     }
-    return () => shutdownCamera('unmount');
-  }, [active]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, documentVisible]);
+
+  // Visibility guards that immediately shutdown if hidden
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') {
+        activeScanRef.current = false;
+        ++scanGenRef.current;
+        shutdownCamera('hidden');
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pagehide', onVis);
+    };
+  }, []);
 
   useEffect(() => {
     if (open && stream) {
@@ -445,17 +489,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     return stream;
   }, []);
 
-  // New lifecycle-driven camera management
-  const startCameraAndScan = useCallback(async () => {
-    if (isActiveRef.current) return;
-    isActiveRef.current = true;
-
-    // Guard against stale loops
-    decodeAbortRef.current?.abort();
-    decodeAbortRef.current = new AbortController();
+  // Guarded camera start with generation token
+  const startCameraAndLoop = useCallback(async (myGen: number) => {
+    // prevent double start
+    if (!activeScanRef.current || scanGenRef.current !== myGen) return;
 
     try {
-      console.log("[LOG] Starting lifecycle-driven camera...");
+      console.log("[LOG] Starting guarded camera...", { gen: myGen });
       
       // iOS fallback: use photo capture for barcode
       if (!scannerLiveCamEnabled()) {
@@ -472,10 +512,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         return;
       }
 
-      const mediaStream = await getUserMediaSafely();
+      const mediaStream = await getCameraStreamSafely(myGen);
+      if (!mediaStream) return;
       
-      if (!isActiveRef.current) {
-        mediaStream.getTracks().forEach(t => t.stop());
+      if (!videoRef.current || !activeScanRef.current || scanGenRef.current !== myGen) {
+        // modal closed while awaiting stream; stop it immediately
+        try { mediaStream.getTracks().forEach(t => t.stop()); } catch {}
         return;
       }
       
@@ -485,74 +527,115 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         track.onended = () => allTracksRef.current.delete(track);
       });
       
-      if (videoRef.current) {
-        await attachStreamToVideo(videoRef.current, mediaStream);
-        
-        const track = mediaStream.getVideoTracks()[0];
-        trackRef.current = track;
-        setStream(mediaStream);
-        
-        // Final check before starting decode loop
-        if (!isActiveRef.current) {
-          mediaStream.getTracks().forEach(t => t.stop());
-          return;
-        }
-        
-        // Start decode loop
-        const loop = async () => {
-          if (!isActiveRef.current) return;
-          // Simple decode pass - actual implementation would call decode functions
-          rafIdRef.current = requestAnimationFrame(loop);
-        };
-        rafIdRef.current = requestAnimationFrame(loop);
-        
-        // Initialize zoom and torch
-        updateStreamRef(mediaStream);
-        setTimeout(() => ensureTorchState(), 100);
-        
-        setError(null);
-        console.log('[CAMERA][STARTED]', { active: isActiveRef.current });
+      await attachStreamToVideo(videoRef.current, mediaStream);
+      
+      const track = mediaStream.getVideoTracks()[0];
+      trackRef.current = track;
+      setStream(mediaStream);
+      
+      // Final check before starting decode loop
+      if (!activeScanRef.current || scanGenRef.current !== myGen) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        return;
       }
+      
+      // Start decode loop
+      isDecodingRef.current = true;
+      loopDecode(myGen);
+      
+      // Initialize zoom and torch
+      updateStreamRef(mediaStream);
+      setTimeout(() => ensureTorchState(), 100);
+      
+      setError(null);
+      console.log('[CAMERA][STARTED]', { gen: myGen, active: activeScanRef.current });
     } catch (err: any) {
       console.warn('[SCANNER] Camera start failed:', err?.message || err);
       if (err.message !== 'cancelled: inactive') {
         setError('Unable to access camera. Please check permissions and try again.');
       }
     }
-  }, [getUserMediaSafely, onBarcodeDetected, onOpenChange, updateStreamRef, ensureTorchState]);
+  }, [onBarcodeDetected, onOpenChange, updateStreamRef, ensureTorchState]);
+
+  // Guarded getUserMedia with generation check
+  const getCameraStreamSafely = useCallback(async (myGen: number): Promise<MediaStream | null> => {
+    try {
+      const primary = { 
+        video: { 
+          facingMode: { ideal: 'environment' }, 
+          width: { ideal: 1920 }, 
+          height: { ideal: 1080 },
+          aspectRatio: 16/9
+        } 
+      };
+      const fallback = { 
+        video: { 
+          facingMode: { ideal: 'environment' }, 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 } 
+        } 
+      };
+      const basic = { video: true };
+      
+      let stream: MediaStream;
+      try { 
+        stream = await navigator.mediaDevices.getUserMedia(primary); 
+      } catch (e: any) {
+        console.warn('[CAM] high-res failed, trying fallback', e?.name);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(fallback);
+        } catch (e2: any) {
+          console.warn('[CAM] fallback failed, trying basic', e2?.name);
+          stream = await navigator.mediaDevices.getUserMedia(basic);
+        }
+      }
+      
+      if (!activeScanRef.current || scanGenRef.current !== myGen) {
+        try { stream.getTracks().forEach(t => t.stop()); } catch {}
+        return null;
+      }
+      return stream;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Guarded decode loop
+  const loopDecode = useCallback((myGen: number) => {
+    if (!activeScanRef.current || scanGenRef.current !== myGen || !videoRef.current) return;
+
+    // Simple decode pass - actual implementation would call decode functions
+    rafIdRef.current = requestAnimationFrame(() => loopDecode(myGen));
+  }, []);
 
   // Shutdown camera with proper cleanup
   const shutdownCamera = useCallback((reason: string) => {
-    if (!isActiveRef.current && !videoRef.current?.srcObject) return;
-    isActiveRef.current = false;
-
-    // 1) Stop decode loop first
+    // stop loop first so no further work runs
+    isDecodingRef.current = false;
     if (rafIdRef.current) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
 
-    // 2) Abort any pending decode promise / worker task
-    decodeAbortRef.current?.abort();
-    decodeAbortRef.current = null;
+    const v = videoRef.current;
+    const s = (v?.srcObject as MediaStream) || null;
+    const count = s?.getTracks()?.length ?? 0;
 
-    // 3) Stop tracks
-    const ms = videoRef.current?.srcObject as MediaStream | null;
-    const stopped = ms?.getTracks()?.length ?? 0;
-    ms?.getTracks()?.forEach(t => { try { t.stop(); } catch {} });
+    if (s) {
+      try { s.getTracks().forEach(t => t.stop()); } catch {}
+    }
     allTracksRef.current.forEach(t => { try { t.stop(); } catch {} });
     allTracksRef.current.clear();
-
-    // 4) Detach video
-    if (videoRef.current) {
-      try { videoRef.current.pause(); } catch {}
-      videoRef.current.srcObject = null;
+    
+    if (v) {
+      try { v.pause(); } catch {}
+      v.srcObject = null;
     }
-
+    
     trackRef.current = null;
     setStream(null);
-
-    console.log('[CAMERA][TEARDOWN:COMPLETE]', { reason, tracksStopped: stopped });
+    
+    console.log('[CAMERA][TEARDOWN:COMPLETE]', { videos: v ? 1 : 0, tracksStopped: count, reason });
   }, []);
 
   // Ref to force disable auto capture in viewport
@@ -1041,7 +1124,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             <div className="text-center">
               <p className="text-white text-lg mb-4">{error}</p>
               <Button
-                onClick={startCameraAndScan}
+                onClick={() => startCameraAndLoop(++scanGenRef.current)}
                 className="bg-cyan-500 hover:bg-cyan-600 text-white"
               >
                 Retry Camera Access
