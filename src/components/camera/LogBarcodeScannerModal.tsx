@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/library';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Check, Info, Minus, Plus } from 'lucide-react';
+import { Zap, ZapOff, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
-import { attachStreamToVideo, detachVideo } from '@/lib/camera/videoAttach';
+import { attachStreamToVideo } from '@/lib/camera/videoAttach';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 import { HealthAnalysisLoading } from '@/components/health-check/HealthAnalysisLoading';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +18,8 @@ import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { ScanOverlay } from '@/components/camera/ScanOverlay';
 import { playBeep } from '@/lib/sound/soundManager';
+import BarcodeViewport, { AutoToggleChip } from '@/components/scanner/BarcodeViewport';
+import { FF } from '@/featureFlags';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -180,13 +181,31 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   // Constants and refs
   const OWNER = 'log_barcode_scanner';
-
-  // Feature flag for autoscan (set to true to enable)
-  const AUTOSCAN_ENABLED = false;
   const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
-  const BUDGET_MS = THROTTLE ? 500 : 900;
-  const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
-  const COOLDOWN_MS = THROTTLE ? 300 : 600;
+  const COOLDOWN_MS = 600;
+  const BUDGET_MS = 900;
+  const ROI = { widthPct: 0.7, heightPct: 0.35 };
+  const AUTOSCAN_ENABLED = false;
+
+  // Helper functions
+  const detachVideo = (video: HTMLVideoElement | null) => {
+    if (!video) return;
+    try { video.pause(); } catch {}
+    try { (video as any).srcObject = null; } catch {}
+  };
+
+  const stopAutoscan = () => {
+    runningRef.current = false;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    inFlightRef.current = false;
+    hitsRef.current = [];
+  };
+
+  const startAutoscan = () => {
+    if (!AUTOSCAN_ENABLED) return;
+    runningRef.current = true;
+    hitsRef.current = [];
+  };
 
   // Add keyframes to the styles
   useEffect(() => {
@@ -201,6 +220,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         0%, 100% { opacity: 0; } 
         10%, 90% { opacity: 1; } 
       }
+      @keyframes pulseCorners { 
+        0% { filter: drop-shadow(0 0 0 rgba(34,197,94,0.0)); } 
+        100% { filter: drop-shadow(0 0 8px rgba(34,197,94,0.6)); } 
+      }
     `;
     document.head.appendChild(style);
     
@@ -209,93 +232,37 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     };
   }, []);
 
-  // Quick decode for autoscan with better tolerance
-  const quickDecode = useCallback(async (video: HTMLVideoElement, opts: { budgetMs: number }) => {
-    if (!video.videoWidth || !video.videoHeight) return null;
+  // Handle barcode capture from viewport
+  const handleBarcodeCapture = useCallback(async (decoded: { code: string }) => {
+    console.log('[SCANNER] Auto-capture detected:', decoded.code);
+    setPhase('captured');
+    setShowSuccess(true);
     
     try {
-      const result = await snapAndDecode({
-        videoEl: video,
-        budgetMs: opts.budgetMs,
-        roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-        logPrefix: '[LOG]'
-      });
-      
-      return result.ok ? { ok: true, code: result.raw } : null;
+      const lookupResult = await handleOffLookup(decoded.code);
+      if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
+        playBeep();
+        onBarcodeDetected(decoded.code);
+        onOpenChange(false);
+      } else {
+        setPhase('scanning');
+        setShowSuccess(false);
+      }
     } catch (error) {
-      return null;
+      console.warn('Lookup failed:', error);
+      setPhase('scanning');
+      setShowSuccess(false);
     }
-  }, [snapAndDecode, ROI]);
+  }, [onBarcodeDetected, onOpenChange]);
 
-  // Autoscan functions
-  const startAutoscan = useCallback(() => {
-    if (!AUTOSCAN_ENABLED) return;
-    console.log('[LOG] autoscan_start');
-    runningRef.current = true;
-    hitsRef.current = [];
-    const tick = async () => {
-      if (!runningRef.current) return;
-      const now = performance.now();
-      
-      if (now < cooldownUntilRef.current || inFlightRef.current || !videoRef.current) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-      
-      inFlightRef.current = true;
-      try {
-        const result = await quickDecode(videoRef.current, { budgetMs: 180 });
-        if (result?.ok && /^\d{8,14}$/.test(result.code)) {
-          console.log('[LOG] quick_hit', { code: result.code });
-          hitsRef.current.push({ code: result.code, t: now });
-          hitsRef.current = hitsRef.current.filter(h => now - h.t <= 600);
-          
-          const last = hitsRef.current[hitsRef.current.length - 1].code;
-          const count = hitsRef.current.filter(h => h.code === last).length;
-          
-          if (count >= 3) {
-            console.log('[LOG] stable_lock', { code: last });
-            setPhase('captured');
-            setShowSuccess(true);
-            stopAutoscan();
-            
-            // Haptic feedback
-            if ('vibrate' in navigator) {
-              navigator.vibrate(50); // Light haptic
-            }
-            
-            const lookupResult = await handleOffLookup(last);
-        if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-          playBeep();
-          onBarcodeDetected(last);
-          onOpenChange(false);
-            } else {
-              setPhase('scanning');
-              setShowSuccess(false);
-              startAutoscan(); // Resume if no match
-            }
-            return;
-          }
-        } else {
-          cooldownUntilRef.current = now + 120;
-        }
-      } finally {
-        inFlightRef.current = false;
-        if (runningRef.current) {
-          rafRef.current = requestAnimationFrame(tick);
-        }
-      }
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }, [AUTOSCAN_ENABLED, quickDecode, onBarcodeDetected, onOpenChange]);
-
-  const stopAutoscan = useCallback(() => {
-    console.log('[LOG] autoscan_stop');
-    runningRef.current = false;
-    cancelAnimationFrame(rafRef.current);
-    inFlightRef.current = false;
-    hitsRef.current = [];
+  // Force capture for manual button
+  const handleManualCapture = useCallback(() => {
+    if ((window as any)._barcodeViewportForceCapture) {
+      (window as any)._barcodeViewportForceCapture();
+    }
   }, []);
+
+  const viewportRef = useRef<any>(null);
 
   useLayoutEffect(() => {
     if (open) {
@@ -311,17 +278,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       checkForLeaks('LogBarcodeScannerModal');
     }
     
-    // Enhanced cleanup on unmount when throttle enabled
     return () => {
-      const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
-      if (THROTTLE) {
-        // Cancel any pending animation frames and timers
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        // Reset all refs
-        inFlightRef.current = false;
-        runningRef.current = false;
-        hitsRef.current = [];
-      }
       camOwnerUnmount(OWNER);
       camHardStop('unmount');
       cleanup();
@@ -330,30 +287,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   useEffect(() => {
     if (open && stream) {
-      // Start autoscan when camera is ready
-      startAutoscan();
-      
       // Update the stream reference for torch functionality
       if (videoRef.current) {
-        // Simply update the stream reference directly
         updateStreamRef(stream);
       }
-      
-      // Show slow hint after 2 seconds if no barcode detected
-      const slowHintTimer = setTimeout(() => {
-        if (phase === 'scanning' && !isDecoding && !isLookingUp) {
-          setShowSlowHint(true);
-          // Auto-hide after 3 seconds
-          setTimeout(() => setShowSlowHint(false), 3000);
-        }
-      }, 2000);
-      
-      return () => clearTimeout(slowHintTimer);
     }
-    return () => {
-      stopAutoscan();
-    };
-  }, [open, stream, startAutoscan, stopAutoscan, updateStreamRef, phase, isDecoding, isLookingUp]);
+  }, [open, stream, updateStreamRef]);
 
   const startCamera = async () => {
     // iOS fallback: use photo capture for barcode
@@ -483,14 +422,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       s.getTracks().forEach(t => t.stop());
     }
 
-    // Camera inquiry logging
     if (stoppedKinds.length > 0) {
       logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
     }
 
     detachVideo(videoRef.current);
 
-    // tiniest fix because the hook already supports it:
     try { updateStreamRef?.(null); } catch {}
 
     stopAutoscan();
@@ -681,8 +618,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       >
         <div className="grid h-full grid-rows-[auto_1fr_auto]">
           {/* Header */}
-          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 flex items-center justify-between">
-            <h2 className="text-white text-lg font-semibold mx-auto">Scan a barcode</h2>
+          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 relative">
+            <h2 className="text-white text-lg font-semibold text-center">Scan a barcode</h2>
+            
+            {/* Auto toggle chip */}
+            {FF.FEATURE_AUTO_CAPTURE && (
+              <AutoToggleChip className="absolute left-4 top-1/2 -translate-y-1/2" />
+            )}
             
             {/* Close Button */}
             <Button
@@ -694,7 +636,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               <X className="h-6 w-6" />
             </Button>
             
-            {/* Floating Torch Button */}
+            {/* Torch Button */}
             {supportsTorch && (
               <Button
                 variant="ghost"
@@ -705,16 +647,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 }`}
                 title={`Turn flash ${torchOn ? 'off' : 'on'}`}
               >
-                <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
+                {torchOn ? <Zap className="h-5 w-5 text-yellow-300" /> : <ZapOff className="h-5 w-5 text-white" />}
               </Button>
             )}
-          </header>
-
-          {/* Centered Stage */}
-          <main className="row-start-2 grid place-items-center px-4">
-            {/* Status row – fixed height, centered */}
-            <div className="flex h-[28px] items-center justify-center mb-2">
-              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-400/25">
+            
+            {/* Status chip */}
+            <div className="mt-2 flex h-[28px] items-center justify-center">
+              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
                 {isLookingUp ? (
                   <>
                     <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
@@ -730,105 +669,32 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 )}
               </span>
             </div>
+          </header>
 
-            {/* Lift the frame slightly (clamped) so it feels centered */}
+          {/* Centered Stage */}
+          <main className="row-start-2 grid place-items-center px-4">
             <div className="-translate-y-[clamp(8px,3vh,28px)]">
-              <div className="relative w-[min(86vw,360px)] aspect-[4/5] rounded-3xl overflow-hidden">
-                {/* Video element absolutely fills */}
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted
-                  className={cn(
-                    "absolute inset-0 h-full w-full object-cover",
-                    useCSSZoom && "will-change-transform"
-                  )}
-                  style={useCSSZoom ? {
-                    transform: `scale(${currentZoom})`,
-                    transformOrigin: 'center center'
-                  } : undefined}
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerEnd}
-                  onPointerCancel={handlePointerEnd}
-                  onPointerLeave={handlePointerEnd}
-                  onClick={handleVideoClick}
-                />
-
-                {/* Vignette overlay with smoother fade and bigger bright area */}
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      'radial-gradient(ellipse at 50% 42%, ' +
-                      'rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.08) 35%, ' +
-                      'rgba(0,0,0,0.18) 58%, rgba(0,0,0,0.36) 72%, ' +
-                      'rgba(0,0,0,0.58) 86%, rgba(0,0,0,0.72) 100%)'
-                  }}
-                />
-
-                {/* Corners */}
-                <div className="absolute inset-10">
-                  <div className={cn(
-                    "absolute left-0 top-0 h-5 w-5 border-t-2 border-l-2 rounded-tl-md transition-all duration-180",
-                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
-                  )} />
-                  <div className={cn(
-                    "absolute right-0 top-0 h-5 w-5 border-t-2 border-r-2 rounded-tr-md transition-all duration-180",
-                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
-                  )} />
-                  <div className={cn(
-                    "absolute left-0 bottom-0 h-5 w-5 border-b-2 border-l-2 rounded-bl-md transition-all duration-180",
-                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
-                  )} />
-                  <div className={cn(
-                    "absolute right-0 bottom-0 h-5 w-5 border-b-2 border-r-2 rounded-br-md transition-all duration-180",
-                    showSuccess ? "border-green-400/80 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "border-cyan-400/80"
-                  )} />
-                </div>
-
-                {/* Scan line */}
-                <div className="absolute left-12 right-12 top-1/2 h-px
-                                bg-gradient-to-r from-transparent via-cyan-300 to-transparent
-                                animate-[scan_2.4s_ease-in-out_infinite]" />
-                
-                {/* Success checkmark */}
-                {showSuccess && (
-                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 rounded-full p-1.5 animate-[scale_180ms_ease-out] shadow-lg shadow-green-500/50">
-                    <Check className="h-4 w-4 text-white" />
-                  </div>
-                )}
-
-                {/* Zoom Toggle Button */}
-                <button
-                  onClick={handleZoomToggle}
-                  className="absolute right-2 top-2 rounded-full px-2.5 py-1 text-xs bg-black/50 text-white border border-white/10 hover:bg-black/70 transition-colors"
-                >
-                  {currentZoom <= 1.05 ? '1×' : `${currentZoom.toFixed(1)}×`}
-                </button>
-                  
-                {/* HINT (no layout shift) */}
-                <div
-                  aria-live="polite"
-                  className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 h-5 flex items-center justify-center text-[12px] text-white/80"
-                >
-                  {showSlowHint && (
-                    <span className="animate-[fade_2.2s_ease-in-out_infinite] bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
-                      Hold steady • Try turning on flash
-                    </span>
-                  )}
-                </div>
-              </div>
+              <BarcodeViewport
+                videoRef={videoRef}
+                trackRef={trackRef}
+                onCapture={handleBarcodeCapture}
+                currentZoom={currentZoom}
+                useCSSZoom={useCSSZoom}
+                onZoomToggle={handleZoomToggle}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerEnd={handlePointerEnd}
+                onVideoClick={handleVideoClick}
+              />
             </div>
           </main>
 
           {/* Footer / CTA */}
           <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+16px)]">
             <Button
-              onClick={handleSnapAndDecode}
+              onClick={handleManualCapture}
               disabled={isDecoding || isLookingUp || !stream}
-              className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-50 transition-all duration-200"
+              className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-60 transition-all duration-200"
             >
               {isDecoding ? (
                 <>
@@ -841,10 +707,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   Looking up product...
                 </>
               ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Camera className="h-5 w-5" />
-                  Scan & Log
-                </span>
+                <span className="inline-flex items-center gap-2">📷 Scan & Log</span>
               )}
             </Button>
             
