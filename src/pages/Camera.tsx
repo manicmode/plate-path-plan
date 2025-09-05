@@ -3956,20 +3956,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             <SmartAnalyzeLoader
               phase={analyzePhase}
               done={analyzeDone}
-              onCancel={() => {
-                cancelAnalyzeFlow();
-                setShowSmartLoader(false);
-                // Ensure main UI is visible after canceling loader
-                setActiveTab('main');
-                setSelectedImage(null);
-                setShowConfirmation(false);
-                setShowError(false);
-                setShowManualEdit(false);
-                setShowVoiceAnalyzing(false);
-                setShowProcessingNextItem(false);
-                setShowVoiceEntry(false);
-                setShowTransition(false);
-              }}
+              onCancel={handleCancelAll}
               title="Preparing your review…"
               subtitle="We're analyzing your photo and loading nutrition data"
             />
