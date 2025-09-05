@@ -194,19 +194,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const servingG = preferItem
     ? ((currentFoodItem as any)?.servingGrams ?? (isBarcodeSource ? 100 : null))
     : (currentFoodItem?.portionGrams ?? null);
-  const servingLabel = (import.meta.env.VITE_BARCODE_V2 === '1' && isBarcodeSource && servingG)
+  
+  // Remove flag gate - always use real servings when available
+  const servingLabel = (isBarcodeSource && servingG && servingG !== 100)
     ? `Per serving (${servingG} g)`
-    : (isBarcodeSource ? 'Per serving (100 g)' : 'Per portion (100 g)');
+    : (isBarcodeSource ? 'Per 100 g' : 'Per portion (100 g)');
 
   console.log('[SERVING][FINAL]', { isBarcodeSource, bypassHydration, preferItem, servingG, servingLabel });
+  console.log('[PORTION][SOURCE]', (currentFoodItem as any)?.portionSource || (isBarcodeItem ? 'UPC' : 'unknown'));
 
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
   
-  // Use serving text for barcode and text items when available, otherwise use grams
-  const subtitle = (isBarcodeItem || isTextItem)
-    ? (servingText ? `Per portion (${servingText})` : servingLabel)
-    : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
+  // Prefer real serving grams, then servingText, then fallback
+  const subtitle = (isBarcodeItem || isTextItem) ? (
+    (servingG && servingG !== 100) ? `Per serving (${servingG} g)` :
+    servingText ? `Per portion (${servingText})` :
+    'Per 100 g'
+  ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   
   const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : (currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null);
   

@@ -9,7 +9,7 @@ function coerceNumber(n: any): number | null {
 
 // helpers (near top)
 function num(v: any) { const n = Number(v); return Number.isFinite(n) ? n : null; }
-function parseServingGrams(raw: any): number | null {
+export function parseServingGrams(raw: any): number | null {
   const direct = num(raw?.serving_weight_grams) ?? num(raw?.serving_size_g) ?? num(raw?.serving_grams);
   if (direct) return direct;
   const s = String(raw?.serving_size || raw?.serving || '').toLowerCase();
@@ -22,7 +22,7 @@ function parseServingGrams(raw: any): number | null {
 }
 
 // Try to extract grams from common strings like "2/3 cup (55 g)", "1 oz (28g)", "240 ml", "55g"
-function parseServingFromText(txt?: string | null): { grams: number | null; text?: string } {
+export function parseServingFromText(txt?: string | null): { grams: number | null; text?: string } {
   if (!txt) return { grams: null, text: undefined };
   const s = String(txt);
 
@@ -118,6 +118,7 @@ export type RecognizedFood = {
   imageUrl?: string | null;
   servingGrams: number | null;
   servingText?: string; // Optional display text for serving size
+  portionSource?: 'DB'|'UPC'|'FALLBACK'|'NUMERIC'|'TEXT'|'KCAL_RATIO';
   // nutrition per "serving" (or 0 if unknown)
   calories: number;
   protein_g: number;
@@ -132,7 +133,6 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   const upc =
     pick<string>(raw, ['upc','barcode','ean','code']) || 'unknown';
   
-  const v2 = import.meta.env.VITE_BARCODE_V2 === '1';
   const brand = pick<string>(raw, ['brand','brands','brand_name','manufacturer']) ?? null;
   const name = pick<string>(raw, ['product_name','product_name_en','name','title','generic_name','description'])
              || (brand ? brand : `Barcode ${upc}`);
@@ -140,8 +140,38 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   const imageUrl =
     pick<string>(raw, ['image_url','images.front','image','photo']) ?? null;
 
-  const servingGrams = v2 ? (parseServingGrams(raw) ?? 100) :
-                           (pick<number>(raw, ['serving_grams','serving_size_g','serving_size_grams'], true) ?? 100);
+  // Enhanced serving parsing with multiple approaches
+  let servingGrams = parseServingGrams(raw);
+  let servingText: string | undefined;
+  let portionSource: 'NUMERIC' | 'TEXT' | 'KCAL_RATIO' | 'FALLBACK' = 'FALLBACK';
+
+  // If no numeric grams found, try text parsing
+  if (!servingGrams) {
+    const servingStr = pick<string>(raw, ['serving_size', 'serving', 'portion_size']);
+    if (servingStr) {
+      const parsed = parseServingFromText(servingStr);
+      servingGrams = parsed.grams;
+      servingText = parsed.text;
+      if (servingGrams) portionSource = 'TEXT';
+    }
+  } else {
+    portionSource = 'NUMERIC';
+  }
+
+  // KCAL ratio rescue if still no grams
+  if (!servingGrams) {
+    const { grams: rescued, calories, protein_g, carbs_g, fat_g } = derivePerPortion(raw, null);
+    if (rescued && rescued > 0 && rescued < 1000) {
+      servingGrams = Math.round(rescued);
+      portionSource = 'KCAL_RATIO';
+    }
+  }
+
+  // Final fallback
+  if (!servingGrams) {
+    servingGrams = 100;
+    portionSource = 'FALLBACK';
+  }
 
   // Extract per 100g first; fall back to per-serving fields; then sane defaults
   const kcal =
@@ -168,6 +198,17 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     pick<number>(raw, ['nutriments.sugars_100g','sugars_100g','nutrition.sugar_g'], true) ??
     pick<number>(raw, ['sugar_g','sugar'], true) ?? 5;
 
+  // Add telemetry
+  console.log('[BARCODE][SERVING_PARSE]', {
+    raw: { 
+      serving_size: raw?.serving_size, 
+      serving_weight_grams: raw?.serving_weight_grams, 
+      kcal_serving: raw?.nutriments?.['energy-kcal_serving'], 
+      kcal_100g: raw?.nutriments?.['energy-kcal_100g'] 
+    },
+    parsed: { grams: servingGrams, text: servingText, source: portionSource }
+  });
+
   // Build RecognizedFood — UI copies these into legacy fields for display
   const mapped: RecognizedFood = {
     id: `bc:${upc}`,
@@ -177,6 +218,8 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     brand,
     imageUrl,
     servingGrams,
+    servingText,
+    portionSource,
     calories: kcal,
     protein_g: protein,
     carbs_g: carbs,
@@ -186,6 +229,6 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     __hydrated: true
   };
 
-  console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams });
+  console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams, portionSource });
   return mapped;
 }

@@ -60,6 +60,7 @@ import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { SFX } from '@/lib/sfx/sfxManager';
+import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
 
 // Import smoke tests for development
 import '@/utils/smokeTests';
@@ -107,6 +108,10 @@ interface RecognizedFood {
   } | null;
   portionGrams?: number | null;
   factor?: number;
+  // Barcode portion fields
+  servingGrams?: number;
+  servingText?: string;
+  portionSource?: 'DB'|'UPC'|'FALLBACK'|'NUMERIC'|'TEXT'|'KCAL_RATIO';
 }
 
 interface VisionApiResponse {
@@ -1565,15 +1570,30 @@ console.log('Global search enabled:', enableGlobalSearch);
           // Use new barcode mapper for direct food item creation
           const mapped = mapBarcodeToRecognizedFood(data.product || data);
 
+          // Apply user portion preference override
+          const userPref = await getUserPortionPreference({ barcode: cleanBarcode, brand: mapped.brand, name: mapped.name });
+          let finalServingGrams = mapped.servingGrams;
+          let finalPortionSource = mapped.portionSource;
+          
+          if (userPref) {
+            finalServingGrams = userPref.portionGrams;
+            finalPortionSource = 'DB';
+            console.log('[BARCODE][USER_OVERRIDE]', { originalGrams: mapped.servingGrams, userGrams: userPref.portionGrams });
+          } else {
+            finalPortionSource = mapped.servingGrams !== 100 ? 'UPC' : 'FALLBACK';
+          }
+
           // Temporary diagnostic: Mapped item
           console.log('[BARCODE][MAP:ITEM]', {
             name: mapped?.name,
-            servingGrams: mapped?.servingGrams,
+            servingGrams: finalServingGrams,
             calories: mapped?.calories,
             protein_g: mapped?.protein_g,
             carbs_g: mapped?.carbs_g,
             fat_g: mapped?.fat_g,
           });
+          
+          console.log('[BARCODE][MAP][PORTION]', { grams: finalServingGrams, source: finalPortionSource });
 
           // Also get legacy mapped data for additional properties
           const legacyMapped = mapToLogFood(cleanBarcode, data);
@@ -1582,6 +1602,9 @@ console.log('Global search enabled:', enableGlobalSearch);
           // Merge the clean barcode mapping with legacy data for extra properties
           const recognizedFood = {
             ...mapped,
+            // Apply final serving values
+            servingGrams: finalServingGrams,
+            portionSource: finalPortionSource,
             // Defensive name override - ensure we always have a valid string name
             name: typeof mapped.name === 'string' && mapped.name.trim() 
               ? mapped.name.trim() 
@@ -1604,7 +1627,11 @@ console.log('Global search enabled:', enableGlobalSearch);
             sugar: mapped.sugar_g,
             sodium: 0, // Add if available in future
             confidence: 95,
-            serving: mapped.servingGrams ? `Per serving (${mapped.servingGrams}g)` : 'Per 100g',
+            serving: finalServingGrams && finalServingGrams !== 100 
+              ? `Per serving (${finalServingGrams}g)` 
+              : mapped.servingText 
+                ? `Per portion (${mapped.servingText})` 
+                : 'Per 100g',
             image: mapped.imageUrl || p?.imageUrl
           };
 
