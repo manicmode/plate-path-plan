@@ -71,6 +71,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   if (typeof window === 'undefined') return null;
   // Don't mount internals when closed
   if (!open) return null;
+  
+  console.log('[SCANNER][MOUNT]', { mode, paused, scanningActive });
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -88,20 +90,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   
   const location = useLocation();
   
-  // Reset scan state function
-  const resetScan = useCallback(() => {
-    setPhase('scanning');
-    setOverlayVisible(false);
-    setShowSuccess(false);
-    setError(null);
-    setPaused(false);
-    console.log('[SCANNER][RESET_SCAN]');
-  }, []);
-  
-  // Reset scan state on route changes
-  useEffect(() => {
-    return () => resetScan();
-  }, [location.pathname, resetScan]);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
@@ -124,6 +112,21 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+
+  // Reset scan state function (defined after state variables)
+  const resetScan = useCallback(() => {
+    setPhase('scanning');
+    setOverlayVisible(false);
+    setShowSuccess(false);
+    setError(null);
+    setPaused(false);
+    console.log('[SCANNER][RESET_SCAN]');
+  }, []);
+  
+  // Reset scan state on route changes
+  useEffect(() => {
+    return () => resetScan();
+  }, [location.pathname, resetScan]);
 
   // Zoom functionality state
   const [currentZoom, setCurrentZoom] = useState(1);
@@ -359,62 +362,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   }, []);
 
   const viewportRef = useRef<any>(null);
-
-  // Unified cleanup function (idempotent)
-  const doCleanup = useCallback((reason: string) => {
-    if (cleanedRef.current) return;
-    cleanedRef.current = true;
-    console.log('[SCANNER][CLOSE]', { reason });
-    
-    // 1) Stop scan loops, decoders, tracks
-    cleanup();
-    
-    // 2) Red pill & scan state hard reset
-    resetScan();
-  }, [resetScan]);
-  
-  // Canonical close: ensures open=false and cleanup()
-  const requestClose = useCallback((reason: string) => {
-    doCleanup(reason);
-    onOpenChange?.(false);
-  }, [doCleanup, onOpenChange]);
-  
-  // Safety nets: any way the modal stops being "open" runs cleanup once
-  useEffect(() => { 
-    if (!open) doCleanup('open=false'); 
-  }, [open, doCleanup]);
-  
-  // Mount/unmount tracking
-  useEffect(() => { 
-    isMountedRef.current = true; 
-    return () => { 
-      isMountedRef.current = false; 
-      doCleanup('unmount');
-    }; 
-  }, [doCleanup]);
-  
-  // Camera lifecycle management
-  useLayoutEffect(() => {
-    if (open && !blockCamera) {
-      logPerfOpen('LogBarcodeScannerModal');
-      logOwnerAcquire('LogBarcodeScannerModal');
-      camOwnerMount(OWNER);
-      cleanedRef.current = false;
-      startCamera();
-    } else {
-      camOwnerUnmount(OWNER);
-      camHardStop('modal_close');
-      doCleanup('modal_close');
-      logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
-      checkForLeaks('LogBarcodeScannerModal');
-    }
-    
-    return () => {
-      camOwnerUnmount(OWNER);
-      camHardStop('unmount');
-      doCleanup('unmount');
-    };
-  }, [open, blockCamera, doCleanup]);
   
   // Mode and pause effect
   useEffect(() => {
@@ -660,6 +607,62 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     tearingDownRef.current = false;
     resetScan();
   };
+  
+  // Unified cleanup function (idempotent) - defined after cleanup function
+  const doCleanup = useCallback((reason: string) => {
+    if (cleanedRef.current) return;
+    cleanedRef.current = true;
+    console.log('[SCANNER][CLOSE]', { reason });
+    
+    // 1) Stop scan loops, decoders, tracks
+    cleanup();
+    
+    // 2) Red pill & scan state hard reset
+    resetScan();
+  }, [resetScan]);
+  
+  // Canonical close: ensures open=false and cleanup()
+  const requestClose = useCallback((reason: string) => {
+    doCleanup(reason);
+    onOpenChange?.(false);
+  }, [doCleanup, onOpenChange]);
+  
+  // Safety nets: any way the modal stops being "open" runs cleanup once
+  useEffect(() => { 
+    if (!open) doCleanup('open=false'); 
+  }, [open, doCleanup]);
+  
+  // Mount/unmount tracking
+  useEffect(() => { 
+    isMountedRef.current = true; 
+    return () => { 
+      isMountedRef.current = false; 
+      doCleanup('unmount');
+    }; 
+  }, [doCleanup]);
+  
+  // Camera lifecycle management
+  useLayoutEffect(() => {
+    if (open && !blockCamera) {
+      logPerfOpen('LogBarcodeScannerModal');
+      logOwnerAcquire('LogBarcodeScannerModal');
+      camOwnerMount(OWNER);
+      cleanedRef.current = false;
+      startCamera();
+    } else {
+      camOwnerUnmount(OWNER);
+      camHardStop('modal_close');
+      doCleanup('modal_close');
+      logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
+      checkForLeaks('LogBarcodeScannerModal');
+    }
+    
+    return () => {
+      camOwnerUnmount(OWNER);
+      camHardStop('unmount');
+      doCleanup('unmount');
+    };
+  }, [open, blockCamera, doCleanup]);
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
     console.log(`[LOG] off_fetch_start`, { code: barcode });
