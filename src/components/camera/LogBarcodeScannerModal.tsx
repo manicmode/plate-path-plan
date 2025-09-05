@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { stopMedia } from './stopMedia';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
-import { Zap, ZapOff, X } from 'lucide-react';
+import { Zap, ZapOff, X, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
@@ -20,7 +21,7 @@ import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfC
 import { ScanOverlay } from '@/components/camera/ScanOverlay';
 import { playBeep } from '@/lib/sound/soundManager';
 import { SFX } from '@/lib/sfx/sfxManager';
-import BarcodeViewport, { AutoToggleChip } from '@/components/scanner/BarcodeViewport';
+import BarcodeViewport from '@/components/scanner/BarcodeViewport';
 import { FF } from '@/featureFlags';
 import { cameraPool } from '@/lib/camera/cameraPool';
 import { useLocation } from 'react-router-dom';
@@ -55,6 +56,17 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onManualEntry,
   blockCamera = false
 }) => {
+  // Scanner mode state
+  const [mode, setMode] = useState<'auto' | 'tap'>('auto');
+  const [paused, setPaused] = useState(false);
+  
+  // Derived scanning state
+  const scanningActive = open && mode === 'auto' && !paused;
+  
+  // Unified cleanup refs
+  const cleanedRef = useRef(false);
+  const isMountedRef = useRef(false);
+  
   // SSR guard - don't render on server
   if (typeof window === 'undefined') return null;
   // Don't mount internals when closed
@@ -73,35 +85,39 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const imageCaptureRef = useRef<any>(null);
   const barcodeDetectorRef = useRef<any>(null);
   const allTracksRef = useRef<Set<MediaStreamTrack>>(new Set());
-  const isMountedRef = useRef(false);
   
   const location = useLocation();
   
+  // Reset scan state function
+  const resetScan = useCallback(() => {
+    setPhase('scanning');
+    setOverlayVisible(false);
+    setShowSuccess(false);
+    setError(null);
+    setPaused(false);
+    console.log('[SCANNER][RESET_SCAN]');
+  }, []);
+  
   // Reset scan state on route changes
   useEffect(() => {
-    return () => {
-      setPhase('scanning');
-      setOverlayVisible(false);
-      setShowSuccess(false);
-      setError(null);
-    };
-  }, [location.pathname]);
+    return () => resetScan();
+  }, [location.pathname, resetScan]);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
-  // One overlay flag derived from phase
-  const overlayWanted = phase !== 'scanning';
+  // Red pill visibility tied to scanning state
+  const pillVisible = open && scanningActive;
   
-  // Hysteresis: ensure overlay doesn't flicker if phase bounces quickly
+  // Overlay visibility management
   const [overlayVisible, setOverlayVisible] = useState(false);
   useEffect(() => {
-    if (overlayWanted) {
+    if (phase !== 'scanning') {
       setOverlayVisible(true);
     } else {
       const t = setTimeout(() => setOverlayVisible(false), 160);
       return () => clearTimeout(t);
     }
-  }, [overlayWanted]);
+  }, [phase]);
   const [error, setError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
@@ -344,24 +360,51 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const viewportRef = useRef<any>(null);
 
+  // Unified cleanup function (idempotent)
+  const doCleanup = useCallback((reason: string) => {
+    if (cleanedRef.current) return;
+    cleanedRef.current = true;
+    console.log('[SCANNER][CLOSE]', { reason });
+    
+    // 1) Stop scan loops, decoders, tracks
+    cleanup();
+    
+    // 2) Red pill & scan state hard reset
+    resetScan();
+  }, [resetScan]);
+  
+  // Canonical close: ensures open=false and cleanup()
+  const requestClose = useCallback((reason: string) => {
+    doCleanup(reason);
+    onOpenChange?.(false);
+  }, [doCleanup, onOpenChange]);
+  
+  // Safety nets: any way the modal stops being "open" runs cleanup once
+  useEffect(() => { 
+    if (!open) doCleanup('open=false'); 
+  }, [open, doCleanup]);
+  
   // Mount/unmount tracking
   useEffect(() => { 
     isMountedRef.current = true; 
     return () => { 
       isMountedRef.current = false; 
+      doCleanup('unmount');
     }; 
-  }, []);
+  }, [doCleanup]);
   
+  // Camera lifecycle management
   useLayoutEffect(() => {
     if (open && !blockCamera) {
       logPerfOpen('LogBarcodeScannerModal');
       logOwnerAcquire('LogBarcodeScannerModal');
       camOwnerMount(OWNER);
+      cleanedRef.current = false;
       startCamera();
     } else {
       camOwnerUnmount(OWNER);
       camHardStop('modal_close');
-      cleanup();
+      doCleanup('modal_close');
       logPerfClose('LogBarcodeScannerModal', startTimeRef.current);
       checkForLeaks('LogBarcodeScannerModal');
     }
@@ -369,9 +412,24 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     return () => {
       camOwnerUnmount(OWNER);
       camHardStop('unmount');
-      cleanup();
+      doCleanup('unmount');
     };
-  }, [open, blockCamera]);
+  }, [open, blockCamera, doCleanup]);
+  
+  // Mode and pause effect
+  useEffect(() => {
+    if (open && mode === 'auto' && !paused) {
+      // Start auto scanning
+      scanActiveRef.current = true;
+    } else {
+      // Stop auto loop but keep video live
+      scanActiveRef.current = false;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    }
+  }, [open, mode, paused]);
 
   useEffect(() => {
     if (open && stream) {
@@ -600,6 +658,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     setPhase('scanning');
     setIsLookingUp(false);
     tearingDownRef.current = false;
+    resetScan();
   };
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
@@ -714,25 +773,26 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         videoEl: video,
         budgetMs: BUDGET_MS,
         roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-        logPrefix: '[LOG]'
+        logPrefix: '[TAP]'
       });
 
       // If decoded digits, try OFF lookup
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {
         const lookupResult = await handleOffLookup(result.raw);
         
-      if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        playBeep();
-        setShowSuccess(true);
-        
-        // Haptic feedback
-        if ('vibrate' in navigator) {
-          navigator.vibrate(50);
-        }
-        
-        console.log('[BARCODE][SCAN:DETECTED]', { raw: result.raw, format: 'manual-capture' });
-        onBarcodeDetected(result.raw);
-        onOpenChange(false);
+        if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
+          SFX().play('scan_success');
+          playBeep();
+          setShowSuccess(true);
+          
+          // Haptic feedback
+          if ('vibrate' in navigator) {
+            navigator.vibrate(50);
+          }
+          
+          console.log('[BARCODE][SCAN:DETECTED]', { raw: result.raw, format: 'tap-capture' });
+          onBarcodeDetected(result.raw);
+          requestClose('successful_scan');
         } else if (lookupResult.data && !lookupResult.data.ok) {
           const reason = lookupResult.data.reason || 'unknown';
           const msg = reason === 'off_miss' && /^\d{8}$/.test(result.raw)
@@ -743,7 +803,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           toast.error('Lookup error. Please try again.');
         }
       } else {
-        toast('No barcode detected. Try again.');
+        toast('Move closer / try again.');
       }
     } finally {
       setTimeout(() => {
@@ -781,33 +841,82 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     console.log('[SCANNER][UNMOUNT]'); 
   }, []);
 
+  // Event handlers
+  const onEscapeKeyDown = useCallback(() => requestClose('escape'), [requestClose]);
+  const onPointerDownOutside = useCallback(() => requestClose('outside'), [requestClose]);
+  
   return (
-    <Dialog open={open} onOpenChange={(v) => {
-      if (!v) { 
-        stopMedia(videoRef.current); 
-        onOpenChange?.(false); 
-      }
-      onOpenChange(v);
-    }}>
+    <Dialog open={open} onOpenChange={(v) => v ? null : requestClose('onOpenChange')}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
+        onEscapeKeyDown={onEscapeKeyDown}
+        onPointerDownOutside={onPointerDownOutside}
       >
+        <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
+        <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
+        
         <div className="grid h-full grid-rows-[auto_1fr_auto]">
           {/* Header */}
           <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 relative">
             <h2 className="text-white text-lg font-semibold text-center">Scan a barcode</h2>
             
-            {/* Auto toggle chip */}
-            {FF.FEATURE_AUTO_CAPTURE && (
-              <AutoToggleChip className="absolute left-4 top-1/2 -translate-y-1/2" />
-            )}
+            {/* Mode Switch */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex">
+              <div className="flex bg-white/10 rounded-full p-1">
+                <button
+                  onClick={() => {
+                    setMode('auto');
+                    setPaused(false);
+                  }}
+                  className={cn(
+                    "px-3 py-1 text-xs rounded-full transition-all",
+                    mode === 'auto'
+                      ? "bg-white text-black font-medium"
+                      : "text-white/80 hover:text-white"
+                  )}
+                  aria-pressed={mode === 'auto'}
+                >
+                  Auto
+                </button>
+                <button
+                  onClick={() => {
+                    setMode('tap');
+                    setPaused(true);
+                  }}
+                  className={cn(
+                    "px-3 py-1 text-xs rounded-full transition-all",
+                    mode === 'tap'
+                      ? "bg-white text-black font-medium"
+                      : "text-white/80 hover:text-white"
+                  )}
+                  aria-pressed={mode === 'tap'}
+                >
+                  Tap
+                </button>
+              </div>
+              
+              {/* Pause/Resume for Auto mode */}
+              {mode === 'auto' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPaused(!paused)}
+                  className="ml-2 text-white hover:bg-white/20"
+                  title={paused ? 'Resume scanning' : 'Pause scanning'}
+                >
+                  {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
             
             {/* Close Button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onOpenChange(false)}
+              onClick={() => requestClose('header_exit')}
               className="absolute right-4 text-white hover:bg-white/20"
+              aria-label="Close scanner"
+              data-role="scanner-exit"
             >
               <X className="h-6 w-6" />
             </Button>
@@ -828,7 +937,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             )}
             
             {/* Status chip */}
-            <div className="mt-2 flex h-[28px] items-center justify-center">
+            <div className="mt-2 flex h-[28px] items-center justify-center" aria-live="polite">
               <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
                 {isLookingUp ? (
                   <>
@@ -840,8 +949,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                     <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
                     Scanning...
                   </>
+                ) : mode === 'auto' && paused ? (
+                  <>Paused</>
+                ) : mode === 'auto' ? (
+                  <>● Scanning active</>
                 ) : (
-                  <>● Ready to scan</>
+                  <>● Tap to scan</>
                 )}
               </span>
             </div>
@@ -867,27 +980,30 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
           {/* Footer / CTA */}
           <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
-            <Button
-              onClick={handleManualCapture}
-              disabled={isDecoding || isLookingUp || !stream}
-              className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-60 transition-all duration-200"
-            >
-              {isDecoding ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                  Scanning...
-                </>
-              ) : isLookingUp ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                  Looking up product...
-                </>
-              ) : (
-                <span className="inline-flex items-center gap-2">📷 Scan & Log</span>
-              )}
-            </Button>
+            {/* Only show Scan & Log button in Tap mode */}
+            {mode === 'tap' && (
+              <Button
+                onClick={handleSnapAndDecode}
+                disabled={isDecoding || isLookingUp || !stream}
+                className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-60 transition-all duration-200"
+              >
+                {isDecoding ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                    Scanning...
+                  </>
+                ) : isLookingUp ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                    Looking up product...
+                  </>
+                ) : (
+                  <span className="inline-flex items-center gap-2">📷 Scan & Log</span>
+                )}
+              </Button>
+            )}
             
-            <div className="text-center mt-3">
+            <div className={cn("text-center", mode === 'tap' && "mt-3")}>
               <button
                 onClick={onManualEntry}
                 className="text-white/80 hover:text-white underline underline-offset-2 transition-colors duration-200"
@@ -897,8 +1013,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
           </footer>
 
-          {/* Unified Scan Overlay */}
-          <ScanOverlay show={overlayVisible} />
+          {/* Red Pill Overlay - only visible when actively scanning in Auto mode */}
+          <ScanOverlay show={pillVisible} />
 
           {/* Frozen Overlay */}
           {phase !== 'scanning' && (
