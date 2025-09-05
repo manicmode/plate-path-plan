@@ -92,10 +92,19 @@ export function useSnapAndDecode(
   }, [internalUpdateStreamRef]);
 
   const snapAndDecode = useCallback(async (
-    videoEl: HTMLVideoElement,
-    logPrefix = '[SNAP]',
+    options: { 
+      videoEl: HTMLVideoElement; 
+      budgetMs?: number; 
+      roi?: { wPct: number; hPct: number }; 
+      logPrefix?: string 
+    } | HTMLVideoElement,
+    logPrefixLegacy = '[SNAP]',
     scanGuard?: ScanGuard
-  ): Promise<ScanResult | null> => {
+  ): Promise<any> => {
+    // Handle both new object-style and legacy parameter-style calls
+    const isLegacyCall = options instanceof HTMLVideoElement;
+    const videoEl = isLegacyCall ? options : options.videoEl;
+    const logPrefix = isLegacyCall ? logPrefixLegacy : (options.logPrefix || '[SNAP]');
     // Guard: check if scan session is still active
     if (scanGuard && (scanGuard.signal.aborted || !scanGuard.isOpen())) {
       console.log(`${logPrefix} blocked: guard failed`);
@@ -170,9 +179,15 @@ export function useSnapAndDecode(
           toast.success(`${logPrefix} barcode found: ${chosenBarcode}`);
         }
 
+        // Return legacy format for backward compatibility
         return {
-          value: chosenBarcode,
-          format: result.result?.format || 'unknown'
+          ok: true,
+          raw: chosenBarcode,
+          format: result.result?.format || 'unknown',
+          checksumOk: result.result?.checkDigitValid || null,
+          attempts: attempts,
+          ms: ms,
+          reason: 'decoded'
         };
       } else {
         console.log(`${logPrefix} barcode_result:`, {
@@ -182,7 +197,15 @@ export function useSnapAndDecode(
           reason: 'not_found'
         });
 
-        return null;
+        return {
+          ok: false,
+          raw: null,
+          format: null,
+          checksumOk: null,
+          attempts: attempts,
+          ms: ms,
+          reason: 'not_found'
+        };
       }
     } catch (error) {
       const ms = Math.round(performance.now() - startTime);
@@ -194,7 +217,15 @@ export function useSnapAndDecode(
         reason: 'error'
       });
 
-      return null;
+      return {
+        ok: false,
+        raw: null,
+        format: null,
+        checksumOk: null,
+        attempts: attempts,
+        ms: ms,
+        reason: 'error'
+      };
     } finally {
       // CRITICAL: Always unfreeze video and restore preview
       try { 
