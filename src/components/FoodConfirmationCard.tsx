@@ -172,7 +172,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Derive display values with broad fallback
   // Enhanced display values for barcode and text items
-  const preferItem = bypassHydration && ((currentFoodItem as any)?.source === 'barcode' || (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech');
+  const isBarcodeSource = (currentFoodItem as any)?.source === 'barcode';
+  const preferItem =
+    (bypassHydration || isBarcodeSource) &&
+    (isBarcodeSource ||
+     (currentFoodItem as any)?.source === 'manual' ||
+     (currentFoodItem as any)?.source === 'speech');
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
@@ -186,6 +191,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   const servingLabel = (import.meta.env.VITE_BARCODE_V2 === '1' && servingG)
     ? `Per serving (${servingG} g)` : 'Per portion (100 g)';
+  
+  console.log('[SERVING][CHECK]', {
+    bypassHydration,
+    isBarcodeSource,
+    preferItem,
+    servingG,
+    servingLabel
+  });
   
   // Use serving text for barcode and text items when available, otherwise use grams
   const subtitle = (isBarcodeItem || isTextItem)

@@ -1616,8 +1616,8 @@ console.log('Global search enabled:', enableGlobalSearch);
           
           setShowConfirmation(true);
           try {
-            const vid = document.querySelector('video#log-barcode-camera') as HTMLVideoElement | null;
-            stopMedia(vid);
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => stopMedia(v as HTMLVideoElement));
           } catch {}
           console.log('[BARCODE][OPEN_CONFIRM]', { serving: mapped.servingGrams });
           addRecentBarcode({

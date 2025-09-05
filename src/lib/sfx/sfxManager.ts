@@ -50,7 +50,24 @@ class SfxManager {
 
   play(key: SfxKey) {
     try { navigator.vibrate?.(key === 'scan_success' ? 30 : key === 'shutter' ? 20 : 10); } catch {}
-    if (!this.ensureCtx() || !this.unlocked) return; // silent if locked
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    if (!this.unlocked && ctx.state !== 'running') {
+      ctx.resume().catch(() => {});
+    }
+    // Update unlocked status after potential resume
+    setTimeout(() => {
+      this.unlocked = ctx.state === 'running';
+    }, 50);
+    if (!this.unlocked) return;
+    
+    console.log('[SFX][PLAY]', {
+      key,
+      hasCtx: !!ctx,
+      ctxState: ctx?.state,
+      unlocked: this.unlocked
+    });
+    
     // console.debug?.('[sfx] play', key);
     switch (key) {
       case 'welcome':      this.playTone(523.25, 659.25, 0.22); break; // C5->E5
