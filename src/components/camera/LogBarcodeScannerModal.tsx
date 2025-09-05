@@ -167,7 +167,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode({
     activeScanRef,
-    scanGenRef
+    scanGenRef,
+    abortControllerRef: decodeAbortRef
   });
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
@@ -404,28 +405,45 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       // start session
       activeScanRef.current = true;
       const myGen = ++scanGenRef.current; // new session
+      
+      // Create new AbortController for this session
+      if (decodeAbortRef.current) {
+        decodeAbortRef.current.abort();
+      }
+      decodeAbortRef.current = new AbortController();
+      
+      console.log('[SCANNER][START]', { gen: myGen });
       startCameraAndLoop(myGen);
       return () => {
         // close session early before actual teardown to kill late async
         activeScanRef.current = false;
         ++scanGenRef.current; // invalidate any pending work
+        if (decodeAbortRef.current) {
+          decodeAbortRef.current.abort();
+        }
         shutdownCamera('effect-cleanup');
       };
     } else {
       // ensure off
       activeScanRef.current = false;
       ++scanGenRef.current; // invalidate any pending work
+      if (decodeAbortRef.current) {
+        decodeAbortRef.current.abort();
+      }
       shutdownCamera('inactive');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, documentVisible]);
 
   // Visibility guards that immediately shutdown if hidden
-  useEffect(() => {
+   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== 'visible') {
         activeScanRef.current = false;
         ++scanGenRef.current;
+        if (decodeAbortRef.current) {
+          decodeAbortRef.current.abort();
+        }
         shutdownCamera('hidden');
       }
     };
@@ -527,6 +545,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         track.onended = () => allTracksRef.current.delete(track);
       });
       
+      // Register with camera pool
+      cameraPool.add(mediaStream);
+      
       await attachStreamToVideo(videoRef.current, mediaStream);
       
       const track = mediaStream.getVideoTracks()[0];
@@ -617,8 +638,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       rafIdRef.current = null;
     }
 
+    
     const v = videoRef.current;
     const s = (v?.srcObject as MediaStream) || null;
+    
+    // Stop all streams by current generation
+    const currentGen = scanGenRef.current;
+    cameraPool.stopAll(`gen-${currentGen}-${reason}`);
+
     const count = s?.getTracks()?.length ?? 0;
 
     if (s) {
@@ -868,12 +895,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const video = videoRef.current;
       
-      const result = await snapAndDecode({
-        videoEl: video,
-        budgetMs: BUDGET_MS,
-        roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
-        logPrefix: '[TAP]'
-      });
+        const result = await snapAndDecode({
+          videoEl: video,
+          budgetMs: BUDGET_MS,
+          roi: { wPct: ROI.widthPct, hPct: ROI.heightPct },
+          logPrefix: '[TAP]',
+          signal: decodeAbortRef.current?.signal,
+          gen: scanGenRef.current
+        });
 
       // If decoded digits, try OFF lookup
       if (result.ok && result.raw && /^\d{8,14}$/.test(result.raw)) {

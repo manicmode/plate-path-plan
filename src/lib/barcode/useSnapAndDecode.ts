@@ -14,6 +14,7 @@ export type DecodeOutcome = {
 export function useSnapAndDecode(guardRefs?: {
   activeScanRef: React.MutableRefObject<boolean>;
   scanGenRef: React.MutableRefObject<number>;
+  abortControllerRef?: React.MutableRefObject<AbortController | null>;
 }) {
   const [torchEnabled, setTorchEnabled] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
@@ -24,10 +25,16 @@ export function useSnapAndDecode(guardRefs?: {
     streamRef.current = stream;
   };
 
-  const ensurePreviewPlaying = (video: HTMLVideoElement) => {
+  const ensurePreviewPlaying = (video: HTMLVideoElement, signal?: AbortSignal, gen?: number) => {
     // Guard: check if we should still be active
     if (guardRefs && !guardRefs.activeScanRef.current) {
       console.log('[SNAP] preview resume blocked: inactive');
+      return;
+    }
+    
+    // Guard: check abort signal and generation
+    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
+      console.log('[SNAP] preview resume blocked: aborted or gen mismatch');
       return;
     }
     
@@ -38,8 +45,14 @@ export function useSnapAndDecode(guardRefs?: {
         console.log('[SNAP] restart blocked: inactive');
         return;
       }
+      
+      if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
+        console.log('[SNAP] restart blocked: aborted or gen mismatch');
+        return;
+      }
+      
       console.log('[SNAP] restarting camera stream');
-      restartCamera(video).catch(() => {});
+      restartCamera(video, signal, gen).catch(() => {});
       return;
     }
     if (video.paused) {
@@ -47,14 +60,20 @@ export function useSnapAndDecode(guardRefs?: {
     }
   };
 
-  const restartCamera = async (video: HTMLVideoElement) => {
+  const restartCamera = async (video: HTMLVideoElement, signal?: AbortSignal, gen?: number) => {
     // Guard: abort if no longer active
     if (guardRefs && !guardRefs.activeScanRef.current) {
       console.log('[SNAP] restart camera aborted: inactive');
       return;
     }
     
-    const myGen = guardRefs?.scanGenRef.current;
+    // Guard: check abort signal and generation
+    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
+      console.log('[SNAP] restart camera aborted: aborted or gen mismatch');
+      return;
+    }
+    
+    const myGen = guardRefs?.scanGenRef.current || gen;
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -66,8 +85,8 @@ export function useSnapAndDecode(guardRefs?: {
       });
       
       // Check again after async getUserMedia
-      if (guardRefs && (!guardRefs.activeScanRef.current || guardRefs.scanGenRef.current !== myGen)) {
-        console.log('[SNAP] restart camera aborted after getUserMedia: inactive or gen changed');
+      if (signal?.aborted || (guardRefs && (!guardRefs.activeScanRef.current || guardRefs.scanGenRef.current !== myGen))) {
+        console.log('[SNAP] restart camera aborted after getUserMedia: inactive, aborted, or gen changed');
         try { stream.getTracks().forEach(t => t.stop()); } catch {}
         return;
       }
@@ -85,13 +104,23 @@ export function useSnapAndDecode(guardRefs?: {
     budgetMs?: number;
     roi?: { wPct: number; hPct: number };
     logPrefix?: string;
+    signal?: AbortSignal;
+    gen?: number;
   }): Promise<DecodeOutcome> => {
     const {
       videoEl,
       budgetMs = 900,
       roi = { wPct: 0.7, hPct: 0.35 },
-      logPrefix = '[SNAP]'
+      logPrefix = '[SNAP]',
+      signal,
+      gen
     } = opts;
+
+    // Guard: check abort signal and generation
+    if (signal?.aborted || (guardRefs && gen !== undefined && guardRefs.scanGenRef.current !== gen)) {
+      console.log(`${logPrefix} decode_cancelled: aborted or gen mismatch`);
+      return { ok: false, reason: 'aborted', attempts: 0, ms: 0 };
+    }
 
     // Single-flight guard
     if (inFlightRef.current) {
@@ -211,7 +240,7 @@ export function useSnapAndDecode(guardRefs?: {
       // Ensure video is playing - but only if still active
       try {
         if (!guardRefs || guardRefs.activeScanRef.current) {
-          ensurePreviewPlaying(videoEl);
+          ensurePreviewPlaying(videoEl, signal, gen);
         } else {
           console.log(`${logPrefix} preview resume skipped: inactive`);
         }
