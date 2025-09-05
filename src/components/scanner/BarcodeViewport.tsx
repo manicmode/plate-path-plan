@@ -2,6 +2,17 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { FF } from '@/featureFlags';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
+// ---- AUTO CONFIG ----
+const AUTO_CFG = {
+  fps: 6,          // decode loop rate
+  window: 4,       // sliding window size
+  minMatches: 3,   // same code must appear >= 3 times in the window
+  dwellMs: 700,    // time from first match to trigger
+  cooldownMs: 1500 // min time between captures
+};
+
+type Sample = { t: number; code: string; cx: number; cy: number };
+
 type Detection = { 
   ok: boolean; 
   confidence: number; 
@@ -44,7 +55,15 @@ export default function BarcodeViewport({
     return localStorage.getItem('scanner:auto') !== 'off';
   });
   
-  const [hintText, setHintText] = useState("Align the code — we'll capture automatically. You can also tap Scan.");
+  // Auto-capture sliding window refs
+  const samplesRef = useRef<Sample[]>([]);
+  const autoIvRef = useRef<number | ReturnType<typeof setInterval> | null>(null);
+  
+  const [hintText, setHintText] = useState(() => {
+    return FF.FEATURE_AUTO_CAPTURE 
+      ? "Align the code — we'll capture automatically. You can also tap Scan."
+      : "Align the code — then tap Scan.";
+  });
   const [isCapturing, setIsCapturing] = useState(false);
 
   const { snapAndDecode } = useSnapAndDecode();
@@ -57,6 +76,25 @@ export default function BarcodeViewport({
   const prevCenterRef = useRef<{ x: number; y: number } | null>(null);
   const stableSinceRef = useRef<number | null>(null);
   const slowHintTimerRef = useRef<number | null>(null);
+
+  // Window analysis functions
+  const pushSample = useCallback((s: Sample) => {
+    const arr = samplesRef.current;
+    arr.push(s);
+    while (arr.length > AUTO_CFG.window) arr.shift();
+  }, []);
+
+  const windowStats = useCallback(() => {
+    const arr = samplesRef.current;
+    const byCode = new Map<string, number>();
+    arr.forEach(s => byCode.set(s.code, (byCode.get(s.code) ?? 0) + 1));
+    let best = ''; 
+    let bestCount = 0;
+    byCode.forEach((cnt, code) => { if (cnt > bestCount) { bestCount = cnt; best = code; } });
+    const firstT = arr[0]?.t ?? performance.now();
+    const dwellMs = (arr[arr.length - 1]?.t ?? performance.now()) - firstT;
+    return { best, bestCount, dwellMs };
+  }, []);
 
     const setAuto = useCallback((v: boolean) => { 
       setAutoOn(v); 
@@ -153,13 +191,14 @@ export default function BarcodeViewport({
     }
   }, [autoOn]);
 
-  // Trigger capture with visual feedback
-  const triggerCapture = useCallback(async (d?: Detection) => {
-    if (capturingRef.current || !videoRef.current) return;
+  // Safe capture with cooldown protection
+  const safeCapture = useCallback(async (pref?: { code?: string }) => {
+    const now = performance.now();
+    if (capturingRef.current || now - lastCaptureRef.current < AUTO_CFG.cooldownMs) return;
     
     capturingRef.current = true;
     setIsCapturing(true);
-    lastCaptureRef.current = performance.now();
+    lastCaptureRef.current = now;
     
     try {
       // Pulse corners green
@@ -172,7 +211,9 @@ export default function BarcodeViewport({
       
       setHintText('Code found — capturing…');
       
-      const decoded = d?.code ? { code: d.code } : await decodeFrame(videoRef.current);
+      const decoded = pref?.code 
+        ? { code: pref.code }
+        : await decodeFrame(videoRef.current!);
       onCapture(decoded);
     } catch (error) {
       console.warn('Capture failed:', error);
@@ -192,31 +233,57 @@ export default function BarcodeViewport({
     }
   }, [onCapture, decodeFrame, autoOn, videoRef]);
 
-  // Main detection loop
+  // Trigger capture with visual feedback (legacy method for manual button)
+  const triggerCapture = useCallback(async (d?: Detection) => {
+    await safeCapture(d?.code ? { code: d.code } : undefined);
+  }, [safeCapture]);
+
+  // Auto trigger decision
+  const maybeAutoTrigger = useCallback(() => {
+    const { best, bestCount, dwellMs } = windowStats();
+    if (!best) return;
+    if (bestCount < AUTO_CFG.minMatches) return;
+    if (dwellMs < AUTO_CFG.dwellMs) return;
+
+    const now = performance.now();
+    if (now - lastCaptureRef.current < AUTO_CFG.cooldownMs) return;
+
+    // Same code seen in window for long enough -> capture
+    safeCapture({ code: best });
+  }, [windowStats, safeCapture]);
+
+  // Auto-capture decoder loop (using interval instead of RAF for consistent timing)
   useEffect(() => {
     if (!FF.FEATURE_AUTO_CAPTURE || !autoOn) return;
+    if (!videoRef.current) return;
 
-    const loop = async () => {
-      rafRef.current = requestAnimationFrame(loop);
-      
-      if (!videoRef.current || capturingRef.current) return;
-      
+    samplesRef.current = [];
+    if (autoIvRef.current) clearInterval(autoIvRef.current as any);
+
+    const period = Math.max(1000 / AUTO_CFG.fps, 120);
+
+    autoIvRef.current = setInterval(async () => {
+      // Don't decode while a capture is in flight or during cooldown
+      const now = performance.now();
+      if (capturingRef.current || now - lastCaptureRef.current < 200) return;
+
       try {
-        const detection = await detectFromVideo(videoRef.current);
-        handleDetection(detection);
-      } catch (error) {
-        // Silent fail for auto-detection
+        const res = await decodeFrame(videoRef.current!);
+        if (res?.code) {
+          // Use center position since we don't have precise detection coordinates
+          pushSample({ t: performance.now(), code: res.code, cx: 0.5, cy: 0.5 });
+          maybeAutoTrigger();
+        }
+      } catch (e) {
+        // Swallow to avoid breaking UI
       }
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
+    }, period) as any;
 
     return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      if (autoIvRef.current) clearInterval(autoIvRef.current as any);
+      autoIvRef.current = null;
     };
-  }, [FF.FEATURE_AUTO_CAPTURE, autoOn, detectFromVideo, handleDetection, videoRef]);
+  }, [FF.FEATURE_AUTO_CAPTURE, autoOn, videoRef, decodeFrame, pushSample, maybeAutoTrigger]);
 
   // Slow hint timer
   useEffect(() => {
