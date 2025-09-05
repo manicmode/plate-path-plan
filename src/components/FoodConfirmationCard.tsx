@@ -30,50 +30,6 @@ import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 
-// Rest of component logic...
-
-const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
-  // ... existing props
-}) => {
-  // ... existing state and logic
-
-  // V3 nutrition hydration for manual/voice items
-  useEffect(() => {
-    if (!currentFoodItem?.id || !isManualVoiceSource || perGramReady) return;
-    
-    if (ENABLE_FOOD_TEXT_V3_NUTR) {
-      const controller = new AbortController();
-      
-      hydrateNutritionV3(currentFoodItem, { 
-        signal: controller.signal, 
-        preferGeneric: true 
-      }).then(result => {
-        if (controller.signal.aborted) return;
-        
-        setCurrentFoodItem(prev => prev ? ({
-          ...prev,
-          perGram: result.perGram,
-          perGramKeys: result.perGramKeys,
-          pgSum: 1,
-          dataSource: result.dataSource
-        }) : null);
-        
-        console.log('[NUTRITION][V3][SUCCESS]', {
-          dataSource: result.dataSource,
-          isEstimated: result.isEstimated
-        });
-      }).catch(error => {
-        if (!controller.signal.aborted) {
-          console.error('[NUTRITION][V3][ERROR]', error);
-        }
-      });
-      
-      return () => controller.abort();
-    }
-  }, [currentFoodItem?.id, isManualVoiceSource, perGramReady]);
-
-  // ... rest of component
-
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
   <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}>
@@ -1249,7 +1205,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   </>
                 )}
               </TabsContent>
-            </Tabs>
               
               <TabsContent value="health" className="space-y-4 mt-4">
                 {/* Legacy Health Check Panel */}
@@ -1296,52 +1251,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     </div>
                   )}
                 </div>
-                          
-                {/* 🧪 Ingredients section with collapsed view */}
-                {currentFoodItem?.ingredientsText && (
-                  <div className="mt-4">
-                    <details className="group bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900 dark:text-white list-none">
-                        <div className="flex items-center justify-between">
-                          <span>View Ingredients</span>
-                          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-                        </div>
-                      </summary>
-                      <div className="p-3 pt-0 border-t border-gray-200 dark:border-gray-600">
-                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                          {currentFoodItem.ingredientsText}
-                        </p>
-                      </div>
-                    </details>
-                  </div>
-                )}
-                          
-                {/* Health Check Button for Barcode Items */}
-                {isFromBarcode && (
-                  <div className="mt-4">
-                    <Button
-                      onClick={async () => {
-                        try {
-                          const { openHealthReportFromBarcode } = await import('@/features/health/openHealthReport');
-                          const barcode = currentFoodItem?.barcode;
-                          if (barcode) {
-                            const result = await openHealthReportFromBarcode(barcode, 'scanner-manual');
-                            if (result.success) {
-                              window.location.href = `${result.route}?mode=${result.params.mode}&barcode=${result.params.barcode}&source=${result.params.source}`;
-                            }
-                          }
-                        } catch (error) {
-                          console.error('Failed to open health report:', error);
-                        }
-                      }}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      <Search className="h-4 w-4 mr-2" />
-                      View Full Health Report
-                    </Button>
-                  </div>
-                )}
+                           
               </TabsContent>
               
               <TabsContent value="ingredients" className="space-y-4 mt-4">
