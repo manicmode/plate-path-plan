@@ -56,6 +56,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onManualEntry,
   blockCamera = false
 }) => {
+  // SSR guard - don't render on server
+  if (typeof window === 'undefined') return null;
+  // Don't mount internals when closed - MUST be before any hooks
+  if (!open) return null;
+
   // Scanner mode state
   const [mode, setMode] = useState<'auto' | 'tap'>('auto');
   const [paused, setPaused] = useState(false);
@@ -66,11 +71,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Unified cleanup refs
   const cleanedRef = useRef(false);
   const isMountedRef = useRef(false);
-  
-  // SSR guard - don't render on server
-  if (typeof window === 'undefined') return null;
-  // Don't mount internals when closed
-  if (!open) return null;
   
   console.log('[SCANNER][MOUNT]', { mode, paused, scanningActive });
   const startTimeRef = useRef<number>(Date.now());
