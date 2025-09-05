@@ -7,6 +7,20 @@ function coerceNumber(n: any): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+// helpers (near top)
+function num(v: any) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+function parseServingGrams(raw: any): number | null {
+  const direct = num(raw?.serving_weight_grams) ?? num(raw?.serving_size_g) ?? num(raw?.serving_grams);
+  if (direct) return direct;
+  const s = String(raw?.serving_size || raw?.serving || '').toLowerCase();
+  const m = s.match(/(\d+(\.\d+)?)\s*g\b/);
+  if (m) return Number(m[1]);
+  const kcal100 = num(raw?.nutriments?.['energy-kcal_100g']);
+  const kcalSrv = num(raw?.nutriments?.['energy-kcal_serving']) ?? num(raw?.nutrition?.calories_serving);
+  if (kcal100 && kcalSrv) { const est = Math.round((100 * kcalSrv) / kcal100); if (est > 0 && est < 1000) return est; }
+  return null;
+}
+
 // Try to extract grams from common strings like "2/3 cup (55 g)", "1 oz (28g)", "240 ml", "55g"
 function parseServingFromText(txt?: string | null): { grams: number | null; text?: string } {
   if (!txt) return { grams: null, text: undefined };
@@ -117,19 +131,17 @@ export type RecognizedFood = {
 export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   const upc =
     pick<string>(raw, ['upc','barcode','ean','code']) || 'unknown';
-
-  const name =
-    pick<string>(raw, ['name','product_name','title','description']) || `Barcode ${upc}`;
-
-  const brand =
-    pick<string>(raw, ['brand','brands','manufacturer','brand_name']) ?? null;
+  
+  const v2 = import.meta.env.VITE_BARCODE_V2 === '1';
+  const brand = pick<string>(raw, ['brand','brands','brand_name','manufacturer']) ?? null;
+  const name = pick<string>(raw, ['product_name','product_name_en','name','title','generic_name','description'])
+             || (brand ? brand : `Barcode ${upc}`);
 
   const imageUrl =
     pick<string>(raw, ['image_url','images.front','image','photo']) ?? null;
 
-  // Prefer provided serving grams; otherwise default to 100g so math never zeros out
-  const servingGrams =
-    pick<number>(raw, ['serving_grams','serving_size_g','serving_size_grams'], true) ?? 100;
+  const servingGrams = v2 ? (parseServingGrams(raw) ?? 100) :
+                           (pick<number>(raw, ['serving_grams','serving_size_g','serving_size_grams'], true) ?? 100);
 
   // Extract per 100g first; fall back to per-serving fields; then sane defaults
   const kcal =
@@ -174,6 +186,6 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     __hydrated: true
   };
 
-  console.log('[BARCODE][MAP:ITEM]', mapped);
+  console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams });
   return mapped;
 }

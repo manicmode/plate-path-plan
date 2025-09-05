@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { stopMedia } from '@/components/camera/stopMedia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -1470,6 +1471,13 @@ console.log('Global search enabled:', enableGlobalSearch);
         console.log('=== LOOKUP SUCCESS ===');
         console.log('Response data:', data);
         
+        // Log raw serving fields when barcode response arrives
+        console.log('[BARCODE][RAW]', {
+          name: data?.product?.product_name || data?.product?.name,
+          serving_size: data?.product?.serving_size,
+          serving_weight_grams: data?.product?.serving_weight_grams
+        });
+        
         // Handle enhanced-health-scanner response structure
         if (!data?.ok || !data.product) {
           const reason = data?.reason || 'unknown';
@@ -1565,7 +1573,11 @@ console.log('Global search enabled:', enableGlobalSearch);
           setSelectedImage(null);
           setPendingItems([]);
           setShowConfirmation(true);
-          console.log('[BARCODE][OPEN_CONFIRM]', { id: mapped.id, name: mapped.name });
+          try {
+            const vid = document.querySelector('video#log-barcode-camera') as HTMLVideoElement | null;
+            stopMedia(vid);
+          } catch {}
+          console.log('[BARCODE][OPEN_CONFIRM]', { serving: mapped.servingGrams });
           addRecentBarcode({
             barcode: cleanBarcode,
             productName: recognizedFood.name,

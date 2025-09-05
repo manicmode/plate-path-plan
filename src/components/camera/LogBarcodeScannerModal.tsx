@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
+import { stopMedia } from './stopMedia';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Zap, ZapOff, X } from 'lucide-react';
@@ -617,8 +618,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
   };
 
+  // Cleanup on unmount
+  useEffect(() => () => { 
+    stopMedia(videoRef.current); 
+    console.log('[SCANNER][UNMOUNT]'); 
+  }, []);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (!v) { 
+        stopMedia(videoRef.current); 
+        onOpenChange?.(false); 
+      }
+      onOpenChange(v);
+    }}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
       >

@@ -175,13 +175,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Normalize name at render level with extractName utility
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
   const title = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
-  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null) : (currentFoodItem?.portionGrams ?? null);
+  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null)
+                            : (currentFoodItem?.portionGrams ?? null);
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
   
+  const servingLabel = (import.meta.env.VITE_BARCODE_V2 === '1' && servingG)
+    ? `Per serving (${servingG} g)` : 'Per portion (100 g)';
+  
   // Use serving text for barcode and text items when available, otherwise use grams
   const subtitle = (isBarcodeItem || isTextItem)
-    ? (servingText ? `Per portion (${servingText})` : `Per portion (${grams} g)`)
+    ? (servingText ? `Per portion (${servingText})` : servingLabel)
     : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   
   const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : (currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null);
