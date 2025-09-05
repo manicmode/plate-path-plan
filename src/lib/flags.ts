@@ -11,6 +11,9 @@ export const ENABLE_AI_RERANK =
 export const FOOD_TEXT_DEBUG = 
   import.meta.env.VITE_FOOD_TEXT_DEBUG === '1'; // debug logging
 
+export const ENABLE_FOOD_TEXT_V3_NUTR = 
+  import.meta.env.VITE_FOOD_TEXT_V3_NUTR !== '0'; // default on unless explicitly 0
+
 export const SFX_DEBUG = 
   import.meta.env.VITE_SFX_DEBUG === '1'; // sound effects debug
 

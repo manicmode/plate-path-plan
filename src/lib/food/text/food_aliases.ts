@@ -150,3 +150,24 @@ export function expandAliases(query: string): string[] {
   
   return Array.from(expanded);
 }
+
+/**
+ * Maps food aliases to canonical nutrition keys where unambiguous
+ */
+export const ALIAS_TO_CANONICAL: Record<string, string> = {
+  'hawaii pizza': 'generic_pizza_slice',
+  'hawaiian pizza': 'generic_pizza_slice',
+  'hot dog': 'generic_hot_dog',
+  'hotdog': 'generic_hot_dog',
+  'frankfurter': 'generic_hot_dog',
+  'california roll': 'generic_california_roll',
+  'sushi roll': 'generic_california_roll',
+  'teriyaki bowl': 'generic_teriyaki_chicken_bowl',
+  'chicken teriyaki': 'generic_teriyaki_chicken_bowl',
+  'white rice': 'generic_white_rice_cooked',
+  'steamed rice': 'generic_white_rice_cooked',
+  'egg': 'generic_egg_large',
+  'large egg': 'generic_egg_large',
+  'oatmeal': 'generic_oatmeal_dry',
+  'rolled oats': 'generic_oatmeal_dry'
+};

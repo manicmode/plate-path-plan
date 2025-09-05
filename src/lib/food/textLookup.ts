@@ -118,6 +118,11 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       // Attach nutrition key and generic marker
       nutritionKey: canonicalKey,
       isGeneric: !!canonicalKey,
+      // v3 specific fields for better hydration hints
+      canonicalKey: canonicalKey,
+      classId: primary.classId,
+      facets: facets,
+      preferGeneric: true,
       // v3 specific fields
       __altCandidates: candidates.slice(1, 6).map(c => {
         const altPortion = inferPortion(c.name, query, facets, c.classId);

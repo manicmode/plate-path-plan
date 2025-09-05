@@ -139,3 +139,16 @@ export const SIZE_MULTIPLIERS = {
   mini: 0.5,
   jumbo: 2.5,
 } as const;
+
+/**
+ * Maps class ID to generic canonical nutrition key
+ */
+export const CLASS_TO_GENERIC_SLUG: Record<string, string> = {
+  hot_dog_link: 'generic.hot_dog',
+  pizza_slice: 'generic.pizza_slice',
+  teriyaki_bowl: 'generic.teriyaki_bowl',
+  california_roll: 'generic.california_roll', 
+  rice_cooked: 'generic.white_rice_cooked',
+  egg_large: 'generic.egg_large',
+  oatmeal_cooked: 'generic.oatmeal_dry'
+};

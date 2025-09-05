@@ -26,8 +26,53 @@ import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
-import { FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
+import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
+
+// Rest of component logic...
+
+const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
+  // ... existing props
+}) => {
+  // ... existing state and logic
+
+  // V3 nutrition hydration for manual/voice items
+  useEffect(() => {
+    if (!currentFoodItem?.id || !isManualVoiceSource || perGramReady) return;
+    
+    if (ENABLE_FOOD_TEXT_V3_NUTR) {
+      const controller = new AbortController();
+      
+      hydrateNutritionV3(currentFoodItem, { 
+        signal: controller.signal, 
+        preferGeneric: true 
+      }).then(result => {
+        if (controller.signal.aborted) return;
+        
+        setCurrentFoodItem(prev => prev ? ({
+          ...prev,
+          perGram: result.perGram,
+          perGramKeys: result.perGramKeys,
+          pgSum: 1,
+          dataSource: result.dataSource
+        }) : null);
+        
+        console.log('[NUTRITION][V3][SUCCESS]', {
+          dataSource: result.dataSource,
+          isEstimated: result.isEstimated
+        });
+      }).catch(error => {
+        if (!controller.signal.aborted) {
+          console.error('[NUTRITION][V3][ERROR]', error);
+        }
+      });
+      
+      return () => controller.abort();
+    }
+  }, [currentFoodItem?.id, isManualVoiceSource, perGramReady]);
+
+  // ... rest of component
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -325,25 +370,68 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
   // Card binds store-first (diagnostic only, no UI change)
+  // For v3 manual/voice items, use the new hydrator
   useEffect(() => {
     if (!currentFoodItem?.id) return;
-    const data = useNutritionStore.getState().byId[currentFoodItem.id];
-    const perGram = data?.perGram || {};
-    if (process.env.NODE_ENV === 'development') {
-      const pgSum = Object.values(perGram || {}).reduce((a: number, v: any) => a + (+v || 0), 0);
-      console.log('[SST][CARD_BIND]', {
-        id: currentFoodItem?.id,
-        fromStore: !!data?.perGram,
-        perGramKeys: Object.keys(perGram || {}),
-        pgSum
+    
+    // Check if this is a v3 manual/voice item that needs hydration
+    const isV3ManualVoice = ENABLE_FOOD_TEXT_V3_NUTR && isManualVoiceSource && !perGramReady;
+    
+    if (isV3ManualVoice) {
+      console.log('[NUTRITION][HYDRATE]', { 
+        key: currentFoodItem?.nutritionKey, 
+        ready: !!currentFoodItem?.perGram 
       });
-      console.log('[SST][HEALTH_BIND]', {
-        id: currentFoodItem?.id,
-        score: currentFoodItem?.analysis?.healthScore,
-        flags: currentFoodItem?.analysis?.flags?.map((f: any) => f.label || f),
+      
+      // Use v3 hydrator for manual/voice items
+      const controller = new AbortController();
+      
+      hydrateNutritionV3(currentFoodItem, { 
+        signal: controller.signal, 
+        preferGeneric: true 
+      }).then(result => {
+        if (controller.signal.aborted) return;
+        
+        // Update the current food item with hydrated nutrition
+        setCurrentFoodItem(prev => prev ? ({
+          ...prev,
+          perGram: result.perGram,
+          perGramKeys: result.perGramKeys,
+          pgSum: 1, // Mark as hydrated
+          dataSource: result.dataSource
+        }) : null);
+        
+        console.log('[NUTRITION][V3][SUCCESS]', {
+          dataSource: result.dataSource,
+          perGramKeys: result.perGramKeys.length,
+          isEstimated: result.isEstimated
+        });
+      }).catch(error => {
+        if (controller.signal.aborted) return;
+        console.error('[NUTRITION][V3][ERROR]', error);
       });
+      
+      return () => controller.abort();
+    } else {
+      // Legacy store binding for non-v3 items
+      const data = useNutritionStore.getState().byId[currentFoodItem.id];
+      const perGram = data?.perGram || {};
+      if (process.env.NODE_ENV === 'development') {
+        const pgSum = Object.values(perGram || {}).reduce((a: number, v: any) => a + (+v || 0), 0);
+        console.log('[SST][CARD_BIND]', {
+          id: currentFoodItem?.id,
+          fromStore: !!data?.perGram,
+          perGramKeys: Object.keys(perGram || {}),
+          pgSum
+        });
+        console.log('[SST][HEALTH_BIND]', {
+          id: currentFoodItem?.id,
+          score: currentFoodItem?.analysis?.healthScore,
+          flags: currentFoodItem?.analysis?.flags?.map((f: any) => f.label || f),
+        });
+      }
     }
-  }, [currentFoodItem?.id, currentFoodItem?.name]);
+  }, [currentFoodItem?.id, currentFoodItem?.name, isManualVoiceSource, perGramReady]);
 
   // Handle candidate selection with logging and hydration
   const handleCandidateSelect = async (candidate: any, index: number) => {
@@ -1093,6 +1181,54 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       {[...Array(3)].map((_, i) => (
                         <div key={i} className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
                           <div className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded mx-auto mb-2 animate-pulse"></div>
+                          <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded mb-1 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                    <div className="text-lg">🥩</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.protein}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+                    <div className="text-lg">🍞</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.carbs}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                    <div className="text-lg">🧈</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {adjustedFood.fat}g
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-gray-600 dark:text-gray-400">Fiber</span>
+                    <span className="font-medium">{adjustedFood.fiber}g</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <span className="text-gray-600 dark:text-gray-400">Sugar</span>
+                    <span className="font-medium">{adjustedFood.sugar}g</span>
+                  </div>
+                </div>
+
+                {/* Nutrition Source Display - User-friendly labels, no confidence % */}
+                {currentFoodItem.source && (
+                  <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                    📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
                           <div className="w-8 h-4 bg-gray-200 dark:bg-gray-600 rounded mx-auto mb-1 animate-pulse"></div>
                           <div className="w-12 h-3 bg-gray-200 dark:bg-gray-600 rounded mx-auto animate-pulse"></div>
                         </div>
@@ -1148,13 +1284,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 {currentFoodItem.source && (
                   <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                      📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
+                    📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
+                    {/* Show estimated badge if data is estimated */}
+                    {currentFoodItem.dataSource === 'Estimated' && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        Estimated
+                      </Badge>
+                    )}
                     </div>
                   </div>
                 )}
                   </>
                 )}
               </TabsContent>
+            </Tabs>
               
               <TabsContent value="health" className="space-y-4 mt-4">
                 {/* Legacy Health Check Panel */}
