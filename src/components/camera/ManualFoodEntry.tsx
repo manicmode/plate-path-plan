@@ -203,14 +203,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl flex items-center justify-center z-[100] p-4" 
+    <div className="fixed bg-black/85 backdrop-blur-2xl flex items-center justify-center z-[100] p-4" 
          style={{
-           // Ensure full coverage including safe areas
-           top: 'calc(-1 * env(safe-area-inset-top))',
+           // Ensure complete coverage including areas above safe zones
+           top: 'calc(-1 * max(env(safe-area-inset-top), 44px))',
            bottom: 'calc(-1 * env(safe-area-inset-bottom))',
            left: 'calc(-1 * env(safe-area-inset-left))',
            right: 'calc(-1 * env(safe-area-inset-right))',
-           paddingTop: `calc(env(safe-area-inset-top) + 1rem)`,
+           paddingTop: `calc(max(env(safe-area-inset-top), 44px) + 1rem)`,
            paddingBottom: `calc(env(safe-area-inset-bottom) + 1rem)`,
            paddingLeft: `calc(env(safe-area-inset-left) + 1rem)`,
            paddingRight: `calc(env(safe-area-inset-right) + 1rem)`,

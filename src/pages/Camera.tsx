@@ -3598,14 +3598,40 @@ console.log('Global search enabled:', enableGlobalSearch);
       {/* Manual Food Entry Modal */}
       <ManualFoodEntry
         isOpen={showManualFoodEntry}
-        onClose={() => setShowManualFoodEntry(false)}
+        onClose={() => {
+          setShowManualFoodEntry(false);
+          // Ensure main "Log Your Food" interface is visible when closing manual entry
+          setActiveTab('main');
+          setSelectedImage(null);
+          setShowConfirmation(false);
+          setShowError(false);
+          setShowManualEdit(false);
+          setShowVoiceAnalyzing(false);
+          setShowProcessingNextItem(false);
+          setShowVoiceEntry(false);
+          setShowTransition(false);
+          setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
+        }}
         onResults={(items) => routeRecognizedItems(items, 'manual')}
       />
 
       {/* Speak to Log Modal */}
       <SpeakToLogModal
         isOpen={showSpeakToLog}
-        onClose={() => setShowSpeakToLog(false)}
+        onClose={() => {
+          setShowSpeakToLog(false);
+          // Ensure main "Log Your Food" interface is visible when closing speak to log
+          setActiveTab('main');
+          setSelectedImage(null);
+          setShowConfirmation(false);
+          setShowError(false);
+          setShowManualEdit(false);
+          setShowVoiceAnalyzing(false);
+          setShowProcessingNextItem(false);
+          setShowVoiceEntry(false);
+          setShowTransition(false);
+          setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
+        }}
         onResults={(items) => routeRecognizedItems(items, 'speech')}
       />
       {/* Debug Panel - Dev only */}
@@ -3661,18 +3687,30 @@ console.log('Global search enabled:', enableGlobalSearch);
           bannerSubtext="We'll analyze the photo and prep your review"
         />
 
-        {/* Smart Analyze Loader */}
+        {/* Smart Analyze Loader - Modified to overlay instead of replace */}
         {showSmartLoader && (
-          <SmartAnalyzeLoader
-            phase={analyzePhase}
-            done={analyzeDone}
-            onCancel={() => {
-              cancelAnalyzeFlow();
-              setShowSmartLoader(false);
-            }}
-            title="Preparing your review…"
-            subtitle="We're analyzing your photo and loading nutrition data"
-          />
+          <div className="relative">
+            <SmartAnalyzeLoader
+              phase={analyzePhase}
+              done={analyzeDone}
+              onCancel={() => {
+                cancelAnalyzeFlow();
+                setShowSmartLoader(false);
+                // Ensure main UI is visible after canceling loader
+                setActiveTab('main');
+                setSelectedImage(null);
+                setShowConfirmation(false);
+                setShowError(false);
+                setShowManualEdit(false);
+                setShowVoiceAnalyzing(false);
+                setShowProcessingNextItem(false);
+                setShowVoiceEntry(false);
+                setShowTransition(false);
+              }}
+              title="Preparing your review…"
+              subtitle="We're analyzing your photo and loading nutrition data"
+            />
+          </div>
         )}
       
       </div>

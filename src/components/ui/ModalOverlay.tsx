@@ -7,9 +7,7 @@ export function ModalOverlay({ className = '' }: { className?: string }) {
     <div
       className={[
         // FULL-screen layer including safe areas
-        'fixed inset-0 z-[60] pointer-events-none',
-        // Cover everything including status bar areas
-        'top-0 left-0 right-0 bottom-0',
+        'fixed z-[60] pointer-events-none',
         // Much stronger dim for the background
         'bg-black/70',
         // STRONGER blur the *backdrop* (content behind)
@@ -22,12 +20,12 @@ export function ModalOverlay({ className = '' }: { className?: string }) {
       ].join(' ')}
       aria-hidden="true"
       style={{
-        // Ensure we cover everything including safe areas
-        marginTop: 'calc(-1 * env(safe-area-inset-top))',
-        marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
-        marginLeft: 'calc(-1 * env(safe-area-inset-left))',
-        marginRight: 'calc(-1 * env(safe-area-inset-right))',
-        paddingTop: 'env(safe-area-inset-top)',
+        // Ensure we cover everything including areas above safe zones
+        top: 'calc(-1 * max(env(safe-area-inset-top), 44px))',
+        bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+        left: 'calc(-1 * env(safe-area-inset-left))',
+        right: 'calc(-1 * env(safe-area-inset-right))',
+        paddingTop: 'max(env(safe-area-inset-top), 44px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',

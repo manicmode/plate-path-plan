@@ -9,14 +9,14 @@ import * as React from 'react';
 export default function ConfirmLoaderMinimal() {
   return (
     <div
-      className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-2xl flex items-center justify-center"
+      className="fixed z-[600] bg-black/85 backdrop-blur-2xl flex items-center justify-center"
       style={{
-        // Ensure full coverage including safe areas
-        top: 'calc(-1 * env(safe-area-inset-top))',
+        // Ensure complete coverage including areas above safe zones
+        top: 'calc(-1 * max(env(safe-area-inset-top), 44px))',
         bottom: 'calc(-1 * env(safe-area-inset-bottom))',
         left: 'calc(-1 * env(safe-area-inset-left))',
         right: 'calc(-1 * env(safe-area-inset-right))',
-        paddingTop: 'env(safe-area-inset-top)',
+        paddingTop: 'max(env(safe-area-inset-top), 44px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',

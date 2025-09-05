@@ -125,22 +125,32 @@ export function SmartAnalyzeLoader({
   const prefersReducedMotion = reduceMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   return (
-    <div className="fixed inset-0 z-[760] flex items-center justify-center bg-black/85 backdrop-blur-2xl"
-         style={{
-           // Ensure full coverage including safe areas
-           top: 'calc(-1 * env(safe-area-inset-top))',
-           bottom: 'calc(-1 * env(safe-area-inset-bottom))',
-           left: 'calc(-1 * env(safe-area-inset-left))',
-           right: 'calc(-1 * env(safe-area-inset-right))',
-           paddingTop: 'env(safe-area-inset-top)',
-           paddingBottom: 'env(safe-area-inset-bottom)',
-           paddingLeft: 'env(safe-area-inset-left)',
-           paddingRight: 'env(safe-area-inset-right)',
-         }}>
+    <div 
+      className="fixed inset-0 z-[760] flex items-center justify-center"
+      style={{
+        // Ensure complete coverage including areas above safe zones
+        top: 'calc(-1 * max(env(safe-area-inset-top), 44px))',
+        bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+        left: 'calc(-1 * env(safe-area-inset-left))',
+        right: 'calc(-1 * env(safe-area-inset-right))',
+        paddingTop: 'max(env(safe-area-inset-top), 44px)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+        // Semi-transparent overlay that doesn't completely hide background
+        background: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+    >
       <div
         className="w-[min(92vw,520px)] rounded-3xl border border-white/8 bg-gradient-to-b from-white/6 to-white/3 p-5 shadow-2xl"
         role="status"
         aria-live="polite"
+        style={{
+          // Ensure the modal content is properly positioned above safe areas
+          marginBottom: `max(env(safe-area-inset-bottom), 20px)`,
+        }}
       >
         {/* Hero animation */}
         <div className="relative mx-auto mb-5 h-24 w-24">
