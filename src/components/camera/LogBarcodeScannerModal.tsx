@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FF } from '@/featureFlags';
 import AutoModeChip from '@/components/scanner/AutoModeChip';
 import BarcodeViewport from '@/components/scanner/BarcodeViewport';
+import { useAutoImmersive } from '@/lib/uiChrome';
 
 interface Props {
   open: boolean;
@@ -13,8 +14,32 @@ interface Props {
 export default function LogBarcodeScannerModal({ open, onOpenChange, onBarcodeDetected, onManualEntry }: Props) {
   if (typeof window === 'undefined' || !open) return null;
 
+  // Enable immersive mode to hide bottom nav and prevent background interaction
+  useAutoImmersive(open);
+
   const [autoOn, setAutoOn] = useState(() => FF.FEATURE_AUTO_CAPTURE && (localStorage.getItem('scanner:auto') ?? 'on') !== 'off');
   const [capturing, setCapturing] = useState(false);
+
+  // Lock scroll when modal is open
+  useEffect(() => {
+    if (!open) return;
+    
+    const originalOverflow = document.body.style.overflow;
+    const originalScrollTop = window.scrollY;
+    
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${originalScrollTop}px`;
+    document.body.style.width = '100%';
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, originalScrollTop);
+    };
+  }, [open]);
   
   const toggleAuto = () => {
     const next = !autoOn; 
@@ -38,7 +63,7 @@ export default function LogBarcodeScannerModal({ open, onOpenChange, onBarcodeDe
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="fixed inset-0 z-[100] bg-black">
       <div className="grid h-full grid-rows-[auto_1fr_auto]">
         <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 relative">
           <h2 className="text-white text-lg font-semibold text-center">Scan a barcode</h2>
