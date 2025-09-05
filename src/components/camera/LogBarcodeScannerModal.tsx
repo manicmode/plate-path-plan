@@ -864,11 +864,11 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         
         <div className="grid h-full grid-rows-[auto_auto_1fr_auto]">
           {/* Top Header - Title and Status */}
-          <header className="row-start-1 px-4 pt-3 pb-2 text-center">
+          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 text-center">
             <h2 className="text-white text-lg font-semibold">Scan a barcode</h2>
             
             {/* Status chip */}
-            <div className="mt-1 flex justify-center" aria-live="polite">
+            <div className="mt-2 flex justify-center" aria-live="polite">
               <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
                 {isLookingUp ? (
                   <>
@@ -889,7 +889,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
             
             {/* Top-right controls */}
-            <div className="absolute right-4 top-3 flex gap-2">
+            <div className="absolute right-4 top-[max(env(safe-area-inset-top),12px)] flex gap-2">
               {/* Torch Button */}
               {supportsTorch && (
                 <Button
@@ -927,7 +927,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 className={cn(
                   "px-4 py-2 text-sm rounded-full transition-all",
                   mode === 'auto'
-                    ? "bg-white text-black font-medium"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
                     : "text-white/80 hover:text-white"
                 )}
                 aria-pressed={mode === 'auto'}
@@ -939,7 +939,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 className={cn(
                   "px-4 py-2 text-sm rounded-full transition-all",
                   mode === 'tap'
-                    ? "bg-white text-black font-medium"
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
                     : "text-white/80 hover:text-white"
                 )}
                 aria-pressed={mode === 'tap'}
