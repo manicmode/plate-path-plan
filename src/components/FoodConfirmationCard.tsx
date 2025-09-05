@@ -330,15 +330,44 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return 0;
   };
 
-  // Scale helpers for per-gram data
-  const itemServingG = Math.max(0, Number((currentFoodItem as any)?.servingGrams || 100)); // per serving grams
-  const itemScaleFactor = itemServingG > 0 ? itemServingG / 100 : 1;
-  const itemKcalPerServing = Math.round(getPG('calories') * itemScaleFactor);
-  const itemProteinG = +(getPG('protein') * itemScaleFactor).toFixed(1);
-  const itemCarbsG   = +(getPG('carbs')   * itemScaleFactor).toFixed(1);
-  const itemFatG     = +(getPG('fat')     * itemScaleFactor).toFixed(1);
-  const itemFiberG   = +(getPG('fiber')   * itemScaleFactor).toFixed(1);
-  const itemSugarG   = +(getPG('sugar')   * itemScaleFactor).toFixed(1);
+  const sliderPct = portionPercentage[0] / 100;
+  
+  // after you compute currentFoodItem, servingG and sliderPct…
+  const actualServingG = Math.max(0, Math.round(((currentFoodItem as any)?.servingGrams ?? 100) * sliderPct));
+
+  // Which basis are we on?
+  // v3 manual/voice (canonical / Estimated / legacy_text_lookup) => per 1g
+  // legacy store (photo/barcode)       => per 100g
+  const dataSource = (currentFoodItem as any)?.dataSource as string | undefined;
+  const isPerGramBasis =
+    isManualVoiceSource ||
+    dataSource === 'canonical' ||
+    dataSource === 'Estimated' ||
+    dataSource === 'legacy_text_lookup';
+
+  // Choose the right multiplier for scaling macro tiles + header kcal
+  // per-gram basis: multiply by grams; per-100g basis: multiply by grams/100
+  const scaleMult = isPerGramBasis ? actualServingG : actualServingG / 100;
+
+  // convenient helpers
+  const safe = (n?: number) => (Number.isFinite(n!) ? (n as number) : 0);
+  const g1 = (n?: number) => Math.round(safe(n) * scaleMult * 10) / 10; // grams to 1 decimal
+  const kcal = (n?: number) => Math.round(safe(n) * scaleMult);         // calories to int
+
+  console.log('[CONFIRM][SCALING]', {
+    basis: isPerGramBasis ? 'per-gram' : 'per-100g',
+    servingG: actualServingG,
+    mult: scaleMult,
+    source: dataSource || 'unknown'
+  });
+
+  // Use the helpers when binding values
+  const headerKcal = kcal(getPG('calories'));
+  const proteinG = g1(getPG('protein'));
+  const carbsG = g1(getPG('carbs'));
+  const fatG = g1(getPG('fat'));
+  const fiberG = g1(getPG('fiber'));
+  const sugarG = g1(getPG('sugar'));
 
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
@@ -593,13 +622,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const effective = basisPerGram && Object.keys(basisPerGram).length > 0
     ? {
         // Use normalized per-gram data with portion scaling
-        calories: Math.round(itemKcalPerServing * portionMultiplier),
-        protein: Math.round(itemProteinG * portionMultiplier * 10) / 10,
-        carbs: Math.round(itemCarbsG * portionMultiplier * 10) / 10,
-        fat: Math.round(itemFatG * portionMultiplier * 10) / 10,
-        fiber: Math.round(itemFiberG * portionMultiplier * 10) / 10,
-        sugar: Math.round(itemSugarG * portionMultiplier * 10) / 10,
-        sodium: Math.round((getPG('sodium') * itemScaleFactor * portionMultiplier * 1000)), // convert to mg
+        calories: headerKcal,
+        protein: proteinG,
+        carbs: carbsG,
+        fat: fatG,
+        fiber: fiberG,
+        sugar: sugarG,
+        sodium: Math.round(getPG('sodium') * scaleMult * 1000), // convert to mg
       }
     : base && !preferItem
       ? {
@@ -641,8 +670,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   console.log('[CONFIRM][BIND]', {
     title,
     preferItem,
-    kcal: itemKcalPerServing,
-    protein: itemProteinG,
+    kcal: headerKcal,
+    protein: proteinG,
     source: (currentFoodItem as any)?.source,
   });
 
