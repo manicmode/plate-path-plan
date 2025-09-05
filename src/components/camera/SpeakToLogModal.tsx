@@ -6,18 +6,35 @@ import { toast } from 'sonner';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import TextLookupLoading from '@/components/common/TextLookupLoading';
 import NeonScanOverlay from '@/components/common/NeonScanOverlay';
+import { ENABLE_SPEAK_UI_V2 } from '@/lib/flags';
+import { SpeakToLogModalV2 } from './SpeakToLogModalV2';
 
 interface SpeakToLogModalProps {
   isOpen: boolean;
   onClose: () => void;
   onResults: (items: any[]) => void;
+  onOpenManualEntry?: () => void;
 }
 
 export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
   isOpen,
   onClose,
-  onResults
+  onResults,
+  onOpenManualEntry
 }) => {
+  // Use V2 experience when enabled
+  if (ENABLE_SPEAK_UI_V2) {
+    return (
+      <SpeakToLogModalV2
+        isOpen={isOpen}
+        onClose={onClose}
+        onResults={onResults}
+        onOpenManualEntry={onOpenManualEntry}
+      />
+    );
+  }
+
+  // Legacy V1 implementation below
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);

@@ -17,6 +17,12 @@ export const ENABLE_FOOD_TEXT_V3_NUTR =
 export const SFX_DEBUG = 
   import.meta.env.VITE_SFX_DEBUG === '1'; // sound effects debug
 
+export const ENABLE_SPEAK_UI_V2 = 
+  import.meta.env.VITE_SPEAK_UI_V2 !== '0'; // default on unless explicitly 0
+
+export const ENABLE_SPEAK_CONFETTI = 
+  import.meta.env.VITE_SPEAK_CONFETTI === '1'; // default off
+
 // Legacy flags for backward compatibility
 export const NUDGE_SCHEDULER_ENABLED = false;
 export const isUserInRollout = (userId?: string) => false;
