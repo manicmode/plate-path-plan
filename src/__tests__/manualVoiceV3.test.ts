@@ -45,7 +45,7 @@ describe('Manual/Voice v3 System', () => {
   acceptanceCases.forEach(({ query, expectedPortion, expectedUnit, expectedType }) => {
     it(`should handle "${query}" with realistic portions`, async () => {
       const { inferPortion } = await import('@/lib/food/portion/inferPortion');
-      const { parseQuery } = await import '@/lib/food/text/parse');
+      const { parseQuery } = await import('@/lib/food/text/parse');
       
       const facets = parseQuery(query);
       const portion = inferPortion(query, query, facets, expectedType);

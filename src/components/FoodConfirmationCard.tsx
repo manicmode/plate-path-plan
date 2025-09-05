@@ -824,7 +824,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           console.log('[CANCEL][CLICK]');
           onClose();
           console.log('[CANCEL][DONE]');
-        }
+        }}
       >
         <AccessibleDialogContent 
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"

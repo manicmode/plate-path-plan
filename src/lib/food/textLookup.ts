@@ -88,6 +88,9 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       throw new Error('No food candidates found');
     }
 
+    // Get the primary (best) candidate
+    const primary = candidates[0];
+
     // Create food item with v3 structure and realistic portions
     const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
     
