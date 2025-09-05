@@ -375,10 +375,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    // Explicitly omit capture attribute to open photo gallery instead of camera
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        console.log('[PHOTO] Image uploaded, processing...');
+        console.log('[PHOTO] Image uploaded from gallery, processing...');
         await handleCapturedBlob(file);
         camHardStop('modal_close');
         onOpenChange(false);

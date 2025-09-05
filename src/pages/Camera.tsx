@@ -3296,7 +3296,8 @@ console.log('Global search enabled:', enableGlobalSearch);
                   <Button
                     onClick={() => {
                       try { SFX().unlock(); } catch {}
-                      setShowCamera(true);
+                      // Open photo gallery instead of camera
+                      fileInputRef.current?.click();
                     }}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
