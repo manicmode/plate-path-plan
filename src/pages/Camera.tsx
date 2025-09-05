@@ -31,6 +31,7 @@ import { parseOCRServing } from '@/lib/nutrition/parsers/ocrServing';
 import { buildLogPrefill } from '@/lib/health/logPrefill';
 import { callOCRFunctionWithDataUrl } from '@/lib/ocrClient';
 import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
+import { cameraPool } from '@/lib/camera/cameraPool';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 

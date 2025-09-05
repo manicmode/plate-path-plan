@@ -22,6 +22,7 @@ import { playBeep } from '@/lib/sound/soundManager';
 import { SFX } from '@/lib/sfx/sfxManager';
 import BarcodeViewport, { AutoToggleChip } from '@/components/scanner/BarcodeViewport';
 import { FF } from '@/featureFlags';
+import { cameraPool } from '@/lib/camera/cameraPool';
 
 function torchOff(track?: MediaStreamTrack) {
   try { track?.applyConstraints?.({ advanced: [{ torch: false }] as any }); } catch {}
@@ -60,13 +61,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
-const [stream, setStream] = useState<MediaStream | null>(null);
-  // Autoscan control
-  const scanningRef = useRef(false);
-  const decodeAbortRef = useRef<AbortController | null>(null);
-  // Prevent stale async attach after close
-  const genRef = useRef(0);
-  // Avoid double cleanup races
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const timeoutsRef = useRef<number[]>([]);
+  const scanActiveRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const unregisterFromPoolRef = useRef<(() => void) | null>(null);
+  const sessionIdRef = useRef(0); // late-resolve guard
   const tearingDownRef = useRef(false);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
@@ -110,7 +111,6 @@ const [stream, setStream] = useState<MediaStream | null>(null);
   
   // Scan loop guard and RAF cancel
   const scanRunningRef = useRef(false);
-  const rafIdRef = useRef<number | null>(null);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
@@ -213,37 +213,42 @@ const [stream, setStream] = useState<MediaStream | null>(null);
     try { (video as any).srcObject = null; } catch {}
   };
 
-  function killScanLoop() {
-    scanningRef.current = false;
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
+  function clearTimers() {
+    if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+    timeoutsRef.current.forEach(id => { try { clearTimeout(id); } catch {} });
+    timeoutsRef.current = [];
+  }
+
+  function stopTracks() {
+    const s = (videoRef.current?.srcObject as MediaStream) || stream || null;
+    if (s) {
+      try { s.getTracks().forEach(t => t.stop()); } catch {}
     }
-    if (decodeAbortRef.current) {
-      try { decodeAbortRef.current.abort(); } catch {}
-      decodeAbortRef.current = null;
+    trackRef.current = null;
+    if (videoRef.current) {
+      try { videoRef.current.pause(); } catch {}
+      videoRef.current.srcObject = null;
     }
+    unregisterFromPoolRef.current?.();
+    unregisterFromPoolRef.current = null;
   }
 
   function scanLoop() {
-    if (!scanningRef.current) return;
-    rafIdRef.current = requestAnimationFrame(async () => {
-      if (!scanningRef.current) return;
-      try {
-        // your decodeFrame(...) or similar; pass abort signal if supported
-        // await decodeFrame({ signal: decodeAbortRef.current?.signal });
-      } catch (e:any) {
-        if (e?.name === 'AbortError') return; // expected on teardown
-      }
-      scanLoop();
-    });
+    if (!scanActiveRef.current || abortRef.current?.signal.aborted) return;
+    // ... do a decode pass here ...
+    if (!scanActiveRef.current || abortRef.current?.signal.aborted) return;
+    rafIdRef.current = requestAnimationFrame(scanLoop);
   }
 
   const stopAutoscan = () => {
     runningRef.current = false;
-    scanRunningRef.current = false;
+    scanActiveRef.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    killScanLoop();
+    if (rafIdRef.current) { 
+      cancelAnimationFrame(rafIdRef.current); 
+      rafIdRef.current = null; 
+    }
+    abortRef.current?.abort();
     inFlightRef.current = false;
     hitsRef.current = [];
   };
@@ -251,7 +256,7 @@ const [stream, setStream] = useState<MediaStream | null>(null);
   const startAutoscan = () => {
     if (!AUTOSCAN_ENABLED) return;
     runningRef.current = true;
-    scanRunningRef.current = true;
+    scanActiveRef.current = true;
     hitsRef.current = [];
   };
 
@@ -282,8 +287,9 @@ const [stream, setStream] = useState<MediaStream | null>(null);
 
   // If you auto-capture on successful decode, stop the loop *before* opening confirm
   const onAutoCapture = useCallback((code: string) => {
-    killScanLoop();           // stop RAF/decoder immediately
-    genRef.current++;         // invalidate any in-flight startCamera
+    scanActiveRef.current = false;           // stop RAF/decoder immediately
+    sessionIdRef.current++;         // invalidate any in-flight startCamera
+    abortRef.current?.abort();
     // now call upstream to open confirm; cleanup effect will stop tracks
     onBarcodeDetected(code);
   }, [onBarcodeDetected]);
@@ -352,8 +358,8 @@ const [stream, setStream] = useState<MediaStream | null>(null);
   }, [open, stream, updateStreamRef]);
 
   const startCamera = async () => {
-    // bump generation; any late async below will check this
-    const myGen = ++genRef.current;
+    // New session id (invalidates any earlier async work)
+    const mySession = ++sessionIdRef.current;
     // block re-acquire if modal closed mid-flight
     if (!open) return;
     if (typeof window !== 'undefined' && (window as any).__confirmOpen) {
@@ -425,7 +431,7 @@ const [stream, setStream] = useState<MediaStream | null>(null);
         setStream(mediaStream);
         
         // stale async check: if we closed while awaiting, stop & bail
-        if (myGen !== genRef.current || !open) {
+        if (mySession !== sessionIdRef.current || !open) {
           mediaStream.getTracks().forEach(t => t.stop());
           if (videoRef.current) {
             try { videoRef.current.pause(); } catch {}
@@ -434,8 +440,8 @@ const [stream, setStream] = useState<MediaStream | null>(null);
           return;
         }
         // start autoscan loop
-        scanningRef.current = true;
-        decodeAbortRef.current = new AbortController();
+        scanActiveRef.current = true;
+        abortRef.current = new AbortController();
         scanLoop();
         
         // Initialize zoom capabilities
@@ -494,7 +500,7 @@ const [stream, setStream] = useState<MediaStream | null>(null);
     if (tearingDownRef.current) return;
     tearingDownRef.current = true;
     // 1) stop loop/decoders *first*
-    killScanLoop();
+    stopAutoscan();
     // 2) give RAF/decoder a beat to unwind
     await new Promise(r => requestAnimationFrame(() => r(null)));
     // 3) stop tracks & detach video
