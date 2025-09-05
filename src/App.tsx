@@ -285,9 +285,14 @@ function AppContent() {
                                </React.Suspense>
                              }
                            />
-                            <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
-                            <Route 
-                              path="/debug/pipeline"
+                             <Route path="/debug/PHOTO" element={<Navigate to="/debug/photo" replace />} />
+                             <Route path="/debug/ios-audio" element={
+                               <React.Suspense fallback={<div style={{ padding: 24 }}>Loading iOS Audio Debug…</div>}>
+                                 {React.createElement(React.lazy(() => import('@/pages/debug/IOSAudio')))}
+                               </React.Suspense>
+                             } />
+                             <Route 
+                               path="/debug/pipeline"
                               element={
                                 <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
                                   <DebugPipeline />

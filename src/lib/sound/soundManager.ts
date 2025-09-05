@@ -1,6 +1,10 @@
 // src/lib/sound/soundManager.ts
 // iOS-safe WebAudio + HTMLAudio fallback with throttle & logs
 
+import { FEATURE_SFX_DEBUG, FORCE_WEB_AUDIO } from '@/lib/sound/debug';
+import { isIOS } from '@/lib/sound/platform';
+import { SFX } from '@/lib/sfx/sfxManager';
+
 type SoundName = "shutter" | "beep";
 
 class _Sound {
@@ -39,6 +43,18 @@ class _Sound {
     const now = Date.now();
     if (now - this.lastPlayed[name] < this.minIntervalMs[name]) return; // throttle
     this.lastPlayed[name] = now;
+
+    // Route to WebAudio on iOS or when forced
+    const useWebAudio = isIOS() || FORCE_WEB_AUDIO;
+    if (useWebAudio && (name === 'beep' || name === 'shutter')) {
+      if (FEATURE_SFX_DEBUG) console.log('[SOUND][ROUTE]', { name, path: 'WebAudio' });
+      const ok = await SFX().play(name === 'beep' ? 'scan_success' : 'shutter');
+      if (!ok && FEATURE_SFX_DEBUG) console.log('[SOUND][WEB_AUDIO_FAIL]', { name });
+      return ok;
+    }
+
+    // non-iOS fallback stays as HTMLAudio
+    if (FEATURE_SFX_DEBUG) console.log('[SOUND][ROUTE]', { name, path: 'HTMLAudio' });
 
     try {
       if (!this.ctx || !this.gain) {

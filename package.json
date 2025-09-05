@@ -55,6 +55,8 @@
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "@tensorflow/tfjs-backend-webgpu": "^4.22.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^10.0.0",
     "@zxing/library": "^0.21.3",

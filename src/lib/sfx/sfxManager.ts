@@ -1,6 +1,13 @@
+import { isIOS } from '@/lib/sound/platform';
+
 let _instance: SfxManager | null = null;
 
 export type SfxKey = 'welcome' | 'shutter' | 'scan_success' | 'scan_error';
+
+// iOS envelope constants
+const IOS_MIN_GAIN = 0.5;
+const IOS_MIN_MS = 150;
+const IOS_FREQ = 880;
 
 class SfxManager {
   private ctx: AudioContext | null = null;
@@ -37,7 +44,7 @@ class SfxManager {
     }
   }
 
-  private playTone(freq: number, duration: number) {
+  private playTone(freq: number, duration: number, gain: number = 0.45) {
     const ctx = this.ensureCtx();
     if (!ctx || !this.masterGain || !this.unlocked) return;
     const osc = ctx.createOscillator();
@@ -49,7 +56,7 @@ class SfxManager {
     const now = ctx.currentTime;
     const d = Math.max(duration, 0.30);
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(0.45, now + 0.02);
+    env.gain.linearRampToValueAtTime(gain, now + 0.02);
     env.gain.exponentialRampToValueAtTime(0.001, now + d);
     osc.start(now);
     osc.stop(now + d);
@@ -89,7 +96,7 @@ class SfxManager {
     
     // Now attempt to play
     try {
-      this._playNow(key);
+      await this._playNow(key);
       if (FEATURE_SFX_DEBUG) {
         console.log('[SFX][PLAY_RESULT]', { key, ok: true });
       }
@@ -102,16 +109,52 @@ class SfxManager {
     }
   }
 
-  private _playNow(key: SfxKey): void {
+  private async _playNow(key: SfxKey): Promise<void> {
     const ctx = this.ensureCtx();
     if (!ctx || !this.masterGain || !this.unlocked) return;
     
-    // Play tones
+    const { FEATURE_SFX_DEBUG } = await import('@/lib/sound/debug');
+    const isIos = isIOS();
+    
+    // Play tones with iOS-optimized envelope
     switch (key) {
-      case 'scan_success': this.playTone(800, 0.15); break;
-      case 'shutter': this.playTone(600, 0.12); break;
-      case 'scan_error': this.playTone(300, 0.20); break;
-      case 'welcome': this.playTone(500, 0.18); break;
+      case 'scan_success': {
+        const freq = isIos ? IOS_FREQ : 800;
+        const ms = isIos ? IOS_MIN_MS : 100;
+        const gain = isIos ? IOS_MIN_GAIN : 0.3;
+        
+        if (FEATURE_SFX_DEBUG) {
+          console.log('[SFX][OSC_PARAMS]', { key, freq, durationMs: ms, gain, ctx: ctx.state });
+        }
+        
+        this.playTone(freq, ms / 1000, gain);
+        break;
+      }
+      case 'shutter': {
+        // use a dual-blip; ensure each blip ≥80ms and overall ≥160ms on iOS
+        const isIos = isIOS();
+        const part = isIos ? 90 : 70;
+        const gain = isIos ? IOS_MIN_GAIN : 0.35;
+        
+        if (FEATURE_SFX_DEBUG) {
+          console.log('[SFX][OSC_PARAMS]', { key, freq: 600, durationMs: part * 2, gain, ctx: ctx.state });
+        }
+        
+        // First click
+        this.playTone(600, part / 1000, gain);
+        
+        // Second click after brief pause
+        setTimeout(() => {
+          this.playTone(600, part / 1000, gain);
+        }, part + 10);
+        break;
+      }
+      case 'scan_error': 
+        this.playTone(isIos ? 400 : 300, isIos ? IOS_MIN_MS / 1000 : 0.20, isIos ? IOS_MIN_GAIN : 0.45); 
+        break;
+      case 'welcome': 
+        this.playTone(isIos ? 500 : 500, isIos ? IOS_MIN_MS / 1000 : 0.18, isIos ? IOS_MIN_GAIN : 0.45); 
+        break;
     }
   }
 
