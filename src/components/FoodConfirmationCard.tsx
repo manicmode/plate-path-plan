@@ -29,6 +29,8 @@ import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
+import { DialogTitle } from '@radix-ui/react-dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -182,7 +184,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
     (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
   
-  const isNutritionReady = perGramReady || (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
+  const isNutritionReady =
+    perGramReady ? true : (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
   
   // Log mount and hydration states
   useEffect(() => {
@@ -209,6 +212,49 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [isNutritionReady, useHydration, isOpen]);
 
   
+  // V3 nutrition hydration for manual/voice items
+  useEffect(() => {
+    if (!currentFoodItem?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
+    if (perGramReady) return; // Skip if already ready
+    
+    const controller = new AbortController();
+    
+    console.log('[NUTRITION][V3][START]', { 
+      name: currentFoodItem.name, 
+      id: currentFoodItem.id 
+    });
+    
+    hydrateNutritionV3(currentFoodItem, { 
+      signal: controller.signal, 
+      preferGeneric: true 
+    }).then(result => {
+      if (controller.signal.aborted) return;
+      
+      setCurrentFoodItem(prev => prev ? ({
+        ...prev,
+        perGram: result.perGram,
+        perGramKeys: result.perGramKeys,
+        pgSum: 1,
+        dataSource: result.dataSource
+      }) : null);
+      
+      console.log('[NUTRITION][READY]', {
+        source: 'hydrated',
+        dataSource: result.dataSource,
+        pgKeys: result.perGramKeys.length
+      });
+    }).catch(error => {
+      if (!controller.signal.aborted) {
+        console.log('[NUTRITION][BLOCKED]', { 
+          reason: 'HYDRATION_FAILED',
+          error: error.message 
+        });
+      }
+    });
+    
+    return () => controller.abort();
+  }, [currentFoodItem?.id, isManualVoiceSource, perGramReady]);
+
   // Log render guard state for diagnostics
   console.log('[CONFIRM][RENDER_GUARD]', {
     perGramReady,
@@ -217,6 +263,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     isNutritionReady,
     isManualVoice: isManualVoiceSource
   });
+
+  // Log nutrition readiness
+  useEffect(() => {
+    if (isNutritionReady && currentFoodItem) {
+      const source = perGramReady ? 'item' : 'store';
+      const dataSource = currentFoodItem.dataSource || 'unknown';
+      const pgKeys = (currentFoodItem.perGramKeys?.length || 0);
+      
+      console.log('[NUTRITION][READY]', { 
+        source, 
+        dataSource, 
+        pgKeys 
+      });
+    } else if (!isNutritionReady && currentFoodItem) {
+      const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
+      console.log('[NUTRITION][BLOCKED]', { reason });
+    }
+  }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem]);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -1019,9 +1083,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                   {displayName}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {adjustedFood.calories} calories
-                </p>
+                 <p className="text-sm text-gray-600 dark:text-gray-400">
+                   {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories
+                 </p>
               </div>
             </div>
 
@@ -1130,6 +1194,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsList>
               
               <TabsContent value="nutrition" className="space-y-3 mt-4">
+                {/* Data Source Badge */}
+                {currentFoodItem?.dataSource && (
+                  <div className="flex justify-center mb-3">
+                    <Badge variant="secondary" className="text-xs">
+                      {currentFoodItem.dataSource === 'canonical' ? 'Database lookup' : 
+                       currentFoodItem.dataSource === 'Estimated' ? 'Estimated' : 
+                       'Database lookup'}
+                    </Badge>
+                  </div>
+                )}
+                
                 {/* Show skeleton when nutrition is loading */}
                 {(!isNutritionReady && useHydration && !skipNutritionGuard) ? (
                   <div className="space-y-3">
@@ -1156,23 +1231,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
                         <div className="text-lg">🥩</div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {adjustedFood.protein}g
-                        </div>
+                         <div className="text-sm font-medium text-gray-900 dark:text-white">
+                           {Number.isFinite(adjustedFood.protein) ? adjustedFood.protein : 0}g
+                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
                       </div>
                       <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                         <div className="text-lg">🍞</div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {adjustedFood.carbs}g
-                        </div>
+                         <div className="text-sm font-medium text-gray-900 dark:text-white">
+                           {Number.isFinite(adjustedFood.carbs) ? adjustedFood.carbs : 0}g
+                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
                       </div>
                       <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                         <div className="text-lg">🧈</div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {adjustedFood.fat}g
-                        </div>
+                         <div className="text-sm font-medium text-gray-900 dark:text-white">
+                           {Number.isFinite(adjustedFood.fat) ? adjustedFood.fat : 0}g
+                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
                       </div>
                     </div>
@@ -1180,11 +1255,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-gray-600 dark:text-gray-400">Fiber</span>
-                        <span className="font-medium">{adjustedFood.fiber}g</span>
+                        <span className="font-medium">{Number.isFinite(adjustedFood.fiber) ? adjustedFood.fiber : 0}g</span>
                       </div>
                       <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-gray-600 dark:text-gray-400">Sugar</span>
-                        <span className="font-medium">{adjustedFood.sugar}g</span>
+                        <span className="font-medium">{Number.isFinite(adjustedFood.sugar) ? adjustedFood.sugar : 0}g</span>
                       </div>
                     </div>
 

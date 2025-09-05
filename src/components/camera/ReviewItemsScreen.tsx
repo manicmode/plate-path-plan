@@ -212,10 +212,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       if (!stuck || cancelled) return;
       
       if (Date.now() - start > 12000) {
-        console.warn('[CONFIRM][LOADER_TIMEOUT] closing stuck loader');
-        setConfirmModalOpen(false);
-        setConfirmFlowActive(false);
-        toast.error('Something took too long. Back to Review.');
+        console.warn('[CONFIRM][LOADER_TIMEOUT] nutrition lookup took too long');
+        
+        // Stop the loader but keep panel open
+        setHydrating(false);
+        setIsHydrating(false);
+        
+        // Show toast error instead of closing 
+        toast.error('Nutrition lookup took too long. Try selecting the item again.');
         return;
       }
       

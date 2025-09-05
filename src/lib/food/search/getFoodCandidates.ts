@@ -427,11 +427,36 @@ export async function getFoodCandidates(
     const generics = sortedCandidates.filter(c => c.kind === 'generic');
     const brands = sortedCandidates.filter(c => c.kind === 'brand');
     
+    // Promote generic if top result is brand but #2 is generic with near score
+    if (brands.length > 0 && generics.length > 0) {
+      const topBrand = brands[0];
+      const topGeneric = generics[0];
+      
+      // Check if top candidate is brand without nutrients and second is generic with nutrients
+      if (sortedCandidates[0].kind === 'brand' && 
+          sortedCandidates.length > 1 &&
+          sortedCandidates[1].kind === 'generic' &&
+          (topBrand.score - topGeneric.score) < 0.15) {
+        
+        // Log the promotion
+        console.log('[CANDIDATES][PROMOTE_GENERIC]', {
+          originalTop: { name: topBrand.name, score: topBrand.score, kind: 'brand' },
+          promoted: { name: topGeneric.name, score: topGeneric.score, kind: 'generic' },
+          scoreDiff: topBrand.score - topGeneric.score
+        });
+        
+        // Reorder to promote the generic
+        sortedCandidates = [topGeneric, ...sortedCandidates.filter(c => c.id !== topGeneric.id)];
+      }
+    }
+    
     // Interleave: generics first, then max 2 brands
-    sortedCandidates = [
-      ...generics,
-      ...brands.slice(0, 2)
+    const reordered = [
+      ...sortedCandidates.filter(c => c.kind === 'generic'),
+      ...sortedCandidates.filter(c => c.kind === 'brand').slice(0, 2)
     ];
+    
+    sortedCandidates = reordered;
   }
   
   // Apply diversity filter (max per family)
