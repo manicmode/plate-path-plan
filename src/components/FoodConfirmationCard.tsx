@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
+// Add the FoodCandidate type import
+import type { FoodCandidate } from '@/lib/food/search/getFoodCandidates';
 import { extractName } from '@/lib/debug/extractName';
 
 // Fallback emoji component
@@ -91,6 +93,7 @@ interface FoodConfirmationCardProps {
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
   bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
   forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
+  candidates?: FoodCandidate[]; // NEW: alternative food candidates for manual/voice
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
@@ -110,7 +113,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   onVoiceAnalyzingComplete,
   skipNutritionGuard = false,
   bypassHydration = false,
-  forceConfirm = false
+  forceConfirm = false,
+  candidates
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -816,6 +820,48 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 Confirm Food Log
               </h1>
             </div>
+
+            {/* Food Candidates Picker for Manual/Voice */}
+            {candidates && candidates.length > 1 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Select the correct food:
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {candidates.slice(0, 6).map((candidate, index) => (
+                    <button
+                      key={candidate.id}
+                      onClick={() => {
+                        setCurrentFoodItem({
+                          ...currentFoodItem!,
+                          name: candidate.name,
+                          calories: candidate.calories,
+                          protein: candidate.protein,
+                          carbs: candidate.carbs,
+                          fat: candidate.fat,
+                          fiber: candidate.fiber,
+                          sugar: candidate.sugar,
+                          sodium: candidate.sodium,
+                          imageUrl: candidate.imageUrl
+                        });
+                      }}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        index === 0 
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
+                          : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300'
+                      }`}
+                    >
+                      <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        {candidate.name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {candidate.calories} cal • {Math.round(candidate.confidence * 100)}% match
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">

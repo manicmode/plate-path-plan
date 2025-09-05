@@ -287,12 +287,33 @@ const CameraPage = () => {
 
     console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
 
-    // Determine the source type
-    const isBarcode = sourceHint === 'barcode';
-    const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
+  // Determine the source type
+  const isBarcode = sourceHint === 'barcode';
+  const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
 
-    // Durable forceConfirm flag - manual/voice must ALWAYS show confirmation
-    const forceConfirm = isManualLike;
+  // Durable forceConfirm flag - manual/voice must ALWAYS show confirmation
+  let forceConfirm = isManualLike;
+
+  if (isManualLike) {
+    // For manual/voice inputs, check if we need candidates
+    if (items.length === 1) {
+      const item = items[0];
+      setRecognizedFoods([item]);
+      setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
+      setShowConfirmation(true);
+      setShowLogBarcodeScanner(false);
+      setShowCamera(false);
+      setForceConfirm(forceConfirm);
+      
+      console.log('[CONFIRM][OPEN]', {
+        inputSource: sourceHint,
+        forceConfirm,
+        showConfirmation: true,
+        itemName: item.name
+      });
+      return;
+    }
+  }
 
     if (items.length === 1) {
       const item = items[0];
