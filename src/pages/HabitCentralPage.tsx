@@ -163,7 +163,8 @@ export default function HabitCentralPage() {
       try {
         const { count, error } = await supabase
           .from('habit_template_health')
-          .select('*', { count: 'exact', head: true });
+          .select('id', { count: 'exact' })
+          .limit(1);
         
         if (error) {
           console.error('Error fetching health check:', error);

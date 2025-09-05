@@ -46,8 +46,9 @@ export const useDatabaseRecoveryStatus = () => {
         // Check nutrition logs (should have no NULL user_ids)
         const { count: totalLogs, error: logsError } = await supabase
           .from('nutrition_logs')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id)
+          .limit(1);
 
         if (logsError) throw logsError;
 
@@ -109,8 +110,9 @@ export const useDatabaseRecoveryStatus = () => {
 
         const { count: totalLogs, error: logsError } = await supabase
           .from('nutrition_logs')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id)
+          .limit(1);
 
         if (logsError) throw logsError;
 

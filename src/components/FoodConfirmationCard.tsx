@@ -88,6 +88,7 @@ interface FoodConfirmationCardProps {
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
   bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
+  forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
@@ -105,7 +106,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isProcessingFood = false,
   onVoiceAnalyzingComplete,
   skipNutritionGuard = false,
-  bypassHydration = false
+  bypassHydration = false,
+  forceConfirm = false
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -367,9 +369,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     ...effective,
   };
 
-  console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
+  console.log('[CONFIRM][RENDER_GUARD]', {
     inputSource: 'undefined', // keeping minimal as requested  
     showConfirmation: isOpen,
+    forceConfirm,
     hasItem: !!currentFoodItem,
     itemId: currentFoodItem?.id,
     itemName: currentFoodItem?.name,
@@ -682,10 +685,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return `${percentage}%`;
   };
 
+  // Honor forceConfirm - cannot be overridden by downstream logic
+  const dialogOpen = forceConfirm === true || isOpen;
+
   // Show loading state during transition in multi-item flow
-  if (!currentFoodItem && isOpen) {
+  if (!currentFoodItem && dialogOpen) {
     return (
-      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
+      <Dialog open={dialogOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
         <AccessibleDialogContent 
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Loading next item"
@@ -713,10 +719,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
         // Prevent closing parent when reminder is open
         if (reminderOpen && !open) return;
         if (totalItems && totalItems > 1) return;
+        
+        // Force confirm prevents closing
+        if (forceConfirm && !open) return;
+        
         onClose();
       }}>
         <AccessibleDialogContent 

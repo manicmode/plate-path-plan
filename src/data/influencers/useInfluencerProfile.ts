@@ -46,21 +46,24 @@ export function useInfluencerProfile(params: { id?: string; handle?: string }) {
       // Get follower count
       const { count: followerCount } = await supabase
         .from('influencer_follow')
-        .select('*', { count: 'exact', head: true })
-        .eq('influencer_id', influencer.id);
+        .select('id', { count: 'exact' })
+        .eq('influencer_id', influencer.id)
+        .limit(1);
 
       // Get participant count (total across all challenges)
       const { count: participantCount } = await supabase
         .from('challenge_join')
-        .select('challenge_id, challenge!inner(influencer_id)', { count: 'exact', head: true })
-        .eq('challenge.influencer_id', influencer.id);
+        .select('challenge_id, challenge!inner(influencer_id)', { count: 'exact' })
+        .eq('challenge.influencer_id', influencer.id)
+        .limit(1);
 
       // Get challenges hosted count
       const { count: challengesHosted } = await supabase
         .from('challenge')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact' })
         .eq('influencer_id', influencer.id)
-        .not('published_at', 'is', null);
+        .not('published_at', 'is', null)
+        .limit(1);
 
       // Get live challenges
       const { data: liveChallenges } = await supabase

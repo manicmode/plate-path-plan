@@ -56,8 +56,9 @@ export const MonthlySummaryViewer = () => {
               // Only fetch user count if user has a ranking
               const { count, error: countError } = await supabase
                 .from('monthly_summaries')
-                .select('*', { count: 'exact', head: true })
-                .eq('month_start', summary.month_start);
+        .select('id', { count: 'exact' })
+        .eq('user_id', user.id)
+        .limit(1);
 
               if (!countError && count !== null) {
                 monthCounts[summary.month_start] = count;

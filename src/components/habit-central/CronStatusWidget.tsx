@@ -50,9 +50,10 @@ const CronStatusWidget: React.FC = () => {
       // Get failures in last 24h
       const { count: failures24h, error: failures24hError } = await supabase
         .from('cron_nudge_logs' as any)
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact' })
         .gte('ran_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .eq('ok', false);
+        .eq('ok', false)
+        .limit(1);
 
       // Get success rate last 7d
       const { data: successData, error: successError } = await supabase

@@ -31,7 +31,8 @@ export async function countSavedReports() {
     .from('nutrition_logs_clean')
     .in('source', ['photo','barcode','vision_api','manual'])
     .not('report_snapshot', 'is', null)  // Count only snapshot-backed rows
-    .select('*', { count: 'exact', head: true });
+    .select('id', { count: 'exact' })
+    .limit(1);
   
   if (countErr) {
     console.error('[SAVED][COUNT][ERROR]', countErr);

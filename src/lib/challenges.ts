@@ -197,9 +197,10 @@ export async function listMyChallenges(): Promise<{ data?: ChallengeWithCounts[]
   for (const challenge of challengeData ?? []) {
     const { count, error: countErr } = await supabase
       .from("challenge_members")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact" })
       .eq("challenge_id", challenge.id)
-      .eq("status", "joined");
+      .eq("status", "joined")
+      .limit(1);
 
     if (countErr) return { error: normalizeError(countErr) };
 
@@ -228,9 +229,10 @@ export async function listPublicChallenges(): Promise<{ data?: ChallengeWithCoun
   for (const challenge of challengeData ?? []) {
     const { count, error: countErr } = await supabase
       .from("challenge_members")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact" })
       .eq("challenge_id", challenge.id)
-      .eq("status", "joined");
+      .eq("status", "joined")
+      .limit(1);
 
     if (countErr) return { error: normalizeError(countErr) };
 

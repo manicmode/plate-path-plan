@@ -218,6 +218,7 @@ const CameraPage = () => {
   const [analysisRequestId, setAnalysisRequestId] = useState<string | null>(null);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [forceConfirm, setForceConfirm] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   const [showVoiceAnalyzing, setShowVoiceAnalyzing] = useState(false);
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
@@ -289,12 +290,12 @@ const CameraPage = () => {
     const isBarcode = sourceHint === 'barcode';
     const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
 
+    // Durable forceConfirm flag - manual/voice must ALWAYS show confirmation
+    const forceConfirm = isManualLike;
+
     if (items.length === 1) {
       const item = items[0];
       setRecognizedFoods([item]);
-      
-      // Force confirmation for manual/voice inputs - never auto-log them
-      const mustConfirm = isManualLike;
       
       // Allow confirm-card to bypass hydration gate for text-sourced items
       if (sourceHint === 'speech' || sourceHint === 'manual' || sourceHint === 'barcode' || 
@@ -306,18 +307,19 @@ const CameraPage = () => {
       
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : sourceHint === 'barcode' ? 'barcode' : 'photo');
       
-      // Force confirmation for manual/voice - never bypass
-      const showConfirmation = isManualLike ? true : true; // Always show confirmation for now
-      setShowConfirmation(showConfirmation);
+      // Set showConfirmation state - but forceConfirm will override downstream
+      setShowConfirmation(true);
       setShowLogBarcodeScanner(false);
       setShowCamera(false);
       
-      console.log('[ROUTE_ITEMS] Opening confirmation for single item:', {
-        name: item.name,
-        source: sourceHint,
-        isManualLike,
-        mustConfirm,
-        showConfirmation
+      // Store the forceConfirm flag for use in the confirmation card
+      setForceConfirm(forceConfirm);
+      
+      console.log('[CONFIRM][OPEN]', {
+        inputSource: sourceHint,
+        forceConfirm,
+        showConfirmation: true,
+        itemName: item.name
       });
     } else {
       // Transform to ReviewItem format for multiple items
@@ -3685,9 +3687,10 @@ console.log('Global search enabled:', enableGlobalSearch);
       {/* Food Confirmation Card */}
       {(() => {
         const cur = recognizedFoods[0] || null;
-        console.log('[CONFIRM][RENDER_GUARD][BARCODE]', {
+        console.log('[CONFIRM][RENDER_GUARD]', {
           inputSource,
           showConfirmation,
+          forceConfirm,
           hasItem: !!cur,
           itemId: cur?.id,
           itemName: cur?.name,
@@ -3698,8 +3701,10 @@ console.log('Global search enabled:', enableGlobalSearch);
       <FoodConfirmationCard
         isOpen={showConfirmation}
         isProcessingFood={isProcessingFood}
+        forceConfirm={forceConfirm}
         onClose={() => {
           setShowConfirmation(false);
+          setForceConfirm(false); // Reset forceConfirm flag
           setIsProcessingFood(false); // Reset processing state when closing
           // Reset multi-item flow if needed
           if (pendingItems.length > 0) {
