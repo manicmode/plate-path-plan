@@ -1186,54 +1186,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         </div>
                       ))}
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-                    <div className="text-lg">🥩</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.protein}g
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
-                  </div>
-                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                    <div className="text-lg">🍞</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.carbs}g
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                    <div className="text-lg">🧈</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.fat}g
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <span className="text-gray-600 dark:text-gray-400">Fiber</span>
-                    <span className="font-medium">{adjustedFood.fiber}g</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <span className="text-gray-600 dark:text-gray-400">Sugar</span>
-                    <span className="font-medium">{adjustedFood.sugar}g</span>
-                  </div>
-                </div>
-
-                {/* Nutrition Source Display - User-friendly labels, no confidence % */}
-                {currentFoodItem.source && (
-                  <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                    📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
-                          <div className="w-8 h-4 bg-gray-200 dark:bg-gray-600 rounded mx-auto mb-1 animate-pulse"></div>
-                          <div className="w-12 h-3 bg-gray-200 dark:bg-gray-600 rounded mx-auto animate-pulse"></div>
-                        </div>
-                      ))}
-                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       {[...Array(2)].map((_, i) => (
                         <div key={i} className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -1246,54 +1198,54 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 ) : (
                   <>
                     <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-                    <div className="text-lg">🥩</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.protein}g
+                      <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                        <div className="text-lg">🥩</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {adjustedFood.protein}g
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
+                      </div>
+                      <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+                        <div className="text-lg">🍞</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {adjustedFood.carbs}g
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                        <div className="text-lg">🧈</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {adjustedFood.fat}g
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Protein</div>
-                  </div>
-                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                    <div className="text-lg">🍞</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.carbs}g
+                    
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-gray-600 dark:text-gray-400">Fiber</span>
+                        <span className="font-medium">{adjustedFood.fiber}g</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-gray-600 dark:text-gray-400">Sugar</span>
+                        <span className="font-medium">{adjustedFood.sugar}g</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Carbs</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                    <div className="text-lg">🧈</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {adjustedFood.fat}g
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Fat</div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <span className="text-gray-600 dark:text-gray-400">Fiber</span>
-                    <span className="font-medium">{adjustedFood.fiber}g</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <span className="text-gray-600 dark:text-gray-400">Sugar</span>
-                    <span className="font-medium">{adjustedFood.sugar}g</span>
-                  </div>
-                </div>
 
-                {/* Nutrition Source Display - User-friendly labels, no confidence % */}
-                {currentFoodItem.source && (
-                  <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                    📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
-                    {/* Show estimated badge if data is estimated */}
-                    {currentFoodItem.dataSource === 'Estimated' && (
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        Estimated
-                      </Badge>
+                    {/* Nutrition Source Display - User-friendly labels, no confidence % */}
+                    {currentFoodItem.source && (
+                      <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                          📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
+                          {/* Show estimated badge if data is estimated */}
+                          {currentFoodItem.dataSource === 'Estimated' && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              Estimated
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     )}
-                    </div>
-                  </div>
-                )}
                   </>
                 )}
               </TabsContent>
