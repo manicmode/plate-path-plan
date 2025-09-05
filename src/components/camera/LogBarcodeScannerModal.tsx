@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { stopMedia } from './stopMedia';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Zap, ZapOff, X } from 'lucide-react';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
@@ -75,22 +74,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const barcodeDetectorRef = useRef<any>(null);
   const allTracksRef = useRef<Set<MediaStreamTrack>>(new Set());
   const isMountedRef = useRef(false);
-  const cleanedRef = useRef(false);
   
   const location = useLocation();
   
-  // Reset scan state function
-  const resetScan = useCallback(() => {
-    setPhase('scanning');
-    setOverlayVisible(false);
-    setShowSuccess(false);
-    setError(null);
-  }, []);
-
   // Reset scan state on route changes
   useEffect(() => {
-    return () => resetScan();
-  }, [location.pathname, resetScan]);
+    return () => {
+      setPhase('scanning');
+      setOverlayVisible(false);
+      setShowSuccess(false);
+      setError(null);
+    };
+  }, [location.pathname]);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
@@ -100,13 +95,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Hysteresis: ensure overlay doesn't flicker if phase bounces quickly
   const [overlayVisible, setOverlayVisible] = useState(false);
   useEffect(() => {
-    if (overlayWanted && open) {
+    if (overlayWanted) {
       setOverlayVisible(true);
     } else {
       const t = setTimeout(() => setOverlayVisible(false), 160);
       return () => clearTimeout(t);
     }
-  }, [overlayWanted, open]);
+  }, [overlayWanted]);
   const [error, setError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lastAttempt, setLastAttempt] = useState(0);
@@ -307,25 +302,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     };
   }, []);
 
-  // Centralized cleanup (idempotent)
-  const doCleanup = useCallback((reason: string) => {
-    if (cleanedRef.current) return;
-    cleanedRef.current = true;
-    console.log('[SCANNER][CLOSE]', { reason });
-
-    // 1) Stop scan loops, decoders, tracks
-    cleanup();
-
-    // 2) Red pill & scan state hard reset
-    resetScan();
-  }, [resetScan]);
-
-  // Canonical close: ensures open=false and cleanup()
-  const requestClose = useCallback((reason: string) => {
-    doCleanup(reason);
-    onOpenChange?.(false);
-  }, [doCleanup, onOpenChange]);
-
   // If you auto-capture on successful decode, stop the loop *before* opening confirm
   const onAutoCapture = useCallback((code: string) => {
     scanActiveRef.current = false;           // stop RAF/decoder immediately
@@ -337,8 +313,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   // Handle barcode capture from viewport
   const handleBarcodeCapture = useCallback(async (decoded: { code: string }) => {
-    if (!isMountedRef.current || !open) return;
-    
     console.log('[SCANNER] Auto-capture detected:', decoded.code);
     setPhase('captured');
     setShowSuccess(true);
@@ -349,19 +323,17 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         SFX().play('scan_success');
         playBeep(); // legacy fallback
         onAutoCapture(decoded.code);
-        requestClose('auto_capture_success');
+        onOpenChange(false);
       } else {
-        if (!isMountedRef.current || !open) return;
         setPhase('scanning');
         setShowSuccess(false);
       }
     } catch (error) {
       console.warn('Lookup failed:', error);
-      if (!isMountedRef.current || !open) return;
       setPhase('scanning');
       setShowSuccess(false);
     }
-  }, [onAutoCapture, requestClose, open]);
+  }, [onAutoCapture, onOpenChange]);
 
   // Force capture for manual button
   const handleManualCapture = useCallback(() => {
@@ -372,7 +344,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const viewportRef = useRef<any>(null);
 
-
   // Mount/unmount tracking
   useEffect(() => { 
     isMountedRef.current = true; 
@@ -380,22 +351,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       isMountedRef.current = false; 
     }; 
   }, []);
-
-  // Safety nets: any way the modal stops being "open" runs cleanup once
-  useEffect(() => { 
-    if (!open) {
-      doCleanup('open=false'); 
-    } else {
-      cleanedRef.current = false; // reset for next session
-    }
-  }, [open, doCleanup]);
-
-  // On unmount (route change/tab swap)
-  useEffect(() => () => doCleanup('unmount'), [doCleanup]);
-
-  // Radix event handlers
-  const onEscapeKeyDown = useCallback(() => requestClose('escape'), [requestClose]);
-  const onPointerDownOutside = useCallback(() => requestClose('outside'), [requestClose]);
   
   useLayoutEffect(() => {
     if (open && !blockCamera) {
@@ -820,41 +775,23 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
   };
 
-  // Development camera instrumentation
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (!('mediaDevices' in navigator)) return;
-    
-    const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getUserMedia = async (constraints: any) => {
-      const stack = new Error().stack?.split('\n').slice(1, 4).join(' → ') || 'unknown';
-      console.log('[GUM][CALL]', { constraints, from: stack });
-      const stream = await orig(constraints);
-      console.log('[GUM][SUCCESS]', { trackIds: stream.getTracks().map(t => t.id) });
-      return stream;
-    };
-    
-    // Verification snippet for dev console
-    (window as any).checkTracks = () => {
-      const videos = [...document.querySelectorAll('video')];
-      const active = videos.flatMap(v => ((v.srcObject || {}) as any).getTracks?.() || []).filter((t: MediaStreamTrack) => t.readyState === 'live');
-      console.log('[VERIFY][TRACKS]', { videoCount: videos.length, activeTracks: active.length, ids: active.map((t: MediaStreamTrack) => t.id) });
-    };
-    
-    console.log('[CAM][DEV] Instrumentation installed');
-    
-    return () => { navigator.mediaDevices.getUserMedia = orig; };
+  // Cleanup on unmount
+  useEffect(() => () => { 
+    stopMedia(videoRef.current); 
+    console.log('[SCANNER][UNMOUNT]'); 
   }, []);
 
-    return (
-    <Dialog open={open} onOpenChange={(v) => v ? null : requestClose('onOpenChange')}>
+  return (
+    <Dialog open={open} onOpenChange={(v) => {
+      if (!v) { 
+        stopMedia(videoRef.current); 
+        onOpenChange?.(false); 
+      }
+      onOpenChange(v);
+    }}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
-        onEscapeKeyDown={onEscapeKeyDown}
-        onPointerDownOutside={onPointerDownOutside}
       >
-        <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
-        <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
         <div className="grid h-full grid-rows-[auto_1fr_auto]">
           {/* Header */}
           <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 relative">
@@ -869,10 +806,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => requestClose('header_exit')}
+              onClick={() => onOpenChange(false)}
               className="absolute right-4 text-white hover:bg-white/20"
-              aria-label="Close scanner"
-              data-role="scanner-exit"
             >
               <X className="h-6 w-6" />
             </Button>
