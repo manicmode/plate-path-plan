@@ -34,6 +34,7 @@ import { toDisplayableImageUrl } from '@/lib/ui/imageUrl';
 import { cameraPool } from '@/lib/camera/cameraPool';
 import { installCameraDev } from '@/lib/camera/cameraDev';
 import '@/lib/camera/cameraVerify';
+import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -390,6 +391,52 @@ const CameraPage = () => {
   
   // Smart analyze flow hook
   const { run: runAnalyzeFlow, cancel: cancelAnalyzeFlow } = useAnalyzeFlow();
+  
+  // Idempotent cancel function that aborts all analysis and restores prior UI
+  const handleCancelAll = useCallback(() => {
+    console.log('[CANCEL][CLICK]', { component: 'CameraPage' });
+    
+    // Abort all controllers
+    abortControllerRef.current?.abort('user-cancel');
+    cancelAnalyzeFlow();
+    console.log('[CANCEL][ABORT]', { component: 'CameraPage', reason: 'user-cancel' });
+    
+    // Clear all processing states
+    setIsAnalyzing(false);
+    setShowSmartLoader(false);
+    setShowVoiceAnalyzing(false);
+    setIsManualAnalyzing(false);
+    setShowProcessingNextItem(false);
+    setIsProcessingVoice(false);
+    setIsProcessingFood(false);
+    setIsMultiAILoading(false);
+    
+    // Close all open UI states
+    setShowConfirmation(false);
+    setShowReviewScreen(false);
+    setShowSummaryPanel(false);
+    setShowTransition(false);
+    setShowError(false);
+    setShowMultiAIDetection(false);
+    
+    // Clear data states
+    setRecognizedFoods([]);
+    setReviewItems([]);
+    setSummaryItems([]);
+    setSelectedFoodItem(null);
+    setForceConfirm(false);
+    
+    // Restore prior UI
+    if (!showCamera) {
+      // If camera modal was not open, return to grid
+      setSelectedImage(null);
+      setActiveTab('main');
+      // Don't navigate - stay on Camera page
+    }
+    // If showCamera was true, leave it true to maintain camera preview
+    
+    console.log('[CANCEL][DONE]', { component: 'CameraPage', result: 'closed' });
+  }, [abortControllerRef, cancelAnalyzeFlow, showCamera, setIsAnalyzing, setShowSmartLoader, setShowVoiceAnalyzing, setIsManualAnalyzing, setShowProcessingNextItem, setIsProcessingVoice, setIsProcessingFood, setIsMultiAILoading, setShowConfirmation, setShowReviewScreen, setShowSummaryPanel, setShowTransition, setShowError, setShowMultiAIDetection, setRecognizedFoods, setReviewItems, setSummaryItems, setSelectedFoodItem, setForceConfirm, setSelectedImage, setActiveTab]);
   
   // Helper function to get data URL for analysis
   function getDataUrlForAnalysis(): string | null {
@@ -2845,25 +2892,6 @@ console.log('Global search enabled:', enableGlobalSearch);
     }
   };
 
-  const handleCancelAll = () => {
-    console.info('[ConfirmFlow] Cancel All pressed');
-    // Clear pending items / selections
-    setPendingItems([]);
-    setCurrentItemIndex(0);
-    setRecognizedFoods([]);
-    // Reset any in-progress state
-    setIsProcessingVoice(false);
-    setIsProcessingFood(false);
-    setIsManualAnalyzing(false);
-    // Close dialog
-    setShowConfirmation(false);
-    setShowReviewScreen(false);
-    setShowSummaryPanel(false);
-    setShowTransition(false);
-    toast.success('Logging canceled');
-    resetState();
-  };
-
   const handleConfirmFood = async (foodItem: any) => {
     // Prevent double-processing
     if (isProcessingFood) {
@@ -3727,6 +3755,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         onConfirm={handleConfirmFood}
         onSkip={handleSkipFood}
         onCancelAll={handleCancelAll}
+        onCancel={handleCancelAll}
         foodItem={recognizedFoods[0] || null}
         showSkip={pendingItems.length > 1}
         currentIndex={currentItemIndex}

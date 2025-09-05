@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
+import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -80,6 +81,7 @@ interface FoodConfirmationCardProps {
   onConfirm: (foodItem: FoodItem) => void;
   onSkip?: () => void; // Skip functionality (now "Don't Log")
   onCancelAll?: () => void; // Cancel all items functionality
+  onCancel?: () => void; // NEW: Cancel handler for parent orchestration
   foodItem: FoodItem | null;
   showSkip?: boolean; // Whether to show "Don't Log" button
   currentIndex?: number; // Current item index for multi-item flow
@@ -99,6 +101,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   onConfirm,
   onSkip,
   onCancelAll,
+  onCancel,
   foodItem,
   showSkip = false,
   currentIndex,
@@ -719,22 +722,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={(open) => {
-        // Prevent closing parent when reminder is open
-        if (reminderOpen && !open) return;
-        if (totalItems && totalItems > 1) return;
-        
-        // Force confirm prevents closing
-        if (forceConfirm && !open) return;
-        
-        onClose();
-      }}>
+      <Dialog 
+        open={dialogOpen} 
+        onOpenChange={(open) => {
+          // Prevent closing parent when reminder is open
+          if (reminderOpen && !open) return;
+          if (totalItems && totalItems > 1) return;
+          
+          // Don't block explicit user Cancel - only prevent ESC/outside clicks with forceConfirm
+          onClose();
+        }}
+      >
         <AccessibleDialogContent 
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Confirm Food Log"
           description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
+          onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
+          onInteractOutside={(e) => forceConfirm && e.preventDefault()}
         >
           <div className="p-6">
             {/* Unknown Product Alert */}
@@ -1181,8 +1187,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     
                     {/* Cancel All - Right Half */}
                     <Button
+                      type="button"
                       variant="outline"
-                      onClick={onCancelAll}
+                      onClick={withSafeCancel(() => {
+                        console.log('[CANCEL][CLICK]', { component: 'FoodConfirmationCard', action: 'cancel-all' });
+                        onCancelAll?.();
+                        console.log('[CANCEL][DONE]', { component: 'FoodConfirmationCard', action: 'cancel-all' });
+                      })}
                       className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <X className="h-4 w-4 mr-2" />
@@ -1215,14 +1226,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 // Single-Item Layout
                 <>
                   {/* Cancel - Full Width Red Text */}
-                  <DialogClose asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      Cancel
-                    </Button>
-                  </DialogClose>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={withSafeCancel(() => {
+                      console.log('[CANCEL][CLICK]', { component: 'FoodConfirmationCard' });
+                      onClose(); // Triggers Radix close & focus restore
+                      onCancel?.(); // Parent cleanup
+                      console.log('[CANCEL][DONE]', { component: 'FoodConfirmationCard' });
+                    })}
+                    className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Cancel
+                  </Button>
                   
                   {/* Log Food - Full Width Primary */}
                   <Button

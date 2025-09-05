@@ -18,6 +18,7 @@ import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { stopAllVideos } from '@/lib/camera/globalFailsafe';
 import { useAutoImmersive } from '@/lib/uiChrome';
+import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 
 
 function torchOff(track?: MediaStreamTrack) {
