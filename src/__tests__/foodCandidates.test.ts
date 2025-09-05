@@ -63,7 +63,13 @@ describe('Food Candidates Golden Tests', () => {
         }))
       );
 
-      const candidates = await getFoodCandidates(query, 6);
+      const candidates = await getFoodCandidates(query, { 
+        core: [query],
+        prep: [],
+        cuisine: [],
+        form: [],
+        protein: []
+      });
       
       expect(candidates).toHaveLength(expectedNames.length);
       expect(candidates[0].confidence).toBeGreaterThan(0.5);

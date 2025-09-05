@@ -24,7 +24,8 @@ import { detectFlags } from '@/lib/health/flagger';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
-import type { FoodCandidate } from '@/lib/food/search/getFoodCandidates';
+import type { Candidate } from '@/lib/food/search/getFoodCandidates';
+import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { extractName } from '@/lib/debug/extractName';
 
 // Fallback emoji component
@@ -93,7 +94,8 @@ interface FoodConfirmationCardProps {
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
   bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
   forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
-  candidates?: FoodCandidate[]; // NEW: alternative food candidates for manual/voice
+  candidates?: Candidate[]; // NEW: alternative food candidates for manual/voice
+  originalText?: string; // NEW: original user input for portion inference
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
@@ -114,7 +116,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   skipNutritionGuard = false,
   bypassHydration = false,
   forceConfirm = false,
-  candidates
+  candidates,
+  originalText
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -126,6 +129,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
@@ -253,6 +257,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Stabilize: directly sync from prop without null flip
   useEffect(() => {
     setCurrentFoodItem(foodItem);
+    setSelectedCandidate(null); // Reset candidate selection when food item changes
   }, [foodItem]);
 
   // Trigger coach response when flagged ingredients are detected
@@ -831,20 +836,37 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   {candidates.slice(0, 6).map((candidate, index) => (
                     <button
                       key={candidate.id}
-                      onClick={() => {
-                        setCurrentFoodItem({
-                          ...currentFoodItem!,
-                          name: candidate.name,
-                          calories: candidate.calories,
-                          protein: candidate.protein,
-                          carbs: candidate.carbs,
-                          fat: candidate.fat,
-                          fiber: candidate.fiber,
-                          sugar: candidate.sugar,
-                          sodium: candidate.sodium,
-                          imageUrl: candidate.imageUrl
-                        });
-                      }}
+                       onClick={() => {
+                         setSelectedCandidate(candidate);
+                         // Infer portion based on original text and candidate
+                         const portionEstimate = originalText ? 
+                           inferPortion(candidate.name, originalText, undefined, candidate.classId) :
+                           { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
+                         
+                         setCurrentFoodItem({
+                           ...currentFoodItem!,
+                           name: candidate.name,
+                           calories: candidate.calories,
+                           protein: candidate.protein,
+                           carbs: candidate.carbs,
+                           fat: candidate.fat,
+                           fiber: candidate.fiber,
+                           sugar: candidate.sugar,
+                           sodium: candidate.sodium,
+                           imageUrl: candidate.imageUrl,
+                           portionGrams: portionEstimate.grams
+                         });
+                         
+                         // Log portion inference
+                         if (import.meta.env.VITE_FOOD_TEXT_DEBUG === '1') {
+                           console.log('[PORTION][INFER]', {
+                             classId: candidate.classId,
+                             unit: portionEstimate.unit,
+                             grams: portionEstimate.grams,
+                             from: portionEstimate.source || 'unknown'
+                           });
+                         }
+                       }}
                       className={`p-3 rounded-lg border-2 text-left transition-all ${
                         index === 0 
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 

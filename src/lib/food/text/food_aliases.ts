@@ -1,5 +1,5 @@
 /**
- * Food aliases for better text matching
+ * Food aliases for better text matching with typo handling
  * Maps common food names/terms to canonical forms for improved search
  */
 
@@ -51,6 +51,7 @@ export const FOOD_ALIASES = {
   'stir fry': ['chicken stir fry', 'vegetable stir fry', 'beef stir fry'],
   'fried rice': ['chicken fried rice', 'vegetable fried rice', 'shrimp fried rice'],
   'ramen': ['chicken ramen', 'beef ramen', 'pork ramen'],
+  'teriyaki bowl': ['chicken teriyaki', 'beef teriyaki', 'teriyaki chicken bowl'],
   
   // Mexican Cuisine
   'tacos': ['taco', 'beef tacos', 'chicken tacos', 'fish tacos'],
@@ -71,13 +72,46 @@ export const FOOD_ALIASES = {
   'sauteed': ['sautéed', 'pan-sauteed'],
 };
 
+// Common typo mappings
+export const TYPO_FIXES = {
+  'hawai': 'hawaii',
+  'hawaiii': 'hawaii',
+  'califirnia': 'california',
+  'californai': 'california',
+  'californa': 'california',
+  'teriaki': 'teriyaki',
+  'teriyaky': 'teriyaki',
+  'peperoni': 'pepperoni',
+  'peparoni': 'pepperoni',
+  'hotdog': 'hot dog',
+  'hotdogs': 'hot dogs',
+};
+
+/**
+ * Normalizes query by fixing common typos
+ */
+export function normalizeQuery(query: string): string {
+  let normalized = query.toLowerCase().trim();
+  
+  // Fix common typos
+  for (const [typo, correction] of Object.entries(TYPO_FIXES)) {
+    const regex = new RegExp(`\\b${typo}\\b`, 'gi');
+    normalized = normalized.replace(regex, correction);
+  }
+  
+  // Collapse multiple spaces
+  normalized = normalized.replace(/\s+/g, ' ');
+  
+  return normalized;
+}
+
 /**
  * Expands a query string to include relevant aliases
  * @param query - The original search query
  * @returns Array of expanded query terms including aliases
  */
 export function expandAliases(query: string): string[] {
-  const normalizedQuery = query.toLowerCase().trim();
+  const normalizedQuery = normalizeQuery(query);
   const expanded = new Set([normalizedQuery]);
   
   // Check if query matches any canonical form

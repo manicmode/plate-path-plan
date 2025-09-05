@@ -3,16 +3,36 @@
  * Extracts preparation methods, forms, cuisines, and protein types from food queries
  */
 
-export interface FoodFacets {
-  prep?: string[];     // cooking methods
-  form?: string[];     // food forms/states
-  cuisine?: string[];  // cuisine types
-  protein?: string[];  // protein sources
-  size?: string[];     // size indicators
-  quantity?: string;   // quantity/amount
+export interface ParsedFacets {
+  core: string[];       // nouns: pizza, roll, dog, bowl, rice, egg, etc.
+  prep: string[];       // grilled, fried, roasted, steamed, etc.
+  cuisine: string[];    // hawaiian, japanese, teriyaki, etc.
+  form: string[];       // bowl, slice, roll, pcs, cup, etc.
+  protein: string[];    // chicken, salmon, beef, etc.
+  units?: { count?: number; unit?: 'slice'|'roll'|'pcs'|'cup'|'bowl' };
 }
 
 // Regex patterns for different facets
+const CORE_NOUN_PATTERNS = [
+  /\b(pizza|pizzas?)\b/gi,
+  /\b(roll|rolls?)\b/gi,
+  /\b(dog|dogs?|hotdog|hotdogs?)\b/gi,
+  /\b(bowl|bowls?)\b/gi,
+  /\b(rice)\b/gi,
+  /\b(egg|eggs?)\b/gi,
+  /\b(chicken)\b/gi,
+  /\b(burger|burgers?|hamburger)\b/gi,
+  /\b(sandwich|sandwiches?)\b/gi,
+  /\b(salad|salads?)\b/gi,
+  /\b(soup|soups?)\b/gi,
+  /\b(sushi)\b/gi,
+  /\b(taco|tacos?)\b/gi,
+  /\b(burrito|burritos?)\b/gi,
+  /\b(oatmeal|oats?)\b/gi,
+  /\b(pasta)\b/gi,
+  /\b(bread)\b/gi,
+];
+
 const PREP_PATTERNS = [
   /\b(grilled?|grill|bbq|barbecued?|charred?)\b/gi,
   /\b(baked?|roasted?|oven[- ]?(baked?|roasted?))\b/gi,
@@ -23,7 +43,7 @@ const PREP_PATTERNS = [
   /\b(raw|fresh|uncooked)\b/gi,
   /\b(smoked?|cured?)\b/gi,
   /\b(breaded?|battered?)\b/gi,
-  /\b(marinated?|seasoned?)\b/gi,
+  /\b(marinated?|seasoned?|teriyaki)\b/gi,
 ];
 
 const FORM_PATTERNS = [
@@ -41,7 +61,8 @@ const CUISINE_PATTERNS = [
   /\b(indian|curry|tandoori)\b/gi,
   /\b(american|southern|cajun)\b/gi,
   /\b(french|european)\b/gi,
-  /\b(california|new york|chicago)\b/gi,
+  /\b(california|hawaiian?|hawaii)\b/gi,
+  /\b(teriyaki|hibachi)\b/gi,
 ];
 
 const PROTEIN_PATTERNS = [
@@ -64,25 +85,49 @@ const QUANTITY_PATTERNS = [
   /\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/gi,
 ];
 
+const UNIT_PATTERNS = [
+  /\b(\d+(?:\.\d+)?)\s*(slice|slices?)\b/gi,
+  /\b(\d+(?:\.\d+)?)\s*(bowl|bowls?)\b/gi,
+  /\b(\d+(?:\.\d+)?)\s*(roll|rolls?)\b/gi,
+  /\b(\d+(?:\.\d+)?)\s*(pcs?|piece|pieces?)\b/gi,
+  /\b(\d+(?:\.\d+)?)\s*(cup|cups?)\b/gi,
+  /\b(½|half)\s*(slice|bowl|roll|cup)\b/gi,
+  /\b(¼|quarter)\s*(slice|bowl|roll|cup)\b/gi,
+];
+
 /**
  * Extracts facets from a food query string
  * @param query - The food query to parse
- * @returns FoodFacets object with extracted information
+ * @returns ParsedFacets object with extracted information
  */
-export function parseFacets(query: string): FoodFacets {
-  const facets: FoodFacets = {};
+export function parseQuery(query: string): ParsedFacets {
+  const facets: ParsedFacets = {
+    core: [],
+    prep: [],
+    cuisine: [],
+    form: [],
+    protein: []
+  };
+  
+  // Extract core nouns
+  const coreMatches = new Set<string>();
+  CORE_NOUN_PATTERNS.forEach(pattern => {
+    const matches = query.match(pattern);
+    if (matches) {
+      matches.forEach(match => coreMatches.add(match.toLowerCase().trim()));
+    }
+  });
+  facets.core = Array.from(coreMatches);
   
   // Extract preparation methods
   const prepMatches = new Set<string>();
   PREP_PATTERNS.forEach(pattern => {
     const matches = query.match(pattern);
     if (matches) {
-      matches.forEach(match => prepMatches.add(match.toLowerCase().trim()));
+    matches.forEach(match => prepMatches.add(match.toLowerCase().trim()));
     }
   });
-  if (prepMatches.size > 0) {
-    facets.prep = Array.from(prepMatches);
-  }
+  facets.prep = Array.from(prepMatches);
   
   // Extract forms
   const formMatches = new Set<string>();
@@ -92,9 +137,7 @@ export function parseFacets(query: string): FoodFacets {
       matches.forEach(match => formMatches.add(match.toLowerCase().trim()));
     }
   });
-  if (formMatches.size > 0) {
-    facets.form = Array.from(formMatches);
-  }
+  facets.form = Array.from(formMatches);
   
   // Extract cuisine types
   const cuisineMatches = new Set<string>();
@@ -104,9 +147,7 @@ export function parseFacets(query: string): FoodFacets {
       matches.forEach(match => cuisineMatches.add(match.toLowerCase().trim()));
     }
   });
-  if (cuisineMatches.size > 0) {
-    facets.cuisine = Array.from(cuisineMatches);
-  }
+  facets.cuisine = Array.from(cuisineMatches);
   
   // Extract protein sources
   const proteinMatches = new Set<string>();
@@ -116,29 +157,25 @@ export function parseFacets(query: string): FoodFacets {
       matches.forEach(match => proteinMatches.add(match.toLowerCase().trim()));
     }
   });
-  if (proteinMatches.size > 0) {
-    facets.protein = Array.from(proteinMatches);
+  facets.protein = Array.from(proteinMatches);
+  
+  // Extract units with counts
+  let unitMatch = null;
+  for (const pattern of UNIT_PATTERNS) {
+    unitMatch = query.match(pattern);
+    if (unitMatch) break;
   }
   
-  // Extract size indicators
-  const sizeMatches = new Set<string>();
-  SIZE_PATTERNS.forEach(pattern => {
-    const matches = query.match(pattern);
-    if (matches) {
-      matches.forEach(match => sizeMatches.add(match.toLowerCase().trim()));
-    }
-  });
-  if (sizeMatches.size > 0) {
-    facets.size = Array.from(sizeMatches);
-  }
-  
-  // Extract quantity
-  const quantityMatch = query.match(QUANTITY_PATTERNS[0]) || 
-                       query.match(QUANTITY_PATTERNS[1]) || 
-                       query.match(QUANTITY_PATTERNS[2]) ||
-                       query.match(QUANTITY_PATTERNS[3]);
-  if (quantityMatch) {
-    facets.quantity = quantityMatch[0];
+  if (unitMatch) {
+    const [, countStr, unit] = unitMatch;
+    const count = countStr === '½' || countStr === 'half' ? 0.5 : 
+                  countStr === '¼' || countStr === 'quarter' ? 0.25 :
+                  parseFloat(countStr) || 1;
+    
+    facets.units = {
+      count,
+      unit: unit.toLowerCase().replace(/s$/, '') as any // remove plural
+    };
   }
   
   return facets;

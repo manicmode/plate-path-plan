@@ -279,7 +279,7 @@ const CameraPage = () => {
   const confirmOpenRef = useRef(false);
   
   // Single router for any recognized items array (barcode/photo/manual/speech)
-  const routeRecognizedItems = useCallback((items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
+  const routeRecognizedItems = useCallback(async (items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
     if (!items || items.length === 0) {
       console.warn('[ROUTE_ITEMS] No items returned');
       return;
@@ -295,9 +295,34 @@ const CameraPage = () => {
   let forceConfirm = isManualLike;
 
   if (isManualLike) {
-    // For manual/voice inputs, check if we need candidates
+  // For manual/voice inputs, get candidates and pass to confirmation
     if (items.length === 1) {
       const item = items[0];
+      
+      // Get candidates for manual/voice inputs
+      if (isManualLike) {
+        try {
+          const { parseQuery } = await import('@/lib/food/text/parse');
+          const { getFoodCandidates } = await import('@/lib/food/search/getFoodCandidates');
+          
+          const facets = parseQuery(item.name);
+          const candidates = await getFoodCandidates(item.name, facets, {
+            preferGeneric: true,
+            requireCoreToken: true,
+            maxPerFamily: 1
+          });
+          
+          console.log(`[CANDIDATES] Found ${candidates.length} candidates for "${item.name}"`);
+          
+          // Add candidates to the item
+          (item as any).candidates = candidates;
+          (item as any).originalText = item.name;
+          
+        } catch (error) {
+          console.error('[CANDIDATES] Failed to get candidates:', error);
+        }
+      }
+      
       setRecognizedFoods([item]);
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
       setShowConfirmation(true);
@@ -309,7 +334,8 @@ const CameraPage = () => {
         inputSource: sourceHint,
         forceConfirm,
         showConfirmation: true,
-        itemName: item.name
+        itemName: item.name,
+        hasCandidates: !!(item as any).candidates?.length
       });
       return;
     }
