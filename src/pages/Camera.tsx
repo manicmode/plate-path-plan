@@ -840,13 +840,19 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         // Wrapper function for the existing analyzeImage logic
         const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
           // Check for early cancellation
-          if (options?.signal?.aborted || !activeRequestIdRef.current) {
+          if (options?.signal?.aborted) {
             console.log('[FLOW][ANALYZE:EARLY_CANCEL]');
             throw new Error('Analysis cancelled');
           }
           
           // Process the image file first
           await processImageFile(file);
+          
+          // Check for cancellation after preprocessing
+          if (options?.signal?.aborted) {
+            console.log('[FLOW][ANALYZE:CANCEL_AFTER_PROCESS]');
+            throw new Error('Analysis cancelled');
+          }
           
           // Then run the analysis (this will use the selectedImage state)
           await analyzeImage();
