@@ -582,7 +582,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 <Button
                   id="capture-btn"
       onPointerDown={() => {
-        import('@/lib/sfx/sfxManager').then(({ SFX }) => { SFX().unlock(); SFX().play('shutter'); });
+        import('@/lib/sfx/sfxManager').then(({ SFX }) => { SFX().unlock(); SFX().play('shutter').catch(()=>{}); });
         Sound.ensureUnlocked(); 
         Sound.play('shutter'); // keep existing fallback
       }}

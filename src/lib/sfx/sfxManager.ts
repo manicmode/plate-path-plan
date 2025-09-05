@@ -48,17 +48,13 @@ class SfxManager {
     } catch { /* ignore */ }
   }
 
-  play(key: SfxKey) {
+  async play(key: SfxKey) {
     try { navigator.vibrate?.(key === 'scan_success' ? 30 : key === 'shutter' ? 20 : 10); } catch {}
     const ctx = this.ensureCtx();
     if (!ctx) return;
-    if (!this.unlocked && ctx.state !== 'running') {
-      ctx.resume().catch(() => {});
+    if (!this.unlocked) {
+      try { await ctx.resume(); this.unlocked = ctx.state === 'running'; } catch {}
     }
-    // Update unlocked status after potential resume
-    setTimeout(() => {
-      this.unlocked = ctx.state === 'running';
-    }, 50);
     if (!this.unlocked) return;
     
     console.log('[SFX][PLAY]', {

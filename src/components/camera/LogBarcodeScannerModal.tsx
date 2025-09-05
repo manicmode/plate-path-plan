@@ -98,6 +98,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const cooldownUntilRef = useRef(0);
   const hitsRef = useRef<{code:string,t:number}[]>([]);
   const runningRef = useRef(false);
+  
+  // Scan loop guard and RAF cancel
+  const scanRunningRef = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
 
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
@@ -202,7 +206,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const stopAutoscan = () => {
     runningRef.current = false;
+    scanRunningRef.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (rafIdRef.current != null) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
     inFlightRef.current = false;
     hitsRef.current = [];
   };
@@ -210,6 +216,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const startAutoscan = () => {
     if (!AUTOSCAN_ENABLED) return;
     runningRef.current = true;
+    scanRunningRef.current = true;
     hitsRef.current = [];
   };
 
@@ -247,7 +254,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const lookupResult = await handleOffLookup(decoded.code);
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        SFX().play('scan_success');
+        SFX().play('scan_success').catch(()=>{});
         playBeep(); // legacy fallback
         onBarcodeDetected(decoded.code);
         onOpenChange(false);
@@ -419,6 +426,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const cleanup = () => {
+    // stop autoscan first
+    scanRunningRef.current = false;
+    if (rafIdRef.current != null) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+    
     const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
     torchOff(track);
 
