@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { FF } from '@/featureFlags';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
+import { useScanSfx } from '@/lib/sfx/useScanSfx';
 
 // Runtime override helper
 function isAutoEnabledAtRuntime(): boolean {
@@ -80,6 +81,7 @@ export default function BarcodeViewport({
   const [isCapturing, setIsCapturing] = useState(false);
 
   const { snapAndDecode } = useSnapAndDecode();
+  const sfx = useScanSfx();
   
   const ROI = { 
     left: 0.1, right: 0.9, top: 0.18, bottom: 0.82,
@@ -227,6 +229,9 @@ export default function BarcodeViewport({
       const decoded = pref?.code 
         ? { code: pref.code }
         : await decodeFrame(videoRef.current!);
+      
+      // PLAY SOUND (works for both manual & auto)
+      sfx.playSuccess();
       onCapture(decoded);
     } catch (error) {
       console.warn('Capture failed:', error);
