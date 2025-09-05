@@ -410,6 +410,7 @@ const CameraPage = () => {
     setIsProcessingVoice(false);
     setIsProcessingFood(false);
     setIsMultiAILoading(false);
+    setProcessingStep('');
     
     // Close all open UI states
     setShowConfirmation(false);
@@ -425,6 +426,7 @@ const CameraPage = () => {
     setSummaryItems([]);
     setSelectedFoodItem(null);
     setForceConfirm(false);
+    setAnalysisRequestId(null);
     
     // Restore prior UI
     if (!showCamera) {
@@ -1156,6 +1158,9 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           
           // Force log mode for GPT-only detection
           const items = await run(imageBase64, { mode: 'log' });
+          
+          // Check if analysis was cancelled before proceeding
+          if (controller.signal.aborted || analysisRequestId !== requestId) return;
           
           console.log('[FLOW][ANALYZE:RESULT]', { itemsCount: items?.length, isArray: Array.isArray(items) });
           
