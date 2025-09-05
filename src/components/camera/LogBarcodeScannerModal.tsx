@@ -3,8 +3,7 @@ import { stopMedia } from './stopMedia';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
-import { Zap, ZapOff, X, Upload, ScanBarcode } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Zap, ZapOff, X, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
@@ -48,7 +47,6 @@ interface LogBarcodeScannerModalProps {
   onBarcodeDetected: (barcode: string) => void;
   onManualEntry: () => void;
   blockCamera?: boolean;
-  showConfirmation?: boolean; // Add to track confirmation state for activeScan
 }
 
 export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
@@ -56,21 +54,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   onOpenChange,
   onBarcodeDetected,
   onManualEntry,
-  blockCamera = false,
-  showConfirmation = false
+  blockCamera = false
 }) => {
   // SSR guard - don't render on server
   if (typeof window === 'undefined') return null;
   // Don't mount internals when closed - MUST be before any hooks
   if (!open) return null;
 
-  // Tab state management
-  const [currentTab, setCurrentTab] = useState<'scan' | 'upload'>(() => {
-    const saved = sessionStorage.getItem('log.tab') as 'scan' | 'upload' | null;
-    return saved ?? 'scan'; // will be re-evaluated on open below
-  });
-  
-  // Scanner mode state for scan tab
+  // Scanner mode state
   const [mode, setMode] = useState<'auto' | 'tap'>('auto');
   
   // Lifecycle-driven active state 
@@ -78,19 +69,18 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
   );
   
-  // Single source of truth for autoscan - drives camera lifecycle
-  const activeScan = open && currentTab === 'scan' && !showConfirmation && documentVisible;
+  // Active flag computation - drives camera lifecycle
+  const active = open && documentVisible; // Camera should be active in both modes
   
   // Lifecycle refs for proper cleanup
   const isActiveRef = useRef(false);
-  const isScanningRef = useRef(false); // Added for immediate decode loop exit
   const decodeAbortRef = useRef<AbortController | null>(null);
   
   // Unified cleanup refs
   const cleanedRef = useRef(false);
   const isMountedRef = useRef(false);
   
-  console.log('[SCANNER][MOUNT]', { mode, currentTab, activeScan });
+  console.log('[SCANNER][MOUNT]', { mode, active });
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -112,7 +102,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
   // Red pill visibility - only in Auto mode when actively scanning
-  const pillVisible = activeScan && mode === 'auto';
+  const pillVisible = active && mode === 'auto';
   
   // Overlay visibility management
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -383,29 +373,25 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
 
   const viewportRef = useRef<any>(null);
   
-  // Visibility guards for activeScan
+  // Document visibility handling
   useEffect(() => {
-    const onVis = () => setDocumentVisible(document.visibilityState === 'visible');
-    const onHide = () => setDocumentVisible(false);
-    
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('pagehide', onHide);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('pagehide', onHide);
+    const handleVisibilityChange = () => {
+      setDocumentVisible(document.visibilityState === 'visible');
     };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Lifecycle-driven camera management
   useEffect(() => {
-    if (activeScan) {
+    if (active) {
       startCameraAndScan();
     } else {
       shutdownCamera('inactive');
     }
     return () => shutdownCamera('unmount');
-  }, [activeScan]);
+  }, [active]);
 
   useEffect(() => {
     if (open && stream) {
@@ -572,35 +558,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   // Ref to force disable auto capture in viewport
   const forceDisableAutoRef = useRef<() => void>(() => {});
   
-  // Remember tab choice  
-  useEffect(() => {
-    sessionStorage.setItem('log.tab', currentTab);
-  }, [currentTab]);
-
-  // Default tab selection on open (no permission prompt)
-  useEffect(() => {
-    if (!open) return;
-    const saved = sessionStorage.getItem('log.tab') as 'scan' | 'upload' | null;
-    if (saved) {
-      setCurrentTab(saved);
-      return;
-    }
-
-    const fallbackTo = (t: 'scan' | 'upload') => setCurrentTab(t);
-
-    if ('permissions' in navigator && (navigator as any).permissions?.query) {
-      (navigator as any).permissions.query({ name: 'camera' as any })
-        .then((res: { state: 'granted' | 'denied' | 'prompt' }) => {
-          if (res.state === 'denied') fallbackTo('upload');
-          else fallbackTo('scan'); // granted or prompt
-        })
-        .catch(() => fallbackTo('scan'));
-    } else {
-      // Safari: no Permissions API → assume scan
-      fallbackTo('scan');
-    }
-  }, [open]);
-
   const cleanup = async () => {
     if (tearingDownRef.current) return;
     tearingDownRef.current = true;
@@ -697,7 +654,6 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }; 
   }, [doCleanup]);
   
-
   // Camera lifecycle management
   useLayoutEffect(() => {
     if (open && !blockCamera) {
@@ -705,7 +661,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       logOwnerAcquire('LogBarcodeScannerModal');
       camOwnerMount(OWNER);
       cleanedRef.current = false;
-      // Camera lifecycle now handled by the activeScan flag in useEffect above
+      // Camera lifecycle now handled by the active flag in useEffect
     } else {
       camOwnerUnmount(OWNER);
       camHardStop('modal_close');
@@ -923,80 +879,65 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
         <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
         
-        {/* Header with tabs and controls */}
-        <header className="flex-none pt-[max(env(safe-area-inset-top),12px)] pb-4 px-4 space-y-4">
-          {/* Tab Selection */}
-          <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as 'scan' | 'upload')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10">
-              <TabsTrigger value="scan" className="flex items-center gap-2 text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">
-                <ScanBarcode className="h-4 w-4" />
-                Scan
-              </TabsTrigger>
-              <TabsTrigger value="upload" className="flex items-center gap-2 text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">
-                <Upload className="h-4 w-4" />
-                Upload
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* Top Header - Title, Status, and Mode Toggle */}
+        <header className="flex-none px-4 pt-[max(env(safe-area-inset-top),12px)] pb-4 text-center relative z-[120]">
+          <h2 className="text-white text-lg font-semibold mb-2">Scan a barcode</h2>
+          
+          {/* Status chip */}
+          <div className="flex justify-center mb-4" aria-live="polite">
+            <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
+              {isLookingUp ? (
+                <>
+                  <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                  Looking up product...
+                </>
+              ) : isDecoding ? (
+                <>
+                  <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
+                  Scanning...
+                </>
+              ) : mode === 'auto' ? (
+                <>● Scanning active</>
+              ) : (
+                <>● Tap to scan</>
+              )}
+            </span>
+          </div>
 
-          {/* Mode Toggle - only show in scan tab */}
-          {currentTab === 'scan' && (
-            <>
-              {/* Status indicator */}
-              <div className="flex justify-center">
-                <span className="text-white/90 text-sm font-medium">
-                  {mode === 'auto' ? (
-                    <>● Scanning active</>
-                  ) : (
-                    <>● Tap to scan</>
-                  )}
-                </span>
-              </div>
-
-              <div className="flex justify-center">
-                <div className="flex bg-white/10 rounded-full p-1">
-                  <button
-                    onClick={() => setMode('auto')}
-                    className={cn(
-                      "px-4 py-2 text-sm rounded-full transition-all",
-                      mode === 'auto'
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                        : "text-white/80 hover:text-white"
-                    )}
-                    aria-pressed={mode === 'auto'}
-                  >
-                    Auto
-                  </button>
-                  <button
-                    onClick={() => setMode('tap')}
-                    className={cn(
-                      "px-4 py-2 text-sm rounded-full transition-all",
-                      mode === 'tap'
-                        ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
-                        : "text-white/80 hover:text-white"
-                    )}
-                    aria-pressed={mode === 'tap'}
-                  >
-                    Tap
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Upload tab status */}
-          {currentTab === 'upload' && (
-            <div className="flex justify-center">
-              <span className="text-white/90 text-sm font-medium">
-                Choose photo to scan for barcode
-              </span>
+          {/* Mode Toggle */}
+          <div className="flex justify-center">
+            <div className="flex bg-white/10 rounded-full p-1">
+              <button
+                onClick={() => setMode('auto')}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'auto'
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'auto'}
+              >
+                Auto
+              </button>
+              <button
+                onClick={() => setMode('tap')}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-full transition-all",
+                  mode === 'tap'
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
+                    : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={mode === 'tap'}
+              >
+                Tap
+              </button>
             </div>
-          )}
-
+          </div>
+          
           {/* Top-right controls */}
           <div className="absolute right-4 top-[max(env(safe-area-inset-top),12px)] flex gap-2">
-            {/* Torch Button - only show in scan tab */}
-            {currentTab === 'scan' && supportsTorch && (
+            {/* Torch Button */}
+            {supportsTorch && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -1029,73 +970,28 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           </div>
         </header>
 
-        {/* Camera/Upload Stage */}
+        {/* Camera Stage */}
         <main className="flex-1 flex items-center justify-center px-4">
-          <Tabs value={currentTab} className="w-full h-full">
-            <TabsContent value="scan" className="h-full">
-              <BarcodeViewport
-                videoRef={videoRef}
-                trackRef={trackRef}
-                onCapture={handleBarcodeCapture}
-                currentZoom={currentZoom}
-                useCSSZoom={useCSSZoom}
-                onZoomToggle={handleZoomToggle}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerEnd={handlePointerEnd}
-                onVideoClick={handleVideoClick}
-                mode={mode}
-                forceDisableAutoRef={forceDisableAutoRef}
-              />
-            </TabsContent>
-            
-            <TabsContent value="upload" className="h-full flex items-center justify-center">
-              <div className="text-center space-y-6">
-                <div className="w-32 h-32 mx-auto bg-white/10 rounded-full flex items-center justify-center">
-                  <Upload className="h-16 w-16 text-white/80" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-white text-lg font-medium">Upload Photo</h3>
-                  <p className="text-white/70 text-sm">Choose a photo to scan for barcodes</p>
-                </div>
-                <Button
-                  onClick={() => {
-                    // Handle photo upload
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = async (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        try {
-                          const val = await decodeBarcodeFromFile(file);
-                          if (val) {
-                            console.log('[BARCODE][UPLOAD:DETECTED]', { raw: val, format: 'upload' });
-                            onBarcodeDetected(val);
-                          } else {
-                            toast.error('No barcode found in image');
-                          }
-                        } catch (error) {
-                          console.error('Upload barcode decode failed:', error);
-                          toast.error('Failed to scan barcode from image');
-                        }
-                      }
-                    };
-                    input.click();
-                  }}
-                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30"
-                >
-                  Choose Photo
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <BarcodeViewport
+            videoRef={videoRef}
+            trackRef={trackRef}
+            onCapture={handleBarcodeCapture}
+            currentZoom={currentZoom}
+            useCSSZoom={useCSSZoom}
+            onZoomToggle={handleZoomToggle}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerEnd={handlePointerEnd}
+            onVideoClick={handleVideoClick}
+            mode={mode}
+            forceDisableAutoRef={forceDisableAutoRef}
+          />
         </main>
 
         {/* Footer / CTA */}
         <footer className="flex-none px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
-          {/* Only show Scan & Log button in Tap mode and Scan tab */}
-          {currentTab === 'scan' && mode === 'tap' && (
+          {/* Only show Scan & Log button in Tap mode */}
+          {mode === 'tap' && (
             <Button
               onClick={handleSnapAndDecode}
               disabled={isDecoding || isLookingUp || !stream}
@@ -1117,7 +1013,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </Button>
           )}
           
-          <div className={cn("text-center", currentTab === 'scan' && mode === 'tap' && "mt-3")}>
+          <div className={cn("text-center", mode === 'tap' && "mt-3")}>
             <button
               onClick={onManualEntry}
               className="text-white/80 hover:text-white underline underline-offset-2 transition-colors duration-200"

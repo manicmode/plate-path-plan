@@ -3687,7 +3687,6 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowManualBarcodeEntry(true);
         }}
         blockCamera={showConfirmation}
-        showConfirmation={showConfirmation}
       />
 
       {/* Barcode Not Found Modal */}
