@@ -1,77 +1,22 @@
-// Safe environment getter for browser/Vite; never touches `process`
-const getEnv = (key: string): string | undefined => {
-  // Vite / import.meta.env
-  try {
-    const ime = (import.meta as any)?.env ?? {};
-    if (key in ime) return String(ime[key]);
-  } catch {}
-  // Optional window-injected env (if your host provides it)
-  try {
-    const wenv = (window as any)?.__ENV__;
-    if (wenv && key in wenv) return String(wenv[key]);
-  } catch {}
-  return undefined;
-};
+/**
+ * Feature flags for food search and text analysis
+ */
 
-// Dev detection without `process`
-export const IS_DEV: boolean = !!((import.meta as any)?.env?.DEV);
+export const ENABLE_FOOD_TEXT_V3 = 
+  import.meta.env.VITE_FOOD_TEXT_V3 !== '0'; // default on unless explicitly 0
 
-export const flag = (k: string, def = false): boolean => {
-  if (typeof window !== 'undefined') {
-    const localFlag = localStorage.getItem(`flag:${k}`);
-    if (localFlag !== null) {
-      return localFlag === '1';
-    }
-  }
-  
-  const envVar = getEnv(`NEXT_PUBLIC_${k}`) ?? getEnv(`VITE_${k}`);
-  if (envVar !== undefined) {
-    return envVar === '1';
-  }
-  
-  return def;
-};
+export const ENABLE_AI_RERANK = 
+  import.meta.env.VITE_AI_RERANK === '1'; // default off
 
-// Feature flags (default ON unless explicitly "0")
-export const SHOW_SUPP_EDU: boolean =
-  (getEnv('NEXT_PUBLIC_SHOW_SUPP_EDU') ?? getEnv('VITE_SHOW_SUPP_EDU') ?? '1') !== '0';
+export const FOOD_TEXT_DEBUG = 
+  import.meta.env.VITE_FOOD_TEXT_DEBUG === '1'; // debug logging
 
-// Example partner flag (kept if you use it)
-export const PARTNER_ACME: boolean =
-  (getEnv('NEXT_PUBLIC_PARTNER_ACME') ?? getEnv('VITE_PARTNER_ACME') ?? '0') === '1';
+export const SFX_DEBUG = 
+  import.meta.env.VITE_SFX_DEBUG === '1'; // sound effects debug
 
-// Nudge scheduler flags
-export const NUDGE_SCHEDULER_ENABLED: boolean = 
-  (getEnv('NUDGE_SCHEDULER_ENABLED') ?? '1') === '1'; // Changed default to '1' (enabled)
-
-export const NUDGE_QA_MODE: boolean =
-  (getEnv('NUDGE_QA_MODE') ?? '0') === '1';
-
-export const NUDGE_MAX_PER_DAY: number = 
-  parseInt(getEnv('NUDGE_MAX_PER_DAY') ?? '2', 10);
-
-// Rollout percentage (0-100)
-export const NUDGE_ROLLOUT_PERCENT: number = 
-  parseInt(getEnv('NUDGE_ROLLOUT_PERCENT') ?? '100', 10); // Changed default to 100% rollout
-
-// Voice feature flag - web stays false for webkitSpeechRecognition only
-export const USE_SERVER_STT: boolean = 
-  (getEnv('USE_SERVER_STT') ?? '0') === '1';
-
-// Simple hash function for user rollout determination
-function simpleHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash);
-}
-
-// Check if user is in rollout percentage
-export function isUserInRollout(userId: string): boolean {
-  if (!NUDGE_SCHEDULER_ENABLED) return false;
-  const userHash = simpleHash(userId);
-  return (userHash % 100) < NUDGE_ROLLOUT_PERCENT;
-}
+// Legacy flags for backward compatibility
+export const NUDGE_SCHEDULER_ENABLED = false;
+export const isUserInRollout = (userId?: string) => false;
+export const USE_SERVER_STT = false;
+export const SHOW_SUPP_EDU = false;
+export const PARTNER_ACME = false;

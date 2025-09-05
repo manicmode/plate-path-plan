@@ -2,6 +2,10 @@
 // Do not create new text-lookup functions; extend resolvers here.
 
 import { supabase } from '@/integrations/supabase/client';
+import { ENABLE_FOOD_TEXT_V3, FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { parseQuery } from '@/lib/food/text/parse';
+import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
+import { inferPortion } from '@/lib/food/portion/inferPortion';
 
 // Feature flag for rollback capability
 export const FEATURE_TEXT_LOOKUP_V2 = true;
@@ -24,34 +28,165 @@ const telemetry = {
 };
 
 /**
- * Shared submit utility for both Manual and Speech text lookup
- * Both components MUST call this to maintain consistency
+ * Main text lookup function with v3 support for manual/voice
  */
-export async function submitTextLookup(
-  query: string, 
-  options: TextLookupOptions
-): Promise<any> {
-  // Runtime guards
-  if (!query || !query.trim()) {
-    console.warn('[TEXT_LOOKUP][EMPTY]');
-    telemetry.inc('text_lookup.v2.empty_query');
+export async function submitTextLookup(query: string, options: TextLookupOptions): Promise<any> {
+  const { source, bypassCache = false, portionOverrideGrams } = options;
+
+  if (!query?.trim()) {
     throw new Error('Query cannot be empty');
   }
 
-  const trimmed = query.trim();
-  const safeQuery = trimmed.slice(0, 80); // Log first 80 chars, masked if contains sensitive data
-  const maskedQuery = maskSensitiveData(safeQuery);
+  const maskedQuery = maskSensitiveData(query);
   
-  console.log(`[TEXT_LOOKUP][${options.source.toUpperCase()}] Processing:`, maskedQuery);
-  telemetry.inc(`text_lookup.v2.invoke.${options.source}`);
+  console.log(`[TEXT_LOOKUP] Processing query: "${maskedQuery}" from ${source}`);
 
+  // Use v3 pipeline for manual/voice when enabled
+  if (ENABLE_FOOD_TEXT_V3 && (source === 'manual' || source === 'speech')) {
+    return await submitTextLookupV3(query, options);
+  }
+
+  // Fallback to legacy for all other cases or when v3 disabled
+  return await submitTextLookupLegacy(query, options);
+}
+
+/**
+ * New v3 text lookup with generic-first results and realistic portions
+ */
+async function submitTextLookupV3(query: string, options: TextLookupOptions): Promise<any> {
+  const { source } = options;
+  
   try {
-    // Use legacy path if feature flag disabled (rollback mechanism)
-    if (!FEATURE_TEXT_LOOKUP_V2) {
-      console.warn('[TEXT_LOOKUP][LEGACY_FALLBACK] Using legacy path');
-      return await legacyTextLookup(trimmed, options);
+    if (FOOD_TEXT_DEBUG) {
+      console.log('[TEXT][V3] Starting v3 lookup for:', query);
     }
 
+    // Parse query into facets
+    const facets = parseQuery(query);
+    
+    if (FOOD_TEXT_DEBUG) {
+      console.log('[TEXT][PARSE]', facets);
+    }
+
+    // Get ranked candidates
+    const candidates = await getFoodCandidates(query, facets, {
+      preferGeneric: true,
+      requireCoreToken: true,
+      maxPerFamily: 1
+    });
+
+    if (FOOD_TEXT_DEBUG) {
+      console.log('[TEXT][CANDIDATES] top6=', candidates.slice(0, 6).map(c => ({
+        name: c.name,
+        score: Math.round(c.score),
+        kind: c.kind,
+        servingG: c.servingGrams || 100
+      })));
+    }
+
+    if (candidates.length === 0) {
+      throw new Error('No food candidates found');
+    }
+
+    // Build primary item from best candidate
+    const primary = candidates[0];
+    const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
+    
+    if (FOOD_TEXT_DEBUG) {
+      console.log('[TEXT][PICK]', {
+        name: primary.name,
+        servingG: portionEstimate.grams,
+        reason: 'best-score'
+      });
+    }
+
+    // Create food item with v3 structure
+    const foodItem = {
+      id: primary.id || `v3-${Date.now()}`,
+      name: primary.name,
+      calories: Math.round((primary.calories || 0) * portionEstimate.grams / 100),
+      protein: Math.round((primary.protein || 0) * portionEstimate.grams / 100 * 10) / 10,
+      carbs: Math.round((primary.carbs || 0) * portionEstimate.grams / 100 * 10) / 10,
+      fat: Math.round((primary.fat || 0) * portionEstimate.grams / 100 * 10) / 10,
+      fiber: Math.round((primary.fiber || 0) * portionEstimate.grams / 100 * 10) / 10,
+      sugar: Math.round((primary.sugar || 0) * portionEstimate.grams / 100 * 10) / 10,
+      sodium: Math.round((primary.sodium || 0) * portionEstimate.grams / 100),
+      imageUrl: primary.imageUrl,
+      servingGrams: portionEstimate.grams,
+      servingText: portionEstimate.displayText,
+      portionGrams: portionEstimate.grams,
+      source: source === 'speech' ? 'voice' : 'manual',
+      confidence: primary.confidence,
+      // v3 specific fields
+      __altCandidates: candidates.slice(1, 6).map(c => {
+        const altPortion = inferPortion(c.name, query, facets, c.classId);
+        return {
+          id: c.id || `alt-${Date.now()}-${Math.random()}`,
+          name: c.name,
+          servingG: altPortion.grams,
+          calories: Math.round((c.calories || 0) * altPortion.grams / 100),
+          protein: Math.round((c.protein || 0) * altPortion.grams / 100 * 10) / 10,
+          carbs: Math.round((c.carbs || 0) * altPortion.grams / 100 * 10) / 10,
+          fat: Math.round((c.fat || 0) * altPortion.grams / 100 * 10) / 10,
+          fiber: Math.round((c.fiber || 0) * altPortion.grams / 100 * 10) / 10,
+          sugar: Math.round((c.sugar || 0) * altPortion.grams / 100 * 10) / 10,
+          sodium: Math.round((c.sodium || 0) * altPortion.grams / 100),
+          imageUrl: c.imageUrl,
+          kind: c.kind,
+          classId: c.classId
+        };
+      }),
+      __source: source === 'speech' ? 'voice' : 'manual',
+      __originalText: query
+    };
+
+    return {
+      success: true,
+      items: [foodItem],
+      cached: false,
+      version: 'v3'
+    };
+
+  } catch (error) {
+    console.error('[TEXT][V3] Error:', error);
+    
+    // Fallback to legacy on error
+    if (FOOD_TEXT_DEBUG) {
+      console.log('[TEXT][V3] Falling back to legacy due to error');
+    }
+    
+    return await submitTextLookupLegacy(query, options);
+  }
+}
+
+/**
+ * Legacy text lookup function (existing implementation)
+ */
+async function submitTextLookupLegacy(query: string, options: TextLookupOptions): Promise<any> {
+  const { source, bypassCache = false } = options;
+  const maskedQuery = maskSensitiveData(query);
+  
+  console.log(`[TEXT_LOOKUP][LEGACY] Processing query: "${maskedQuery}" from ${source}`);
+
+  // Log telemetry for text input analysis
+  const telemetryData = {
+    source,
+    masked_query: maskedQuery,
+    timestamp: new Date().toISOString(),
+  };
+
+  console.log('[TEXT_LOOKUP_TELEMETRY]', telemetryData);
+
+  // Check if using new text lookup (FEATURE_TEXT_LOOKUP_V2 is the existing flag)
+  const useNewTextLookup = import.meta.env.VITE_FEATURE_TEXT_LOOKUP_V2 !== 'false';
+
+  if (!useNewTextLookup) {
+    // Use legacy text lookup if flag is false
+    console.warn('[TEXT_LOOKUP][LEGACY_FALLBACK] Using legacy path');
+    return await legacyTextLookup(query, options);
+  }
+
+  try {
     // Get auth headers
     const { data: { session } } = await supabase.auth.getSession();
     const headers = session?.access_token 
@@ -61,9 +196,9 @@ export async function submitTextLookup(
     // Call unified food-text-lookup function
     const { data, error } = await supabase.functions.invoke('food-text-lookup', {
       body: { 
-        q: trimmed, 
-        source: options.source,
-        bypassCache: options.bypassCache,
+        q: query, 
+        source: source,
+        bypassCache: bypassCache,
         portionOverrideGrams: options.portionOverrideGrams
       },
       headers
@@ -71,19 +206,12 @@ export async function submitTextLookup(
 
     if (error) {
       console.error('[TEXT_LOOKUP][ERROR]', error);
-      telemetry.inc('text_lookup.v2.error');
       throw new Error(`Text lookup failed: ${error.message}`);
     }
 
     if (!data?.ok) {
       console.warn('[TEXT_LOOKUP][NO_RESULTS]', data);
-      telemetry.inc('text_lookup.v2.no_results');
       return { items: [], cached: false };
-    }
-
-    telemetry.inc('text_lookup.v2.success');
-    if (data.cached) {
-      telemetry.inc('text_lookup.v2.cache_hit');
     }
 
     console.log(`[TEXT_LOOKUP][SUCCESS] Found ${data.items?.length || 0} items`, {
@@ -98,7 +226,6 @@ export async function submitTextLookup(
 
   } catch (error) {
     console.error('[TEXT_LOOKUP][SUBMIT_ERROR]', error);
-    telemetry.inc('text_lookup.v2.submit_error');
     throw error;
   }
 }
@@ -108,7 +235,6 @@ export async function submitTextLookup(
  */
 async function legacyTextLookup(query: string, options: TextLookupOptions): Promise<any> {
   console.log('[TEXT_LOOKUP][LEGACY] Using legacy path for:', options.source);
-  telemetry.inc('text_lookup.legacy.fallback');
   
   if (options.source === 'manual') {
     // Use existing GPT nutrition estimator as fallback

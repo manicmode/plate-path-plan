@@ -26,6 +26,7 @@ import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
+import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 
 // Fallback emoji component
@@ -826,44 +827,60 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </h1>
             </div>
 
-            {/* Food Candidates Picker for Manual/Voice */}
-            {candidates && candidates.length > 1 && (
+            {/* Food Candidates Picker for Manual/Voice with __altCandidates */}
+            {(candidates && candidates.length > 1) || ((currentFoodItem as any)?.__altCandidates?.length > 0) && (
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Select the correct food:
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {candidates.slice(0, 6).map((candidate, index) => (
+                  {/* Show v3 alt candidates if available, otherwise use prop candidates */}
+                  {(((currentFoodItem as any)?.__altCandidates || candidates || []).slice(0, 6)).map((candidate: any, index: number) => (
                     <button
                       key={candidate.id}
                        onClick={() => {
+                         if (FOOD_TEXT_DEBUG) {
+                           console.log('[TEXT][PICK]', {
+                             name: candidate.name,
+                             servingG: candidate.servingG || candidate.servingGrams || 100,
+                             reason: 'user-swap'
+                           });
+                         }
+                         
                          setSelectedCandidate(candidate);
-                         // Infer portion based on original text and candidate
-                         const portionEstimate = originalText ? 
-                           inferPortion(candidate.name, originalText, undefined, candidate.classId) :
-                           { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
-                         
-                         setCurrentFoodItem({
-                           ...currentFoodItem!,
-                           name: candidate.name,
-                           calories: candidate.calories,
-                           protein: candidate.protein,
-                           carbs: candidate.carbs,
-                           fat: candidate.fat,
-                           fiber: candidate.fiber,
-                           sugar: candidate.sugar,
-                           sodium: candidate.sodium,
-                           imageUrl: candidate.imageUrl,
-                           portionGrams: portionEstimate.grams
-                         });
-                         
-                         // Log portion inference
-                         if (import.meta.env.VITE_FOOD_TEXT_DEBUG === '1') {
-                           console.log('[PORTION][INFER]', {
-                             classId: candidate.classId,
-                             unit: portionEstimate.unit,
-                             grams: portionEstimate.grams,
-                             from: portionEstimate.source || 'unknown'
+                         // For v3 candidates, use their pre-calculated values
+                         if (candidate.servingG) {
+                           setCurrentFoodItem({
+                             ...currentFoodItem!,
+                             name: candidate.name,
+                             calories: candidate.calories,
+                             protein: candidate.protein,
+                             carbs: candidate.carbs,
+                             fat: candidate.fat,
+                             fiber: candidate.fiber,
+                             sugar: candidate.sugar,
+                             sodium: candidate.sodium,
+                             imageUrl: candidate.imageUrl,
+                             portionGrams: candidate.servingG
+                           });
+                         } else {
+                           // Fallback for legacy candidates
+                           const portionEstimate = originalText ? 
+                             inferPortion(candidate.name, originalText, undefined, candidate.classId) :
+                             { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
+                           
+                           setCurrentFoodItem({
+                             ...currentFoodItem!,
+                             name: candidate.name,
+                             calories: candidate.calories,
+                             protein: candidate.protein,
+                             carbs: candidate.carbs,
+                             fat: candidate.fat,
+                             fiber: candidate.fiber,
+                             sugar: candidate.sugar,
+                             sodium: candidate.sodium,
+                             imageUrl: candidate.imageUrl,
+                             portionGrams: portionEstimate.grams
                            });
                          }
                        }}
@@ -876,8 +893,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                         {candidate.name}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {candidate.calories} cal • {Math.round(candidate.confidence * 100)}% match
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                        <span>{candidate.calories} cal</span>
+                        {candidate.kind === 'generic' && (
+                          <span className="text-green-600 dark:text-green-400 text-xs">Generic</span>
+                        )}
+                        {candidate.kind === 'brand' && (
+                          <span className="text-orange-600 dark:text-orange-400 text-xs">Brand</span>
+                        )}
                       </div>
                     </button>
                   ))}

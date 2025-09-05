@@ -299,30 +299,6 @@ const CameraPage = () => {
     if (items.length === 1) {
       const item = items[0];
       
-      // Get candidates for manual/voice inputs
-      if (isManualLike) {
-        try {
-          const { parseQuery } = await import('@/lib/food/text/parse');
-          const { getFoodCandidates } = await import('@/lib/food/search/getFoodCandidates');
-          
-          const facets = parseQuery(item.name);
-          const candidates = await getFoodCandidates(item.name, facets, {
-            preferGeneric: true,
-            requireCoreToken: true,
-            maxPerFamily: 1
-          });
-          
-          console.log(`[CANDIDATES] Found ${candidates.length} candidates for "${item.name}"`);
-          
-          // Add candidates to the item
-          (item as any).candidates = candidates;
-          (item as any).originalText = item.name;
-          
-        } catch (error) {
-          console.error('[CANDIDATES] Failed to get candidates:', error);
-        }
-      }
-      
       setRecognizedFoods([item]);
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
       setShowConfirmation(true);
@@ -335,7 +311,7 @@ const CameraPage = () => {
         forceConfirm,
         showConfirmation: true,
         itemName: item.name,
-        hasCandidates: !!(item as any).candidates?.length
+        hasAltCandidates: !!(item as any).__altCandidates?.length
       });
       return;
     }
