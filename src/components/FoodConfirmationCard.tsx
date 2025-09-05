@@ -136,9 +136,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Optional helpers (no new hooks below guards) 
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-  
+
+  // Detect barcode immediately from stable signals present on first render
+  const isBarcodeSource = !!(
+    (currentFoodItem as any)?.source === 'barcode' ||
+    (currentFoodItem as any)?.id?.startsWith?.('bc:') ||
+    (currentFoodItem as any)?.barcode
+  );
+
   const useHydration = !bypassHydration;
-  const isNutritionReady = useHydration ? (perGramSum > 0) : true;
+  // Don't block barcode items on hydration; everything else keeps existing guard
+  const isNutritionReady = (useHydration && !isBarcodeSource) ? (perGramSum > 0) : true;
 
   
 
@@ -170,34 +178,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
-  // Derive display values with broad fallback
-  // Enhanced display values for barcode and text items
-  const isBarcodeSource = (currentFoodItem as any)?.source === 'barcode';
-  const isManualSource  = (currentFoodItem as any)?.source === 'manual';
-  const isSpeechSource  = (currentFoodItem as any)?.source === 'speech';
-  const preferItem = (isBarcodeSource || isManualSource || isSpeechSource) && (bypassHydration || isBarcodeSource);
+  // Force preferItem on barcode regardless of bypassHydration timing
+  const preferItem =
+    isBarcodeSource ||
+    (bypassHydration && ((currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech'));
+
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
   // Normalize name at render level with extractName utility
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
   const title = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
-  const servingG = preferItem ? ((currentFoodItem as any)?.servingGrams ?? null)
-                            : (currentFoodItem?.portionGrams ?? null);
+
+  // Serving grams and label
+  const servingG = preferItem
+    ? ((currentFoodItem as any)?.servingGrams ?? (isBarcodeSource ? 100 : null))
+    : (currentFoodItem?.portionGrams ?? null);
+  const servingLabel = (import.meta.env.VITE_BARCODE_V2 === '1' && isBarcodeSource && servingG)
+    ? `Per serving (${servingG} g)`
+    : (isBarcodeSource ? 'Per serving (100 g)' : 'Per portion (100 g)');
+
+  console.log('[SERVING][FINAL]', { isBarcodeSource, bypassHydration, preferItem, servingG, servingLabel });
+
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
-  
-  const servingLabel = (isBarcodeSource && servingG)
-    ? `Per serving (${servingG} g)`
-    : 'Per portion (100 g)';
-  
-  console.log('[SERVING][CHECK]', {
-    bypassHydration,
-    isBarcodeSource,
-    preferItem,
-    servingG,
-    servingLabel
-  });
   
   // Use serving text for barcode and text items when available, otherwise use grams
   const subtitle = (isBarcodeItem || isTextItem)

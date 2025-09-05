@@ -26,6 +26,10 @@ export const BarcodeNotFoundModal: React.FC<BarcodeNotFoundModalProps> = ({
         title="Product Not Found"
         description="We couldn't find this product in our database. You can add it manually."
       >
+        <div className="sr-only">
+          <div>Product Not Found</div>
+          <div>We couldn't find this product in our database. You can add it manually.</div>
+        </div>
         <div className="text-center pb-4">
           <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="h-8 w-8 text-orange-600" />

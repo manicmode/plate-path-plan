@@ -311,6 +311,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   }, [open, stream, updateStreamRef]);
 
   const startCamera = async () => {
+    if (typeof window !== 'undefined' && (window as any).__confirmOpen) {
+      console.log('[CAMERA][BLOCKED_WHILE_CONFIRM]');
+      return;
+    }
     // iOS fallback: use photo capture for barcode
     if (!scannerLiveCamEnabled()) {
       console.warn('[SCANNER] iOS fallback: photo capture for barcode');
@@ -374,6 +378,13 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
         setStream(mediaStream);
+        scanRunningRef.current = true;
+        const loop = () => {
+          if (!scanRunningRef.current) return;
+          // decode pass...
+          rafIdRef.current = requestAnimationFrame(loop);
+        };
+        rafIdRef.current = requestAnimationFrame(loop);
         
         // Initialize zoom capabilities
         const caps: any = track.getCapabilities?.() ?? {};
@@ -428,30 +439,27 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   };
 
   const cleanup = () => {
-    // stop autoscan first
+    // 1) cancel RAF loop first to drop references the decoder holds
     scanRunningRef.current = false;
-    if (rafIdRef.current != null) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     
     const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
     torchOff(track);
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
-    const stoppedKinds: string[] = [];
+    let tracksStopped = 0;
     if (s) {
-      stoppedKinds.push(...s.getTracks().map(t => t.kind));
-      s.getTracks().forEach(t => t.stop());
-      
-      // Temporary diagnostic: Camera teardown logging
-      console.log('[CAMERA][STOP]', {
-        tracks: s.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState })),
-      });
+      s.getTracks().forEach(t => { try { t.stop(); tracksStopped++; } catch {} });
     }
 
-    if (stoppedKinds.length > 0) {
-      logOwnerRelease('LogBarcodeScannerModal', stoppedKinds);
+    if (videoRef.current) { 
+      try { videoRef.current.pause(); } catch {}
+      videoRef.current.srcObject = null; 
     }
-
-    if (videoRef.current) { videoRef.current.pause(); videoRef.current.srcObject = null; }
+    console.log('[CAMERA][TEARDOWN:COMPLETE]', { videos: 1, tracksStopped });
 
     try { updateStreamRef?.(null); } catch {}
 

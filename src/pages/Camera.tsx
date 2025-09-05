@@ -56,6 +56,7 @@ import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
+import { SFX } from '@/lib/sfx/sfxManager';
 
 // Import smoke tests for development
 import '@/utils/smokeTests';
@@ -228,7 +229,10 @@ const CameraPage = () => {
   
   // Add confirmOpenRef for blocking camera while confirm is open
   const confirmOpenRef = useRef(false);
-  useEffect(() => { confirmOpenRef.current = showConfirmation; }, [showConfirmation]);
+  useEffect(() => { 
+    confirmOpenRef.current = showConfirmation; 
+    if (typeof window !== 'undefined') (window as any).__confirmOpen = showConfirmation;
+  }, [showConfirmation]);
   
   // Single router for any recognized items array (barcode/photo/manual/speech)
   const routeRecognizedItems = useCallback((items: any[], sourceHint?: 'speech' | 'manual' | 'barcode') => {
@@ -1620,9 +1624,10 @@ console.log('Global search enabled:', enableGlobalSearch);
             servingGrams: mapped?.servingGrams,
           });
           
-          setShowConfirmation(true);
-          setShowLogBarcodeScanner(false);
-          setShowCamera(false);
+        // when opening Confirm from barcode, also make sure no camera modals stay/come up:
+        setShowConfirmation(true);
+        setShowLogBarcodeScanner(false);
+        setShowCamera(false);
           try {
             const videos = document.querySelectorAll('video');
             videos.forEach(v => stopMedia(v as HTMLVideoElement));
@@ -3048,14 +3053,22 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   // Kill any stray camera tracks when modals close or route unmounts
   useEffect(() => {
-    if (!showLogBarcodeScanner && !showCamera) {
+    if ((!showLogBarcodeScanner && !showCamera) || showConfirmation) {
       try {
         const videos = document.querySelectorAll('video');
-        videos.forEach(video => stopMedia(video));
-        console.log('[CAMERA][CLEANUP]', 'modal-closed');
+        let tracksStopped = 0;
+        videos.forEach(video => {
+          const s = (video.srcObject as MediaStream) || null;
+          if (s) {
+            s.getTracks().forEach(t => { try { t.stop(); tracksStopped++; } catch {} });
+          }
+          try { video.pause(); } catch {}
+          (video as any).srcObject = null;
+        });
+        console.log('[CAMERA][TEARDOWN:COMPLETE]', { videos: videos.length, tracksStopped });
       } catch {}
     }
-  }, [showLogBarcodeScanner, showCamera]);
+  }, [showLogBarcodeScanner, showCamera, showConfirmation]);
 
   useEffect(() => {
     return () => {
@@ -3248,6 +3261,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                    {/* Scan Barcode Tab */}
                    <Button
                      onClick={() => {
+                       try { SFX().unlock(); } catch {}
                        setShowLogBarcodeScanner(true);
                        setInputSource('barcode');
                        setIsLoadingBarcode(false); // Reset loading state when opening scanner

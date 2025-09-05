@@ -6,6 +6,7 @@ class SfxManager {
   private ctx: AudioContext | null = null;
   private unlocked = false;
   private pendingKey: SfxKey | null = null;
+  private masterGain: GainNode | null = null;
 
   private ensureCtx() {
     if (typeof window === 'undefined') return null;
@@ -13,68 +14,59 @@ class SfxManager {
       try {
         const Ctx: any = (window as any).AudioContext || (window as any).webkitAudioContext;
         this.ctx = Ctx ? new Ctx() : null;
+        if (this.ctx && !this.masterGain) {
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.value = 0.8;
+          this.masterGain.connect(this.ctx.destination);
+        }
       } catch { this.ctx = null; }
     }
     return this.ctx;
   }
 
-  async unlock() {
+  unlock() {
     const ctx = this.ensureCtx();
     if (!ctx) return;
-    try {
-      if (ctx.state !== 'running') await ctx.resume();
-      this.unlocked = ctx.state === 'running';
-    } catch { /* ignore */ }
+    if (ctx.state !== 'running') {
+      ctx.resume().then(() => {
+        this.unlocked = (ctx.state === 'running');
+      }).catch(() => {});
+    } else {
+      this.unlocked = true;
+    }
   }
 
-  private playTone(freqA: number, freqB: number, dur = 0.22, startGain = 0.0001, peak = 0.28) {
+  private playTone(freq: number, duration: number) {
     const ctx = this.ensureCtx();
-    if (!ctx || ctx.state !== 'running') return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'triangle'; // more audible on iOS
-      osc.frequency.setValueAtTime(freqA, now);
-      if (freqB !== freqA) osc.frequency.linearRampToValueAtTime(freqB, now + Math.min(0.12, dur));
-
-      gain.gain.setValueAtTime(startGain, now);
-      gain.gain.linearRampToValueAtTime(peak, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + dur);
-    } catch { /* ignore */ }
+    if (!ctx || !this.masterGain || !this.unlocked) return;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    osc.connect(env);
+    env.connect(this.masterGain);
+    const now = ctx.currentTime;
+    const d = Math.max(duration, 0.30);
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(0.45, now + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.001, now + d);
+    osc.start(now);
+    osc.stop(now + d);
   }
 
   play(key: SfxKey): void {
     try { navigator.vibrate?.(key === 'scan_success' ? 30 : key === 'shutter' ? 20 : 10); } catch {}
     const ctx = this.ensureCtx();
     if (!ctx) return;
-
-    if (!this.unlocked || ctx.state !== 'running') {
-      this.pendingKey = key;
-      ctx.resume()
-        .then(() => { this.unlocked = ctx.state === 'running'; if (this.unlocked && this.pendingKey) { const k = this.pendingKey; this.pendingKey = null; this.play(k); } })
-        .catch(() => {});
-      return;
-    }
-    
-    console.log('[SFX][PLAY]', {
-      key,
-      hasCtx: !!ctx,
-      ctxState: ctx?.state,
-      unlocked: this.unlocked
-    });
-    
-    // console.debug?.('[sfx] play', key);
+    // Ensure unlock at call site; if still locked, prime and bail (next gesture will succeed)
+    if (!this.unlocked) { this.unlock(); console.log('[SFX][FINAL]', { key, ctxState: ctx.state, unlocked: this.unlocked, hasMaster: !!this.masterGain }); return; }
+    console.log('[SFX][FINAL]', { key, ctxState: ctx.state, unlocked: this.unlocked, hasMaster: !!this.masterGain });
+    // tones
     switch (key) {
-      case 'welcome':      this.playTone(523.25, 659.25); break;
-      case 'shutter':      this.playTone(440,   392, 0.12); break;
-      case 'scan_success': this.playTone(740,   880); break;
-      case 'scan_error':   this.playTone(300,   260); break;
+      case 'scan_success': this.playTone(800, 0.15); break;
+      case 'shutter': this.playTone(600, 0.12); break;
+      case 'scan_error': this.playTone(300, 0.20); break;
+      case 'welcome': this.playTone(500, 0.18); break;
     }
   }
 

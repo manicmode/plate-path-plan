@@ -73,6 +73,11 @@ export const UnifiedPhotoCaptureModal: React.FC<UnifiedPhotoCaptureModalProps> =
   const startCamera = useCallback(async () => {
     if (streamRef.current) return;
     
+    if (blockCamera || (typeof window !== 'undefined' && (window as any).__confirmOpen)) {
+      console.log('[UNIFIED_CAMERA][BLOCKED_WHILE_CONFIRM]');
+      return;
+    }
+    
     try {
       console.log("[UNIFIED_CAMERA] Requesting camera stream...");
       
