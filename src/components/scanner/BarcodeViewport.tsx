@@ -312,9 +312,9 @@ export default function BarcodeViewport({
 
   // Auto-capture decoder loop (using interval instead of RAF for consistent timing)
   useEffect(() => {
-    // Gate: modal must be open; runtime override or flag must be true
+    // Gate: modal must be open; runtime override or flag must be true; AND mode must be auto
     const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
-    if (!allowAuto || !autoOn) return;
+    if (!allowAuto || !autoOn || mode !== 'auto') return;
     if (!videoRef.current) return;
 
     samplesRef.current = [];
@@ -349,7 +349,7 @@ export default function BarcodeViewport({
       autoIvRef.current = null;
       diag.log('[scan] auto loop stop');
     };
-  }, [autoOn, videoRef, decodeFrame, pushSample, windowStats, safeCapture]);
+  }, [autoOn, mode, videoRef, decodeFrame, pushSample, windowStats, safeCapture]);
 
   // Slow hint timer
   useEffect(() => {
@@ -439,8 +439,10 @@ export default function BarcodeViewport({
         <div className="absolute right-0 bottom-0 h-5 w-5 border-b-2 border-r-2 border-cyan-400/80 rounded-br-md" />
       </div>
       
-      {/* Scan line */}
-      <div className="absolute left-12 right-12 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent animate-[scan_2.4s_ease-in-out_infinite]" />
+      {/* Scan line - only show in auto mode */}
+      {mode === 'auto' && (
+        <div className="absolute left-12 right-12 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent animate-[scan_2.4s_ease-in-out_infinite]" />
+      )}
       
       {/* Hint (fixed height, no layout shift) */}
       <div 

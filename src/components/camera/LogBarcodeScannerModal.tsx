@@ -856,7 +856,15 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const onPointerDownOutside = useCallback(() => requestClose('outside'), [requestClose]);
   
   return (
-    <Dialog open={open} onOpenChange={(v) => v ? null : requestClose('onOpenChange')}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (!v) {
+        // Force cleanup when dialog is closed
+        console.log('[SCANNER] Dialog onOpenChange: closing, forcing cleanup');
+        doCleanup('dialog_close');
+        camHardStop('dialog_close');
+        onOpenChange(false);
+      }
+    }}>
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden fixed inset-0 translate-x-0 translate-y-0 flex flex-col"
         onEscapeKeyDown={onEscapeKeyDown}
@@ -941,7 +949,12 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => requestClose('header_exit')}
+              onClick={() => {
+                console.log('[SCANNER] Close button clicked, forcing cleanup');
+                doCleanup('header_exit');
+                camHardStop('header_exit');
+                requestClose('header_exit');
+              }}
               className="text-white hover:bg-white/20"
               aria-label="Close scanner"
               data-role="scanner-exit"
