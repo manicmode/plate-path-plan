@@ -170,6 +170,24 @@ function guessDefaultGrams(name: string){
   return /salmon|chicken|beef/i.test(name) ? 120 : /asparagus|tomato|lettuce/i.test(name) ? 80 : 100
 }
 
+// Helper functions for robust input handling
+function dataUrlToFile(dataUrl: string, filename = 'camera-photo.jpg'): File {
+  const [meta, base64] = dataUrl.split(',');
+  const mime = (/data:(.*?);base64/.exec(meta)?.[1]) || 'image/jpeg';
+  const bin = atob(base64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return new File([buf], filenameForMime(filename, mime), { type: mime });
+}
+
+function filenameForMime(name: string, mime: string) {
+  const ext = mime.includes('png') ? '.png'
+            : mime.includes('webp') ? '.webp'
+            : mime.includes('heic') ? '.heic'
+            : '.jpg';
+  return name.endsWith(ext) ? name : name.replace(/\.\w+$/, '') + ext;
+}
+
 type ImageSource = File | Blob | string;
 
 const CameraPage = () => {
@@ -3853,16 +3871,26 @@ console.log('Global search enabled:', enableGlobalSearch);
           open={showCamera}
           onOpenChange={setShowCamera}
           deferClose={true} // Keep modal open until next screen is ready
-          onCapture={async (imageData) => {
+          onCapture={async (input: File | Blob | string) => {
             console.log('[CAMERA][PHOTO] Photo captured from modal');
-            // Convert base64 to File for handleConfirmImage
             try {
-              const response = await fetch(imageData);
-              const blob = await response.blob();
-              const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+              let file: File;
+              if (input instanceof File) {
+                file = input;
+              } else if (input instanceof Blob) {
+                file = new File([input], 'camera-photo.jpg', { type: input.type || 'image/jpeg' });
+              } else if (typeof input === 'string' && input.startsWith('data:')) {
+                file = dataUrlToFile(input);
+              } else if (typeof input === 'string' && /^https?:\/\//.test(input)) {
+                const b = await fetch(input).then(r => r.blob());
+                file = new File([b], 'camera-photo.jpg', { type: b.type || 'image/jpeg' });
+              } else {
+                throw new Error('Unsupported capture payload');
+              }
               await handleConfirmImage(file);
             } catch (error) {
               console.error('Failed to process captured photo:', error);
+              toast.error('Failed to process captured photo. Please try again.');
             }
           }}
           onManualFallback={() => {
