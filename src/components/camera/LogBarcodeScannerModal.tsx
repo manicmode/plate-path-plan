@@ -855,20 +855,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={(v) => v ? null : requestClose('onOpenChange')}>
       <DialogContent 
-        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
+        className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden fixed inset-0 translate-x-0 translate-y-0"
         onEscapeKeyDown={onEscapeKeyDown}
         onPointerDownOutside={onPointerDownOutside}
       >
         <DialogTitle><VisuallyHidden>Barcode Scanner</VisuallyHidden></DialogTitle>
         <DialogDescription><VisuallyHidden>Point your camera at a barcode</VisuallyHidden></DialogDescription>
         
-        <div className="grid h-full grid-rows-[auto_auto_1fr_auto]">
-          {/* Top Header - Title and Status */}
-          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 text-center">
-            <h2 className="text-white text-lg font-semibold">Scan a barcode</h2>
+        <div className="grid h-full grid-rows-[auto_1fr_auto]">
+          {/* Top Header - Title, Status, and Mode Toggle */}
+          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),8px)] pb-4 text-center">
+            <h2 className="text-white text-lg font-semibold mb-2">Scan a barcode</h2>
             
             {/* Status chip */}
-            <div className="mt-2 flex justify-center" aria-live="polite">
+            <div className="flex justify-center mb-4" aria-live="polite">
               <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-300/25">
                 {isLookingUp ? (
                   <>
@@ -887,9 +887,39 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                 )}
               </span>
             </div>
+
+            {/* Mode Toggle */}
+            <div className="flex justify-center">
+              <div className="flex bg-white/10 rounded-full p-1">
+                <button
+                  onClick={() => setMode('auto')}
+                  className={cn(
+                    "px-4 py-2 text-sm rounded-full transition-all",
+                    mode === 'auto'
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                      : "text-white/80 hover:text-white"
+                  )}
+                  aria-pressed={mode === 'auto'}
+                >
+                  Auto
+                </button>
+                <button
+                  onClick={() => setMode('tap')}
+                  className={cn(
+                    "px-4 py-2 text-sm rounded-full transition-all",
+                    mode === 'tap'
+                      ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
+                      : "text-white/80 hover:text-white"
+                  )}
+                  aria-pressed={mode === 'tap'}
+                >
+                  Tap
+                </button>
+              </div>
+            </div>
             
             {/* Top-right controls */}
-            <div className="absolute right-4 top-[max(env(safe-area-inset-top),12px)] flex gap-2">
+            <div className="absolute right-4 top-[max(env(safe-area-inset-top),8px)] flex gap-2">
               {/* Torch Button */}
               {supportsTorch && (
                 <Button
@@ -919,56 +949,24 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             </div>
           </header>
 
-          {/* Mode Toggle Section */}
-          <section className="row-start-2 px-4 pb-4 flex justify-center">
-            <div className="flex bg-white/10 rounded-full p-1">
-              <button
-                onClick={() => setMode('auto')}
-                className={cn(
-                  "px-4 py-2 text-sm rounded-full transition-all",
-                  mode === 'auto'
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                    : "text-white/80 hover:text-white"
-                )}
-                aria-pressed={mode === 'auto'}
-              >
-                Auto
-              </button>
-              <button
-                onClick={() => setMode('tap')}
-                className={cn(
-                  "px-4 py-2 text-sm rounded-full transition-all",
-                  mode === 'tap'
-                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30"
-                    : "text-white/80 hover:text-white"
-                )}
-                aria-pressed={mode === 'tap'}
-              >
-                Tap
-              </button>
-            </div>
-          </section>
-
           {/* Camera Stage */}
-          <main className="row-start-3 grid place-items-center px-4">
-            <div className="-translate-y-[clamp(8px,3vh,28px)]">
-              <BarcodeViewport
-                videoRef={videoRef}
-                trackRef={trackRef}
-                onCapture={handleBarcodeCapture}
-                currentZoom={currentZoom}
-                useCSSZoom={useCSSZoom}
-                onZoomToggle={handleZoomToggle}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerEnd={handlePointerEnd}
-                onVideoClick={handleVideoClick}
-              />
-            </div>
+          <main className="row-start-2 grid place-items-center px-4">
+            <BarcodeViewport
+              videoRef={videoRef}
+              trackRef={trackRef}
+              onCapture={handleBarcodeCapture}
+              currentZoom={currentZoom}
+              useCSSZoom={useCSSZoom}
+              onZoomToggle={handleZoomToggle}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerEnd={handlePointerEnd}
+              onVideoClick={handleVideoClick}
+            />
           </main>
 
           {/* Footer / CTA */}
-          <footer className="row-start-4 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
+          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
             {/* Only show Scan & Log button in Tap mode */}
             {mode === 'tap' && (
               <Button
